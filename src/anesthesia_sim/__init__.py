@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from anesthesia-sim!")
+"""Open anesthesia simulation package."""
