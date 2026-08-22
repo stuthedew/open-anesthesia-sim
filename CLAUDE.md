@@ -1,513 +1,90 @@
-# Open Anesthesia Simulator — Project Context
-
-Read this file before proposing or making changes.
-
-## Project purpose
-
-Open Anesthesia Simulator is an open-source, deterministic educational simulation of anesthesia-machine and anesthetic-agent behavior.
-
-The long-term goal is a scientifically transparent, extensible simulator with explicit equations, units, assumptions, provenance, numerical validation, and a polished interface.
-
-This is an educational model—not a clinical prediction, monitoring, decision-support, or dosing tool.
-
-## Repository and current branch
-
-Repository:
-
-```text
-~/Developer/open-anesthesia-sim
-```
-
-Current development branch:
-
-```text
-build/v0.1.0-sevo-patient
-```
-
-At the time this context was last updated, the v0.1.0 implementation was committed and the branch was tracking its remote counterpart. Always inspect the current Git status rather than assuming the working tree remains clean.
-
-The repository includes a project-specific `.gitignore` for Python caches, test and coverage output, local environments, Flet runtime files, macOS metadata, and common editor files. Do not stage generated artifacts, and do not reset, discard, overwrite, switch branches, or clean files without reviewing the exact targets and receiving explicit user authorization when changes could be lost.
-
-## Authoritative versioning decision
-
-`ROADMAP.md` is the authoritative milestone map.
-
-| Version | Meaning |
-| --- | --- |
-| v0.0.1 | Initial runnable prototype |
-| v0.0.2 | Analytically validated ideal breathing-circuit wash-in/washout |
-| v0.1.0 | First patient sevoflurane uptake/distribution model—the “Sevo works” milestone |
-
-There is no active v0.0.3 milestone. Older material describing this patient milestone as v0.0.3 is superseded.
-
-The package version has already been changed to `0.1.0`, but v0.1.0 has not been released or tagged.
-
-## Sources of truth
-
-When answering project questions, reconcile these sources:
-
-1. The user’s current request
-2. `ROADMAP.md` for milestone identity and scope
-3. `docs/MODEL.md` for scientific equations, units, assumptions, and limitations
-4. The current working tree and tests for actual implementation state
-5. Prior build guides and conversation artifacts
-
-If sources disagree, explicitly identify the discrepancy. Do not silently choose one.
-
-The `ROADMAP.md` baseline description refers to released `main` at v0.0.2. The current feature branch contains the in-progress v0.1.0 implementation.
-
-## Current scientific architecture
-
-The implemented pathway is:
-
-```text
-Delivered sevoflurane
-    → breathing circuit
-    → alveolar gas
-    → venous blood and perfusion-limited tissues
-    → vessel-rich group / muscle / fat
-    → mixed-venous return
-```
-
-Important files:
-
-```text
-src/anesthesia_sim/core/circuit.py
-    Exact ideal breathing-circuit fresh-gas update.
-    Preserve v0.0.2 analytic behavior.
-
-src/anesthesia_sim/core/alveolar.py
-    Explicit alveolar gas volume and ventilation behavior.
-
-src/anesthesia_sim/core/blood.py
-    Mixed-venous blood compartment.
-
-src/anesthesia_sim/core/tissue.py
-    One perfusion-limited tissue group.
-
-src/anesthesia_sim/core/patient.py
-    Vessel-rich, muscle, fat, cardiac output, and mixed-venous return.
-
-src/anesthesia_sim/core/respiratory_system.py
-    Owns the conservative circuit/alveolar/patient coupling order.
-
-src/anesthesia_sim/core/agent_simulation_validation.py
-    Tracks delivered, exhausted, stored, and unaccounted agent.
-
-src/anesthesia_sim/core/simulation.py
-    Owns the complete respiratory system and explicit elapsed simulation time.
-
-src/anesthesia_sim/core/parameters.py
-    Loads and validates agent and patient data.
-
-src/anesthesia_sim/core/exceptions.py
-    Project-specific exception hierarchy.
-
-src/anesthesia_sim/data/agents/sevoflurane.json
-    Sevoflurane parameters and provenance.
-
-src/anesthesia_sim/data/patients/reference_adult.json
-    Reference adult parameters and provenance.
-
-src/anesthesia_sim/app/controller.py
-    Run state, immutable snapshots, named history samples, and live settings.
-
-src/anesthesia_sim/app/simulation_view.py
-    Responsive Flet dashboard. It must not perform physiological calculations.
-
-src/anesthesia_sim/app/main.py
-    Flet application construction and console launcher.
-```
-
-Keep Flet, display dimensions, wall-clock timing, and UI formatting out of the scientific core.
-
-## Intentional nomenclature
-
-Do not perform broad naming changes without explicit user approval.
-
-The following distinction is intentional:
-
-- The module is `agent_simulation_validation.py`.
-- The broader types are `AgentSimulationValidator`, `AgentSimulationValidationResult`, and `AgentSimulationValidationError`.
-- Within that broader validation system, `agent_accounting`, `check_agent_accounting()`, and `require_valid_agent_accounting()` are appropriate names for the specific conservation calculation.
-
-The user deliberately reverted an earlier attempt to eliminate all “accounting” terminology.
-
-Use the current repository names as authoritative. Do not rename APIs merely to make naming internally uniform.
-
-## Validation and exceptions
-
-Agent accounting verifies:
-
-```text
-initial stored agent + delivered agent
-=
-exhausted agent + currently stored agent
-```
-
-The validator reports:
-
-- delivered agent
-- exhausted agent
-- currently stored agent
-- unaccounted agent
-- absolute error
-- relative error
-- whether validation passes
-
-Use project-specific exceptions by default for project-level failures:
-
-```text
-AnesthesiaSimulationError
-├── SimulationConfigurationError
-└── SimulationExecutionError
-    └── SimulationNumericalError
-        └── AgentSimulationValidationError
-```
-
-Do not replace a meaningful project exception with a generic exception without a concrete reason.
-
-## Current application entry point
-
-The console entry point is:
-
-```toml
-[project.scripts]
-anesthesia-sim = "anesthesia_sim.app.main:main"
-```
-
-`src/anesthesia_sim/app/main.py` contains:
-
-- asynchronous `build_app(page)`
-- no-argument `main()`
-- `main()` calls `ft.run(build_app)`
-
-This fixed an earlier failure where the console script incorrectly attempted to import `main` from `anesthesia_sim/__init__.py`.
-
-## Current interface state
-
-The application runs.
-
-The current `simulation_view.py` is a compact, self-contained dashboard with:
-
-- title, version, run controls, and status in a compact header
-- fresh gas flow control
-- delivered sevoflurane control
-- alveolar ventilation control
-- cardiac output control
-- circuit/inspired concentration
-- alveolar/end-tidal concentration
-- mixed-venous concentration
-- vessel-rich, muscle, and fat values
-- six named chart traces with color and line-pattern distinctions
-- agent-accounting status and amounts
-- educational/non-clinical warning
-- fixed 360-pixel chart height
-- 60-second initial chart window
-- rolling maximum 300-second display window
-- responsive stacking on smaller windows
-
-The UI has received an interim polish pass, not a final visual-design pass.
-
-Do not move simulation math into the view.
-
-## Current test status
-
-As of 2026-08-22:
-
-```text
-92 tests passed
-Ruff formatting passed
-Ruff lint passed
-Strict mypy passed
-```
-
-The complete quality command is:
-
-```bash
-make check
-```
-
-Core scientific modules generally have approximately 94–100% coverage.
-
-Overall coverage was approximately 73% because `simulation_view.py` and most Flet application assembly currently have no automated coverage. A green test suite does not prove that the new UI is wired correctly.
-
-The circuit-only tests are not automatically outdated. They intentionally preserve v0.0.2 analytic behavior and are required regression tests.
-
-Known testing gap:
-
-- Flet slider handlers
-- Start/Pause/Reset view wiring
-- chart-series wiring
-- agent-accounting display
-- responsive view construction
-
-Manual UI smoke testing remains required until focused view tests are added.
-
-## Makefile workflow
-
-Use the project’s established Make commands.
-
-Synchronize dependencies:
-
-```bash
-make sync
-```
-
-Run pytest:
-
-```bash
-make test
-```
-
-Format and apply safe Ruff fixes:
-
-```bash
-make fix
-```
-
-Run dependency sync, formatting check, lint, strict mypy, and all tests:
-
-```bash
-make check
-```
-
-Show Git status and run the complete gate:
-
-```bash
-make prebuild
-```
-
-Launch the application:
-
-```bash
-make run
-```
-
-Coverage diagnostic:
-
-```bash
-uv run pytest \
-  --cov=anesthesia_sim \
-  --cov-report=term-missing
-```
-
-## User collaboration preferences
-
-These are strict defaults.
-
-### Do not implement by default
-
-Unless the user explicitly asks to implement changes, provide code for the user to copy and paste.
-
-Read-only inspection and diagnostic test runs are acceptable when relevant.
-
-### Whole-file replacements are the default
-
-If a file needs changes in multiple locations, provide the complete file in one code block.
-
-Do not make the user hunt through a file for several separate replacements.
-
-An isolated one-line change may be provided as a partial edit.
-
-Every code block must clearly identify its destination file.
-
-### Step-by-step workflow
-
-The user prefers one clearly bounded step at a time and will say:
-
-```text
-next
-```
-
-when ready to continue.
-
-Every step response should have:
-
-- a large, clear header at the top
-- exact destination filenames
-- complete copy/paste code
-- generous visual separation between different files
-- terminal commands to verify the step
-- expected results
-
-### Communication
-
-Use plain language and intuitive explanations.
-
-The user often asks what a scientific or architectural component does before deciding on naming. Explain the responsibility and domain meaning, not merely the Python mechanics.
-
-Do not silently change naming conventions, APIs, equations, units, scope, or architecture.
-
-Inspect the current repository before giving code that depends on repository state.
-
-### Proactive professional-practice review
-
-Professional repository hygiene and documentation are standing requirements, even when the user does not know which supporting artifact or safeguard to request by name.
-
-At natural project checkpoints, proactively identify relevant missing or stale professional practices. Good checkpoints include repository setup, a major architecture or scientific-model change, before a commit or pull request, and before a release or tag.
-
-Review only the categories relevant to the current work, including:
-
-- repository hygiene, generated-file exclusions, and clean commit boundaries
-- README, roadmap, model documentation, changelog, contributing guidance, license, and release notes
-- equations, units, assumptions, provenance, tolerances, limitations, and educational-use disclaimers
-- unit, integration, regression, reference, and UI tests, plus coverage appropriate to risk
-- formatting, linting, type checking, continuous integration, dependency locking, secrets, and security checks
-- package metadata, public entry points, version consistency, and release/tag readiness
-- responsive layout, accessibility, user feedback, error states, and other professional UX safeguards
-
-When surfacing an item, label it clearly as one of:
-
-- **Required before proceeding** — correctness, safety, data-loss, security, or release-integrity risk
-- **Recommended professional practice** — meaningful quality or maintainability improvement
-- **Safe to defer** — worthwhile but unnecessary for the current milestone
-
-Explain briefly why the item matters and suggest the smallest sensible next action. Do not create noise by reciting a generic checklist when nothing is contextually relevant. Do not silently broaden scope or implement an optional practice unless the user explicitly asks for it.
-
-## Code-quality standard
-
-Approach the project as an expert Python software architect specializing in scientific simulations and open-source tools, with professional, industry-leading UX, UI and graphic-design judgment.
-
-The expected code should be:
-
-- elegant
-- intuitive
-- deterministic
-- explicit about units and ownership
-- scientifically defensible
-- conservative in scope
-- easy for another developer to skim
-- minimally surprising
-- thoroughly validated
-- polished without unnecessary abstraction
-
-Do not introduce architecture merely to appear sophisticated.
-
-## Documentation standard
-
-High-quality professional documentation is the default for new code and for any complete existing file that must be replaced during a future step.
-
-Follow these rules strictly:
-
-1. Do not alter, optimize, or change execution logic, mathematics, formulas, or established variable names merely while adding documentation.
-2. Every complete module should begin with a triple-quoted module docstring explaining its responsibility and domain context—why it exists, not merely what it contains.
-3. Add Google-style docstrings to all classes and major methods.
-4. State physical units explicitly for arguments, attributes, state, and return values where applicable.
-5. Every function signature must have explicit type hints.
-6. Use `typing.NewType` when unit safety materially improves the API without unnecessarily disrupting established interfaces.
-7. Use inline comments only for non-obvious domain physics, scientific formulas, numerical methods, or safety guardrails.
-8. Do not add comments that merely narrate obvious Python operations.
-9. Do not begin a separate retroactive documentation rewrite unless requested.
-10. If a file must already be replaced for a functional change, return the complete file with documentation upgraded throughout while preserving unrelated logic exactly.
-
-## Scientific-development rules
-
-- Preserve deterministic results for identical inputs and time steps.
-- Use explicit physical units in names and documentation.
-- Keep one canonical equivalent-agent amount basis for accounting.
-- Do not sum unlike concentration or amount representations.
-- Use conservative transfers: an amount removed from one compartment must be the amount added to another.
-- Do not hide lost mass with post-hoc clipping.
-- Maintain safe behavior at zero fresh gas flow, zero ventilation, and zero cardiac output.
-- Keep parameters separate from mutable state.
-- Keep built-in profiles read-only.
-- Require schema version and provenance for scientific data.
-- Preserve the existing circuit analytic regression behavior.
-- Define equations, units, assumptions, and numerical ownership before adding new scientific scope.
-- Do not add deferred features to v0.1.0.
-
-## Explicit v0.1.0 exclusions
-
-Do not add these during v0.1.0 cleanup:
-
-- additional volatile anesthetics
-- nitrous oxide
-- simultaneous gases
-- vaporizer interlocks or agent switching
-- V/Q mismatch, dead space, shunt, or multiple alveolar units
-- metabolism
-- MAC, BIS, hypnosis, or nociception models
-- IV anesthetics
-- ECMO or cardiopulmonary bypass
-- scenario save/load, replay, comparison, or forking
-- clinical prediction or dosing guidance
-
-## Build-guide and PDF preferences
-
-Future build guides and PDFs should:
-
-- use the authoritative milestone version from `ROADMAP.md`
-- include exact filenames for every code block
-- provide complete files when multiple parts of a file change
-- be command-heavy and copy/paste-friendly
-- retain the Makefile workflow
-- include concrete terminal commands where useful
-- use large step headers and whitespace between code blocks
-- include or accompany the relevant `docs/MODEL.md` text
-- render equations using clean Markdown equation formatting when supported
-- never leave placeholders such as “Agent data shape” without saying which file to edit
-- never depend on conversational memory for versioning or architecture
-
-Older v0.0.3 patient-build guides are superseded.
-
-## Current next steps
-
-The v0.1.0 feature branch is functionally advanced but not release-ready.
-
-Recommended continuation:
-
-1. Launch the compact interface with `make run`.
-2. Repeat the manual smoke sequence:
-   - Start and confirm the circuit rises first.
-   - Confirm alveolar concentration follows.
-   - Confirm vessel-rich tissue rises before muscle and fat.
-   - Change ventilation without resetting state.
-   - Change cardiac output without resetting state.
-   - Set delivered sevoflurane to zero and observe washout.
-   - Pause and confirm state freezes.
-   - Reset and confirm dynamic state clears while settings persist.
-   - Confirm agent-accounting status remains valid.
-3. Add focused tests for important UI/controller wiring where practical.
-4. Run the complete scientific and release test matrix.
-5. Review `docs/MODEL.md` against the actual implementation.
-6. Update `README.md` to describe the v0.1.0 capability and limitations.
-7. Review parameter provenance, equations, units, numerical tolerances, and limitations.
-8. Review the complete `main...HEAD` branch diff before opening a pull request.
-9. Confirm generated artifacts remain ignored and the working tree is clean before release review.
-10. Open or review the pull request and confirm continuous-integration checks pass.
-11. Do not mark `ROADMAP.md` complete or create the v0.1.0 tag until the merged release gate passes.
-
-## Git safety
-
-At the time this file was last updated, the feature branch was committed, pushed, and tracking its remote counterpart. Treat that as historical context, not a guarantee of current state.
-
-Before any Git operation:
-
-```bash
-git status --short
-```
-
-Do not run destructive commands such as:
-
-```text
-git reset --hard
-git checkout --
-git clean -fd
-```
-
-Do not stage generated caches or `.DS_Store` files.
-
-Do not commit, push, merge, or tag unless the user explicitly requests that action.
-
-## First response in a new session
-
-Before proposing work:
-
-1. Read this file.
-2. Read `ROADMAP.md`.
-3. Inspect `git status --short`.
-4. Inspect the relevant current files.
-5. Run or review `make check` when appropriate.
-6. State the exact current step and whether the response will provide snippets or perform implementation.
-7. Surface any contextually relevant missing professional practice, classified by urgency, without implementing optional work unless requested.
+# Repository instructions
+
+These instructions apply to all AI coding agents working on this repository.
+
+## Architecture and development discipline
+
+- Keep scientific/simulation code independent of Flet.
+- Put no simulation calculations in UI callbacks.
+- Treat simulation time as explicit state, never wall-clock time.
+- Preserve deterministic results for identical inputs.
+- Add or update tests with every core behavior change.
+- Keep agent/model parameters in validated, versioned data files.
+- Do not add executable equations to data files.
+- Do not implement beyond the current milestone.
+- Run pytest, Ruff, and the configured type checker before finishing.
+
+## Safety-critical clinical-output standard
+
+This application is intended as an educational/simulation tool and will carry appropriate disclaimers that it is not intended for clinical patient care. Nevertheless, assume that a clinician could use displayed values or model outputs to influence real-world patient management.
+
+Therefore, any code path or displayed information that could plausibly affect patient management must be treated as safety-critical. Examples include:
+
+- drug dose, infusion-rate, concentration, weight-based, or unit calculations;
+- PK/PD state calculations and predictions;
+- effect-site concentrations, predicted effects, MAC-equivalent values, interaction surfaces, and similar derived clinical values;
+- model selection and model-compatibility logic;
+- covariate transformations such as weight scalars, age adjustments, allometry, renal/hepatic modifiers, or unit conversions;
+- thresholds, warnings, alarms, recommendation-like language, or other information a clinician might act on;
+- values presented in graphs, tables, labels, or summaries where an error could alter clinical interpretation.
+
+For safety-critical paths:
+
+- Favor correctness, traceability, explicitness, and auditability over cleverness, abstraction, convenience, or development speed.
+- Keep calculation logic pure and independent from presentation/UI code whenever feasible.
+- Use explicit units and avoid implicit unit conversions. Prefer unit-aware types or equivalent safeguards where practical.
+- Validate required inputs, units, ranges, model applicability, and model compatibility before calculation.
+- Do not silently substitute defaults, coerce invalid data, or continue with missing required inputs when doing so could produce a plausible but incorrect clinical value.
+- Version and record provenance for scientific models, equations, constants, parameter sets, and clinically meaningful transformations.
+- Maintain deterministic behavior for identical inputs and model versions.
+- Validate numerical implementations against published reference cases, analytic solutions, independently calculated test vectors, or other authoritative references whenever available.
+- Include boundary, invalid-input, pathological-input, and regression tests in addition to ordinary nominal-case tests.
+- When a safety-critical bug is found, add a regression test that would have caught it.
+- Prefer an obvious failure/error state to displaying a plausible-looking number when correctness cannot be established.
+- Treat presentation correctness as part of safety: the correct number with the wrong units, label, patient context, stale state, model name/version, or provenance is still a safety failure.
+- Test the end-to-end path when appropriate: patient inputs -> model selection -> calculation -> units -> formatting -> displayed value.
+- Make clinically meaningful displayed values traceable to the exact model/version, inputs, units, and transformations that produced them.
+
+Disclaimers do not lower the engineering standard for these paths.
+
+## Proactive expert review and domain best practices
+
+Do not limit review or recommendations to conventional software-engineering concerns. Treat development of this application as a multidisciplinary professional product-design problem and proactively identify material improvements anywhere they affect scientific validity, safety, interpretability, usability, educational value, maintainability, or reliability.
+
+Recommendations should reflect the standard expected from a top-tier specialist in the relevant field, not merely common or minimally acceptable practice. When the user's proposed approach is materially weaker than a better established approach, say so clearly and recommend the stronger approach with the reasoning behind it.
+
+Relevant domains include, but are not limited to:
+
+- pharmacokinetic, pharmacodynamic, physiologic, and inhaled-anesthetic modeling;
+- numerical simulation methods, solver choice, timestep behavior, stability, interpolation, and error handling;
+- model verification, validation, applicability domains, uncertainty, sensitivity analysis, and reproducibility;
+- anesthesia and critical-care domain conventions where they affect terminology, units, workflow, interpretation, or safety;
+- simulation and medical-education best practices, including choosing fidelity appropriate to the learning objective and making model limitations visible;
+- human factors, cognitive ergonomics, mode awareness, error prevention, attention management, and prevention of stale-state or wrong-context interpretation;
+- information architecture, interaction design, UI/UX, visual hierarchy, responsive behavior, and cross-platform interaction patterns;
+- scientific and clinical data visualization, including axis choice, scale, normalization, reference ranges, uncertainty, annotations, and avoidance of misleading visual encodings;
+- accessibility, typography, color use, contrast, keyboard/touch interaction, and color-vision deficiencies;
+- software architecture, APIs, data schemas, testing strategy, performance, security, privacy, packaging, dependency management, and maintainability;
+- provenance, citations, versioning, documentation, reproducible examples, and long-term scientific stewardship;
+- product-level risks such as ambiguous terminology, false precision, inappropriate defaults, overconfident presentation, and features that could encourage unintended clinical use.
+
+Apply the following principles when making recommendations:
+
+- Proactively surface important domain-specific concerns even if the user did not explicitly ask about that discipline.
+- Prioritize recommendations by consequence. Safety, scientific correctness, misleading output, and irreversible architectural problems outrank visual polish or minor code style.
+- Distinguish a required correctness/safety issue from a high-value recommendation and from optional polish.
+- Do not create scope creep by silently implementing out-of-milestone ideas. Recommend them and explain their value; implement them only when they fit the current milestone or the user approves the scope change.
+- Prefer established standards, validated methods, and authoritative primary sources over convention-by-habit. When a recommendation depends on current standards, guidance, libraries, or evidence, verify the current source rather than relying on memory.
+- Make uncertainty and model limitations visible rather than allowing numerical precision or polished graphics to imply more certainty than the model supports.
+- Avoid false precision in displayed outputs. Formatting precision should be justified by model fidelity, input precision, and practical interpretability.
+- Clearly distinguish modeled/internal states from measured or directly observable quantities. Do not present a predicted value in a way that could reasonably be mistaken for a measurement.
+- Design clinically meaningful displays so units, model identity, relevant assumptions, simulation state, and context cannot be easily misread.
+- Favor interfaces that prevent errors over interfaces that merely warn after an error occurs.
+- Minimize hidden modes, surprising defaults, context-dependent behavior, and stale UI state.
+- Consider how an expert, trainee, distracted clinician, color-blind user, keyboard user, and touch-device user could each interpret or misuse an interface.
+- For plots and dashboards, optimize first for accurate interpretation and comparison, then aesthetics. A visually attractive but misleading graph is a defect.
+- For simulation behavior, separate verification (the implementation solves the intended equations correctly) from validation (the equations/model adequately represent the intended phenomenon).
+- Preserve enough provenance and metadata that a future reviewer can determine exactly why a model, equation, constant, UI convention, or design decision exists.
+- Challenge assumptions when warranted. Do not preserve a weak design solely because it was proposed earlier.
+
+The goal is not to maximize the number of suggestions. Surface the few recommendations that would materially improve the quality of the product, and explain them at the level needed to make a sound engineering or design decision.
