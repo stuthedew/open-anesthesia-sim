@@ -13,22 +13,30 @@ by mechanically incrementing the patch number.
 | Version | Status | Milestone |
 | --- | --- | --- |
 | v0.0.1 | Completed | Initial runnable prototype: deterministic simulation clock, controller/view separation, basic charting and controls, and project quality tooling. |
-| v0.0.2 | Completed / current baseline | Analytically validated ideal breathing-circuit wash-in and washout with no patient uptake. |
-| v0.1.0 | Next | First patient sevoflurane uptake and distribution model - the "Sevo works" milestone. |
+| v0.0.2 | Completed | Analytically validated ideal breathing-circuit wash-in and washout with no patient uptake. |
+| v0.1.0 | Completed / current baseline | First patient sevoflurane uptake and distribution model - the "Sevo works" milestone. |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.0.2
+## Current baseline: v0.1.0
 
-The repository currently models a constant-volume, perfectly mixed breathing
-circuit supplied by fresh gas flow. The exact circuit update is deterministic
-and is checked against an independent analytic solution.
+The repository currently models the first patient sevoflurane uptake and
+distribution system: a constant-volume breathing circuit, an alveolar gas
+compartment, cardiac-output-dependent perfusion to vessel-rich, muscle, and
+fat tissue groups, and mixed-venous return, coupled back to the lungs. Every
+compartment step is solved by exact analytic solution and composed by
+operator splitting; the v0.0.2 circuit reference tests are preserved
+unchanged. Sevoflurane and reference-adult parameters are loaded from
+schema-validated, cited data files rather than hardcoded. Full equations,
+units, assumptions, parameter provenance, numerical method, and known
+limitations are documented in `docs/MODEL.md`.
 
-The current model does not include a patient, alveolar ventilation, blood
-uptake, cardiac output, tissues, metabolism, potency, or clinical predictions.
+The current model does not include metabolism, other volatile agents, IV
+anesthetics, effect-site models, or clinical predictions or recommendations
+of any kind. See `docs/MODEL.md`'s "Known limitations" for the complete list.
 
-## Next milestone: v0.1.0 - first patient sevo model
+## Completed: v0.1.0 - first patient sevo model
 
 ### Goal
 
@@ -87,6 +95,9 @@ v0.1.0 is complete only when:
   prediction; and
 - no deferred feature has entered the release accidentally.
 
+All criteria above were met at tag time; see `docs/MODEL.md`'s "Release
+gate" section for the corresponding scientific-documentation checklist.
+
 ### Explicitly out of scope for v0.1.0
 
 - Desflurane, isoflurane, nitrous oxide, or simultaneous gases.
@@ -101,6 +112,15 @@ v0.1.0 is complete only when:
 - Scenario persistence, replay, comparison, or forking.
 - Packaging, signing, or release installers beyond what is needed to run and
   test the milestone.
+
+## Next milestone
+
+No milestone after v0.1.0 has been scoped yet. The next candidate, per
+"Later roadmap" below, is expanding the volatile model with additional
+validated, data-driven agent definitions and broader reference cases. It
+must be fully specified here (goal, required scope, definition of done, and
+explicit out-of-scope list) before implementation begins, per the
+development rules below.
 
 ## Development rules for scientific milestones
 
