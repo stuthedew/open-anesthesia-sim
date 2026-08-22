@@ -1,5 +1,0 @@
-git add .
-git commit -m "Build v0.0.2 circuit wash-in model"
-git push
-git tag -a v0.0.2 -m "v0.0.2"
-git push origin v0.0.2
