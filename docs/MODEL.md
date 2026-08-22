@@ -48,11 +48,30 @@ The modeled system contains:
 
 1. one ideal, perfectly mixed breathing circuit;
 2. one ideal, perfectly mixed alveolar gas compartment;
-3. one arterial blood pool;
-4. one venous blood pool;
-5. one vessel-rich tissue group;
-6. one muscle tissue group; and
-7. one fat tissue group.
+3. one venous blood pool;
+4. one vessel-rich tissue group;
+5. one muscle tissue group; and
+6. one fat tissue group.
+
+Arterial blood is not a separate mixing compartment. Pulmonary exchange is
+modeled as flow-limited: blood leaving the lungs is assumed to equilibrate
+instantaneously with alveolar gas, so the arterial partial-pressure-equivalent
+fraction is defined as \(F_a \equiv F_A\), with no arterial volume, mixing
+delay, or independent state. This matches the flow-limited mammillary
+structure used by the Gas Man reference simulator that this project's
+sevoflurane and patient parameters are drawn from — Gas Man's computational
+model is a four-compartment system (alveolar gas plus vessel-rich, muscle,
+and fat groups) in which arterial tension is displayed but not tracked as an
+independent compartment. See:
+
+- Philip JH. Gas Man Version 4.1 Teaches Inhalation Kinetics. Society for
+  Technology in Anesthesia. <https://www.stahq.org/files/7913/2743/1066/Abstract_57.pdf>
+- Do distribution volumes and clearances relate to tissue volumes and blood
+  flows? A computer simulation. BMC Anesthesiology.
+  <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1508141/>
+
+This is a deliberate simplification, documented here rather than left as an
+unfilled parameter. See "Known limitations."
 
 The external inputs and outputs are:
 
@@ -126,12 +145,11 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | \(F_D\) | Delivered fresh-gas sevoflurane fraction | dimensionless |
 | \(F_C\) | Breathing-circuit sevoflurane fraction | dimensionless |
 | \(F_A\) | Alveolar sevoflurane fraction | dimensionless |
-| \(F_a\) | Arterial blood partial-pressure-equivalent fraction | dimensionless |
+| \(F_a\) | Arterial partial-pressure-equivalent fraction (flow-limited: \(F_a \equiv F_A\); not an independent state) | dimensionless |
 | \(F_v\) | Venous blood partial-pressure-equivalent fraction | dimensionless |
 | \(F_i\) | Tissue group \(i\) partial-pressure-equivalent fraction | dimensionless |
 | \(V_C\) | Mixed breathing-circuit volume | L gas |
 | \(V_A\) | Modeled alveolar gas volume | L gas |
-| \(V_a\) | Arterial blood-pool volume | L blood |
 | \(V_v\) | Venous blood-pool volume | L blood |
 | \(V_i\) | Volume of tissue group \(i\) | L tissue |
 | \(\dot V_F\) | Fresh gas flow | L gas/min |
@@ -142,7 +160,6 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | \(\lambda_{i:b}\) | Tissue:blood partition coefficient for group \(i\) | dimensionless |
 | \(M_C\) | Sevoflurane stored in the breathing circuit | L equivalent gas |
 | \(M_A\) | Sevoflurane stored in alveolar gas | L equivalent gas |
-| \(M_a\) | Sevoflurane stored in arterial blood | L equivalent gas |
 | \(M_v\) | Sevoflurane stored in venous blood | L equivalent gas |
 | \(M_i\) | Sevoflurane stored in tissue group \(i\) | L equivalent gas |
 
@@ -178,11 +195,7 @@ $$
 
 The blood:gas partition coefficient relates dissolved blood concentration to an equilibrium gas-phase concentration.
 
-Arterial blood stores:
-
-$$
-M_a = V_a \lambda_{b:g} F_a
-$$
+Arterial blood is flow-limited (see "Model boundary") and has no capacity or amount balance of its own: \(F_a \equiv F_A\) at every instant.
 
 Venous blood stores:
 
@@ -191,12 +204,6 @@ M_v = V_v \lambda_{b:g} F_v
 $$
 
 Therefore:
-
-$$
-F_a = \frac{M_a}{V_a\lambda_{b:g}}
-$$
-
-and:
 
 $$
 F_v = \frac{M_v}{V_v\lambda_{b:g}}
@@ -379,29 +386,7 @@ A positive value represents net uptake from alveolar gas into blood. A negative 
 
 ### Arterial blood
 
-Blood leaving the lungs is assumed to equilibrate with alveolar gas. It enters the arterial blood pool at \(F_A\) and leaves that pool at \(F_a\).
-
-The arterial blood amount balance is:
-
-$$
-\frac{dM_a}{dt}
-=
-Q\lambda_{b:g}(F_A-F_a)
-$$
-
-Because:
-
-$$
-M_a = V_a\lambda_{b:g}F_a
-$$
-
-the arterial concentration equation is:
-
-$$
-\frac{dF_a}{dt}
-=
-\frac{Q}{V_a}(F_A-F_a)
-$$
+Arterial blood is flow-limited: blood leaving the lungs equilibrates instantaneously with alveolar gas, so \(F_a \equiv F_A\) at every instant (see "Model boundary"). There is no separate arterial amount balance, capacity, or time constant. Every equation below that references \(F_a\) uses the current alveolar fraction \(F_A\) directly.
 
 ### Tissue uptake and return
 
@@ -523,8 +508,10 @@ The total stored amount is:
 $$
 M_{\mathrm{stored}}
 =
-M_C+M_A+M_a+M_v+\sum_i M_i
+M_C+M_A+M_v+\sum_i M_i
 $$
+
+Arterial blood contributes no separate term because it is flow-limited and holds no independent amount (see "Model boundary").
 
 ### Mass-balance identity
 
@@ -583,12 +570,14 @@ $$
 
 Here \(M_{\mathrm{scale}}\) is a documented small positive reference amount that prevents division by zero.
 
-The final release tolerance must be recorded here before v0.1.0 is tagged:
+The release tolerance, as implemented in `core/agent_simulation_validation.py`:
 
 ```text
-MASS_BALANCE_ABSOLUTE_TOLERANCE = TBD
-MASS_BALANCE_RELATIVE_TOLERANCE = TBD
+MASS_BALANCE_ABSOLUTE_TOLERANCE = 1e-12 L
+MASS_BALANCE_RELATIVE_TOLERANCE = 1e-9
 ```
+
+A step passes if either tolerance is satisfied. The relative error uses `max(initial + delivered, 1e-15 L)` as its denominator to avoid division by zero when no agent has yet been delivered.
 
 Clipping a negative store to zero does not repair mass balance and must not be used to conceal an unstable update.
 
@@ -612,7 +601,27 @@ The initial supported simulation step is:
 SIMULATION_STEP_S = 0.1
 ```
 
-The selected integrator must be documented in this section before release. A fourth-order Runge–Kutta method is acceptable if it passes positivity, convergence, deterministic replay, and mass-balance tests across the supported parameter range.
+### Selected method (as implemented)
+
+Each simulation step is advanced by exact analytic solution of every pairwise
+exchange, composed by first-order operator splitting rather than a generic
+numerical integrator:
+
+1. the circuit exchanges exactly with fresh gas (`BreathingCircuit.advance_fresh_gas`), holding ventilation fixed for the step;
+2. the circuit and alveolar compartments then exchange exactly with each other (`RespiratorySystem._exchange_circuit_and_alveoli`), a closed-form solution of the two-compartment linear exchange that conserves \(M_C+M_A\) exactly;
+3. each tissue group exchanges exactly with arterial blood (`TissueGroup.advance`), holding the arterial fraction (\(=F_A\)) fixed for the step;
+4. venous blood mixes exactly with the flow-weighted tissue outflow (`VenousBloodCompartment.advance`); and
+5. the net patient uptake is applied back to alveolar gas (`AlveolarCompartment.apply_blood_uptake`).
+
+Because each sub-exchange is solved exactly while temporarily holding the
+other flows constant, this is a first-order (Lie/Godunov) operator split of
+the fully coupled system: the splitting error is \(O(\Delta t)\) relative to
+the true simultaneous solution, even though each individual sub-step is
+exact. This is why the step-refinement test (`test_step_refinement_converges`)
+is a release gate rather than an optional diagnostic — it is the only check
+that bounds this error empirically across supported step sizes. A
+fourth-order Runge–Kutta method would remove the splitting error but was not
+required to pass the documented tolerances at `SIMULATION_STEP_S = 0.1`.
 
 The implementation must not depend on:
 
@@ -637,27 +646,37 @@ No scientific parameter may be added without:
 - the tissue-group mapping; and
 - a brief justification for selecting that source.
 
-Before implementation, the following table must be completed:
+The following table records the values selected for v0.1.0. Each value is
+loaded and schema-validated from a versioned data file rather than
+hardcoded; full citations, definitions, and reference conditions are
+recorded as `sources` entries in that file, not duplicated here.
 
-| Parameter | Selected value | Unit | Source |
+| Parameter | Selected value | Unit | Source data file |
 | --- | ---: | --- | --- |
-| Blood:gas partition coefficient | TBD | dimensionless | TBD |
-| Vessel-rich tissue:blood coefficient | TBD | dimensionless | TBD |
-| Muscle tissue:blood coefficient | TBD | dimensionless | TBD |
-| Fat tissue:blood coefficient | TBD | dimensionless | TBD |
-| Alveolar gas volume | TBD | L | TBD |
-| Arterial blood-pool volume | TBD | L | TBD |
-| Venous blood-pool volume | TBD | L | TBD |
-| Vessel-rich tissue volume | TBD | L | TBD |
-| Muscle tissue volume | TBD | L | TBD |
-| Fat tissue volume | TBD | L | TBD |
-| Vessel-rich flow fraction | TBD | dimensionless | TBD |
-| Muscle flow fraction | TBD | dimensionless | TBD |
-| Fat flow fraction | TBD | dimensionless | TBD |
-| Default alveolar ventilation | TBD | L/min | TBD |
-| Default cardiac output | TBD | L/min | TBD |
+| Blood:gas partition coefficient | 0.65 | dimensionless | `data/agents/sevoflurane.json` |
+| Vessel-rich tissue:blood coefficient | 1.6923 (= 1.1 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
+| Muscle tissue:blood coefficient | 3.6923 (= 2.4 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
+| Fat tissue:blood coefficient | 52.3077 (= 34.0 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
+| Alveolar gas volume | 2.5 | L | `data/patients/reference_adult.json` |
+| Venous blood-pool volume | 1.0 | L | `data/patients/reference_adult.json` |
+| Vessel-rich tissue volume | 6.0 | L | `data/patients/reference_adult.json` |
+| Muscle tissue volume | 33.0 | L | `data/patients/reference_adult.json` |
+| Fat tissue volume | 14.5 | L | `data/patients/reference_adult.json` |
+| Vessel-rich flow fraction | 0.76 | dimensionless | `data/patients/reference_adult.json` |
+| Muscle flow fraction | 0.18 | dimensionless | `data/patients/reference_adult.json` |
+| Fat flow fraction | 0.06 | dimensionless | `data/patients/reference_adult.json` |
+| Default alveolar ventilation | 4.0 | L/min | `data/patients/reference_adult.json` |
+| Default cardiac output | 5.0 | L/min | `data/patients/reference_adult.json` |
 
-The project must not tag v0.1.0 while scientific `TBD` values remain.
+There is no "arterial blood-pool volume" row: arterial blood is flow-limited
+and holds no independent state (see "Model boundary"). Tissue:blood
+coefficients are derived at load time (`AgentParameters` properties in
+`core/parameters.py`) as tissue:gas divided by blood:gas, not stored
+redundantly in the data file. The tissue-blood partition-coefficient tests
+in `tests/unit/test_parameters.py` guard this derivation.
+
+The project must not tag a release while scientific `TBD` values remain in
+this document. None remain as of this revision.
 
 ## Required invariants
 
@@ -939,6 +958,7 @@ Version v0.1.0 assumes:
 
 Version v0.1.0 does not model:
 
+- a separate arterial blood-mixing compartment (arterial blood is flow-limited and equals alveolar gas at every instant, matching the Gas Man reference simulator's mammillary structure — see "Model boundary");
 - desflurane;
 - isoflurane;
 - nitrous oxide;

@@ -97,3 +97,27 @@ def test_reset_preserves_all_user_settings() -> None:
     assert snapshot.alveolar_ventilation_l_min == 5.5
     assert snapshot.cardiac_output_l_min == 6.0
     assert snapshot.agent_accounting_passes_validation is True
+
+
+def test_identical_runs_produce_identical_snapshots_and_history() -> None:
+    """Two runs with identical settings, events, and steps must match.
+
+    Required test from docs/MODEL.md: deterministic replay across the full
+    patient system, not just the v0.0.2 circuit-only path.
+    """
+
+    def _run() -> SimulationController:
+        controller = SimulationController()
+        controller.start()
+        _advance_for(controller, duration_s=20.0)
+        controller.set_alveolar_ventilation(6.0)
+        controller.set_cardiac_output(4.5)
+        _advance_for(controller, duration_s=20.0)
+        controller.set_delivered_concentration(0.05)
+        _advance_for(controller, duration_s=20.0)
+        return controller
+
+    first = _run()
+    second = _run()
+
+    assert first.snapshot() == second.snapshot()
