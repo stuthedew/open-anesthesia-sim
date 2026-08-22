@@ -1,0 +1,52 @@
+# Python bytecode and interpreter caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments and local Python installations
+.venv/
+venv/
+env/
+ENV/
+__pypackages__/
+
+# Test, type-checking, linting, and coverage artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Packaging and build output
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+
+# Flet runtime and local application state
+/.flet/
+/storage/
+/uploads/
+
+# Local environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+
+# macOS metadata
+.DS_Store
+._*
+
+# Editor-specific workspace state
+.idea/
+.vscode/
