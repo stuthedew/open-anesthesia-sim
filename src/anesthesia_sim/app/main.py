@@ -6,7 +6,7 @@ from anesthesia_sim.app.theme import BACKGROUND, PAGE_PADDING
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 
 
-async def main(page: ft.Page) -> None:
+async def build_app(page: ft.Page) -> None:
     """Configure the page and assemble the application."""
 
     page.title = APP_DISPLAY_NAME
@@ -25,5 +25,11 @@ async def main(page: ft.Page) -> None:
     simulation_view.start_simulation_timer()
 
 
+def main() -> None:
+    """Launch the Flet application."""
+
+    ft.run(build_app)
+
+
 if __name__ == "__main__":
-    ft.run(main)
+    main()

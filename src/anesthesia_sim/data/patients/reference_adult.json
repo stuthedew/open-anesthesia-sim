@@ -1,0 +1,36 @@
+{
+    "schema_version": 1,
+    "id": "reference_adult_70kg",
+    "display_name": "Reference adult, 70 kg",
+    "weight_kg": 70.0,
+    "alveolar_gas_volume_l": 2.5,
+    "venous_blood_volume_l": 1.0,
+    "default_alveolar_ventilation_l_min": 4.0,
+    "default_cardiac_output_l_min": 5.0,
+    "tissue_groups": {
+        "vessel_rich": {
+            "volume_l": 6.0,
+            "perfusion_fraction": 0.76
+        },
+        "muscle": {
+            "volume_l": 33.0,
+            "perfusion_fraction": 0.18
+        },
+        "fat": {
+            "volume_l": 14.5,
+            "perfusion_fraction": 0.06
+        }
+    },
+    "sources": [
+        {
+            "citation": "Gas Man Workbook and Laboratory Manual. Default Options: Patient Defaults.",
+            "url": "https://gasmanweb.com/Workbook.pdf",
+            "note": "The default 70 kg patient uses alveolar volume 2.5 L, venous volume 1.0 L, alveolar ventilation 4 L/min, cardiac output 5 L/min, tissue volumes 6/33/14.5 L, and flow percentages 76/18/6."
+        },
+        {
+            "citation": "Meybohm P, et al. Context-sensitive decrement times for inhaled anesthetics in obese patients explored with Gas Man. Journal of Clinical Monitoring and Computing. 2021;35:897-908.",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7943506/",
+            "note": "Published description of the standard 70 kg Gas Man model and its compartment parameters."
+        }
+    ]
+}

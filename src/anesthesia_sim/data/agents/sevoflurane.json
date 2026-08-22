@@ -1,0 +1,28 @@
+{
+    "schema_version": 1,
+    "id": "sevoflurane",
+    "display_name": "Sevoflurane",
+    "blood_gas_partition_coefficient": 0.65,
+    "tissue_gas_partition_coefficients": {
+        "vessel_rich": 1.1,
+        "muscle": 2.4,
+        "fat": 34.0
+    },
+    "sources": [
+        {
+            "citation": "Stadler M, et al. Theoretical effect of hyperventilation on speed of recovery and risk of rehypnotization following recovery: a Gas Man simulation. BMC Anesthesiology. 2012;12:22.",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3502091/",
+            "note": "Table 1 reports the Gas Man sevoflurane blood:gas and tissue:gas coefficients used here."
+        },
+        {
+            "citation": "Strum DP, Eger EI II. Partition coefficients for sevoflurane in human blood, saline, and olive oil. Anesthesia & Analgesia. 1987;66(7):654-656.",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/3605675/",
+            "note": "Primary human study reporting a blood:gas coefficient of 0.686 +/- 0.047 at 37 degrees C. Version 0.1.0 uses 0.65 to match the standard Gas Man parameter set."
+        },
+        {
+            "citation": "Yasuda N, Targ AG, Eger EI II. Solubility of I-653, sevoflurane, isoflurane, and halothane in human tissues. Anesthesia & Analgesia. 1989;69(3):370-373.",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/2774233/",
+            "note": "Primary human-tissue partition-coefficient study underlying the tissue-solubility model."
+        }
+    ]
+}

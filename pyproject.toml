@@ -1,6 +1,6 @@
 [project]
 name = "anesthesia-sim"
-version = "0.0.2"
+version = "0.1.0"
 description = "Open-source anesthesia simulation project"
 readme = "README.md"
 authors = [
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-anesthesia-sim = "anesthesia_sim:main"
+anesthesia-sim = "anesthesia_sim.app.main:main"
 
 [build-system]
 requires = ["uv_build>=0.12.5,<0.13.0"]

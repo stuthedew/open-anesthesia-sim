@@ -1,0 +1,200 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from math import exp
+
+from anesthesia_sim.core.agent_simulation_validation import (
+    AgentSimulationValidationResult,
+    AgentSimulationValidator,
+)
+from anesthesia_sim.core.alveolar import (
+    AlveolarCompartment,
+)
+from anesthesia_sim.core.circuit import (
+    BreathingCircuit,
+    FreshGasExchange,
+)
+from anesthesia_sim.core.parameters import (
+    load_reference_adult_parameters,
+    load_sevoflurane_parameters,
+)
+from anesthesia_sim.core.patient import PatientCompartments
+from anesthesia_sim.core.validation import (
+    require_positive_finite,
+)
+
+SECONDS_PER_MINUTE = 60.0
+
+
+@dataclass(frozen=True, slots=True)
+class RespiratoryStepResult:
+    """Validation and transfer results from one complete step."""
+
+    fresh_gas_exchange: FreshGasExchange
+    circuit_to_alveolar_agent_l: float
+    patient_agent_change_l: float
+    agent_accounting: AgentSimulationValidationResult
+
+
+@dataclass(slots=True)
+class RespiratorySystem:
+    """Coupled circuit, alveolar gas, and patient compartments."""
+
+    circuit: BreathingCircuit
+    alveoli: AlveolarCompartment
+    patient: PatientCompartments
+    agent_simulation_validator: AgentSimulationValidator = field(
+        default_factory=AgentSimulationValidator
+    )
+
+    def __post_init__(self) -> None:
+        self.agent_simulation_validator.reset(initial_agent_l=self.total_stored_agent_l)
+
+    @classmethod
+    def default(cls) -> RespiratorySystem:
+        """Build the default v0.1.0 sevoflurane system."""
+
+        agent = load_sevoflurane_parameters()
+        patient_parameters = load_reference_adult_parameters()
+
+        return cls(
+            circuit=BreathingCircuit(),
+            alveoli=AlveolarCompartment(
+                gas_volume_l=(patient_parameters.alveolar_gas_volume_l),
+                alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
+            ),
+            patient=PatientCompartments.from_parameters(
+                agent=agent,
+                patient=patient_parameters,
+            ),
+        )
+
+    @property
+    def total_stored_agent_l(self) -> float:
+        """Return agent currently stored in every compartment."""
+
+        return (
+            self.circuit.agent_amount_l
+            + self.alveoli.agent_amount_l
+            + self.patient.total_agent_amount_l
+        )
+
+    @property
+    def agent_simulation_validation(
+        self,
+    ) -> AgentSimulationValidationResult:
+        """Check that all delivered agent is still accounted for."""
+
+        return self.agent_simulation_validator.check_agent_accounting(
+            currently_stored_agent_l=(self.total_stored_agent_l)
+        )
+
+    def set_fresh_gas_flow(
+        self,
+        fresh_gas_flow_l_min: float,
+    ) -> None:
+        self.circuit.set_fresh_gas_flow(fresh_gas_flow_l_min)
+
+    def set_delivered_concentration(
+        self,
+        delivered_concentration_fraction: float,
+    ) -> None:
+        self.circuit.set_delivered_concentration(delivered_concentration_fraction)
+
+    def set_alveolar_ventilation(
+        self,
+        alveolar_ventilation_l_min: float,
+    ) -> None:
+        self.alveoli.set_alveolar_ventilation(alveolar_ventilation_l_min)
+
+    def set_cardiac_output(
+        self,
+        cardiac_output_l_min: float,
+    ) -> None:
+        self.patient.set_cardiac_output(cardiac_output_l_min)
+
+    def advance(
+        self,
+        simulation_step_s: float,
+    ) -> RespiratoryStepResult:
+        """Advance one conservative, validated simulation step."""
+
+        require_positive_finite(
+            "simulation_step_s",
+            simulation_step_s,
+        )
+
+        fresh_gas_exchange = self.circuit.advance_fresh_gas(simulation_step_s)
+
+        circuit_to_alveolar_agent_l = self._exchange_circuit_and_alveoli(simulation_step_s)
+
+        patient_agent_change_l = self.patient.advance(
+            arterial_fraction=(self.alveoli.concentration_fraction),
+            simulation_step_s=simulation_step_s,
+        )
+
+        self.alveoli.apply_blood_uptake(patient_agent_change_l)
+
+        self.agent_simulation_validator.record_external_agent_transfer(
+            delivered_agent_l=(fresh_gas_exchange.delivered_agent_l),
+            exhausted_agent_l=(fresh_gas_exchange.exhausted_agent_l),
+        )
+
+        accounting_check = self.agent_simulation_validation
+
+        self.agent_simulation_validator.require_valid_agent_accounting(accounting_check)
+
+        return RespiratoryStepResult(
+            fresh_gas_exchange=fresh_gas_exchange,
+            circuit_to_alveolar_agent_l=(circuit_to_alveolar_agent_l),
+            patient_agent_change_l=(patient_agent_change_l),
+            agent_accounting=accounting_check,
+        )
+
+    def reset(self) -> None:
+        """Clear dynamic state and restart agent accounting."""
+
+        self.circuit.reset()
+        self.alveoli.reset()
+        self.patient.reset()
+        self.agent_simulation_validator.reset()
+
+    def _exchange_circuit_and_alveoli(
+        self,
+        simulation_step_s: float,
+    ) -> float:
+        """Exchange agent exactly between two mixed gas volumes."""
+
+        ventilation_l_min = self.alveoli.alveolar_ventilation_l_min
+
+        if ventilation_l_min == 0.0:
+            return 0.0
+
+        initial_alveolar_amount_l = self.alveoli.agent_amount_l
+        circuit_volume_l = self.circuit.circuit_volume_l
+        alveolar_volume_l = self.alveoli.gas_volume_l
+        total_gas_volume_l = circuit_volume_l + alveolar_volume_l
+
+        equilibrium_fraction = (
+            self.circuit.agent_amount_l + self.alveoli.agent_amount_l
+        ) / total_gas_volume_l
+
+        concentration_difference = (
+            self.circuit.circuit_concentration_fraction - self.alveoli.concentration_fraction
+        )
+
+        ventilation_l_s = ventilation_l_min / SECONDS_PER_MINUTE
+        exchange_rate_s = ventilation_l_s * (1.0 / circuit_volume_l + 1.0 / alveolar_volume_l)
+        remaining_difference = concentration_difference * exp(-exchange_rate_s * simulation_step_s)
+
+        next_circuit_fraction = (
+            equilibrium_fraction + (alveolar_volume_l / total_gas_volume_l) * remaining_difference
+        )
+        next_alveolar_fraction = (
+            equilibrium_fraction - (circuit_volume_l / total_gas_volume_l) * remaining_difference
+        )
+
+        self.circuit.set_agent_amount(circuit_volume_l * next_circuit_fraction)
+        self.alveoli.set_concentration_fraction(next_alveolar_fraction)
+
+        return self.alveoli.agent_amount_l - initial_alveolar_amount_l

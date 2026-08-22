@@ -36,7 +36,10 @@ def test_reset_pauses_and_clears_concentration_history() -> None:
     assert snapshot.is_running is False
     assert snapshot.elapsed_s == 0.0
     assert snapshot.circuit_concentration_fraction == 0.0
-    assert snapshot.concentration_history == ((0.0, 0.0),)
+    assert snapshot.alveolar_concentration_fraction == 0.0
+    assert snapshot.stored_agent_l == 0.0
+    assert len(snapshot.concentration_history) == 1
+    assert snapshot.concentration_history[0].elapsed_s == 0.0
 
 
 def test_parameter_changes_do_not_reset_dynamic_state() -> None:
@@ -52,9 +55,7 @@ def test_parameter_changes_do_not_reset_dynamic_state() -> None:
     after = controller.snapshot()
 
     assert after.elapsed_s == before.elapsed_s
-    assert after.circuit_concentration_fraction == pytest.approx(
-        before.circuit_concentration_fraction
-    )
+    assert after.stored_agent_l == pytest.approx(before.stored_agent_l)
     assert after.circuit_volume_l == 5.0
     assert after.fresh_gas_flow_l_min == 3.0
     assert after.delivered_concentration_fraction == 0.06
