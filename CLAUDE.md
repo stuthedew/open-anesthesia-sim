@@ -2,21 +2,6 @@
 
 These instructions apply to all AI coding agents working on this repository.
 
-## Instruction maintenance and behavior transfer
-
-- Treat project-relevant standing behavior or process requests from the user as candidates for the canonical repository instructions. When a request should reasonably carry across future sessions or AI agents, proactively recommend updating `CLAUDE.md` or another appropriate project instruction/documentation file. Do not turn clearly one-off requests into permanent project policy.
-- Any modification to `CLAUDE.md`, `AGENTS.md`, or another document that governs AI-agent behavior must first be presented to the user as a proposed change and receive the user's explicit approval before it is written or committed. Reviewing the current instructions, identifying needed changes, and proposing exact wording or a diff do not require approval. A behavior request by itself does not authorize modifying these files; obtain explicit approval of the proposed instruction change before applying it.
-- When proposing an instruction-file update, first integrate the requested behavioral change into a prospective revised version and review the entire resulting document for appropriate editorial consolidation. Present the behavioral change and any editorial-only changes together in a single proposal, but identify them separately so the user can approve or decline each independently. Do not make a second approval request merely because the approved behavioral change created an opportunity for editorial cleanup that could reasonably have been identified during the initial review. Apply only the components the user explicitly approves.
-- Before modifying `CLAUDE.md`, `AGENTS.md`, or another repository instruction file, read the current file in full and review any relevant companion instruction files.
-- Integrate new instructions where they logically belong in the existing document. Prefer updating an appropriate existing section or creating a focused section over blindly appending new sentences at the end.
-- On each instruction-file update, review the document as a whole for redundancy, overlap, conflicts, stale wording, and opportunities to consolidate. Do not perform unrelated rewriting merely because an update is being made.
-- Prefer the smallest edit that fully captures the new intent while keeping the document coherent and reasonably concise.
-- Preserve all previously established behavior when reorganizing, editing, or condensing instructions. Editorial changes made for clarity, concision, organization, or efficiency must not add, remove, weaken, strengthen, broaden, narrow, reprioritize, or otherwise change intended behavior unless the user explicitly requests that behavioral change.
-- When combining overlapping instructions, retain every substantive constraint, exception, priority, and distinction. If semantic equivalence cannot be established confidently, keep the instructions separate rather than risk behavior drift.
-- When a new explicit user instruction intentionally conflicts with older repository guidance, follow the newer instruction and revise the older wording as needed so the document remains internally consistent.
-- Keep `CLAUDE.md` as the canonical shared behavior source. Keep `AGENTS.md` minimal and delegating to `CLAUDE.md` unless a genuinely agent-specific instruction is required.
-- Before committing an instruction-file edit, review the revised document against the prior version for unintended semantic or behavioral drift.
-
 ## Architecture and development discipline
 
 - Keep scientific/simulation code independent of Flet.
