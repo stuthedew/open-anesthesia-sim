@@ -24,9 +24,9 @@ Current development branch:
 build/v0.1.0-sevo-patient
 ```
 
-The working tree contains substantial intentional, uncommitted v0.1.0 work. Do not reset, discard, overwrite, switch branches, clean untracked files, or otherwise destroy changes unless the user explicitly requests it.
+At the time this context was last updated, the v0.1.0 implementation was committed and the branch was tracking its remote counterpart. Always inspect the current Git status rather than assuming the working tree remains clean.
 
-Generated files such as `__pycache__`, `.coverage`, and `.DS_Store` are present. Treat repository cleanup as a separate task and do not delete files without reviewing the exact targets.
+The repository includes a project-specific `.gitignore` for Python caches, test and coverage output, local environments, Flet runtime files, macOS metadata, and common editor files. Do not stage generated artifacts, and do not reset, discard, overwrite, switch branches, or clean files without reviewing the exact targets and receiving explicit user authorization when changes could be lost.
 
 ## Authoritative versioning decision
 
@@ -341,6 +341,30 @@ Do not silently change naming conventions, APIs, equations, units, scope, or arc
 
 Inspect the current repository before giving code that depends on repository state.
 
+### Proactive professional-practice review
+
+Professional repository hygiene and documentation are standing requirements, even when the user does not know which supporting artifact or safeguard to request by name.
+
+At natural project checkpoints, proactively identify relevant missing or stale professional practices. Good checkpoints include repository setup, a major architecture or scientific-model change, before a commit or pull request, and before a release or tag.
+
+Review only the categories relevant to the current work, including:
+
+- repository hygiene, generated-file exclusions, and clean commit boundaries
+- README, roadmap, model documentation, changelog, contributing guidance, license, and release notes
+- equations, units, assumptions, provenance, tolerances, limitations, and educational-use disclaimers
+- unit, integration, regression, reference, and UI tests, plus coverage appropriate to risk
+- formatting, linting, type checking, continuous integration, dependency locking, secrets, and security checks
+- package metadata, public entry points, version consistency, and release/tag readiness
+- responsive layout, accessibility, user feedback, error states, and other professional UX safeguards
+
+When surfacing an item, label it clearly as one of:
+
+- **Required before proceeding** — correctness, safety, data-loss, security, or release-integrity risk
+- **Recommended professional practice** — meaningful quality or maintainability improvement
+- **Safe to defer** — worthwhile but unnecessary for the current milestone
+
+Explain briefly why the item matters and suggest the smallest sensible next action. Do not create noise by reciting a generic checklist when nothing is contextually relevant. Do not silently broaden scope or implement an optional practice unless the user explicitly asks for it.
+
 ## Code-quality standard
 
 Approach the project as an expert Python software architect specializing in scientific simulations and open-source tools, with professional, industry-leading UX, UI and graphic-design judgment.
@@ -449,13 +473,14 @@ Recommended continuation:
 5. Review `docs/MODEL.md` against the actual implementation.
 6. Update `README.md` to describe the v0.1.0 capability and limitations.
 7. Review parameter provenance, equations, units, numerical tolerances, and limitations.
-8. Inspect the complete diff before staging anything.
-9. Clean generated artifacts deliberately and safely.
-10. Do not mark `ROADMAP.md` complete or create the v0.1.0 tag until the merged release gate passes.
+8. Review the complete `main...HEAD` branch diff before opening a pull request.
+9. Confirm generated artifacts remain ignored and the working tree is clean before release review.
+10. Open or review the pull request and confirm continuous-integration checks pass.
+11. Do not mark `ROADMAP.md` complete or create the v0.1.0 tag until the merged release gate passes.
 
 ## Git safety
 
-The branch has a dirty working tree with many intentional new files.
+At the time this file was last updated, the feature branch was committed, pushed, and tracking its remote counterpart. Treat that as historical context, not a guarantee of current state.
 
 Before any Git operation:
 
@@ -485,3 +510,4 @@ Before proposing work:
 4. Inspect the relevant current files.
 5. Run or review `make check` when appropriate.
 6. State the exact current step and whether the response will provide snippets or perform implementation.
+7. Surface any contextually relevant missing professional practice, classified by urgency, without implementing optional work unless requested.
