@@ -1,6 +1,14 @@
+from math import isfinite
+
 import pytest
 
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.simulation_view import (
+    MAX_ALVEOLAR_VENTILATION_L_MIN,
+    MAX_CARDIAC_OUTPUT_L_MIN,
+    MAX_DELIVERED_CONCENTRATION_PERCENT,
+    MAX_FRESH_GAS_FLOW_L_MIN,
+)
 
 
 def _advance_for(
@@ -121,3 +129,57 @@ def test_identical_runs_produce_identical_snapshots_and_history() -> None:
     second = _run()
 
     assert first.snapshot() == second.snapshot()
+
+
+def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> None:
+    """The full UI-allowed parameter range must remain safe, not just defaults.
+
+    Reference and invariant tests elsewhere in this suite mostly exercise
+    values near the physiologic defaults (~4-8 L/min). This drives every
+    setting to the maximum the sliders in `simulation_view.py` actually
+    allow, since nothing upstream in the model prevents a user from doing
+    exactly that.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    controller.set_fresh_gas_flow(MAX_FRESH_GAS_FLOW_L_MIN)
+    controller.set_delivered_concentration(MAX_DELIVERED_CONCENTRATION_PERCENT / 100.0)
+    controller.set_alveolar_ventilation(MAX_ALVEOLAR_VENTILATION_L_MIN)
+    controller.set_cardiac_output(MAX_CARDIAC_OUTPUT_L_MIN)
+
+    _advance_for(controller, duration_s=300.0)
+
+    wash_in_snapshot = controller.snapshot()
+
+    assert wash_in_snapshot.agent_accounting_passes_validation is True
+    for fraction in (
+        wash_in_snapshot.circuit_concentration_fraction,
+        wash_in_snapshot.alveolar_concentration_fraction,
+        wash_in_snapshot.mixed_venous_concentration_fraction,
+        wash_in_snapshot.vessel_rich_partial_pressure_fraction,
+        wash_in_snapshot.muscle_partial_pressure_fraction,
+        wash_in_snapshot.fat_partial_pressure_fraction,
+    ):
+        assert isfinite(fraction)
+        assert 0.0 <= fraction <= 1.0
+
+    controller.set_delivered_concentration(0.0)
+    _advance_for(controller, duration_s=300.0)
+
+    washout_snapshot = controller.snapshot()
+
+    assert washout_snapshot.agent_accounting_passes_validation is True
+    assert washout_snapshot.circuit_concentration_fraction < (
+        wash_in_snapshot.circuit_concentration_fraction
+    )
+    for fraction in (
+        washout_snapshot.circuit_concentration_fraction,
+        washout_snapshot.alveolar_concentration_fraction,
+        washout_snapshot.mixed_venous_concentration_fraction,
+        washout_snapshot.vessel_rich_partial_pressure_fraction,
+        washout_snapshot.muscle_partial_pressure_fraction,
+        washout_snapshot.fat_partial_pressure_fraction,
+    ):
+        assert isfinite(fraction)
+        assert 0.0 <= fraction <= 1.0
