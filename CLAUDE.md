@@ -46,3 +46,45 @@ For safety-critical paths:
 - Make clinically meaningful displayed values traceable to the exact model/version, inputs, units, and transformations that produced them.
 
 Disclaimers do not lower the engineering standard for these paths.
+
+## Proactive expert review and domain best practices
+
+Do not limit review or recommendations to conventional software-engineering concerns. Treat development of this application as a multidisciplinary professional product-design problem and proactively identify material improvements anywhere they affect scientific validity, safety, interpretability, usability, educational value, maintainability, or reliability.
+
+Recommendations should reflect the standard expected from a top-tier specialist in the relevant field, not merely common or minimally acceptable practice. When the user's proposed approach is materially weaker than a better established approach, say so clearly and recommend the stronger approach with the reasoning behind it.
+
+Relevant domains include, but are not limited to:
+
+- pharmacokinetic, pharmacodynamic, physiologic, and inhaled-anesthetic modeling;
+- numerical simulation methods, solver choice, timestep behavior, stability, interpolation, and error handling;
+- model verification, validation, applicability domains, uncertainty, sensitivity analysis, and reproducibility;
+- anesthesia and critical-care domain conventions where they affect terminology, units, workflow, interpretation, or safety;
+- simulation and medical-education best practices, including choosing fidelity appropriate to the learning objective and making model limitations visible;
+- human factors, cognitive ergonomics, mode awareness, error prevention, attention management, and prevention of stale-state or wrong-context interpretation;
+- information architecture, interaction design, UI/UX, visual hierarchy, responsive behavior, and cross-platform interaction patterns;
+- scientific and clinical data visualization, including axis choice, scale, normalization, reference ranges, uncertainty, annotations, and avoidance of misleading visual encodings;
+- accessibility, typography, color use, contrast, keyboard/touch interaction, and color-vision deficiencies;
+- software architecture, APIs, data schemas, testing strategy, performance, security, privacy, packaging, dependency management, and maintainability;
+- provenance, citations, versioning, documentation, reproducible examples, and long-term scientific stewardship;
+- product-level risks such as ambiguous terminology, false precision, inappropriate defaults, overconfident presentation, and features that could encourage unintended clinical use.
+
+Apply the following principles when making recommendations:
+
+- Proactively surface important domain-specific concerns even if the user did not explicitly ask about that discipline.
+- Prioritize recommendations by consequence. Safety, scientific correctness, misleading output, and irreversible architectural problems outrank visual polish or minor code style.
+- Distinguish a required correctness/safety issue from a high-value recommendation and from optional polish.
+- Do not create scope creep by silently implementing out-of-milestone ideas. Recommend them and explain their value; implement them only when they fit the current milestone or the user approves the scope change.
+- Prefer established standards, validated methods, and authoritative primary sources over convention-by-habit. When a recommendation depends on current standards, guidance, libraries, or evidence, verify the current source rather than relying on memory.
+- Make uncertainty and model limitations visible rather than allowing numerical precision or polished graphics to imply more certainty than the model supports.
+- Avoid false precision in displayed outputs. Formatting precision should be justified by model fidelity, input precision, and practical interpretability.
+- Clearly distinguish modeled/internal states from measured or directly observable quantities. Do not present a predicted value in a way that could reasonably be mistaken for a measurement.
+- Design clinically meaningful displays so units, model identity, relevant assumptions, simulation state, and context cannot be easily misread.
+- Favor interfaces that prevent errors over interfaces that merely warn after an error occurs.
+- Minimize hidden modes, surprising defaults, context-dependent behavior, and stale UI state.
+- Consider how an expert, trainee, distracted clinician, color-blind user, keyboard user, and touch-device user could each interpret or misuse an interface.
+- For plots and dashboards, optimize first for accurate interpretation and comparison, then aesthetics. A visually attractive but misleading graph is a defect.
+- For simulation behavior, separate verification (the implementation solves the intended equations correctly) from validation (the equations/model adequately represent the intended phenomenon).
+- Preserve enough provenance and metadata that a future reviewer can determine exactly why a model, equation, constant, UI convention, or design decision exists.
+- Challenge assumptions when warranted. Do not preserve a weak design solely because it was proposed earlier.
+
+The goal is not to maximize the number of suggestions. Surface the few recommendations that would materially improve the quality of the product, and explain them at the level needed to make a sound engineering or design decision.
