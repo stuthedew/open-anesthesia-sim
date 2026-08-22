@@ -1,37 +1,24 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from math import isfinite
 
-from anesthesia_sim.core.demo_model import response
+from anesthesia_sim.core.circuit import BreathingCircuit
 
 
 @dataclass(slots=True)
 class SimulationState:
-    """Mutable state for the deterministic demonstration model."""
+    """Explicit simulation time and the modeled breathing circuit."""
 
-    time_constant_s: float = 10.0
+    circuit: BreathingCircuit = field(default_factory=BreathingCircuit)
     elapsed_s: float = 0.0
-    response_fraction: float = 0.0
 
     def __post_init__(self) -> None:
-        if self.time_constant_s <= 0:
-            raise ValueError("time_constant_s must be positive")
-        if self.elapsed_s < 0:
-            raise ValueError("elapsed_s must be nonnegative")
-        self.response_fraction = response(self.elapsed_s, self.time_constant_s)
-
-    def set_time_constant(self, time_constant_s: float) -> None:
-        """Change response speed without resetting simulated time."""
-        if time_constant_s <= 0:
-            raise ValueError("time_constant_s must be positive")
-        self.time_constant_s = time_constant_s
-        self.response_fraction = response(self.elapsed_s, self.time_constant_s)
+        if not isfinite(self.elapsed_s) or self.elapsed_s < 0:
+            raise ValueError("elapsed_s must be nonnegative and finite")
 
     def advance(self, simulation_step_s: float) -> None:
-        """Advance by an explicit amount of simulated time."""
-        if simulation_step_s <= 0:
-            raise ValueError("simulation_step_s must be positive")
+        self.circuit.advance(simulation_step_s)
         self.elapsed_s += simulation_step_s
-        self.response_fraction = response(self.elapsed_s, self.time_constant_s)
 
     def reset(self) -> None:
         self.elapsed_s = 0.0
-        self.response_fraction = 0.0
+        self.circuit.reset()

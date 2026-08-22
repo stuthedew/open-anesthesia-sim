@@ -1,4 +1,12 @@
-## v0.0.1 status
-This release is a non-physiological architecture prototype. It demonstrates a tested
-pure-Python core, explicit simulation time, controller boundary, Flet controls, and
-a live chart. It must not be used for clinical decisions.
+## v0.0.2 status
+
+This release models analytic wash-in and washout of an ideal, perfectly mixed
+constant-volume breathing circuit. It validates the circuit equation and
+application architecture but does not model a patient, uptake, or clinical care.
+
+## Deferred interface work
+
+- Replace the temporary full-screen startup with an adequately sized, centered
+  window that remains fully visible on different displays. Avoid magic pixel
+  dimensions, monitor-specific assumptions, and native display-probing
+  dependencies.

@@ -7,14 +7,13 @@ from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 
 
 async def main(page: ft.Page) -> None:
-    """Configure the window and assemble the application."""
+    """Configure the page and assemble the application."""
 
     page.title = APP_DISPLAY_NAME
     page.bgcolor = BACKGROUND
     page.padding = PAGE_PADDING
     page.theme_mode = ft.ThemeMode.LIGHT
-
-    page.window.maximized = False
+    page.window.full_screen = True
 
     controller = SimulationController()
     simulation_view = SimulationView(
