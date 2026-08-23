@@ -108,6 +108,30 @@ may demote what was previously next, and a resolved blocker may promote a
 with their commit reference; delete the corresponding `WORKING_NOTES.md`
 thread rather than leaving it stale.
 
+### What is checked automatically
+
+`tools/punch_list.py` handles the mechanical half. Run it with `make
+punch-list`; `make check` and CI run it too, and a `SessionStart` hook emits
+a short digest of the queue at the start of every session. It reports two
+kinds of finding, and the split is the point:
+
+- **Errors** mean this file is wrong: a reused id, an entry filed under a
+  band its metadata contradicts, a missing brief field, an item marked
+  `blocked` that names no blocker, a `safety` or `science` item parked below
+  `P1`, a `PL-` reference pointing at nothing. These fail the build, because
+  each one silently loses information.
+- **Advisories** mean a judgment is due: a brief that has grown into
+  narrative, an item still blocked by something that has landed, an item
+  that has sat at `P1` for months, a queue with nothing short and ready in
+  it for a session with time to spare. These never fail a build. They are
+  the reminder that a grooming pass is worth doing.
+
+What the tool deliberately does not do is decide anything. Whether the top
+`P1` is still the right next thing, whether an entry should be split, and
+whether a priority still reflects reality are judgment calls about this
+project; automating them would produce confident nonsense. The tool detects
+the conditions, and a session makes the call.
+
 ---
 
 ## P0 — Now
@@ -309,6 +333,11 @@ someone is ready to scope them.
 ## Recently completed
 
 Completed items move here with their commit reference, newest first, and
-are trimmed once they are no longer useful as recent history.
+are trimmed once they are no longer useful as recent history. One line
+each, in the form the checker reads:
+
+```text
+- PL-000 Title of the completed item — `abc1234`
+```
 
 _None yet._
