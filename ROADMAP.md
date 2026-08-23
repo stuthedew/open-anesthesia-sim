@@ -168,6 +168,18 @@ fully specified.
    patients as scaled humans.
 9. Continue accessibility, performance, documentation, packaging, signing, and
    distribution work without mixing those concerns into the scientific core.
+10. Add a user-facing preferences/settings panel (theme, chart window, slider
+    ranges, and similar display settings). Pre-requisite: consolidate the
+    UI/display constants currently scattered across `app/theme.py`,
+    `app/simulation_view.py`'s module-level constants, and the default
+    values duplicated between `core/*.py` dataclasses and
+    `app/controller.py`, into one settings module the panel can read from
+    and write to, rather than adding a fourth scattered location. This
+    panel must never expose the scientific parameters in `data/*.json`
+    (partition coefficients, tissue volumes, etc.) for editing — those stay
+    validated, versioned, and cited, changed only through deliberate
+    scientific review per `CLAUDE.md`'s safety-critical standard, not an ad
+    hoc settings screen.
 
 Built-in profiles should remain read-only and support a future
 "duplicate and customize" workflow with lineage and schema metadata.
