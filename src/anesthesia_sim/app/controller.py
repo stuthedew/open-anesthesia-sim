@@ -74,6 +74,8 @@ class SimulationController:
         return self._is_running
 
     def snapshot(self) -> SimulationSnapshot:
+        """Build a fresh, read-only view of current simulation state."""
+
         system = self._state.respiratory_system
         circuit = system.circuit
         alveoli = system.alveoli
@@ -111,6 +113,8 @@ class SimulationController:
         self._is_running = False
 
     def reset(self) -> None:
+        """Stop the run and clear dynamic state while preserving settings."""
+
         self.pause()
         self._state.reset()
         self._concentration_history = [self._build_history_sample()]
@@ -155,6 +159,8 @@ class SimulationController:
         self._state.respiratory_system.set_cardiac_output(cardiac_output_l_min)
 
     def advance(self, simulation_step_s: float) -> None:
+        """No-op while paused; otherwise advance state and record history."""
+
         if not self._is_running:
             return
 
