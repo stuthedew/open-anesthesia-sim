@@ -15,6 +15,7 @@ by mechanically incrementing the patch number.
 | v0.0.1 | Completed | Initial runnable prototype: deterministic simulation clock, controller/view separation, basic charting and controls, and project quality tooling. |
 | v0.0.2 | Completed | Analytically validated ideal breathing-circuit wash-in and washout with no patient uptake. |
 | v0.1.0 | Completed / current baseline | First patient sevoflurane uptake and distribution model - the "Sevo works" milestone. |
+| v0.2.0 | Proposed, not yet started | Isoflurane and desflurane as additional selectable volatile agents. |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
@@ -113,14 +114,79 @@ gate" section for the corresponding scientific-documentation checklist.
 - Packaging, signing, or release installers beyond what is needed to run and
   test the milestone.
 
-## Next milestone
+## Next milestone: v0.2.0 - isoflurane and desflurane
 
-No milestone after v0.1.0 has been scoped yet. The next candidate, per
-"Planned milestones" below, is expanding the volatile model with additional
-validated, data-driven agent definitions and broader reference cases. It
-must be fully specified here (goal, required scope, definition of done, and
-explicit out-of-scope list) before implementation begins, per the
-development rules below.
+### Goal
+
+Prove that the v0.1.0 patient model (circuit, alveolar, tissue, and venous
+compartments; the governing equations in `docs/MODEL.md`) is agent-generic
+rather than sevoflurane-specific, by adding isoflurane and desflurane as
+additional validated, data-driven volatile agents with independent
+reference cases. No governing equation changes for this milestone; only new
+per-agent data and the loading capability to select among agents.
+
+### Required scope
+
+- Add `data/agents/isoflurane.json` and `data/agents/desflurane.json`,
+  schema-validated like `data/agents/sevoflurane.json`, with cited
+  blood:gas and tissue:gas partition coefficients and source provenance.
+- Extend `core/parameters.py`'s agent loading so an agent can be selected
+  by id rather than only ever loading sevoflurane
+  (`load_sevoflurane_parameters()` is currently the sole, hardcoded path
+  `RespiratorySystem.default()` uses). Consider migrating this module's
+  JSON validation to Pydantic while touching it: the boilerplate in its
+  `_require_*` helpers compounds with each new agent schema, and the
+  module is isolated behind plain dataclass returns, so the switch is
+  low-risk here.
+- Add independent reference tests for isoflurane and desflurane wash-in,
+  uptake, and washout, following the same directional-solubility,
+  equilibrium, and mass-balance pattern already used for sevoflurane in
+  `tests/reference/test_sevo_patient.py`.
+- Document both new agents' parameter provenance in `docs/MODEL.md`, and
+  note any agent-specific numerical considerations worth recording (e.g.
+  desflurane's low blood:gas solubility) even though they don't change the
+  governing equations.
+- Preserve the v0.0.2 circuit and v0.1.0 sevoflurane reference tests
+  unchanged.
+
+### Definition of done
+
+v0.2.0 is complete only when:
+
+- `isoflurane.json` and `desflurane.json` pass the same schema and range
+  validation as `sevoflurane.json`;
+- each new agent has independent reference tests demonstrating correct
+  directional solubility behavior and mass-balance closure within the
+  documented tolerance;
+- the v0.0.2 circuit and v0.1.0 sevoflurane reference tests remain
+  unchanged and passing;
+- `docs/MODEL.md` documents both new agents' parameter provenance;
+- Ruff formatting and linting, strict mypy, pytest, and GitHub Actions all
+  pass.
+
+### Explicitly out of scope for v0.2.0
+
+- A UI control for selecting which agent is running. Agent switching and
+  interlock behavior belong to the anesthesia-machine milestone (item 1 in
+  "Planned milestones" below); this milestone only needs the model to be
+  capable of running as isoflurane or desflurane, not to expose that choice
+  in the interface yet.
+- Vaporizer-specific delivery-device physics (e.g. desflurane's heated,
+  pressurized vaporizer requirement) — this milestone models uptake and
+  distribution only, not the delivery device.
+- Halothane, enflurane, ether, or xenon: a further-future stretch beyond
+  this milestone. Halothane has reasonable modern published data despite
+  being clinically obsolete, but enflurane, ether, and xenon are sparser to
+  source and should each get their own provenance check before being
+  added, not be assumed available just because the Gas Man reference
+  simulator depicts them.
+- Nitrous oxide: not a halogenated volatile, so out of scope here; covered
+  separately by items 6-7 in "Planned milestones" below.
+- Any change to the v0.1.0 governing equations themselves — this milestone
+  proves they are agent-generic, not that they change per agent.
+
+This milestone must be treated as fully specified above before
+implementation begins, per the development rules below.
 
 ## Development rules for scientific milestones
 
@@ -149,63 +215,47 @@ implicitly drag others along with it. Exact version numbers after v0.1.0
 remain provisional and must be assigned when each milestone is fully
 specified.
 
-1. Expand the volatile model with validated, data-driven agent definitions and
-   broader reference cases, starting with isoflurane and desflurane (each its
-   own config file under `data/agents/`, matching the existing sevoflurane
-   pattern) — the two current-clinical-practice volatiles not yet modeled.
-   Halothane, enflurane, ether, and xenon (the rest of the agents the Gas Man
-   reference simulator depicts) are a further-future stretch: halothane has
-   reasonable modern published data despite being clinically obsolete, but
-   enflurane, ether, and xenon are sparser to source and should each get
-   their own provenance check before being added, not be assumed available
-   just because Gas Man depicts them. Nitrous oxide is deliberately excluded
-   from this item — it is not a halogenated volatile and is covered
-   separately by items 7-8 below. When this is scoped: consider migrating
-   `core/parameters.py`'s JSON validation to Pydantic — the boilerplate in
-   its `_require_*` helpers compounds with each new agent/patient schema,
-   and the module is isolated behind plain dataclass returns, so the switch
-   is low-risk whenever it happens.
-2. Add a modular anesthesia-machine abstraction with normal
+1. Add a modular anesthesia-machine abstraction with normal
    single-halogenated-agent interlock behavior — the safety baseline every
    later machine feature below builds on.
-3. Add agent switching with residual washout accounting, after item 2.
-4. Add an optional experimental-override mode that can bypass standard
-   interlocks, clearly labeled as non-standard, after item 2.
-5. Add direct agent injection into the circuit, bypassing the vaporizer and
-   its interlocks, after item 2.
-6. Add automated end-tidal control (closed-loop titration to a target
-   end-tidal concentration), after item 2.
-7. Add nitrous oxide coadministration as a second inhaled gas, only after
+2. Add agent switching with residual washout accounting, after item 1.
+3. Add an optional experimental-override mode that can bypass standard
+   interlocks, clearly labeled as non-standard, after item 1.
+4. Add direct agent injection into the circuit, bypassing the vaporizer and
+   its interlocks, after item 1.
+5. Add automated end-tidal control (closed-loop titration to a target
+   end-tidal concentration), after item 1.
+6. Add nitrous oxide coadministration as a second inhaled gas, only after
    coupled-gas equations and reference cases are defined.
-8. Add concentration and second-gas effects for coadministered gases, after
-   item 7.
-9. Add scenario events (timed parameter or state changes during a run).
-10. Add scenario save/load.
-11. Add deterministic replay of a saved scenario, after item 10.
-12. Add side-by-side comparison of multiple scenario runs.
-13. Add simulation forking (branch a running simulation into an independent
+7. Add concentration and second-gas effects for coadministered gases, after
+   item 6.
+8. Add scenario events (timed parameter or state changes during a run).
+9. Add scenario save/load.
+10. Add deterministic replay of a saved scenario, after item 9.
+11. Add side-by-side comparison of multiple scenario runs.
+12. Add simulation forking (branch a running simulation into an independent
     copy).
-14. Add IV pharmacokinetic and effect-site models, after item 13 (simulation
+13. Add IV pharmacokinetic and effect-site models, after item 12 (simulation
     forking) is available.
-15. Add a modular hypnosis/eBIS effect model, with explicit model version and
+14. Add a modular hypnosis/eBIS effect model, with explicit model version and
     provenance.
-16. Add a modular nociceptive-response effect model, with explicit model
+15. Add a modular nociceptive-response effect model, with explicit model
     version and provenance.
-17. Add validated renal/hepatic dysfunction modifiers, where supported by the
+16. Add validated renal/hepatic dysfunction modifiers, where supported by the
     selected model.
-18. Add validated cardiopulmonary bypass modeling, where supported by the
+17. Add validated cardiopulmonary bypass modeling, where supported by the
     selected model.
-19. Add validated ECMO modeling, where supported by the selected model.
-20. Add species-specific patient/model profiles without treating non-human
+18. Add validated ECMO modeling, where supported by the selected model.
+19. Add species-specific patient/model profiles without treating non-human
     patients as scaled humans.
-21. Improve accessibility (keyboard navigation, contrast, screen-reader
+20. Improve accessibility (keyboard navigation, contrast, screen-reader
     support, color-vision-safe encodings).
-22. Improve performance, starting with the open threads already logged in
+21. Improve performance, starting with the open threads already logged in
     `docs/WORKING_NOTES.md` (unbounded history growth, coupled
     simulation/render cadence).
-23. Continue documentation work.
-24. Add packaging, signing, and distribution work for shipping the app.
-25. Add a user-facing preferences/settings panel (theme, chart window, slider
+22. Continue documentation work.
+23. Add packaging, signing, and distribution work for shipping the app.
+24. Add a user-facing preferences/settings panel (theme, chart window, slider
     ranges, and similar display settings). Pre-requisite: consolidate the
     UI/display constants currently scattered across `app/theme.py`,
     `app/simulation_view.py`'s module-level constants, and the default
@@ -218,9 +268,16 @@ specified.
     scientific review per `CLAUDE.md`'s safety-critical standard, not an ad
     hoc settings screen.
 
-None of items 2-24 mix scientific-core and UI/tooling concerns within a
-single milestone; where one depends on another (e.g. 3-6 on 2, 8 on 7, 11
-on 10, 14 on 13), that dependency is noted inline rather than bundled into
+Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
+milestone — see "Next milestone: v0.2.0" above — so it no longer appears
+here. Further volatile agents beyond isoflurane and desflurane (halothane,
+enflurane, ether, xenon; not nitrous oxide, which is covered by items 6-7
+above) remain an unscoped later idea, to be added back here as its own item
+once someone is ready to scope it.
+
+None of items 1-23 mix scientific-core and UI/tooling concerns within a
+single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
+on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
 
 Built-in profiles should remain read-only and support a future
