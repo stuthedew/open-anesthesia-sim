@@ -63,6 +63,8 @@ and must pass before a change is considered complete.
 ## Documentation
 
 - [`ROADMAP.md`](ROADMAP.md) — authoritative version and milestone map.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how `core/`, `app/`, and
+  `data/` fit together, and where new code belongs.
 - [`docs/MODEL.md`](docs/MODEL.md) — scientific model specification:
   equations, units, assumptions, parameter provenance, numerical method, and
   known limitations.
