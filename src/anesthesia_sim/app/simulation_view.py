@@ -13,6 +13,10 @@ from collections.abc import Callable
 import flet as ft
 import flet_charts as fch
 
+from anesthesia_sim.app.chart_downsampling import (
+    first_index_at_or_after,
+    select_envelope_indices,
+)
 from anesthesia_sim.app.controller import (
     SimulationController,
     SimulationHistorySample,
@@ -29,8 +33,17 @@ from anesthesia_sim.app_metadata import APP_DISPLAY_NAME, APP_VERSION
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 
 SIMULATION_STEP_S = 0.1
+# Render cadence, deliberately independent of the simulation step. The two
+# were previously the same 10 Hz tick, which made every redraw a gate on the
+# next simulation step and on servicing the next button press.
+RENDER_INTERVAL_S = 0.2
 INITIAL_CHART_WINDOW_S = 60.0
 MAX_CHART_WINDOW_S = 300.0
+# Per-trace ceiling on points handed to the chart. Each point is a Flet
+# control costing roughly 8 us to build, so this ceiling — not the length of
+# the run — sets the cost of a frame. 300 points across a chart a few hundred
+# pixels wide is already finer than the display can resolve.
+MAX_CHART_POINTS_PER_SERIES = 300
 CHART_HEIGHT = 360
 COMPACT_PAGE_PADDING = 16
 COMPACT_PANEL_PADDING = 14
@@ -56,6 +69,38 @@ FAT_COLOR = "#64748B"
 AVAILABLE_AGENTS: tuple[tuple[str, str], ...] = tuple(
     (agent_id, load_agent_parameters(agent_id).display_name) for agent_id in AGENT_DATA_FILENAMES
 )
+
+
+# One named reader per plotted quantity. Named rather than inline so that the
+# trace-to-quantity pairing in `_refresh_chart_series` reads as an explicit
+# table: plotting a compartment's values on another compartment's line would
+# be a presentation-correctness failure, and a table is auditable at a glance.
+def _sample_elapsed_s(sample: SimulationHistorySample) -> float:
+    return sample.elapsed_s
+
+
+def _circuit_value(sample: SimulationHistorySample) -> float:
+    return sample.circuit_concentration_fraction
+
+
+def _alveolar_value(sample: SimulationHistorySample) -> float:
+    return sample.alveolar_concentration_fraction
+
+
+def _mixed_venous_value(sample: SimulationHistorySample) -> float:
+    return sample.mixed_venous_concentration_fraction
+
+
+def _vessel_rich_value(sample: SimulationHistorySample) -> float:
+    return sample.vessel_rich_partial_pressure_fraction
+
+
+def _muscle_value(sample: SimulationHistorySample) -> float:
+    return sample.muscle_partial_pressure_fraction
+
+
+def _fat_value(sample: SimulationHistorySample) -> float:
+    return sample.fat_partial_pressure_fraction
 
 
 class SimulationView:
@@ -325,9 +370,10 @@ class SimulationView:
         )
 
     def start_simulation_timer(self) -> None:
-        """Start the asynchronous simulation display timer."""
+        """Start the simulation and render loops as independent tasks."""
 
         self._page.run_task(self._run_simulation_timer)
+        self._page.run_task(self._run_render_timer)
 
     def _build_parameter_controls(
         self,
@@ -741,69 +787,87 @@ class SimulationView:
             f"{snapshot.agent_accounting_absolute_error_l:.3e} L"
         )
 
-        history = snapshot.concentration_history
-
-        self._circuit_series.points = self._history_points(
-            history,
-            lambda sample: sample.circuit_concentration_fraction,
-        )
-        self._alveolar_series.points = self._history_points(
-            history,
-            lambda sample: sample.alveolar_concentration_fraction,
-        )
-        self._mixed_venous_series.points = self._history_points(
-            history,
-            lambda sample: sample.mixed_venous_concentration_fraction,
-        )
-        self._vessel_rich_series.points = self._history_points(
-            history,
-            lambda sample: sample.vessel_rich_partial_pressure_fraction,
-        )
-        self._muscle_series.points = self._history_points(
-            history,
-            lambda sample: sample.muscle_partial_pressure_fraction,
-        )
-        self._fat_series.points = self._history_points(
-            history,
-            lambda sample: sample.fat_partial_pressure_fraction,
-        )
-
         chart_max_x = max(
             INITIAL_CHART_WINDOW_S,
             snapshot.elapsed_s + 10.0,
         )
-        self._concentration_chart.max_x = chart_max_x
-        self._concentration_chart.min_x = max(
+        chart_min_x = max(
             0.0,
             chart_max_x - MAX_CHART_WINDOW_S,
         )
+        self._concentration_chart.max_x = chart_max_x
+        self._concentration_chart.min_x = chart_min_x
+
+        self._refresh_chart_series(
+            snapshot.concentration_history,
+            chart_min_x,
+        )
+
+    def _refresh_chart_series(
+        self,
+        history: tuple[SimulationHistorySample, ...],
+        window_start_s: float,
+    ) -> None:
+        """Redraw every trace from the samples inside the visible window.
+
+        Only samples the chart can actually show are sent, and that window is
+        decimated to a fixed per-trace budget, so the render payload is
+        bounded by the window and the budget rather than by how long the
+        simulation has been running. The controller's own history is read but
+        never modified.
+
+        Args:
+            history: Immutable simulation samples, oldest first, with elapsed
+                time in seconds and compartment values as fractions.
+            window_start_s: Earliest simulated time the chart displays, in
+                seconds. Samples older than this are outside the plotted axis
+                range and are not sent.
+        """
+
+        visible = history[first_index_at_or_after(history, window_start_s, _sample_elapsed_s) :]
+
+        for series, value_for in (
+            (self._circuit_series, _circuit_value),
+            (self._alveolar_series, _alveolar_value),
+            (self._mixed_venous_series, _mixed_venous_value),
+            (self._vessel_rich_series, _vessel_rich_value),
+            (self._muscle_series, _muscle_value),
+            (self._fat_series, _fat_value),
+        ):
+            series.points = self._decimated_points(visible, value_for)
 
     @staticmethod
-    def _history_points(
-        history: tuple[SimulationHistorySample, ...],
+    def _decimated_points(
+        visible: tuple[SimulationHistorySample, ...],
         value_for: Callable[
             [SimulationHistorySample],
             float,
         ],
     ) -> list[fch.LineChartDataPoint]:
-        """Convert recorded fractions to chart percentages.
+        """Convert one trace's visible samples to bounded chart percentages.
 
         Args:
-            history: Immutable simulation samples with elapsed time
-                in seconds and compartment values as fractions.
+            visible: Simulation samples inside the plotted time range.
             value_for: Function selecting one fraction from a sample.
 
         Returns:
-            Chart points with time in seconds and the selected value
-            converted from a fraction to percent.
+            At most `MAX_CHART_POINTS_PER_SERIES` chart points with time in
+            seconds and the selected value converted from a fraction to
+            percent. Every point is a recorded sample: values are converted
+            but never interpolated or synthesized.
         """
+
+        values = [value_for(sample) for sample in visible]
 
         return [
             fch.LineChartDataPoint(
-                sample.elapsed_s,
-                value_for(sample) * 100.0,
+                visible[index].elapsed_s,
+                values[index] * 100.0,
             )
-            for sample in history
+            for index in select_envelope_indices(
+                values,
+                MAX_CHART_POINTS_PER_SERIES,
+            )
         ]
 
     def _refresh_and_render(self) -> None:
@@ -888,13 +952,35 @@ class SimulationView:
         self._refresh_and_render()
 
     async def _run_simulation_timer(self) -> None:
-        """Advance and redraw the running simulation every 0.1 seconds."""
+        """Advance the running simulation one fixed step per tick.
+
+        Stepping is deliberately separate from drawing. Simulation time stays
+        a function of how many steps have been taken, never of wall-clock
+        time or of how long a redraw took, so a slow or skipped frame cannot
+        change the trajectory: identical inputs still produce identical
+        results.
+        """
 
         while True:
             await asyncio.sleep(SIMULATION_STEP_S)
 
             if self._controller.is_running:
                 self._controller.advance(SIMULATION_STEP_S)
+
+    async def _run_render_timer(self) -> None:
+        """Redraw the running simulation on its own, slower cadence.
+
+        Drawing no longer gates stepping, and the interval can be tuned for
+        the display without changing the simulation. Explicit user actions
+        redraw immediately rather than waiting for this tick, so a control
+        never appears unresponsive and the view is never left showing state
+        the user has already changed.
+        """
+
+        while True:
+            await asyncio.sleep(RENDER_INTERVAL_S)
+
+            if self._controller.is_running:
                 self._refresh_and_render()
 
     @staticmethod

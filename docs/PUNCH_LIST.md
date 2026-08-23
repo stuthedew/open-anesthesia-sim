@@ -140,32 +140,6 @@ _None._
 
 ## P1 — Next
 
-### PL-001 Bound the chart payload and decouple simulation from render cadence
-`P1` · `M` · `perf` · ready · added 2026-08-23
-
-**Problem.** The live graph is slow and buttons feel unresponsive.
-`SimulationController._concentration_history` grows without bound, and the
-chart rebuilds full point arrays for all six series from that entire
-history on every `_refresh_view()`, so the payload sent to the Flet client
-grows for as long as the simulation runs. Separately, `advance()` and
-`page.update()` are coupled back-to-back at 10 Hz in one coroutine on a
-single asyncio event loop, so a slow flush blocks the next button click.
-**Why it matters.** This is the most visible current defect in the running
-app, and it is the prerequisite for the faster-than-real-time playback goal
-(PL-009). Any speed multiplier multiplies whatever the render bottleneck
-currently is.
-**Where.** `app/controller.py`, `app/simulation_view.py`
-(`_run_simulation_timer`, `_refresh_view`).
-**First step.** Profile before changing anything — the diagnosis above is
-from reading the code, not from a profiler. Confirm which of the two causes
-dominates.
-**Done when.** Render payload is bounded independent of run length, the
-simulation history the controller keeps for accounting is unaffected, UI
-responsiveness under a long run is measurably improved, and the accounting
-and determinism tests still pass.
-**Context.** `docs/WORKING_NOTES.md` § "Open thread: performance". Note
-that multithreading is not the expected lever; the fix is architectural.
-
 ### PL-002 Color-code agent selection to real vaporizer colors
 `P1` · `M` · `ux` `safety` · ready · added 2026-08-23
 
@@ -278,6 +252,67 @@ comment at each `_...Payload` class.
 **Done when.** A reader landing on either `_...Payload` class can tell why
 it exists without scrolling to the module docstring.
 
+### PL-010 Reuse chart point objects instead of rebuilding them every frame
+`P2` · `S` · `perf` · ready · added 2026-08-23
+
+**Problem.** `SimulationView._decimated_points` builds a fresh
+`fch.LineChartDataPoint` for every drawn point on every frame. Each one is a
+Flet `BaseControl`, measured at ~8.4 us to construct; mutating an existing
+point's `x`/`y` instead was measured at ~0.43 us, a 20x difference. With the
+payload now bounded at 300 points per trace this costs about 15 ms of the
+~17 ms frame, so reuse would take a frame to roughly 2 ms.
+**Why it matters.** Pure headroom rather than a defect — the current frame
+is already well inside budget. It matters mainly as headroom for PL-009,
+where a speed multiplier raises the render rate.
+**Where.** `app/simulation_view.py` (`_decimated_points`).
+**First step.** Confirm against a live Flet client that in-place mutation of
+a point actually repaints. PL-001 deliberately did not take this win because
+it could not be verified without a client: a mutation Flet's diff does not
+notice would leave the chart silently showing stale data, which is a
+presentation-correctness failure, not a cosmetic one.
+**Done when.** Frame cost is measurably reduced, and a live client is
+confirmed to repaint traces on every frame rather than freezing them.
+
+### PL-011 Bound the controller's concentration history
+`P2` · `S` · `perf` · ready · added 2026-08-23
+
+**Problem.** `SimulationController._concentration_history` appends one
+sample per `advance()` and nothing ever trims it. At the fixed 0.1 s step
+that is 36 000 samples per hour of simulated time, held for the life of the
+session.
+**Why it matters.** No longer a rendering problem — PL-001 made the render
+payload independent of history length — but still unbounded memory growth in
+a long teaching session. Lower priority than it looks: a slotted dataclass of
+seven floats is on the order of a few hundred bytes, so an hour costs single-
+digit MB.
+**Where.** `app/controller.py` (`_concentration_history`, `advance`).
+**First step.** Decide what the history is *for* now that the chart no longer
+consumes all of it. If it is the record of a run (a future export or replay
+feature), it should stay complete and the fix is a documented ceiling with an
+explicit failure at the limit rather than silent trimming.
+**Done when.** Memory growth over a long run is bounded, or the retention
+policy is documented and deliberate rather than accidental.
+
+### PL-012 Decide whether the chart should show the whole run
+`P2` · `S` · `ux` · needs-decision · added 2026-08-23
+
+**Problem.** The chart shows a scrolling 300 s window
+(`MAX_CHART_WINDOW_S`), so on a run longer than five minutes the wash-in
+curve scrolls off the left edge and cannot be seen again.
+**Why it matters.** Wash-in and washout shape is the thing a learner is
+there to see; a window that hides it works against the educational purpose.
+The window was also the only thing bounding the drawn span, and PL-001
+removed that constraint: with decimation to a fixed per-trace budget,
+showing the entire run from t=0 now costs exactly the same as showing five
+minutes of it.
+**Where.** `app/simulation_view.py` (`MAX_CHART_WINDOW_S`, `_refresh_view`).
+**Decision needed.** Show the whole run, keep the scrolling window, or offer
+both. Showing the whole run means the x-axis rescales continuously, which
+trades a stable time axis for a complete curve; a fixed window keeps the
+recent detail legible. This is a teaching-design call, not a technical one.
+**Done when.** The displayed time span is a deliberate, documented choice
+rather than an artifact of an earlier payload limit.
+
 ### PL-008 Documentation refresh pass
 `P2` · `S` · `docs` · ready · added 2026-08-23
 
@@ -298,23 +333,26 @@ left in place.
 ## P3 — Icebox
 
 ### PL-009 Playback speed multiplier
-`P3` · `L` · `feature` · blocked · added 2026-08-23
+`P3` · `L` · `feature` · needs-decision · added 2026-08-23
 
 **Problem.** No faster-than-real-time playback. Target is real time up to
 roughly 120x and beyond, comparable to the Gas Man reference simulator.
 **Why it matters.** Wash-in and washout of a low-solubility agent take
 clinical minutes to tens of minutes; watching them in real time is a poor
 use of a learner's attention.
-**Blocked by.** PL-001. A speed multiplier multiplies the current render
-bottleneck.
 **Where.** `app/controller.py`, `app/simulation_view.py`; sim time is
 already explicit state independent of wall-clock time, so going faster
 mostly means calling `advance()` more times per render tick.
-**Open questions.** How the multiplier is exposed without creating a hidden
-mode, and how it interacts with the fixed `SIMULATION_STEP_S = 0.1`.
-**Note.** Large enough that it should be scoped into `ROADMAP.md` before
-implementation, not started from this entry.
-**Context.** `docs/WORKING_NOTES.md` § "Open thread: playback speed".
+**Decision needed.** Scope this into a `ROADMAP.md` milestone before any
+implementation starts — it is an `L` and must not be started from this
+entry. The scoping has to settle how the multiplier is exposed without
+creating a hidden mode, and how it interacts with the fixed
+`SIMULATION_STEP_S = 0.1`.
+**Note.** The PL-001 blocker is cleared: render cadence is now independent
+of simulation cadence, and frame cost no longer grows with run length, so a
+multiplier no longer multiplies a growing bottleneck.
+**Done when.** A scoped milestone exists in `ROADMAP.md`, or the idea is
+deliberately retired.
 
 ---
 
@@ -340,4 +378,4 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
-_None yet._
+- PL-001 Bound the chart payload and decouple simulation from render cadence — `3749588`
