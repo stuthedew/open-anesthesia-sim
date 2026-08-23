@@ -1,3 +1,8 @@
+"""One perfusion-limited tissue group (e.g. vessel-rich, muscle, fat):
+exchanges agent with arterial blood in proportion to its own blood flow,
+independently of every other tissue group.
+"""
+
 from dataclasses import dataclass
 from math import exp, inf
 

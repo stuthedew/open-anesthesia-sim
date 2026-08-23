@@ -1,19 +1,24 @@
-# v0.1.0 sevoflurane patient uptake and distribution model
+# Volatile-agent patient uptake and distribution model
 
 ## Status
 
-This document specifies the scientific model for the planned v0.1.0 release.
+This document specifies the scientific model implemented starting in
+v0.1.0 and still in force in v0.2.0, the current released baseline (see
+`ROADMAP.md`). The title is deliberately version-generic: the governing
+equations and compartment structure have not changed since v0.1.0, and are
+shared by every agent this model supports.
 
-The current released baseline, v0.0.2, contains an analytically validated ideal breathing-circuit wash-in and washout model without a patient. Version v0.1.0 extends that model through:
+The preceding milestone, v0.0.2, delivered an analytically validated ideal
+breathing-circuit wash-in and washout model without a patient; its reference
+tests are preserved unchanged (see "Preserved circuit reference tests" below).
+Version v0.1.0 extends that model through:
 
 ```text
 delivered sevoflurane
         ↓
 breathing circuit
         ↓
-alveolar gas
-        ↓
-arterial blood
+alveolar gas ⇄ blood (flow-limited, no separate arterial compartment)
         ↓
 vessel-rich group / muscle / fat
         ↓
@@ -40,7 +45,10 @@ The milestone must demonstrate:
 - deterministic numerical behavior; and
 - explicit conservation of sevoflurane mass.
 
-Only sevoflurane is modeled in v0.1.0.
+Only sevoflurane was modeled in v0.1.0. Isoflurane and desflurane were
+added in v0.2.0 as additional selectable agents, using this same section's
+equations unchanged (see "Status" and "v0.2.0: isoflurane and desflurane"
+under "Parameter provenance").
 
 ## Model boundary
 
@@ -294,11 +302,7 @@ Ventilation transfers gas between the breathing circuit and alveolar compartment
 The circuit amount balance is:
 
 $$
-\frac{dM_C}{dt}
-=
-\dot V_F(F_D-F_C)
--
-\dot V_A(F_C-F_A)
+\frac{dM_C}{dt} = \dot V_F(F_D-F_C) - \dot V_A(F_C-F_A)
 $$
 
 Because:
@@ -310,31 +314,19 @@ $$
 the concentration equation is:
 
 $$
-\frac{dF_C}{dt}
-=
-\frac{\dot V_F}{V_C}(F_D-F_C)
--
-\frac{\dot V_A}{V_C}(F_C-F_A)
+\frac{dF_C}{dt} = \frac{\dot V_F}{V_C}(F_D-F_C) - \frac{\dot V_A}{V_C}(F_C-F_A)
 $$
 
 When alveolar ventilation is zero, this reduces to the v0.0.2 circuit equation:
 
 $$
-\frac{dF_C}{dt}
-=
-\frac{\dot V_F}{V_C}(F_D-F_C)
+\frac{dF_C}{dt} = \frac{\dot V_F}{V_C}(F_D-F_C)
 $$
 
 For constant input and no patient connection, the exact v0.0.2 solution remains:
 
 $$
-F_C(t+\Delta t)
-=
-F_D+
-\left[F_C(t)-F_D\right]
-\exp\left(
--\frac{\dot V_F\Delta t}{V_C}
-\right)
+F_C(t+\Delta t) = F_D+\left[F_C(t)-F_D\right]\exp\left(-\frac{\dot V_F\Delta t}{V_C}\right)
 $$
 
 The existing v0.0.2 analytic reference tests must continue to pass unchanged.
@@ -348,11 +340,7 @@ Pulmonary blood flow enters the lungs at venous concentration \(F_v\) and leaves
 The alveolar amount balance is:
 
 $$
-\frac{dM_A}{dt}
-=
-\dot V_A(F_C-F_A)
--
-Q\lambda_{b:g}(F_A-F_v)
+\frac{dM_A}{dt} = \dot V_A(F_C-F_A) - Q\lambda_{b:g}(F_A-F_v)
 $$
 
 Because:
@@ -364,22 +352,13 @@ $$
 the alveolar concentration equation is:
 
 $$
-\frac{dF_A}{dt}
-=
-\frac{
-\dot V_A(F_C-F_A)
--
-Q\lambda_{b:g}(F_A-F_v)
-}
-{V_A}
+\frac{dF_A}{dt} = \frac{\dot V_A(F_C-F_A) - Q\lambda_{b:g}(F_A-F_v)}{V_A}
 $$
 
 The pulmonary uptake rate is:
 
 $$
-\dot M_{\mathrm{pulmonary}}
-=
-Q\lambda_{b:g}(F_A-F_v)
+\dot M_{\mathrm{pulmonary}} = Q\lambda_{b:g}(F_A-F_v)
 $$
 
 A positive value represents net uptake from alveolar gas into blood. A negative value represents net return from blood to alveolar gas during washout.
@@ -395,19 +374,13 @@ For tissue group \(i\), arterial blood enters at \(F_a\) and venous blood leaves
 The tissue amount balance is:
 
 $$
-\frac{dM_i}{dt}
-=
-Q_i\lambda_{b:g}(F_a-F_i)
+\frac{dM_i}{dt} = Q_i\lambda_{b:g}(F_a-F_i)
 $$
 
 Substituting tissue capacity gives:
 
 $$
-\frac{dF_i}{dt}
-=
-\frac{Q_i}
-{V_i\lambda_{i:b}}
-(F_a-F_i)
+\frac{dF_i}{dt} = \frac{Q_i}{V_i\lambda_{i:b}}(F_a-F_i)
 $$
 
 The tissue time constant is therefore:
@@ -436,12 +409,7 @@ Blood leaving the tissue groups enters the venous pool. Venous blood leaves that
 The venous amount balance is:
 
 $$
-\frac{dM_v}{dt}
-=
-\lambda_{b:g}
-\left(
-\sum_i Q_iF_i-QF_v
-\right)
+\frac{dM_v}{dt} = \lambda_{b:g}\left(\sum_i Q_iF_i-QF_v\right)
 $$
 
 Because:
@@ -453,20 +421,13 @@ $$
 the venous concentration equation is:
 
 $$
-\frac{dF_v}{dt}
-=
-\frac{
-\sum_i Q_iF_i-QF_v
-}
-{V_v}
+\frac{dF_v}{dt} = \frac{\sum_i Q_iF_i-QF_v}{V_v}
 $$
 
 The instantaneous flow-weighted concentration entering the venous pool is:
 
 $$
-F_{\mathrm{tissue\ return}}
-=
-\frac{\sum_i Q_iF_i}{Q}
+F_{\mathrm{tissue\ return}} = \frac{\sum_i Q_iF_i}{Q}
 $$
 
 when:
@@ -484,10 +445,7 @@ At zero cardiac output, pulmonary and tissue perfusion transfers are zero and no
 The cumulative delivered sevoflurane amount is:
 
 $$
-M_{\mathrm{delivered}}(t)
-=
-\int_0^t
-\dot V_FF_D\,dt
+M_{\mathrm{delivered}}(t) = \int_0^t \dot V_FF_D\,dt
 $$
 
 ### Circuit exhaust
@@ -495,10 +453,7 @@ $$
 The cumulative exhausted sevoflurane amount is:
 
 $$
-M_{\mathrm{exhausted}}(t)
-=
-\int_0^t
-\dot V_FF_C\,dt
+M_{\mathrm{exhausted}}(t) = \int_0^t \dot V_FF_C\,dt
 $$
 
 ### Stored amount
@@ -506,9 +461,7 @@ $$
 The total stored amount is:
 
 $$
-M_{\mathrm{stored}}
-=
-M_C+M_A+M_v+\sum_i M_i
+M_{\mathrm{stored}} = M_C+M_A+M_v+\sum_i M_i
 $$
 
 Arterial blood contributes no separate term because it is flow-limited and holds no independent amount (see "Model boundary").
@@ -518,15 +471,7 @@ Arterial blood contributes no separate term because it is flow-limited and holds
 For an initial stored amount \(M_{\mathrm{initial}}\):
 
 $$
-M_{\mathrm{initial}}
-+
-M_{\mathrm{delivered}}
-=
-M_{\mathrm{stored}}
-+
-M_{\mathrm{exhausted}}
-+
-\varepsilon_M
+M_{\mathrm{initial}} + M_{\mathrm{delivered}} = M_{\mathrm{stored}} + M_{\mathrm{exhausted}} + \varepsilon_M
 $$
 
 where \(\varepsilon_M\) is the numerical mass-balance residual.
@@ -534,38 +479,19 @@ where \(\varepsilon_M\) is the numerical mass-balance residual.
 Equivalently:
 
 $$
-\varepsilon_M
-=
-M_{\mathrm{initial}}
-+
-M_{\mathrm{delivered}}
--
-M_{\mathrm{stored}}
--
-M_{\mathrm{exhausted}}
+\varepsilon_M = M_{\mathrm{initial}} + M_{\mathrm{delivered}} - M_{\mathrm{stored}} - M_{\mathrm{exhausted}}
 $$
 
 The implementation must report both absolute and relative residuals:
 
 $$
-\varepsilon_{\mathrm{absolute}}
-=
-|\varepsilon_M|
+\varepsilon_{\mathrm{absolute}} = |\varepsilon_M|
 $$
 
 and:
 
 $$
-\varepsilon_{\mathrm{relative}}
-=
-\frac{
-|\varepsilon_M|
-}{
-\max(
-M_{\mathrm{initial}}+M_{\mathrm{delivered}},
-M_{\mathrm{scale}}
-)
-}
+\varepsilon_{\mathrm{relative}} = \frac{|\varepsilon_M|}{\max(M_{\mathrm{initial}}+M_{\mathrm{delivered}}, M_{\mathrm{scale}})}
 $$
 
 Here \(M_{\mathrm{scale}}\) is a documented small positive reference amount that prevents division by zero.
@@ -657,6 +583,14 @@ recorded as `sources` entries in that file, not duplicated here.
 | Vessel-rich tissue:blood coefficient | 1.6923 (= 1.1 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
 | Muscle tissue:blood coefficient | 3.6923 (= 2.4 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
 | Fat tissue:blood coefficient | 52.3077 (= 34.0 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
+| Blood:gas partition coefficient (isoflurane) | 1.3 | dimensionless | `data/agents/isoflurane.json` |
+| Vessel-rich tissue:blood coefficient (isoflurane) | 1.6154 (= 2.1 / 1.3) | dimensionless | `data/agents/isoflurane.json` |
+| Muscle tissue:blood coefficient (isoflurane) | 3.4615 (= 4.5 / 1.3) | dimensionless | `data/agents/isoflurane.json` |
+| Fat tissue:blood coefficient (isoflurane) | 53.8462 (= 70.0 / 1.3) | dimensionless | `data/agents/isoflurane.json` |
+| Blood:gas partition coefficient (desflurane) | 0.42 | dimensionless | `data/agents/desflurane.json` |
+| Vessel-rich tissue:blood coefficient (desflurane) | 1.2857 (= 0.54 / 0.42) | dimensionless | `data/agents/desflurane.json` |
+| Muscle tissue:blood coefficient (desflurane) | 2.3095 (= 0.97 / 0.42) | dimensionless | `data/agents/desflurane.json` |
+| Fat tissue:blood coefficient (desflurane) | 30.9524 (= 13.0 / 0.42) | dimensionless | `data/agents/desflurane.json` |
 | Alveolar gas volume | 2.5 | L | `data/patients/reference_adult.json` |
 | Venous blood-pool volume | 1.0 | L | `data/patients/reference_adult.json` |
 | Vessel-rich tissue volume | 6.0 | L | `data/patients/reference_adult.json` |
@@ -674,6 +608,23 @@ coefficients are derived at load time (`AgentParameters` properties in
 `core/parameters.py`) as tissue:gas divided by blood:gas, not stored
 redundantly in the data file. The tissue-blood partition-coefficient tests
 in `tests/unit/test_parameters.py` guard this derivation.
+
+### v0.2.0: isoflurane and desflurane
+
+Isoflurane and desflurane use the same governing equations, compartment
+structure, and `data/patients/reference_adult.json` physiologic parameters
+as sevoflurane — only each agent's own `data/agents/*.json` partition
+coefficients differ. All three agents' blood:gas and tissue:gas values are
+drawn from the same source table (Stadler et al. 2012, Table 1 — the paper
+already cited for sevoflurane), so the three data files are directly
+comparable rather than assembled from unrelated sources.
+
+Desflurane is markedly less soluble than sevoflurane, which is itself less
+soluble than isoflurane (blood:gas 0.42 < 0.65 < 1.3). This does not change
+any equation: lower solubility only means faster equilibration through the
+same closed-form solutions, which `tests/reference/test_multi_agent.py`
+checks directly by comparing simulated alveolar/circuit ratios rather than
+only comparing the static coefficient values.
 
 The project must not tag a release while scientific `TBD` values remain in
 this document. None remain as of this revision.
@@ -709,11 +660,7 @@ The v0.0.2 analytic wash-in and washout tests must remain unchanged and continue
 With no patient ventilation:
 
 $$
-F_C(t)
-=
-F_D+
-\left[F_C(0)-F_D\right]
-e^{-t/\tau_C}
+F_C(t) = F_D+\left[F_C(0)-F_D\right]e^{-t/\tau_C}
 $$
 
 where:
@@ -956,11 +903,10 @@ Version v0.1.0 assumes:
 
 ## Known limitations
 
-Version v0.1.0 does not model:
+As of v0.2.0, this model does not model:
 
 - a separate arterial blood-mixing compartment (arterial blood is flow-limited and equals alveolar gas at every instant, matching the Gas Man reference simulator's mammillary structure — see "Model boundary");
-- desflurane;
-- isoflurane;
+- halothane, enflurane, ether, or xenon (isoflurane and desflurane were added in v0.2.0; see "Parameter provenance");
 - nitrous oxide;
 - simultaneous gases;
 - concentration or second-gas effects;

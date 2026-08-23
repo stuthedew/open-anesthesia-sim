@@ -6,7 +6,6 @@ from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.simulation_view import (
     MAX_ALVEOLAR_VENTILATION_L_MIN,
     MAX_CARDIAC_OUTPUT_L_MIN,
-    MAX_DELIVERED_CONCENTRATION_PERCENT,
     MAX_FRESH_GAS_FLOW_L_MIN,
 )
 
@@ -143,8 +142,9 @@ def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> No
 
     controller = SimulationController()
     controller.start()
+    max_delivered_concentration_percent = controller.snapshot().max_delivered_concentration_percent
     controller.set_fresh_gas_flow(MAX_FRESH_GAS_FLOW_L_MIN)
-    controller.set_delivered_concentration(MAX_DELIVERED_CONCENTRATION_PERCENT / 100.0)
+    controller.set_delivered_concentration(max_delivered_concentration_percent / 100.0)
     controller.set_alveolar_ventilation(MAX_ALVEOLAR_VENTILATION_L_MIN)
     controller.set_cardiac_output(MAX_CARDIAC_OUTPUT_L_MIN)
 

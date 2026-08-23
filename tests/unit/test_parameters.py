@@ -1,8 +1,11 @@
 from copy import deepcopy
+from typing import Any
 
 import pytest
 
+from anesthesia_sim.core import parameters as parameters_module
 from anesthesia_sim.core.parameters import (
+    load_agent_parameters,
     load_reference_adult_parameters,
     load_sevoflurane_parameters,
     parse_agent_parameters,
@@ -21,6 +24,8 @@ def _valid_agent_payload() -> dict[str, object]:
             "muscle": 2.0,
             "fat": 10.0,
         },
+        "max_delivered_concentration_percent": 8.0,
+        "mac_percent": 2.0,
         "sources": [
             {
                 "citation": "Test citation",
@@ -74,6 +79,8 @@ def test_loads_built_in_sevoflurane_parameters() -> None:
     assert agent.vessel_rich_tissue_gas_partition_coefficient == 1.1
     assert agent.muscle_tissue_gas_partition_coefficient == 2.4
     assert agent.fat_tissue_gas_partition_coefficient == 34.0
+    assert agent.max_delivered_concentration_percent == 8.0
+    assert agent.mac_percent == 2.0
     assert len(agent.sources) >= 1
 
 
@@ -83,6 +90,71 @@ def test_derives_tissue_blood_coefficients() -> None:
     assert agent.vessel_rich_tissue_blood_partition_coefficient == pytest.approx(1.1 / 0.65)
     assert agent.muscle_tissue_blood_partition_coefficient == pytest.approx(2.4 / 0.65)
     assert agent.fat_tissue_blood_partition_coefficient == pytest.approx(34.0 / 0.65)
+
+
+def test_loads_built_in_isoflurane_parameters() -> None:
+    agent = load_agent_parameters("isoflurane")
+
+    assert agent.id == "isoflurane"
+    assert agent.display_name == "Isoflurane"
+    assert agent.blood_gas_partition_coefficient == 1.3
+    assert agent.vessel_rich_tissue_gas_partition_coefficient == 2.1
+    assert agent.muscle_tissue_gas_partition_coefficient == 4.5
+    assert agent.fat_tissue_gas_partition_coefficient == 70.0
+    assert agent.max_delivered_concentration_percent == 5.0
+    assert agent.mac_percent == 1.2
+    assert len(agent.sources) >= 1
+
+
+def test_loads_built_in_desflurane_parameters() -> None:
+    agent = load_agent_parameters("desflurane")
+
+    assert agent.id == "desflurane"
+    assert agent.display_name == "Desflurane"
+    assert agent.blood_gas_partition_coefficient == 0.42
+    assert agent.vessel_rich_tissue_gas_partition_coefficient == 0.54
+    assert agent.muscle_tissue_gas_partition_coefficient == 0.97
+    assert agent.fat_tissue_gas_partition_coefficient == 13.0
+    assert agent.max_delivered_concentration_percent == 18.0
+    assert agent.mac_percent == 6.0
+    assert len(agent.sources) >= 1
+
+
+def test_desflurane_is_less_soluble_than_sevoflurane_which_is_less_soluble_than_isoflurane() -> (
+    None
+):
+    """Directional check against the shared Gas Man source table (Stadler et al. 2012)."""
+
+    desflurane = load_agent_parameters("desflurane")
+    sevoflurane = load_agent_parameters("sevoflurane")
+    isoflurane = load_agent_parameters("isoflurane")
+
+    assert (
+        desflurane.blood_gas_partition_coefficient
+        < sevoflurane.blood_gas_partition_coefficient
+        < isoflurane.blood_gas_partition_coefficient
+    )
+    assert (
+        desflurane.fat_tissue_gas_partition_coefficient
+        < sevoflurane.fat_tissue_gas_partition_coefficient
+        < isoflurane.fat_tissue_gas_partition_coefficient
+    )
+
+
+def test_rejects_unknown_agent_id() -> None:
+    with pytest.raises(ValueError, match="unknown agent_id"):
+        load_agent_parameters("halothane")
+
+
+def test_rejects_agent_file_with_mismatched_id(monkeypatch: Any) -> None:
+    monkeypatch.setitem(
+        parameters_module.AGENT_DATA_FILENAMES,
+        "sevoflurane",
+        "isoflurane.json",
+    )
+
+    with pytest.raises(ValueError, match="expected 'sevoflurane'"):
+        load_agent_parameters("sevoflurane")
 
 
 def test_loads_reference_adult_parameters() -> None:
@@ -117,6 +189,53 @@ def test_rejects_nonfinite_partition_coefficient() -> None:
         ValueError,
         match="blood_gas_partition_coefficient",
     ):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_max_delivered_concentration_percent_over_100() -> None:
+    payload = _valid_agent_payload()
+    payload["max_delivered_concentration_percent"] = 150.0
+
+    with pytest.raises(
+        ValueError,
+        match="max_delivered_concentration_percent",
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_nonpositive_max_delivered_concentration_percent() -> None:
+    payload = _valid_agent_payload()
+    payload["max_delivered_concentration_percent"] = 0.0
+
+    with pytest.raises(
+        ValueError,
+        match="max_delivered_concentration_percent",
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_mac_percent_over_100() -> None:
+    payload = _valid_agent_payload()
+    payload["mac_percent"] = 150.0
+
+    with pytest.raises(ValueError, match="mac_percent"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_nonpositive_mac_percent() -> None:
+    payload = _valid_agent_payload()
+    payload["mac_percent"] = 0.0
+
+    with pytest.raises(ValueError, match="mac_percent"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> None:
+    payload = _valid_agent_payload()
+    payload["max_delivered_concentration_percent"] = 8.0
+    payload["mac_percent"] = 9.0
+
+    with pytest.raises(ValueError, match="mac_percent"):
         parse_agent_parameters(payload)
 
 

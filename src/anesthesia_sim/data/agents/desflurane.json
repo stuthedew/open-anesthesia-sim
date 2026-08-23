@@ -1,0 +1,40 @@
+{
+    "schema_version": 1,
+    "id": "desflurane",
+    "display_name": "Desflurane",
+    "blood_gas_partition_coefficient": 0.42,
+    "tissue_gas_partition_coefficients": {
+        "vessel_rich": 0.54,
+        "muscle": 0.97,
+        "fat": 13.0
+    },
+    "max_delivered_concentration_percent": 18.0,
+    "mac_percent": 6.0,
+    "sources": [
+        {
+            "citation": "Stadler M, et al. Theoretical effect of hyperventilation on speed of recovery and risk of rehypnotization following recovery: a Gas Man simulation. BMC Anesthesiology. 2012;12:22.",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3502091/",
+            "note": "Table 1 reports the Gas Man desflurane blood:gas and tissue:gas coefficients used here, in the same table already cited for sevoflurane."
+        },
+        {
+            "citation": "Eger EI II. Partition coefficients of I-653 in human blood, saline, and olive oil. Anesthesia & Analgesia. 1987;66(10):971-973.",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/3631593/",
+            "note": "Primary human study reporting a blood:gas coefficient of 0.424 +/- 0.024 at 37 degrees C for I-653 (desflurane's development code name), closely matching the Gas Man value of 0.42 used here."
+        },
+        {
+            "citation": "Yasuda N, Targ AG, Eger EI II. Solubility of I-653, sevoflurane, isoflurane, and halothane in human tissues. Anesthesia & Analgesia. 1989;69(3):370-373.",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/2774233/",
+            "note": "Primary human-tissue study reporting an I-653 (desflurane) brain:blood partition coefficient of 1.29 +/- 0.05 at 37 degrees C. Same paper already cited for sevoflurane's and isoflurane's tissue-solubility models."
+        },
+        {
+            "citation": "Johnston RV, Andrews JJ, Deyo DJ, Trahan LA, Savrick MD, Grady JJ, Prough DS. The effects of carrier gas composition on the performance of the Tec 6 desflurane vaporizer. Anesthesia & Analgesia. 1994;79(3):548-552.",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/8067562/",
+            "note": "Tec 6 vaporizer output was analyzed at all integer dial settings from 1% to 18%, confirming 18% as the device's calibrated maximum. Used here as max_delivered_concentration_percent. This is a device-capability limit on the delivered-concentration control, not a scientific model parameter; it does not affect the governing equations."
+        },
+        {
+            "citation": "Nickalls RWD, Mapleson WW. Age-related iso-MAC charts for isoflurane, sevoflurane and desflurane in man. British Journal of Anaesthesia. 2003;91(2):170-174.",
+            "url": "https://doi.org/10.1093/bja/aeg132",
+            "note": "MAC is age-dependent; this project's reference-adult model has no age parameter, so mac_percent uses the flat adult value from Stadler et al. above (same paper already cited for partition coefficients: 'MAC values that we used in our Gas Man simulations are: desflurane 6%, sevoflurane 2%, isoflurane 1.2%'), not an age-adjusted one. Used as the controller's starting delivered-concentration default (1 MAC), not a governing-equation parameter."
+        }
+    ]
+}

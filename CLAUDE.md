@@ -11,7 +11,8 @@ These instructions apply to all AI coding agents working on this repository.
 - Add or update tests with every core behavior change.
 - Keep agent/model parameters in validated, versioned data files.
 - Do not add executable equations to data files.
-- Do not implement beyond the current milestone.
+- Do not implement beyond the current milestone. `ROADMAP.md` is the
+  authoritative version and milestone map.
 - Run pytest, Ruff, and the configured type checker before finishing.
 
 ## Session and tool-use efficiency
@@ -58,7 +59,7 @@ For safety-critical paths:
 - Use explicit units and avoid implicit unit conversions. Prefer unit-aware types or equivalent safeguards where practical.
 - Validate required inputs, units, ranges, model applicability, and model compatibility before calculation.
 - Do not silently substitute defaults, coerce invalid data, or continue with missing required inputs when doing so could produce a plausible but incorrect clinical value.
-- Version and record provenance for scientific models, equations, constants, parameter sets, and clinically meaningful transformations.
+- Version and record provenance for scientific models, equations, constants, parameter sets, and clinically meaningful transformations. `docs/MODEL.md` is the authoritative specification for the currently implemented model: equations, units, assumptions, parameter provenance, numerical method, and known limitations.
 - Maintain deterministic behavior for identical inputs and model versions.
 - Validate numerical implementations against published reference cases, analytic solutions, independently calculated test vectors, or other authoritative references whenever available.
 - Include boundary, invalid-input, pathological-input, and regression tests in addition to ordinary nominal-case tests.

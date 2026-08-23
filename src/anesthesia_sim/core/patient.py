@@ -1,3 +1,8 @@
+"""Patient-side compartments: the vessel-rich, muscle, and fat tissue groups
+(`tissue.py`) plus mixed-venous blood (`blood.py`), coupled through cardiac
+output and each tissue's perfusion fraction of it.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -92,6 +97,8 @@ class PatientCompartments:
 
     @property
     def total_perfusion_fraction(self) -> float:
+        """Sum tissue-group perfusion fractions; must equal 1 within tolerance."""
+
         return sum(tissue.perfusion_fraction for tissue in self.tissues)
 
     @property

@@ -19,15 +19,18 @@ appropriate, and its entry here should be deleted rather than left stale.
 ## Repository state as of this writing
 
 - `build/v0.1.0-sevo-patient` was fast-forward merged into `main` and the
-  remote branch deleted; `main` is now the v0.1.0 baseline. Work happens
-  directly on `main` unless a session has reason to branch.
-- `docs/MODEL.md` and `ROADMAP.md` are up to date with the v0.1.0
+  remote branch deleted; `main` is now the v0.2.0 baseline (isoflurane and
+  desflurane added as additional loadable agents, both loaded through
+  `load_agent_parameters(agent_id)` in `core/parameters.py`; only
+  sevoflurane is wired to the running app/UI, per v0.2.0's explicit scope).
+  Work happens directly on `main` unless a session has reason to branch.
+- `docs/MODEL.md` and `ROADMAP.md` are up to date with the v0.2.0
   implementation: the arterial-blood simplification is documented
   explicitly (flow-limited, `F_a \equiv F_A`, no separate compartment,
   matching the Gas Man reference simulator's mammillary structure), the
-  parameter provenance table is filled from the cited data files, and the
-  three previously-missing required tests (equilibrium, directional
-  solubility, deterministic replay) have been added.
+  parameter provenance table covers all three agents from the cited data
+  files, and `tests/reference/test_multi_agent.py` covers directional
+  solubility and mass-balance closure for isoflurane and desflurane.
 - `simulation_view.py` test coverage is 92% (up from 32%), using a minimal
   fake `Page`/`Controller` pattern documented at the top of
   `tests/unit/test_simulation_view.py` rather than a live Flet client.
@@ -88,13 +91,110 @@ bottleneck currently is. No design decisions made yet on how speed
 multiplier would be exposed in the UI or how it interacts with the fixed
 `SIMULATION_STEP_S = 0.1` step size.
 
-## Open thread: documentation pass
+## Open thread: near-term to-dos (project owner's list, not yet started)
 
-Plan (as stated by the project owner): go file-by-file, generate or update
-documentation for one file, get explicit approval, then move to the next
-file. Not yet started. Scope not yet defined — which files/layers
-(docstrings in `src/`, `README.md`, an architecture overview, something
-else) has not been decided.
+Three items the project owner flagged for the next working session. None
+implemented yet.
+
+1. **Color-code the agent dropdown/selected-agent display to the agent's
+   real vaporizer color** (e.g. yellow for sevoflurane), with font/contrast
+   adjusted so text stays readable against each fill color. This mirrors a
+   real safety feature, not just styling: clinical vaporizers use a
+   standardized per-agent color-keyed fill system (North American
+   convention is commonly cited to ASTM D4774) specifically so an agent is
+   never mistaken for another at a glance. Getting a color-to-agent mapping
+   wrong here would be actively misleading rather than neutral, so the
+   color set must be verified against an authoritative current source
+   before implementation, not recalled from memory. Likely touches
+   `app/simulation_view.py`'s dropdown/header construction and `app/theme.py`.
+2. **Make `core/` more self-explanatory** (scoped 2026-08-23, not yet
+   designed or started). Two related complaints from the project owner
+   about code they found unintuitive to read cold:
+   - `core/respiratory_system.py` bundles concerns beyond what its name
+     suggests. "Respiratory system" clinically means the patient's own
+     lungs/airways, which maps to the alveolar compartment (`alveoli`) -
+     the only piece of this class that's actually respiratory. The other
+     two are mismatched for different reasons: `circuit` is the
+     anesthesia machine's breathing circuit, i.e. equipment, not patient
+     physiology at all; and `RespiratorySystem.set_cardiac_output()`
+     forwards to `patient.set_cardiac_output()`, which is a circulatory/
+     distribution concern, not a respiratory one either. Needs a look at
+     whether `RespiratorySystem` should stay a thin coordinator (already
+     mostly true for `advance()`/accounting) with the setter delegation
+     removed in favor of callers reaching the owning compartment
+     (`patient`, `circuit`, `alveoli`) directly, or whether a
+     differently-named coordinating class (e.g. something naming the
+     coupled machine+patient system, not just the respiratory piece of
+     it) is clearer.
+   - `core/parameters.py`'s `_AgentPayload`/`AgentParameters` split (a
+     private Pydantic validation model paired with a public, frozen,
+     Pydantic-independent dataclass, repeated for
+     `_ReferenceAdultPayload`/`ReferenceAdultParameters`) is the more
+     correct design - it keeps the rest of the core decoupled from the
+     validation library - but reads as confusing duplication without
+     that rationale stated anywhere. The module docstring added
+     2026-08-23 explains the split at a high level; still open is
+     whether that's enough or whether the pattern needs a more visible
+     marker at each pair (e.g. a shared base-naming convention or a
+     short comment at each `_...Payload` class).
+   Note: a first, smaller pass already landed 2026-08-23 - every
+   `src/anesthesia_sim/**/*.py` file now has a one-line-or-so module
+   docstring stating its role, which was the project owner's other
+   complaint ("code files should have some sort of documentation block
+   at the top"). This item is the deeper structural follow-up, not
+   covered by that pass.
+3. **Documentation refresh pass**: general sweep to confirm
+   `README.md`, `docs/MODEL.md`, `ROADMAP.md`, and this file are all
+   current against the agent-specific vaporizer-max and 1-MAC-default work
+   merged in commit `7a867e9`, the module-docstring pass, and against
+   whatever lands from items 1 and 2 above.
+
+## Open thread: startup window sizing
+
+`app/main.py` sets `page.window.full_screen = True` on startup. Per prior
+project decision (previously recorded in `README.md`, moved here as part of
+the documentation pass so it isn't lost): replace this with an adequately
+sized, centered window that remains fully visible on different displays.
+Avoid magic pixel dimensions, monitor-specific assumptions, and native
+display-probing dependencies. Not yet implemented.
+
+## Aspirational: power-user custom agents (not scoped, not started)
+
+The project owner's stated future direction, raised while discussing
+whether `core/parameters.py`'s `AGENT_DATA_FILENAMES` dict should stay a
+hardcoded enumeration of built-in agents (decision: yes, for now - see
+that conversation's reasoning; a directory-scan loader alone wouldn't
+give power users this anyway since it only reaches packaged files).
+
+The idea: eventually let power users (e.g. for research use) add their
+own custom agent parameter sets, analogous to how 3D-printer slicers
+handle filament profiles - built-in presets, "duplicate an existing
+profile and modify it," and "create from scratch," gated behind an
+explicit warning since these aren't the vetted built-in agents.
+
+Not scoped or designed. Key considerations for whoever scopes this,
+noted now so they aren't lost:
+
+- **Provenance/trust must stay visible everywhere the agent appears**
+  (dropdown, header, charts, any export) - a custom agent has none of
+  the peer-reviewed citation backing the built-in `sources` field
+  requires, and presenting a user-authored curve with the same visual
+  authority as a cited built-in one would violate this repo's
+  presentation-correctness standard (CLAUDE.md). Likely needs a
+  first-class "verified built-in vs. user-supplied" distinction in the
+  data model itself, not just a UI label bolted on after the fact.
+- Storage has to live outside the installed package - `core/parameters.py`
+  currently only loads via `importlib.resources` against packaged
+  `data/agents/*.json`; custom agents need a separate on-disk location
+  (e.g. a user config directory) and their own load path.
+- The existing Pydantic validation (ranges, required fields, the
+  mac_percent <= max_delivered_concentration_percent cross-check) should
+  still apply to custom agents - it catches structurally invalid data
+  (typos, absurd values) even though it can't and shouldn't try to
+  verify real-world plausibility the way a citation does.
+- "Duplicate and modify" falls out naturally once custom-agent storage
+  exists, since every built-in agent's JSON is already fully
+  self-contained - cloning one as a starting point is close to free.
 
 ## Shelved: UI structure/form mockups
 
@@ -131,9 +231,9 @@ SimTiva functionality" against Gas Man's real-world v4.x.
 
 Concretely, this points at IV/TIVA pharmacokinetic and effect-site
 modeling integrated with the existing inhaled-agent model. That is not a
-new idea - it is already `ROADMAP.md`'s "Later roadmap" item 5 ("Add IV
-pharmacokinetic and effect-site models after simulation forking is
-available"). The vision here is the same destination with much higher
+new idea - it is already `ROADMAP.md`'s "Planned milestones" item 13 ("Add
+IV pharmacokinetic and effect-site models, after item 12 (simulation
+forking) is available"). The vision here is the same destination with much higher
 ambition on execution and UX quality, and possibly a different order,
 not a different target.
 
