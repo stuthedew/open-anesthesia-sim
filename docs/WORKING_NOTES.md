@@ -88,6 +88,15 @@ bottleneck currently is. No design decisions made yet on how speed
 multiplier would be exposed in the UI or how it interacts with the fixed
 `SIMULATION_STEP_S = 0.1` step size.
 
+## Open thread: startup window sizing
+
+`app/main.py` sets `page.window.full_screen = True` on startup. Per prior
+project decision (previously recorded in `README.md`, moved here as part of
+the documentation pass so it isn't lost): replace this with an adequately
+sized, centered window that remains fully visible on different displays.
+Avoid magic pixel dimensions, monitor-specific assumptions, and native
+display-probing dependencies. Not yet implemented.
+
 ## Open thread: documentation pass
 
 Plan (as stated by the project owner): go file-by-file, generate or update
