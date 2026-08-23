@@ -8,6 +8,8 @@
         "muscle": 2.4,
         "fat": 34.0
     },
+    "max_delivered_concentration_percent": 8.0,
+    "mac_percent": 2.0,
     "sources": [
         {
             "citation": "Stadler M, et al. Theoretical effect of hyperventilation on speed of recovery and risk of rehypnotization following recovery: a Gas Man simulation. BMC Anesthesiology. 2012;12:22.",
@@ -23,6 +25,16 @@
             "citation": "Yasuda N, Targ AG, Eger EI II. Solubility of I-653, sevoflurane, isoflurane, and halothane in human tissues. Anesthesia & Analgesia. 1989;69(3):370-373.",
             "url": "https://pubmed.ncbi.nlm.nih.gov/2774233/",
             "note": "Primary human-tissue partition-coefficient study underlying the tissue-solubility model."
+        },
+        {
+            "citation": "Drager Vapor 2000 Sevoflurane vaporizer specification: calibrated concentration range 0.2-8%.",
+            "url": "https://zurichcorp.com/product/drager-vapor-2000-sevoflurane-precise-anesthesia-vaporization-for-optimal-patient-care/",
+            "note": "Standard variable-bypass sevoflurane vaporizer (e.g. Drager Vapor 2000, Datex-Ohmeda Sevotec 5) calibrated dial maximum, used here as max_delivered_concentration_percent. This is a device-capability limit on the delivered-concentration control, not a scientific model parameter; it does not affect the governing equations."
+        },
+        {
+            "citation": "Nickalls RWD, Mapleson WW. Age-related iso-MAC charts for isoflurane, sevoflurane and desflurane in man. British Journal of Anaesthesia. 2003;91(2):170-174.",
+            "url": "https://doi.org/10.1093/bja/aeg132",
+            "note": "MAC is age-dependent; this project's reference-adult model has no age parameter, so mac_percent uses the flat adult value from Stadler et al. above (same paper already cited for partition coefficients: 'MAC values that we used in our Gas Man simulations are: desflurane 6%, sevoflurane 2%, isoflurane 1.2%'), not an age-adjusted one. Used as the controller's starting delivered-concentration default (1 MAC), not a governing-equation parameter."
         }
     ]
 }

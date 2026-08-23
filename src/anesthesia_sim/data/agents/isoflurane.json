@@ -8,6 +8,8 @@
         "muscle": 4.5,
         "fat": 70.0
     },
+    "max_delivered_concentration_percent": 5.0,
+    "mac_percent": 1.2,
     "sources": [
         {
             "citation": "Stadler M, et al. Theoretical effect of hyperventilation on speed of recovery and risk of rehypnotization following recovery: a Gas Man simulation. BMC Anesthesiology. 2012;12:22.",
@@ -23,6 +25,16 @@
             "citation": "Malviya S, Lerman J. The blood/gas solubilities of sevoflurane, isoflurane, halothane, and serum constituent concentrations in neonates and adults. Anesthesiology. 1990;72(5):793-796.",
             "url": "https://pubmed.ncbi.nlm.nih.gov/2339795/",
             "note": "Confirms isoflurane's blood:gas partition coefficient was measured directly in adult humans and found to differ from neonates. The specific adult value was not independently re-derived from the abstract alone; version 0.2.0 uses the Gas Man value of 1.3 from Stadler et al. above."
+        },
+        {
+            "citation": "Kelly JM, Kong K-L. Accuracy of ten isoflurane vaporisers in current clinical use. Anaesthesia. 2011;66(8):682-688.",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/21749341/",
+            "note": "Studies the two standard isoflurane vaporizers in current clinical use (Penlon Sigma Delta, Datex-Ohmeda Isotec 5), both calibrated 0-5%. Used here as max_delivered_concentration_percent. This is a device-capability limit on the delivered-concentration control, not a scientific model parameter; it does not affect the governing equations."
+        },
+        {
+            "citation": "Nickalls RWD, Mapleson WW. Age-related iso-MAC charts for isoflurane, sevoflurane and desflurane in man. British Journal of Anaesthesia. 2003;91(2):170-174.",
+            "url": "https://doi.org/10.1093/bja/aeg132",
+            "note": "MAC is age-dependent; this project's reference-adult model has no age parameter, so mac_percent uses the flat adult value from Stadler et al. above (same paper already cited for partition coefficients: 'MAC values that we used in our Gas Man simulations are: desflurane 6%, sevoflurane 2%, isoflurane 1.2%'), not an age-adjusted one. Used as the controller's starting delivered-concentration default (1 MAC), not a governing-equation parameter."
         }
     ]
 }

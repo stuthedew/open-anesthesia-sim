@@ -6,7 +6,7 @@ from importlib.resources import files
 from math import isfinite
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, field_validator
+from pydantic import BaseModel, BeforeValidator, ValidationInfo, field_validator
 from pydantic import ValidationError as PydanticValidationError
 
 SUPPORTED_SCHEMA_VERSION = 1
@@ -33,6 +33,8 @@ class AgentParameters:
     vessel_rich_tissue_gas_partition_coefficient: float
     muscle_tissue_gas_partition_coefficient: float
     fat_tissue_gas_partition_coefficient: float
+    max_delivered_concentration_percent: float
+    mac_percent: float
     sources: tuple[SourceReference, ...]
 
     @property
@@ -127,10 +129,20 @@ def _validate_positive_fraction(value: object) -> float:
     return numeric_value
 
 
+def _validate_positive_percent(value: object) -> float:
+    numeric_value = _validate_positive_finite(value)
+
+    if numeric_value > 100.0:
+        raise ValueError("must not exceed 100")
+
+    return numeric_value
+
+
 NonEmptyString = Annotated[str, BeforeValidator(_validate_nonempty_string)]
 SchemaVersion = Annotated[int, BeforeValidator(_validate_schema_version)]
 PositiveFinite = Annotated[float, BeforeValidator(_validate_positive_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
+PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
 
 
 class _SourcePayload(BaseModel):
@@ -170,7 +182,24 @@ class _AgentPayload(BaseModel):
     display_name: NonEmptyString
     blood_gas_partition_coefficient: PositiveFinite
     tissue_gas_partition_coefficients: _TissueGasPartitionCoefficientsPayload
+    max_delivered_concentration_percent: PositivePercent
+    mac_percent: PositivePercent
     sources: Sources
+
+    @field_validator("mac_percent")
+    @classmethod
+    def _mac_percent_must_not_exceed_vaporizer_max(
+        cls, value: float, info: ValidationInfo
+    ) -> float:
+        max_delivered = info.data.get("max_delivered_concentration_percent")
+
+        if max_delivered is not None and value > max_delivered:
+            raise ValueError(
+                "mac_percent must not exceed max_delivered_concentration_percent "
+                f"({value} > {max_delivered})"
+            )
+
+        return value
 
 
 class _TissueGroupPayload(BaseModel):
@@ -240,6 +269,8 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
         vessel_rich_tissue_gas_partition_coefficient=coefficients.vessel_rich,
         muscle_tissue_gas_partition_coefficient=coefficients.muscle,
         fat_tissue_gas_partition_coefficient=coefficients.fat,
+        max_delivered_concentration_percent=(model.max_delivered_concentration_percent),
+        mac_percent=model.mac_percent,
         sources=_sources_to_tuple(model.sources),
     )
 
