@@ -50,3 +50,6 @@ wheels/
 # Editor-specific workspace state
 .idea/
 .vscode/
+
+# Claude Code personal overrides (project settings are committed)
+.claude/settings.local.json
