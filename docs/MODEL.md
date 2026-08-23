@@ -1,9 +1,12 @@
-# v0.1.0 sevoflurane patient uptake and distribution model
+# Volatile-agent patient uptake and distribution model
 
 ## Status
 
-This document specifies the scientific model implemented in v0.1.0, the
-current released baseline (see `ROADMAP.md`).
+This document specifies the scientific model implemented starting in
+v0.1.0 and still in force in v0.2.0, the current released baseline (see
+`ROADMAP.md`). The title is deliberately version-generic: the governing
+equations and compartment structure have not changed since v0.1.0, and are
+shared by every agent this model supports.
 
 The preceding milestone, v0.0.2, delivered an analytically validated ideal
 breathing-circuit wash-in and washout model without a patient; its reference
@@ -42,7 +45,10 @@ The milestone must demonstrate:
 - deterministic numerical behavior; and
 - explicit conservation of sevoflurane mass.
 
-Only sevoflurane is modeled in v0.1.0.
+Only sevoflurane was modeled in v0.1.0. Isoflurane and desflurane were
+added in v0.2.0 as additional selectable agents, using this same section's
+equations unchanged (see "Status" and "v0.2.0: isoflurane and desflurane"
+under "Parameter provenance").
 
 ## Model boundary
 
@@ -577,6 +583,14 @@ recorded as `sources` entries in that file, not duplicated here.
 | Vessel-rich tissue:blood coefficient | 1.6923 (= 1.1 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
 | Muscle tissue:blood coefficient | 3.6923 (= 2.4 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
 | Fat tissue:blood coefficient | 52.3077 (= 34.0 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
+| Blood:gas partition coefficient (isoflurane) | 1.3 | dimensionless | `data/agents/isoflurane.json` |
+| Vessel-rich tissue:blood coefficient (isoflurane) | 1.6154 (= 2.1 / 1.3) | dimensionless | `data/agents/isoflurane.json` |
+| Muscle tissue:blood coefficient (isoflurane) | 3.4615 (= 4.5 / 1.3) | dimensionless | `data/agents/isoflurane.json` |
+| Fat tissue:blood coefficient (isoflurane) | 53.8462 (= 70.0 / 1.3) | dimensionless | `data/agents/isoflurane.json` |
+| Blood:gas partition coefficient (desflurane) | 0.42 | dimensionless | `data/agents/desflurane.json` |
+| Vessel-rich tissue:blood coefficient (desflurane) | 1.2857 (= 0.54 / 0.42) | dimensionless | `data/agents/desflurane.json` |
+| Muscle tissue:blood coefficient (desflurane) | 2.3095 (= 0.97 / 0.42) | dimensionless | `data/agents/desflurane.json` |
+| Fat tissue:blood coefficient (desflurane) | 30.9524 (= 13.0 / 0.42) | dimensionless | `data/agents/desflurane.json` |
 | Alveolar gas volume | 2.5 | L | `data/patients/reference_adult.json` |
 | Venous blood-pool volume | 1.0 | L | `data/patients/reference_adult.json` |
 | Vessel-rich tissue volume | 6.0 | L | `data/patients/reference_adult.json` |
@@ -594,6 +608,23 @@ coefficients are derived at load time (`AgentParameters` properties in
 `core/parameters.py`) as tissue:gas divided by blood:gas, not stored
 redundantly in the data file. The tissue-blood partition-coefficient tests
 in `tests/unit/test_parameters.py` guard this derivation.
+
+### v0.2.0: isoflurane and desflurane
+
+Isoflurane and desflurane use the same governing equations, compartment
+structure, and `data/patients/reference_adult.json` physiologic parameters
+as sevoflurane — only each agent's own `data/agents/*.json` partition
+coefficients differ. All three agents' blood:gas and tissue:gas values are
+drawn from the same source table (Stadler et al. 2012, Table 1 — the paper
+already cited for sevoflurane), so the three data files are directly
+comparable rather than assembled from unrelated sources.
+
+Desflurane is markedly less soluble than sevoflurane, which is itself less
+soluble than isoflurane (blood:gas 0.42 < 0.65 < 1.3). This does not change
+any equation: lower solubility only means faster equilibration through the
+same closed-form solutions, which `tests/reference/test_multi_agent.py`
+checks directly by comparing simulated alveolar/circuit ratios rather than
+only comparing the static coefficient values.
 
 The project must not tag a release while scientific `TBD` values remain in
 this document. None remain as of this revision.
@@ -872,11 +903,10 @@ Version v0.1.0 assumes:
 
 ## Known limitations
 
-Version v0.1.0 does not model:
+As of v0.2.0, this model does not model:
 
 - a separate arterial blood-mixing compartment (arterial blood is flow-limited and equals alveolar gas at every instant, matching the Gas Man reference simulator's mammillary structure — see "Model boundary");
-- desflurane;
-- isoflurane;
+- halothane, enflurane, ether, or xenon (isoflurane and desflurane were added in v0.2.0; see "Parameter provenance");
 - nitrous oxide;
 - simultaneous gases;
 - concentration or second-gas effects;

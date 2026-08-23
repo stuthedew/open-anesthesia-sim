@@ -1,0 +1,28 @@
+{
+    "schema_version": 1,
+    "id": "desflurane",
+    "display_name": "Desflurane",
+    "blood_gas_partition_coefficient": 0.42,
+    "tissue_gas_partition_coefficients": {
+        "vessel_rich": 0.54,
+        "muscle": 0.97,
+        "fat": 13.0
+    },
+    "sources": [
+        {
+            "citation": "Stadler M, et al. Theoretical effect of hyperventilation on speed of recovery and risk of rehypnotization following recovery: a Gas Man simulation. BMC Anesthesiology. 2012;12:22.",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3502091/",
+            "note": "Table 1 reports the Gas Man desflurane blood:gas and tissue:gas coefficients used here, in the same table already cited for sevoflurane."
+        },
+        {
+            "citation": "Eger EI II. Partition coefficients of I-653 in human blood, saline, and olive oil. Anesthesia & Analgesia. 1987;66(10):971-973.",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/3631593/",
+            "note": "Primary human study reporting a blood:gas coefficient of 0.424 +/- 0.024 at 37 degrees C for I-653 (desflurane's development code name), closely matching the Gas Man value of 0.42 used here."
+        },
+        {
+            "citation": "Yasuda N, Targ AG, Eger EI II. Solubility of I-653, sevoflurane, isoflurane, and halothane in human tissues. Anesthesia & Analgesia. 1989;69(3):370-373.",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/2774233/",
+            "note": "Primary human-tissue study reporting an I-653 (desflurane) brain:blood partition coefficient of 1.29 +/- 0.05 at 37 degrees C. Same paper already cited for sevoflurane's and isoflurane's tissue-solubility models."
+        }
+    ]
+}

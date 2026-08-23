@@ -14,28 +14,32 @@ by mechanically incrementing the patch number.
 | --- | --- | --- |
 | v0.0.1 | Completed | Initial runnable prototype: deterministic simulation clock, controller/view separation, basic charting and controls, and project quality tooling. |
 | v0.0.2 | Completed | Analytically validated ideal breathing-circuit wash-in and washout with no patient uptake. |
-| v0.1.0 | Completed / current baseline | First patient sevoflurane uptake and distribution model - the "Sevo works" milestone. |
-| v0.2.0 | Proposed, not yet started | Isoflurane and desflurane as additional selectable volatile agents. |
+| v0.1.0 | Completed | First patient sevoflurane uptake and distribution model - the "Sevo works" milestone. |
+| v0.2.0 | Completed / current baseline | Isoflurane and desflurane added as additional loadable volatile agents. |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.1.0
+## Current baseline: v0.2.0
 
-The repository currently models the first patient sevoflurane uptake and
-distribution system: a constant-volume breathing circuit, an alveolar gas
-compartment, cardiac-output-dependent perfusion to vessel-rich, muscle, and
-fat tissue groups, and mixed-venous return, coupled back to the lungs. Every
-compartment step is solved by exact analytic solution and composed by
-operator splitting; the v0.0.2 circuit reference tests are preserved
-unchanged. Sevoflurane and reference-adult parameters are loaded from
-schema-validated, cited data files rather than hardcoded. Full equations,
-units, assumptions, parameter provenance, numerical method, and known
-limitations are documented in `docs/MODEL.md`.
+The repository currently models patient uptake and distribution for
+sevoflurane, isoflurane, or desflurane: a constant-volume breathing circuit,
+an alveolar gas compartment, cardiac-output-dependent perfusion to
+vessel-rich, muscle, and fat tissue groups, and mixed-venous return, coupled
+back to the lungs. Every compartment step is solved by exact analytic
+solution and composed by operator splitting; the v0.0.2 circuit and v0.1.0
+sevoflurane reference tests are preserved unchanged. Agent and
+reference-adult parameters are loaded from schema-validated, cited data
+files rather than hardcoded. Full equations, units, assumptions, parameter
+provenance, numerical method, and known limitations are documented in
+`docs/MODEL.md`.
 
-The current model does not include metabolism, other volatile agents, IV
-anesthetics, effect-site models, or clinical predictions or recommendations
-of any kind. See `docs/MODEL.md`'s "Known limitations" for the complete list.
+The current model does not include a UI control for selecting which agent
+is running (all three are loadable at the core level; only sevoflurane is
+wired to the interface pending the anesthesia-machine milestone), other
+volatile agents beyond these three, metabolism, IV anesthetics, effect-site
+models, or clinical predictions or recommendations of any kind. See
+`docs/MODEL.md`'s "Known limitations" for the complete list.
 
 ## Completed: v0.1.0 - first patient sevo model
 
@@ -114,7 +118,7 @@ gate" section for the corresponding scientific-documentation checklist.
 - Packaging, signing, or release installers beyond what is needed to run and
   test the milestone.
 
-## Next milestone: v0.2.0 - isoflurane and desflurane
+## Completed: v0.2.0 - isoflurane and desflurane
 
 ### Goal
 
@@ -185,8 +189,25 @@ v0.2.0 is complete only when:
 - Any change to the v0.1.0 governing equations themselves — this milestone
   proves they are agent-generic, not that they change per agent.
 
-This milestone must be treated as fully specified above before
-implementation begins, per the development rules below.
+All criteria above were met at tag time. `isoflurane.json` and
+`desflurane.json` load through the same `load_agent_parameters(agent_id)`
+path added for this milestone (`load_sevoflurane_parameters()` is now a
+thin wrapper over it, so no existing call site changed behavior);
+`tests/reference/test_multi_agent.py` covers directional solubility and
+mass-balance closure for both new agents; and `docs/MODEL.md`'s parameter
+provenance table and new "v0.2.0: isoflurane and desflurane" subsection
+record both agents' sourcing.
+
+## Next milestone
+
+No milestone after v0.2.0 has been scoped yet. The next candidate, per
+"Planned milestones" below, is a modular anesthesia-machine abstraction
+with normal single-halogenated-agent interlock behavior — the safety
+baseline every later machine feature (agent switching, experimental
+overrides, direct injection, automated end-tidal control) builds on. It
+must be fully specified here (goal, required scope, definition of done,
+and explicit out-of-scope list) before implementation begins, per the
+development rules below.
 
 ## Development rules for scientific milestones
 

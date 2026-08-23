@@ -19,15 +19,18 @@ appropriate, and its entry here should be deleted rather than left stale.
 ## Repository state as of this writing
 
 - `build/v0.1.0-sevo-patient` was fast-forward merged into `main` and the
-  remote branch deleted; `main` is now the v0.1.0 baseline. Work happens
-  directly on `main` unless a session has reason to branch.
-- `docs/MODEL.md` and `ROADMAP.md` are up to date with the v0.1.0
+  remote branch deleted; `main` is now the v0.2.0 baseline (isoflurane and
+  desflurane added as additional loadable agents, both loaded through
+  `load_agent_parameters(agent_id)` in `core/parameters.py`; only
+  sevoflurane is wired to the running app/UI, per v0.2.0's explicit scope).
+  Work happens directly on `main` unless a session has reason to branch.
+- `docs/MODEL.md` and `ROADMAP.md` are up to date with the v0.2.0
   implementation: the arterial-blood simplification is documented
   explicitly (flow-limited, `F_a \equiv F_A`, no separate compartment,
   matching the Gas Man reference simulator's mammillary structure), the
-  parameter provenance table is filled from the cited data files, and the
-  three previously-missing required tests (equilibrium, directional
-  solubility, deterministic replay) have been added.
+  parameter provenance table covers all three agents from the cited data
+  files, and `tests/reference/test_multi_agent.py` covers directional
+  solubility and mass-balance closure for isoflurane and desflurane.
 - `simulation_view.py` test coverage is 92% (up from 32%), using a minimal
   fake `Page`/`Controller` pattern documented at the top of
   `tests/unit/test_simulation_view.py` rather than a live Flet client.

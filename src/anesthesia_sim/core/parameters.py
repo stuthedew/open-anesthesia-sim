@@ -305,14 +305,36 @@ def _load_packaged_json(package: str, filename: str) -> object:
     return payload
 
 
+AGENT_DATA_FILENAMES: dict[str, str] = {
+    "sevoflurane": "sevoflurane.json",
+    "isoflurane": "isoflurane.json",
+    "desflurane": "desflurane.json",
+}
+
+
+def load_agent_parameters(agent_id: str) -> AgentParameters:
+    """Load and validate one built-in agent definition by id."""
+
+    filename = AGENT_DATA_FILENAMES.get(agent_id)
+
+    if filename is None:
+        raise ValueError(
+            f"unknown agent_id: {agent_id!r}; expected one of {sorted(AGENT_DATA_FILENAMES)}"
+        )
+
+    payload = _load_packaged_json("anesthesia_sim.data.agents", filename)
+    parameters = parse_agent_parameters(payload)
+
+    if parameters.id != agent_id:
+        raise ValueError(f"{filename} declares id {parameters.id!r}, expected {agent_id!r}")
+
+    return parameters
+
+
 def load_sevoflurane_parameters() -> AgentParameters:
     """Load and validate the built-in sevoflurane definition."""
 
-    payload = _load_packaged_json(
-        "anesthesia_sim.data.agents",
-        "sevoflurane.json",
-    )
-    return parse_agent_parameters(payload)
+    return load_agent_parameters("sevoflurane")
 
 
 def load_reference_adult_parameters() -> ReferenceAdultParameters:
