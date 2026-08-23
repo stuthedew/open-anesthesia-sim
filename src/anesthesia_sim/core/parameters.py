@@ -34,16 +34,22 @@ class AgentParameters:
 
     @property
     def vessel_rich_tissue_blood_partition_coefficient(self) -> float:
+        """Derive tissue:blood from tissue:gas / blood:gas; not stored redundantly."""
+
         return (
             self.vessel_rich_tissue_gas_partition_coefficient / self.blood_gas_partition_coefficient
         )
 
     @property
     def muscle_tissue_blood_partition_coefficient(self) -> float:
+        """Derive tissue:blood from tissue:gas / blood:gas; not stored redundantly."""
+
         return self.muscle_tissue_gas_partition_coefficient / self.blood_gas_partition_coefficient
 
     @property
     def fat_tissue_blood_partition_coefficient(self) -> float:
+        """Derive tissue:blood from tissue:gas / blood:gas; not stored redundantly."""
+
         return self.fat_tissue_gas_partition_coefficient / self.blood_gas_partition_coefficient
 
 
@@ -69,6 +75,8 @@ class ReferenceAdultParameters:
 
     @property
     def total_perfusion_fraction(self) -> float:
+        """Sum tissue-group perfusion fractions; must equal 1 within tolerance."""
+
         return (
             self.vessel_rich_perfusion_fraction
             + self.muscle_perfusion_fraction
