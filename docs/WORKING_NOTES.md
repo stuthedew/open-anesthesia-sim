@@ -158,6 +158,44 @@ sized, centered window that remains fully visible on different displays.
 Avoid magic pixel dimensions, monitor-specific assumptions, and native
 display-probing dependencies. Not yet implemented.
 
+## Aspirational: power-user custom agents (not scoped, not started)
+
+The project owner's stated future direction, raised while discussing
+whether `core/parameters.py`'s `AGENT_DATA_FILENAMES` dict should stay a
+hardcoded enumeration of built-in agents (decision: yes, for now - see
+that conversation's reasoning; a directory-scan loader alone wouldn't
+give power users this anyway since it only reaches packaged files).
+
+The idea: eventually let power users (e.g. for research use) add their
+own custom agent parameter sets, analogous to how 3D-printer slicers
+handle filament profiles - built-in presets, "duplicate an existing
+profile and modify it," and "create from scratch," gated behind an
+explicit warning since these aren't the vetted built-in agents.
+
+Not scoped or designed. Key considerations for whoever scopes this,
+noted now so they aren't lost:
+
+- **Provenance/trust must stay visible everywhere the agent appears**
+  (dropdown, header, charts, any export) - a custom agent has none of
+  the peer-reviewed citation backing the built-in `sources` field
+  requires, and presenting a user-authored curve with the same visual
+  authority as a cited built-in one would violate this repo's
+  presentation-correctness standard (CLAUDE.md). Likely needs a
+  first-class "verified built-in vs. user-supplied" distinction in the
+  data model itself, not just a UI label bolted on after the fact.
+- Storage has to live outside the installed package - `core/parameters.py`
+  currently only loads via `importlib.resources` against packaged
+  `data/agents/*.json`; custom agents need a separate on-disk location
+  (e.g. a user config directory) and their own load path.
+- The existing Pydantic validation (ranges, required fields, the
+  mac_percent <= max_delivered_concentration_percent cross-check) should
+  still apply to custom agents - it catches structurally invalid data
+  (typos, absurd values) even though it can't and shouldn't try to
+  verify real-world plausibility the way a citation does.
+- "Duplicate and modify" falls out naturally once custom-agent storage
+  exists, since every built-in agent's JSON is already fully
+  self-contained - cloning one as a starting point is close to free.
+
 ## Shelved: UI structure/form mockups
 
 Explored, then explicitly shelved (project owner's call) in favor of
