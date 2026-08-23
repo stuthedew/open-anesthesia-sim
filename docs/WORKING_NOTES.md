@@ -97,14 +97,6 @@ sized, centered window that remains fully visible on different displays.
 Avoid magic pixel dimensions, monitor-specific assumptions, and native
 display-probing dependencies. Not yet implemented.
 
-## Open thread: documentation pass
-
-Plan (as stated by the project owner): go file-by-file, generate or update
-documentation for one file, get explicit approval, then move to the next
-file. Not yet started. Scope not yet defined — which files/layers
-(docstrings in `src/`, `README.md`, an architecture overview, something
-else) has not been decided.
-
 ## Shelved: UI structure/form mockups
 
 Explored, then explicitly shelved (project owner's call) in favor of
