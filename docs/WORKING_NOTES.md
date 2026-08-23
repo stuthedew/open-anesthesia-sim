@@ -107,23 +107,47 @@ implemented yet.
    color set must be verified against an authoritative current source
    before implementation, not recalled from memory. Likely touches
    `app/simulation_view.py`'s dropdown/header construction and `app/theme.py`.
-2. **Break up `core/respiratory_system.py`**: the project owner's
-   observation is that it has accumulated simulation code that isn't
-   really about the respiratory system per se - e.g.
-   `RespiratorySystem.set_cardiac_output()` just forwards to
-   `patient.set_cardiac_output()` (a patient/circulatory concern), and the
-   fresh-gas-flow/delivered-concentration setters are anesthesia-machine
-   controls being exposed through a class named for the respiratory
-   circuit. Needs a look at whether `RespiratorySystem` should stay a thin
-   coordinator (already mostly true for `advance()`/accounting) with the
-   setter delegation removed in favor of callers reaching the owning
-   compartment (`patient`, `circuit`, `alveoli`) directly, or whether a
-   differently-named coordinating class is clearer. Not yet designed.
+2. **Make `core/` more self-explanatory** (scoped 2026-08-23, not yet
+   designed or started). Two related complaints from the project owner
+   about code they found unintuitive to read cold:
+   - `core/respiratory_system.py` bundles concerns beyond what its name
+     suggests. "Respiratory system" clinically means the patient's own
+     lungs/airways, which maps to the alveolar compartment (`alveoli`) -
+     the only piece of this class that's actually respiratory. The other
+     two are mismatched for different reasons: `circuit` is the
+     anesthesia machine's breathing circuit, i.e. equipment, not patient
+     physiology at all; and `RespiratorySystem.set_cardiac_output()`
+     forwards to `patient.set_cardiac_output()`, which is a circulatory/
+     distribution concern, not a respiratory one either. Needs a look at
+     whether `RespiratorySystem` should stay a thin coordinator (already
+     mostly true for `advance()`/accounting) with the setter delegation
+     removed in favor of callers reaching the owning compartment
+     (`patient`, `circuit`, `alveoli`) directly, or whether a
+     differently-named coordinating class (e.g. something naming the
+     coupled machine+patient system, not just the respiratory piece of
+     it) is clearer.
+   - `core/parameters.py`'s `_AgentPayload`/`AgentParameters` split (a
+     private Pydantic validation model paired with a public, frozen,
+     Pydantic-independent dataclass, repeated for
+     `_ReferenceAdultPayload`/`ReferenceAdultParameters`) is the more
+     correct design - it keeps the rest of the core decoupled from the
+     validation library - but reads as confusing duplication without
+     that rationale stated anywhere. The module docstring added
+     2026-08-23 explains the split at a high level; still open is
+     whether that's enough or whether the pattern needs a more visible
+     marker at each pair (e.g. a shared base-naming convention or a
+     short comment at each `_...Payload` class).
+   Note: a first, smaller pass already landed 2026-08-23 - every
+   `src/anesthesia_sim/**/*.py` file now has a one-line-or-so module
+   docstring stating its role, which was the project owner's other
+   complaint ("code files should have some sort of documentation block
+   at the top"). This item is the deeper structural follow-up, not
+   covered by that pass.
 3. **Documentation refresh pass**: general sweep to confirm
    `README.md`, `docs/MODEL.md`, `ROADMAP.md`, and this file are all
    current against the agent-specific vaporizer-max and 1-MAC-default work
-   just merged (commit `7a867e9`), and against whatever lands from items 1
-   and 2 above.
+   merged in commit `7a867e9`, the module-docstring pass, and against
+   whatever lands from items 1 and 2 above.
 
 ## Open thread: startup window sizing
 

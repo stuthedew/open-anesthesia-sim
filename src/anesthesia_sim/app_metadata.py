@@ -1,3 +1,5 @@
+"""App identity/version constants, read from installed package metadata."""
+
 from importlib.metadata import PackageNotFoundError, version
 
 DISTRIBUTION_NAME = "anesthesia-sim"

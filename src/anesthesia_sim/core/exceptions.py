@@ -1,3 +1,6 @@
+"""Exception hierarchy for errors raised by the simulation core."""
+
+
 class AnesthesiaSimulationError(Exception):
     """Base exception for errors raised by the simulation project."""
 
