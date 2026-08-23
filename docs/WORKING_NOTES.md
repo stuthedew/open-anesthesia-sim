@@ -147,3 +147,13 @@ supports. This vision should only move into `ROADMAP.md` as a real,
 scoped milestone (goal, required scope, definition of done, explicit
 out-of-scope list) once the project owner is ready to schedule it - not
 before.
+
+Also noted, further down the road than the above: mature figure export -
+generating a publication-quality static graph from a simulation run, of
+the kind someone would put in a paper, as opposed to the live interactive
+dashboard chart. This implies its own rendering path (vector/high-res
+output, print-appropriate axis and label sizing, customizable styling)
+separate from the Flet live chart, and - per the same presentation-
+correctness standard above - exported figures should carry the model
+name/version, parameter provenance, and units they were generated from,
+not just the plotted curve. Aspirational only; not scoped.
