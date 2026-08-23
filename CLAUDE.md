@@ -125,7 +125,10 @@ holds tasks, `docs/WORKING_NOTES.md` holds the narrative behind them.
   known queue rather than a single suggestion. Then read
   `docs/PUNCH_LIST.md` and recommend from it, matching effort to the
   session time available rather than re-deriving the options from the
-  codebase. `P0` items come first and are handled as hotfixes: their own
+  codebase. Recommending an item and starting it in the current session
+  are different acts: when this session is already long or was about
+  something else, hand the item to a fresh one with the entry and the
+  notes it cites, per the session-efficiency rules above. `P0` items come first and are handled as hotfixes: their own
   branch and a patch version bump. When nothing is pressing, the
   alternative is milestone work, which means scoping the next milestone in
   `ROADMAP.md` — not starting unscoped feature work.
