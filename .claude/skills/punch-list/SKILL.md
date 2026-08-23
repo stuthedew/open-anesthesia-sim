@@ -20,15 +20,27 @@ things to do without having to do them before it runs out of usage.
 Triggered by "what should we work on next", "I have some time", "what's
 left", "are we in a good spot to move on".
 
-1. Read `docs/PUNCH_LIST.md`. Do not survey the codebase first — the file
-   exists so that step is unnecessary.
-   If the session-start digest reported grooming advisories, say so and
-   offer a grooming pass before taking on new work — a stale queue gives
-   bad recommendations.
-2. Ask how much time or usage is available if it is not obvious, since it
+1. Run `make punch-list` before anything else. It is instant, and it gives
+   exact counts and any pending advisories — more current than the
+   session-start digest, which does not know about items added since.
+2. **Open the reply with the state of the queue, before naming any task.**
+   Two lines at most:
+   - How many items are open, broken down by priority.
+   - Whether grooming is due. If advisories are pending, say how many and
+     what they are about, and offer the grooming pass *before* recommending
+     work. Do not skip this because there is appealing work at the top of
+     the queue — a stale queue gives bad recommendations, and the project
+     owner cannot ask for a pass they were never told was due.
+
+   If the owner would rather get on with the work, that is their call: note
+   it and continue to the recommendation. The obligation is to surface the
+   state, not to insist on acting on it.
+3. Then read `docs/PUNCH_LIST.md` itself. Do not survey the codebase first —
+   the file exists so that step is unnecessary.
+4. Ask how much time or usage is available if it is not obvious, since it
    changes the answer between an `S` and an `M`. Ask once, briefly, and
    only if it is genuinely ambiguous.
-3. Recommend in this order:
+5. Recommend in this order:
    - Any `P0`. These come before feature work; say so plainly and follow
      "Mode: hotfix" below.
    - The highest-priority `ready` item whose effort fits the time
@@ -40,10 +52,10 @@ left", "are we in a good spot to move on".
    - If the punch list is in good shape and the question is really "should
      we move on to the next feature", the answer is milestone work: scope
      the next milestone in `ROADMAP.md`. Never start unscoped feature work.
-4. Give a short recommendation with the reasoning, not a dump of the file.
+6. Give a short recommendation with the reasoning, not a dump of the file.
    Name the top candidate, one or two alternatives with their effort, and
    what each would take. The project owner picks.
-5. If the recommended work is substantial or safety-critical, say that it
+7. If the recommended work is substantial or safety-critical, say that it
    deserves its own fresh session rather than continuing this one, and say
    what that session should read first (`CLAUDE.md`, the entry, and any
    `docs/WORKING_NOTES.md` thread it cites).

@@ -93,8 +93,11 @@ holds tasks, `docs/WORKING_NOTES.md` holds the narrative behind them.
 - **Close the loop.** When work lands, move its entry to "Recently
   completed" with the commit reference in the same change, and delete any
   now-stale `docs/WORKING_NOTES.md` thread for it.
-- **Answer "what should we work on next?" from the file.** Read
-  `docs/PUNCH_LIST.md` first and recommend from it, matching effort to the
+- **Answer "what should we work on next?" from the file.** Lead with the
+  state of the queue — how many items are open, by priority, and whether
+  grooming is due — before naming any task, so the choice is made against a
+  known queue rather than a single suggestion. Then read
+  `docs/PUNCH_LIST.md` and recommend from it, matching effort to the
   session time available rather than re-deriving the options from the
   codebase. `P0` items come first and are handled as hotfixes: their own
   branch and a patch version bump. When nothing is pressing, the
