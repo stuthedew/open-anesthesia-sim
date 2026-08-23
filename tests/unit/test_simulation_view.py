@@ -10,7 +10,11 @@ SimulationView touches outside of `mount()` and `start_simulation_timer()`
 `padding` attribute and the `update()` call.
 """
 
+import asyncio
+import contextlib
+
 import flet as ft
+import flet_charts as fch
 import pytest
 
 from anesthesia_sim.app.controller import (
@@ -18,7 +22,12 @@ from anesthesia_sim.app.controller import (
     SimulationHistorySample,
     SimulationSnapshot,
 )
-from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.simulation_view import (
+    MAX_CHART_POINTS_PER_SERIES,
+    RENDER_INTERVAL_S,
+    SIMULATION_STEP_S,
+    SimulationView,
+)
 from anesthesia_sim.app.theme import ACCENT, MUTED, WARNING
 
 
@@ -366,3 +375,212 @@ def test_change_handlers_ignore_a_none_value(handler_name: str) -> None:
 
     assert controller.snapshot() == before
     assert page.update_calls == 0
+
+
+def _run_history(sample_count: int) -> tuple[SimulationHistorySample, ...]:
+    """A run of `sample_count` samples at the real 0.1 s simulation step."""
+
+    return tuple(
+        _sample(
+            index * SIMULATION_STEP_S,
+            0.08 * (1.0 - 0.5**index),
+            0.07 * (1.0 - 0.5**index),
+            0.06 * (1.0 - 0.5**index),
+            0.05 * (1.0 - 0.5**index),
+            0.04 * (1.0 - 0.5**index),
+            0.03 * (1.0 - 0.5**index),
+        )
+        for index in range(sample_count)
+    )
+
+
+def _all_series(view: SimulationView) -> tuple[fch.LineChartData, ...]:
+    return (
+        view._circuit_series,
+        view._alveolar_series,
+        view._mixed_venous_series,
+        view._vessel_rich_series,
+        view._muscle_series,
+        view._fat_series,
+    )
+
+
+@pytest.mark.parametrize("sample_count", [3_000, 6_000, 18_000])
+def test_chart_payload_is_bounded_however_long_the_run(sample_count: int) -> None:
+    """The render payload must not grow with the length of the run."""
+
+    view, _ = _build_view(_snapshot(history=_run_history(sample_count)))
+
+    for series in _all_series(view):
+        assert len(series.points) <= MAX_CHART_POINTS_PER_SERIES
+
+
+def test_chart_sends_only_samples_inside_the_visible_window() -> None:
+    """Sending samples the axis clips is payload the client cannot show."""
+
+    history = _run_history(6_000)
+    view, _ = _build_view(_snapshot(history=history))
+
+    window_start_s = view._concentration_chart.min_x
+    assert window_start_s > 0.0
+
+    for series in _all_series(view):
+        assert all(point.x >= window_start_s for point in series.points)
+
+
+def test_chart_right_edge_matches_the_numeric_readout() -> None:
+    """A trace ending before the newest sample would contradict the metrics."""
+
+    history = _run_history(6_000)
+    latest = history[-1]
+    view, _ = _build_view(_snapshot(history=history))
+
+    for series, value in (
+        (view._circuit_series, latest.circuit_concentration_fraction),
+        (view._alveolar_series, latest.alveolar_concentration_fraction),
+        (view._mixed_venous_series, latest.mixed_venous_concentration_fraction),
+        (view._vessel_rich_series, latest.vessel_rich_partial_pressure_fraction),
+        (view._muscle_series, latest.muscle_partial_pressure_fraction),
+        (view._fat_series, latest.fat_partial_pressure_fraction),
+    ):
+        assert series.points[-1].x == pytest.approx(latest.elapsed_s)
+        assert series.points[-1].y == pytest.approx(value * 100.0)
+
+    assert view._circuit_concentration_text.value == SimulationView._format_percent(
+        latest.circuit_concentration_fraction
+    )
+
+
+def test_chart_traces_stay_bound_to_their_own_compartment() -> None:
+    """Each trace must plot its own quantity, decimation notwithstanding."""
+
+    history = _run_history(6_000)
+    view, _ = _build_view(_snapshot(history=history))
+
+    # Distinct constant multiples in _run_history make a swapped pairing show
+    # up as a trace whose values belong to another compartment.
+    for series, attribute in (
+        (view._circuit_series, "circuit_concentration_fraction"),
+        (view._alveolar_series, "alveolar_concentration_fraction"),
+        (view._mixed_venous_series, "mixed_venous_concentration_fraction"),
+        (view._vessel_rich_series, "vessel_rich_partial_pressure_fraction"),
+        (view._muscle_series, "muscle_partial_pressure_fraction"),
+        (view._fat_series, "fat_partial_pressure_fraction"),
+    ):
+        by_time = {sample.elapsed_s: getattr(sample, attribute) for sample in history}
+
+        for point in series.points:
+            assert point.y == pytest.approx(by_time[point.x] * 100.0)
+
+
+def test_chart_keeps_every_sample_of_a_short_run() -> None:
+    """Decimation must not kick in before the budget is actually exceeded."""
+
+    history = _run_history(50)
+    view, _ = _build_view(_snapshot(history=history))
+
+    for series in _all_series(view):
+        assert len(series.points) == len(history)
+
+
+def test_chart_points_are_recorded_samples_not_interpolations() -> None:
+    history = _run_history(6_000)
+    recorded_times = {sample.elapsed_s for sample in history}
+    view, _ = _build_view(_snapshot(history=history))
+
+    for series in _all_series(view):
+        assert all(point.x in recorded_times for point in series.points)
+        assert [point.x for point in series.points] == sorted(point.x for point in series.points)
+
+
+def _run_briefly(coroutine_function, ticks: int, interval_s: float) -> None:
+    """Run a never-ending view loop for roughly `ticks` of its own interval.
+
+    The loops run forever by design, so each is started as a task, given a
+    bounded amount of real time to tick, and then cancelled.
+    """
+
+    async def drive() -> None:
+        task = asyncio.create_task(coroutine_function())
+        await asyncio.sleep(interval_s * ticks + interval_s / 2.0)
+        task.cancel()
+
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    asyncio.run(drive())
+
+
+def test_simulation_loop_advances_without_rendering() -> None:
+    """Stepping must not be gated on drawing."""
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+    page.update_calls = 0
+
+    _run_briefly(view._run_simulation_timer, ticks=3, interval_s=SIMULATION_STEP_S)
+
+    # How many ticks land in a fixed slice of real time is up to the host, so
+    # the claim under test is that stepping happened and drawing did not.
+    assert controller.snapshot().elapsed_s > 0.0
+    assert page.update_calls == 0
+
+
+def test_render_loop_draws_without_advancing() -> None:
+    """Drawing must not move simulation time."""
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+    page.update_calls = 0
+
+    _run_briefly(view._run_render_timer, ticks=2, interval_s=RENDER_INTERVAL_S)
+
+    assert controller.snapshot().elapsed_s == 0.0
+    assert page.update_calls >= 1
+
+
+def test_neither_loop_does_anything_while_paused() -> None:
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    page.update_calls = 0
+
+    _run_briefly(view._run_simulation_timer, ticks=2, interval_s=SIMULATION_STEP_S)
+    _run_briefly(view._run_render_timer, ticks=1, interval_s=RENDER_INTERVAL_S)
+
+    assert controller.snapshot().elapsed_s == 0.0
+    assert page.update_calls == 0
+
+
+def test_simulation_time_does_not_depend_on_render_cadence() -> None:
+    """Identical step counts must give identical results, however drawing goes.
+
+    Simulation time is a function of steps taken, never of wall-clock time or
+    of how long a frame took, so a slow or skipped redraw cannot perturb the
+    trajectory.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+
+    _run_briefly(view._run_simulation_timer, ticks=5, interval_s=SIMULATION_STEP_S)
+    stepped_by_the_loop = controller.snapshot()
+
+    reference = SimulationController()
+    reference.start()
+    steps_taken = len(stepped_by_the_loop.concentration_history) - 1
+    assert steps_taken > 0
+
+    for _ in range(steps_taken):
+        reference.advance(SIMULATION_STEP_S)
+
+    assert stepped_by_the_loop.elapsed_s == pytest.approx(reference.snapshot().elapsed_s)
+    assert stepped_by_the_loop.alveolar_concentration_fraction == pytest.approx(
+        reference.snapshot().alveolar_concentration_fraction
+    )
