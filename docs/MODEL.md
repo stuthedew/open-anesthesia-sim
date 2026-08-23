@@ -296,11 +296,7 @@ Ventilation transfers gas between the breathing circuit and alveolar compartment
 The circuit amount balance is:
 
 $$
-\frac{dM_C}{dt}
-=
-\dot V_F(F_D-F_C)
--
-\dot V_A(F_C-F_A)
+\frac{dM_C}{dt} = \dot V_F(F_D-F_C) - \dot V_A(F_C-F_A)
 $$
 
 Because:
@@ -312,31 +308,19 @@ $$
 the concentration equation is:
 
 $$
-\frac{dF_C}{dt}
-=
-\frac{\dot V_F}{V_C}(F_D-F_C)
--
-\frac{\dot V_A}{V_C}(F_C-F_A)
+\frac{dF_C}{dt} = \frac{\dot V_F}{V_C}(F_D-F_C) - \frac{\dot V_A}{V_C}(F_C-F_A)
 $$
 
 When alveolar ventilation is zero, this reduces to the v0.0.2 circuit equation:
 
 $$
-\frac{dF_C}{dt}
-=
-\frac{\dot V_F}{V_C}(F_D-F_C)
+\frac{dF_C}{dt} = \frac{\dot V_F}{V_C}(F_D-F_C)
 $$
 
 For constant input and no patient connection, the exact v0.0.2 solution remains:
 
 $$
-F_C(t+\Delta t)
-=
-F_D+
-\left[F_C(t)-F_D\right]
-\exp\left(
--\frac{\dot V_F\Delta t}{V_C}
-\right)
+F_C(t+\Delta t) = F_D+\left[F_C(t)-F_D\right]\exp\left(-\frac{\dot V_F\Delta t}{V_C}\right)
 $$
 
 The existing v0.0.2 analytic reference tests must continue to pass unchanged.
@@ -350,11 +334,7 @@ Pulmonary blood flow enters the lungs at venous concentration \(F_v\) and leaves
 The alveolar amount balance is:
 
 $$
-\frac{dM_A}{dt}
-=
-\dot V_A(F_C-F_A)
--
-Q\lambda_{b:g}(F_A-F_v)
+\frac{dM_A}{dt} = \dot V_A(F_C-F_A) - Q\lambda_{b:g}(F_A-F_v)
 $$
 
 Because:
@@ -366,22 +346,13 @@ $$
 the alveolar concentration equation is:
 
 $$
-\frac{dF_A}{dt}
-=
-\frac{
-\dot V_A(F_C-F_A)
--
-Q\lambda_{b:g}(F_A-F_v)
-}
-{V_A}
+\frac{dF_A}{dt} = \frac{\dot V_A(F_C-F_A) - Q\lambda_{b:g}(F_A-F_v)}{V_A}
 $$
 
 The pulmonary uptake rate is:
 
 $$
-\dot M_{\mathrm{pulmonary}}
-=
-Q\lambda_{b:g}(F_A-F_v)
+\dot M_{\mathrm{pulmonary}} = Q\lambda_{b:g}(F_A-F_v)
 $$
 
 A positive value represents net uptake from alveolar gas into blood. A negative value represents net return from blood to alveolar gas during washout.
@@ -397,19 +368,13 @@ For tissue group \(i\), arterial blood enters at \(F_a\) and venous blood leaves
 The tissue amount balance is:
 
 $$
-\frac{dM_i}{dt}
-=
-Q_i\lambda_{b:g}(F_a-F_i)
+\frac{dM_i}{dt} = Q_i\lambda_{b:g}(F_a-F_i)
 $$
 
 Substituting tissue capacity gives:
 
 $$
-\frac{dF_i}{dt}
-=
-\frac{Q_i}
-{V_i\lambda_{i:b}}
-(F_a-F_i)
+\frac{dF_i}{dt} = \frac{Q_i}{V_i\lambda_{i:b}}(F_a-F_i)
 $$
 
 The tissue time constant is therefore:
@@ -438,12 +403,7 @@ Blood leaving the tissue groups enters the venous pool. Venous blood leaves that
 The venous amount balance is:
 
 $$
-\frac{dM_v}{dt}
-=
-\lambda_{b:g}
-\left(
-\sum_i Q_iF_i-QF_v
-\right)
+\frac{dM_v}{dt} = \lambda_{b:g}\left(\sum_i Q_iF_i-QF_v\right)
 $$
 
 Because:
@@ -455,20 +415,13 @@ $$
 the venous concentration equation is:
 
 $$
-\frac{dF_v}{dt}
-=
-\frac{
-\sum_i Q_iF_i-QF_v
-}
-{V_v}
+\frac{dF_v}{dt} = \frac{\sum_i Q_iF_i-QF_v}{V_v}
 $$
 
 The instantaneous flow-weighted concentration entering the venous pool is:
 
 $$
-F_{\mathrm{tissue\ return}}
-=
-\frac{\sum_i Q_iF_i}{Q}
+F_{\mathrm{tissue\ return}} = \frac{\sum_i Q_iF_i}{Q}
 $$
 
 when:
@@ -486,10 +439,7 @@ At zero cardiac output, pulmonary and tissue perfusion transfers are zero and no
 The cumulative delivered sevoflurane amount is:
 
 $$
-M_{\mathrm{delivered}}(t)
-=
-\int_0^t
-\dot V_FF_D\,dt
+M_{\mathrm{delivered}}(t) = \int_0^t \dot V_FF_D\,dt
 $$
 
 ### Circuit exhaust
@@ -497,10 +447,7 @@ $$
 The cumulative exhausted sevoflurane amount is:
 
 $$
-M_{\mathrm{exhausted}}(t)
-=
-\int_0^t
-\dot V_FF_C\,dt
+M_{\mathrm{exhausted}}(t) = \int_0^t \dot V_FF_C\,dt
 $$
 
 ### Stored amount
@@ -508,9 +455,7 @@ $$
 The total stored amount is:
 
 $$
-M_{\mathrm{stored}}
-=
-M_C+M_A+M_v+\sum_i M_i
+M_{\mathrm{stored}} = M_C+M_A+M_v+\sum_i M_i
 $$
 
 Arterial blood contributes no separate term because it is flow-limited and holds no independent amount (see "Model boundary").
@@ -520,15 +465,7 @@ Arterial blood contributes no separate term because it is flow-limited and holds
 For an initial stored amount \(M_{\mathrm{initial}}\):
 
 $$
-M_{\mathrm{initial}}
-+
-M_{\mathrm{delivered}}
-=
-M_{\mathrm{stored}}
-+
-M_{\mathrm{exhausted}}
-+
-\varepsilon_M
+M_{\mathrm{initial}} + M_{\mathrm{delivered}} = M_{\mathrm{stored}} + M_{\mathrm{exhausted}} + \varepsilon_M
 $$
 
 where \(\varepsilon_M\) is the numerical mass-balance residual.
@@ -536,38 +473,19 @@ where \(\varepsilon_M\) is the numerical mass-balance residual.
 Equivalently:
 
 $$
-\varepsilon_M
-=
-M_{\mathrm{initial}}
-+
-M_{\mathrm{delivered}}
--
-M_{\mathrm{stored}}
--
-M_{\mathrm{exhausted}}
+\varepsilon_M = M_{\mathrm{initial}} + M_{\mathrm{delivered}} - M_{\mathrm{stored}} - M_{\mathrm{exhausted}}
 $$
 
 The implementation must report both absolute and relative residuals:
 
 $$
-\varepsilon_{\mathrm{absolute}}
-=
-|\varepsilon_M|
+\varepsilon_{\mathrm{absolute}} = |\varepsilon_M|
 $$
 
 and:
 
 $$
-\varepsilon_{\mathrm{relative}}
-=
-\frac{
-|\varepsilon_M|
-}{
-\max(
-M_{\mathrm{initial}}+M_{\mathrm{delivered}},
-M_{\mathrm{scale}}
-)
-}
+\varepsilon_{\mathrm{relative}} = \frac{|\varepsilon_M|}{\max(M_{\mathrm{initial}}+M_{\mathrm{delivered}}, M_{\mathrm{scale}})}
 $$
 
 Here \(M_{\mathrm{scale}}\) is a documented small positive reference amount that prevents division by zero.
@@ -711,11 +629,7 @@ The v0.0.2 analytic wash-in and washout tests must remain unchanged and continue
 With no patient ventilation:
 
 $$
-F_C(t)
-=
-F_D+
-\left[F_C(0)-F_D\right]
-e^{-t/\tau_C}
+F_C(t) = F_D+\left[F_C(0)-F_D\right]e^{-t/\tau_C}
 $$
 
 where:
