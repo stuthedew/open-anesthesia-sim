@@ -92,6 +92,8 @@ class PatientCompartments:
 
     @property
     def total_perfusion_fraction(self) -> float:
+        """Sum tissue-group perfusion fractions; must equal 1 within tolerance."""
+
         return sum(tissue.perfusion_fraction for tissue in self.tissues)
 
     @property
