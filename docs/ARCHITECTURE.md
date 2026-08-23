@@ -51,10 +51,11 @@ src/anesthesia_sim/
 ├── app/                  # Flet user interface
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic
+│   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
 │   ├── theme.py                    # colors and layout constants
 │   └── main.py                     # entry point; builds the Flet page
 └── data/                 # versioned, cited parameter files
-    ├── agents/sevoflurane.json
+    ├── agents/{sevoflurane,isoflurane,desflurane}.json
     └── patients/reference_adult.json
 ```
 
@@ -100,11 +101,23 @@ equations) rather than a generic numerical integrator:
 
 **UI direction:** `app/controller.py`'s `SimulationController` owns a
 `SimulationState`, exposes `start()` / `pause()` / `reset()` / per-parameter
-setters, and produces an immutable `SimulationSnapshot` (plus a bounded
-`SimulationHistorySample` list) on request. `app/simulation_view.py` reads
-only from that snapshot — it formats fractions as percentages, builds the
-chart, and wires slider/button callbacks straight to controller setters. It
-performs no physiological or unit calculation of its own.
+setters, and produces an immutable `SimulationSnapshot` on request. The
+snapshot carries the complete `SimulationHistorySample` record of the run:
+one sample per simulation step, not trimmed (see `docs/PUNCH_LIST.md`).
+`app/simulation_view.py` reads only from that snapshot — it formats
+fractions as percentages, builds the chart, and wires slider/button
+callbacks straight to controller setters. It performs no physiological or
+unit calculation of its own.
+
+Drawing that full record every frame is what made the render payload grow
+with run length, so the view draws a bounded subset instead: which samples a
+trace draws is decided by `app/chart_downsampling.py`, a Flet-independent
+module kept separate because choosing a subset is a
+presentation-correctness concern (a subset that drops a transient shows a
+curve the simulation never produced) and therefore needs to be tested on its
+own. Stepping and drawing also run as separate loops on separate intervals,
+so simulation time stays a function of steps taken rather than of how long a
+frame took.
 
 ## Data files (`data/`)
 

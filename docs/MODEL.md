@@ -844,8 +844,19 @@ The Flet interface may:
 - convert fractions to percent;
 - collect user settings;
 - issue Start, Pause, and Reset commands;
-- render snapshot histories; and
+- render snapshot histories;
+- select which recorded samples a plotted trace draws, subject to the
+  constraint below; and
 - display mass-balance status.
+
+A plotted trace need not draw every recorded sample — the recorded history
+grows by one sample per simulation step, well beyond what a chart can
+resolve — but every point it does draw must be a recorded sample. The
+interface must not interpolate, smooth, average, or otherwise synthesize a
+plotted value, and the most recent recorded sample must always be drawn, so
+that the end of a trace and the numeric readouts cannot disagree. Selection
+must also preserve the extremes of the samples it omits, so that decimation
+cannot hide an excursion the model produced.
 
 The Flet interface must not:
 
