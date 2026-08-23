@@ -326,6 +326,60 @@ def test_oversized_queue_is_flagged() -> None:
     assert _messages(report.advisories, "stops being read")
 
 
+# --- model guidance ---------------------------------------------------------
+
+
+def test_safety_classed_entry_warrants_a_strong_model() -> None:
+    """Mirrors CLAUDE.md's model-matching rule: safety-critical work is
+    reasoning-heavy regardless of size or how routine the fix looks."""
+    (entry,) = _analyze(_document(_entry(classes=("perf", "safety")))).entries
+
+    assert entry.model_guidance == "safety-tagged"
+
+
+def test_science_classed_entry_warrants_a_strong_model() -> None:
+    (entry,) = _analyze(_document(_entry(classes=("science",)))).entries
+
+    assert entry.model_guidance == "science-tagged"
+
+
+def test_needs_decision_entry_warrants_a_strong_model() -> None:
+    """An unresolved design question is the 'ambiguous problem or genuine
+    trade-off' CLAUDE.md names, even outside the safety/science classes."""
+    (entry,) = _analyze(_document(_entry(status="needs-decision", classes=("refactor",)))).entries
+
+    assert entry.model_guidance == "open design decision"
+
+
+def test_routine_entry_has_no_model_guidance() -> None:
+    (entry,) = _analyze(_document(_entry(classes=("docs",), status="ready"))).entries
+
+    assert entry.model_guidance is None
+
+
+def test_digest_flags_model_guidance_on_the_p0_line() -> None:
+    report = _analyze(_document(_entry("PL-001", priority="P0", effort="S", classes=("safety",))))
+    digest = punch_list.format_digest(report)
+
+    assert "safety-tagged" in digest
+    assert "opusplan" in digest
+
+
+def test_digest_flags_model_guidance_on_the_top_p1_line() -> None:
+    report = _analyze(_document(_entry(priority="P1", status="needs-decision")))
+    digest = punch_list.format_digest(report)
+
+    assert "open design decision" in digest
+    assert "opusplan" in digest
+
+
+def test_digest_omits_model_guidance_for_routine_items() -> None:
+    report = _analyze(_document(_entry(priority="P1", classes=("docs",))))
+    digest = punch_list.format_digest(report)
+
+    assert "opusplan" not in digest
+
+
 # --- output ----------------------------------------------------------------
 
 
