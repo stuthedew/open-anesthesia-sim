@@ -150,7 +150,17 @@ remain provisional and must be assigned when each milestone is fully
 specified.
 
 1. Expand the volatile model with validated, data-driven agent definitions and
-   broader reference cases. When this is scoped: consider migrating
+   broader reference cases, starting with isoflurane and desflurane (each its
+   own config file under `data/agents/`, matching the existing sevoflurane
+   pattern) — the two current-clinical-practice volatiles not yet modeled.
+   Halothane, enflurane, ether, and xenon (the rest of the agents the Gas Man
+   reference simulator depicts) are a further-future stretch: halothane has
+   reasonable modern published data despite being clinically obsolete, but
+   enflurane, ether, and xenon are sparser to source and should each get
+   their own provenance check before being added, not be assumed available
+   just because Gas Man depicts them. Nitrous oxide is deliberately excluded
+   from this item — it is not a halogenated volatile and is covered
+   separately by items 7-8 below. When this is scoped: consider migrating
    `core/parameters.py`'s JSON validation to Pydantic — the boilerplate in
    its `_require_*` helpers compounds with each new agent/patient schema,
    and the module is isolated behind plain dataclass returns, so the switch
