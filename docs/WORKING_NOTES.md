@@ -91,6 +91,40 @@ bottleneck currently is. No design decisions made yet on how speed
 multiplier would be exposed in the UI or how it interacts with the fixed
 `SIMULATION_STEP_S = 0.1` step size.
 
+## Open thread: near-term to-dos (project owner's list, not yet started)
+
+Three items the project owner flagged for the next working session. None
+implemented yet.
+
+1. **Color-code the agent dropdown/selected-agent display to the agent's
+   real vaporizer color** (e.g. yellow for sevoflurane), with font/contrast
+   adjusted so text stays readable against each fill color. This mirrors a
+   real safety feature, not just styling: clinical vaporizers use a
+   standardized per-agent color-keyed fill system (North American
+   convention is commonly cited to ASTM D4774) specifically so an agent is
+   never mistaken for another at a glance. Getting a color-to-agent mapping
+   wrong here would be actively misleading rather than neutral, so the
+   color set must be verified against an authoritative current source
+   before implementation, not recalled from memory. Likely touches
+   `app/simulation_view.py`'s dropdown/header construction and `app/theme.py`.
+2. **Break up `core/respiratory_system.py`**: the project owner's
+   observation is that it has accumulated simulation code that isn't
+   really about the respiratory system per se - e.g.
+   `RespiratorySystem.set_cardiac_output()` just forwards to
+   `patient.set_cardiac_output()` (a patient/circulatory concern), and the
+   fresh-gas-flow/delivered-concentration setters are anesthesia-machine
+   controls being exposed through a class named for the respiratory
+   circuit. Needs a look at whether `RespiratorySystem` should stay a thin
+   coordinator (already mostly true for `advance()`/accounting) with the
+   setter delegation removed in favor of callers reaching the owning
+   compartment (`patient`, `circuit`, `alveoli`) directly, or whether a
+   differently-named coordinating class is clearer. Not yet designed.
+3. **Documentation refresh pass**: general sweep to confirm
+   `README.md`, `docs/MODEL.md`, `ROADMAP.md`, and this file are all
+   current against the agent-specific vaporizer-max and 1-MAC-default work
+   just merged (commit `7a867e9`), and against whatever lands from items 1
+   and 2 above.
+
 ## Open thread: startup window sizing
 
 `app/main.py` sets `page.window.full_screen = True` on startup. Per prior
