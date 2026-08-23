@@ -65,6 +65,10 @@ and must pass before a change is considered complete.
 ## Documentation
 
 - [`ROADMAP.md`](ROADMAP.md) — authoritative version and milestone map.
+- [`docs/PUNCH_LIST.md`](docs/PUNCH_LIST.md) — prioritized queue of open
+  development tasks: defects, cleanups, optimizations, and small features.
+- [`docs/WORKING_NOTES.md`](docs/WORKING_NOTES.md) — cross-session log of
+  open threads, diagnoses, and the rationale behind decisions.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how `core/`, `app/`, and
   `data/` fit together, and where new code belongs.
 - [`docs/MODEL.md`](docs/MODEL.md) — scientific model specification:

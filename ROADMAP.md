@@ -4,6 +4,12 @@ This file is the authoritative version and milestone map for the project. If a
 build guide, issue, or conversation conflicts with this file, update the
 conflicting artifact or amend this file deliberately in the same change.
 
+Scope of this file: releases only. Discrete tasks — defects, fixes,
+cleanups, optimizations, and small features — are tracked and prioritized
+in `docs/PUNCH_LIST.md`, not here. An item is a milestone rather than a
+punch-list task when it needs its own goal, required scope, definition of
+done, and explicit out-of-scope list.
+
 ## Versioning decision
 
 The project uses milestone-based semantic versioning during early development.
@@ -222,7 +228,8 @@ development rules below.
 - Treat mass accounting and independent reference cases as release gates, not
   optional diagnostics.
 - Keep each milestone narrow. New ideas belong below until promoted into a
-  scoped release.
+  scoped release — or in `docs/PUNCH_LIST.md` when they are a task rather
+  than a release.
 
 ## Planned milestones
 
