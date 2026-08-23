@@ -24,6 +24,8 @@ def _valid_agent_payload() -> dict[str, object]:
             "muscle": 2.0,
             "fat": 10.0,
         },
+        "max_delivered_concentration_percent": 8.0,
+        "mac_percent": 2.0,
         "sources": [
             {
                 "citation": "Test citation",
@@ -77,6 +79,8 @@ def test_loads_built_in_sevoflurane_parameters() -> None:
     assert agent.vessel_rich_tissue_gas_partition_coefficient == 1.1
     assert agent.muscle_tissue_gas_partition_coefficient == 2.4
     assert agent.fat_tissue_gas_partition_coefficient == 34.0
+    assert agent.max_delivered_concentration_percent == 8.0
+    assert agent.mac_percent == 2.0
     assert len(agent.sources) >= 1
 
 
@@ -97,6 +101,8 @@ def test_loads_built_in_isoflurane_parameters() -> None:
     assert agent.vessel_rich_tissue_gas_partition_coefficient == 2.1
     assert agent.muscle_tissue_gas_partition_coefficient == 4.5
     assert agent.fat_tissue_gas_partition_coefficient == 70.0
+    assert agent.max_delivered_concentration_percent == 5.0
+    assert agent.mac_percent == 1.2
     assert len(agent.sources) >= 1
 
 
@@ -109,6 +115,8 @@ def test_loads_built_in_desflurane_parameters() -> None:
     assert agent.vessel_rich_tissue_gas_partition_coefficient == 0.54
     assert agent.muscle_tissue_gas_partition_coefficient == 0.97
     assert agent.fat_tissue_gas_partition_coefficient == 13.0
+    assert agent.max_delivered_concentration_percent == 18.0
+    assert agent.mac_percent == 6.0
     assert len(agent.sources) >= 1
 
 
@@ -181,6 +189,53 @@ def test_rejects_nonfinite_partition_coefficient() -> None:
         ValueError,
         match="blood_gas_partition_coefficient",
     ):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_max_delivered_concentration_percent_over_100() -> None:
+    payload = _valid_agent_payload()
+    payload["max_delivered_concentration_percent"] = 150.0
+
+    with pytest.raises(
+        ValueError,
+        match="max_delivered_concentration_percent",
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_nonpositive_max_delivered_concentration_percent() -> None:
+    payload = _valid_agent_payload()
+    payload["max_delivered_concentration_percent"] = 0.0
+
+    with pytest.raises(
+        ValueError,
+        match="max_delivered_concentration_percent",
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_mac_percent_over_100() -> None:
+    payload = _valid_agent_payload()
+    payload["mac_percent"] = 150.0
+
+    with pytest.raises(ValueError, match="mac_percent"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_nonpositive_mac_percent() -> None:
+    payload = _valid_agent_payload()
+    payload["mac_percent"] = 0.0
+
+    with pytest.raises(ValueError, match="mac_percent"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> None:
+    payload = _valid_agent_payload()
+    payload["max_delivered_concentration_percent"] = 8.0
+    payload["mac_percent"] = 9.0
+
+    with pytest.raises(ValueError, match="mac_percent"):
         parse_agent_parameters(payload)
 
 

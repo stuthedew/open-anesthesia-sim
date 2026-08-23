@@ -37,9 +37,11 @@ COMPACT_PANEL_PADDING = 14
 COMPACT_PANEL_RADIUS = 10
 
 MAX_FRESH_GAS_FLOW_L_MIN = 10.0
-MAX_DELIVERED_CONCENTRATION_PERCENT = 10.0
 MAX_ALVEOLAR_VENTILATION_L_MIN = 12.0
 MAX_CARDIAC_OUTPUT_L_MIN = 10.0
+# Delivered-concentration max is agent-specific (real vaporizer dial
+# capability), sourced from SimulationSnapshot.max_delivered_concentration_percent
+# rather than a fixed constant here.
 
 CIRCUIT_COLOR = PRIMARY
 ALVEOLAR_COLOR = ACCENT
@@ -57,7 +59,7 @@ AVAILABLE_AGENTS: tuple[tuple[str, str], ...] = tuple(
 
 
 class SimulationView:
-    """Render and update the v0.1.0 sevoflurane patient interface.
+    """Render and update the volatile-agent patient interface.
 
     The view displays controller snapshots and forwards user interactions to
     the controller. It does not perform compartment calculations, agent
@@ -171,7 +173,7 @@ class SimulationView:
             min_x=0,
             max_x=INITIAL_CHART_WINDOW_S,
             min_y=0,
-            max_y=MAX_DELIVERED_CONCENTRATION_PERCENT,
+            max_y=initial_snapshot.max_delivered_concentration_percent,
             horizontal_grid_lines=fch.ChartGridLines(
                 interval=2,
                 color="#D9E2EC",
@@ -228,7 +230,7 @@ class SimulationView:
         )
         self._delivered_concentration_slider = ft.Slider(
             min=0,
-            max=MAX_DELIVERED_CONCENTRATION_PERCENT,
+            max=initial_snapshot.max_delivered_concentration_percent,
             value=(initial_snapshot.delivered_concentration_fraction * 100.0),
             label="{value}%",
             active_color=ACCENT,
@@ -674,6 +676,12 @@ class SimulationView:
         )
         self._agent_dropdown.value = snapshot.agent_id
         self._agent_dropdown.disabled = snapshot.is_running
+
+        self._delivered_concentration_slider.max = snapshot.max_delivered_concentration_percent
+        self._delivered_concentration_slider.value = (
+            snapshot.delivered_concentration_fraction * 100.0
+        )
+        self._concentration_chart.max_y = snapshot.max_delivered_concentration_percent
 
         self._status_text.value = "Running" if snapshot.is_running else "Paused"
         self._status_text.color = ACCENT if snapshot.is_running else MUTED

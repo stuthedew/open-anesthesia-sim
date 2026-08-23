@@ -76,6 +76,7 @@ def _snapshot(
     history: tuple[SimulationHistorySample, ...] | None = None,
     agent_id: str = "sevoflurane",
     agent_display_name: str = "Sevoflurane",
+    max_delivered_concentration_percent: float = 8.0,
 ) -> SimulationSnapshot:
     if history is None:
         history = (_sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),)
@@ -87,6 +88,7 @@ def _snapshot(
         elapsed_s=latest.elapsed_s,
         agent_id=agent_id,
         agent_display_name=agent_display_name,
+        max_delivered_concentration_percent=max_delivered_concentration_percent,
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=4.0,
         delivered_concentration_fraction=0.08,
@@ -213,6 +215,22 @@ def test_refresh_view_shows_current_agent_in_subtitle_and_dropdown() -> None:
     assert view._subtitle_text.value is not None
     assert "Isoflurane" in view._subtitle_text.value
     assert view._agent_dropdown.value == "isoflurane"
+
+
+def test_refresh_view_scales_slider_and_chart_to_agent_max() -> None:
+    """Real vaporizer caps differ per agent (e.g. desflurane 18% vs isoflurane 5%);
+    the delivered-concentration slider and the chart's y-axis must track it."""
+
+    view, _ = _build_view(
+        _snapshot(
+            agent_id="desflurane",
+            agent_display_name="Desflurane",
+            max_delivered_concentration_percent=18.0,
+        )
+    )
+
+    assert view._delivered_concentration_slider.max == 18.0
+    assert view._concentration_chart.max_y == 18.0
 
 
 def test_refresh_view_disables_agent_dropdown_while_running() -> None:
