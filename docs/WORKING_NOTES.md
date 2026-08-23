@@ -18,9 +18,9 @@ appropriate, and its entry here should be deleted rather than left stale.
 
 ## Repository state as of this writing
 
-- Active development branch: `build/v0.1.0-sevo-patient` (not yet merged to
-  `main`, which is still at v0.0.2). `pyproject.toml` already reports
-  version `0.1.0`.
+- `build/v0.1.0-sevo-patient` was fast-forward merged into `main` and the
+  remote branch deleted; `main` is now the v0.1.0 baseline. Work happens
+  directly on `main` unless a session has reason to branch.
 - `docs/MODEL.md` and `ROADMAP.md` are up to date with the v0.1.0
   implementation: the arterial-blood simplification is documented
   explicitly (flow-limited, `F_a \equiv F_A`, no separate compartment,
@@ -105,36 +105,64 @@ file. Not yet started. Scope not yet defined — which files/layers
 (docstrings in `src/`, `README.md`, an architecture overview, something
 else) has not been decided.
 
-## Open thread: UI structure/form mockups
+## Shelved: UI structure/form mockups
 
-Goal: mock up overall interface structure and form to inform function,
-separate from polishing the current Flet implementation — i.e., work at
-the level of layout, information hierarchy, and interaction flow before
-committing to pixel-level styling. Not yet started.
+Explored, then explicitly shelved (project owner's call) in favor of
+maturing the scientific core first. Do not resume this without the
+project owner asking again.
 
-Baseline for comparison — the current v0.1.0 interface (`app/
-simulation_view.py`), as actually implemented:
+What happened: three static wireframe directions were built as a Claude
+Design canvas artifact (today's screen recreated faithfully, a
+"vitals-first" restructure, and a zoned Inputs/Monitor/Diagnostics
+layout) — https://claude.ai/code/artifact/cb5e540b-5e87-4812-ae29-ec2d1a45ef5e.
+The project owner's assessment: the current v0.1.0 interface is
+intentionally minimal ("hello world"), and the three mockups were just
+better-organized versions of that same shallow functionality. A mature
+UI cannot be designed on top of functionality this early — see "Long-term
+vision" below. The artifact link is kept here only as a record of what
+was tried; it is not a starting point to resume from, since real UI work
+later should be informed by whatever the scientific core looks like at
+that point, not by these sketches.
 
-- Header: app name, version, and "Sevoflurane patient model" subtitle.
-- Run controls: Start / Pause / Reset buttons plus a running/paused status
-  indicator.
-- Four parameter panels, each a slider plus a live value readout: fresh gas
-  flow (0-10 L/min), delivered sevoflurane (0-10%), alveolar ventilation
-  (0-12 L/min), cardiac output (0-10 L/min). Circuit volume is a
-  controller/model parameter but has no slider in the v0.1.0 UI (v0.0.2 did
-  expose it).
-- Seven concentration metric panels: simulated time, circuit/inspired,
-  alveolar/end-tidal, mixed venous, vessel-rich, muscle, fat — each a
-  formatted percent (or seconds, for time).
-- One multi-series line chart (6 traces: circuit, alveolar, mixed venous,
-  vessel-rich, muscle, fat) with a legend describing each trace's line
-  style, and a rolling x-axis window.
-- An agent-accounting validation panel: pass/fail status, a one-line
-  explanation, and delivered/exhausted/stored/unaccounted/absolute-error
-  amounts.
-- A fixed disclaimer line: "Educational simulation only... not a clinical
-  prediction, monitoring, or dosing tool."
+## Long-term vision (aspirational north star, not a scoped milestone)
 
-Nothing about this baseline is settled as "correct" — it's recorded here
-only so a mockup session has an accurate starting point rather than
-guessing at the current implementation from memory.
+The project owner's stated ambition, for future planning only - explicitly
+not to be turned into near-term scope or used to justify any UI work now:
+something with the scientific credibility of Gas Man (gasmanweb.com, the
+flow-limited mammillary uptake/distribution model this project's own
+sevoflurane/patient parameters are already drawn from) combined with
+SimTiva (simtiva.app, an open-source TIVA/TCI simulator built on
+STANPUMP/Shafer PK-PD - effect-site concentration, Cp/Ce target-controlled
+infusion, propofol-opioid interaction) - at a level of execution and
+interaction quality neither reference tool actually has, phrased by the
+owner as "what version 18 would look like if version 6 incorporated
+SimTiva functionality" against Gas Man's real-world v4.x.
+
+Concretely, this points at IV/TIVA pharmacokinetic and effect-site
+modeling integrated with the existing inhaled-agent model. That is not a
+new idea - it is already `ROADMAP.md`'s "Later roadmap" item 5 ("Add IV
+pharmacokinetic and effect-site models after simulation forking is
+available"). The vision here is the same destination with much higher
+ambition on execution and UX quality, and possibly a different order,
+not a different target.
+
+Explicit sequencing principle from this discussion: UI/UX ambition
+follows scientific-core maturity, not the other way around. High
+production values on top of a not-yet-validated model would be a worse
+outcome than the current honestly-minimal interface, not a better one -
+consistent with `CLAUDE.md`'s standard that presentation polish must
+never imply more certainty or completeness than the model actually
+supports. This vision should only move into `ROADMAP.md` as a real,
+scoped milestone (goal, required scope, definition of done, explicit
+out-of-scope list) once the project owner is ready to schedule it - not
+before.
+
+Also noted, further down the road than the above: mature figure export -
+generating a publication-quality static graph from a simulation run, of
+the kind someone would put in a paper, as opposed to the live interactive
+dashboard chart. This implies its own rendering path (vector/high-res
+output, print-appropriate axis and label sizing, customizable styling)
+separate from the Flet live chart, and - per the same presentation-
+correctness standard above - exported figures should carry the model
+name/version, parameter provenance, and units they were generated from,
+not just the plotted curve. Aspirational only; not scoped.
