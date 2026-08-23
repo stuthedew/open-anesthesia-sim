@@ -140,9 +140,9 @@ SimTiva functionality" against Gas Man's real-world v4.x.
 
 Concretely, this points at IV/TIVA pharmacokinetic and effect-site
 modeling integrated with the existing inhaled-agent model. That is not a
-new idea - it is already `ROADMAP.md`'s "Later roadmap" item 5 ("Add IV
-pharmacokinetic and effect-site models after simulation forking is
-available"). The vision here is the same destination with much higher
+new idea - it is already `ROADMAP.md`'s "Planned milestones" item 14 ("Add
+IV pharmacokinetic and effect-site models, after item 13 (simulation
+forking) is available"). The vision here is the same destination with much higher
 ambition on execution and UX quality, and possibly a different order,
 not a different target.
 

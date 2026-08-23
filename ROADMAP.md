@@ -116,7 +116,7 @@ gate" section for the corresponding scientific-documentation checklist.
 ## Next milestone
 
 No milestone after v0.1.0 has been scoped yet. The next candidate, per
-"Later roadmap" below, is expanding the volatile model with additional
+"Planned milestones" below, is expanding the volatile model with additional
 validated, data-driven agent definitions and broader reference cases. It
 must be fully specified here (goal, required scope, definition of done, and
 explicit out-of-scope list) before implementation begins, per the
@@ -137,11 +137,17 @@ development rules below.
 - Keep each milestone narrow. New ideas belong below until promoted into a
   scoped release.
 
-## Later roadmap
+## Planned milestones
 
-The ordering below records current project decisions. Exact version numbers
-after v0.1.0 remain provisional and must be assigned when each milestone is
-fully specified.
+This section is, in practice, the current milestone plan: with no
+milestone after v0.1.0 formally scoped yet (see "Next milestone" above),
+this ordering is what gets picked up next. Each item is still deliberately
+left unspecified (no goal, required scope, or definition of done) until it
+is actually promoted into a scoped milestone per the development rules
+above — and each item is kept to one improvement, so scoping one does not
+implicitly drag others along with it. Exact version numbers after v0.1.0
+remain provisional and must be assigned when each milestone is fully
+specified.
 
 1. Expand the volatile model with validated, data-driven agent definitions and
    broader reference cases. When this is scoped: consider migrating
@@ -149,26 +155,47 @@ fully specified.
    its `_require_*` helpers compounds with each new agent/patient schema,
    and the module is isolated behind plain dataclass returns, so the switch
    is low-risk whenever it happens.
-2. Add modular anesthesia-machine profiles and capabilities, including normal
-   single-halogenated-agent interlock behavior, agent switching with residual
-   washout, optional experimental overrides, direct injection, and eventually
-   automated end-tidal control.
-3. Add multi-gas behavior, including nitrous oxide coadministration and
-   concentration/second-gas effects, only after coupled-gas equations and
-   reference cases are defined.
-4. Add scenario events, save/load, deterministic replay, comparison runs, and
-   simulation forking.
-5. Add IV pharmacokinetic and effect-site models after simulation forking is
-   available.
-6. Add modular effect models such as hypnosis/eBIS and nociceptive-response
-   predictions, each with explicit model version and provenance.
-7. Add validated physiologic modifiers such as renal or hepatic dysfunction,
-   cardiopulmonary bypass, and ECMO where supported by the selected model.
-8. Add species-specific patient/model profiles without treating non-human
-   patients as scaled humans.
-9. Continue accessibility, performance, documentation, packaging, signing, and
-   distribution work without mixing those concerns into the scientific core.
-10. Add a user-facing preferences/settings panel (theme, chart window, slider
+2. Add a modular anesthesia-machine abstraction with normal
+   single-halogenated-agent interlock behavior — the safety baseline every
+   later machine feature below builds on.
+3. Add agent switching with residual washout accounting, after item 2.
+4. Add an optional experimental-override mode that can bypass standard
+   interlocks, clearly labeled as non-standard, after item 2.
+5. Add direct agent injection into the circuit, bypassing the vaporizer and
+   its interlocks, after item 2.
+6. Add automated end-tidal control (closed-loop titration to a target
+   end-tidal concentration), after item 2.
+7. Add nitrous oxide coadministration as a second inhaled gas, only after
+   coupled-gas equations and reference cases are defined.
+8. Add concentration and second-gas effects for coadministered gases, after
+   item 7.
+9. Add scenario events (timed parameter or state changes during a run).
+10. Add scenario save/load.
+11. Add deterministic replay of a saved scenario, after item 10.
+12. Add side-by-side comparison of multiple scenario runs.
+13. Add simulation forking (branch a running simulation into an independent
+    copy).
+14. Add IV pharmacokinetic and effect-site models, after item 13 (simulation
+    forking) is available.
+15. Add a modular hypnosis/eBIS effect model, with explicit model version and
+    provenance.
+16. Add a modular nociceptive-response effect model, with explicit model
+    version and provenance.
+17. Add validated renal/hepatic dysfunction modifiers, where supported by the
+    selected model.
+18. Add validated cardiopulmonary bypass modeling, where supported by the
+    selected model.
+19. Add validated ECMO modeling, where supported by the selected model.
+20. Add species-specific patient/model profiles without treating non-human
+    patients as scaled humans.
+21. Improve accessibility (keyboard navigation, contrast, screen-reader
+    support, color-vision-safe encodings).
+22. Improve performance, starting with the open threads already logged in
+    `docs/WORKING_NOTES.md` (unbounded history growth, coupled
+    simulation/render cadence).
+23. Continue documentation work.
+24. Add packaging, signing, and distribution work for shipping the app.
+25. Add a user-facing preferences/settings panel (theme, chart window, slider
     ranges, and similar display settings). Pre-requisite: consolidate the
     UI/display constants currently scattered across `app/theme.py`,
     `app/simulation_view.py`'s module-level constants, and the default
@@ -180,6 +207,11 @@ fully specified.
     validated, versioned, and cited, changed only through deliberate
     scientific review per `CLAUDE.md`'s safety-critical standard, not an ad
     hoc settings screen.
+
+None of items 2-24 mix scientific-core and UI/tooling concerns within a
+single milestone; where one depends on another (e.g. 3-6 on 2, 8 on 7, 11
+on 10, 14 on 13), that dependency is noted inline rather than bundled into
+one item.
 
 Built-in profiles should remain read-only and support a future
 "duplicate and customize" workflow with lineage and schema metadata.
