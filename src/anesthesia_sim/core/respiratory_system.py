@@ -15,8 +15,8 @@ from anesthesia_sim.core.circuit import (
     FreshGasExchange,
 )
 from anesthesia_sim.core.parameters import (
+    load_agent_parameters,
     load_reference_adult_parameters,
-    load_sevoflurane_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.validation import (
@@ -54,7 +54,13 @@ class RespiratorySystem:
     def default(cls) -> RespiratorySystem:
         """Build the default v0.1.0 sevoflurane system."""
 
-        agent = load_sevoflurane_parameters()
+        return cls.for_agent("sevoflurane")
+
+    @classmethod
+    def for_agent(cls, agent_id: str) -> RespiratorySystem:
+        """Build a system for any built-in agent (see `AGENT_DATA_FILENAMES`)."""
+
+        agent = load_agent_parameters(agent_id)
         patient_parameters = load_reference_adult_parameters()
 
         return cls(

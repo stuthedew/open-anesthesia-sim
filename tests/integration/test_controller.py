@@ -3,6 +3,61 @@ import pytest
 from anesthesia_sim.app.controller import SimulationController
 
 
+def test_default_controller_starts_with_sevoflurane() -> None:
+    controller = SimulationController()
+
+    snapshot = controller.snapshot()
+
+    assert snapshot.agent_id == "sevoflurane"
+    assert snapshot.agent_display_name == "Sevoflurane"
+
+
+def test_controller_can_be_constructed_for_a_different_agent() -> None:
+    controller = SimulationController(agent_id="isoflurane")
+
+    snapshot = controller.snapshot()
+
+    assert snapshot.agent_id == "isoflurane"
+    assert snapshot.agent_display_name == "Isoflurane"
+
+
+def test_set_agent_starts_fresh_while_preserving_settings() -> None:
+    controller = SimulationController(
+        circuit_volume_l=5.0,
+        fresh_gas_flow_l_min=3.0,
+        delivered_concentration_fraction=0.06,
+        alveolar_ventilation_l_min=5.5,
+        cardiac_output_l_min=6.0,
+    )
+    controller.start()
+    controller.advance(30.0)
+
+    assert controller.snapshot().stored_agent_l > 0.0
+
+    controller.set_agent("desflurane")
+    snapshot = controller.snapshot()
+
+    assert snapshot.agent_id == "desflurane"
+    assert snapshot.agent_display_name == "Desflurane"
+    assert snapshot.is_running is False
+    assert snapshot.elapsed_s == 0.0
+    assert snapshot.stored_agent_l == 0.0
+    assert snapshot.agent_accounting_passes_validation is True
+
+    assert snapshot.circuit_volume_l == 5.0
+    assert snapshot.fresh_gas_flow_l_min == 3.0
+    assert snapshot.delivered_concentration_fraction == 0.06
+    assert snapshot.alveolar_ventilation_l_min == 5.5
+    assert snapshot.cardiac_output_l_min == 6.0
+
+
+def test_set_agent_rejects_unknown_agent_id() -> None:
+    controller = SimulationController()
+
+    with pytest.raises(ValueError, match="unknown agent_id"):
+        controller.set_agent("halothane")
+
+
 def test_pause_blocks_advancement() -> None:
     controller = SimulationController()
 

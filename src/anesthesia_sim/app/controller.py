@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
 )
+from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.respiratory_system import RespiratorySystem
 from anesthesia_sim.core.simulation import SimulationState
 
@@ -26,6 +27,8 @@ class SimulationSnapshot:
 
     is_running: bool
     elapsed_s: float
+    agent_id: str
+    agent_display_name: str
     circuit_volume_l: float
     fresh_gas_flow_l_min: float
     delivered_concentration_fraction: float
@@ -52,26 +55,69 @@ class SimulationController:
 
     def __init__(
         self,
+        agent_id: str = "sevoflurane",
         circuit_volume_l: float = 6.0,
         fresh_gas_flow_l_min: float = 4.0,
         delivered_concentration_fraction: float = 0.08,
         alveolar_ventilation_l_min: float = 4.0,
         cardiac_output_l_min: float = 5.0,
     ) -> None:
-        respiratory_system = RespiratorySystem.default()
+        self._is_running = False
+        self._build_state(
+            agent_id=agent_id,
+            circuit_volume_l=circuit_volume_l,
+            fresh_gas_flow_l_min=fresh_gas_flow_l_min,
+            delivered_concentration_fraction=delivered_concentration_fraction,
+            alveolar_ventilation_l_min=alveolar_ventilation_l_min,
+            cardiac_output_l_min=cardiac_output_l_min,
+        )
+
+    def _build_state(
+        self,
+        agent_id: str,
+        circuit_volume_l: float,
+        fresh_gas_flow_l_min: float,
+        delivered_concentration_fraction: float,
+        alveolar_ventilation_l_min: float,
+        cardiac_output_l_min: float,
+    ) -> None:
+        """(Re)build dynamic state from scratch for a chosen agent."""
+
+        respiratory_system = RespiratorySystem.for_agent(agent_id)
         respiratory_system.circuit.set_circuit_volume(circuit_volume_l)
         respiratory_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
         respiratory_system.set_delivered_concentration(delivered_concentration_fraction)
         respiratory_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
         respiratory_system.set_cardiac_output(cardiac_output_l_min)
 
+        self._agent_id = agent_id
+        self._agent_display_name = load_agent_parameters(agent_id).display_name
         self._state = SimulationState(respiratory_system=respiratory_system)
-        self._is_running = False
         self._concentration_history: list[SimulationHistorySample] = [self._build_history_sample()]
 
     @property
     def is_running(self) -> bool:
         return self._is_running
+
+    def set_agent(self, agent_id: str) -> None:
+        """Start fresh with a different agent, preserving current settings.
+
+        Mid-run agent switching with residual washout accounting is a
+        distinct, harder feature (see ROADMAP.md's anesthesia-machine
+        milestone); this always begins a new run rather than attempting it.
+        """
+
+        self.pause()
+        current = self.snapshot()
+
+        self._build_state(
+            agent_id=agent_id,
+            circuit_volume_l=current.circuit_volume_l,
+            fresh_gas_flow_l_min=current.fresh_gas_flow_l_min,
+            delivered_concentration_fraction=(current.delivered_concentration_fraction),
+            alveolar_ventilation_l_min=current.alveolar_ventilation_l_min,
+            cardiac_output_l_min=current.cardiac_output_l_min,
+        )
 
     def snapshot(self) -> SimulationSnapshot:
         """Build a fresh, read-only view of current simulation state."""
@@ -85,6 +131,8 @@ class SimulationController:
         return SimulationSnapshot(
             is_running=self._is_running,
             elapsed_s=self._state.elapsed_s,
+            agent_id=self._agent_id,
+            agent_display_name=self._agent_display_name,
             circuit_volume_l=circuit.circuit_volume_l,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
             delivered_concentration_fraction=(circuit.delivered_concentration_fraction),

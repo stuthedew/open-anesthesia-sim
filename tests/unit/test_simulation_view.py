@@ -74,6 +74,8 @@ def _snapshot(
     circuit_time_constant_s: float = 90.0,
     passes_validation: bool = True,
     history: tuple[SimulationHistorySample, ...] | None = None,
+    agent_id: str = "sevoflurane",
+    agent_display_name: str = "Sevoflurane",
 ) -> SimulationSnapshot:
     if history is None:
         history = (_sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),)
@@ -83,6 +85,8 @@ def _snapshot(
     return SimulationSnapshot(
         is_running=is_running,
         elapsed_s=latest.elapsed_s,
+        agent_id=agent_id,
+        agent_display_name=agent_display_name,
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=4.0,
         delivered_concentration_fraction=0.08,
@@ -203,6 +207,30 @@ def test_refresh_view_reports_failed_agent_accounting() -> None:
     assert "unaccounted agent" in view._agent_accounting_detail_text.value
 
 
+def test_refresh_view_shows_current_agent_in_subtitle_and_dropdown() -> None:
+    view, _ = _build_view(_snapshot(agent_id="isoflurane", agent_display_name="Isoflurane"))
+
+    assert view._subtitle_text.value is not None
+    assert "Isoflurane" in view._subtitle_text.value
+    assert view._agent_dropdown.value == "isoflurane"
+
+
+def test_refresh_view_disables_agent_dropdown_while_running() -> None:
+    view, _ = _build_view(_snapshot(is_running=True))
+
+    assert view._agent_dropdown.disabled is True
+
+
+def test_refresh_view_updates_delivered_concentration_label_for_current_agent() -> None:
+    """Regression test: this label was found hardcoded to "Delivered
+    sevoflurane" during manual browser verification of agent switching,
+    left stale even after selecting a different agent."""
+
+    view, _ = _build_view(_snapshot(agent_id="desflurane", agent_display_name="Desflurane"))
+
+    assert view._delivered_concentration_label.value == "Delivered desflurane"
+
+
 def test_start_pause_reset_handlers_drive_the_real_controller() -> None:
     page = _FakePage()
     controller = SimulationController()
@@ -228,6 +256,20 @@ def test_start_pause_reset_handlers_drive_the_real_controller() -> None:
     assert controller.snapshot().elapsed_s == 0.0
     assert view._elapsed_time_text.value == "0.0 s"
     assert page.update_calls == 3
+
+
+def test_agent_dropdown_handler_switches_the_real_controller() -> None:
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    view._agent_dropdown.value = "desflurane"
+
+    view._handle_agent_change(ft.Event(name="select", control=view._agent_dropdown))
+
+    assert controller.snapshot().agent_id == "desflurane"
+    assert view._agent_dropdown.value == "desflurane"
+    assert view._subtitle_text.value is not None
+    assert "Desflurane" in view._subtitle_text.value
 
 
 def test_fresh_gas_flow_slider_forwards_value_to_controller() -> None:
@@ -289,9 +331,10 @@ def test_cardiac_output_slider_forwards_value_to_controller() -> None:
         "_handle_delivered_concentration_change",
         "_handle_alveolar_ventilation_change",
         "_handle_cardiac_output_change",
+        "_handle_agent_change",
     ],
 )
-def test_slider_handlers_ignore_a_none_value(handler_name: str) -> None:
+def test_change_handlers_ignore_a_none_value(handler_name: str) -> None:
     """Flet may report a control value of None mid-drag; handlers must be a no-op then."""
 
     page = _FakePage()
