@@ -36,6 +36,8 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+# `tools/` holds repo tooling that is not part of the shipped package.
+pythonpath = ["tools"]
 [tool.ruff]
 target-version = "py314"
 line-length = 100

@@ -102,6 +102,13 @@ holds tasks, `docs/WORKING_NOTES.md` holds the narrative behind them.
   `ROADMAP.md` — not starting unscoped feature work.
 - **Do not start an `L` item from a punch-list entry.** Promote it into a
   scoped `ROADMAP.md` milestone first, per the development rules there.
+- **Let the checker do the mechanical half.** `tools/punch_list.py`
+  (`make punch-list`, also run by `make check` and CI) validates entry
+  format and cross-references, and reports grooming advisories. Run it
+  after editing the punch list. Its errors mean an item is about to be
+  silently lost; its advisories mean a grooming pass is due, which is a
+  judgment call to raise with the project owner rather than to act on
+  unilaterally.
 
 ## Safety-critical clinical-output standard
 

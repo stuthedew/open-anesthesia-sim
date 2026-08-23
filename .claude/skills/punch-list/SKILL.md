@@ -22,6 +22,9 @@ left", "are we in a good spot to move on".
 
 1. Read `docs/PUNCH_LIST.md`. Do not survey the codebase first — the file
    exists so that step is unnecessary.
+   If the session-start digest reported grooming advisories, say so and
+   offer a grooming pass before taking on new work — a stale queue gives
+   bad recommendations.
 2. Ask how much time or usage is available if it is not obvious, since it
    changes the answer between an `S` and an `M`. Ask once, briefly, and
    only if it is genuinely ambiguous.
@@ -82,18 +85,30 @@ session makes on its own that will not be fixed in that session.
 
 ## Mode: groom
 
-1. Re-read the priorities as a set, not one at a time. Ask whether the top
+Triggered by the session-start digest reporting advisories, by `make
+punch-list` output, or by a direct request.
+
+1. Run `make punch-list` first. It reports the mechanical findings, so the
+   session spends its judgment on the rest rather than on rereading the
+   file. Errors mean the file is broken and must be fixed; advisories are
+   the agenda for this pass.
+2. Re-read the priorities as a set, not one at a time. Ask whether the top
    `P1` is still the thing that should happen next.
-2. Promote `blocked` items whose blocker has landed.
-3. Split any entry that has grown two independent halves — a smaller piece
+3. Promote `blocked` items whose blocker has landed.
+4. Split any entry that has grown two independent halves — a smaller piece
    that fits leftover time is more useful than one large item that never
    gets picked up.
-4. Promote `L` items into scoped `ROADMAP.md` milestones, or leave them in
+5. Promote `L` items into scoped `ROADMAP.md` milestones, or leave them in
    the icebox with a note saying scoping is the next step.
-5. Delete resolved `docs/WORKING_NOTES.md` threads rather than leaving them
+6. Delete resolved `docs/WORKING_NOTES.md` threads rather than leaving them
    stale, and trim "Recently completed" once it stops being useful history.
+7. Re-run `make punch-list` before finishing; it should come back clean.
 
 ## Always
+
+Run `make punch-list` after editing the file. It is instant, it gates
+`make check` and CI, and its errors mean an item is about to be silently
+lost.
 
 Commit punch-list changes with the work they describe when there is
 related work, or on their own when there is not. An uncommitted punch list
