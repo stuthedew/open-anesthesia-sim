@@ -1,0 +1,28 @@
+{
+    "schema_version": 1,
+    "id": "isoflurane",
+    "display_name": "Isoflurane",
+    "blood_gas_partition_coefficient": 1.3,
+    "tissue_gas_partition_coefficients": {
+        "vessel_rich": 2.1,
+        "muscle": 4.5,
+        "fat": 70.0
+    },
+    "sources": [
+        {
+            "citation": "Stadler M, et al. Theoretical effect of hyperventilation on speed of recovery and risk of rehypnotization following recovery: a Gas Man simulation. BMC Anesthesiology. 2012;12:22.",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3502091/",
+            "note": "Table 1 reports the Gas Man isoflurane blood:gas and tissue:gas coefficients used here, in the same table already cited for sevoflurane."
+        },
+        {
+            "citation": "Yasuda N, Targ AG, Eger EI II. Solubility of I-653, sevoflurane, isoflurane, and halothane in human tissues. Anesthesia & Analgesia. 1989;69(3):370-373.",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/2774233/",
+            "note": "Primary human-tissue study reporting an isoflurane brain:blood partition coefficient of 1.57 +/- 0.10 at 37 degrees C. Same paper already cited for sevoflurane's and desflurane's tissue-solubility models."
+        },
+        {
+            "citation": "Malviya S, Lerman J. The blood/gas solubilities of sevoflurane, isoflurane, halothane, and serum constituent concentrations in neonates and adults. Anesthesiology. 1990;72(5):793-796.",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/2339795/",
+            "note": "Confirms isoflurane's blood:gas partition coefficient was measured directly in adult humans and found to differ from neonates. The specific adult value was not independently re-derived from the abstract alone; version 0.2.0 uses the Gas Man value of 1.3 from Stadler et al. above."
+        }
+    ]
+}
