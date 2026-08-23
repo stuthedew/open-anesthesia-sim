@@ -144,7 +144,11 @@ after v0.1.0 remain provisional and must be assigned when each milestone is
 fully specified.
 
 1. Expand the volatile model with validated, data-driven agent definitions and
-   broader reference cases.
+   broader reference cases. When this is scoped: consider migrating
+   `core/parameters.py`'s JSON validation to Pydantic — the boilerplate in
+   its `_require_*` helpers compounds with each new agent/patient schema,
+   and the module is isolated behind plain dataclass returns, so the switch
+   is low-risk whenever it happens.
 2. Add modular anesthesia-machine profiles and capabilities, including normal
    single-halogenated-agent interlock behavior, agent switching with residual
    washout, optional experimental overrides, direct injection, and eventually
