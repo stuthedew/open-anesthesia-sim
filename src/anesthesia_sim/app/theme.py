@@ -1,3 +1,5 @@
+"""Shared color and spacing constants for the Flet UI."""
+
 BACKGROUND = "#F4F7FA"
 PANEL = "#FFFFFF"
 PRIMARY = "#176B87"

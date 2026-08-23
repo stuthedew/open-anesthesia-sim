@@ -1,3 +1,8 @@
+"""The breathing circuit: an ideal, well-mixed gas volume that receives
+delivered fresh gas at a set concentration and exchanges agent with the
+alveolar compartment (`alveolar.py`) on every step.
+"""
+
 from dataclasses import dataclass
 from math import exp, inf
 

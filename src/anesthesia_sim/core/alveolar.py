@@ -1,3 +1,8 @@
+"""The alveolar gas compartment: one ideal, perfectly mixed lung-gas volume
+that exchanges agent with the breathing circuit (ventilation) and with
+pulmonary blood (uptake), sitting between `circuit.py` and `patient.py`.
+"""
+
 from dataclasses import dataclass
 from math import exp, inf
 

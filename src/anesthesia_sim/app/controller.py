@@ -1,8 +1,16 @@
+"""SimulationController: the boundary between the UI and the scientific
+core. Owns run/pause/reset state, applies user-facing settings to the
+core (with clamping/defaulting such as the 1-MAC starting concentration),
+and exposes read-only `SimulationSnapshot`s for the view to render.
+Contains no physiological calculations of its own.
+"""
+
 from dataclasses import dataclass
 
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
 )
+from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.respiratory_system import RespiratorySystem
 from anesthesia_sim.core.simulation import SimulationState
 
@@ -26,6 +34,9 @@ class SimulationSnapshot:
 
     is_running: bool
     elapsed_s: float
+    agent_id: str
+    agent_display_name: str
+    max_delivered_concentration_percent: float
     circuit_volume_l: float
     fresh_gas_flow_l_min: float
     delivered_concentration_fraction: float
@@ -52,28 +63,98 @@ class SimulationController:
 
     def __init__(
         self,
+        agent_id: str = "sevoflurane",
         circuit_volume_l: float = 6.0,
         fresh_gas_flow_l_min: float = 4.0,
-        delivered_concentration_fraction: float = 0.08,
+        delivered_concentration_fraction: float | None = None,
         alveolar_ventilation_l_min: float = 4.0,
         cardiac_output_l_min: float = 5.0,
     ) -> None:
-        respiratory_system = RespiratorySystem.default()
+        self._is_running = False
+        self._build_state(
+            agent_id=agent_id,
+            circuit_volume_l=circuit_volume_l,
+            fresh_gas_flow_l_min=fresh_gas_flow_l_min,
+            delivered_concentration_fraction=delivered_concentration_fraction,
+            alveolar_ventilation_l_min=alveolar_ventilation_l_min,
+            cardiac_output_l_min=cardiac_output_l_min,
+        )
+
+    def _build_state(
+        self,
+        agent_id: str,
+        circuit_volume_l: float,
+        fresh_gas_flow_l_min: float,
+        delivered_concentration_fraction: float | None,
+        alveolar_ventilation_l_min: float,
+        cardiac_output_l_min: float,
+    ) -> None:
+        """(Re)build dynamic state from scratch for a chosen agent.
+
+        A `None` delivered_concentration_fraction defaults to the agent's
+        own 1 MAC (mac_percent), the standard clinical starting point;
+        otherwise the requested fraction is clamped to the agent's real
+        vaporizer maximum.
+        """
+
+        agent_parameters = load_agent_parameters(agent_id)
+        max_fraction = agent_parameters.max_delivered_concentration_percent / 100.0
+        default_fraction = agent_parameters.mac_percent / 100.0
+        requested_fraction = (
+            default_fraction
+            if delivered_concentration_fraction is None
+            else delivered_concentration_fraction
+        )
+
+        respiratory_system = RespiratorySystem.for_agent(agent_id)
         respiratory_system.circuit.set_circuit_volume(circuit_volume_l)
         respiratory_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
-        respiratory_system.set_delivered_concentration(delivered_concentration_fraction)
+        respiratory_system.set_delivered_concentration(min(requested_fraction, max_fraction))
         respiratory_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
         respiratory_system.set_cardiac_output(cardiac_output_l_min)
 
+        self._agent_id = agent_id
+        self._agent_display_name = agent_parameters.display_name
+        self._max_delivered_concentration_percent = (
+            agent_parameters.max_delivered_concentration_percent
+        )
         self._state = SimulationState(respiratory_system=respiratory_system)
-        self._is_running = False
         self._concentration_history: list[SimulationHistorySample] = [self._build_history_sample()]
 
     @property
     def is_running(self) -> bool:
         return self._is_running
 
+    def set_agent(self, agent_id: str) -> None:
+        """Start fresh with a different agent at that agent's own 1 MAC.
+
+        The delivered-concentration fraction is reset to the new agent's
+        mac_percent rather than carrying over the old agent's raw percentage,
+        since the same percent number corresponds to a different clinical
+        depth for each agent (e.g. 2% is 1 MAC of sevoflurane but only about
+        a third of a MAC of desflurane). Circuit, flow, ventilation, and
+        cardiac output settings are preserved.
+
+        Mid-run agent switching with residual washout accounting is a
+        distinct, harder feature (see ROADMAP.md's anesthesia-machine
+        milestone); this always begins a new run rather than attempting it.
+        """
+
+        self.pause()
+        current = self.snapshot()
+
+        self._build_state(
+            agent_id=agent_id,
+            circuit_volume_l=current.circuit_volume_l,
+            fresh_gas_flow_l_min=current.fresh_gas_flow_l_min,
+            delivered_concentration_fraction=None,
+            alveolar_ventilation_l_min=current.alveolar_ventilation_l_min,
+            cardiac_output_l_min=current.cardiac_output_l_min,
+        )
+
     def snapshot(self) -> SimulationSnapshot:
+        """Build a fresh, read-only view of current simulation state."""
+
         system = self._state.respiratory_system
         circuit = system.circuit
         alveoli = system.alveoli
@@ -83,6 +164,9 @@ class SimulationController:
         return SimulationSnapshot(
             is_running=self._is_running,
             elapsed_s=self._state.elapsed_s,
+            agent_id=self._agent_id,
+            agent_display_name=self._agent_display_name,
+            max_delivered_concentration_percent=(self._max_delivered_concentration_percent),
             circuit_volume_l=circuit.circuit_volume_l,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
             delivered_concentration_fraction=(circuit.delivered_concentration_fraction),
@@ -111,6 +195,8 @@ class SimulationController:
         self._is_running = False
 
     def reset(self) -> None:
+        """Stop the run and clear dynamic state while preserving settings."""
+
         self.pause()
         self._state.reset()
         self._concentration_history = [self._build_history_sample()]
@@ -155,6 +241,8 @@ class SimulationController:
         self._state.respiratory_system.set_cardiac_output(cardiac_output_l_min)
 
     def advance(self, simulation_step_s: float) -> None:
+        """No-op while paused; otherwise advance state and record history."""
+
         if not self._is_running:
             return
 

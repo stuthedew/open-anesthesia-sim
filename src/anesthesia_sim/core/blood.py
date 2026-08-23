@@ -1,3 +1,8 @@
+"""The mixed-venous blood compartment: pools flow-weighted outflow from every
+tissue group (see `patient.py`) before it returns to the alveoli as the
+arterial input, under this model's flow-limited arterial simplification.
+"""
+
 from dataclasses import dataclass
 from math import exp, inf
 

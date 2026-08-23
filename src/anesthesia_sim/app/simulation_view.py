@@ -1,4 +1,4 @@
-"""Present the interactive sevoflurane simulation as a responsive dashboard.
+"""Present the interactive volatile-agent simulation as a responsive dashboard.
 
 This module is the visual boundary between the scientific simulation and the
 user. It renders immutable controller snapshots, translates concentration
@@ -26,6 +26,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME, APP_VERSION
+from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 
 SIMULATION_STEP_S = 0.1
 INITIAL_CHART_WINDOW_S = 60.0
@@ -36,9 +37,11 @@ COMPACT_PANEL_PADDING = 14
 COMPACT_PANEL_RADIUS = 10
 
 MAX_FRESH_GAS_FLOW_L_MIN = 10.0
-MAX_DELIVERED_CONCENTRATION_PERCENT = 10.0
 MAX_ALVEOLAR_VENTILATION_L_MIN = 12.0
 MAX_CARDIAC_OUTPUT_L_MIN = 10.0
+# Delivered-concentration max is agent-specific (real vaporizer dial
+# capability), sourced from SimulationSnapshot.max_delivered_concentration_percent
+# rather than a fixed constant here.
 
 CIRCUIT_COLOR = PRIMARY
 ALVEOLAR_COLOR = ACCENT
@@ -47,9 +50,16 @@ VESSEL_RICH_COLOR = "#DC2626"
 MUSCLE_COLOR = "#D97706"
 FAT_COLOR = "#64748B"
 
+# (agent_id, display_name) for every built-in agent, in AGENT_DATA_FILENAMES
+# order. Loaded once at import time; each file is tiny and this avoids
+# hardcoding display names that already live in the data files.
+AVAILABLE_AGENTS: tuple[tuple[str, str], ...] = tuple(
+    (agent_id, load_agent_parameters(agent_id).display_name) for agent_id in AGENT_DATA_FILENAMES
+)
+
 
 class SimulationView:
-    """Render and update the v0.1.0 sevoflurane patient interface.
+    """Render and update the volatile-agent patient interface.
 
     The view displays controller snapshots and forwards user interactions to
     the controller. It does not perform compartment calculations, agent
@@ -163,7 +173,7 @@ class SimulationView:
             min_x=0,
             max_x=INITIAL_CHART_WINDOW_S,
             min_y=0,
-            max_y=MAX_DELIVERED_CONCENTRATION_PERCENT,
+            max_y=initial_snapshot.max_delivered_concentration_percent,
             horizontal_grid_lines=fch.ChartGridLines(
                 interval=2,
                 color="#D9E2EC",
@@ -189,6 +199,26 @@ class SimulationView:
             on_click=self._handle_reset,
         )
 
+        self._agent_dropdown = ft.Dropdown(
+            value=initial_snapshot.agent_id,
+            options=[
+                ft.dropdown.Option(key=agent_id, text=display_name)
+                for agent_id, display_name in AVAILABLE_AGENTS
+            ],
+            width=180,
+            on_select=self._handle_agent_change,
+        )
+
+        self._subtitle_text = ft.Text(
+            self._format_subtitle(initial_snapshot.agent_display_name),
+            color=MUTED,
+        )
+        self._delivered_concentration_label = ft.Text(
+            self._format_delivered_label(initial_snapshot.agent_display_name),
+            weight=ft.FontWeight.BOLD,
+            color=INK,
+        )
+
         self._fresh_gas_flow_slider = ft.Slider(
             min=0,
             max=MAX_FRESH_GAS_FLOW_L_MIN,
@@ -200,7 +230,7 @@ class SimulationView:
         )
         self._delivered_concentration_slider = ft.Slider(
             min=0,
-            max=MAX_DELIVERED_CONCENTRATION_PERCENT,
+            max=initial_snapshot.max_delivered_concentration_percent,
             value=(initial_snapshot.delivered_concentration_fraction * 100.0),
             label="{value}%",
             active_color=ACCENT,
@@ -249,16 +279,14 @@ class SimulationView:
                                             weight=(ft.FontWeight.BOLD),
                                             color=INK,
                                         ),
-                                        ft.Text(
-                                            (f"Version {APP_VERSION} — Sevoflurane patient model"),
-                                            color=MUTED,
-                                        ),
+                                        self._subtitle_text,
                                     ],
                                     spacing=2,
                                     tight=True,
                                 ),
                                 ft.Row(
                                     controls=[
+                                        self._agent_dropdown,
                                         self._start_button,
                                         self._pause_button,
                                         self._reset_button,
@@ -307,9 +335,9 @@ class SimulationView:
         """Build the simulation-setting controls.
 
         Returns:
-            Responsive controls for fresh gas flow in L/min,
-            delivered sevoflurane in percent, alveolar ventilation
-            in L/min, and cardiac output in L/min.
+            Responsive controls for fresh gas flow in L/min, delivered
+            agent concentration in percent, alveolar ventilation in
+            L/min, and cardiac output in L/min.
         """
 
         return ft.ResponsiveRow(
@@ -320,7 +348,7 @@ class SimulationView:
                     self._fresh_gas_flow_text,
                 ),
                 self._build_parameter_panel(
-                    "Delivered sevoflurane",
+                    self._delivered_concentration_label,
                     self._delivered_concentration_slider,
                     self._delivered_concentration_text,
                 ),
@@ -339,14 +367,15 @@ class SimulationView:
 
     def _build_parameter_panel(
         self,
-        label: str,
+        label: str | ft.Text,
         slider: ft.Slider,
         value_text: ft.Text,
     ) -> ft.Container:
         """Build one compact simulation-setting panel.
 
         Args:
-            label: User-facing setting name.
+            label: User-facing setting name, or a pre-built Text control
+                for a label that changes later (e.g. names the agent).
             slider: Slider controlling the setting.
             value_text: Current value with its physical unit.
 
@@ -354,14 +383,20 @@ class SimulationView:
             Responsive setting panel.
         """
 
+        label_control = (
+            label
+            if isinstance(label, ft.Text)
+            else ft.Text(
+                label,
+                weight=ft.FontWeight.BOLD,
+                color=INK,
+            )
+        )
+
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text(
-                        label,
-                        weight=ft.FontWeight.BOLD,
-                        color=INK,
-                    ),
+                    label_control,
                     ft.Row(
                         controls=[
                             slider,
@@ -635,6 +670,19 @@ class SimulationView:
 
         snapshot = self._controller.snapshot()
 
+        self._subtitle_text.value = self._format_subtitle(snapshot.agent_display_name)
+        self._delivered_concentration_label.value = self._format_delivered_label(
+            snapshot.agent_display_name
+        )
+        self._agent_dropdown.value = snapshot.agent_id
+        self._agent_dropdown.disabled = snapshot.is_running
+
+        self._delivered_concentration_slider.max = snapshot.max_delivered_concentration_percent
+        self._delivered_concentration_slider.value = (
+            snapshot.delivered_concentration_fraction * 100.0
+        )
+        self._concentration_chart.max_y = snapshot.max_delivered_concentration_percent
+
         self._status_text.value = "Running" if snapshot.is_running else "Paused"
         self._status_text.color = ACCENT if snapshot.is_running else MUTED
         self._elapsed_time_text.value = f"{snapshot.elapsed_s:.1f} s"
@@ -788,6 +836,16 @@ class SimulationView:
         self._controller.reset()
         self._refresh_and_render()
 
+    def _handle_agent_change(
+        self,
+        event: ft.Event[ft.Dropdown],
+    ) -> None:
+        if event.control.value is None:
+            return
+
+        self._controller.set_agent(event.control.value)
+        self._refresh_and_render()
+
     def _handle_fresh_gas_flow_change(
         self,
         event: ft.Event[ft.Slider],
@@ -876,3 +934,15 @@ class SimulationView:
         """
 
         return f"{concentration_fraction * 100.0:.3f}%"
+
+    @staticmethod
+    def _format_subtitle(agent_display_name: str) -> str:
+        """Build the header subtitle naming the current app version and agent."""
+
+        return f"Version {APP_VERSION} — {agent_display_name} patient model"
+
+    @staticmethod
+    def _format_delivered_label(agent_display_name: str) -> str:
+        """Build the delivered-concentration panel label naming the agent."""
+
+        return f"Delivered {agent_display_name.lower()}"

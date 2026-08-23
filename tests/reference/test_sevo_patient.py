@@ -46,6 +46,8 @@ def _synthetic_agent(blood_gas_partition_coefficient: float) -> AgentParameters:
             "muscle": 2.4,
             "fat": 34.0,
         },
+        "max_delivered_concentration_percent": 8.0,
+        "mac_percent": 2.0,
         "sources": [
             {
                 "citation": "Synthetic parameters for directional solubility testing only.",
