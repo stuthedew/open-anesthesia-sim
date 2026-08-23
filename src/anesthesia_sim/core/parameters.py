@@ -1,3 +1,14 @@
+"""Load and validate agent and reference-patient parameter files.
+
+Public types (`AgentParameters`, `ReferenceAdultParameters`) are plain,
+frozen dataclasses with no dependency on the validation library, so the
+rest of the core never imports Pydantic. The `_AgentPayload`/
+`_ReferenceAdultPayload` Pydantic models exist only to validate
+`data/agents/*.json` and `data/patients/*.json` on load and are never
+exposed outside this module; `parse_agent_parameters()` and
+`parse_reference_adult_parameters()` are the seam between the two.
+"""
+
 from __future__ import annotations
 
 import json

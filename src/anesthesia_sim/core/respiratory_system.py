@@ -1,3 +1,14 @@
+"""Couples the breathing circuit, alveolar compartment, and patient
+compartments into one steppable system, and builds that system from agent
+and reference-patient parameter files via `for_agent()`.
+
+This class currently also re-exposes some patient- and machine-level
+setters (e.g. cardiac output, delivered concentration) that arguably
+belong on the compartments they forward to rather than here; see the
+"near-term to-dos" open thread in docs/WORKING_NOTES.md for a scoped
+cleanup of this class's boundaries.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -1,3 +1,8 @@
+"""Mass-balance accounting: verify that a simulation run neither creates nor
+loses agent, by checking delivered/exhausted/stored agent against the
+accounting identity documented on `AgentSimulationValidator`.
+"""
+
 from dataclasses import dataclass
 
 from anesthesia_sim.core.exceptions import (

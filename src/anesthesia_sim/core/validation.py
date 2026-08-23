@@ -1,3 +1,8 @@
+"""Shared numeric-range guards used by every core compartment's
+`__post_init__` and setters, so invalid state is rejected at the same
+boundary everywhere instead of trusted or coerced silently.
+"""
+
 from math import isfinite
 
 

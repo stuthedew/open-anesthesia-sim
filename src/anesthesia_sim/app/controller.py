@@ -1,3 +1,10 @@
+"""SimulationController: the boundary between the UI and the scientific
+core. Owns run/pause/reset state, applies user-facing settings to the
+core (with clamping/defaulting such as the 1-MAC starting concentration),
+and exposes read-only `SimulationSnapshot`s for the view to render.
+Contains no physiological calculations of its own.
+"""
+
 from dataclasses import dataclass
 
 from anesthesia_sim.core.exceptions import (

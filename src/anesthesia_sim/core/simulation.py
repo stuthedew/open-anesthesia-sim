@@ -1,3 +1,8 @@
+"""SimulationState: owns elapsed simulation time alongside the respiratory
+system, so simulated time is explicit, deterministic state rather than
+derived from the wall clock (see CLAUDE.md's architecture discipline).
+"""
+
 from dataclasses import dataclass, field
 
 from anesthesia_sim.core.alveolar import AlveolarCompartment

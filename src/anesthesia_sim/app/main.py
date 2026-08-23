@@ -1,3 +1,7 @@
+"""Flet application entry point: configures the page and assembles the
+controller and view. `uv run anesthesia-sim` runs `main()` below.
+"""
+
 import flet as ft
 
 from anesthesia_sim.app.controller import SimulationController
