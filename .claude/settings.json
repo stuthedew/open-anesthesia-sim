@@ -28,5 +28,17 @@
       "Bash(rg *)",
       "Bash(find *)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/punch-list-digest.sh\""
+          }
+        ]
+      }
+    ]
   }
 }

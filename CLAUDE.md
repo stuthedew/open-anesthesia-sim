@@ -29,10 +29,10 @@ to skipping a check before a commit or before finishing a task.
   an unrelated topic rather than continuing a long one, and prefer a fresh
   session over compacting an existing one: compaction costs a summarization
   pass and drops detail that this repository's provenance and safety
-  requirements depend on. `docs/WORKING_NOTES.md` exists so that a new
-  session can pick up cold — read it and `CLAUDE.md` at the start of a task
-  instead of relying on a long prior conversation, and update it before
-  ending a session with a thread still open.
+  requirements depend on. `docs/PUNCH_LIST.md` and `docs/WORKING_NOTES.md`
+  exist so that a new session can pick up cold — read them and `CLAUDE.md`
+  at the start of a task instead of relying on a long prior conversation,
+  and update them before ending a session with a thread still open.
 - Batch related questions, and related edits, into one turn rather than
   spreading them across several. Each turn resends the entire context.
 - Prefer targeted reads (an offset/limit range) over whole-file reads for
@@ -70,6 +70,38 @@ to skipping a check before a commit or before finishing a task.
   Model choice never changes what a change must satisfy before it lands, and
   the maintainer still reviews every safety-critical diff regardless of which
   model drafted it.
+
+## Punch list and work selection
+
+`docs/PUNCH_LIST.md` is the prioritized queue of discrete development
+tasks. It carries the format spec, the priority/effort/status definitions,
+and the current items; read it rather than relying on a restatement here.
+The division of labor is: `ROADMAP.md` holds releases, `docs/PUNCH_LIST.md`
+holds tasks, `docs/WORKING_NOTES.md` holds the narrative behind them.
+
+- **Capture, always.** Any defect, risk, cleanup, optimization,
+  inconsistency, or feature idea identified in a session and not fixed in
+  that same session gets an entry in `docs/PUNCH_LIST.md` before the
+  session ends. This applies equally to findings the project owner raises
+  and to findings you make on your own while working on something else.
+  Do not ask whether to record it — recording is cheap and losing it is
+  not. Prefer capturing at `P3` over dropping it, and say in your reply
+  that you did.
+- **Reprioritize, don't just append.** A new entry can demote what was
+  previously next, and resolving a blocker promotes what it blocked. Place
+  a new item at its correct priority rather than at the end of the file.
+- **Close the loop.** When work lands, move its entry to "Recently
+  completed" with the commit reference in the same change, and delete any
+  now-stale `docs/WORKING_NOTES.md` thread for it.
+- **Answer "what should we work on next?" from the file.** Read
+  `docs/PUNCH_LIST.md` first and recommend from it, matching effort to the
+  session time available rather than re-deriving the options from the
+  codebase. `P0` items come first and are handled as hotfixes: their own
+  branch and a patch version bump. When nothing is pressing, the
+  alternative is milestone work, which means scoping the next milestone in
+  `ROADMAP.md` — not starting unscoped feature work.
+- **Do not start an `L` item from a punch-list entry.** Promote it into a
+  scoped `ROADMAP.md` milestone first, per the development rules there.
 
 ## Safety-critical clinical-output standard
 

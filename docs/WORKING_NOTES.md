@@ -1,10 +1,18 @@
 # Working notes
 
 This file is a running, cross-session log of open threads, diagnoses, and
-plans that have not yet been promoted into `ROADMAP.md` (version/milestone
+rationale: the narrative context behind decisions, too long to fit in a
+punch-list entry and not yet promoted into `ROADMAP.md` (version/milestone
 decisions) or `docs/MODEL.md` (scientific model specification). It exists so
 that a new conversation can pick up context without re-deriving it, and so
 that decisions made in one conversation are visible to another.
+
+It is not the task queue. Discrete, actionable work is tracked and
+prioritized in `docs/PUNCH_LIST.md`; threads here that have a corresponding
+task cite its `PL-` id, and a punch-list entry that needs more background
+than its brief allows points back here. The split is deliberate: the punch
+list stays short enough to read at the start of every session, and this file
+absorbs the depth.
 
 Any session working on this repository should read this file at the start
 of a task that touches one of its open threads, and update the relevant
@@ -39,9 +47,9 @@ appropriate, and its entry here should be deleted rather than left stale.
 - Known dead field: `SimulationSnapshot.circuit_time_constant_s` is still
   computed but has had no corresponding display widget since the v0.1.0 UI
   rewrite (v0.0.2 showed it; v0.1.0 doesn't). Not yet decided whether to
-  restore the display or remove the field.
+  restore the display or remove the field; tracked as PL-004.
 
-## Open thread: performance (slow live graph, unresponsive buttons)
+## Open thread: performance (slow live graph, unresponsive buttons) - PL-001
 
 Not yet profiled or fixed. Diagnosis so far, from reading the code (not yet
 confirmed by a profiler):
@@ -83,80 +91,13 @@ architectural (decoupling cadences, bounding payload size), not concurrency.
 Next step when this is picked up: profile first to confirm the diagnosis
 before implementing anything.
 
-## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man")
+## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 
 Not scoped yet. Depends on the performance thread above being resolved
 first, since a faster-than-real-time mode multiplies whatever the render
 bottleneck currently is. No design decisions made yet on how speed
 multiplier would be exposed in the UI or how it interacts with the fixed
 `SIMULATION_STEP_S = 0.1` step size.
-
-## Open thread: near-term to-dos (project owner's list, not yet started)
-
-Three items the project owner flagged for the next working session. None
-implemented yet.
-
-1. **Color-code the agent dropdown/selected-agent display to the agent's
-   real vaporizer color** (e.g. yellow for sevoflurane), with font/contrast
-   adjusted so text stays readable against each fill color. This mirrors a
-   real safety feature, not just styling: clinical vaporizers use a
-   standardized per-agent color-keyed fill system (North American
-   convention is commonly cited to ASTM D4774) specifically so an agent is
-   never mistaken for another at a glance. Getting a color-to-agent mapping
-   wrong here would be actively misleading rather than neutral, so the
-   color set must be verified against an authoritative current source
-   before implementation, not recalled from memory. Likely touches
-   `app/simulation_view.py`'s dropdown/header construction and `app/theme.py`.
-2. **Make `core/` more self-explanatory** (scoped 2026-08-23, not yet
-   designed or started). Two related complaints from the project owner
-   about code they found unintuitive to read cold:
-   - `core/respiratory_system.py` bundles concerns beyond what its name
-     suggests. "Respiratory system" clinically means the patient's own
-     lungs/airways, which maps to the alveolar compartment (`alveoli`) -
-     the only piece of this class that's actually respiratory. The other
-     two are mismatched for different reasons: `circuit` is the
-     anesthesia machine's breathing circuit, i.e. equipment, not patient
-     physiology at all; and `RespiratorySystem.set_cardiac_output()`
-     forwards to `patient.set_cardiac_output()`, which is a circulatory/
-     distribution concern, not a respiratory one either. Needs a look at
-     whether `RespiratorySystem` should stay a thin coordinator (already
-     mostly true for `advance()`/accounting) with the setter delegation
-     removed in favor of callers reaching the owning compartment
-     (`patient`, `circuit`, `alveoli`) directly, or whether a
-     differently-named coordinating class (e.g. something naming the
-     coupled machine+patient system, not just the respiratory piece of
-     it) is clearer.
-   - `core/parameters.py`'s `_AgentPayload`/`AgentParameters` split (a
-     private Pydantic validation model paired with a public, frozen,
-     Pydantic-independent dataclass, repeated for
-     `_ReferenceAdultPayload`/`ReferenceAdultParameters`) is the more
-     correct design - it keeps the rest of the core decoupled from the
-     validation library - but reads as confusing duplication without
-     that rationale stated anywhere. The module docstring added
-     2026-08-23 explains the split at a high level; still open is
-     whether that's enough or whether the pattern needs a more visible
-     marker at each pair (e.g. a shared base-naming convention or a
-     short comment at each `_...Payload` class).
-   Note: a first, smaller pass already landed 2026-08-23 - every
-   `src/anesthesia_sim/**/*.py` file now has a one-line-or-so module
-   docstring stating its role, which was the project owner's other
-   complaint ("code files should have some sort of documentation block
-   at the top"). This item is the deeper structural follow-up, not
-   covered by that pass.
-3. **Documentation refresh pass**: general sweep to confirm
-   `README.md`, `docs/MODEL.md`, `ROADMAP.md`, and this file are all
-   current against the agent-specific vaporizer-max and 1-MAC-default work
-   merged in commit `7a867e9`, the module-docstring pass, and against
-   whatever lands from items 1 and 2 above.
-
-## Open thread: startup window sizing
-
-`app/main.py` sets `page.window.full_screen = True` on startup. Per prior
-project decision (previously recorded in `README.md`, moved here as part of
-the documentation pass so it isn't lost): replace this with an adequately
-sized, centered window that remains fully visible on different displays.
-Avoid magic pixel dimensions, monitor-specific assumptions, and native
-display-probing dependencies. Not yet implemented.
 
 ## Aspirational: power-user custom agents (not scoped, not started)
 
