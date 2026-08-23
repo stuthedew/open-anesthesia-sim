@@ -14,6 +14,29 @@ These instructions apply to all AI coding agents working on this repository.
 - Do not implement beyond the current milestone.
 - Run pytest, Ruff, and the configured type checker before finishing.
 
+## Session and tool-use efficiency
+
+These practices reduce redundant token/tool overhead. They never override
+the safety-critical verification requirements below — batching or
+trimming applies to routine, low-risk iteration, not to skipping a check
+before a commit or before finishing a task.
+
+- Batch related edits before rerunning the full quality suite (`ruff
+  format`, `ruff check`, `mypy`, `pytest`) rather than rerunning all four
+  after every individual small edit. Still run the full suite before
+  finishing or committing.
+- Use `pytest -q` for routine reruns during iteration; reserve `--cov`
+  for changes where coverage is actually the question (a new test, a new
+  module, a coverage-focused task).
+- Prefer targeted reads (an offset/limit range) over whole-file reads for
+  large docs (`docs/MODEL.md`, `docs/WORKING_NOTES.md`) once you know
+  roughly where the relevant section is. Read the whole file when editing
+  it or when its overall structure matters.
+- Prefer starting a new, scoped session over continuing an already-long
+  one for an unrelated topic. Read `CLAUDE.md` and `docs/WORKING_NOTES.md`
+  at the start of a new session instead of relying on a long prior
+  conversation.
+
 ## Safety-critical clinical-output standard
 
 This application is intended as an educational/simulation tool and will carry appropriate disclaimers that it is not intended for clinical patient care. Nevertheless, assume that a clinician could use displayed values or model outputs to influence real-world patient management.
