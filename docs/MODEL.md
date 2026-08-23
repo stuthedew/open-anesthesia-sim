@@ -2,18 +2,20 @@
 
 ## Status
 
-This document specifies the scientific model for the planned v0.1.0 release.
+This document specifies the scientific model implemented in v0.1.0, the
+current released baseline (see `ROADMAP.md`).
 
-The current released baseline, v0.0.2, contains an analytically validated ideal breathing-circuit wash-in and washout model without a patient. Version v0.1.0 extends that model through:
+The preceding milestone, v0.0.2, delivered an analytically validated ideal
+breathing-circuit wash-in and washout model without a patient; its reference
+tests are preserved unchanged (see "Preserved circuit reference tests" below).
+Version v0.1.0 extends that model through:
 
 ```text
 delivered sevoflurane
         ↓
 breathing circuit
         ↓
-alveolar gas
-        ↓
-arterial blood
+alveolar gas ⇄ blood (flow-limited, no separate arterial compartment)
         ↓
 vessel-rich group / muscle / fat
         ↓
