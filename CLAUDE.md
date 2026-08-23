@@ -17,26 +17,59 @@ These instructions apply to all AI coding agents working on this repository.
 
 ## Session and tool-use efficiency
 
-These practices reduce redundant token/tool overhead. They never override
-the safety-critical verification requirements below — batching or
-trimming applies to routine, low-risk iteration, not to skipping a check
-before a commit or before finishing a task.
+Session cost scales with the number of turns multiplied by the size of the
+context, because the whole conversation is resent on every turn. Long
+sessions are therefore disproportionately expensive, and the practices
+below work mainly by keeping context small rather than by choosing a
+cheaper model. They never override the safety-critical verification
+requirements below — trimming applies to routine, low-risk iteration, not
+to skipping a check before a commit or before finishing a task.
 
-- Batch related edits before rerunning the full quality suite (`ruff
-  format`, `ruff check`, `mypy`, `pytest`) rather than rerunning all four
-  after every individual small edit. Still run the full suite before
-  finishing or committing.
-- Use `pytest -q` for routine reruns during iteration; reserve `--cov`
-  for changes where coverage is actually the question (a new test, a new
-  module, a coverage-focused task).
+- Keep a session short and scoped to one topic. Start a fresh session for
+  an unrelated topic rather than continuing a long one, and prefer a fresh
+  session over compacting an existing one: compaction costs a summarization
+  pass and drops detail that this repository's provenance and safety
+  requirements depend on. `docs/WORKING_NOTES.md` exists so that a new
+  session can pick up cold — read it and `CLAUDE.md` at the start of a task
+  instead of relying on a long prior conversation, and update it before
+  ending a session with a thread still open.
+- Batch related questions, and related edits, into one turn rather than
+  spreading them across several. Each turn resends the entire context.
 - Prefer targeted reads (an offset/limit range) over whole-file reads for
   large docs (`docs/MODEL.md`, `docs/WORKING_NOTES.md`) once you know
   roughly where the relevant section is. Read the whole file when editing
   it or when its overall structure matters.
-- Prefer starting a new, scoped session over continuing an already-long
-  one for an unrelated topic. Read `CLAUDE.md` and `docs/WORKING_NOTES.md`
-  at the start of a new session instead of relying on a long prior
-  conversation.
+- Delegate broad codebase search and file lookup to exploration subagents,
+  whose transcripts stay out of the main context; a small, fast model is
+  appropriate for them (`CLAUDE_CODE_SUBAGENT_MODEL` in Claude Code). Treat
+  what they return as leads to verify against the source, not as findings
+  to rely on.
+- Edit `CLAUDE.md` and the core docs in their own session where practical.
+  They sit in the cached prefix of every request, so editing one partway
+  through a session invalidates that cache for the rest of it.
+- Batch related edits before rerunning the full quality suite (`ruff
+  format`, `ruff check`, `mypy`, `pytest`) rather than rerunning all four
+  after every individual small edit. Still run the full suite before
+  finishing or committing. Use `pytest -q` for routine reruns during
+  iteration; reserve `--cov` for changes where coverage is actually the
+  question (a new test, a new module, a coverage-focused task).
+- Match model capability to the work rather than pinning one model for a
+  whole session. Reasoning-heavy work — architecture and design decisions,
+  new scientific-model design, ambiguous problems or genuine trade-offs,
+  non-obvious debugging and root-cause analysis, and anything within the
+  scope of "Safety-critical clinical-output standard" below — warrants the
+  strongest available model at a high effort setting, both for its design
+  and for the review of the final diff. Executing an already-agreed plan
+  does not. Presentation of clinical values, and the scientific content of
+  `docs/MODEL.md`, are safety-critical work rather than routine execution.
+- Claude Code's `opusplan` mode is a reasonable default for that split, with
+  two caveats: it returns to the cheaper model for execution, so the
+  strong-model review of a safety-critical diff is a deliberate step and not
+  an automatic one; and switching models mid-session starts a cold cache, so
+  group design and execution into runs rather than alternating between them.
+  Model choice never changes what a change must satisfy before it lands, and
+  the maintainer still reviews every safety-critical diff regardless of which
+  model drafted it.
 
 ## Safety-critical clinical-output standard
 
