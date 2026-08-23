@@ -278,9 +278,11 @@ specified.
     patients as scaled humans.
 20. Improve accessibility (keyboard navigation, contrast, screen-reader
     support, color-vision-safe encodings).
-21. Improve performance, starting with the open threads already logged in
-    `docs/WORKING_NOTES.md` (unbounded history growth, coupled
-    simulation/render cadence).
+21. Improve performance, working from the open entries in
+    `docs/PUNCH_LIST.md`. The render payload and the simulation/render
+    cadence coupling are both resolved; what remains there is the
+    controller's still-unbounded concentration history and further headroom
+    in how chart points are built.
 22. Continue documentation work.
 23. Add packaging, signing, and distribution work for shipping the app.
 24. Add a user-facing preferences/settings panel (theme, chart window, slider
