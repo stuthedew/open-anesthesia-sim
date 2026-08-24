@@ -23,12 +23,13 @@ from anesthesia_sim.app.controller import (
     SimulationSnapshot,
 )
 from anesthesia_sim.app.simulation_view import (
+    AVAILABLE_AGENTS,
     MAX_CHART_POINTS_PER_SERIES,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     SimulationView,
 )
-from anesthesia_sim.app.theme import ACCENT, MUTED, WARNING
+from anesthesia_sim.app.theme import ACCENT, AGENT_COLOR_SCHEMES, MUTED, WARNING
 from anesthesia_sim.core.exceptions import SimulationNumericalError
 from anesthesia_sim.core.respiratory_system import RespiratorySystem
 
@@ -224,10 +225,56 @@ def test_refresh_view_reports_failed_agent_accounting() -> None:
 
 def test_refresh_view_shows_current_agent_in_subtitle_and_dropdown() -> None:
     view, _ = _build_view(_snapshot(agent_id="isoflurane", agent_display_name="Isoflurane"))
+    scheme = AGENT_COLOR_SCHEMES["isoflurane"]
 
     assert view._subtitle_text.value is not None
     assert "Isoflurane" in view._subtitle_text.value
     assert view._agent_dropdown.value == "isoflurane"
+    assert view._agent_header_badge.bgcolor == scheme.fill
+    assert view._subtitle_text.color == scheme.foreground
+    assert view._agent_dropdown.fill_color == scheme.fill
+    assert view._agent_dropdown.color == scheme.foreground
+
+
+def test_agent_dropdown_options_pair_every_color_with_the_agent_name() -> None:
+    """Color is a redundant cue, never the only way to identify an agent."""
+
+    view, _ = _build_view(_snapshot())
+    expected_names = dict(AVAILABLE_AGENTS)
+
+    assert {option.key for option in view._agent_dropdown.options} == set(expected_names)
+    for option in view._agent_dropdown.options:
+        assert option.key is not None
+        assert option.text == expected_names[option.key]
+        assert option.style is not None
+        assert option.style.bgcolor == AGENT_COLOR_SCHEMES[option.key].fill
+        assert option.style.color == AGENT_COLOR_SCHEMES[option.key].foreground
+
+
+@pytest.mark.parametrize(
+    ("agent_id", "display_name"),
+    [
+        ("sevoflurane", "Sevoflurane"),
+        ("isoflurane", "Isoflurane"),
+        ("desflurane", "Desflurane"),
+    ],
+)
+def test_refresh_view_applies_current_agent_color_to_control_and_header(
+    agent_id: str,
+    display_name: str,
+) -> None:
+    view, _ = _build_view(_snapshot(agent_id=agent_id, agent_display_name=display_name))
+    scheme = AGENT_COLOR_SCHEMES[agent_id]
+
+    assert view._agent_dropdown.value == agent_id
+    assert view._agent_dropdown.fill_color == scheme.fill
+    assert view._agent_dropdown.bgcolor == scheme.fill
+    assert view._agent_dropdown.color == scheme.foreground
+    assert view._agent_dropdown.text_style is not None
+    assert view._agent_dropdown.text_style.color == scheme.foreground
+    assert view._agent_header_badge.bgcolor == scheme.fill
+    assert view._subtitle_text.color == scheme.foreground
+    assert display_name in view._subtitle_text.value
 
 
 def test_refresh_view_scales_slider_and_chart_to_agent_max() -> None:

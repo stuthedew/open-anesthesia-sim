@@ -982,6 +982,14 @@ failure, and the same number means a different clinical depth for each agent
 (2% is about 1 MAC of sevoflurane but roughly a third of a MAC of
 desflurane).
 
+The agent selector and header reinforce that written name with the
+agent-identification color specified by ISO 5360:2016 Table 2: yellow for
+sevoflurane, purple for isoflurane, and blue for desflurane. Color is a
+redundant cue, never the sole identifier; the agent name remains visible and
+the foreground/background pairs must meet WCAG 2.2 AA contrast. The cited
+standard references, screen-color approximations, and accessible foregrounds
+live together in `app/theme.py` so the mapping can be audited as one unit.
+
 Distinguishing a halted run from a paused one is required for the same
 reason. Both stop the numbers advancing, but a pause leaves state the
 reader can trust while a halt may leave a compartment partway through a
