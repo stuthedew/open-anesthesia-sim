@@ -82,8 +82,10 @@ data/patients/reference_adult.json ─┴─> core/parameters.py
 `core/parameters.py` is the only module that reads the JSON files (via
 `importlib.resources`), and it validates schema version, required fields,
 units, and ranges before constructing `AgentParameters` /
-`ReferenceAdultParameters`. Nothing downstream re-reads or re-derives these
-values from disk.
+`ReferenceAdultParameters`. The schemas are strict at every nesting level:
+a key the schema does not declare fails the load rather than being silently
+discarded, so a data file cannot document one model while the app runs
+another. Nothing downstream re-reads or re-derives these values from disk.
 
 **Each simulation step**, `RespiratorySystem.advance()` runs a fixed sequence
 of exact analytic solutions (operator splitting — see `docs/MODEL.md` for the
@@ -158,9 +160,11 @@ frame took.
 Each JSON file carries a `schema_version`, an `id`, the parameter values, and
 a `sources` array of citations (`citation`, `url`, `note` per entry — see
 `core.parameters.SourceReference`). `core/parameters.py` rejects a file that
-is missing required fields, uses an unsupported schema version, or contains
-a value outside its validated range (e.g. non-positive volumes, tissue
-perfusion fractions that don't sum to 1). Adding a new agent or patient
+is missing required fields, uses an unsupported schema version, contains a
+value outside its validated range (e.g. non-positive volumes, tissue
+perfusion fractions that don't sum to 1), or carries a key the schema does
+not declare — including inside a nested object such as
+`tissue_gas_partition_coefficients` or one `sources` entry. Adding a new agent or patient
 profile means adding a new validated, cited JSON file plus any new parsing
 support in `parameters.py` — not adding constants directly to `core/`.
 

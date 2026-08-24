@@ -118,15 +118,9 @@ pinned vectors, so the coupled model is checked against an independent
 solution on every CI run.
 
 Every finding that still reproduces is tracked. In the harness's own
-numbering (`P1-1` and `P1-6` are closed; see the punch list's completed
+numbering (`P1-1`, `P1-4` and `P1-6` are closed; see the punch list's completed
 section):
 
-- `P1-4` - PL-021, no `extra='forbid'` on the parameter-file schemas.
-  Triage sharpened the claim: a misspelling that removes a required key is
-  already rejected as a missing field, so the live hole is the *unknown
-  extra* key — a renamed field, a units-suffixed variant, or a typo'd
-  duplicate sitting beside the correct one — which loads clean and does
-  nothing.
 - `P2-1` - PL-023, mass balance cannot detect a wrong rate. The remedy is
   the RK4-oracle promotion described above, not adopting `expm`.
 - `P2-4` - PL-024, the venous pool's 12 s mixing time constant shaping the
@@ -169,7 +163,8 @@ noted now so they aren't lost:
   currently only loads via `importlib.resources` against packaged
   `data/agents/*.json`; custom agents need a separate on-disk location
   (e.g. a user config directory) and their own load path.
-- The existing Pydantic validation (ranges, required fields, the
+- The existing Pydantic validation (ranges, required fields, rejection of
+  keys the schema does not declare, the
   mac_percent <= max_delivered_concentration_percent cross-check) should
   still apply to custom agents - it catches structurally invalid data
   (typos, absurd values) even though it can't and shouldn't try to
