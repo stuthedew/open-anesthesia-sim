@@ -106,6 +106,11 @@ any reason to load the skill:
   (`claude/pl-013-triage-review-harness-findings`); a branch generated for
   the session before it started cannot be renamed, and that is expected
   rather than a failure. Say in your reply where you put the ID.
+- **Decide where an item's work happens, and act on it.** When the project
+  owner names an item to start, choose between continuing in this session
+  and opening a fresh one, then proceed — do not ask which. The skill's
+  "Mode: start an item" has the criteria, and how to open the fresh session
+  already named and branched correctly where the surface allows it.
 - **`P0` items are hotfixes.** They come before feature work, on their own
   branch, with a patch version bump and a regression test.
 - **Do not start an `L` item from a punch-list entry.** Promote it into a
