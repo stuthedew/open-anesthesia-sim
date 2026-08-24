@@ -134,118 +134,58 @@ the conditions, and a session makes the call.
 
 ---
 
-## P0 — Now
-
-The three items below are handled as one hotfix branch with a single patch
-bump to v0.2.1, not three — decided 2026-08-24, overriding the one-branch-
-per-`P0` default in "Priority" above, because they are independent, small,
-and all validation hardening. Add the v0.2.1 row to `ROADMAP.md`'s version
-table when the fix lands.
-
-Do PL-013's cherry-pick of `0ccfa44` first. It is four new files with no
-overlap, and it gives all three fixes an executable acceptance check
-(`P1-2`, `P1-3`, `P1-5`) instead of only the regression tests written
-alongside them.
-
-### PL-015 Reject an out-of-range delivered concentration instead of simulating it
-`P0` · `S` · `safety` `defect` · ready · added 2026-08-24
-
-**Problem.** `SimulationController.set_delivered_concentration`
-(`app/controller.py:225`) passes its argument straight through to
-`RespiratorySystem` and then to the circuit with no bound check. The
-vaporizer maximum is applied only in `_build_state`, as
-`min(requested_fraction, max_fraction)`. Calling the setter with 0.50 on
-isoflurane (5.0% maximum) is accepted and simulated as 50%.
-**Why it matters.** The whole simulation then runs from a delivered
-concentration no real vaporizer can produce, and every downstream displayed
-value — circuit, alveolar, arterial, tissue curves — is a plausible-looking
-number from an impossible input. Today only the UI slider bounds the value,
-so the guard is in the presentation layer rather than the model.
-**Where.** `app/controller.py` (`set_delivered_concentration`,
-`_build_state`), `core/respiratory_system.py:115`, `core/circuit.py`.
-**First step.** Validate in `core/`, not the controller: reject a fraction
-outside `(0, max]` with an `AnesthesiaSimulationError` subclass. Make
-`_build_state` reject too rather than silently clamping — silent coercion
-of a safety-critical input is what `CLAUDE.md` forbids — and update the
-docstring that currently documents the clamp.
-**Done when.** Both paths reject out-of-range input, a regression test
-covers the 50%-on-a-5%-vaporizer case, and the `P1-2` check in PL-013's
-harness reports FIXED.
-
-### PL-016 Make the agent MAC cross-check fail closed
-`P0` · `S` · `safety` `science` `defect` · ready · added 2026-08-24
-
-**Problem.** `_AgentPayload._mac_percent_must_not_exceed_vaporizer_max`
-(`core/parameters.py:199`) reads `max_delivered_concentration_percent` out
-of `info.data`. Pydantic populates `info.data` in field-declaration order,
-so the key is present only because `max_delivered_concentration_percent`
-happens to be declared first. Reorder the two fields — or let the maximum
-fail its own validation — and `info.data.get` returns `None`, the guard
-returns the value unchecked, and an agent file declaring 40% MAC on a 5%
-vaporizer loads clean.
-**Why it matters.** This is the only cross-field check on the agent data
-files, and MAC drives the default delivered concentration
-(`_build_state` starts at 1 MAC). A guard that silently no-ops on a field
-reordering is worse than no guard: it reads as validation coverage that
-does not exist.
-**Where.** `core/parameters.py` (`_AgentPayload`),
-`data/agents/*.json`.
-**First step.** Replace the `field_validator` with a
-`model_validator(mode="after")`, which sees every field regardless of
-declaration order.
-**Done when.** The check fires independent of field order, a regression
-test declares the fields in the failing order and asserts rejection, and
-the `P1-5` check in PL-013's harness reports FIXED.
-
-### PL-017 Source the patient defaults from the data file, not controller literals
-`P0` · `S` · `safety` `science` `defect` · ready · added 2026-08-24
-
-**Problem.** `SimulationController.__init__` hardcodes
-`alveolar_ventilation_l_min = 4.0` and `cardiac_output_l_min = 5.0` as
-Python literals. `data/patients/reference_adult.json` declares the same two
-values with their citations, but nothing reads
-`default_alveolar_ventilation_l_min` outside the schema, and
-`default_cardiac_output_l_min` reaches only `core/patient.py`. Edit the
-data file to 6.5 / 5.5 and the running app still uses 5.0 / 4.0.
-**Why it matters.** The numbers agree today, so the duplication is
-invisible; that is what makes it dangerous. The data file carries the
-provenance under `docs/MODEL.md`, so the app is running values whose
-citation trail points at a file it does not actually consult. Any future
-correction to the cited defaults would silently not take effect.
-**Where.** `app/controller.py` (`__init__`), `core/parameters.py:236-237`,
-`core/patient.py:59`, `data/patients/reference_adult.json`.
-**First step.** Drop the literals and take both defaults from the loaded
-`PatientParameters`, keeping the constructor arguments as explicit
-overrides.
-**Done when.** Changing the data file changes the app's starting values, a
-regression test asserts that, and the `P1-3` check in PL-013's harness
-reports FIXED.
-
 ## P1 — Next
 
-### PL-013 Land the review harness and triage its six remaining findings
-`P1` · `M` · `safety` `science` `defect` · ready · added 2026-08-24
+### PL-013 Triage the review harness's four remaining findings
+`P1` · `S` · `safety` `science` `defect` · ready · added 2026-08-24
 
-**Problem.** The branch `claude/repo-architecture-review-3h39kh` carries the
-only surviving record of an independent architecture review of the v0.2.0
-baseline: an executable harness under `tools/review-verification/` that
-reproduces nine findings on demand. It was never merged, and until
-PL-015 through PL-017 were filed none of the nine appeared in this file.
-Re-run against `main` on 2026-08-24, all nine still reproduce and all three
-physics claims still hold.
-**Why it matters.** Three of the nine were safety-critical enough to
-promote to `P0` (PL-015, PL-016, PL-017), and the harness is what proves
-they are fixed. Deleting the branch discards the evidence for all nine and
-the only independent check on the physics claims in `docs/MODEL.md`.
-**Where.** `tools/review-verification/` on that branch; `core/` validation
-and parameter loading; `app/simulation_view.py` timer.
-**First step.** Cherry-pick `0ccfa44` onto `main` (it applies cleanly —
-four new files, no overlap) and re-run both scripts, so the P0 fixes have a
-check to flip. The three safety findings are split out as PL-015, PL-016,
-and PL-017; the six that remain are listed in the working-notes thread.
-**Done when.** The harness is on `main`, each remaining finding is either an
-entry here or explicitly declined with a reason, and the branch is
-deleted.
+**Problem.** The harness under `tools/review-verification/` reproduces the
+independent architecture review of the v0.2.0 baseline on demand. It is now
+on the development line (`655e429`), and the three safety-critical findings
+it carried are fixed in v0.2.1 (`bc5f823`): `P1-2`, `P1-3`, and `P1-5` all
+report FIXED. `P1-1` is filed as PL-018. Four findings are still neither
+tracked nor declined: `P1-4` (no `extra='forbid'`), `P1-6` (dead,
+non-conservative `advance_ventilation`), `P2-1` (mass balance cannot detect
+a wrong rate), and `P2-4` (the venous pool dominates early mixed-venous
+values).
+**Why it matters.** A reproduced finding that is in no queue is a finding
+that will be lost the next time the harness is not run. Two of the four
+(`P1-4`, `P1-6`) are safety-relevant: a silently ignored data-file typo and
+a non-conservative dead code path both produce plausible wrong numbers.
+**Where.** `tools/review-verification/`, `core/parameters.py`,
+`core/alveolar.py`, `docs/MODEL.md`.
+**First step.** Run `verify_findings.py`, then file each of the four as its
+own entry here or record an explicit reason for declining it.
+**Done when.** Each of the four is an entry here or explicitly declined
+with a reason, and `claude/repo-architecture-review-3h39kh` is deleted.
+**Context.** `docs/WORKING_NOTES.md` § "Open thread: the unmerged
+architecture review".
+
+### PL-018 Keep a core failure from silently killing a running simulation
+`P1` · `M` · `safety` `defect` · ready · added 2026-08-24
+
+**Problem.** Two halves of one failure mode, reported as `P1-1` by the
+review harness. `core/` raises bare `ValueError` from its numeric guards,
+outside its own `AnesthesiaSimulationError` hierarchy, so a caller cannot
+distinguish a simulation failure from a programming error. And
+`SimulationView._run_simulation_timer` has no exception handling at all, so
+any raise from a step or a setter kills the asyncio task while the UI still
+reads "Running" and keeps displaying the last state.
+**Why it matters.** A frozen display that still claims to be running is a
+stale-state human-factors failure: the reader has no cue that the numbers
+stopped advancing. v0.2.1 raises the stakes slightly — controller setters
+can now reject an out-of-range delivered concentration, so a raise can
+reach a UI callback, though the slider's bounds keep it unreachable today.
+**Where.** `core/validation.py`, `core/exceptions.py`, `core/circuit.py`
+and the other compartments, `app/simulation_view.py`
+(`_run_simulation_timer`, the setter callbacks).
+**First step.** Decide whether the core's numeric guards should raise a
+`SimulationConfigurationError` subclass or whether
+`AnesthesiaSimulationError` should inherit from `ValueError`; the second is
+smaller but keeps the two hierarchies conflated.
+**Done when.** A raise from `core/` during a run leaves the interface in an
+unambiguous stopped/failed state rather than a stale running one, and the
+harness's two `P1-1` checks report FIXED.
 **Context.** `docs/WORKING_NOTES.md` § "Open thread: the unmerged
 architecture review".
 
@@ -272,7 +212,8 @@ source for the mapping is cited where the constants live.
 ### PL-003 Scope the next milestone in ROADMAP.md
 `P1` · `M` · `planning` · ready · added 2026-08-23
 
-**Problem.** No milestone after v0.2.0 is scoped. `ROADMAP.md`'s
+**Problem.** No milestone after v0.2.0 is scoped (v0.2.1 is a validation
+hotfix on that baseline, not a milestone). `ROADMAP.md`'s
 development rules require a goal, required scope, definition of done, and
 an explicit out-of-scope list before implementation begins, and the next
 candidate is the modular anesthesia-machine abstraction with normal
@@ -444,6 +385,28 @@ rather than an artifact of an earlier payload limit.
 
 ## P3 — Icebox
 
+### PL-019 Remove `BreathingCircuit`'s agent-unaware delivered-concentration default
+`P3` · `S` · `refactor` · ready · added 2026-08-24
+
+**Problem.** `BreathingCircuit.delivered_concentration_fraction` defaults to
+`0.08`, a sevoflurane-shaped literal on a class that knows nothing about
+agents. Since PL-015 the circuit also carries a vaporizer maximum, so
+`BreathingCircuit(max_delivered_concentration_fraction=0.05)` raises unless
+the caller remembers to pass a deliverable concentration too.
+**Why it matters.** Not a defect: the raise is the intended fail-closed
+behavior, and every agent-aware path goes through
+`RespiratorySystem.for_agent()`, which sets both values from the data file.
+It is a rough edge for a direct core caller, and one more agent-unaware
+literal of the kind PL-017 removed from the controller.
+**Where.** `core/circuit.py`, `tests/unit/test_circuit.py`,
+`tests/reference/test_multi_agent.py`, `tests/reference/test_sevo_patient.py`.
+**First step.** Decide the default: `0.0` (vaporizer off, always valid,
+but changes what a bare `BreathingCircuit()` simulates and so touches the
+reference tests that rely on the 8% start) or no default at all.
+**Done when.** Constructing a circuit with a vaporizer maximum below 8%
+does not require remembering a second argument, and the reference tests
+state their delivered concentration explicitly.
+
 ### PL-009 Playback speed multiplier
 `P3` · `L` · `feature` · needs-decision · added 2026-08-23
 
@@ -472,7 +435,7 @@ deliberately retired.
 
 When the punch list is in good shape and the question is "should we move on
 to the next roadmap feature instead?", the answer lives in `ROADMAP.md`, not
-here. The current state is: v0.2.0 is the baseline, no later milestone is
+here. The current state is: v0.2.1 is the baseline, no later milestone is
 scoped yet, and PL-003 above is the task that scopes the next one.
 
 Ideas that are neither a punch-list task nor a scoped milestone —
@@ -490,5 +453,8 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-015 Reject an out-of-range delivered concentration instead of simulating it — `bc5f823`
+- PL-016 Make the agent MAC cross-check fail closed — `bc5f823`
+- PL-017 Source the patient defaults from the data file, not controller literals — `bc5f823`
 - PL-008 Documentation refresh pass — `2484611`
 - PL-001 Bound the chart payload and decouple simulation from render cadence — `3749588`
