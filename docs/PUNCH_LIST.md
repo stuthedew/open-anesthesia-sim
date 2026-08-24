@@ -218,26 +218,6 @@ first-order splitting error rather than fitted to today's numbers.
 **Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
 harness".
 
-### PL-002 Color-code agent selection to real vaporizer colors
-`P1` · `M` · `ux` `safety` · ready · added 2026-08-23
-
-**Problem.** The agent dropdown and selected-agent display are visually
-neutral. Clinical vaporizers use a standardized per-agent color-keyed fill
-system (the North American convention is commonly cited to ASTM D4774) so
-that an agent is never mistaken for another at a glance.
-**Why it matters.** This mirrors a real safety feature rather than being
-styling. A wrong color-to-agent mapping would be actively misleading rather
-than merely neutral, which makes it a presentation-correctness issue under
-`CLAUDE.md`.
-**Where.** `app/simulation_view.py` (dropdown and header construction),
-`app/theme.py`.
-**First step.** Verify the agent-to-color mapping against an authoritative
-current source. Do not implement from recalled colors.
-**Done when.** Each agent's control and header display carry the verified
-color, text contrast against each fill is checked (including for
-color-vision deficiency, since color must not be the only cue), and the
-source for the mapping is cited where the constants live.
-
 ### PL-003 Scope the next milestone in ROADMAP.md
 `P1` · `M` · `planning` · ready · added 2026-08-23
 
@@ -534,6 +514,47 @@ something and returns the least.
 **Done when.** The gate covers whatever scope is chosen and passes, or the
 narrow gate is documented as deliberate with the reason.
 
+### PL-029 Surface the ISO 5360 color reference in the interface
+`P3` · `S` · `ux` `docs` · ready · added 2026-08-24
+
+**Problem.** `AgentColorScheme` records `standard_color_name`,
+`standard_color_munsell`, and `standard_color_pantone` for every agent, but
+nothing in the interface reads them. A user sees a colored badge with no
+indication that the color reproduces a cited standard rather than being
+decoration.
+**Why it matters.** Not a correctness defect — the provenance is recorded in
+`app/theme.py` and `docs/MODEL.md`. But a simulator that deliberately
+reproduces a real safety feature teaches more when it says so: a learner who
+does not already know the ISO 5360 color convention cannot learn it from an
+unlabeled colored badge.
+**Where.** `app/simulation_view.py` (header badge and dropdown),
+`app/theme.py`.
+**First step.** Decide the surface. A tooltip on the badge is cheapest and
+adds no persistent clutter, but tooltips are invisible to touch users and
+usually to screen-reader users.
+**Done when.** The agent's standard color name and its ISO 5360 source are
+discoverable from the interface without reading the source, and the chosen
+surface works for keyboard and touch users.
+
+### PL-030 Stop rebuilding the agent color objects on every render tick
+`P3` · `S` · `perf` · ready · added 2026-08-24
+
+**Problem.** `SimulationView._apply_agent_color_scheme` is called from
+`_refresh_view`, so it constructs a fresh `ft.TextStyle` and a fresh
+`ft.Border` on every render tick even when the selected agent has not
+changed.
+**Why it matters.** Trivial in isolation, and not a correctness issue. It is
+the same shape of avoidable per-frame allocation that PL-010 tracks for chart
+points, and the agent color changes only on an explicit user selection, so
+the work is wasted on almost every tick.
+**Where.** `app/simulation_view.py` (`_apply_agent_color_scheme`,
+`_refresh_view`).
+**First step.** Either precompute one `TextStyle` and one `Border` per entry
+in `AGENT_COLOR_SCHEMES` at import time, or make `_apply_agent_color_scheme`
+a no-op when the agent id is unchanged since the last call.
+**Done when.** Switching agents still repaints both the header badge and the
+dropdown, and a render tick with an unchanged agent allocates neither object.
+
 ### PL-009 Playback speed multiplier
 `P3` · `L` · `feature` · needs-decision · added 2026-08-23
 
@@ -580,6 +601,7 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-002 Color-code agent selection to real vaporizer colors — `74bec83`
 - PL-022 Delete the dead, non-conservative `advance_ventilation` — `956e710`
 - PL-018 Keep a core failure from silently killing a running simulation — `4c442ef`
 - PL-013 Triage the review harness's four remaining findings — `f51762a`
