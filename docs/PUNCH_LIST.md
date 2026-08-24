@@ -150,17 +150,45 @@ whether a priority still reflects reality are judgment calls about this
 project; automating them would produce confident nonsense. The tool detects
 the conditions, and a session makes the call.
 
+`tools/doc_check.py` does the same job for the documentation itself, and runs
+beside it in `make check`, `make doc-check`, and CI. Its errors are the three
+close-out failure modes that need no judgment:
+
+- **Package map.** A module under `src/anesthesia_sim/` (or `tools/`) with no
+  line in the matching tree in `docs/ARCHITECTURE.md`, or a line left in a
+  tree after the file was deleted. `__init__.py` is excluded, and a directory
+  drawn without children stands for its whole subtree.
+- **Provenance table.** A numeric parameter in a `data/**/*.json` file with no
+  row in `docs/MODEL.md`'s provenance table, a row naming a key its file does
+  not hold, a row whose stated value the file no longer holds, or a constant
+  documented twice. Each row names its exact JSON key path, which is what
+  makes the check exact rather than a search for a matching number.
+- **Citations.** A code-span path, a relative link, or a quoted section
+  heading that resolves to nothing. Paths resolve against the repository root
+  and against `src/anesthesia_sim/`, since the documentation writes both. A
+  quoted phrase is read as a section citation only after `see`/`under` or
+  immediately before `above`/`below`; with a directional cue it must name a
+  heading in the citing file, otherwise a heading in any documentation file.
+
+`python3 tools/doc_check.py candidates --base <ref>` is the other half: it
+prints the documentation lines that mention anything a diff changed, which is
+the list a close-out otherwise builds by grepping five files by hand. It
+decides nothing — each line still has to be read.
+
+What neither tool can check is whether a statement is *true*: whether a
+`must` in `docs/MODEL.md` still matches the code, whether a milestone's
+out-of-scope list has quietly become a lie, whether a paragraph describes a
+shipped feature as deferred. That is what a close-out sweep is still for.
+
 ---
 
 ## P1 — Next
 
-**Running order, set 2026-08-24.** PL-032 in `P2` runs before the items in
-this band. It stays `P2` — it is neither a defect nor a milestone blocker —
-but it mechanizes the doc sweep that every close-out below depends on, and
-that sweep has already missed one provenance gap (PL-033). Order from here:
-PL-032, then PL-023, then PL-026 — whose decision needs a conversation
-rather than a session, and can be answered at any point without waiting its
-turn.
+**Running order, updated 2026-08-24.** PL-032 has landed, so the doc sweep
+every close-out below depends on is now mechanized and this band runs in its
+own order again: PL-023 next, then PL-026 — whose decision needs a
+conversation rather than a session, and can be answered at any point without
+waiting its turn.
 
 ### PL-026 Decide what the interface shows after a halted step
 `P1` · `S` · `safety` `ux` · needs-decision · added 2026-08-24
@@ -260,36 +288,6 @@ open question, and it can be answered after.
 **Done when.** `docs/MODEL.md` states the pool's time constant and its
 effect on the first minute, and any interface cue is a deliberate decision
 rather than an omission.
-
-### PL-032 Mechanize the decidable half of the close-out doc sweep
-`P2` · `M` · `infra` `docs` · ready · added 2026-08-24
-
-**Problem.** `CLAUDE.md`'s "Sweep the docs before calling an item done" has
-a session grep five documents (~113 KB) and judge every hit, at the end of a
-session where each extra turn resends the largest context of the run. Three
-of the failure modes it names need no judgment: a `src/` module missing from
-`docs/ARCHITECTURE.md`'s package map or listed there after deletion, a
-constant missing from `docs/MODEL.md`'s provenance table or carrying a value
-the JSON no longer holds, and a cited path or heading that does not exist.
-**Why it matters.** The manual sweep leaks — `weight_kg` sat undocumented
-until PL-033 caught it by hand. Stale docs are a safety issue here per
-`CLAUDE.md`, and a mechanical check gates every change for zero session
-tokens, whether or not anyone remembers to sweep.
-**Where.** New `tools/doc_check.py` beside `tools/punch_list.py` (stdlib
-only, same error/advisory split), `Makefile`, `.github/workflows/quality.yml`,
-`docs/PUNCH_LIST.md` ("What is checked automatically"),
-`.claude/skills/punch-list/SKILL.md` (close-out mode).
-**First step.** Implement the package-map ↔ `src/` tree check in both
-directions; it is self-contained and needs no format change. Naming each
-provenance row's JSON key path in its source cell would make the table
-check exact rather than value-matching, so decide that next.
-**Done when.** `make check` fails on package-map, provenance-table, or
-dangling-path drift; a diff-scoped mode prints the candidate list close-out
-now greps for by hand; and the skill delegates the mechanical half while
-keeping the judgment half.
-**Context.** Two cheaper complements to weigh when this lands: an optional
-`**Docs.**` entry field naming affected docs at capture time, and trimming
-`CLAUDE.md`'s punch-list section of what the skill already states verbatim.
 
 ### PL-027 Confirm the per-frame slider write-back on a live Flet client
 `P2` · `S` · `ux` · ready · added 2026-08-24
@@ -464,6 +462,72 @@ rather than an artifact of an earlier payload limit.
 
 ## P3 — Icebox
 
+### PL-034 Trim `CLAUDE.md`'s punch-list section of what the skill restates
+`P3` · `S` · `docs` · ready · added 2026-08-24
+
+**Problem.** `CLAUDE.md`'s "Punch list and work selection" and
+`.claude/skills/punch-list/SKILL.md` state several of the same rules, in
+places verbatim — the capture rule, the model-matching rule, the close-out
+sweep. `CLAUDE.md` sits in the cached prefix of every request in every
+session; the skill loads only when the punch list is the subject.
+**Why it matters.** Duplication in the always-resident file costs tokens on
+every turn of every session, and gives two places for the same rule to drift
+apart. PL-032 already moved the sweep's mechanics into the skill and the
+tool, so `CLAUDE.md`'s copy is now the stale-prone one.
+**Where.** `CLAUDE.md` ("Punch list and work selection"),
+`.claude/skills/punch-list/SKILL.md`.
+**First step.** Diff the two section by section and mark each rule as
+belonging to one file or the other. `CLAUDE.md` should keep what a session
+must know without loading the skill — that the file exists, that capture is
+mandatory, that the skill handles the rest.
+**Done when.** No rule is stated in full in both files, and `CLAUDE.md`'s
+punch-list section is shorter than it is now without losing a rule.
+**Context.** Raised as a complement in PL-032's brief; deferred because
+`CLAUDE.md` edits invalidate the prefix cache and are best done in their own
+session.
+
+### PL-035 Consider a `**Docs.**` entry field naming the docs a task will touch
+`P3` · `S` · `docs` `infra` · needs-decision · added 2026-08-24
+
+**Problem.** Close-out has to work out which documents a change could have
+invalidated after the change is written. The session that captured the item
+often already knew — it just had nowhere in the entry format to say so.
+**Why it matters.** `tools/doc_check.py candidates` narrows the sweep from a
+diff, but it only finds documents that already name something the diff
+touched. A document that *should* mention a new feature and does not is
+exactly what it cannot see, and is a failure mode that has happened here.
+**Where.** `docs/PUNCH_LIST.md` (entry format), `tools/punch_list.py`
+(`_check_entry`), `.claude/skills/punch-list/SKILL.md` (capture mode).
+**Decision needed.** Whether an optional field earns its cost. Against: an
+optional field that is usually omitted is noise, and a wrong guess at
+capture time may be worse than no guess. For: it is free to write when the
+capturing session already knows, and close-out reads it for nothing. Decide
+also whether the checker should validate that the named paths exist, which
+`doc_check.py`'s resolver already does for prose.
+**Done when.** The field is either in the format spec and validated, or the
+decision not to add it is recorded in "Archive" with its reason.
+
+### PL-036 Extend `doc_check.py` to the statements it currently cannot decide
+`P3` · `M` · `docs` `infra` · needs-decision · added 2026-08-24
+
+**Problem.** `tools/doc_check.py` checks that cited things *exist*. It
+cannot check that a sentence about them is *true*: a `must` in
+`docs/MODEL.md` the code no longer satisfies, a shipped feature still
+described as deferred, a displayed value whose units the interface changed.
+**Why it matters.** Those are the remaining close-out failure modes, and
+they are the ones with clinical consequence — `CLAUDE.md` calls a stale
+statement about what a value means a safety issue, not tidiness.
+**Where.** `tools/doc_check.py`, `docs/MODEL.md` ("Required invariants",
+"Minimum displayed outputs").
+**Decision needed.** Whether any of it is mechanizable without producing
+confident nonsense. One candidate is concrete: `docs/MODEL.md`'s "Minimum
+displayed outputs" could name the `SimulationSnapshot` field behind each
+displayed value, making the list checkable against the dataclass the way the
+provenance table is now checkable against the JSON. Whether the `must`
+statements can be tied to named tests is the harder half.
+**Done when.** Either a further check is implemented, or the decision that
+this half stays human is recorded with its reasoning.
+
 ### PL-019 Remove `BreathingCircuit`'s agent-unaware delivered-concentration default
 `P3` · `S` · `refactor` · ready · added 2026-08-24
 
@@ -575,6 +639,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-032 Mechanize the decidable half of the close-out doc sweep — `3f786b5`
 - PL-033 Record the reference patient's weight in the provenance table — `ebcf990`
 - PL-025 Assign a release number to the post-v0.2.1 work — `3099980`
 - PL-031 Record resolved punch-list items in a durable archive — `f5b77ec`

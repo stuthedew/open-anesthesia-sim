@@ -96,15 +96,16 @@ holds tasks, `docs/WORKING_NOTES.md` holds the narrative behind them.
 - **Sweep the docs before calling an item done.** Landing a change is not
   finishing it. Before you report an item complete, check every file that
   could now describe the code wrongly, and fix what drifted in the same
-  change as the code. At minimum grep `README.md`, `ROADMAP.md`,
-  `docs/ARCHITECTURE.md`, `docs/MODEL.md`, and `docs/WORKING_NOTES.md` for
-  the identifiers, filenames, constants, and behavior the change touched.
-  Ask specifically:
+  change as the code. Start with `tools/doc_check.py`, not with a grep: its
+  `check` mode (run by `make check` and CI) decides the package-map,
+  provenance-table, and dangling-citation questions outright, and
+  `python3 tools/doc_check.py candidates --base <ref>` prints the
+  documentation lines mentioning anything the diff touched — the grep of
+  `README.md`, `ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/MODEL.md`, and
+  `docs/WORKING_NOTES.md`, already run. Spend the judgment on what it cannot
+  decide, which is whether each statement is still true. Ask specifically:
   - Does any file still describe the old behavior as current, or a shipped
     feature as deferred?
-  - Did the change add a module, a data-file field, or a displayed value
-    that `docs/ARCHITECTURE.md`'s tree or `docs/MODEL.md`'s provenance table
-    does not list?
   - Did it invalidate a cross-reference — a `WORKING_NOTES.md` thread now
     deleted, a milestone heading now renamed, a "see X above" now pointing
     nowhere?

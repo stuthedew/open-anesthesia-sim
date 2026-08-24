@@ -1,4 +1,4 @@
-.PHONY: sync check fix test run prebuild punch-list
+.PHONY: sync check fix test run prebuild punch-list doc-check
 
 sync:
 	uv sync --locked --dev
@@ -9,6 +9,7 @@ check: sync
 	uv run mypy src
 	uv run pytest
 	python3 tools/punch_list.py check
+	python3 tools/doc_check.py check
 
 fix:
 	uv run ruff format .
@@ -19,6 +20,9 @@ test:
 
 punch-list:
 	python3 tools/punch_list.py check
+
+doc-check:
+	python3 tools/doc_check.py check
 
 run:
 	uv run anesthesia-sim
