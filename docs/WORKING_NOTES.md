@@ -86,7 +86,7 @@ Stepping is exact-closed-form per step, so a larger step is a model-fidelity
 question, not just a performance one. Being an `L`, it needs scoping into a
 `ROADMAP.md` milestone before implementation.
 
-## Open thread: the architecture review harness - PL-023, PL-024
+## Open thread: the architecture review harness - PL-024
 
 An independent architecture review of the v0.2.0 baseline (commit
 `3251ebf`) produced an executable harness under `tools/review-verification/`
@@ -116,17 +116,25 @@ that imports no solver from `core/`, so agreement is genuine verification
 rather than a tautology. It also shows a single matrix exponential is exact
 (~1e-15) where the shipped pairwise split is not (~2e-5), which is the
 evidence behind the review's central architectural recommendation. The
-review's own note is that the remedy for the splitting error is not to adopt
-`expm` outright but to promote the RK4 oracle into `tests/reference/` with
-pinned vectors, so the coupled model is checked against an independent
-solution on every CI run.
+review's own note was that the remedy for the splitting error is not to
+adopt `expm` outright but to promote the RK4 oracle into `tests/reference/`
+with pinned vectors. That promotion has landed as
+`tests/reference/test_coupled_dynamics.py`, so the coupled model is now
+checked against an independent solution on every CI run; the oracle here
+stays as the exploratory version, and is still where the `expm` comparison
+lives.
 
 Every finding that still reproduces is tracked. In the harness's own
 numbering (`P1-1`, `P1-4` and `P1-6` are closed; see the punch list's
 completed section):
 
-- `P2-1` - PL-023, mass balance cannot detect a wrong rate. The remedy is
-  the RK4-oracle promotion described above, not adopting `expm`.
+`P2-1` is closed but will keep reporting REPRODUCED, and that is not a
+regression. Its check measures whether mass balance alone can detect a wrong
+rate, and mass balance still cannot: the fix was to add a second, independent
+gate beside it, not to make the accounting validator into something it is
+not. Read that check as a standing statement about what conservation buys,
+not as an open defect.
+
 - `P2-4` - PL-024, the venous pool's 12 s mixing time constant shaping the
   first minute of the displayed mixed-venous trace. Judged a documentation
   and presentation gap rather than a defect: 1.0 L is the Gas Man reference

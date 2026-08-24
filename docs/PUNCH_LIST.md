@@ -179,34 +179,12 @@ this band. `session-cost` work is a multiplier on every session after it and
 is worth promoting, but the promotion has no natural ceiling and it had taken
 four of seven P1 slots ahead of the science and safety items; PL-035 and
 PL-036 went to `P2` in that pass, and PL-034 landed. PL-037 stays because it
-is `S`, certain, and prevents a whole wasted session. So: PL-023 first, a
-science-tagged correctness gate; then PL-026, safety-tagged and answerable in
-a conversation rather than a session, so it can be taken out of turn; then
-PL-037; then PL-003, which is milestone scoping and follows the band.
-
-### PL-023 Gate the coupled dynamics on an independent solution, not just mass balance
-`P1` · `M` · `science` `infra` · ready · added 2026-08-24
-
-**Problem.** `core/agent_simulation_validation.py` is the only automatic
-correctness gate on the coupled step, and it cannot detect a wrong rate:
-every internal transfer is applied as an equal-and-opposite pair, so the
-residual sits at ~2e-15 L while the dynamics are visibly wrong — Δt = 10 s
-differs from Δt = 0.1 s by 0.157 percentage points of alveolar fraction.
-Conservation is necessary and nowhere near sufficient.
-**Why it matters.** Any future change to the operator split can shift the
-solution materially with every gate still green, and the next milestone's
-machine abstraction touches that split. Reported as `P2-1`.
-**Where.** `tests/reference/`, `tools/review-verification/verify_physics.py`,
-`core/simulation.py`.
-**First step.** Promote `verify_physics.py`'s from-scratch RK4 oracle into
-`tests/reference/` with pinned vectors. It must keep importing only the
-parameter loaders and never a solver from `core/`, or the test becomes a
-tautology rather than a verification.
-**Done when.** CI checks the coupled six-state solution against an
-independent integration, and the tolerance is justified against the measured
-first-order splitting error rather than fitted to today's numbers.
-**Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
-harness".
+is `S`, certain, and prevents a whole wasted session. PL-023 landed, and the
+measurements it produced opened PL-040. So: PL-026 and PL-040 first — both
+are safety-tagged questions about what the interface shows, both are
+answerable in a conversation rather than a session, and deciding them
+together is cheaper than deciding them apart; then PL-037; then PL-003, which
+is milestone scoping and follows the band.
 
 ### PL-026 Decide what the interface shows after a halted step
 `P1` · `S` · `safety` `ux` · needs-decision · added 2026-08-24
@@ -235,6 +213,35 @@ question entirely but means capturing and restoring six compartments plus
 the accounting validator on every step.
 **Done when.** What a halted run displays is a recorded decision with its
 reasoning, and `docs/MODEL.md`'s interface rules state it.
+
+### PL-040 Stop displaying more decimals than the model can support
+`P1` · `S` · `safety` `ux` · needs-decision · added 2026-08-24
+
+**Problem.** `SimulationView._format_percent` renders every concentration as
+`f"{fraction * 100.0:.3f}%"` — thousandths of a percentage point. The
+operator split is not accurate to that. Measured against the independent
+solution added by PL-023, the shipped step disagrees with the true solution
+by up to 2.5e-5 in fraction, i.e. 0.0025 percentage points, so the third
+displayed decimal is numerical noise and the second is at the edge of it.
+Parameter uncertainty is coarser again.
+**Why it matters.** `CLAUDE.md` requires displayed precision to be justified
+by model fidelity and interpretability, and forbids presentation implying
+more certainty than the model supports. A trainee reading `2.134%` may
+reasonably infer the simulator resolves thousandths of a percent; it does
+not, and clinical agent monitors report 0.1 percentage point.
+**Where.** `app/simulation_view.py` (`_format_percent` and the chart axis
+labels sharing its scale), `docs/MODEL.md` § "Minimum displayed outputs",
+and the view-formatting tests in `tests/unit/`.
+**Decision needed.** How many decimals each displayed quantity earns, and
+whether the answer is uniform. Two decimals suit circuit, alveolar, and
+mixed-venous values, but muscle and fat sit near 1e-6 fraction early in a run
+and would read `0.00%` for minutes, erasing the wash-in the display exists to
+teach. Uniform reduction, per-compartment precision, and a
+significant-figures rule are all defensible; the rationale is what must be
+recorded, not a precision tuned by eye.
+**Done when.** Displayed precision is a recorded decision tied to model
+fidelity, `docs/MODEL.md` states it alongside the displayed outputs, and the
+formatting tests pin it.
 
 ### PL-037 Check the branch is current against `main` before starting an item
 `P1` · `S` · `session-cost` `infra` · ready · added 2026-08-24
@@ -686,6 +693,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-023 Gate the coupled dynamics on an independent solution, not just mass balance — `f5cd82b`
 - PL-034 Trim `CLAUDE.md`'s punch-list section of what the skill restates — `22e7876`
 - PL-032 Mechanize the decidable half of the close-out doc sweep — `3f786b5`
 - PL-033 Record the reference patient's weight in the provenance table — `ebcf990`

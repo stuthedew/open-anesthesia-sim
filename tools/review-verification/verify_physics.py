@@ -6,9 +6,12 @@ integrates them with a from-scratch RK4, and compares. It then builds a
 from-scratch matrix exponential to show what the same system costs when
 solved as one coupled whole rather than split into pairwise exchanges.
 
-Nothing here is a fix. Promoting the RK4 oracle into `tests/reference/`
-with pinned vectors is the actual remedy for finding P2-2; this script is
-the evidence that such a test would pass today.
+Nothing here is a fix. The RK4 oracle has since been promoted into
+`tests/reference/test_coupled_dynamics.py` with pinned vectors, which is the
+remedy for finding P2-1 (PL-023) and runs on every CI run. This script stays
+as the exploratory version: it is where the matrix-exponential comparison
+below lives, and it runs at horizons and step sizes that would be too slow
+for the test suite.
 
 Run:  uv run python tools/review-verification/verify_physics.py
 """
