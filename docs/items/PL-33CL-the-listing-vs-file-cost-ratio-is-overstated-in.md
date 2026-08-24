@@ -1,4 +1,10 @@
-# The listing-vs-file cost ratio is overstated in three places, and drifts
+---
+id: PL-33CL
+title: The listing-vs-file cost ratio is overstated in three places, and drifts
+status: untriaged
+touches: .claude/skills/punch-list/SKILL.md, tools/punch_list.py
+added: 2026-08-24
+---
 
 `P3` · `S` · `docs`
 

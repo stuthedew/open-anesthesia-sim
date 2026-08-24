@@ -58,6 +58,7 @@ DOC_GLOBS = (
     "AGENTS.md",
     "docs/*.md",
     ".claude/skills/*/SKILL.md",
+    "subprojects/*/README.md",
 )
 
 # Where the package map lives, and where the provenance table lives.

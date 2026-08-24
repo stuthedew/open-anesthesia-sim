@@ -34,10 +34,11 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "subprojects/docket/tests"]
 addopts = "-ra"
-# `tools/` holds repo tooling that is not part of the shipped package.
-pythonpath = ["tools"]
+# `tools/` holds repo tooling that is not part of the shipped package, and
+# `subprojects/docket/` is a standalone package this repository also uses.
+pythonpath = ["tools", "subprojects/docket/src"]
 [tool.ruff]
 target-version = "py314"
 line-length = 100
