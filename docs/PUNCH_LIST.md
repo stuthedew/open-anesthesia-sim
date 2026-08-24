@@ -514,6 +514,47 @@ something and returns the least.
 **Done when.** The gate covers whatever scope is chosen and passes, or the
 narrow gate is documented as deliberate with the reason.
 
+### PL-029 Surface the ISO 5360 color reference in the interface
+`P3` · `S` · `ux` `docs` · ready · added 2026-08-24
+
+**Problem.** `AgentColorScheme` records `standard_color_name`,
+`standard_color_munsell`, and `standard_color_pantone` for every agent, but
+nothing in the interface reads them. A user sees a colored badge with no
+indication that the color reproduces a cited standard rather than being
+decoration.
+**Why it matters.** Not a correctness defect — the provenance is recorded in
+`app/theme.py` and `docs/MODEL.md`. But a simulator that deliberately
+reproduces a real safety feature teaches more when it says so: a learner who
+does not already know the ISO 5360 color convention cannot learn it from an
+unlabeled colored badge.
+**Where.** `app/simulation_view.py` (header badge and dropdown),
+`app/theme.py`.
+**First step.** Decide the surface. A tooltip on the badge is cheapest and
+adds no persistent clutter, but tooltips are invisible to touch users and
+usually to screen-reader users.
+**Done when.** The agent's standard color name and its ISO 5360 source are
+discoverable from the interface without reading the source, and the chosen
+surface works for keyboard and touch users.
+
+### PL-030 Stop rebuilding the agent color objects on every render tick
+`P3` · `S` · `perf` · ready · added 2026-08-24
+
+**Problem.** `SimulationView._apply_agent_color_scheme` is called from
+`_refresh_view`, so it constructs a fresh `ft.TextStyle` and a fresh
+`ft.Border` on every render tick even when the selected agent has not
+changed.
+**Why it matters.** Trivial in isolation, and not a correctness issue. It is
+the same shape of avoidable per-frame allocation that PL-010 tracks for chart
+points, and the agent color changes only on an explicit user selection, so
+the work is wasted on almost every tick.
+**Where.** `app/simulation_view.py` (`_apply_agent_color_scheme`,
+`_refresh_view`).
+**First step.** Either precompute one `TextStyle` and one `Border` per entry
+in `AGENT_COLOR_SCHEMES` at import time, or make `_apply_agent_color_scheme`
+a no-op when the agent id is unchanged since the last call.
+**Done when.** Switching agents still repaints both the header badge and the
+dropdown, and a render tick with an unchanged agent allocates neither object.
+
 ### PL-009 Playback speed multiplier
 `P3` · `L` · `feature` · needs-decision · added 2026-08-23
 

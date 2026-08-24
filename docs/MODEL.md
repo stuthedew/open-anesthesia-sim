@@ -983,12 +983,49 @@ failure, and the same number means a different clinical depth for each agent
 desflurane).
 
 The agent selector and header reinforce that written name with the
-agent-identification color specified by ISO 5360:2016 Table 2: yellow for
-sevoflurane, purple for isoflurane, and blue for desflurane. Color is a
+agent-identification color specified by ISO 5360:2016 Table 2 ("Dimensions and
+colours of agent-specific bottle collars and connectors"): yellow for
+sevoflurane, purple for isoflurane, and blue for desflurane. That table's
+footnote b is the reason the color appears here at all — "if a colour is used
+on a vaporizer, bottle, or package label to facilitate correct identification,
+it is important that only the colour for the appropriate anaesthetic agent be
+used" — so displaying a color obligates displaying the correct one. Color is a
 redundant cue, never the sole identifier; the agent name remains visible and
 the foreground/background pairs must meet WCAG 2.2 AA contrast. The cited
 standard references, screen-color approximations, and accessible foregrounds
 live together in `app/theme.py` so the mapping can be audited as one unit.
+
+The displayed fills are two approximations removed from the standard's own
+value, and this must not be read as an exact reproduction. Table 2 footnote c
+states that "Munsell colour is the original" and that the other color systems
+it lists "show the nearest available colour sample"; the Pantone reference is
+therefore already ISO's approximation, and the sRGB `fill` approximates the
+Pantone in turn. Converting each Munsell original to sRGB independently (via
+Illuminant C, chromatically adapted to D65) gives the deviation of each
+displayed fill from the standard's original value:
+
+| Agent | ISO Munsell original | Munsell as sRGB | Displayed fill | ΔE00 |
+| --- | --- | --- | --- | --- |
+| Sevoflurane | 6.25Y 8.5/12 | `#F2D600` | `#FEDB00` | 2.1 |
+| Isoflurane | 7.5P 4/12 | `#8D4192` | `#981D97` | 5.7 |
+| Desflurane | 10B 4/10 | `#0069A0` | `#00629B` | 2.6 |
+
+The sevoflurane and desflurane originals fall outside the sRGB gamut, so no
+display can reproduce them exactly and some deviation is unavoidable rather
+than a choice. Desflurane's *dimensions* are excluded from ISO 5360 by its
+Scope, and Table 2 records "N.S." for its collar angle; its *colour* is
+specified in that same row and is what this application uses.
+
+A known limitation of the standard, reproduced here deliberately: isoflurane's
+purple and desflurane's blue are not distinguishable by a user with a color
+vision deficiency. Under simulated protanopia, deuteranopia, and tritanopia the
+two fills fall to a luminance contrast of 1.1-1.4 against each other, and they
+already differ by only 1.09 for normal color vision — they are separated by hue
+alone. Choosing more separable colors would break the correspondence to real
+vaporizers and is therefore the worse option; the mitigation is that the agent
+name is always rendered alongside the color, which `tests/unit/` asserts for
+both the dropdown options and the header badge. Color must never be the only
+thing distinguishing two agents in this interface.
 
 Distinguishing a halted run from a paused one is required for the same
 reason. Both stop the numbers advancing, but a pause leaves state the

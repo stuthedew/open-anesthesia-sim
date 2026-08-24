@@ -277,6 +277,19 @@ def test_refresh_view_applies_current_agent_color_to_control_and_header(
     assert display_name in view._subtitle_text.value
 
 
+@pytest.mark.parametrize("agent_id", ["sevoflurane", "isoflurane", "desflurane"])
+def test_agent_header_badge_is_bordered_against_the_panel(agent_id: str) -> None:
+    """Sevoflurane's fill is 1.37:1 on the panel; the edge needs a border."""
+
+    view, _ = _build_view(_snapshot(agent_id=agent_id, agent_display_name=agent_id.title()))
+    scheme = AGENT_COLOR_SCHEMES[agent_id]
+
+    border = view._agent_header_badge.border
+    assert border is not None
+    assert border.top is not None
+    assert border.top.color == scheme.foreground
+
+
 def test_refresh_view_scales_slider_and_chart_to_agent_max() -> None:
     """Real vaporizer caps differ per agent (e.g. desflurane 18% vs isoflurane 5%);
     the delivered-concentration slider and the chart's y-axis must track it."""

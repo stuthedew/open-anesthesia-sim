@@ -305,9 +305,14 @@ class SimulationView:
             color=initial_agent_colors.foreground,
             weight=ft.FontWeight.BOLD,
         )
+        # The badge is bordered in its own foreground color because the
+        # sevoflurane fill is only 1.37:1 against the white panel: without a
+        # border its edge effectively disappears, and the colored region a
+        # reader is meant to recognize loses its shape.
         self._agent_header_badge = ft.Container(
             content=self._subtitle_text,
             bgcolor=initial_agent_colors.fill,
+            border=ft.Border.all(1, initial_agent_colors.foreground),
             border_radius=COMPACT_PANEL_RADIUS,
             padding=6,
         )
@@ -891,6 +896,7 @@ class SimulationView:
 
         scheme = AGENT_COLOR_SCHEMES[agent_id]
         self._agent_header_badge.bgcolor = scheme.fill
+        self._agent_header_badge.border = ft.Border.all(1, scheme.foreground)
         self._subtitle_text.color = scheme.foreground
 
         self._agent_dropdown.fill_color = scheme.fill

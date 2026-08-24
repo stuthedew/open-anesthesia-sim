@@ -22,16 +22,34 @@ class AgentColorScheme:
     fill: str
     foreground: str
     standard_color_name: str
-    standard_color_reference: str
+    standard_color_munsell: str
+    standard_color_pantone: str
 
 
-# ISO 5360:2016, Table 2 specifies agent-identification colors for anaesthetic
-# vaporizer filling systems. The ISO standard gives
-# print color-system references rather than sRGB values, so these fills are the
-# nearest commonly published sRGB equivalents of its Pantone references:
+# Agent-identification colors from ISO 5360:2016 (fourth edition, 2016-02-15,
+# which cancels and replaces ISO 5360:2012), Table 2, "Dimensions and colours
+# of agent-specific bottle collars and connectors".
 # https://www.iso.org/standard/68417.html
-# Status checked 2026-08-23: edition 4 remains published/current while under
-# systematic review; re-check this mapping if ISO publishes a successor.
+#
+# Table 2 footnote b is why these colors belong in this UI at all: "If a colour
+# is used on a vaporizer, bottle, or package label to facilitate correct
+# identification, it is important that only the colour for the appropriate
+# anaesthetic agent be used." Displaying a color obligates displaying the right
+# one, which makes a wrong mapping here a safety defect rather than a styling
+# defect.
+#
+# Provenance chain, most authoritative first. Table 2 footnote c: "Munsell
+# colour is the original. Other colour systems show the nearest available
+# colour sample." The ISO original is therefore the Munsell notation; the
+# Pantone reference is already ISO's own nearest sample of it; and `fill` is a
+# further sRGB approximation of the Pantone. Two of the three Munsell originals
+# fall outside the sRGB gamut, so no display can reproduce them exactly.
+# `docs/MODEL.md` records the measured deviation of each `fill` from its
+# Munsell original.
+#
+# Desflurane's *dimensions* are not specified by ISO 5360 — the Scope excludes
+# them and Table 2 gives "N.S." for its collar angle — but its *colour* is
+# specified in that same row, and that is what is used here.
 #
 # Text colors are deliberately separate from the identification colors. Each
 # pair exceeds WCAG 2.2's 4.5:1 minimum for normal text; the agent name remains
@@ -42,18 +60,21 @@ AGENT_COLOR_SCHEMES: Final[dict[str, AgentColorScheme]] = {
         fill="#FEDB00",
         foreground=INK,
         standard_color_name="Yellow",
-        standard_color_reference="Pantone 108 C",
+        standard_color_munsell="6.25Y 8.5/12",
+        standard_color_pantone="Pantone 108 C",
     ),
     "isoflurane": AgentColorScheme(
         fill="#981D97",
         foreground="#FFFFFF",
         standard_color_name="Purple",
-        standard_color_reference="Pantone 254 C",
+        standard_color_munsell="7.5P 4/12",
+        standard_color_pantone="Pantone 254 C",
     ),
     "desflurane": AgentColorScheme(
         fill="#00629B",
         foreground="#FFFFFF",
         standard_color_name="Blue",
-        standard_color_reference="Pantone 3015 C",
+        standard_color_munsell="10B 4/10",
+        standard_color_pantone="Pantone 3015 C",
     ),
 }
