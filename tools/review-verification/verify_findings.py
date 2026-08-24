@@ -270,6 +270,20 @@ def check_mac_cross_check_is_order_dependent(report: Report) -> None:
 def check_dead_non_conservative_ventilation(report: Report) -> None:
     """P1-6: an unused public method models the same physics, non-conservatively."""
 
+    # PL-022 deleted the method, so absence is checked first: calling it
+    # unconditionally would raise here instead of reporting anything. The
+    # original two-part probe still runs if the method ever comes back.
+    if not hasattr(AlveolarCompartment, "advance_ventilation"):
+        report.record(
+            "P1-6",
+            "advance_ventilation is uncalled and does not conserve agent",
+            FIXED,
+            "AlveolarCompartment.advance_ventilation no longer exists (PL-022).\n"
+            "The only ventilation path is RespiratorySystem._exchange_circuit_and_alveoli,\n"
+            "which moves agent between circuit and alveoli as an equal-and-opposite pair.",
+        )
+        return
+
     # Scan every shipped module's source for an actual call site. The
     # definition itself lives in alveolar.py, so that module is checked for
     # ".advance_ventilation(" rather than the bare name.

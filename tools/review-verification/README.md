@@ -5,9 +5,10 @@ baseline (commit `3251ebf`). Every numeric claim the review makes is
 produced by a script here, so a later reader — human or agent — can re-run
 the claim instead of trusting the write-up.
 
-Three findings have since been fixed and now report `FIXED`: `P1-2`
-(PL-015), `P1-3` (PL-017), and `P1-5` (PL-016), all in v0.2.1. Their rows
-below describe the reviewed v0.2.0 behaviour, which is what the checks
+Six of the nine checks have since been fixed and now report `FIXED`:
+`P1-2` (PL-015), `P1-3` (PL-017), and `P1-5` (PL-016) in v0.2.1; `P1-1`
+(both of its checks, PL-018) and `P1-6` (PL-022) after that. Their
+rows below describe the reviewed v0.2.0 behaviour, which is what the checks
 still probe for. `verify_findings.py` therefore exits `1` on a current
 tree, as designed.
 
@@ -94,12 +95,15 @@ documented private import.
   what it probes is an unknown extra key rather than a missing required one.
   A misspelling that removes a required key is already rejected as a missing
   field; the hole is the key an author adds believing it takes effect.
-- `P1-6` scans every shipped module's source for a `.advance_ventilation(`
-  call site. If someone wires the method up, this check flips to `FIXED` —
-  which would be the wrong outcome for the right reason, so read the detail
-  line rather than the state alone. If someone deletes the method (PL-022,
-  the likelier remedy), the check raises instead of reporting, so it has to
-  be updated in the same change.
+- `P1-6` first tests whether `AlveolarCompartment.advance_ventilation`
+  still exists. PL-022 deleted it, so the check reports `FIXED` on that
+  branch and never calls it — calling a deleted method would raise instead
+  of reporting. If the method ever comes back, the original probe runs
+  again: it scans every shipped module's source for a
+  `.advance_ventilation(` call site and checks whether one step credits the
+  alveoli with no matching debit. On that path a wired-up call site also
+  flips the check to `FIXED` — the wrong outcome for the right reason — so
+  read the detail line rather than the state alone.
 
 ## Findings not covered here
 
