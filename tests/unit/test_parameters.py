@@ -325,3 +325,121 @@ def test_rejects_missing_provenance() -> None:
         match="sources must contain at least one reference",
     ):
         parse_agent_parameters(payload)
+
+
+def test_rejects_unknown_top_level_agent_key() -> None:
+    """A typo'd duplicate of a real key must fail, not be silently dropped.
+
+    This is the exact shape the review harness reproduced as P1-4: the
+    correctly spelled key is still present, so nothing is *missing* and the
+    load would otherwise succeed while the misspelled edit took no effect.
+    """
+
+    payload = _valid_agent_payload()
+    payload["blood_gas_partitition_coefficient"] = 9.9
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="blood_gas_partitition_coefficient",
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_unknown_nested_agent_key() -> None:
+    payload = _valid_agent_payload()
+    coefficients = deepcopy(payload["tissue_gas_partition_coefficients"])
+
+    assert isinstance(coefficients, dict)
+    coefficients["muscel"] = 2.4
+    payload["tissue_gas_partition_coefficients"] = coefficients
+
+    with pytest.raises(SimulationConfigurationError, match="muscel"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_unknown_key_in_a_source_entry() -> None:
+    payload = _valid_agent_payload()
+    sources = deepcopy(payload["sources"])
+
+    assert isinstance(sources, list)
+    first = sources[0]
+
+    assert isinstance(first, dict)
+    first["doi"] = "10.1000/example"
+    payload["sources"] = sources
+
+    with pytest.raises(SimulationConfigurationError, match="doi"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_unknown_top_level_patient_key() -> None:
+    payload = _valid_patient_payload()
+    payload["height_cm"] = 175.0
+
+    with pytest.raises(SimulationConfigurationError, match="height_cm"):
+        parse_reference_adult_parameters(payload)
+
+
+def test_rejects_unknown_tissue_group_name() -> None:
+    """An unmodeled compartment must fail rather than be quietly ignored.
+
+    A file naming a `brain` group documents a four-compartment model while
+    the app runs three, and the perfusion-fraction sum check would not
+    catch it: the three modeled fractions still total 1.
+    """
+
+    payload = _valid_patient_payload()
+    tissue_groups = deepcopy(payload["tissue_groups"])
+
+    assert isinstance(tissue_groups, dict)
+    tissue_groups["brain"] = {"volume_l": 1.4, "perfusion_fraction": 0.0}
+    payload["tissue_groups"] = tissue_groups
+
+    with pytest.raises(SimulationConfigurationError, match="brain"):
+        parse_reference_adult_parameters(payload)
+
+
+def test_rejects_unknown_key_inside_a_tissue_group() -> None:
+    payload = _valid_patient_payload()
+    tissue_groups = deepcopy(payload["tissue_groups"])
+
+    assert isinstance(tissue_groups, dict)
+    fat = tissue_groups["fat"]
+
+    assert isinstance(fat, dict)
+    fat["volume_ml"] = 14500.0
+    payload["tissue_groups"] = tissue_groups
+
+    with pytest.raises(SimulationConfigurationError, match="volume_ml"):
+        parse_reference_adult_parameters(payload)
+
+
+def test_every_payload_model_forbids_unknown_keys() -> None:
+    """Strictness must hold for models added later, not just today's six.
+
+    Inheriting `_StrictPayload` is what makes a new payload model strict by
+    default; this walks the subclass tree so that a model which opts back
+    out — or one declared against `BaseModel` directly — is caught here
+    rather than by a data file loading wrong in the field.
+    """
+
+    strict_base = parameters_module._StrictPayload  # noqa: SLF001 - the guard under test
+    subclasses = strict_base.__subclasses__()
+
+    assert len(subclasses) == 6, "a payload model was added or removed; update this count"
+
+    for model in subclasses:
+        assert model.model_config.get("extra") == "forbid", model.__name__
+
+    declared_payload_models = {
+        name
+        for name, value in vars(parameters_module).items()
+        if name.endswith("Payload")
+        and isinstance(value, type)
+        and issubclass(value, BaseModel)
+        and value is not strict_base
+    }
+
+    assert declared_payload_models == {model.__name__ for model in subclasses}, (
+        "a payload model does not inherit _StrictPayload"
+    )
