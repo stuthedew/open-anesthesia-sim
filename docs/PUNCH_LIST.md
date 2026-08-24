@@ -561,7 +561,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
-- PL-031 Record resolved punch-list items in a durable archive — `566a80e`
+- PL-031 Record resolved punch-list items in a durable archive — `f5b77ec`
 - PL-021 Reject unknown keys in the parameter-file schemas — `3465dcf`
 - PL-002 Color-code agent selection to real vaporizer colors — `74bec83`
 - PL-022 Delete the dead, non-conservative `advance_ventilation` — `956e710`
