@@ -693,6 +693,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-041 Put the item ID where the branch name cannot carry it — `fb01800`
 - PL-023 Gate the coupled dynamics on an independent solution, not just mass balance — `f5cd82b`
 - PL-034 Trim `CLAUDE.md`'s punch-list section of what the skill restates — `22e7876`
 - PL-032 Mechanize the decidable half of the close-out doc sweep — `3f786b5`
@@ -701,9 +702,6 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-031 Record resolved punch-list items in a durable archive — `f5b77ec`
 - PL-021 Reject unknown keys in the parameter-file schemas — `3465dcf`
 - PL-002 Color-code agent selection to real vaporizer colors — `74bec83`
-- PL-022 Delete the dead, non-conservative `advance_ventilation` — `956e710`
-- PL-018 Keep a core failure from silently killing a running simulation — `4c442ef`
-- PL-013 Triage the review harness's four remaining findings — `f51762a`
 
 ## Archive
 
@@ -729,6 +727,9 @@ without one gets re-raised by the next session that notices the same thing.
 - PL-028 Decide the fate of `AlveolarCompartment.time_constant_s` —
   closed 2026-08-24, folded into PL-004: one question about an uncalled
   descriptive time constant, asked twice
+- PL-022 Delete the dead, non-conservative `advance_ventilation` — `956e710`
+- PL-018 Keep a core failure from silently killing a running simulation — `4c442ef`
+- PL-013 Triage the review harness's four remaining findings — `f51762a`
 - PL-014 Land or discard the unmerged punch-list model-guidance work — `7714386`
 - PL-015 Reject an out-of-range delivered concentration instead of simulating it — `bc5f823`
 - PL-016 Make the agent MAC cross-check fail closed — `bc5f823`

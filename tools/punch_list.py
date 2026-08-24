@@ -20,7 +20,9 @@ Three modes:
 - `check`   full report. Errors exit non-zero and gate `make check`;
             grooming advisories are informational and never fail a build.
 - `digest`  the few lines injected at session start by the `SessionStart`
-            hook, including an advisory count when grooming is due.
+            hook, including an advisory count when grooming is due and, when
+            `--branch` names a branch that cannot carry an item id, where to
+            put the id instead.
 - `list`    one line per open item. The cheap way to see the whole queue:
             reading the file itself costs roughly twenty-five times as much,
             and most of that is brief prose that only matters once an item
@@ -73,6 +75,15 @@ MAX_OPEN_ITEMS = 25
 # How many items the top band can hold before "what is next?" stops having an
 # answer. Nobody reads a queue by its total; they read the band at the top.
 MAX_BAND_ITEMS = 5
+
+# A branch whose name leads with a punch-list id keeps the work findable from
+# the entry long after the branch itself is gone. Not every surface allows it:
+# a branch generated for a session before that session starts - Claude Code on
+# the web derives one from the opening message - is fixed before the queue has
+# been read, so an item chosen mid-session can never reach it. The digest
+# detects that case and points the session at the artifacts it *can* still
+# name. Requiring the hyphen keeps a random branch suffix from matching.
+BRANCH_ID = re.compile(r"\bpl-\d+", re.IGNORECASE)
 
 # Beyond this, "Recently completed" has stopped being recent. The excess moves
 # to the permanent archive ledger rather than being deleted, so the ids keep
@@ -515,7 +526,25 @@ def _with_guidance(line: str, entry: Entry) -> str:
     return f"{line} - {entry.model_guidance}: use opusplan or your strongest model, high effort"
 
 
-def format_digest(report: Report) -> str:
+def format_branch_note(branch: str | None) -> str:
+    """Render the naming reminder for a branch that cannot carry an item id.
+
+    Empty unless the reminder is still actionable: no branch was supplied,
+    the checkout is on `main`, or the name already leads with an id. The
+    digest is resent on every turn, so a line that cannot be acted on is a
+    line that should not be there.
+    """
+    name = (branch or "").strip()
+    if not name or name in ("main", "HEAD") or BRANCH_ID.search(name):
+        return ""
+    return (
+        f"  Branch `{name}` carries no PL id: if this session works a punch-list item, "
+        "rename the session to lead with the id and put it at the front of every commit "
+        "subject and the pull request title. Say in your reply where you put it."
+    )
+
+
+def format_digest(report: Report, branch: str | None = None) -> str:
     """Render the few lines injected into session context at startup.
 
     Kept short on purpose: this text is resent on every turn of the session.
@@ -557,6 +586,10 @@ def format_digest(report: Report) -> str:
             "(`make punch-list` to see them). Offer a grooming pass before taking new work."
         )
 
+    note = format_branch_note(branch)
+    if note:
+        lines.append(note)
+
     lines.append(
         "`python3 tools/punch_list.py list` shows the queue; read an entry's brief before "
         "starting it, and the whole file only when grooming. Any finding not fixed this "
@@ -570,6 +603,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("mode", choices=("check", "digest", "list"))
     parser.add_argument("--file", type=Path, default=None, help="path to the punch list")
     parser.add_argument("--today", type=date.fromisoformat, default=None, help="reference date")
+    parser.add_argument(
+        "--branch",
+        default=None,
+        help="current git branch; the digest checks whether it carries an item id",
+    )
     args = parser.parse_args(argv)
 
     path = args.file or Path(__file__).resolve().parent.parent / "docs" / "PUNCH_LIST.md"
@@ -590,7 +628,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     report = analyze(path.read_text(encoding="utf-8"), args.today or date.today(), related)
 
     if args.mode in ("digest", "list"):
-        rendered = format_digest(report) if args.mode == "digest" else format_list(report)
+        rendered = (
+            format_digest(report, args.branch) if args.mode == "digest" else format_list(report)
+        )
         if rendered:
             print(rendered)
         return 0
