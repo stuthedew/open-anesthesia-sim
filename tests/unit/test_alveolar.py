@@ -1,4 +1,4 @@
-from math import exp, inf
+from math import inf
 
 import pytest
 
@@ -6,56 +6,21 @@ from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 
-def test_one_time_constant_reaches_expected_fraction() -> None:
+def test_time_constant_is_the_ventilatory_turnover_of_the_gas_volume() -> None:
     alveoli = AlveolarCompartment(
         gas_volume_l=2.5,
-        alveolar_ventilation_l_min=2.5,
+        alveolar_ventilation_l_min=5.0,
     )
 
-    alveoli.advance_ventilation(
-        inspired_fraction=1.0,
-        simulation_step_s=alveoli.time_constant_s,
-    )
-
-    assert alveoli.concentration_fraction == pytest.approx(1.0 - exp(-1.0))
+    assert alveoli.time_constant_s == pytest.approx(30.0)
 
 
-def test_zero_ventilation_preserves_alveolar_state() -> None:
+def test_zero_ventilation_gives_an_infinite_time_constant() -> None:
     alveoli = AlveolarCompartment(
         alveolar_ventilation_l_min=0.0,
     )
-    alveoli.set_concentration_fraction(0.25)
-
-    amount_before = alveoli.agent_amount_l
-    amount_change = alveoli.advance_ventilation(
-        inspired_fraction=1.0,
-        simulation_step_s=60.0,
-    )
 
     assert alveoli.time_constant_s == inf
-    assert amount_change == 0.0
-    assert alveoli.agent_amount_l == amount_before
-
-
-def test_exact_ventilation_update_is_step_size_independent() -> None:
-    one_step = AlveolarCompartment()
-    many_steps = AlveolarCompartment()
-
-    one_step.advance_ventilation(
-        inspired_fraction=0.08,
-        simulation_step_s=60.0,
-    )
-
-    for _ in range(600):
-        many_steps.advance_ventilation(
-            inspired_fraction=0.08,
-            simulation_step_s=0.1,
-        )
-
-    assert many_steps.agent_amount_l == pytest.approx(
-        one_step.agent_amount_l,
-        rel=1e-12,
-    )
 
 
 def test_positive_blood_uptake_removes_alveolar_agent() -> None:

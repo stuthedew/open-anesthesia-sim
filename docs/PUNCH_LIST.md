@@ -194,29 +194,6 @@ the accounting validator on every step.
 **Done when.** What a halted run displays is a recorded decision with its
 reasoning, and `docs/MODEL.md`'s interface rules state it.
 
-### PL-022 Delete the dead, non-conservative `advance_ventilation`
-`P1` · `S` · `safety` `refactor` · ready · added 2026-08-24
-
-**Problem.** `AlveolarCompartment.advance_ventilation` has no call site in
-any shipped module. The live ventilation path is
-`RespiratorySystem._exchange_circuit_and_alveoli`, which moves agent between
-circuit and alveoli as an equal-and-opposite pair; `advance_ventilation`
-instead drives alveolar gas toward an inspired fraction and credits the
-alveoli (+0.005263 L in one 1 s step at 8% inspired) with no matching
-circuit debit. Only `tests/unit/test_alveolar.py` calls it.
-**Why it matters.** Dead code modelling the same physics incorrectly is a
-trap for the next caller — the machine abstraction is the obvious candidate
-— who would get a plausible wash-in curve that creates agent from nowhere.
-Reported as `P1-6`.
-**Where.** `core/alveolar.py`, `tests/unit/test_alveolar.py`,
-`tools/review-verification/verify_findings.py`.
-**First step.** Delete the method and its four unit tests rather than wiring
-it up: the conserving exchange already exists and is what every path uses.
-**Done when.** The method is gone — or made conservative and actually
-called, with the reason recorded — and the harness's `P1-6` check is updated
-in the same change. Deleting the method breaks that check outright rather
-than flipping it to FIXED, and a check that raises reports nothing.
-
 ### PL-023 Gate the coupled dynamics on an independent solution, not just mass balance
 `P1` · `M` · `science` `infra` · ready · added 2026-08-24
 
@@ -324,8 +301,8 @@ because the drift is between an untagged working tree and its last
 described release, which is normal mid-development.
 **Where.** `pyproject.toml` (`version`), `ROADMAP.md` (version table,
 "Current baseline").
-**Decision needed.** Whether the remaining harness fixes (PL-021, PL-022,
-PL-023) fold into one release with PL-018 or each gets its own patch
+**Decision needed.** Whether the remaining harness fixes (PL-021, PL-023)
+fold into one release with PL-018 and PL-022 or each gets its own patch
 number. Folding argues for cutting the number once they land; separating
 argues for bumping now. The roadmap's rule is that a number is chosen for
 the capability boundary it crosses, which is a project-owner call.
@@ -353,6 +330,32 @@ changed measurably.
 **Done when.** Dragging during a run is confirmed smooth on a live client,
 or the write-back is narrowed to the cases that need it with the reason
 recorded.
+
+### PL-028 Decide the fate of `AlveolarCompartment.time_constant_s`
+`P2` · `S` · `refactor` · needs-decision · added 2026-08-24
+
+**Problem.** Deleting `advance_ventilation` (PL-022) left
+`AlveolarCompartment.time_constant_s` with no caller in the shipped
+package; it was that method's only consumer. It is still correct —
+\(60 V_A / \dot{V}_A\), 37.5 s at the reference adult — and still covered by
+unit tests, but nothing reads it.
+**Why it matters.** It is not merely dead: it is the *ventilation-only*
+alveolar time constant, which is not the time constant of the shipped
+coupled dynamics (circuit coupling and blood uptake both change it). A
+future caller who displays it as "the alveolar time constant" would present
+a plausible number for the wrong quantity. `docs/MODEL.md` does not define
+it. Same question as PL-004 for the circuit, and worth deciding with it.
+**Where.** `core/alveolar.py` (`time_constant_s`),
+`tests/unit/test_alveolar.py`.
+**Decision needed.** Whether an uncalled but correct descriptive property
+is worth keeping on the compartment API. Deleting it removes a
+misinterpretation risk and the loader has no use for it; keeping it costs
+three lines and preserves a quantity a future ventilation display may want.
+Decide it alongside PL-004, which asks the same question for the circuit.
+**First step.** Answer that question, then either delete the property with
+its two unit tests or extend its docstring to say what it is not.
+**Done when.** The property is gone, or its docstring states that it is
+ventilation-only and is not the coupled alveolar time constant.
 
 ### PL-004 Decide the fate of `SimulationSnapshot.circuit_time_constant_s`
 `P2` · `S` · `defect` · needs-decision · added 2026-08-23
@@ -577,6 +580,7 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-022 Delete the dead, non-conservative `advance_ventilation` — `PENDING`
 - PL-018 Keep a core failure from silently killing a running simulation — `4c442ef`
 - PL-013 Triage the review harness's four remaining findings — `f51762a`
 - PL-014 Land or discard the unmerged punch-list model-guidance work — `7714386`

@@ -4,7 +4,7 @@ pulmonary blood (uptake), sitting between `circuit.py` and `patient.py`.
 """
 
 from dataclasses import dataclass
-from math import exp, inf
+from math import inf
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
@@ -81,41 +81,6 @@ class AlveolarCompartment:
             concentration_fraction,
         )
         self.agent_amount_l = self.gas_volume_l * concentration_fraction
-
-    def advance_ventilation(
-        self,
-        inspired_fraction: float,
-        simulation_step_s: float,
-    ) -> float:
-        """Advance exactly for ventilation without blood uptake.
-
-        Returns the signed change in alveolar agent amount caused by
-        ventilation.
-        """
-
-        require_concentration_fraction(
-            "inspired_fraction",
-            inspired_fraction,
-        )
-        require_positive_finite(
-            "simulation_step_s",
-            simulation_step_s,
-        )
-
-        if self.alveolar_ventilation_l_min == 0.0:
-            return 0.0
-
-        initial_amount_l = self.agent_amount_l
-        fraction_remaining = exp(-simulation_step_s / self.time_constant_s)
-        initial_fraction = self.concentration_fraction
-
-        next_fraction = (
-            inspired_fraction + (initial_fraction - inspired_fraction) * fraction_remaining
-        )
-
-        self.agent_amount_l = self.gas_volume_l * next_fraction
-
-        return self.agent_amount_l - initial_amount_l
 
     def apply_blood_uptake(
         self,
