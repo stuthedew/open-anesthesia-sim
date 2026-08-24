@@ -8,7 +8,7 @@ that a new conversation can pick up context without re-deriving it, and so
 that decisions made in one conversation are visible to another.
 
 It is not the task queue. Discrete, actionable work is tracked and
-prioritized in `docs/PUNCH_LIST.md`; threads here that have a corresponding
+prioritized in `docs/items/`; threads here that have a corresponding
 task cite its `PL-` id, and a punch-list entry that needs more background
 than its brief allows points back here. The split is deliberate: the punch
 list stays short enough to read at the start of every session, and this file
