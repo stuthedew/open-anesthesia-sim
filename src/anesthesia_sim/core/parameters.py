@@ -8,6 +8,10 @@ rest of the core never imports Pydantic. The `_AgentPayload`/
 exposed outside this module; `parse_agent_parameters()` and
 `parse_reference_adult_parameters()` are the seam between the two.
 
+Every payload model is strict: it inherits `_StrictPayload`, which forbids
+keys the schema does not declare, so a misspelled or obsolete key in a data
+file fails the load instead of being silently discarded.
+
 Raises inside the Pydantic validators below are deliberately bare
 `ValueError`s: Pydantic collects those into a `ValidationError`, and a
 project exception raised there would not be collected the same way. Every
@@ -23,7 +27,7 @@ from importlib.resources import files
 from math import isfinite
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, field_validator, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -164,7 +168,27 @@ PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)
 PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
 
 
-class _SourcePayload(BaseModel):
+class _StrictPayload(BaseModel):
+    """Base for every parameter-file schema; rejects keys it does not declare.
+
+    Pydantic's default is to discard an unknown key silently, which in this
+    repository means a data file can document one model while the app runs
+    another: a renamed field, a units-suffixed variant, a typo'd duplicate,
+    or a field from a schema version this loader does not implement all
+    load clean and take no effect. A misspelling that *removes* a required
+    key is already caught as a missing field; this closes the other half.
+
+    Every payload model below inherits from this rather than setting
+    `model_config` itself, so a seventh model added later is strict by
+    default instead of by being remembered. A test in
+    `tests/unit/test_parameters.py` walks this class's subclasses and
+    enforces that.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class _SourcePayload(_StrictPayload):
     """Schema for one `sources` entry; mirrors `SourceReference`."""
 
     citation: NonEmptyString
@@ -187,13 +211,13 @@ Sources = Annotated[
 ]
 
 
-class _TissueGasPartitionCoefficientsPayload(BaseModel):
+class _TissueGasPartitionCoefficientsPayload(_StrictPayload):
     vessel_rich: PositiveFinite
     muscle: PositiveFinite
     fat: PositiveFinite
 
 
-class _AgentPayload(BaseModel):
+class _AgentPayload(_StrictPayload):
     """Schema for `data/agents/*.json`; mirrors `AgentParameters`."""
 
     schema_version: SchemaVersion
@@ -225,18 +249,18 @@ class _AgentPayload(BaseModel):
         return self
 
 
-class _TissueGroupPayload(BaseModel):
+class _TissueGroupPayload(_StrictPayload):
     volume_l: PositiveFinite
     perfusion_fraction: PositiveFraction
 
 
-class _TissueGroupsPayload(BaseModel):
+class _TissueGroupsPayload(_StrictPayload):
     vessel_rich: _TissueGroupPayload
     muscle: _TissueGroupPayload
     fat: _TissueGroupPayload
 
 
-class _ReferenceAdultPayload(BaseModel):
+class _ReferenceAdultPayload(_StrictPayload):
     """Schema for `data/patients/*.json`; mirrors `ReferenceAdultParameters`."""
 
     schema_version: SchemaVersion

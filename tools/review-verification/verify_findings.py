@@ -173,7 +173,20 @@ def check_data_file_defaults_are_dead(report: Report) -> None:
 
 
 def check_schema_ignores_unknown_keys(report: Report) -> None:
-    """P1-4: a misspelled key in a safety-critical data file loads clean."""
+    """P1-4: a misspelled key in a safety-critical data file loads clean.
+
+    Both probes catch `AnesthesiaSimulationError`, not `ValueError`: the
+    loaders re-raise Pydantic's `ValidationError` as
+    `SimulationConfigurationError`, which is deliberately outside the
+    `ValueError` hierarchy (see `core/exceptions.py`). Catching `ValueError`
+    here would let a rejection escape as a crash and never report FIXED.
+
+    The agent probe keeps the correctly spelled key alongside the typo, so
+    nothing is missing and only the unknown-key rule can reject it. The
+    nested probe uses the real shipped payload for the patient and a nested
+    tissue key for the agent, so a model that forbids extras only at the
+    top level still reports REPRODUCED.
+    """
 
     payload = _agent_payload("sevoflurane")
     genuine = payload["blood_gas_partition_coefficient"]
@@ -185,7 +198,7 @@ def check_schema_ignores_unknown_keys(report: Report) -> None:
         parsed = parse_agent_parameters(payload)
         accepted = True
         loaded = parsed.blood_gas_partition_coefficient
-    except ValueError:
+    except AnesthesiaSimulationError:
         accepted = False
         loaded = genuine
 
@@ -200,15 +213,24 @@ def check_schema_ignores_unknown_keys(report: Report) -> None:
     try:
         parse_reference_adult_parameters(patient_payload)
         patient_accepted = True
-    except ValueError:
+    except AnesthesiaSimulationError:
         patient_accepted = False
+
+    detail = (
+        f"typo'd agent key dropped, blood:gas still {loaded} (not 9.9)"
+        if accepted
+        else f"typo'd agent key rejected, blood:gas unchanged at {loaded}"
+    ) + (
+        "\nextra patient key accepted; no model sets extra='forbid'"
+        if patient_accepted
+        else "\nextra patient key rejected; payload models set extra='forbid'"
+    )
 
     report.record(
         "P1-4",
         "Pydantic schemas silently ignore unknown keys",
         REPRODUCED if accepted and patient_accepted else FIXED,
-        f"typo'd agent key dropped, blood:gas still {loaded} (not 9.9)\n"
-        "extra patient key accepted; no model sets extra='forbid'",
+        detail,
     )
 
 
