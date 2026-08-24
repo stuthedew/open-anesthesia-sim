@@ -139,31 +139,6 @@ the conditions, and a session makes the call.
 
 ## P1 — Next
 
-### PL-013 Triage the review harness's four remaining findings
-`P1` · `S` · `safety` `science` `defect` · ready · added 2026-08-24
-
-**Problem.** The harness under `tools/review-verification/` reproduces the
-independent architecture review of the v0.2.0 baseline on demand. It is now
-on the development line (`655e429`), and the three safety-critical findings
-it carried are fixed in v0.2.1 (`bc5f823`): `P1-2`, `P1-3`, and `P1-5` all
-report FIXED. `P1-1` is filed as PL-018. Four findings are still neither
-tracked nor declined: `P1-4` (no `extra='forbid'`), `P1-6` (dead,
-non-conservative `advance_ventilation`), `P2-1` (mass balance cannot detect
-a wrong rate), and `P2-4` (the venous pool dominates early mixed-venous
-values).
-**Why it matters.** A reproduced finding that is in no queue is a finding
-that will be lost the next time the harness is not run. Two of the four
-(`P1-4`, `P1-6`) are safety-relevant: a silently ignored data-file typo and
-a non-conservative dead code path both produce plausible wrong numbers.
-**Where.** `tools/review-verification/`, `core/parameters.py`,
-`core/alveolar.py`, `docs/MODEL.md`.
-**First step.** Run `verify_findings.py`, then file each of the four as its
-own entry here or record an explicit reason for declining it.
-**Done when.** Each of the four is an entry here or explicitly declined
-with a reason, and `claude/repo-architecture-review-3h39kh` is deleted.
-**Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
-harness".
-
 ### PL-018 Keep a core failure from silently killing a running simulation
 `P1` · `M` · `safety` `defect` · ready · added 2026-08-24
 
@@ -555,6 +530,7 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-013 Triage the review harness's four remaining findings — `f51762a`
 - PL-014 Land or discard the unmerged punch-list model-guidance work — `7714386`
 - PL-015 Reject an out-of-range delivered concentration instead of simulating it — `bc5f823`
 - PL-016 Make the agent MAC cross-check fail closed — `bc5f823`
