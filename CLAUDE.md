@@ -96,15 +96,16 @@ any reason to load the skill:
   not. Prefer capturing at `P3` over dropping it, and say in your reply
   that you did.
 - **Name the work after the item.** As soon as a session starts work on a
-  punch-list item, lead every commit subject on the branch and the pull
-  request title with the item's ID ("PL-013 Triage the review harness's
-  remaining findings"), and rename the session to match. Those are always
-  available and they outlive the branch, which is deleted at merge. Name the
-  branch after the item too where the surface allows it
+  punch-list item, rename the session to lead with the item's ID ("PL-013
+  Triage the review harness's remaining findings"), and put that ID at the
+  front of every commit subject on the branch and of the pull request title.
+  A session addressing more than one item names them all. The rename is
+  neither optional nor blocked — unlike the branch name it can be set at any
+  point in the session, and the punch-list skill says how on each surface.
+  Name the branch after the item too where the surface allows it
   (`claude/pl-013-triage-review-harness-findings`); a branch generated for
   the session before it started cannot be renamed, and that is expected
-  rather than a failure. Say in your reply where you put the ID. The
-  punch-list skill has the per-surface detail.
+  rather than a failure. Say in your reply where you put the ID.
 - **`P0` items are hotfixes.** They come before feature work, on their own
   branch, with a patch version bump and a regression test.
 - **Do not start an `L` item from a punch-list entry.** Promote it into a
