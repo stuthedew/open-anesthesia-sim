@@ -2,6 +2,36 @@
 
 These instructions apply to all AI coding agents working on this repository.
 
+## Working with the project owner
+
+**The outcome is the requirement. An implementation sketched alongside it is
+not.** When the project owner asks for something, what they are asking for is
+the end state — what will be true once it works. A mechanism named in the
+request is usually there to make the goal concrete, and is open to being
+replaced by a better one.
+
+So, before building what was described:
+
+- Work out what the request is actually for. When the stated goal and the
+  stated method point at different things, the goal wins.
+- When a materially better route to the same end state exists, say so and
+  recommend it, with the reasoning and the trade-off, rather than silently
+  building the weaker version because it was the one named. "It is what was
+  asked for" does not defend a design that will not hold up.
+- Where the better approach is clear and the difference is one of mechanism
+  rather than of outcome, build the better one and say plainly what you did
+  differently and why. Do not stop to ask which mechanism to use when the end
+  state is not in question — that spends a turn on a decision the project
+  owner has already delegated.
+- Do ask when the *goal* itself is ambiguous, or when the better approach
+  would change what the project owner ends up with rather than only how it is
+  built. That is the case where the choice is genuinely theirs.
+
+This is not license to redefine the goal, widen the scope, or substitute a
+more interesting problem. The end state is theirs; the route to it is open.
+The bar for overriding a proposed mechanism is that the alternative is clearly
+superior *for the same goal* — not that it is the one you would have picked.
+
 ## Architecture and development discipline
 
 - Keep scientific/simulation code independent of Flet.
@@ -89,12 +119,21 @@ any reason to load the skill:
 
 - **Capture, always.** Any defect, risk, cleanup, optimization,
   inconsistency, or feature idea identified in a session and not fixed in
-  that same session gets an entry in `docs/PUNCH_LIST.md` before the
-  session ends. This applies equally to findings the project owner raises
-  and to findings you make on your own while working on something else.
-  Do not ask whether to record it — recording is cheap and losing it is
-  not. Prefer capturing at `P3` over dropping it, and say in your reply
-  that you did.
+  that same session gets recorded before the session ends. This applies
+  equally to findings the project owner raises and to findings you make on
+  your own while working on something else. Do not ask whether to record it —
+  recording is cheap and losing it is not. Prefer capturing at `P3` over
+  dropping it, and say in your reply that you did.
+- **A finding raised mid-task goes to `docs/inbox/`, not into the queue.**
+  One file per thought, no `PL-` id, committed on its own and left for
+  triage. It carries no id to race another session for and cannot conflict
+  with another branch's note, so it is safe to write no matter what else is
+  in flight — which is what makes it safe to raise an idea at any moment
+  rather than saving it for a quiet one. `docs/inbox/README.md` has the
+  format; the `punch-list` skill has the routing and the triage pass. Write
+  straight into `docs/PUNCH_LIST.md` only when this session's work already
+  *is* the queue, or when the finding is `P0` or safety-critical and has to
+  be visible in the session-start digest immediately.
 - **Name the work after the item.** As soon as a session starts work on a
   punch-list item, rename the session to lead with the item's ID ("PL-013
   Triage the review harness's remaining findings"), and put that ID at the
