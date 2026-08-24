@@ -28,9 +28,13 @@ appropriate, and its entry here should be deleted rather than left stale.
 
 - `build/v0.1.0-sevo-patient` was fast-forward merged into `main` and the
   remote branch deleted; `main` is now the v0.2.0 baseline (isoflurane and
-  desflurane added as additional loadable agents, both loaded through
-  `load_agent_parameters(agent_id)` in `core/parameters.py`; only
-  sevoflurane is wired to the running app/UI, per v0.2.0's explicit scope).
+  desflurane added as additional loadable agents, all loaded through
+  `load_agent_parameters(agent_id)` in `core/parameters.py`). All three are
+  selectable in the running app: a basic picker was added in `00791b1`,
+  after v0.2.0 closed and outside its scope. It restarts the run at the new
+  agent's 1 MAC rather than switching mid-run — residual-agent washout
+  across a switch is still the anesthesia-machine milestone's work, and
+  `SimulationController.set_agent`'s docstring is the place that says so.
   Work happens directly on `main` unless a session has reason to branch.
 - `docs/MODEL.md` and `ROADMAP.md` are up to date with the v0.2.0
   implementation: the arterial-blood simplification is documented
@@ -39,65 +43,45 @@ appropriate, and its entry here should be deleted rather than left stale.
   parameter provenance table covers all three agents from the cited data
   files, and `tests/reference/test_multi_agent.py` covers directional
   solubility and mass-balance closure for isoflurane and desflurane.
-- `simulation_view.py` test coverage is 92% (up from 32%), using a minimal
-  fake `Page`/`Controller` pattern documented at the top of
-  `tests/unit/test_simulation_view.py` rather than a live Flet client.
-  Uncovered: `mount()`'s layout composition and the async timer loop, which
-  have no formatting/domain logic to verify.
+- `simulation_view.py` is tested through a minimal fake `Page`/`Controller`
+  pattern documented at the top of `tests/unit/test_simulation_view.py`
+  rather than a live Flet client. The simulation and render loops are now
+  covered too (started as tasks, driven for a bounded slice of real time,
+  then cancelled); `mount()`'s layout composition remains uncovered and has
+  no formatting or domain logic to verify.
+- Rendering is bounded and independent of run length: the chart is sent
+  only the samples inside its visible window, decimated to at most
+  `MAX_CHART_POINTS_PER_SERIES` per trace by min/max envelope selection
+  (`app/chart_downsampling.py`), and the simulation and render loops run at
+  separate cadences. A live Flet client was not available in the session that
+  did this work, so the repaint mechanism was deliberately left unchanged —
+  see PL-010 before optimizing it further.
 - Known dead field: `SimulationSnapshot.circuit_time_constant_s` is still
   computed but has had no corresponding display widget since the v0.1.0 UI
   rewrite (v0.0.2 showed it; v0.1.0 doesn't). Not yet decided whether to
   restore the display or remove the field; tracked as PL-004.
 
-## Open thread: performance (slow live graph, unresponsive buttons) - PL-001
-
-Not yet profiled or fixed. Diagnosis so far, from reading the code (not yet
-confirmed by a profiler):
-
-The per-step physics is not the likely bottleneck. Every compartment update
-in `core/*.py` is a closed-form exact solution, not an iterative solver;
-benchmarking showed thousands of steps across the full 6-compartment system
-completing in well under a second. Two other things in the `app/` layer are
-more likely causes:
-
-1. `SimulationController._concentration_history` grows without bound —
-   every `advance()` call appends a sample and nothing ever trims it. The
-   chart rebuilds full point arrays for all 6 series from that entire
-   history on every `_refresh_view()` call, so the render payload sent to
-   the Flet client on every `page.update()` grows for as long as the
-   simulation runs.
-2. Simulation-step cadence and render cadence are coupled at the same 10 Hz
-   in `SimulationView._run_simulation_timer` — `advance()` and
-   `page.update()` happen back-to-back in one coroutine on Python's single
-   asyncio event loop. If `page.update()` is slow to serialize/flush, it
-   blocks that same loop from servicing the next button click until it
-   yields, which would explain "buttons feel unresponsive" specifically.
-
-Working hypothesis for a fix (not yet validated or implemented):
-decouple simulation-step cadence from render cadence, and cap or downsample
-what's sent to the chart (a rolling window or point decimation) independent
-of how much history the controller keeps for accounting. This also happens
-to be the natural foundation for the later "faster than real time" goal
-(see next section), since sim time is already explicit state independent
-of wall-clock time — going faster mostly means calling `advance()` more
-times per render tick, which only pays off once the render side stops
-being the bottleneck.
-
-Multithreading is probably not the right lever: the loop isn't blocked on
-CPU-bound math (which is cheap), and Python's GIL means threads wouldn't
-give real parallelism for that math anyway. The likely fix is async/
-architectural (decoupling cadences, bounding payload size), not concurrency.
-
-Next step when this is picked up: profile first to confirm the diagnosis
-before implementing anything.
-
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 
-Not scoped yet. Depends on the performance thread above being resolved
-first, since a faster-than-real-time mode multiplies whatever the render
-bottleneck currently is. No design decisions made yet on how speed
-multiplier would be exposed in the UI or how it interacts with the fixed
-`SIMULATION_STEP_S = 0.1` step size.
+Not scoped yet. The performance blocker this waited on has landed: render
+cadence is now independent of simulation cadence, and frame cost no longer
+grows with run length, so a multiplier no longer multiplies a growing
+bottleneck.
+
+What a speed multiplier now costs is bounded and known. Stepping the model
+is nearly free (~0.011 ms per step, flat), so going faster means calling
+`advance()` more times per render tick rather than rendering more often. A
+frame currently costs ~17 ms of which ~15 ms is chart-point construction, so
+PL-010 (point reuse, measured 20x cheaper) is the headroom to spend if a
+high multiplier makes the render rate the constraint again.
+
+Still undecided, and the reason this stays `needs-decision` rather than
+`ready`: how the multiplier is exposed without creating a hidden mode - a
+learner who does not notice a 120x setting will misread the time axis
+entirely - and how it interacts with the fixed `SIMULATION_STEP_S = 0.1`.
+Stepping is exact-closed-form per step, so a larger step is a model-fidelity
+question, not just a performance one. Being an `L`, it needs scoping into a
+`ROADMAP.md` milestone before implementation.
 
 ## Aspirational: power-user custom agents (not scoped, not started)
 

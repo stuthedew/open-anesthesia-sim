@@ -93,6 +93,32 @@ holds tasks, `docs/WORKING_NOTES.md` holds the narrative behind them.
 - **Close the loop.** When work lands, move its entry to "Recently
   completed" with the commit reference in the same change, and delete any
   now-stale `docs/WORKING_NOTES.md` thread for it.
+- **Sweep the docs before calling an item done.** Landing a change is not
+  finishing it. Before you report an item complete, check every file that
+  could now describe the code wrongly, and fix what drifted in the same
+  change as the code. At minimum grep `README.md`, `ROADMAP.md`,
+  `docs/ARCHITECTURE.md`, `docs/MODEL.md`, and `docs/WORKING_NOTES.md` for
+  the identifiers, filenames, constants, and behavior the change touched.
+  Ask specifically:
+  - Does any file still describe the old behavior as current, or a shipped
+    feature as deferred?
+  - Did the change add a module, a data-file field, or a displayed value
+    that `docs/ARCHITECTURE.md`'s tree or `docs/MODEL.md`'s provenance table
+    does not list?
+  - Did it invalidate a cross-reference — a `WORKING_NOTES.md` thread now
+    deleted, a milestone heading now renamed, a "see X above" now pointing
+    nowhere?
+  - Does a `must`/`must not` statement in `docs/MODEL.md` still match what
+    the code does? A spec requiring something the app does not do is a
+    defect in one of the two; decide which, and say so rather than quietly
+    rewriting the spec to match the code.
+
+  Stale documentation is a safety issue in this repository, not tidiness: a
+  reader who trusts a wrong statement about which agent is running, what a
+  value means, or what the interface displays can reach a wrong clinical
+  conclusion from a correct number. Anything found but deliberately not
+  fixed becomes a punch-list entry under the capture rule. Say in your reply
+  which files you checked, not merely that you updated the docs.
 - **Answer "what should we work on next?" from the file.** Lead with the
   state of the queue — how many items are open, by priority, and whether
   grooming is due — before naming any task, so the choice is made against a
