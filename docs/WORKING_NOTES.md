@@ -113,8 +113,7 @@ review's own note is that the remedy for the splitting error is not to adopt
 pinned vectors, so the coupled model is checked against an independent
 solution on every CI run.
 
-Every reproduced finding is now tracked, which is what PL-013 closed. In the
-harness's own numbering:
+Every reproduced finding is now tracked. In the harness's own numbering:
 
 - `P1-1` - PL-018, a core raise outside the project's exception hierarchy
   plus an unguarded simulation timer.
