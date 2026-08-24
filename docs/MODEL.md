@@ -543,11 +543,19 @@ Because each sub-exchange is solved exactly while temporarily holding the
 other flows constant, this is a first-order (Lie/Godunov) operator split of
 the fully coupled system: the splitting error is \(O(\Delta t)\) relative to
 the true simultaneous solution, even though each individual sub-step is
-exact. This is why the step-refinement test (`test_step_refinement_converges`)
-is a release gate rather than an optional diagnostic — it is the only check
-that bounds this error empirically across supported step sizes. A
-fourth-order Runge–Kutta method would remove the splitting error but was not
-required to pass the documented tolerances at `SIMULATION_STEP_S = 0.1`.
+exact. Two release gates bound that error empirically, and they answer
+different questions. The step-refinement test
+(`test_step_refinement_converges`) asks whether the shipped composition is
+self-consistent across supported step sizes; the independent-solution test
+(`tests/reference/test_coupled_dynamics.py`) asks whether it converges to
+the right answer at all, by comparing all six states against a from-scratch
+integration of the equations above. Neither the mass-balance gate nor the
+step-refinement gate can answer the second question: every internal transfer
+is applied as an equal-and-opposite pair, so a wrong transfer *rate* leaves
+the accounting residual at ~2e-15 L, and a wrong rate applied consistently
+at every step size still refines consistently. A fourth-order Runge–Kutta
+method would remove the splitting error but was not required to pass the
+documented tolerances at `SIMULATION_STEP_S = 0.1`.
 
 The split has an applicability domain, and stepping outside it must fail
 rather than produce a number. At a large enough \(\Delta t\) the
@@ -854,6 +862,35 @@ dt = 0.025 s
 ```
 
 The release comparison tolerance must be documented before tagging.
+
+### Independent-solution test
+
+The coupled six-state solution must be checked against an integration of the
+governing equations that shares no solver with the implementation
+(`tests/reference/test_coupled_dynamics.py`). The oracle may load the
+parameter files and nothing else from the package under test; a comparison
+against code derived from the implementation is a tautology, not a
+verification, so the test enforces that restriction on its own imports.
+
+The comparison covers every shipped agent at horizons of 60 s, 600 s, and
+3600 s, and its tolerance is a bound on the first-order splitting
+coefficient rather than a value fitted to a particular run:
+
+$$
+\max_i \left| F_i^{\mathrm{shipped}} - F_i^{\mathrm{reference}} \right|
+\leq
+C_{\max}\,\Delta t,
+\qquad
+C_{\max} = 5\times10^{-4}\ \mathrm{s^{-1}}
+$$
+
+The worst coefficient measured across those agents and horizons is
+\(2.5\times10^{-4}\ \mathrm{s^{-1}}\) (isoflurane at 600 s), so the gate
+allows a factor of two. A companion test confirms that halving \(\Delta t\)
+halves the error, which is what makes a bound established at one step size a
+bound on the coefficient itself. The reference states are pinned in the test
+file: a change to the oracle or to a parameter file must be re-derived and
+reviewed rather than silently adopted.
 
 ### Mass-balance test
 
