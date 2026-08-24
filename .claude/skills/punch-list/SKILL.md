@@ -1,6 +1,6 @@
 ---
 name: punch-list
-description: Read, add to, and triage this repository's development punch list in docs/PUNCH_LIST.md. Use when the project owner asks what to work on next, what is left, what the priorities are, or whether to start the next roadmap milestone; when they have usage time available and no particular plan; when they flag a bug, cleanup, optimization, or idea to track for later; or when a session's own work turns up a finding that will not be fixed in that session. Also use when asked to reprioritize, groom, or close out punch-list items.
+description: Read, add to, and triage this repository's development punch list in docs/PUNCH_LIST.md. Use when the project owner asks what to work on next, what is left, what the priorities are, or whether to start the next roadmap milestone; when they have usage time available and no particular plan; when they flag a bug, cleanup, optimization, or idea to track for later; or when a session's own work turns up a finding that will not be fixed in that session. Also use when they name an item to start working on ("let's do PL-013"), and when asked to reprioritize, groom, or close out punch-list items.
 ---
 
 # Punch list
@@ -102,14 +102,145 @@ left", "are we in a good spot to move on".
    an item and starting it here are different acts; do not let the first
    slide into the second by default.
 
+   This step only advises. When the owner then names one of the candidates,
+   "Mode: start an item" below decides where the work happens and acts on
+   that decision without asking. The criteria there are these, stated for
+   the moment the work actually begins.
+
    When handing off, say what the fresh session should read first:
    `CLAUDE.md`, the entry itself, and any `docs/WORKING_NOTES.md` thread it
    cites. Entries are written to be actionable cold precisely so that this
-   handoff costs nothing. Say to open that session with the item's ID at
-   the front of its first message ("PL-013: ..."): per `CLAUDE.md`, the
-   session and its branch both lead with the ID, and on a surface that
-   derives the branch name from that first message, the handoff is the only
-   moment where the branch name can still be set.
+   handoff costs nothing.
+
+   End the handoff with the exact line to paste as that session's first
+   message, on its own and nothing else on it:
+
+   ```text
+   PL-013 Triage the review harness's remaining findings
+   ```
+
+   Do not paraphrase this into "open a session about PL-013". On a surface
+   that derives the session name and the branch name from the opening
+   message, that message is the only thing that can still set the branch
+   name, and it names both correctly only if the ID and title are actually
+   in it: `claude/pl-013-triage-review-harness-findings`, from a session
+   already called "PL-013 Triage the review harness's remaining findings".
+   See "Naming the work after the item" below.
+
+## Mode: start an item
+
+Triggered by the project owner naming an item to work on — "let's do
+PL-013", "start the halted-step decision", or picking one out of a
+recommendation this session just gave.
+
+**Decide where the work happens and act on the decision. Do not ask.** The
+choice is between this session and a fresh one; it is a cost question with an
+objective answer, and it does not change what gets built.
+
+1. Read the entry's brief first. None of what follows is decidable from a
+   title, and an item that turns out to be `needs-decision`, blocked, or
+   already stale changes the answer before the question of *where* arises.
+2. Continue in **this** session when its context is an asset:
+   - it is short, or already about this item — including the session that
+     just recommended it, when that recommendation was its only work;
+   - it just diagnosed the problem the entry describes, or holds discussion
+     that the entry does not;
+   - the item is `S` and nothing unrelated has landed here yet.
+3. Start a **fresh** session when this one's context is a liability:
+   - it has already completed a different item, or is about a different
+     topic;
+   - it is long, so the item's every turn resends context that does not help
+     it;
+   - the item warrants a model this session is not running (step 7 above). A
+     model switch costs a cold cache either way, so the fresh session is
+     strictly cheaper and starts correctly named;
+   - the item is `M` or larger and this session has any unrelated history.
+
+   When signals disagree, "already completed a different item" and "needs a
+   different model" decide it: both make every later turn here cost more than
+   the same turn elsewhere. Otherwise prefer continuing — an unasked-for
+   session the owner has to go find is its own kind of cost.
+4. If continuing here: name the work per "Naming the work after the item"
+   below, renaming the session *before* the first edit, and start.
+5. If starting fresh, open it rather than describing it. On Claude Code on
+   the web and other remote sessions, `create_session` on the
+   `claude-code-remote` MCP server takes everything the naming rule needs:
+
+   - `title` — `PL-013 Triage the review harness's remaining findings`.
+   - `outcome_branch` — `claude/pl-013-triage-review-harness-findings`. This
+     is the one path on this surface where a session controls a branch name
+     outright, so always set it; it is why spawning beats telling the owner
+     to open a session by hand.
+   - `model` — what the item warrants, not what this session happens to run.
+   - `tags` — `["pl-013"]`, so the session is findable from the entry alone.
+   - `prompt` — a standalone instruction, since the new session starts from
+     nothing. Name the id and title, point it at `CLAUDE.md`, the entry in
+     `docs/PUNCH_LIST.md`, and any `docs/WORKING_NOTES.md` thread the entry
+     cites, and say which branch it is on. Do not restate the brief: the
+     entry is written to be read cold, and copying it into a prompt is how
+     the two drift apart.
+
+   Leave `permission_mode` unset so it inherits this session's. Never pass
+   `plan` to a session nobody is watching — it blocks on an approval prompt
+   that never comes.
+6. Report the decision in a line or two: which session, title, and branch the
+   work went to, or that it is proceeding here, and the reason. Never spawn
+   silently. Then stop — do not also start the work here. Two sessions on one
+   item is worse than either choice made badly.
+7. On a surface with no such tool, the fresh-session path is a handoff
+   instead: end with the paste-ready line from step 8 above and say the
+   branch name that will follow from it.
+
+## Naming the work after the item
+
+`CLAUDE.md` requires the ID on the session name, the commit subjects, and
+the pull request title. The commits and the pull request title are available
+in every session and outlive the branch, which is deleted at merge. The
+other two depend on the surface.
+
+**The session name.** Rename as soon as the item is chosen, before the first
+commit — the whole point is that someone scanning a session list later can
+find the work from the entry alone, and a session still called "next
+priorities" is unfindable however good its commits are. Name every item the
+session addresses, not only the first: "PL-035, PL-039 Two related
+punch-list fixes".
+
+- On Claude Code on the web, and any other remote session, call
+  `set_session_title` on the `claude-code-remote` MCP server. It needs the
+  session's own id, which `get_session` returns when called with no id.
+- A local CLI session has no title to set. There is no `/rename`, and
+  `/clear <name>` labels the *previous* conversation rather than this one,
+  so there the commit subjects carry the whole load.
+
+Unlike the branch, this is settable at any point in the session, so a
+session that discovers mid-run which item it is really working on still
+renames itself. "The branch was already named" is not a reason to skip it.
+
+**The branch name.** Best-effort, and the difference is the surface rather
+than the session:
+
+- A branch the session creates itself — a local checkout, or any
+  `git checkout -b` it runs — can be named after the item the moment the
+  item is chosen. Name it `claude/pl-0NN-short-slug`.
+- A branch created *for* the session before it starts is fixed before the
+  queue has been read. Claude Code on the web derives one from the opening
+  message and adds a random suffix, so a session that opens with a question
+  ("what should we work on next?") gets a branch that names the question,
+  not the item it goes on to work. Pushing a differently named branch
+  instead is possible with the project owner's permission, but it strands
+  the generated branch on the remote as litter and detaches the session from
+  the changes the web interface offers to open a pull request from.
+
+So the branch is best-effort and the commit subjects are not. A session on a
+branch whose name carries no ID has not broken the rule; it owes the ID to
+the commits and the pull request title, and one line in its reply saying so.
+The session-start digest raises this by itself on any branch without an ID
+in the name.
+
+The one moment a generated branch name can still be chosen is the handoff in
+step 8 above: whatever the recommendation tells the project owner to paste
+becomes the next session's first message, and that message becomes its
+branch name.
 
 ## Mode: capture a new item
 
