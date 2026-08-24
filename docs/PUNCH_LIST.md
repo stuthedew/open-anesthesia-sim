@@ -639,7 +639,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
-- PL-032 Mechanize the decidable half of the close-out doc sweep — `PENDING`
+- PL-032 Mechanize the decidable half of the close-out doc sweep — `3f786b5`
 - PL-033 Record the reference patient's weight in the provenance table — `ebcf990`
 - PL-025 Assign a release number to the post-v0.2.1 work — `3099980`
 - PL-031 Record resolved punch-list items in a durable archive — `f5b77ec`
