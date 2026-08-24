@@ -70,13 +70,23 @@ anywhere in this file, archive included.
 | | Meaning | Handling |
 | --- | --- | --- |
 | `P0` | Safety, correctness, or a broken gate: a displayed value that could mislead, a failing build/test/type check on `main`, or a blocker for in-flight work. | Fix now, ahead of feature work. Own branch, patch version bump. |
-| `P1` | Needed before the next milestone can be called done, or a real defect that is not user-misleading. | Next in line. |
+| `P1` | Needed before the next milestone can be called done, a real defect that is not user-misleading, or `session-cost` work whose payoff compounds across every later session. | Next in line. |
 | `P2` | Genuine improvement with no deadline pressure. | Queued. |
 | `P3` | Worth keeping, not worth doing soon; includes ideas that need scoping before they can even be estimated. | Icebox. |
 
 Anything touching a safety-critical path per `CLAUDE.md` ("Safety-critical
 clinical-output standard") starts at `P0` or `P1`. It does not sit in `P2`
 because it is small.
+
+`session-cost` work also starts at `P1`, for a different reason: it is not
+urgent in itself, but it is the multiplier on everything below it. Every
+token this project spends re-deriving context, re-reading a rule that sits in
+the cached prefix of every request, or grepping by hand what a script could
+decide is a token not spent fixing a defect. Deferring that work to "when
+there is time" is what guarantees there is never time — the queue is worked
+in sessions, and a cheaper session works more of the queue. This does not
+outrank a `safety` or `science` item; it runs alongside them, and the band's
+running order says which goes first.
 
 ### Effort
 
@@ -98,7 +108,14 @@ usage actually available:
 ### Class
 
 `safety`, `science`, `defect`, `perf`, `ux`, `a11y`, `docs`, `refactor`,
-`infra`, `feature`, `planning`.
+`infra`, `feature`, `planning`, `session-cost`.
+
+`perf` and `session-cost` are different axes and are not interchangeable.
+`perf` is the running application: frames, memory, render payloads — what a
+user experiences. `session-cost` is the cost of developing it: context resent
+on every turn, work a session redoes because nothing recorded it, judgment
+spent on what a script could decide. An item can be one without being the
+other, and the priority rule above applies only to `session-cost`.
 
 ## Grooming
 
@@ -184,11 +201,132 @@ shipped feature as deferred. That is what a close-out sweep is still for.
 
 ## P1 — Next
 
-**Running order, updated 2026-08-24.** PL-032 has landed, so the doc sweep
-every close-out below depends on is now mechanized and this band runs in its
-own order again: PL-023 next, then PL-026 — whose decision needs a
-conversation rather than a session, and can be answered at any point without
-waiting its turn.
+**Running order, updated 2026-08-24.** `session-cost` work leads this band,
+because it is the multiplier on everything after it: a session that spends
+fewer tokens on process works more of the queue, and that compounds over
+every session that follows. Cheap and certain first, speculative last —
+PL-034 removes duplication from the file resent on every request, PL-035 is
+a short decision. PL-023 then comes ahead of PL-036 because a science-tagged
+correctness gate outranks a tooling item whose payoff is still uncertain.
+PL-026 needs a conversation rather than a session and can be answered at any
+point without waiting its turn. PL-003 is milestone scoping and follows the
+band.
+
+Order: PL-037, PL-034, PL-035, PL-023, PL-036, PL-026, PL-003.
+
+### PL-037 Check the branch is current against `main` before starting an item
+`P1` · `S` · `session-cost` `infra` · ready · added 2026-08-24
+
+**Problem.** Nothing in `CLAUDE.md` or the punch-list skill tells a session
+to verify its branch against `main` before it starts work. A session that
+picks up a branch whose pull request has already been merged stacks new
+commits on merged history; one that starts from a stale base does the work
+against code that has since moved.
+**Why it matters.** Both cost a full rework cycle — the most expensive kind
+of waste, since it is paid at the end of a session in merge conflicts rather
+than at the start in one command. This actually happened: the session that
+landed PL-032 was asked to check, found its own branch had been merged as
+PR 19, and had to restart the branch from `main` before continuing.
+**Where.** `.claude/skills/punch-list/SKILL.md` (a step before "Mode:
+recommend what to work on" hands off, and in "Mode: hotfix"), possibly
+`CLAUDE.md`'s "Punch list and work selection".
+**First step.** Write the check as the three commands it actually takes:
+`git fetch origin main`, `git rev-list --left-right --count origin/main...HEAD`,
+and — when the branch is behind with nothing ahead — restart it from `main`
+rather than merging into it.
+**Done when.** The handoff a recommendation produces names the check, so a
+fresh session runs it before its first edit rather than discovering the
+problem at push time.
+
+### PL-034 Trim `CLAUDE.md`'s punch-list section of what the skill restates
+`P1` · `S` · `docs` `session-cost` · ready · added 2026-08-24
+
+**Problem.** `CLAUDE.md`'s "Punch list and work selection" and
+`.claude/skills/punch-list/SKILL.md` state several of the same rules, in
+places verbatim — the capture rule, the model-matching rule, the close-out
+sweep. `CLAUDE.md` sits in the cached prefix of every request in every
+session; the skill loads only when the punch list is the subject.
+**Why it matters.** Duplication in the always-resident file costs tokens on
+every turn of every session, and gives two places for the same rule to drift
+apart. PL-032 already moved the sweep's mechanics into the skill and the
+tool, so `CLAUDE.md`'s copy is now the stale-prone one.
+**Where.** `CLAUDE.md` ("Punch list and work selection"),
+`.claude/skills/punch-list/SKILL.md`.
+**First step.** Diff the two section by section and mark each rule as
+belonging to one file or the other. `CLAUDE.md` should keep what a session
+must know without loading the skill — that the file exists, that capture is
+mandatory, that the skill handles the rest.
+**Done when.** No rule is stated in full in both files, and `CLAUDE.md`'s
+punch-list section is shorter than it is now without losing a rule.
+**Context.** Raised as a complement in PL-032's brief; deferred because
+`CLAUDE.md` edits invalidate the prefix cache and are best done in their own
+session.
+
+### PL-035 Consider a `**Docs.**` entry field naming the docs a task will touch
+`P1` · `S` · `docs` `infra` `session-cost` · needs-decision · added 2026-08-24
+
+**Problem.** Close-out has to work out which documents a change could have
+invalidated after the change is written. The session that captured the item
+often already knew — it just had nowhere in the entry format to say so.
+**Why it matters.** `tools/doc_check.py candidates` narrows the sweep from a
+diff, but it only finds documents that already name something the diff
+touched. A document that *should* mention a new feature and does not is
+exactly what it cannot see, and is a failure mode that has happened here.
+**Where.** `docs/PUNCH_LIST.md` (entry format), `tools/punch_list.py`
+(`_check_entry`), `.claude/skills/punch-list/SKILL.md` (capture mode).
+**Decision needed.** Whether an optional field earns its cost. Against: an
+optional field that is usually omitted is noise, and a wrong guess at
+capture time may be worse than no guess. For: it is free to write when the
+capturing session already knows, and close-out reads it for nothing. Decide
+also whether the checker should validate that the named paths exist, which
+`doc_check.py`'s resolver already does for prose.
+**Done when.** The field is either in the format spec and validated, or the
+decision not to add it is recorded in "Archive" with its reason.
+
+### PL-023 Gate the coupled dynamics on an independent solution, not just mass balance
+`P1` · `M` · `science` `infra` · ready · added 2026-08-24
+
+**Problem.** `core/agent_simulation_validation.py` is the only automatic
+correctness gate on the coupled step, and it cannot detect a wrong rate:
+every internal transfer is applied as an equal-and-opposite pair, so the
+residual sits at ~2e-15 L while the dynamics are visibly wrong — Δt = 10 s
+differs from Δt = 0.1 s by 0.157 percentage points of alveolar fraction.
+Conservation is necessary and nowhere near sufficient.
+**Why it matters.** Any future change to the operator split can shift the
+solution materially with every gate still green, and the next milestone's
+machine abstraction touches that split. Reported as `P2-1`.
+**Where.** `tests/reference/`, `tools/review-verification/verify_physics.py`,
+`core/simulation.py`.
+**First step.** Promote `verify_physics.py`'s from-scratch RK4 oracle into
+`tests/reference/` with pinned vectors. It must keep importing only the
+parameter loaders and never a solver from `core/`, or the test becomes a
+tautology rather than a verification.
+**Done when.** CI checks the coupled six-state solution against an
+independent integration, and the tolerance is justified against the measured
+first-order splitting error rather than fitted to today's numbers.
+**Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
+harness".
+
+### PL-036 Extend `doc_check.py` to the statements it currently cannot decide
+`P1` · `M` · `docs` `infra` `session-cost` · needs-decision · added 2026-08-24
+
+**Problem.** `tools/doc_check.py` checks that cited things *exist*. It
+cannot check that a sentence about them is *true*: a `must` in
+`docs/MODEL.md` the code no longer satisfies, a shipped feature still
+described as deferred, a displayed value whose units the interface changed.
+**Why it matters.** Those are the remaining close-out failure modes, and
+they are the ones with clinical consequence — `CLAUDE.md` calls a stale
+statement about what a value means a safety issue, not tidiness.
+**Where.** `tools/doc_check.py`, `docs/MODEL.md` ("Required invariants",
+"Minimum displayed outputs").
+**Decision needed.** Whether any of it is mechanizable without producing
+confident nonsense. One candidate is concrete: `docs/MODEL.md`'s "Minimum
+displayed outputs" could name the `SimulationSnapshot` field behind each
+displayed value, making the list checkable against the dataclass the way the
+provenance table is now checkable against the JSON. Whether the `must`
+statements can be tied to named tests is the harder half.
+**Done when.** Either a further check is implemented, or the decision that
+this half stays human is recorded with its reasoning.
 
 ### PL-026 Decide what the interface shows after a halted step
 `P1` · `S` · `safety` `ux` · needs-decision · added 2026-08-24
@@ -218,30 +356,6 @@ the accounting validator on every step.
 **Done when.** What a halted run displays is a recorded decision with its
 reasoning, and `docs/MODEL.md`'s interface rules state it.
 
-### PL-023 Gate the coupled dynamics on an independent solution, not just mass balance
-`P1` · `M` · `science` `infra` · ready · added 2026-08-24
-
-**Problem.** `core/agent_simulation_validation.py` is the only automatic
-correctness gate on the coupled step, and it cannot detect a wrong rate:
-every internal transfer is applied as an equal-and-opposite pair, so the
-residual sits at ~2e-15 L while the dynamics are visibly wrong — Δt = 10 s
-differs from Δt = 0.1 s by 0.157 percentage points of alveolar fraction.
-Conservation is necessary and nowhere near sufficient.
-**Why it matters.** Any future change to the operator split can shift the
-solution materially with every gate still green, and the next milestone's
-machine abstraction touches that split. Reported as `P2-1`.
-**Where.** `tests/reference/`, `tools/review-verification/verify_physics.py`,
-`core/simulation.py`.
-**First step.** Promote `verify_physics.py`'s from-scratch RK4 oracle into
-`tests/reference/` with pinned vectors. It must keep importing only the
-parameter loaders and never a solver from `core/`, or the test becomes a
-tautology rather than a verification.
-**Done when.** CI checks the coupled six-state solution against an
-independent integration, and the tolerance is justified against the measured
-first-order splitting error rather than fitted to today's numbers.
-**Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
-harness".
-
 ### PL-003 Scope the next milestone in ROADMAP.md
 `P1` · `M` · `planning` · ready · added 2026-08-23
 
@@ -262,7 +376,6 @@ out-of-scope list is what keeps the milestone narrow.
 **Done when.** `ROADMAP.md` carries a fully specified milestone with a
 version number assigned, matching the structure of the completed v0.1.0 and
 v0.2.0 sections.
-
 ## P2 — Queued
 
 ### PL-024 Document what the venous pool does to early mixed-venous readings
@@ -461,72 +574,6 @@ recent detail legible. This is a teaching-design call, not a technical one.
 rather than an artifact of an earlier payload limit.
 
 ## P3 — Icebox
-
-### PL-034 Trim `CLAUDE.md`'s punch-list section of what the skill restates
-`P3` · `S` · `docs` · ready · added 2026-08-24
-
-**Problem.** `CLAUDE.md`'s "Punch list and work selection" and
-`.claude/skills/punch-list/SKILL.md` state several of the same rules, in
-places verbatim — the capture rule, the model-matching rule, the close-out
-sweep. `CLAUDE.md` sits in the cached prefix of every request in every
-session; the skill loads only when the punch list is the subject.
-**Why it matters.** Duplication in the always-resident file costs tokens on
-every turn of every session, and gives two places for the same rule to drift
-apart. PL-032 already moved the sweep's mechanics into the skill and the
-tool, so `CLAUDE.md`'s copy is now the stale-prone one.
-**Where.** `CLAUDE.md` ("Punch list and work selection"),
-`.claude/skills/punch-list/SKILL.md`.
-**First step.** Diff the two section by section and mark each rule as
-belonging to one file or the other. `CLAUDE.md` should keep what a session
-must know without loading the skill — that the file exists, that capture is
-mandatory, that the skill handles the rest.
-**Done when.** No rule is stated in full in both files, and `CLAUDE.md`'s
-punch-list section is shorter than it is now without losing a rule.
-**Context.** Raised as a complement in PL-032's brief; deferred because
-`CLAUDE.md` edits invalidate the prefix cache and are best done in their own
-session.
-
-### PL-035 Consider a `**Docs.**` entry field naming the docs a task will touch
-`P3` · `S` · `docs` `infra` · needs-decision · added 2026-08-24
-
-**Problem.** Close-out has to work out which documents a change could have
-invalidated after the change is written. The session that captured the item
-often already knew — it just had nowhere in the entry format to say so.
-**Why it matters.** `tools/doc_check.py candidates` narrows the sweep from a
-diff, but it only finds documents that already name something the diff
-touched. A document that *should* mention a new feature and does not is
-exactly what it cannot see, and is a failure mode that has happened here.
-**Where.** `docs/PUNCH_LIST.md` (entry format), `tools/punch_list.py`
-(`_check_entry`), `.claude/skills/punch-list/SKILL.md` (capture mode).
-**Decision needed.** Whether an optional field earns its cost. Against: an
-optional field that is usually omitted is noise, and a wrong guess at
-capture time may be worse than no guess. For: it is free to write when the
-capturing session already knows, and close-out reads it for nothing. Decide
-also whether the checker should validate that the named paths exist, which
-`doc_check.py`'s resolver already does for prose.
-**Done when.** The field is either in the format spec and validated, or the
-decision not to add it is recorded in "Archive" with its reason.
-
-### PL-036 Extend `doc_check.py` to the statements it currently cannot decide
-`P3` · `M` · `docs` `infra` · needs-decision · added 2026-08-24
-
-**Problem.** `tools/doc_check.py` checks that cited things *exist*. It
-cannot check that a sentence about them is *true*: a `must` in
-`docs/MODEL.md` the code no longer satisfies, a shipped feature still
-described as deferred, a displayed value whose units the interface changed.
-**Why it matters.** Those are the remaining close-out failure modes, and
-they are the ones with clinical consequence — `CLAUDE.md` calls a stale
-statement about what a value means a safety issue, not tidiness.
-**Where.** `tools/doc_check.py`, `docs/MODEL.md` ("Required invariants",
-"Minimum displayed outputs").
-**Decision needed.** Whether any of it is mechanizable without producing
-confident nonsense. One candidate is concrete: `docs/MODEL.md`'s "Minimum
-displayed outputs" could name the `SimulationSnapshot` field behind each
-displayed value, making the list checkable against the dataclass the way the
-provenance table is now checkable against the JSON. Whether the `must`
-statements can be tied to named tests is the harder half.
-**Done when.** Either a further check is implemented, or the decision that
-this half stays human is recorded with its reasoning.
 
 ### PL-019 Remove `BreathingCircuit`'s agent-unaware delivered-concentration default
 `P3` · `S` · `refactor` · ready · added 2026-08-24
