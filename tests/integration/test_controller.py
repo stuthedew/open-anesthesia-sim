@@ -1,6 +1,11 @@
+import dataclasses
+
 import pytest
 
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.core import respiratory_system
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.parameters import load_reference_adult_parameters
 
 
 def test_default_controller_starts_with_sevoflurane() -> None:
@@ -30,20 +35,109 @@ def test_default_controller_starts_each_agent_at_its_own_one_mac() -> None:
     ).snapshot().delivered_concentration_fraction == pytest.approx(0.06)
 
 
-def test_explicit_delivered_concentration_still_clamps_to_the_agent_max() -> None:
-    """An explicitly requested fraction above a vaporizer's real max is
-    still clamped, independent of the 1-MAC default resolution.
+def test_explicit_delivered_concentration_above_the_agent_max_is_rejected() -> None:
+    """Regression (PL-015): an explicitly requested fraction above a
+    vaporizer's real maximum must fail, not be silently clamped.
+
+    Clamping produced a run whose every displayed value came from a dial
+    position the caller never asked for, which is indistinguishable on
+    screen from one they did.
     """
 
-    controller = SimulationController(
-        agent_id="isoflurane",
-        delivered_concentration_fraction=0.08,
-    )
+    with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
+        SimulationController(
+            agent_id="isoflurane",
+            delivered_concentration_fraction=0.08,
+        )
+
+
+def test_setting_a_delivered_concentration_above_the_agent_max_is_rejected() -> None:
+    """Regression (PL-015): the setter path is bounded by the same guard.
+
+    Before the fix only the UI slider bounded this value, so any non-UI
+    caller could simulate 50% isoflurane on a 5% vaporizer.
+    """
+
+    controller = SimulationController(agent_id="isoflurane")
+
+    with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
+        controller.set_delivered_concentration(0.50)
 
     snapshot = controller.snapshot()
 
     assert snapshot.max_delivered_concentration_percent == 5.0
-    assert snapshot.delivered_concentration_fraction == pytest.approx(0.05)
+    assert snapshot.delivered_concentration_fraction == pytest.approx(0.012)
+
+
+def test_delivered_concentration_exactly_at_the_agent_max_is_accepted() -> None:
+    """The boundary is inclusive: 5.0% is a real isoflurane dial position."""
+
+    controller = SimulationController(agent_id="isoflurane")
+    controller.set_delivered_concentration(0.05)
+
+    assert controller.snapshot().delivered_concentration_fraction == pytest.approx(0.05)
+
+
+def test_delivered_concentration_can_be_turned_off() -> None:
+    """Zero is always deliverable: it is the vaporizer off, which is how
+    washout begins.
+    """
+
+    controller = SimulationController(agent_id="isoflurane")
+    controller.set_delivered_concentration(0.0)
+
+    assert controller.snapshot().delivered_concentration_fraction == 0.0
+
+
+def test_patient_defaults_come_from_the_data_file() -> None:
+    """Regression (PL-017): the cited data-file defaults must reach the app.
+
+    The controller previously hardcoded 4.0 L/min ventilation and 5.0
+    L/min cardiac output, matching `reference_adult.json` by coincidence,
+    so any correction to the cited values would silently not take effect.
+    """
+
+    original = respiratory_system.load_reference_adult_parameters
+    edited = dataclasses.replace(
+        load_reference_adult_parameters(),
+        default_alveolar_ventilation_l_min=5.5,
+        default_cardiac_output_l_min=6.5,
+    )
+    respiratory_system.load_reference_adult_parameters = lambda: edited
+
+    try:
+        snapshot = SimulationController().snapshot()
+    finally:
+        respiratory_system.load_reference_adult_parameters = original
+
+    assert snapshot.alveolar_ventilation_l_min == pytest.approx(5.5)
+    assert snapshot.cardiac_output_l_min == pytest.approx(6.5)
+
+
+def test_patient_defaults_are_the_shipped_cited_values() -> None:
+    """The app runs exactly what `reference_adult.json` declares."""
+
+    patient_parameters = load_reference_adult_parameters()
+    snapshot = SimulationController().snapshot()
+
+    assert snapshot.alveolar_ventilation_l_min == pytest.approx(
+        patient_parameters.default_alveolar_ventilation_l_min
+    )
+    assert snapshot.cardiac_output_l_min == pytest.approx(
+        patient_parameters.default_cardiac_output_l_min
+    )
+
+
+def test_explicit_patient_settings_still_override_the_data_file() -> None:
+    """The constructor arguments remain explicit overrides."""
+
+    snapshot = SimulationController(
+        alveolar_ventilation_l_min=3.0,
+        cardiac_output_l_min=7.0,
+    ).snapshot()
+
+    assert snapshot.alveolar_ventilation_l_min == pytest.approx(3.0)
+    assert snapshot.cardiac_output_l_min == pytest.approx(7.0)
 
 
 def test_set_agent_resets_delivered_concentration_to_the_new_agent_one_mac() -> None:

@@ -101,7 +101,12 @@ equations) rather than a generic numerical integrator:
 
 **UI direction:** `app/controller.py`'s `SimulationController` owns a
 `SimulationState`, exposes `start()` / `pause()` / `reset()` / per-parameter
-setters, and produces an immutable `SimulationSnapshot` on request. The
+setters, and produces an immutable `SimulationSnapshot` on request. It holds
+no default values and no bounds of its own: every unspecified setting comes
+from what `RespiratorySystem.for_agent()` built from the data files, and a
+setting the core rejects — a delivered concentration above the agent's
+vaporizer maximum, say — raises out of the core rather than being clamped or
+defaulted at this boundary. The
 snapshot carries the complete `SimulationHistorySample` record of the run:
 one sample per simulation step, not trimmed (see `docs/PUNCH_LIST.md`).
 `app/simulation_view.py` reads only from that snapshot — it formats
@@ -129,6 +134,21 @@ a value outside its validated range (e.g. non-positive volumes, tissue
 perfusion fractions that don't sum to 1). Adding a new agent or patient
 profile means adding a new validated, cited JSON file plus any new parsing
 support in `parameters.py` — not adding constants directly to `core/`.
+
+## Developer tooling (`tools/`)
+
+Outside the packaged application, and not imported by it:
+
+```text
+tools/
+├── punch_list.py         # validates docs/PUNCH_LIST.md; run by make check and CI
+└── review-verification/  # read-only harness reproducing the v0.2.0 architecture-review findings
+```
+
+`tools/review-verification/` is evidence, not tests: each script re-runs a
+reviewed claim against the current tree and reports whether it still
+reproduces. See its own `README.md` for what each check means and why it
+exits `1` on a healthy tree.
 
 ## Tests (`tests/`)
 

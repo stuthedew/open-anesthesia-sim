@@ -17,7 +17,7 @@ from importlib.resources import files
 from math import isfinite
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, ValidationInfo, field_validator
+from pydantic import BaseModel, BeforeValidator, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
 SUPPORTED_SCHEMA_VERSION = 1
@@ -197,20 +197,24 @@ class _AgentPayload(BaseModel):
     mac_percent: PositivePercent
     sources: Sources
 
-    @field_validator("mac_percent")
-    @classmethod
-    def _mac_percent_must_not_exceed_vaporizer_max(
-        cls, value: float, info: ValidationInfo
-    ) -> float:
-        max_delivered = info.data.get("max_delivered_concentration_percent")
+    @model_validator(mode="after")
+    def _mac_percent_must_not_exceed_vaporizer_max(self) -> _AgentPayload:
+        """Reject an agent whose 1 MAC its own vaporizer cannot deliver.
 
-        if max_delivered is not None and value > max_delivered:
+        This is a `model_validator`, not a `field_validator` reading
+        `info.data`: a field validator only sees fields declared before it,
+        so reordering the two fields above would silently turn the check
+        into a no-op. The MAC start in `RespiratorySystem.for_agent()`
+        depends on this holding.
+        """
+
+        if self.mac_percent > self.max_delivered_concentration_percent:
             raise ValueError(
                 "mac_percent must not exceed max_delivered_concentration_percent "
-                f"({value} > {max_delivered})"
+                f"({self.mac_percent} > {self.max_delivered_concentration_percent})"
             )
 
-        return value
+        return self
 
 
 class _TissueGroupPayload(BaseModel):

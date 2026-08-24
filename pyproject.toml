@@ -1,6 +1,6 @@
 [project]
 name = "anesthesia-sim"
-version = "0.2.0"
+version = "0.2.1"
 description = "Open-source anesthesia simulation project"
 readme = "README.md"
 authors = [

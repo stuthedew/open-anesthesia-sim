@@ -29,10 +29,13 @@ from anesthesia_sim.core.respiratory_system import RespiratorySystem
 SECONDS_PER_MINUTE = 60.0
 AGENTS = ("sevoflurane", "isoflurane", "desflurane")
 
-# The operating point every comparison below runs at. These mirror the
-# dataclass defaults the app actually starts from - which is itself
-# finding P1-3, since they are not sourced from any data file.
-DELIVERED_FRACTION = 0.08
+# The operating point every comparison below runs at. 5% is the highest
+# concentration all three shipped vaporizers can deliver (isoflurane's
+# maximum), so one operating point serves every agent; anything higher is
+# now rejected by the core rather than simulated (PL-015). The governing
+# equations are linear in the delivered fraction, so the level sets the
+# scale of the reported errors, not the conclusions.
+DELIVERED_FRACTION = 0.05
 
 # RK4 is fourth order, so this lands ~1e-12 - four orders below the
 # splitting error being measured, and 100x faster than a finer step.
