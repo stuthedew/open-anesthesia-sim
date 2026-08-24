@@ -124,6 +124,56 @@ to skipping a check before a commit or before finishing a task.
   the maintainer still reviews every safety-critical diff regardless of which
   model drafted it.
 
+## Prefer deterministic tooling over repeated model work
+
+The section above keeps one session cheap. This one keeps every later session
+cheap, and it is the higher-leverage of the two: work moved out of the model
+is paid for once and then runs free, while work left to the model is
+re-derived at full context in every session that needs it.
+
+`tools/doc_check.py` and `tools/punch_list.py` are what this looks like here.
+Both replaced a pass a session used to do by hand, and both are deliberately
+partial — they decide what the files on disk can decide, and leave the
+judgment alone.
+
+So, when building a mechanism:
+
+- **Find the decidable part and put it in code.** Anything answerable by
+  reading the tree, a data file, or a diff — does this path resolve, is this
+  id already used, does this constant still match the JSON, which
+  documentation lines mention what a change touched — belongs in a script
+  wired into `make check`, a hook, or CI. Prefer this without being asked:
+  it is standing approval for that substitution, and needs no case put for it
+  each time.
+- **Do not script the judgment.** `tools/doc_check.py` decides whether a
+  cited path exists, never whether the sentence around it is still true. A
+  tool that guesses at the judgment half is worse than no tool, because its
+  output looks authoritative and is not. Where that line falls is the design
+  work, and it is worth spending real thought on.
+- **Use the cheapest sufficient tier:** a tool that already exists, then a
+  standard-library script under `tools/`, then a subagent whose transcript
+  stays out of the main context, then the session itself — the last being by
+  a wide margin the most expensive, since its context is resent on every
+  later turn.
+- **Summarizing counts, not only deciding.** `python3 tools/punch_list.py
+  list` exists because it answers "which item next" for a fraction of what
+  reading the file costs. Printing the few lines a decision needs, instead of
+  loading the document that contains them, is the same win as answering a
+  question outright.
+- **The gate is whether it will genuinely run again.** Build when the work
+  recurs — every commit, every close-out, every session start — and the
+  answer is deterministic. Not for a one-off, not around what an existing
+  linter already does, and not where the upkeep would cost more than the
+  passes it saves. Where the benefit is not clear, the answer is no; an
+  unused tool is a maintenance burden that also has to be kept true.
+
+Cost is not the only argument. A script answers identically on every run,
+can carry regression tests, and states its rule where a reviewer can read
+it — which is the safety-critical standard's determinism, traceability, and
+auditability arriving as a side effect. New tools follow the convention the
+existing two set: standard library only, so a hook or a bare checkout can run
+them without the project virtualenv.
+
 ## Punch list and work selection
 
 `docs/PUNCH_LIST.md` is the prioritized queue of discrete development tasks.
