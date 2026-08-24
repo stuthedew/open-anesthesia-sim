@@ -83,7 +83,7 @@ Stepping is exact-closed-form per step, so a larger step is a model-fidelity
 question, not just a performance one. Being an `L`, it needs scoping into a
 `ROADMAP.md` milestone before implementation.
 
-## Open thread: the architecture review harness - PL-021, PL-023, PL-024
+## Open thread: the architecture review harness - PL-023, PL-024
 
 An independent architecture review of the v0.2.0 baseline (commit
 `3251ebf`) produced an executable harness under `tools/review-verification/`
@@ -98,13 +98,14 @@ safety-critical findings it carried were fixed in v0.2.1 (`bc5f823`) and
 their checks now report FIXED: `P1-2`, `P1-3`, and `P1-5`. Both scripts now
 run at 5% delivered rather than 8%, since 8% is no longer a deliverable
 isoflurane dial position. `P1-1`'s two checks were fixed after that, by the
-exception-hierarchy and guarded-loop work, and `P1-6` after that when the
-dead `advance_ventilation` method was deleted; six of the harness's nine
-checks are now FIXED and three still reproduce. No release number has been
-assigned to the work landed since v0.2.1 - see PL-025.
+exception-hierarchy and guarded-loop work, `P1-6` after that when the dead
+`advance_ventilation` method was deleted, and `P1-4` when the parameter-file
+schemas were made strict; seven of the harness's nine checks are now FIXED
+and two still reproduce. No release number has been assigned to the work
+landed since v0.2.1 - see PL-025.
 
 Re-run after those fixes, `verify_physics.py` confirms all three physics
-claims and `verify_findings.py` reproduces the three checks behind the three
+claims and `verify_findings.py` reproduces the two checks behind the two
 remaining findings. The physics side
 matters independently of the defects: it re-derives the
 `docs/MODEL.md` equations from the parameter files with a from-scratch RK4
@@ -118,15 +119,9 @@ pinned vectors, so the coupled model is checked against an independent
 solution on every CI run.
 
 Every finding that still reproduces is tracked. In the harness's own
-numbering (`P1-1` and `P1-6` are closed; see the punch list's completed
-section):
+numbering (`P1-1`, `P1-4` and `P1-6` are closed; see the punch list's
+completed section):
 
-- `P1-4` - PL-021, no `extra='forbid'` on the parameter-file schemas.
-  Triage sharpened the claim: a misspelling that removes a required key is
-  already rejected as a missing field, so the live hole is the *unknown
-  extra* key — a renamed field, a units-suffixed variant, or a typo'd
-  duplicate sitting beside the correct one — which loads clean and does
-  nothing.
 - `P2-1` - PL-023, mass balance cannot detect a wrong rate. The remedy is
   the RK4-oracle promotion described above, not adopting `expm`.
 - `P2-4` - PL-024, the venous pool's 12 s mixing time constant shaping the
@@ -169,7 +164,8 @@ noted now so they aren't lost:
   currently only loads via `importlib.resources` against packaged
   `data/agents/*.json`; custom agents need a separate on-disk location
   (e.g. a user config directory) and their own load path.
-- The existing Pydantic validation (ranges, required fields, the
+- The existing Pydantic validation (ranges, required fields, rejection of
+  keys the schema does not declare, the
   mac_percent <= max_delivered_concentration_percent cross-check) should
   still apply to custom agents - it catches structurally invalid data
   (typos, absurd values) even though it can't and shouldn't try to
