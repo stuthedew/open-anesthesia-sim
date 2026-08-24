@@ -580,7 +580,7 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
-- PL-022 Delete the dead, non-conservative `advance_ventilation` — `PENDING`
+- PL-022 Delete the dead, non-conservative `advance_ventilation` — `956e710`
 - PL-018 Keep a core failure from silently killing a running simulation — `4c442ef`
 - PL-013 Triage the review harness's four remaining findings — `f51762a`
 - PL-014 Land or discard the unmerged punch-list model-guidance work — `7714386`
