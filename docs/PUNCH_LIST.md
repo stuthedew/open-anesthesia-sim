@@ -210,7 +210,8 @@ harness".
 `P1` · `M` · `planning` · ready · added 2026-08-23
 
 **Problem.** No milestone after v0.2.0 is scoped (v0.2.1 is a validation
-hotfix on that baseline, not a milestone). `ROADMAP.md`'s
+hotfix on that baseline and v0.2.2 a hardening release on it, neither of
+them a milestone). `ROADMAP.md`'s
 development rules require a goal, required scope, definition of done, and
 an explicit out-of-scope list before implementation begins, and the next
 candidate is the modular anesthesia-machine abstraction with normal
@@ -251,31 +252,6 @@ open question, and it can be answered after.
 **Done when.** `docs/MODEL.md` states the pool's time constant and its
 effect on the first minute, and any interface cue is a deliberate decision
 rather than an omission.
-
-### PL-025 Assign a release number to the post-v0.2.1 work
-`P2` · `S` · `planning` · needs-decision · added 2026-08-24
-
-**Problem.** `pyproject.toml` still reads `0.2.1` and the interface header
-still renders "Version 0.2.1", but the code has moved since: PL-018 added a
-third run state, a `failure_reason` field on `SimulationSnapshot`, and a
-changed exception contract across `core/`. `ROADMAP.md`'s version table has
-no row for any of it. Nothing in `ROADMAP.md` is false today — its v0.2.1
-description still describes v0.2.1 — but the displayed version no longer
-identifies the behavior a reader is looking at.
-**Why it matters.** The version is displayed next to clinical values and is
-the handle a reader has for "which model and which interface produced
-this", so it is provenance rather than bookkeeping. Low urgency only
-because the drift is between an untagged working tree and its last
-described release, which is normal mid-development.
-**Where.** `pyproject.toml` (`version`), `ROADMAP.md` (version table,
-"Current baseline").
-**Decision needed.** Whether the remaining harness fixes (PL-021, PL-023)
-fold into one release with PL-018 and PL-022 or each gets its own patch
-number. Folding argues for cutting the number once they land; separating
-argues for bumping now. The roadmap's rule is that a number is chosen for
-the capability boundary it crosses, which is a project-owner call.
-**Done when.** The version in `pyproject.toml` and the `ROADMAP.md` table
-agree with each other and with what the code does.
 
 ### PL-027 Confirm the per-frame slider write-back on a live Flet client
 `P2` · `S` · `ux` · ready · added 2026-08-24
@@ -543,7 +519,7 @@ deliberately retired.
 
 When the punch list is in good shape and the question is "should we move on
 to the next roadmap feature instead?", the answer lives in `ROADMAP.md`, not
-here. The current state is: v0.2.1 is the baseline, no later milestone is
+here. The current state is: v0.2.2 is the baseline, no later milestone is
 scoped yet, and PL-003 above is the task that scopes the next one.
 
 Ideas that are neither a punch-list task nor a scoped milestone —
@@ -561,6 +537,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-025 Assign a release number to the post-v0.2.1 work — `3099980`
 - PL-031 Record resolved punch-list items in a durable archive — `f5b77ec`
 - PL-021 Reject unknown keys in the parameter-file schemas — `3465dcf`
 - PL-002 Color-code agent selection to real vaporizer colors — `74bec83`
