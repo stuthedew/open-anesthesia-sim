@@ -108,7 +108,7 @@ session makes on its own that will not be fixed in that session.
    cold reader act: problem, why it matters, where in the code, first step,
    and the condition that closes it.
 2. Allocate the next unused `PL-` id — one past the highest that appears
-   anywhere in the file, including "Recently completed".
+   anywhere in the file, including "Recently completed" and "Archive".
 3. Place it at its correct priority, which may demote something else.
    Anything on a safety-critical path per `CLAUDE.md` starts at `P0` or
    `P1`, regardless of how small it is.
