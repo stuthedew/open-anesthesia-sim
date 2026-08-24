@@ -7,7 +7,7 @@ conflicting artifact or amend this file deliberately in the same change.
 Scope of this file: releases only. Discrete tasks — defects, fixes,
 cleanups, optimizations, and small features — are tracked and prioritized
 in `docs/items/`, not here. An item is a milestone rather than a
-punch-list task when it needs its own goal, required scope, definition of
+queue item when it needs its own goal, required scope, definition of
 done, and explicit out-of-scope list.
 
 ## Versioning decision
@@ -34,7 +34,7 @@ v0.2.2 is a hardening and interface-provenance release on the v0.2.0 model.
 Like the v0.2.1 hotfix before it, it changes no equation, parameter, or
 numerical method: `docs/MODEL.md`'s specification of the model is unchanged,
 and the v0.0.2 circuit and v0.1.0 sevoflurane reference tests still pass
-unaltered. It carries four punch-list items:
+unaltered. It carries four queue items:
 
 - **PL-018.** A failure inside a step no longer leaves the interface reading
   "Running" over numbers that have stopped advancing. A run now has a third

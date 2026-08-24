@@ -48,7 +48,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
 # Documentation whose claims this tool holds to the tree. `CLAUDE.md` and the
-# punch-list skill are included because they cite paths as heavily as the docs
+# docket skill are included because they cite paths as heavily as the docs
 # proper do, and a rule that names a file that no longer exists is a rule
 # nobody can follow.
 DOC_GLOBS = (
@@ -98,7 +98,7 @@ PATH_SUFFIXES = frozenset(
 
 # Prefixes a path citation may be written against. The documentation writes
 # `core/parameters.py` and `data/agents/sevoflurane.json` package-relative,
-# and `tools/punch_list.py` repository-relative; both are correct, so both
+# and `tools/doc_check.py` repository-relative; both are correct, so both
 # roots are tried.
 PATH_ROOTS = ("", str(PACKAGE_ROOT))
 

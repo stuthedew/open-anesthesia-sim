@@ -154,11 +154,10 @@ So, when building a mechanism:
   stays out of the main context, then the session itself — the last being by
   a wide margin the most expensive, since its context is resent on every
   later turn.
-- **Summarizing counts, not only deciding.** `python3 tools/punch_list.py
-  list` exists because it answers "which item next" for a fraction of what
-  reading the file costs. Printing the few lines a decision needs, instead of
-  loading the document that contains them, is the same win as answering a
-  question outright.
+- **Summarizing counts, not only deciding.** `docket next` exists because it
+  answers "which item next" without a session reading the queue at all.
+  Printing the few lines a decision needs, instead of loading the documents
+  that contain them, is the same win as answering a question outright.
 - **The gate is whether it will genuinely run again.** Build when the work
   recurs — every commit, every close-out, every session start — and the
   answer is deterministic. Not for a one-off, not around what an existing
