@@ -55,10 +55,45 @@ left", "are we in a good spot to move on".
 6. Give a short recommendation with the reasoning, not a dump of the file.
    Name the top candidate, one or two alternatives with their effort, and
    what each would take. The project owner picks.
-7. If the recommended work is substantial or safety-critical, say that it
-   deserves its own fresh session rather than continuing this one, and say
-   what that session should read first (`CLAUDE.md`, the entry, and any
-   `docs/WORKING_NOTES.md` thread it cites).
+7. **State which model the work warrants, independent of what this
+   session happens to be running.** This is not a suggestion to weigh —
+   `CLAUDE.md`'s "Session and tool-use efficiency" section states the rule:
+   an item tagged `safety` or `science`, or one still at `needs-decision`
+   (an unresolved design question is exactly the "ambiguous problem or
+   genuine trade-off" that section names), is reasoning-heavy work and
+   warrants the strongest available model at a high effort setting — for
+   both writing the change and reviewing the final diff — regardless of
+   whether the current session is on a cheaper model. Everything else is
+   routine execution, where the default model is fine.
+
+   `tools/punch_list.py` encodes this same rule (`Entry.model_guidance`)
+   and the session-start digest already applies it to the top P0/P1 lines,
+   but check it explicitly for whatever is actually being recommended,
+   since the digest may be stale or the recommendation may differ from the
+   digest's top pick. Say it plainly: "this is safety/science-tagged (or:
+   has an open design decision) — start it in `opusplan` or your strongest
+   model at high effort," or "this is routine execution — your current
+   model is fine." A model switch mid-session costs a cold cache
+   (`CLAUDE.md`), so say this *before* work starts, as part of the
+   recommendation, not after.
+8. Recommend that the work start in a *fresh session* rather than
+   continuing this one whenever either is true:
+   - the work is substantial or safety-critical; or
+   - this session is already long, or was about something else. This
+     includes the session that just finished editing the punch list
+     itself, whose context is about the queue rather than about any item
+     in it.
+
+   The second case is the one that gets missed. A short item is cheap to
+   start, but not at the end of a long session whose whole context is
+   resent on every turn and has nothing to do with the item. Recommending
+   an item and starting it here are different acts; do not let the first
+   slide into the second by default.
+
+   When handing off, say what the fresh session should read first:
+   `CLAUDE.md`, the entry itself, and any `docs/WORKING_NOTES.md` thread it
+   cites. Entries are written to be actionable cold precisely so that this
+   handoff costs nothing.
 
 ## Mode: capture a new item
 

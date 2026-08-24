@@ -112,8 +112,11 @@ thread rather than leaving it stale.
 
 `tools/punch_list.py` handles the mechanical half. Run it with `make
 punch-list`; `make check` and CI run it too, and a `SessionStart` hook emits
-a short digest of the queue at the start of every session. It reports two
-kinds of finding, and the split is the point:
+a short digest of the queue at the start of every session. The digest also
+names which model an item warrants (`Entry.model_guidance`), deriving it
+from the entry's own class tags and status rather than leaving a session to
+recall the rule in `CLAUDE.md`. It reports two kinds of finding, and the
+split is the point:
 
 - **Errors** mean this file is wrong: a reused id, an entry filed under a
   band its metadata contradicts, a missing brief field, an item marked
@@ -230,26 +233,6 @@ version number assigned, matching the structure of the completed v0.1.0 and
 v0.2.0 sections.
 
 ## P2 — Queued
-
-### PL-014 Land or discard the unmerged punch-list model-guidance work
-`P2` · `S` · `infra` `docs` · ready · added 2026-08-24
-
-**Problem.** The branch `claude/punch-list-tracking-u1159v` holds two
-unmerged commits (`cd3b255`, `7015d3f`) that add `Entry.model_guidance` and
-`_with_guidance` to `tools/punch_list.py`, with tests, so the startup digest
-names which model a recommended item warrants instead of leaving the rule to
-a session's memory. `main` has the general model-matching rule in
-`CLAUDE.md` but not this mechanization.
-**Why it matters.** Small and self-contained, but it is real work that is
-lost if the branch is pruned, and the rule it automates is the one that
-decides whether a safety-critical item gets the strongest model.
-**Where.** `tools/punch_list.py`, `tests/unit/test_punch_list_tool.py`,
-`CLAUDE.md`, `.claude/skills/punch-list/SKILL.md`.
-**First step.** Cherry-pick both commits onto `main`. The only conflict is
-in this file, where the branch still lists PL-001 as open; take `main`'s
-side and drop that block.
-**Done when.** The commits are on `main` with the quality suite green, or
-the branch is deleted with a stated reason for declining them.
 
 ### PL-004 Decide the fate of `SimulationSnapshot.circuit_time_constant_s`
 `P2` · `S` · `defect` · needs-decision · added 2026-08-23
@@ -407,6 +390,27 @@ reference tests that rely on the 8% start) or no default at all.
 does not require remembering a second argument, and the reference tests
 state their delivered concentration explicitly.
 
+### PL-020 Bring tests and `tools/` under the type-check gate
+`P3` · `S` · `infra` · needs-decision · added 2026-08-24
+
+**Problem.** `make check` runs `uv run mypy src`, so `tests/` and `tools/`
+are unchecked. `uv run mypy .` reports 24 errors across 5 files on a clean
+tree — mostly test fakes passed where a real Flet type is annotated
+(`_FakePage` for `Page`) and a re-exported `ft` in `test_bootstrap.py`.
+**Why it matters.** Low urgency, and the narrow gate may well be
+deliberate: annotating test doubles to satisfy a UI framework's types can
+cost more than it returns. But the gap is currently silent, and
+`tools/punch_list.py` — which gates every punch-list change in CI — is
+unchecked along with the tests.
+**Where.** `Makefile` (`check`), `pyproject.toml` (`[tool.mypy]`),
+`tests/unit/test_simulation_view.py`, `tests/unit/test_bootstrap.py`.
+**Decision needed.** Widen the gate to `tools/` only, to `tests/` as well,
+or neither. The 24 errors are almost entirely in the `tests/` half, so
+`tools/` alone is close to free while `tests/` is the part that costs
+something and returns the least.
+**Done when.** The gate covers whatever scope is chosen and passes, or the
+narrow gate is documented as deliberate with the reason.
+
 ### PL-009 Playback speed multiplier
 `P3` · `L` · `feature` · needs-decision · added 2026-08-23
 
@@ -453,6 +457,7 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-014 Land or discard the unmerged punch-list model-guidance work — `7714386`
 - PL-015 Reject an out-of-range delivered concentration instead of simulating it — `bc5f823`
 - PL-016 Make the agent MAC cross-check fail closed — `bc5f823`
 - PL-017 Source the patient defaults from the data file, not controller literals — `bc5f823`

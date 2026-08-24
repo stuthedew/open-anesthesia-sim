@@ -91,6 +91,26 @@ class Entry:
         source = declared.group(1) if declared else self.body
         return tuple(ref for ref in REFERENCE_RE.findall(source) if ref != self.identifier)
 
+    @property
+    def model_guidance(self) -> str | None:
+        """Whether CLAUDE.md's model-matching rule flags this item.
+
+        Mirrors "Session and tool-use efficiency": a safety- or
+        science-classed item, or one still at `needs-decision`, is
+        reasoning-heavy work that warrants the strongest available model at
+        high effort - not the default model used for routine execution.
+        Returns the trigger as a short label, or None when routine
+        execution is expected to suffice. This exists so the
+        recommendation does not depend on a session remembering to apply
+        the rule by hand each time.
+        """
+        safety = [c for c in self.classes if c in SAFETY_CLASSES]
+        if safety:
+            return f"{'/'.join(safety)}-tagged"
+        if self.status == "needs-decision":
+            return "open design decision"
+        return None
+
 
 @dataclass
 class Report:
@@ -354,6 +374,13 @@ def format_check(report: Report) -> str:
     return "\n".join(lines)
 
 
+def _with_guidance(line: str, entry: Entry) -> str:
+    """Append the model-matching note to a digest line, if the entry has one."""
+    if entry.model_guidance is None:
+        return line
+    return f"{line} - {entry.model_guidance}: use opusplan or your strongest model, high effort"
+
+
 def format_digest(report: Report) -> str:
     """Render the few lines injected into session context at startup.
 
@@ -370,13 +397,20 @@ def format_digest(report: Report) -> str:
 
     for entry in (e for e in report.entries if e.priority == "P0"):
         lines.append(
-            f"  P0 (hotfix, before feature work): {entry.identifier} {entry.title} "
-            f"({entry.effort}, {entry.status})"
+            _with_guidance(
+                f"  P0 (hotfix, before feature work): {entry.identifier} {entry.title} "
+                f"({entry.effort}, {entry.status})",
+                entry,
+            )
         )
 
     top = next((e for e in report.entries if e.priority == "P1"), None)
     if top is not None:
-        lines.append(f"  Top P1: {top.identifier} {top.title} ({top.effort}, {top.status})")
+        lines.append(
+            _with_guidance(
+                f"  Top P1: {top.identifier} {top.title} ({top.effort}, {top.status})", top
+            )
+        )
 
     if report.errors:
         lines.append(
