@@ -111,7 +111,11 @@ session makes on its own that will not be fixed in that session.
    anywhere in the file, including "Recently completed" and "Archive".
 3. Place it at its correct priority, which may demote something else.
    Anything on a safety-critical path per `CLAUDE.md` starts at `P0` or
-   `P1`, regardless of how small it is.
+   `P1`, regardless of how small it is. So does anything classed
+   `session-cost` — work that reduces what a session spends on process
+   rather than on the product — because its payoff compounds across every
+   session after it. Tag it `session-cost`, not `perf`: `perf` is the
+   running application, `session-cost` is the cost of developing it.
 4. If the reasoning is longer than the brief holds, put the long form in
    `docs/WORKING_NOTES.md` and cite the `PL-` id in that thread's heading.
 5. Do not ask permission to record something. Capture at `P3` rather than
