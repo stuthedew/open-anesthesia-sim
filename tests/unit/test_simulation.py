@@ -1,5 +1,6 @@
 import pytest
 
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.respiratory_system import RespiratorySystem
 from anesthesia_sim.core.simulation import SimulationState
 
@@ -48,7 +49,7 @@ def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
 def test_rejects_invalid_simulation_step(
     simulation_step_s: float,
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(SimulationConfigurationError):
         SimulationState().advance(simulation_step_s)
 
 
@@ -59,5 +60,5 @@ def test_rejects_invalid_simulation_step(
 def test_rejects_invalid_initial_elapsed_time(
     elapsed_s: float,
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(SimulationConfigurationError):
         SimulationState(elapsed_s=elapsed_s)
