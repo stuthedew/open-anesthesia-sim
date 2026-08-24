@@ -58,7 +58,11 @@ def _entry(
     return "\n".join(lines)
 
 
-def _document(*entries: str, completed: tuple[str, ...] = ()) -> str:
+def _document(
+    *entries: str,
+    completed: tuple[str, ...] = (),
+    archived: tuple[str, ...] = (),
+) -> str:
     """Assemble entries into a punch list, each under its declared band."""
     body = ["# Punch list", ""]
     for priority, heading in BANDS.items():
@@ -70,6 +74,11 @@ def _document(*entries: str, completed: tuple[str, ...] = ()) -> str:
     body.append("## Recently completed")
     body.append("")
     body.extend(f"- {identifier} Some finished thing — `abc1234`" for identifier in completed)
+    body.append("## Archive")
+    body.append("")
+    body.extend(
+        f"- {identifier} Some old thing — closed 2026-08-24, superseded" for identifier in archived
+    )
     return "\n".join(body) + "\n"
 
 
@@ -232,6 +241,65 @@ def test_item_both_open_and_completed_is_an_error() -> None:
     report = _analyze(_document(_entry("PL-001"), completed=("PL-001",)))
 
     assert _messages(report.errors, "listed as completed but still open")
+
+
+def test_item_both_open_and_archived_is_an_error() -> None:
+    report = _analyze(_document(_entry("PL-001"), archived=("PL-001",)))
+
+    assert _messages(report.errors, "listed as archived but still open")
+
+
+def test_item_recorded_in_both_resolved_sections_is_an_error() -> None:
+    """One disposal per item; two records mean one of them is a lie."""
+    report = _analyze(_document(_entry("PL-001"), completed=("PL-002",), archived=("PL-002",)))
+
+    assert _messages(report.errors, "recorded under both")
+
+
+def test_archived_id_resolves_a_cross_reference() -> None:
+    """Archiving an item must never turn a live pointer into a build error.
+
+    `ROADMAP.md` cites completed ids permanently, so a reference has to keep
+    resolving after the item ages out of "Recently completed".
+    """
+    report = _analyze(
+        _document(_entry("PL-001", effort="S"), archived=("PL-404",)),
+        related={Path("ROADMAP.md"): "Closed by PL-404."},
+    )
+
+    assert report.errors == []
+
+
+def test_working_notes_thread_for_an_archived_item_is_flagged() -> None:
+    report = _analyze(
+        _document(_entry("PL-001", effort="S"), archived=("PL-002",)),
+        related={Path("docs/WORKING_NOTES.md"): "## Open thread: something - PL-002"},
+    )
+
+    assert report.errors == []
+    assert _messages(report.advisories, "delete it rather than leaving it stale")
+
+
+def test_blocked_by_an_archived_item_is_flagged_for_promotion() -> None:
+    """A blocker that was dropped unblocks its dependant just as landing does."""
+    report = _analyze(
+        _document(
+            _entry(
+                "PL-003",
+                priority="P3",
+                status="blocked",
+                fields={
+                    "Problem": "x",
+                    "Why it matters": "y",
+                    "Where": "z",
+                    "Blocked by": "PL-002.",
+                },
+            ),
+            archived=("PL-002",),
+        )
+    )
+
+    assert _messages(report.advisories, "promote it to ready")
 
 
 def test_dangling_cross_reference_is_an_error() -> None:
