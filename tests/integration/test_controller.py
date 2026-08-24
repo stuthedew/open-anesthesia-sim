@@ -4,7 +4,10 @@ import pytest
 
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.core import respiratory_system
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import (
+    SimulationConfigurationError,
+    SimulationExecutionError,
+)
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
 
 
@@ -206,7 +209,7 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
 def test_set_agent_rejects_unknown_agent_id() -> None:
     controller = SimulationController()
 
-    with pytest.raises(ValueError, match="unknown agent_id"):
+    with pytest.raises(SimulationConfigurationError, match="unknown agent_id"):
         controller.set_agent("halothane")
 
 
@@ -266,3 +269,126 @@ def test_parameter_changes_do_not_reset_dynamic_state() -> None:
     assert after.circuit_volume_l == 5.0
     assert after.fresh_gas_flow_l_min == 3.0
     assert after.delivered_concentration_fraction == 0.06
+
+
+def test_a_failed_session_is_not_the_same_state_as_a_pause() -> None:
+    """`is_running` alone cannot carry the difference, so the reason does.
+
+    A pause and a failure both stop the run, but only one of them leaves
+    state a reader can trust. The snapshot has to say which it is.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    controller.advance(0.1)
+
+    paused = SimulationController()
+    paused.start()
+    paused.advance(0.1)
+    paused.pause()
+
+    controller.fail("SimulationNumericalError: the step could not be completed")
+
+    assert controller.snapshot().is_running is False
+    assert controller.has_failed is True
+    assert controller.snapshot().failure_reason == (
+        "SimulationNumericalError: the step could not be completed"
+    )
+
+    assert paused.snapshot().is_running is False
+    assert paused.has_failed is False
+    assert paused.snapshot().failure_reason is None
+
+
+def test_a_failed_session_cannot_be_resumed() -> None:
+    """Resuming would extend a run from a step that never completed."""
+
+    controller = SimulationController()
+    controller.start()
+    controller.fail("SimulationNumericalError: boom")
+
+    with pytest.raises(SimulationExecutionError, match="cannot resume a failed simulation"):
+        controller.start()
+
+    assert controller.snapshot().is_running is False
+
+
+def test_a_failed_session_does_not_advance() -> None:
+    controller = SimulationController()
+    controller.start()
+    controller.advance(0.1)
+    controller.fail("SimulationNumericalError: boom")
+    elapsed_at_failure = controller.snapshot().elapsed_s
+
+    controller.advance(0.1)
+
+    assert controller.snapshot().elapsed_s == elapsed_at_failure
+
+
+def test_the_first_failure_reason_is_the_one_kept() -> None:
+    """A later raise reacting to the same broken state must not mask it."""
+
+    controller = SimulationController()
+    controller.start()
+    controller.fail("SimulationNumericalError: the step could not be completed")
+    controller.fail("AttributeError: NoneType has no attribute 'value'")
+
+    assert controller.snapshot().failure_reason == (
+        "SimulationNumericalError: the step could not be completed"
+    )
+
+
+def test_reset_clears_a_failure_and_restores_a_startable_session() -> None:
+    controller = SimulationController()
+    controller.start()
+    controller.advance(0.1)
+    controller.fail("SimulationNumericalError: boom")
+
+    controller.reset()
+
+    assert controller.has_failed is False
+    assert controller.snapshot().failure_reason is None
+    assert controller.snapshot().elapsed_s == 0.0
+
+    controller.start()
+    controller.advance(0.1)
+
+    assert controller.snapshot().is_running is True
+    assert controller.snapshot().elapsed_s == pytest.approx(0.1)
+
+
+def test_switching_agent_clears_a_failure() -> None:
+    """Switching agents begins a new run, so nothing survives the old one."""
+
+    controller = SimulationController()
+    controller.start()
+    controller.advance(0.1)
+    controller.fail("SimulationNumericalError: boom")
+
+    controller.set_agent("desflurane")
+
+    assert controller.has_failed is False
+    assert controller.snapshot().failure_reason is None
+    assert controller.snapshot().agent_id == "desflurane"
+
+    controller.start()
+
+    assert controller.snapshot().is_running is True
+
+
+def test_a_refused_setting_does_not_fail_the_session() -> None:
+    """A rejected value changes nothing, so the run stays trustworthy."""
+
+    controller = SimulationController(agent_id="isoflurane")
+    controller.start()
+    controller.advance(0.1)
+    before = controller.snapshot()
+
+    with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
+        controller.set_delivered_concentration(0.50)
+
+    after = controller.snapshot()
+
+    assert after.failure_reason is None
+    assert after.is_running is True
+    assert after.delivered_concentration_fraction == before.delivered_concentration_fraction

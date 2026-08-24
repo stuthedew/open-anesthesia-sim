@@ -29,6 +29,8 @@ from anesthesia_sim.app.simulation_view import (
     SimulationView,
 )
 from anesthesia_sim.app.theme import ACCENT, MUTED, WARNING
+from anesthesia_sim.core.exceptions import SimulationNumericalError
+from anesthesia_sim.core.respiratory_system import RespiratorySystem
 
 
 class _FakePage:
@@ -86,6 +88,7 @@ def _snapshot(
     agent_id: str = "sevoflurane",
     agent_display_name: str = "Sevoflurane",
     max_delivered_concentration_percent: float = 8.0,
+    failure_reason: str | None = None,
 ) -> SimulationSnapshot:
     if history is None:
         history = (_sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),)
@@ -117,6 +120,7 @@ def _snapshot(
         agent_accounting_absolute_error_l=1.5e-13,
         agent_accounting_passes_validation=passes_validation,
         concentration_history=history,
+        failure_reason=failure_reason,
     )
 
 
@@ -584,3 +588,252 @@ def test_simulation_time_does_not_depend_on_render_cadence() -> None:
     assert stepped_by_the_loop.alveolar_concentration_fraction == pytest.approx(
         reference.snapshot().alveolar_concentration_fraction
     )
+
+
+# --- PL-018: a core failure must never leave a stale "Running" display ----
+
+
+def _real_step_failure() -> SimulationNumericalError:
+    """Capture the exception the core actually raises on a broken step.
+
+    Reusing the real exception rather than inventing one keeps these tests
+    tied to what `core/` does: if the core stopped raising a
+    `SimulationNumericalError` here, this helper fails rather than letting
+    the interface tests pass against a fiction.
+    """
+
+    system = RespiratorySystem.for_agent("sevoflurane")
+
+    try:
+        system.advance(60.0)
+    except SimulationNumericalError as error:
+        return error
+
+    raise AssertionError("expected the coupled step to break down at a 60 s step")
+
+
+class _StepFailingController(SimulationController):
+    """A real controller whose next `advance()` raises, once."""
+
+    def __init__(self, error: Exception) -> None:
+        super().__init__()
+        self._pending_error: Exception | None = error
+
+    def advance(self, simulation_step_s: float) -> None:
+        if self._pending_error is not None:
+            error, self._pending_error = self._pending_error, None
+            raise error
+
+        super().advance(simulation_step_s)
+
+
+def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
+    view, _ = _build_view(
+        _snapshot(failure_reason="SimulationNumericalError: the step could not be completed")
+    )
+
+    assert view._status_text.value == "Stopped — simulation error"
+    assert view._status_text.color == WARNING
+    assert view._notice_text.visible is True
+    assert view._notice_text.value is not None
+    assert "the step could not be completed" in view._notice_text.value
+    # The reader has to be told the numbers beside the banner are suspect,
+    # not merely that something went wrong.
+    assert "may not reflect a completed step" in view._notice_text.value
+
+
+def test_refresh_view_does_not_offer_to_resume_a_failed_run() -> None:
+    view, _ = _build_view(_snapshot(failure_reason="SimulationNumericalError: boom"))
+
+    assert view._start_button.disabled is True
+    assert view._pause_button.disabled is True
+
+
+def test_refresh_view_shows_no_notice_for_an_ordinary_run() -> None:
+    for snapshot in (_snapshot(is_running=True), _snapshot(is_running=False)):
+        view, _ = _build_view(snapshot)
+
+        assert view._notice_text.visible is False
+        assert view._status_text.value in {"Running", "Paused"}
+
+
+def test_a_failed_step_stops_the_run_instead_of_killing_the_loop() -> None:
+    """The reproduced P1-1 failure, end to end through the real loop.
+
+    Before this was guarded, the raise escaped `_run_simulation_timer` and
+    killed the asyncio task while the interface still read "Running" over
+    the last state it had drawn.
+    """
+
+    page = _FakePage()
+    controller = _StepFailingController(_real_step_failure())
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+
+    _run_briefly(view._run_simulation_timer, ticks=3, interval_s=SIMULATION_STEP_S)
+
+    assert controller.is_running is False
+    assert controller.has_failed is True
+    assert view._status_text.value == "Stopped — simulation error"
+    assert view._notice_text.visible is True
+    assert view._notice_text.value is not None
+    assert "SimulationNumericalError" in view._notice_text.value
+    # The failure was drawn, not just recorded.
+    assert page.update_calls >= 1
+
+
+def test_the_simulation_loop_survives_a_failure_so_reset_can_restart_it() -> None:
+    """The loop is started once, at mount, so it must not return on error.
+
+    A loop that exited would leave Reset with nothing to restart: the
+    interface would look recoverable and never advance again.
+    """
+
+    page = _FakePage()
+    controller = _StepFailingController(_real_step_failure())
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+
+    async def drive() -> None:
+        task = asyncio.create_task(view._run_simulation_timer())
+
+        await asyncio.sleep(SIMULATION_STEP_S * 3)
+        assert controller.has_failed is True
+
+        view._handle_reset(ft.Event(name="click", control=view._reset_button))
+        view._handle_start(ft.Event(name="click", control=view._start_button))
+        await asyncio.sleep(SIMULATION_STEP_S * 3)
+
+        task.cancel()
+
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    asyncio.run(drive())
+
+    assert controller.has_failed is False
+    assert controller.snapshot().elapsed_s > 0.0
+    assert view._status_text.value == "Running"
+    assert view._notice_text.visible is False
+
+
+def test_a_failed_render_stops_the_run_rather_than_freezing_the_display() -> None:
+    """A dead render loop over a live simulation is the mirror failure.
+
+    The numbers would silently stop being current while the simulation
+    kept advancing behind them, which is the same stale-state trap from
+    the other direction.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+
+    real_refresh_and_render = view._refresh_and_render
+    failures_left = [1]
+
+    def failing_refresh_and_render() -> None:
+        if failures_left[0]:
+            failures_left[0] -= 1
+            raise RuntimeError("chart series could not be updated")
+
+        real_refresh_and_render()
+
+    view._refresh_and_render = failing_refresh_and_render  # type: ignore[method-assign]
+
+    _run_briefly(view._run_render_timer, ticks=2, interval_s=RENDER_INTERVAL_S)
+
+    assert controller.is_running is False
+    assert controller.has_failed is True
+    # A plain programming error is treated exactly like a modelling one:
+    # both kill the loop, and both leave the display claiming to be live.
+    assert view._status_text.value == "Stopped — simulation error"
+    assert view._notice_text.value is not None
+    assert "RuntimeError" in view._notice_text.value
+
+
+def test_a_refused_setting_is_reported_without_stopping_the_run() -> None:
+    """Isoflurane's vaporizer stops at 5%, so 50% must be refused."""
+
+    page = _FakePage()
+    controller = SimulationController(agent_id="isoflurane")
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+    delivered_before = controller.snapshot().delivered_concentration_fraction
+
+    view._delivered_concentration_slider.value = 50.0
+    view._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view._delivered_concentration_slider)
+    )
+
+    assert controller.is_running is True
+    assert controller.has_failed is False
+    assert view._status_text.value == "Running"
+    assert view._notice_text.visible is True
+    assert view._notice_text.value is not None
+    assert "Setting refused" in view._notice_text.value
+    assert "vaporizer maximum" in view._notice_text.value
+
+    # The control must not keep showing a dial position the simulation is
+    # not running at: that is the correct number under the wrong label.
+    assert controller.snapshot().delivered_concentration_fraction == delivered_before
+    assert view._delivered_concentration_slider.value == pytest.approx(delivered_before * 100.0)
+
+
+def test_a_refusal_notice_clears_once_a_setting_is_accepted() -> None:
+    page = _FakePage()
+    controller = SimulationController(agent_id="isoflurane")
+    view = SimulationView(page=page, controller=controller)
+
+    view._delivered_concentration_slider.value = 50.0
+    view._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view._delivered_concentration_slider)
+    )
+    assert view._notice_text.visible is True
+
+    view._delivered_concentration_slider.value = 2.0
+    view._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view._delivered_concentration_slider)
+    )
+
+    assert view._notice_text.visible is False
+    assert controller.snapshot().delivered_concentration_fraction == pytest.approx(0.02)
+
+
+@pytest.mark.parametrize(
+    ("handler_name", "slider_name", "refused_value"),
+    [
+        ("_handle_fresh_gas_flow_change", "_fresh_gas_flow_slider", -1.0),
+        ("_handle_alveolar_ventilation_change", "_alveolar_ventilation_slider", -1.0),
+        ("_handle_cardiac_output_change", "_cardiac_output_slider", -1.0),
+    ],
+)
+def test_every_slider_handler_refuses_without_escaping_into_flet(
+    handler_name: str,
+    slider_name: str,
+    refused_value: float,
+) -> None:
+    """No setting callback may let a core raise reach Flet's dispatcher.
+
+    The sliders' own bounds keep these values unreachable in the running
+    app, which is exactly why the guard needs its own cover: a later
+    change to a bound would otherwise make an unguarded callback reachable
+    with nothing to catch it.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+
+    slider = getattr(view, slider_name)
+    slider.value = refused_value
+    getattr(view, handler_name)(ft.Event(name="change", control=slider))
+
+    assert controller.is_running is True
+    assert controller.has_failed is False
+    assert view._notice_text.visible is True
+    assert view._notice_text.value is not None
+    assert "Setting refused" in view._notice_text.value
+    assert slider.value >= 0.0

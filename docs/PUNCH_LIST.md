@@ -139,34 +139,6 @@ the conditions, and a session makes the call.
 
 ## P1 — Next
 
-### PL-018 Keep a core failure from silently killing a running simulation
-`P1` · `M` · `safety` `defect` · ready · added 2026-08-24
-
-**Problem.** Two halves of one failure mode, reported as `P1-1` by the
-review harness. `core/` raises bare `ValueError` from its numeric guards,
-outside its own `AnesthesiaSimulationError` hierarchy, so a caller cannot
-distinguish a simulation failure from a programming error. And
-`SimulationView._run_simulation_timer` has no exception handling at all, so
-any raise from a step or a setter kills the asyncio task while the UI still
-reads "Running" and keeps displaying the last state.
-**Why it matters.** A frozen display that still claims to be running is a
-stale-state human-factors failure: the reader has no cue that the numbers
-stopped advancing. v0.2.1 raises the stakes slightly — controller setters
-can now reject an out-of-range delivered concentration, so a raise can
-reach a UI callback, though the slider's bounds keep it unreachable today.
-**Where.** `core/validation.py`, `core/exceptions.py`, `core/circuit.py`
-and the other compartments, `app/simulation_view.py`
-(`_run_simulation_timer`, the setter callbacks).
-**First step.** Decide whether the core's numeric guards should raise a
-`SimulationConfigurationError` subclass or whether
-`AnesthesiaSimulationError` should inherit from `ValueError`; the second is
-smaller but keeps the two hierarchies conflated.
-**Done when.** A raise from `core/` during a run leaves the interface in an
-unambiguous stopped/failed state rather than a stale running one, and the
-harness's two `P1-1` checks report FIXED.
-**Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
-harness".
-
 ### PL-021 Reject unknown keys in the parameter-file schemas
 `P1` · `S` · `safety` `defect` · ready · added 2026-08-24
 
@@ -193,6 +165,34 @@ on the seventh.
 **Done when.** An unknown key at any nesting level raises, a regression test
 covers both the top-level and the nested case, and the harness's `P1-4`
 check reports FIXED.
+
+### PL-026 Decide what the interface shows after a halted step
+`P1` · `S` · `safety` `ux` · needs-decision · added 2026-08-24
+
+**Problem.** PL-018 made a failed step halt the run, label it "Stopped —
+simulation error", and warn that "the values shown may not reflect a
+completed step". The compartment metrics and chart traces themselves are
+still drawn, at whatever value the abandoned step left them. The step is
+not transactional: `RespiratorySystem.advance()` applies its five
+sub-exchanges in sequence and a guard can reject the fifth after the first
+four have already mutated state.
+**Why it matters.** `CLAUDE.md` prefers an obvious failure state to a
+plausible-looking number when correctness cannot be established, and a
+partially applied step is exactly that case. The banner is a warning after
+the fact rather than an interface that prevents the misreading. Against
+that: the numbers are also the most direct evidence of where the model
+broke down, which has teaching value, and the run cannot be resumed from
+them.
+**Where.** `app/simulation_view.py` (`_refresh_view`, `_refresh_notice`),
+`core/respiratory_system.py` (`advance`, `_advance_step`).
+**Decision needed.** Three options, in increasing cost: keep the banner as
+the only cue; blank or grey the metrics and freeze the chart at the last
+completed step; or make the step transactional so a failure leaves the last
+completed state intact and nothing is partial. The third removes the
+question entirely but means capturing and restoring six compartments plus
+the accounting validator on every step.
+**Done when.** What a halted run displays is a recorded decision with its
+reasoning, and `docs/MODEL.md`'s interface rules state it.
 
 ### PL-022 Delete the dead, non-conservative `advance_ventilation`
 `P1` · `S` · `safety` `refactor` · ready · added 2026-08-24
@@ -306,6 +306,53 @@ open question, and it can be answered after.
 **Done when.** `docs/MODEL.md` states the pool's time constant and its
 effect on the first minute, and any interface cue is a deliberate decision
 rather than an omission.
+
+### PL-025 Assign a release number to the post-v0.2.1 work
+`P2` · `S` · `planning` · needs-decision · added 2026-08-24
+
+**Problem.** `pyproject.toml` still reads `0.2.1` and the interface header
+still renders "Version 0.2.1", but the code has moved since: PL-018 added a
+third run state, a `failure_reason` field on `SimulationSnapshot`, and a
+changed exception contract across `core/`. `ROADMAP.md`'s version table has
+no row for any of it. Nothing in `ROADMAP.md` is false today — its v0.2.1
+description still describes v0.2.1 — but the displayed version no longer
+identifies the behavior a reader is looking at.
+**Why it matters.** The version is displayed next to clinical values and is
+the handle a reader has for "which model and which interface produced
+this", so it is provenance rather than bookkeeping. Low urgency only
+because the drift is between an untagged working tree and its last
+described release, which is normal mid-development.
+**Where.** `pyproject.toml` (`version`), `ROADMAP.md` (version table,
+"Current baseline").
+**Decision needed.** Whether the remaining harness fixes (PL-021, PL-022,
+PL-023) fold into one release with PL-018 or each gets its own patch
+number. Folding argues for cutting the number once they land; separating
+argues for bumping now. The roadmap's rule is that a number is chosen for
+the capability boundary it crosses, which is a project-owner call.
+**Done when.** The version in `pyproject.toml` and the `ROADMAP.md` table
+agree with each other and with what the code does.
+
+### PL-027 Confirm the per-frame slider write-back on a live Flet client
+`P2` · `S` · `ux` · ready · added 2026-08-24
+
+**Problem.** PL-018 made `_refresh_view` write every parameter slider's
+`value` from the snapshot, so a refused setting cannot leave a control
+showing a dial position the simulation is not running at. During a run that
+write happens on every render tick (5 Hz). Whether Flet's diff treats a
+same-value write as a no-op, and whether a write landing mid-drag snaps the
+thumb, was not verified: no live client was available in the session that
+made the change.
+**Why it matters.** The write-back itself is a presentation-correctness fix
+and should stay. The unverified part is whether it costs anything or
+interferes with dragging — the same class of unknown as PL-010, and worth
+settling in the same sitting on a client.
+**Where.** `app/simulation_view.py` (`_refresh_view`).
+**First step.** Run the app, drag each slider through a full sweep during a
+run, and watch for thumb snapping or lag; then check whether frame cost
+changed measurably.
+**Done when.** Dragging during a run is confirmed smooth on a live client,
+or the write-back is narrowed to the cases that need it with the reason
+recorded.
 
 ### PL-004 Decide the fate of `SimulationSnapshot.circuit_time_constant_s`
 `P2` · `S` · `defect` · needs-decision · added 2026-08-23
@@ -530,6 +577,7 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-018 Keep a core failure from silently killing a running simulation — `PENDING`
 - PL-013 Triage the review harness's four remaining findings — `f51762a`
 - PL-014 Land or discard the unmerged punch-list model-guidance work — `7714386`
 - PL-015 Reject an out-of-range delivered concentration instead of simulating it — `bc5f823`

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from anesthesia_sim.core.blood import (
     VenousBloodCompartment,
 )
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     AgentParameters,
     ReferenceAdultParameters,
@@ -41,7 +42,7 @@ class PatientCompartments:
         )
 
         if abs(self.total_perfusion_fraction - 1.0) > FLOW_FRACTION_TOLERANCE:
-            raise ValueError("tissue perfusion fractions must sum to 1")
+            raise SimulationConfigurationError("tissue perfusion fractions must sum to 1")
 
         self._update_blood_flows()
 

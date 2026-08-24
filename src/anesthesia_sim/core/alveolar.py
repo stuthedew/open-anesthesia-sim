@@ -6,6 +6,7 @@ pulmonary blood (uptake), sitting between `circuit.py` and `patient.py`.
 from dataclasses import dataclass
 from math import exp, inf
 
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
     require_concentration_fraction,
     require_nonnegative_finite,
@@ -38,7 +39,7 @@ class AlveolarCompartment:
         )
 
         if self.agent_amount_l > self.gas_volume_l:
-            raise ValueError(
+            raise SimulationConfigurationError(
                 "agent_amount_l exceeds the alveolar capacity for a concentration fraction of 1"
             )
 
@@ -127,7 +128,7 @@ class AlveolarCompartment:
         """
 
         if not isinstance(blood_uptake_l, (int, float)):
-            raise ValueError("blood_uptake_l must be a number")
+            raise SimulationConfigurationError("blood_uptake_l must be a number")
 
         require_nonnegative_finite(
             "resulting_agent_amount_l",
@@ -137,7 +138,7 @@ class AlveolarCompartment:
         resulting_amount_l = self.agent_amount_l - blood_uptake_l
 
         if resulting_amount_l > self.gas_volume_l:
-            raise ValueError("blood transfer would exceed alveolar capacity")
+            raise SimulationConfigurationError("blood transfer would exceed alveolar capacity")
 
         self.agent_amount_l = resulting_amount_l
 

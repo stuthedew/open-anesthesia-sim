@@ -156,7 +156,7 @@ class BreathingCircuit:
         )
 
         if agent_amount_l > self.circuit_volume_l:
-            raise ValueError("agent_amount_l exceeds circuit capacity")
+            raise SimulationConfigurationError("agent_amount_l exceeds circuit capacity")
 
         self.circuit_concentration_fraction = agent_amount_l / self.circuit_volume_l
 
