@@ -5,11 +5,11 @@ baseline (commit `3251ebf`). Every numeric claim the review makes is
 produced by a script here, so a later reader — human or agent — can re-run
 the claim instead of trusting the write-up.
 
-Six of the nine checks have since been fixed and now report `FIXED`:
+Seven of the nine checks have since been fixed and now report `FIXED`:
 `P1-2` (PL-015), `P1-3` (PL-017), and `P1-5` (PL-016) in v0.2.1; `P1-1`
-(both of its checks, PL-018) and `P1-6` (PL-022) after that. Their
-rows below describe the reviewed v0.2.0 behaviour, which is what the checks
-still probe for. `verify_findings.py` therefore exits `1` on a current
+(both of its checks, PL-018), `P1-6` (PL-022), and `P1-4` (PL-021) after
+that. Their rows below describe the reviewed v0.2.0 behaviour, which is what
+the checks still probe for. `verify_findings.py` therefore exits `1` on a current
 tree, as designed.
 
 These scripts are **not** part of the test suite and **not** a fix for
@@ -94,7 +94,12 @@ documented private import.
 - `P1-4` adds its misspelled key *alongside* the correctly spelled one, so
   what it probes is an unknown extra key rather than a missing required one.
   A misspelling that removes a required key is already rejected as a missing
-  field; the hole is the key an author adds believing it takes effect.
+  field; the hole is the key an author adds believing it takes effect. It
+  also probes a nested key, so a schema strict only at the top level still
+  reports `REPRODUCED`. Both probes catch `AnesthesiaSimulationError`
+  rather than `ValueError`: the loaders re-raise Pydantic's error as
+  `SimulationConfigurationError`, which is deliberately outside the
+  `ValueError` hierarchy.
 - `P1-6` first tests whether `AlveolarCompartment.advance_ventilation`
   still exists. PL-022 deleted it, so the check reports `FIXED` on that
   branch and never calls it — calling a deleted method would raise instead

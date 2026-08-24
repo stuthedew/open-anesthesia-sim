@@ -139,33 +139,6 @@ the conditions, and a session makes the call.
 
 ## P1 — Next
 
-### PL-021 Reject unknown keys in the parameter-file schemas
-`P1` · `S` · `safety` `defect` · ready · added 2026-08-24
-
-**Problem.** No Pydantic model in `core/parameters.py` sets
-`extra="forbid"`, so an unknown key in `data/agents/*.json` or
-`data/patients/*.json` is silently discarded — at the top level and inside
-the nested payloads alike. Verified: adding
-`blood_gas_partitition_coefficient: 9.9` alongside the correctly spelled key
-loads clean and the model runs at 0.65, and `"muscel"` inside
-`tissue_gas_partition_coefficients` is accepted and ignored. A misspelling
-that *removes* a required key is already caught as a missing field, so the
-exposure is specifically the key an author believes takes effect and does
-not: a renamed field, a units-suffixed variant, a typo'd duplicate, or a
-field from a schema version the loader does not implement.
-**Why it matters.** Safety-critical: every value in these files feeds a
-displayed clinical number, so a silently ignored edit leaves the data file
-documenting one model while the app runs another. Reported as `P1-4` by the
-review harness.
-**Where.** `core/parameters.py` (all six `_...Payload` models),
-`tests/unit/test_parameters.py`.
-**First step.** Add `model_config = ConfigDict(extra="forbid")` to every
-payload model; a shared private base is what keeps it from being forgotten
-on the seventh.
-**Done when.** An unknown key at any nesting level raises, a regression test
-covers both the top-level and the nested case, and the harness's `P1-4`
-check reports FIXED.
-
 ### PL-026 Decide what the interface shows after a halted step
 `P1` · `S` · `safety` `ux` · needs-decision · added 2026-08-24
 
@@ -404,7 +377,10 @@ rationale is liable to "simplify" it away.
 **First step.** The module docstring added 2026-08-23 explains the split at
 a high level. Decide whether that is sufficient or whether each pair needs
 a more local marker — a shared base-naming convention, or a one-line
-comment at each `_...Payload` class.
+comment at each `_...Payload` class. PL-021 has since given every payload
+model a shared `_StrictPayload` base, so the base-naming half of that
+option now exists; what it does not yet carry is why the `_...Payload` /
+public-dataclass pair exists at all.
 **Done when.** A reader landing on either `_...Payload` class can tell why
 it exists without scrolling to the module docstring.
 
@@ -601,6 +577,7 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-021 Reject unknown keys in the parameter-file schemas — `3465dcf`
 - PL-002 Color-code agent selection to real vaporizer colors — `74bec83`
 - PL-022 Delete the dead, non-conservative `advance_ventilation` — `956e710`
 - PL-018 Keep a core failure from silently killing a running simulation — `4c442ef`
