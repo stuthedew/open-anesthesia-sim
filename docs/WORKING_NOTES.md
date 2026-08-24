@@ -83,7 +83,7 @@ Stepping is exact-closed-form per step, so a larger step is a model-fidelity
 question, not just a performance one. Being an `L`, it needs scoping into a
 `ROADMAP.md` milestone before implementation.
 
-## Open thread: the unmerged architecture review - PL-013
+## Open thread: the architecture review harness - PL-018, PL-021, PL-022, PL-023, PL-024
 
 An independent architecture review of the v0.2.0 baseline (commit
 `3251ebf`) produced an executable harness under `tools/review-verification/`
@@ -91,13 +91,13 @@ rather than a prose write-up alone: every numeric claim it makes is
 reproduced by a script, so a later reader can re-run the claim instead of
 trusting the text.
 
-The harness is now on the development line (`655e429`, the cherry-pick of
-`0ccfa44` from `claude/repo-architecture-review-3h39kh`), so the branch is
-no longer the only record and can be deleted. The three safety-critical
-findings it carried were fixed in v0.2.1 (`bc5f823`) and their checks now
-report FIXED: `P1-2`, `P1-3`, and `P1-5`. Both scripts now run at 5% delivered
-rather than 8%, since 8% is no longer a deliverable isoflurane dial
-position.
+The harness is on the development line (`655e429`, the cherry-pick of
+`0ccfa44` from `claude/repo-architecture-review-3h39kh`); that branch has
+since been deleted, so the harness is the whole record. The three
+safety-critical findings it carried were fixed in v0.2.1 (`bc5f823`) and
+their checks now report FIXED: `P1-2`, `P1-3`, and `P1-5`. Both scripts now
+run at 5% delivered rather than 8%, since 8% is no longer a deliverable
+isoflurane dial position.
 
 Re-run after those fixes, `verify_physics.py` confirms all three physics
 claims and `verify_findings.py` reproduces the six checks behind the five
@@ -113,25 +113,27 @@ review's own note is that the remedy for the splitting error is not to adopt
 pinned vectors, so the coupled model is checked against an independent
 solution on every CI run.
 
-`P1-1` is filed as PL-018. The four that remain to triage under PL-013, in
-the harness's own numbering:
+Every reproduced finding is now tracked, which is what PL-013 closed. In the
+harness's own numbering:
 
-- `P1-4` - no Pydantic model in `core/parameters.py` sets
-  `extra='forbid'`, so a misspelled key in a safety-critical data file
-  loads clean and the intended value silently does not apply.
-- `P1-6` - `advance_ventilation` has no call site inside `core/` and does
-  not conserve agent mass (alveolar amount rises 0.005263 L with no
-  matching circuit debit). Dead code that models the same physics
-  incorrectly is a trap for the next reader.
-- `P2-1` - the mass-balance check passes (residual 2.22e-15 L) while the
-  dynamics are visibly wrong: `dt=10 s` differs from `dt=0.1 s` by 0.157
-  percentage points of alveolar fraction. Conservation is necessary but
-  nowhere near sufficient as a correctness gate, and it is currently the
-  only one.
-- `P2-4` - the 1.0 L venous pool dominates early mixed-venous values,
-  depressing them 55% at 30 s and 34% at 60 s against a near-instant-mixing
-  comparison. This is a modelling choice to document or revisit, not
-  necessarily a defect.
+- `P1-1` - PL-018, a core raise outside the project's exception hierarchy
+  plus an unguarded simulation timer.
+- `P1-4` - PL-021, no `extra='forbid'` on the parameter-file schemas.
+  Triage sharpened the claim: a misspelling that removes a required key is
+  already rejected as a missing field, so the live hole is the *unknown
+  extra* key — a renamed field, a units-suffixed variant, or a typo'd
+  duplicate sitting beside the correct one — which loads clean and does
+  nothing.
+- `P1-6` - PL-022, dead and non-conservative `advance_ventilation`. Note
+  that deleting the method breaks the harness check rather than flipping it
+  to FIXED, so the two have to move together.
+- `P2-1` - PL-023, mass balance cannot detect a wrong rate. The remedy is
+  the RK4-oracle promotion described above, not adopting `expm`.
+- `P2-4` - PL-024, the venous pool's 12 s mixing time constant shaping the
+  first minute of the displayed mixed-venous trace. Judged a documentation
+  and presentation gap rather than a defect: 1.0 L is the Gas Man reference
+  value and is cited twice in `reference_adult.json`, so the number is
+  right and its meaning is unstated.
 
 Fixing a finding flips its check to FIXED and makes the harness exit `1`,
 which is the intended signal that the review write-up is stale for that

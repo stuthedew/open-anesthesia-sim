@@ -161,8 +161,8 @@ a non-conservative dead code path both produce plausible wrong numbers.
 own entry here or record an explicit reason for declining it.
 **Done when.** Each of the four is an entry here or explicitly declined
 with a reason, and `claude/repo-architecture-review-3h39kh` is deleted.
-**Context.** `docs/WORKING_NOTES.md` § "Open thread: the unmerged
-architecture review".
+**Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
+harness".
 
 ### PL-018 Keep a core failure from silently killing a running simulation
 `P1` · `M` · `safety` `defect` · ready · added 2026-08-24
@@ -189,8 +189,82 @@ smaller but keeps the two hierarchies conflated.
 **Done when.** A raise from `core/` during a run leaves the interface in an
 unambiguous stopped/failed state rather than a stale running one, and the
 harness's two `P1-1` checks report FIXED.
-**Context.** `docs/WORKING_NOTES.md` § "Open thread: the unmerged
-architecture review".
+**Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
+harness".
+
+### PL-021 Reject unknown keys in the parameter-file schemas
+`P1` · `S` · `safety` `defect` · ready · added 2026-08-24
+
+**Problem.** No Pydantic model in `core/parameters.py` sets
+`extra="forbid"`, so an unknown key in `data/agents/*.json` or
+`data/patients/*.json` is silently discarded — at the top level and inside
+the nested payloads alike. Verified: adding
+`blood_gas_partitition_coefficient: 9.9` alongside the correctly spelled key
+loads clean and the model runs at 0.65, and `"muscel"` inside
+`tissue_gas_partition_coefficients` is accepted and ignored. A misspelling
+that *removes* a required key is already caught as a missing field, so the
+exposure is specifically the key an author believes takes effect and does
+not: a renamed field, a units-suffixed variant, a typo'd duplicate, or a
+field from a schema version the loader does not implement.
+**Why it matters.** Safety-critical: every value in these files feeds a
+displayed clinical number, so a silently ignored edit leaves the data file
+documenting one model while the app runs another. Reported as `P1-4` by the
+review harness.
+**Where.** `core/parameters.py` (all six `_...Payload` models),
+`tests/unit/test_parameters.py`.
+**First step.** Add `model_config = ConfigDict(extra="forbid")` to every
+payload model; a shared private base is what keeps it from being forgotten
+on the seventh.
+**Done when.** An unknown key at any nesting level raises, a regression test
+covers both the top-level and the nested case, and the harness's `P1-4`
+check reports FIXED.
+
+### PL-022 Delete the dead, non-conservative `advance_ventilation`
+`P1` · `S` · `safety` `refactor` · ready · added 2026-08-24
+
+**Problem.** `AlveolarCompartment.advance_ventilation` has no call site in
+any shipped module. The live ventilation path is
+`RespiratorySystem._exchange_circuit_and_alveoli`, which moves agent between
+circuit and alveoli as an equal-and-opposite pair; `advance_ventilation`
+instead drives alveolar gas toward an inspired fraction and credits the
+alveoli (+0.005263 L in one 1 s step at 8% inspired) with no matching
+circuit debit. Only `tests/unit/test_alveolar.py` calls it.
+**Why it matters.** Dead code modelling the same physics incorrectly is a
+trap for the next caller — the machine abstraction is the obvious candidate
+— who would get a plausible wash-in curve that creates agent from nowhere.
+Reported as `P1-6`.
+**Where.** `core/alveolar.py`, `tests/unit/test_alveolar.py`,
+`tools/review-verification/verify_findings.py`.
+**First step.** Delete the method and its four unit tests rather than wiring
+it up: the conserving exchange already exists and is what every path uses.
+**Done when.** The method is gone — or made conservative and actually
+called, with the reason recorded — and the harness's `P1-6` check is updated
+in the same change. Deleting the method breaks that check outright rather
+than flipping it to FIXED, and a check that raises reports nothing.
+
+### PL-023 Gate the coupled dynamics on an independent solution, not just mass balance
+`P1` · `M` · `science` `infra` · ready · added 2026-08-24
+
+**Problem.** `core/agent_simulation_validation.py` is the only automatic
+correctness gate on the coupled step, and it cannot detect a wrong rate:
+every internal transfer is applied as an equal-and-opposite pair, so the
+residual sits at ~2e-15 L while the dynamics are visibly wrong — Δt = 10 s
+differs from Δt = 0.1 s by 0.157 percentage points of alveolar fraction.
+Conservation is necessary and nowhere near sufficient.
+**Why it matters.** Any future change to the operator split can shift the
+solution materially with every gate still green, and the next milestone's
+machine abstraction touches that split. Reported as `P2-1`.
+**Where.** `tests/reference/`, `tools/review-verification/verify_physics.py`,
+`core/simulation.py`.
+**First step.** Promote `verify_physics.py`'s from-scratch RK4 oracle into
+`tests/reference/` with pinned vectors. It must keep importing only the
+parameter loaders and never a solver from `core/`, or the test becomes a
+tautology rather than a verification.
+**Done when.** CI checks the coupled six-state solution against an
+independent integration, and the tolerance is justified against the measured
+first-order splitting error rather than fitted to today's numbers.
+**Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
+harness".
 
 ### PL-002 Color-code agent selection to real vaporizer colors
 `P1` · `M` · `ux` `safety` · ready · added 2026-08-23
@@ -233,6 +307,30 @@ version number assigned, matching the structure of the completed v0.1.0 and
 v0.2.0 sections.
 
 ## P2 — Queued
+
+### PL-024 Document what the venous pool does to early mixed-venous readings
+`P2` · `S` · `docs` `ux` · ready · added 2026-08-24
+
+**Problem.** The venous pool's mixing time constant — 60 · V/Q̇ = 12 s at the
+reference 1.0 L and 5 L/min — dominates the displayed mixed-venous value
+through the first minute of wash-in. Against a near-instant-mixing
+comparison it reads 55% low at 30 s, 34% low at 60 s, and 17% low at 120 s.
+Mixed venous is displayed both as a metric and as a chart trace, and neither
+`docs/MODEL.md`'s "Known limitations" nor the interface says the early curve
+is a mixing artifact rather than tissue uptake.
+**Why it matters.** Not a defect: 1.0 L is the Gas Man reference value and
+is cited twice in `reference_adult.json`. But a learner reading the first
+minute of that trace as uptake draws a wrong conclusion from a correct
+number, which is the presentation half of the safety standard rather than a
+numerical error. Reported as `P2-4`.
+**Where.** `docs/MODEL.md` ("Known limitations", "Venous blood"),
+`app/simulation_view.py` (the mixed-venous metric and trace).
+**First step.** Write the `docs/MODEL.md` note — it is the smaller half and
+needs no interface decision. Whether the display also needs a cue is the
+open question, and it can be answered after.
+**Done when.** `docs/MODEL.md` states the pool's time constant and its
+effect on the first minute, and any interface cue is a deliberate decision
+rather than an omission.
 
 ### PL-004 Decide the fate of `SimulationSnapshot.circuit_time_constant_s`
 `P2` · `S` · `defect` · needs-decision · added 2026-08-23

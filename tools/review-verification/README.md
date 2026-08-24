@@ -90,10 +90,16 @@ documented private import.
 - Both scripts run at 5% delivered, the highest concentration all three
   shipped vaporizers can produce. 8%, the reviewed operating point, is now
   rejected for isoflurane rather than simulated.
+- `P1-4` adds its misspelled key *alongside* the correctly spelled one, so
+  what it probes is an unknown extra key rather than a missing required one.
+  A misspelling that removes a required key is already rejected as a missing
+  field; the hole is the key an author adds believing it takes effect.
 - `P1-6` scans every shipped module's source for a `.advance_ventilation(`
   call site. If someone wires the method up, this check flips to `FIXED` —
   which would be the wrong outcome for the right reason, so read the detail
-  line rather than the state alone.
+  line rather than the state alone. If someone deletes the method (PL-022,
+  the likelier remedy), the check raises instead of reporting, so it has to
+  be updated in the same change.
 
 ## Findings not covered here
 
