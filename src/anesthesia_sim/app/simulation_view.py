@@ -55,6 +55,27 @@ MAX_CHART_WINDOW_S = 300.0
 # pixels wide is already finer than the display can resolve.
 MAX_CHART_POINTS_PER_SERIES = 300
 CHART_HEIGHT = 360
+
+# Displayed resolution for every modeled concentration and relative partial
+# pressure, and for the delivered-agent setting shown beside its slider. Two
+# decimals of a percent — 0.01 percentage points — is a recorded decision
+# (PL-040), justified in `docs/MODEL.md` § "Displayed precision" against the
+# measured error of the shipped operator split. The short version: the
+# split disagrees with the independent solution by up to 5e-3 percentage
+# points at the default flows and 1.2e-2 at the extreme corner of the
+# settings envelope, so the second decimal is the uncertain digit — as the
+# last displayed digit should be — and the third and beyond were noise.
+# Changing this is a safety-critical change to how a clinical value reads,
+# not a formatting preference: revise the documented basis with it.
+CONCENTRATION_DISPLAY_DECIMALS = 2
+# Smallest percentage-point difference the concentration readouts resolve.
+CONCENTRATION_DISPLAY_RESOLUTION_PERCENT = 10.0**-CONCENTRATION_DISPLAY_DECIMALS
+
+# Decimals shown on the flow sliders' drag labels, matching the ".1f L/min"
+# readouts beside them. Flet's default is 0, which would make a slider's own
+# label disagree with the text next to it mid-drag.
+FLOW_DISPLAY_DECIMALS = 1
+
 COMPACT_PAGE_PADDING = 16
 COMPACT_PANEL_PADDING = 14
 COMPACT_PANEL_RADIUS = 10
@@ -166,12 +187,16 @@ class SimulationView:
             visible=False,
         )
         self._elapsed_time_text = self._build_metric_value("0.0 s")
-        self._circuit_concentration_text = self._build_metric_value("0.000%")
-        self._alveolar_concentration_text = self._build_metric_value("0.000%")
-        self._mixed_venous_concentration_text = self._build_metric_value("0.000%")
-        self._vessel_rich_concentration_text = self._build_metric_value("0.000%")
-        self._muscle_concentration_text = self._build_metric_value("0.000%")
-        self._fat_concentration_text = self._build_metric_value("0.000%")
+        # Placeholders come from the formatter rather than from literals, so
+        # a change to the displayed resolution cannot leave the pre-run
+        # reading disagreeing with every reading after it.
+        empty_compartment = self._format_percent(0.0)
+        self._circuit_concentration_text = self._build_metric_value(empty_compartment)
+        self._alveolar_concentration_text = self._build_metric_value(empty_compartment)
+        self._mixed_venous_concentration_text = self._build_metric_value(empty_compartment)
+        self._vessel_rich_concentration_text = self._build_metric_value(empty_compartment)
+        self._muscle_concentration_text = self._build_metric_value(empty_compartment)
+        self._fat_concentration_text = self._build_metric_value(empty_compartment)
 
         self._agent_accounting_status_text = ft.Text(
             "Valid",
@@ -327,6 +352,7 @@ class SimulationView:
             max=MAX_FRESH_GAS_FLOW_L_MIN,
             value=initial_snapshot.fresh_gas_flow_l_min,
             label="{value} L/min",
+            round=FLOW_DISPLAY_DECIMALS,
             active_color=ACCENT,
             expand=True,
             on_change=self._handle_fresh_gas_flow_change,
@@ -336,6 +362,13 @@ class SimulationView:
             max=initial_snapshot.max_delivered_concentration_percent,
             value=(initial_snapshot.delivered_concentration_fraction * 100.0),
             label="{value}%",
+            # The drag label is the same clinical value as the readout beside
+            # it and must be read at the same resolution. Flet rounds this
+            # label to whole numbers unless told otherwise, which would show
+            # "2%" on a dial the readout reports as "2.40%" — two displayed
+            # values of one quantity, disagreeing by up to half a percentage
+            # point.
+            round=CONCENTRATION_DISPLAY_DECIMALS,
             active_color=ACCENT,
             expand=True,
             on_change=(self._handle_delivered_concentration_change),
@@ -345,6 +378,7 @@ class SimulationView:
             max=MAX_ALVEOLAR_VENTILATION_L_MIN,
             value=(initial_snapshot.alveolar_ventilation_l_min),
             label="{value} L/min",
+            round=FLOW_DISPLAY_DECIMALS,
             active_color=ACCENT,
             expand=True,
             on_change=(self._handle_alveolar_ventilation_change),
@@ -354,6 +388,7 @@ class SimulationView:
             max=MAX_CARDIAC_OUTPUT_L_MIN,
             value=initial_snapshot.cardiac_output_l_min,
             label="{value} L/min",
+            round=FLOW_DISPLAY_DECIMALS,
             active_color=ACCENT,
             expand=True,
             on_change=self._handle_cardiac_output_change,
@@ -1211,16 +1246,41 @@ class SimulationView:
     ) -> str:
         """Convert a concentration fraction to display percent.
 
+        Renders at `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, the
+        resolution `docs/MODEL.md` § "Displayed precision" justifies against
+        the measured error of the shipped operator split.
+
+        A value that is positive but rounds to zero is rendered as below the
+        resolution rather than as zero. The distinction is the point: muscle
+        and fat sit under 0.01% for the first minutes of a run — fat for
+        thirteen of them at 1 MAC sevoflurane — and `0.00%` there would
+        assert a compartment is empty when the model says it is filling.
+        `<0.01%` says only what is known, and leaves `0.00%` meaning what it
+        should, that nothing has arrived yet.
+
+        A negative fraction is deliberately not given the below-resolution
+        form. The compartment guards make one impossible, so if one ever
+        reaches here it must stay visible as the anomaly it is rather than
+        be absorbed into a plausible-looking reading.
+
         Args:
             concentration_fraction: Dimensionless concentration
                 fraction from zero through one.
 
         Returns:
-            Concentration formatted as percent with three decimal
-            places.
+            Concentration as percent at the displayed resolution, or the
+            below-resolution form for a positive value that rounds to zero.
         """
 
-        return f"{concentration_fraction * 100.0:.3f}%"
+        percent = concentration_fraction * 100.0
+        rendered = f"{percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}"
+
+        if percent > 0.0 and float(rendered) == 0.0:
+            resolution = CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+
+            return f"<{resolution:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
+
+        return f"{rendered}%"
 
     @staticmethod
     def _format_subtitle(agent_display_name: str) -> str:
