@@ -105,11 +105,51 @@ left", "are we in a good spot to move on".
    When handing off, say what the fresh session should read first:
    `CLAUDE.md`, the entry itself, and any `docs/WORKING_NOTES.md` thread it
    cites. Entries are written to be actionable cold precisely so that this
-   handoff costs nothing. Say to open that session with the item's ID at
-   the front of its first message ("PL-013: ..."): per `CLAUDE.md`, the
-   session and its branch both lead with the ID, and on a surface that
-   derives the branch name from that first message, the handoff is the only
-   moment where the branch name can still be set.
+   handoff costs nothing.
+
+   End the handoff with the exact line to paste as that session's first
+   message, on its own and nothing else on it:
+
+   ```text
+   PL-013 Triage the review harness's remaining findings
+   ```
+
+   Do not paraphrase this into "open a session about PL-013". On a surface
+   that derives the branch name from the opening message, that message is
+   the only thing that can still set the branch name, and it only produces
+   `claude/pl-013-triage-review-harness-findings` if the ID and title are
+   actually in it. See "Naming the work after the item" below.
+
+## Naming the work after the item
+
+`CLAUDE.md` requires the ID on the commit subjects, the pull request title,
+and the session name. All three are available in every session, and all
+three outlive the branch, which is deleted at merge. The branch name is the
+one that is not always available, and the difference is the surface rather
+than the session:
+
+- A branch the session creates itself — a local checkout, or any
+  `git checkout -b` it runs — can be named after the item the moment the
+  item is chosen. Name it `claude/pl-0NN-short-slug`.
+- A branch created *for* the session before it starts is fixed before the
+  queue has been read. Claude Code on the web derives one from the opening
+  message and adds a random suffix, so a session that opens with a question
+  ("what should we work on next?") gets a branch that names the question,
+  not the item it goes on to work. Pushing a differently named branch
+  instead is possible with the project owner's permission, but it strands
+  the generated branch on the remote as litter and detaches the session from
+  the changes the web interface offers to open a pull request from.
+
+So the branch is best-effort and the commit subjects are not. A session on a
+branch whose name carries no ID has not broken the rule; it owes the ID to
+the commits and the pull request title, and one line in its reply saying so.
+The session-start digest raises this by itself on any branch without an ID
+in the name.
+
+The one moment a generated branch name can still be chosen is the handoff in
+step 8 above: whatever the recommendation tells the project owner to paste
+becomes the next session's first message, and that message becomes its
+branch name.
 
 ## Mode: capture a new item
 
