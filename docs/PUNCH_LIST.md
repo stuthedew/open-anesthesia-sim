@@ -104,9 +104,22 @@ usage actually available:
 
 Reprioritize when new items arrive rather than only appending: a new `P0`
 may demote what was previously next, and a resolved blocker may promote a
-`blocked` item to `ready`. Move completed items to "Recently completed"
-with their commit reference; delete the corresponding `WORKING_NOTES.md`
-thread rather than leaving it stale.
+`blocked` item to `ready`. Delete a resolved `WORKING_NOTES.md` thread
+rather than leaving it stale.
+
+An item leaves the queue in exactly two ways, and both are written down:
+
+- **Completed.** It moves to "Recently completed" with its commit
+  reference. Once it stops being recent it moves again, to "Archive".
+- **Closed without action.** It is dropped, folded into another entry, or
+  superseded, and it goes straight to "Archive" with the date and a
+  one-clause reason.
+
+There is no third path. Deleting an entry outright is the one outcome this
+file exists to prevent: git history is a weak fallback, because recovering
+a dropped item requires already knowing it existed, and without the reason
+a finding was rejected the same finding gets re-raised and re-argued in a
+later session.
 
 ### What is checked automatically
 
@@ -121,8 +134,10 @@ split is the point:
 - **Errors** mean this file is wrong: a reused id, an entry filed under a
   band its metadata contradicts, a missing brief field, an item marked
   `blocked` that names no blocker, a `safety` or `science` item parked below
-  `P1`, a `PL-` reference pointing at nothing. These fail the build, because
-  each one silently loses information.
+  `P1`, a `PL-` reference pointing at nothing, an id recorded as resolved in
+  two places at once. These fail the build, because each one silently loses
+  information. References resolve against the archive as well as the queue,
+  so archiving an item never breaks a pointer to it.
 - **Advisories** mean a judgment is due: a brief that has grown into
   narrative, an item still blocked by something that has landed, an item
   that has sat at `P1` for months, a queue with nothing short and ready in
@@ -284,48 +299,32 @@ changed measurably.
 or the write-back is narrowed to the cases that need it with the reason
 recorded.
 
-### PL-028 Decide the fate of `AlveolarCompartment.time_constant_s`
-`P2` · `S` · `refactor` · needs-decision · added 2026-08-24
+### PL-004 Decide the fate of the two uncalled descriptive time constants
+`P2` · `S` · `defect` `refactor` · needs-decision · added 2026-08-23
 
-**Problem.** Deleting `advance_ventilation` (PL-022) left
-`AlveolarCompartment.time_constant_s` with no caller in the shipped
-package; it was that method's only consumer. It is still correct —
-\(60 V_A / \dot{V}_A\), 37.5 s at the reference adult — and still covered by
-unit tests, but nothing reads it.
-**Why it matters.** It is not merely dead: it is the *ventilation-only*
-alveolar time constant, which is not the time constant of the shipped
-coupled dynamics (circuit coupling and blood uptake both change it). A
-future caller who displays it as "the alveolar time constant" would present
-a plausible number for the wrong quantity. `docs/MODEL.md` does not define
-it. Same question as PL-004 for the circuit, and worth deciding with it.
-**Where.** `core/alveolar.py` (`time_constant_s`),
-`tests/unit/test_alveolar.py`.
-**Decision needed.** Whether an uncalled but correct descriptive property
-is worth keeping on the compartment API. Deleting it removes a
-misinterpretation risk and the loader has no use for it; keeping it costs
-three lines and preserves a quantity a future ventilation display may want.
-Decide it alongside PL-004, which asks the same question for the circuit.
-**First step.** Answer that question, then either delete the property with
-its two unit tests or extend its docstring to say what it is not.
-**Done when.** The property is gone, or its docstring states that it is
-ventilation-only and is not the coupled alveolar time constant.
-
-### PL-004 Decide the fate of `SimulationSnapshot.circuit_time_constant_s`
-`P2` · `S` · `defect` · needs-decision · added 2026-08-23
-
-**Problem.** The field is still computed on every snapshot but has had no
-corresponding display widget since the v0.1.0 UI rewrite. v0.0.2 displayed
-it; v0.1.0 does not.
-**Why it matters.** A computed-but-unshown value is dead weight that
-invites a future reader to assume it is displayed somewhere and trust it.
-Small, but it is in the snapshot contract.
-**Where.** `core/simulation.py`, `app/simulation_view.py`.
-**Decision needed.** Restore the display or remove the field. Restoring it
-requires deciding what the value means to a learner in the current
-six-compartment model, where it describes only the circuit and not patient
-uptake — which is an argument for removal unless it is labeled carefully.
-**Done when.** Either the field is gone with its tests updated, or it is
-displayed with an unambiguous label and unit.
+**Problem.** Two correct but uncalled quantities sit in the core.
+`SimulationSnapshot.circuit_time_constant_s` is computed on every snapshot
+but has had no display widget since the v0.1.0 UI rewrite.
+`AlveolarCompartment.time_constant_s` — \(60 V_A / \dot{V}_A\), 37.5 s at
+the reference adult — lost its only consumer when PL-022 deleted
+`advance_ventilation`. Both are unit-tested; neither is read by shipped
+code, and `docs/MODEL.md` defines neither.
+**Why it matters.** Neither is merely dead. Each is a single-mechanism time
+constant that is *not* the time constant of the shipped coupled dynamics:
+the circuit one excludes patient uptake, the alveolar one excludes circuit
+coupling and blood uptake. A future caller displaying either as "the time
+constant" would present a plausible number for the wrong quantity, and a
+computed-but-unshown value invites a reader to assume it is trusted output.
+**Where.** `core/simulation.py`, `core/alveolar.py`,
+`app/simulation_view.py`, `tests/unit/test_alveolar.py`.
+**Decision needed.** Whether an uncalled but correct descriptive quantity
+earns its place on the core API. Deleting removes the misinterpretation
+risk and costs the loader nothing; keeping costs a few lines and preserves
+quantities a future display may want. One question asked twice — answer it
+once, for both.
+**Done when.** Each value is gone with its tests updated, or its docstring
+names the mechanism it describes and says it is not the coupled time
+constant; any restored display carries an unambiguous label and unit.
 
 ### PL-005 Replace the full-screen startup window with a sized, centered one
 `P2` · `S` · `ux` · ready · added 2026-08-23
@@ -384,26 +383,30 @@ public-dataclass pair exists at all.
 **Done when.** A reader landing on either `_...Payload` class can tell why
 it exists without scrolling to the module docstring.
 
-### PL-010 Reuse chart point objects instead of rebuilding them every frame
+### PL-010 Stop rebuilding render objects on every frame
 `P2` · `S` · `perf` · ready · added 2026-08-23
 
-**Problem.** `SimulationView._decimated_points` builds a fresh
-`fch.LineChartDataPoint` for every drawn point on every frame. Each one is a
-Flet `BaseControl`, measured at ~8.4 us to construct; mutating an existing
-point's `x`/`y` instead was measured at ~0.43 us, a 20x difference. With the
-payload now bounded at 300 points per trace this costs about 15 ms of the
-~17 ms frame, so reuse would take a frame to roughly 2 ms.
-**Why it matters.** Pure headroom rather than a defect — the current frame
-is already well inside budget. It matters mainly as headroom for PL-009,
-where a speed multiplier raises the render rate.
-**Where.** `app/simulation_view.py` (`_decimated_points`).
-**First step.** Confirm against a live Flet client that in-place mutation of
-a point actually repaints. PL-001 deliberately did not take this win because
-it could not be verified without a client: a mutation Flet's diff does not
-notice would leave the chart silently showing stale data, which is a
-presentation-correctness failure, not a cosmetic one.
-**Done when.** Frame cost is measurably reduced, and a live client is
-confirmed to repaint traces on every frame rather than freezing them.
+**Problem.** Two allocations repeat on every render tick.
+`SimulationView._decimated_points` builds a fresh `fch.LineChartDataPoint`
+for every drawn point (~8.4 us each, against ~0.43 us to mutate an existing
+point's `x`/`y`); at the bounded 300 points per trace that is about 15 ms of
+the ~17 ms frame. `_apply_agent_color_scheme` constructs a fresh
+`ft.TextStyle` and `ft.Border` even when the selected agent has not changed,
+which is almost every tick.
+**Why it matters.** Headroom rather than a defect — the frame is already
+well inside budget. It matters as headroom for PL-009, where a speed
+multiplier raises the render rate.
+**Where.** `app/simulation_view.py` (`_decimated_points`,
+`_apply_agent_color_scheme`).
+**First step.** The chart points need a live Flet client: confirm in-place
+mutation actually repaints. PL-001 declined this win because a mutation
+Flet's diff does not notice would leave the chart silently showing stale
+data — a presentation-correctness failure, not a cosmetic one. The colour
+objects need no client if they are precomputed per `AGENT_COLOR_SCHEMES`
+entry at import time and still assigned every tick.
+**Done when.** Frame cost is measurably reduced, a live client is confirmed
+to repaint traces every frame, and switching agents still repaints both the
+header badge and the dropdown.
 
 ### PL-011 Bound the controller's concentration history
 `P2` · `S` · `perf` · ready · added 2026-08-23
@@ -444,34 +447,6 @@ trades a stable time axis for a complete curve; a fixed window keeps the
 recent detail legible. This is a teaching-design call, not a technical one.
 **Done when.** The displayed time span is a deliberate, documented choice
 rather than an artifact of an earlier payload limit.
-
-### PL-031 Record dropped punch-list items instead of deleting them
-`P2` · `S` · `infra` · ready · added 2026-08-24
-
-**Problem.** The file has a place for items that land ("Recently
-completed") and for items promoted into a milestone (a one-line pointer),
-but none for items closed without action. The checker's own staleness
-advisory invites that outcome — "do it, demote it, or drop it" — and the
-skill's groom mode never says where a drop is written down. A dropped
-entry therefore leaves the file entirely, and "Recently completed" is
-itself trimmed past ten items, so both disposal paths end in deletion.
-**Why it matters.** The stated purpose of this file is that work identified
-in one session is never lost. Git history is a weak fallback: recovering a
-dropped item requires already knowing it existed. Without the reason a
-finding was rejected, the same finding gets re-raised, re-investigated, and
-re-argued in a later session — the exact cost the capture rule exists to
-avoid.
-**Where.** `docs/PUNCH_LIST.md` (a new archive section next to "Recently
-completed"), `tools/punch_list.py` (`COMPLETED_RE` and the cross-reference
-check at `_groom`, so a dropped id still resolves and does not become a
-build error), `.claude/skills/punch-list/SKILL.md` (groom mode step for
-recording a drop).
-**First step.** Add a "Closed without action" section taking one line per
-item — id, title, date, and a one-clause reason — and teach the checker to
-read it as a resolved id alongside the completed archive.
-**Done when.** A grooming pass can drop an item and leave a durable record
-of what it was and why it was dropped, and `make punch-list` still resolves
-references to it.
 
 ## P3 — Icebox
 
@@ -540,25 +515,6 @@ usually to screen-reader users.
 discoverable from the interface without reading the source, and the chosen
 surface works for keyboard and touch users.
 
-### PL-030 Stop rebuilding the agent color objects on every render tick
-`P3` · `S` · `perf` · ready · added 2026-08-24
-
-**Problem.** `SimulationView._apply_agent_color_scheme` is called from
-`_refresh_view`, so it constructs a fresh `ft.TextStyle` and a fresh
-`ft.Border` on every render tick even when the selected agent has not
-changed.
-**Why it matters.** Trivial in isolation, and not a correctness issue. It is
-the same shape of avoidable per-frame allocation that PL-010 tracks for chart
-points, and the agent color changes only on an explicit user selection, so
-the work is wasted on almost every tick.
-**Where.** `app/simulation_view.py` (`_apply_agent_color_scheme`,
-`_refresh_view`).
-**First step.** Either precompute one `TextStyle` and one `Border` per entry
-in `AGENT_COLOR_SCHEMES` at import time, or make `_apply_agent_color_scheme`
-a no-op when the agent id is unchanged since the last call.
-**Done when.** Switching agents still repaints both the header badge and the
-dropdown, and a render tick with an unchanged agent allocates neither object.
-
 ### PL-009 Playback speed multiplier
 `P3` · `L` · `feature` · needs-decision · added 2026-08-23
 
@@ -597,19 +553,45 @@ someone is ready to scope them.
 
 ## Recently completed
 
-Completed items move here with their commit reference, newest first, and
-are trimmed once they are no longer useful as recent history. One line
-each, in the form the checker reads:
+Completed items move here with their commit reference, newest first. Once
+one has stopped being useful as recent history it moves down to "Archive"
+rather than being deleted. One line each, in the form the checker reads:
 
 ```text
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-031 Record resolved punch-list items in a durable archive — `566a80e`
 - PL-021 Reject unknown keys in the parameter-file schemas — `3465dcf`
 - PL-002 Color-code agent selection to real vaporizer colors — `74bec83`
 - PL-022 Delete the dead, non-conservative `advance_ventilation` — `956e710`
 - PL-018 Keep a core failure from silently killing a running simulation — `4c442ef`
 - PL-013 Triage the review harness's four remaining findings — `f51762a`
+
+## Archive
+
+The permanent record of everything that has left the queue and is no longer
+recent history. One line each, newest first. This section is never trimmed:
+`tools/punch_list.py` resolves the ids here exactly as it resolves open
+ones, so a `PL-` reference from `ROADMAP.md` or `docs/WORKING_NOTES.md`
+keeps working long after the item itself is gone.
+
+Two forms, in the shapes the checker reads:
+
+```text
+- PL-000 Title of the completed item — `abc1234`
+- PL-000 Title of the closed item — closed YYYY-MM-DD, why
+```
+
+The reason on a closed line is the whole point of the line. An item closed
+without one gets re-raised by the next session that notices the same thing.
+
+- PL-030 Stop rebuilding the agent color objects on every render tick —
+  closed 2026-08-24, folded into PL-010: the same per-frame allocation in
+  the same render tick, decided and fixed together
+- PL-028 Decide the fate of `AlveolarCompartment.time_constant_s` —
+  closed 2026-08-24, folded into PL-004: one question about an uncalled
+  descriptive time constant, asked twice
 - PL-014 Land or discard the unmerged punch-list model-guidance work — `7714386`
 - PL-015 Reject an out-of-range delivered concentration instead of simulating it — `bc5f823`
 - PL-016 Make the agent MAC cross-check fail closed — `bc5f823`
