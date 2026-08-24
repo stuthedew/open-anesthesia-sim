@@ -93,7 +93,11 @@ left", "are we in a good spot to move on".
    When handing off, say what the fresh session should read first:
    `CLAUDE.md`, the entry itself, and any `docs/WORKING_NOTES.md` thread it
    cites. Entries are written to be actionable cold precisely so that this
-   handoff costs nothing.
+   handoff costs nothing. Say to open that session with the item's ID at
+   the front of its first message ("PL-013: ..."): per `CLAUDE.md`, the
+   session and its branch both lead with the ID, and on a surface that
+   derives the branch name from that first message, the handoff is the only
+   moment where the branch name can still be set.
 
 ## Mode: capture a new item
 
