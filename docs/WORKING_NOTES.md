@@ -89,13 +89,20 @@ An independent architecture review of the v0.2.0 baseline (commit
 `3251ebf`) produced an executable harness under `tools/review-verification/`
 rather than a prose write-up alone: every numeric claim it makes is
 reproduced by a script, so a later reader can re-run the claim instead of
-trusting the text. The harness was committed to
-`claude/repo-architecture-review-3h39kh` (`0ccfa44`) and never merged. That
-branch is the only surviving record of the review.
+trusting the text.
 
-Re-run against `main` on 2026-08-24, `verify_physics.py` confirms all three
-physics claims and `verify_findings.py` reproduces all nine findings. The
-physics side matters independently of the defects: it re-derives the
+The harness is now on the development line (`655e429`, the cherry-pick of
+`0ccfa44` from `claude/repo-architecture-review-3h39kh`), so the branch is
+no longer the only record and can be deleted. The three safety-critical
+findings it carried were fixed in v0.2.1 (`bc5f823`) and their checks now
+report FIXED: `P1-2`, `P1-3`, and `P1-5`. Both scripts now run at 5% delivered
+rather than 8%, since 8% is no longer a deliverable isoflurane dial
+position.
+
+Re-run after those fixes, `verify_physics.py` confirms all three physics
+claims and `verify_findings.py` reproduces the six checks behind the five
+remaining findings (`P1-1` accounts for two of them). The physics side
+matters independently of the defects: it re-derives the
 `docs/MODEL.md` equations from the parameter files with a from-scratch RK4
 that imports no solver from `core/`, so agreement is genuine verification
 rather than a tautology. It also shows a single matrix exponential is exact
@@ -106,14 +113,9 @@ review's own note is that the remedy for the splitting error is not to adopt
 pinned vectors, so the coupled model is checked against an independent
 solution on every CI run.
 
-Three findings are promoted to `P0` as PL-015, PL-016, and PL-017. The six
-that remain under PL-013, in the harness's own numbering:
+`P1-1` is filed as PL-018. The four that remain to triage under PL-013, in
+the harness's own numbering:
 
-- `P1-1` - `core/` raises bare `ValueError` outside its
-  `AnesthesiaSimulationError` hierarchy, and the simulation timer in
-  `app/simulation_view.py` has no exception handling, so a raise kills the
-  asyncio task while the UI still reads "Running". Stale-state display of a
-  dead simulation is a human-factors failure, not just an ergonomic one.
 - `P1-4` - no Pydantic model in `core/parameters.py` sets
   `extra='forbid'`, so a misspelled key in a safety-critical data file
   loads clean and the intended value silently does not apply.

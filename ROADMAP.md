@@ -21,12 +21,25 @@ by mechanically incrementing the patch number.
 | v0.0.1 | Completed | Initial runnable prototype: deterministic simulation clock, controller/view separation, basic charting and controls, and project quality tooling. |
 | v0.0.2 | Completed | Analytically validated ideal breathing-circuit wash-in and washout with no patient uptake. |
 | v0.1.0 | Completed | First patient sevoflurane uptake and distribution model - the "Sevo works" milestone. |
-| v0.2.0 | Completed / current baseline | Isoflurane and desflurane added as additional loadable volatile agents. |
+| v0.2.0 | Completed | Isoflurane and desflurane added as additional loadable volatile agents. |
+| v0.2.1 | Completed / current baseline | Validation hotfix: the vaporizer maximum is enforced in the core and rejects rather than clamps, the agent MAC cross-check fails closed, and the cited reference-adult defaults reach the running app. |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.2.0
+## Current baseline: v0.2.1
+
+v0.2.1 is a validation hotfix on the v0.2.0 model; it changes no equation,
+parameter, or numerical method. It closes three defects found by the
+architecture review of the v0.2.0 baseline (PL-015, PL-016, PL-017): a
+delivered concentration above the agent's real vaporizer maximum is now
+rejected by `core/`, at construction and at every change, rather than
+clamped in the controller; the agent-file check that 1 MAC is deliverable
+now runs after every field is populated, so field declaration order cannot
+defeat it; and the controller no longer keeps its own copies of the
+reference adult's cited ventilation and cardiac-output defaults, so the
+data file is what the app actually runs. The review harness that reproduces
+these findings is now in `tools/review-verification/`.
 
 The repository currently models patient uptake and distribution for
 sevoflurane, isoflurane, or desflurane: a constant-volume breathing circuit,

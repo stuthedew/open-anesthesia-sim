@@ -8,7 +8,7 @@ breathing circuit, alveolar gas, blood, and tissue compartments.
 monitoring device.** No output should be used to guide real-world patient
 care.
 
-## Current status: v0.2.0
+## Current status: v0.2.1
 
 The simulator models volatile-agent wash-in, uptake, tissue distribution,
 mixed-venous return, and washout in a single reference adult patient:

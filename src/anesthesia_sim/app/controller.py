@@ -1,8 +1,9 @@
 """SimulationController: the boundary between the UI and the scientific
 core. Owns run/pause/reset state, applies user-facing settings to the
-core (with clamping/defaulting such as the 1-MAC starting concentration),
-and exposes read-only `SimulationSnapshot`s for the view to render.
-Contains no physiological calculations of its own.
+core, and exposes read-only `SimulationSnapshot`s for the view to render.
+Contains no physiological calculations of its own, and holds no default
+values of its own: every unspecified setting comes from the core, which
+builds it from the versioned data files.
 """
 
 from dataclasses import dataclass
@@ -64,12 +65,22 @@ class SimulationController:
     def __init__(
         self,
         agent_id: str = "sevoflurane",
-        circuit_volume_l: float = 6.0,
-        fresh_gas_flow_l_min: float = 4.0,
+        circuit_volume_l: float | None = None,
+        fresh_gas_flow_l_min: float | None = None,
         delivered_concentration_fraction: float | None = None,
-        alveolar_ventilation_l_min: float = 4.0,
-        cardiac_output_l_min: float = 5.0,
+        alveolar_ventilation_l_min: float | None = None,
+        cardiac_output_l_min: float | None = None,
     ) -> None:
+        """Build a session, taking every unspecified setting from the core.
+
+        Each argument is an explicit override. `None` means "use the value
+        the core built from the versioned data files" — the reference
+        patient's cited alveolar ventilation and cardiac output, the
+        circuit's own volume and fresh gas flow, and the agent's own 1 MAC.
+        The controller holds no copy of those defaults, so correcting a
+        cited value in a data file changes what the app actually runs.
+        """
+
         self._is_running = False
         self._build_state(
             agent_id=agent_id,
@@ -83,35 +94,39 @@ class SimulationController:
     def _build_state(
         self,
         agent_id: str,
-        circuit_volume_l: float,
-        fresh_gas_flow_l_min: float,
+        circuit_volume_l: float | None,
+        fresh_gas_flow_l_min: float | None,
         delivered_concentration_fraction: float | None,
-        alveolar_ventilation_l_min: float,
-        cardiac_output_l_min: float,
+        alveolar_ventilation_l_min: float | None,
+        cardiac_output_l_min: float | None,
     ) -> None:
         """(Re)build dynamic state from scratch for a chosen agent.
 
-        A `None` delivered_concentration_fraction defaults to the agent's
-        own 1 MAC (mac_percent), the standard clinical starting point;
-        otherwise the requested fraction is clamped to the agent's real
-        vaporizer maximum.
+        Every argument is an override applied on top of the state
+        `RespiratorySystem.for_agent()` already built from the data files;
+        a `None` leaves that data-file value in place, including the
+        agent's own 1 MAC delivered concentration. A requested delivered
+        concentration above the agent's real vaporizer maximum is rejected
+        by the core rather than clamped here.
         """
 
         agent_parameters = load_agent_parameters(agent_id)
-        max_fraction = agent_parameters.max_delivered_concentration_percent / 100.0
-        default_fraction = agent_parameters.mac_percent / 100.0
-        requested_fraction = (
-            default_fraction
-            if delivered_concentration_fraction is None
-            else delivered_concentration_fraction
-        )
-
         respiratory_system = RespiratorySystem.for_agent(agent_id)
-        respiratory_system.circuit.set_circuit_volume(circuit_volume_l)
-        respiratory_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
-        respiratory_system.set_delivered_concentration(min(requested_fraction, max_fraction))
-        respiratory_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
-        respiratory_system.set_cardiac_output(cardiac_output_l_min)
+
+        if circuit_volume_l is not None:
+            respiratory_system.circuit.set_circuit_volume(circuit_volume_l)
+
+        if fresh_gas_flow_l_min is not None:
+            respiratory_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
+
+        if delivered_concentration_fraction is not None:
+            respiratory_system.set_delivered_concentration(delivered_concentration_fraction)
+
+        if alveolar_ventilation_l_min is not None:
+            respiratory_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
+
+        if cardiac_output_l_min is not None:
+            respiratory_system.set_cardiac_output(cardiac_output_l_min)
 
         self._agent_id = agent_id
         self._agent_display_name = agent_parameters.display_name
