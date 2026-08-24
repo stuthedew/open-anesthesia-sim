@@ -3,7 +3,7 @@
 ## Status
 
 This document specifies the scientific model implemented starting in
-v0.1.0 and still in force in v0.2.0, the current released baseline (see
+v0.1.0 and still in force in v0.2.2, the current released baseline (see
 `ROADMAP.md`). The title is deliberately version-generic: the governing
 equations and compartment structure have not changed since v0.1.0, and are
 shared by every agent this model supports.
@@ -1060,7 +1060,7 @@ Version v0.1.0 assumes:
 
 ## Known limitations
 
-As of v0.2.0, this model does not model:
+As of v0.2.2, this model does not model:
 
 - a separate arterial blood-mixing compartment (arterial blood is flow-limited and equals alveolar gas at every instant, matching the Gas Man reference simulator's mammillary structure — see "Model boundary");
 - halothane, enflurane, ether, or xenon (isoflurane and desflurane were added in v0.2.0; see "Parameter provenance");
