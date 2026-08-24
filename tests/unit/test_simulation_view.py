@@ -24,6 +24,9 @@ from anesthesia_sim.app.controller import (
 )
 from anesthesia_sim.app.simulation_view import (
     AVAILABLE_AGENTS,
+    CONCENTRATION_DISPLAY_DECIMALS,
+    CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
+    FLOW_DISPLAY_DECIMALS,
     MAX_CHART_POINTS_PER_SERIES,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
@@ -131,10 +134,162 @@ def _build_view(snapshot: SimulationSnapshot) -> tuple[SimulationView, _FakePage
     return view, page
 
 
-def test_format_percent_uses_three_decimal_places() -> None:
-    assert SimulationView._format_percent(0.0) == "0.000%"
-    assert SimulationView._format_percent(1.0) == "100.000%"
-    assert SimulationView._format_percent(0.0803456) == "8.035%"
+def test_format_percent_uses_the_documented_display_resolution() -> None:
+    """Pin the PL-040 decision: 0.01 percentage points, uniformly.
+
+    The resolution is justified in `docs/MODEL.md` § "Displayed precision"
+    against the measured splitting error, so a change here is a change to a
+    safety-critical claim about what the model can support — not a
+    formatting preference. This test exists to make that change deliberate.
+    """
+
+    assert CONCENTRATION_DISPLAY_DECIMALS == 2
+    assert CONCENTRATION_DISPLAY_RESOLUTION_PERCENT == pytest.approx(0.01)
+
+    assert SimulationView._format_percent(0.0) == "0.00%"
+    assert SimulationView._format_percent(1.0) == "100.00%"
+    assert SimulationView._format_percent(0.0803456) == "8.03%"
+    assert SimulationView._format_percent(0.02) == "2.00%"
+
+
+def test_format_percent_rounds_rather_than_truncates() -> None:
+    """The last displayed digit is the nearest one, not a truncation.
+
+    Truncation would bias every reading downward by up to a full count of
+    the uncertain digit, on top of the solver error the resolution is
+    already chosen to sit above. Exact ties are not asserted: a decimal
+    tie is not generally representable as a double, and the model's own
+    error is many orders of magnitude larger than that distinction.
+    """
+
+    assert SimulationView._format_percent(0.021_39) == "2.14%"
+    assert SimulationView._format_percent(0.021_31) == "2.13%"
+
+
+def test_format_percent_marks_a_value_below_the_resolution() -> None:
+    """A filling compartment must not read as an empty one.
+
+    Muscle and fat sit under 0.01% for the opening minutes of every run.
+    Rounding them to `0.00%` would assert the model holds zero there when
+    it does not, so a positive value that rounds to zero is shown as below
+    the resolution instead.
+    """
+
+    assert SimulationView._format_percent(1e-8) == "<0.01%"
+    assert SimulationView._format_percent(4.0e-5) == "<0.01%"
+
+    # Exactly zero is the one value that may read as zero: nothing has
+    # reached the compartment, which is a fact the model does hold.
+    assert SimulationView._format_percent(0.0) == "0.00%"
+
+    # Either side of the rounding threshold, at half the resolution.
+    assert SimulationView._format_percent(4.9e-5) == "<0.01%"
+    assert SimulationView._format_percent(5.1e-5) == "0.01%"
+
+
+def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
+    """Step a started controller to `elapsed_s` at the shipped step size."""
+
+    while controller.snapshot().elapsed_s < elapsed_s - SIMULATION_STEP_S / 2.0:
+        controller.advance(SIMULATION_STEP_S)
+
+
+def test_a_real_run_displays_a_filling_compartment_as_below_resolution() -> None:
+    """End to end: real model, real step, real units, displayed string.
+
+    Not a fabricated snapshot. This drives the shipped controller with the
+    shipped step and reads what the dashboard would actually show, which is
+    the path `CLAUDE.md` requires be tested end to end — inputs, model,
+    units, formatting, displayed value.
+
+    Fat is the compartment the PL-040 decision turns on. Two minutes into a
+    1 MAC sevoflurane run it holds agent but less than 0.01% of it, so the
+    display must say so rather than round it to an empty compartment; by an
+    hour it has risen into the resolved range and reads as an ordinary
+    value.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+
+    _advance_to(controller, 120.0)
+    view._refresh_view()
+
+    assert controller.snapshot().fat_partial_pressure_fraction > 0.0
+    assert view._fat_concentration_text.value == "<0.01%"
+
+    # The alveolar reading over the same interval is an ordinary value at
+    # the documented resolution, so the marker is specific to what is
+    # genuinely below it rather than a formatting quirk.
+    assert view._alveolar_concentration_text.value == "0.61%"
+
+    _advance_to(controller, 1_200.0)
+    view._refresh_view()
+
+    assert view._fat_concentration_text.value == "0.01%"
+
+
+def test_slider_drag_labels_match_the_readouts_beside_them() -> None:
+    """One quantity must not be displayed at two resolutions at once.
+
+    Flet rounds a slider's drag label to whole numbers unless `round` says
+    otherwise, so an unset `round` would show "2%" on a dial the readout
+    reports as "2.40%", and "4 L/min" on a flow the text beside it reports
+    as "4.5 L/min". A reader has no way to tell which of the two is the
+    setting actually in force.
+    """
+
+    page = _FakePage()
+    view = SimulationView(page=page, controller=SimulationController())
+
+    assert view._delivered_concentration_slider.round == CONCENTRATION_DISPLAY_DECIMALS
+    assert view._delivered_concentration_slider.label == "{value}%"
+
+    for slider in (
+        view._fresh_gas_flow_slider,
+        view._alveolar_ventilation_slider,
+        view._cardiac_output_slider,
+    ):
+        assert slider.round == FLOW_DISPLAY_DECIMALS
+        assert slider.label == "{value} L/min"
+
+    # The flow readouts these labels must agree with.
+    assert view._fresh_gas_flow_text.value == "4.0 L/min"
+    assert view._alveolar_ventilation_text.value == "4.0 L/min"
+    assert view._cardiac_output_text.value == "5.0 L/min"
+
+
+def test_metric_placeholders_match_the_formatter_before_a_run() -> None:
+    """The pre-run reading must not outlive a change to the resolution."""
+
+    page = _FakePage()
+    view = SimulationView(page=page, controller=SimulationController())
+
+    empty = SimulationView._format_percent(0.0)
+    for text in (
+        view._circuit_concentration_text,
+        view._alveolar_concentration_text,
+        view._mixed_venous_concentration_text,
+        view._vessel_rich_concentration_text,
+        view._muscle_concentration_text,
+        view._fat_concentration_text,
+    ):
+        assert text.value == empty
+
+
+def test_format_percent_leaves_an_impossible_negative_visible() -> None:
+    """A negative fraction cannot occur, and must not be disguised if it does.
+
+    The compartment guards reject a negative amount, so reaching here means
+    something upstream is wrong. The below-resolution form would render that
+    as an ordinary small positive reading; `CLAUDE.md` requires the obvious
+    failure instead.
+    """
+
+    assert SimulationView._format_percent(-1e-8) == "-0.00%"
+    assert SimulationView._format_percent(-0.02) == "-2.00%"
 
 
 def test_refresh_view_formats_every_concentration_metric() -> None:
@@ -144,14 +299,14 @@ def test_refresh_view_formats_every_concentration_metric() -> None:
     view, _ = _build_view(snapshot)
 
     assert view._elapsed_time_text.value == "12.5 s"
-    assert view._circuit_concentration_text.value == "2.345%"
-    assert view._alveolar_concentration_text.value == "1.234%"
-    assert view._mixed_venous_concentration_text.value == "0.456%"
-    assert view._vessel_rich_concentration_text.value == "0.789%"
-    assert view._muscle_concentration_text.value == "0.321%"
-    assert view._fat_concentration_text.value == "0.012%"
+    assert view._circuit_concentration_text.value == "2.34%"
+    assert view._alveolar_concentration_text.value == "1.23%"
+    assert view._mixed_venous_concentration_text.value == "0.46%"
+    assert view._vessel_rich_concentration_text.value == "0.79%"
+    assert view._muscle_concentration_text.value == "0.32%"
+    assert view._fat_concentration_text.value == "0.01%"
     assert view._fresh_gas_flow_text.value == "4.0 L/min"
-    assert view._delivered_concentration_text.value == "8.000%"
+    assert view._delivered_concentration_text.value == "8.00%"
     assert view._alveolar_ventilation_text.value == "4.0 L/min"
     assert view._cardiac_output_text.value == "5.0 L/min"
 
@@ -386,7 +541,7 @@ def test_delivered_concentration_slider_converts_percent_to_fraction() -> None:
     )
 
     assert controller.snapshot().delivered_concentration_fraction == pytest.approx(0.065)
-    assert view._delivered_concentration_text.value == "6.500%"
+    assert view._delivered_concentration_text.value == "6.50%"
 
 
 def test_alveolar_ventilation_slider_forwards_value_to_controller() -> None:
