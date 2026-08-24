@@ -2,14 +2,14 @@
 
 This file is a running, cross-session log of open threads, diagnoses, and
 rationale: the narrative context behind decisions, too long to fit in a
-punch-list entry and not yet promoted into `ROADMAP.md` (version/milestone
+queue item and not yet promoted into `ROADMAP.md` (version/milestone
 decisions) or `docs/MODEL.md` (scientific model specification). It exists so
 that a new conversation can pick up context without re-deriving it, and so
 that decisions made in one conversation are visible to another.
 
 It is not the task queue. Discrete, actionable work is tracked and
 prioritized in `docs/items/`; threads here that have a corresponding
-task cite its `PL-` id, and a punch-list entry that needs more background
+task cite its `PL-` id, and a queue item that needs more background
 than its brief allows points back here. The split is deliberate: the punch
 list stays short enough to read at the start of every session, and this file
 absorbs the depth.
@@ -37,7 +37,7 @@ appropriate, and its entry here should be deleted rather than left stale.
   `SimulationController.set_agent`'s docstring is the place that says so.
   Work now happens on a per-session branch merged into `main` by pull
   request, not directly on `main`; `CLAUDE.md` says how that branch, its
-  commits, and the pull request carry the punch-list item's ID.
+  commits, and the pull request carry the queue item's ID.
 - `docs/MODEL.md` and `ROADMAP.md` are up to date with the v0.2.0
   implementation: the arterial-blood simplification is documented
   explicitly (flow-limited, `F_a \equiv F_A`, no separate compartment,

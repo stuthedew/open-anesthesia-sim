@@ -69,7 +69,7 @@ make run
 
 ```bash
 make check       # ruff format --check, ruff check, mypy (strict), pytest,
-                 # then the punch-list and documentation checkers
+                 # then the docket and documentation checkers
 make fix         # ruff format, ruff check --fix
 make test        # pytest only
 make docket      # validate docs/items/ and list anything untriaged
