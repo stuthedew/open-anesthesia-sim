@@ -6,7 +6,7 @@ conflicting artifact or amend this file deliberately in the same change.
 
 Scope of this file: releases only. Discrete tasks — defects, fixes,
 cleanups, optimizations, and small features — are tracked and prioritized
-in `docs/PUNCH_LIST.md`, not here. An item is a milestone rather than a
+in `docs/items/`, not here. An item is a milestone rather than a
 punch-list task when it needs its own goal, required scope, definition of
 done, and explicit out-of-scope list.
 
@@ -275,7 +275,7 @@ development rules below.
 - Treat mass accounting and independent reference cases as release gates, not
   optional diagnostics.
 - Keep each milestone narrow. New ideas belong below until promoted into a
-  scoped release — or in `docs/PUNCH_LIST.md` when they are a task rather
+  scoped release — or in `docs/items/` when they are a task rather
   than a release.
 
 ## Planned milestones
@@ -326,7 +326,7 @@ specified.
 20. Improve accessibility (keyboard navigation, contrast, screen-reader
     support, color-vision-safe encodings).
 21. Improve performance, working from the open entries in
-    `docs/PUNCH_LIST.md`. The render payload and the simulation/render
+    `docs/items/`. The render payload and the simulation/render
     cadence coupling are both resolved; what remains there is the
     controller's still-unbounded concentration history and further headroom
     in how chart points are built.

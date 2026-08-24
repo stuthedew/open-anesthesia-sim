@@ -110,7 +110,7 @@ setting the core rejects — a delivered concentration above the agent's
 vaporizer maximum, say — raises out of the core rather than being clamped or
 defaulted at this boundary. The
 snapshot carries the complete `SimulationHistorySample` record of the run:
-one sample per simulation step, not trimmed (see `docs/PUNCH_LIST.md`).
+one sample per simulation step, not trimmed (see `docs/items/`).
 `app/simulation_view.py` reads only from that snapshot — it formats
 fractions as percentages, builds the chart, and wires slider/button
 callbacks through `_apply_setting` to controller setters. It performs no
@@ -174,7 +174,6 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-├── punch_list.py         # checks and lists docs/PUNCH_LIST.md and docs/inbox/; emits the session digest
 ├── doc_check.py          # validates this map, MODEL.md's provenance table, and doc citations
 └── review-verification/  # read-only harness reproducing the v0.2.0 architecture-review findings
 ```
