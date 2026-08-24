@@ -605,6 +605,7 @@ recorded as `sources` entries in that file, not duplicated here.
 | Vessel-rich tissue:blood coefficient (desflurane) | 1.2857 (= 0.54 / 0.42) | dimensionless | `data/agents/desflurane.json` |
 | Muscle tissue:blood coefficient (desflurane) | 2.3095 (= 0.97 / 0.42) | dimensionless | `data/agents/desflurane.json` |
 | Fat tissue:blood coefficient (desflurane) | 30.9524 (= 13.0 / 0.42) | dimensionless | `data/agents/desflurane.json` |
+| Reference patient weight | 70.0 | kg | `data/patients/reference_adult.json` |
 | Alveolar gas volume | 2.5 | L | `data/patients/reference_adult.json` |
 | Venous blood-pool volume | 1.0 | L | `data/patients/reference_adult.json` |
 | Vessel-rich tissue volume | 6.0 | L | `data/patients/reference_adult.json` |
@@ -621,6 +622,12 @@ recorded as `sources` entries in that file, not duplicated here.
 | 1 MAC, 40-year-old adult (sevoflurane) | 2.0 | percent | `data/agents/sevoflurane.json` |
 | 1 MAC, 40-year-old adult (isoflurane) | 1.2 | percent | `data/agents/isoflurane.json` |
 | 1 MAC, 40-year-old adult (desflurane) | 6.0 | percent | `data/agents/desflurane.json` |
+
+The reference patient weight identifies which patient the volumes and flows
+describe; no equation in this model consumes it (`PatientParameters.weight_kg`
+is loaded and range-validated, and read by nothing else). Compartment volumes
+and flows are the source's absolute values for a 70 kg adult, not quantities
+scaled from a weight, so changing the weight alone would not rescale them.
 
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
 and holds no independent state (see "Model boundary"). Tissue:blood
