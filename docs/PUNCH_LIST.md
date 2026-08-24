@@ -140,6 +140,35 @@ _None._
 
 ## P1 — Next
 
+### PL-013 Triage the nine architecture-review findings before deleting their branch
+`P1` · `M` · `safety` `science` `defect` · ready · added 2026-08-24
+
+**Problem.** The branch `claude/repo-architecture-review-3h39kh` carries the
+only surviving record of an independent architecture review of the v0.2.0
+baseline: an executable harness under `tools/review-verification/` that
+reproduces nine findings on demand. It was never merged, and none of the
+nine findings appear in this file. Re-run against `main` on 2026-08-24, all
+nine still reproduce and all three physics claims still hold.
+**Why it matters.** Several are safety-critical under `CLAUDE.md`:
+`set_delivered_concentration` accepts and simulates 50% sevoflurane on a
+5%-maximum vaporizer; the MAC cross-check silently no-ops when the data
+file declares `mac` before `max`, admitting 40% MAC; the cited data-file
+cardiac-output and alveolar-ventilation defaults never reach the running
+app (data says 6.5/5.5, app runs 5.0/4.0), so a displayed value's stated
+provenance is wrong. Pydantic schemas set no `extra='forbid'`, so a typo'd
+parameter key is dropped silently. Deleting the branch discards the
+evidence for all of it.
+**Where.** `tools/review-verification/` on that branch; `core/` validation
+and parameter loading; `app/simulation_view.py` timer.
+**First step.** Cherry-pick `0ccfa44` onto `main` (it applies cleanly —
+four new files, no overlap), re-run both scripts, then split the nine
+findings into their own entries at their real priorities. At least the
+vaporizer-maximum, MAC-ordering, and defaults-provenance findings look like
+`P0` on this file's own criteria; that promotion is the project owner's
+call.
+**Done when.** Each finding is either an entry here or explicitly declined
+with a reason, and the branch is deleted.
+
 ### PL-002 Color-code agent selection to real vaporizer colors
 `P1` · `M` · `ux` `safety` · ready · added 2026-08-23
 
@@ -180,6 +209,26 @@ version number assigned, matching the structure of the completed v0.1.0 and
 v0.2.0 sections.
 
 ## P2 — Queued
+
+### PL-014 Land or discard the unmerged punch-list model-guidance work
+`P2` · `S` · `infra` `docs` · ready · added 2026-08-24
+
+**Problem.** The branch `claude/punch-list-tracking-u1159v` holds two
+unmerged commits (`cd3b255`, `7015d3f`) that add `Entry.model_guidance` and
+`_with_guidance` to `tools/punch_list.py`, with tests, so the startup digest
+names which model a recommended item warrants instead of leaving the rule to
+a session's memory. `main` has the general model-matching rule in
+`CLAUDE.md` but not this mechanization.
+**Why it matters.** Small and self-contained, but it is real work that is
+lost if the branch is pruned, and the rule it automates is the one that
+decides whether a safety-critical item gets the strongest model.
+**Where.** `tools/punch_list.py`, `tests/unit/test_punch_list_tool.py`,
+`CLAUDE.md`, `.claude/skills/punch-list/SKILL.md`.
+**First step.** Cherry-pick both commits onto `main`. The only conflict is
+in this file, where the branch still lists PL-001 as open; take `main`'s
+side and drop that block.
+**Done when.** The commits are on `main` with the quality suite green, or
+the branch is deleted with a stated reason for declining them.
 
 ### PL-004 Decide the fate of `SimulationSnapshot.circuit_time_constant_s`
 `P2` · `S` · `defect` · needs-decision · added 2026-08-23
