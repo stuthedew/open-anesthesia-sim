@@ -52,7 +52,7 @@ src/anesthesia_sim/
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic
 │   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
-│   ├── theme.py                    # colors and layout constants
+│   ├── theme.py                    # UI palette, cited ISO 5360 agent colors, layout constants
 │   └── main.py                     # entry point; builds the Flet page
 └── data/                 # versioned, cited parameter files
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
