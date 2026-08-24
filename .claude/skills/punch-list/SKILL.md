@@ -115,17 +115,39 @@ left", "are we in a good spot to move on".
    ```
 
    Do not paraphrase this into "open a session about PL-013". On a surface
-   that derives the branch name from the opening message, that message is
-   the only thing that can still set the branch name, and it only produces
-   `claude/pl-013-triage-review-harness-findings` if the ID and title are
-   actually in it. See "Naming the work after the item" below.
+   that derives the session name and the branch name from the opening
+   message, that message is the only thing that can still set the branch
+   name, and it names both correctly only if the ID and title are actually
+   in it: `claude/pl-013-triage-review-harness-findings`, from a session
+   already called "PL-013 Triage the review harness's remaining findings".
+   See "Naming the work after the item" below.
 
 ## Naming the work after the item
 
-`CLAUDE.md` requires the ID on the commit subjects, the pull request title,
-and the session name. All three are available in every session, and all
-three outlive the branch, which is deleted at merge. The branch name is the
-one that is not always available, and the difference is the surface rather
+`CLAUDE.md` requires the ID on the session name, the commit subjects, and
+the pull request title. The commits and the pull request title are available
+in every session and outlive the branch, which is deleted at merge. The
+other two depend on the surface.
+
+**The session name.** Rename as soon as the item is chosen, before the first
+commit — the whole point is that someone scanning a session list later can
+find the work from the entry alone, and a session still called "next
+priorities" is unfindable however good its commits are. Name every item the
+session addresses, not only the first: "PL-035, PL-039 Two related
+punch-list fixes".
+
+- On Claude Code on the web, and any other remote session, call
+  `set_session_title` on the `claude-code-remote` MCP server. It needs the
+  session's own id, which `get_session` returns when called with no id.
+- A local CLI session has no title to set. There is no `/rename`, and
+  `/clear <name>` labels the *previous* conversation rather than this one,
+  so there the commit subjects carry the whole load.
+
+Unlike the branch, this is settable at any point in the session, so a
+session that discovers mid-run which item it is really working on still
+renames itself. "The branch was already named" is not a reason to skip it.
+
+**The branch name.** Best-effort, and the difference is the surface rather
 than the session:
 
 - A branch the session creates itself — a local checkout, or any

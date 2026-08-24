@@ -587,6 +587,7 @@ def test_digest_says_where_to_put_the_id_when_the_branch_cannot_carry_it() -> No
     digest = punch_list.format_digest(report, "claude/next-priorities-nvttng")
 
     assert "carries no PL id" in digest
+    assert "rename the session" in digest
     assert "commit subject" in digest
 
 

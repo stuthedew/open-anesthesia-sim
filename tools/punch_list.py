@@ -539,8 +539,8 @@ def format_branch_note(branch: str | None) -> str:
         return ""
     return (
         f"  Branch `{name}` carries no PL id: if this session works a punch-list item, "
-        "lead every commit subject and the pull request title with the id instead. "
-        "Those outlive the branch; say in your reply that you did it."
+        "rename the session to lead with the id and put it at the front of every commit "
+        "subject and the pull request title. Say in your reply where you put it."
     )
 
 
