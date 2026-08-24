@@ -693,7 +693,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
-- PL-023 Gate the coupled dynamics on an independent solution, not just mass balance — `PENDING`
+- PL-023 Gate the coupled dynamics on an independent solution, not just mass balance — `f5cd82b`
 - PL-034 Trim `CLAUDE.md`'s punch-list section of what the skill restates — `22e7876`
 - PL-032 Mechanize the decidable half of the close-out doc sweep — `3f786b5`
 - PL-033 Record the reference patient's weight in the provenance table — `ebcf990`
