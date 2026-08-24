@@ -31,6 +31,7 @@ from anesthesia_sim.app.controller import (
 )
 from anesthesia_sim.app.theme import (
     ACCENT,
+    AGENT_COLOR_SCHEMES,
     INK,
     MUTED,
     PANEL,
@@ -78,6 +79,13 @@ FAT_COLOR = "#64748B"
 AVAILABLE_AGENTS: tuple[tuple[str, str], ...] = tuple(
     (agent_id, load_agent_parameters(agent_id).display_name) for agent_id in AGENT_DATA_FILENAMES
 )
+
+# Adding a built-in agent without a verified identification color would make
+# the selector silently lose a safety cue. Fail at startup instead. This check
+# concerns presentation metadata only; agent/scientific parameters remain in
+# their validated data files.
+if set(AGENT_COLOR_SCHEMES) != set(AGENT_DATA_FILENAMES):
+    raise RuntimeError("AGENT_COLOR_SCHEMES must define exactly the built-in volatile agents")
 
 
 # One named reader per plotted quantity. Named rather than inline so that the
@@ -264,19 +272,44 @@ class SimulationView:
             on_click=self._handle_reset,
         )
 
+        initial_agent_colors = AGENT_COLOR_SCHEMES[initial_snapshot.agent_id]
         self._agent_dropdown = ft.Dropdown(
             value=initial_snapshot.agent_id,
             options=[
-                ft.dropdown.Option(key=agent_id, text=display_name)
+                ft.dropdown.Option(
+                    key=agent_id,
+                    text=display_name,
+                    style=ft.ButtonStyle(
+                        bgcolor=AGENT_COLOR_SCHEMES[agent_id].fill,
+                        color=AGENT_COLOR_SCHEMES[agent_id].foreground,
+                    ),
+                )
                 for agent_id, display_name in AVAILABLE_AGENTS
             ],
             width=180,
+            filled=True,
+            fill_color=initial_agent_colors.fill,
+            bgcolor=initial_agent_colors.fill,
+            color=initial_agent_colors.foreground,
+            text_style=ft.TextStyle(
+                color=initial_agent_colors.foreground,
+                weight=ft.FontWeight.BOLD,
+            ),
+            border_color=initial_agent_colors.foreground,
+            focused_border_color=initial_agent_colors.foreground,
             on_select=self._handle_agent_change,
         )
 
         self._subtitle_text = ft.Text(
             self._format_subtitle(initial_snapshot.agent_display_name),
-            color=MUTED,
+            color=initial_agent_colors.foreground,
+            weight=ft.FontWeight.BOLD,
+        )
+        self._agent_header_badge = ft.Container(
+            content=self._subtitle_text,
+            bgcolor=initial_agent_colors.fill,
+            border_radius=COMPACT_PANEL_RADIUS,
+            padding=6,
         )
         self._delivered_concentration_label = ft.Text(
             self._format_delivered_label(initial_snapshot.agent_display_name),
@@ -344,7 +377,7 @@ class SimulationView:
                                             weight=(ft.FontWeight.BOLD),
                                             color=INK,
                                         ),
-                                        self._subtitle_text,
+                                        self._agent_header_badge,
                                     ],
                                     spacing=2,
                                     tight=True,
@@ -741,6 +774,7 @@ class SimulationView:
         snapshot = self._controller.snapshot()
 
         self._subtitle_text.value = self._format_subtitle(snapshot.agent_display_name)
+        self._apply_agent_color_scheme(snapshot.agent_id)
         self._delivered_concentration_label.value = self._format_delivered_label(
             snapshot.agent_display_name
         )
@@ -851,6 +885,23 @@ class SimulationView:
             snapshot.concentration_history,
             chart_min_x,
         )
+
+    def _apply_agent_color_scheme(self, agent_id: str) -> None:
+        """Apply the verified agent color to the header and selection control."""
+
+        scheme = AGENT_COLOR_SCHEMES[agent_id]
+        self._agent_header_badge.bgcolor = scheme.fill
+        self._subtitle_text.color = scheme.foreground
+
+        self._agent_dropdown.fill_color = scheme.fill
+        self._agent_dropdown.bgcolor = scheme.fill
+        self._agent_dropdown.color = scheme.foreground
+        self._agent_dropdown.text_style = ft.TextStyle(
+            color=scheme.foreground,
+            weight=ft.FontWeight.BOLD,
+        )
+        self._agent_dropdown.border_color = scheme.foreground
+        self._agent_dropdown.focused_border_color = scheme.foreground
 
     def _refresh_chart_series(
         self,
