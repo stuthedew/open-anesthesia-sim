@@ -104,8 +104,8 @@ isoflurane dial position. `P1-1`'s two checks were fixed after that, by the
 exception-hierarchy and guarded-loop work, `P1-6` after that when the dead
 `advance_ventilation` method was deleted, and `P1-4` when the parameter-file
 schemas were made strict; seven of the harness's nine checks are now FIXED
-and two still reproduce. No release number has been assigned to the work
-landed since v0.2.1 - see PL-025.
+and two still reproduce. The work landed since v0.2.1 is released as
+v0.2.2.
 
 Re-run after those fixes, `verify_physics.py` confirms all three physics
 claims and `verify_findings.py` reproduces the two checks behind the two
