@@ -8,7 +8,8 @@ These instructions apply to all AI coding agents working on this repository.
 not.** When the project owner asks for something, what they are asking for is
 the end state — what will be true once it works. A mechanism named in the
 request is usually there to make the goal concrete, and is open to being
-replaced by a better one.
+replaced by a better one. Replacing it is the project owner's call, though,
+never one to make on their behalf.
 
 So, before building what was described:
 
@@ -18,19 +19,37 @@ So, before building what was described:
   recommend it, with the reasoning and the trade-off, rather than silently
   building the weaker version because it was the one named. "It is what was
   asked for" does not defend a design that will not hold up.
-- Where the better approach is clear and the difference is one of mechanism
-  rather than of outcome, build the better one and say plainly what you did
-  differently and why. Do not stop to ask which mechanism to use when the end
-  state is not in question — that spends a turn on a decision the project
-  owner has already delegated.
-- Do ask when the *goal* itself is ambiguous, or when the better approach
-  would change what the project owner ends up with rather than only how it is
-  built. That is the case where the choice is genuinely theirs.
+- **Then stop, and wait for the answer.** Do not build the better version and
+  report the substitution afterwards. Learning after the fact that the work
+  went a different way is the specific outcome this rule exists to prevent,
+  and a good substitute does not repair it: the project owner is in the loop
+  whenever what gets implemented differs from what they asked for. Approval
+  is expected to be the usual answer, which is a reason to keep the case
+  short — not a reason to skip asking for it.
+- Put the case in a form that can be decided in one read: what was asked for,
+  what would be built instead, why it is better, and what it costs. Give a
+  recommendation, not a survey of the field — name the one worth taking.
+- While the question is open, do the parts of the work that are the same
+  under either answer, and say that is what you did. Do not build the parts
+  that depend on it.
+- Ask before starting at all when the *goal* itself is ambiguous. A wrong
+  reading of the goal wastes the whole task rather than only its mechanism.
 
-This is not license to redefine the goal, widen the scope, or substitute a
-more interesting problem. The end state is theirs; the route to it is open.
-The bar for overriding a proposed mechanism is that the alternative is clearly
-superior *for the same goal* — not that it is the one you would have picked.
+This governs the deliverable, not the session. Ordinary judgment inside an
+approach already agreed — naming, structure, where a thing lives, how it is
+tested, whether the work continues here or moves to a fresh session — stays
+yours. The trigger is a deliverable that would differ materially from the one
+described, not every decision taken while building it.
+
+Nor is this license to redefine the goal, widen the scope, or substitute a
+more interesting problem. The end state is theirs; only the route to it is
+open to argument. The bar for proposing something other than the named
+mechanism is that the alternative is clearly superior *for the same goal* —
+not that it is the one you would have picked. And the safety-critical
+standard below is a floor rather than a preference: where the described
+approach would produce a wrong or misleading clinical value, that is not a
+mechanism preference to be weighed but a correctness problem, and saying so
+is not optional.
 
 ## Architecture and development discipline
 
