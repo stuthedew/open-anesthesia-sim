@@ -202,8 +202,12 @@ cites.
   them (e.g. controller driving a full `RespiratorySystem`).
 - **`tests/reference/`** — analytic/independent reference cases the
   implementation must reproduce (e.g. the closed-form circuit wash-in
-  solution, the sevoflurane patient reference scenario). These are the
-  regression tests referenced throughout `docs/MODEL.md`'s release gate.
+  solution, the sevoflurane patient reference scenario, and the from-scratch
+  RK4 integration of the coupled system in `test_coupled_dynamics.py`).
+  These are the regression tests referenced throughout `docs/MODEL.md`'s
+  release gate. A reference case here may import the parameter loaders but
+  must not reach a solver in `core/`: the value of the case is that it was
+  derived independently of the code it checks.
 
 ## Where new code belongs
 
