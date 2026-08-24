@@ -154,6 +154,14 @@ the conditions, and a session makes the call.
 
 ## P1 — Next
 
+**Running order, set 2026-08-24.** PL-032 in `P2` runs before the items in
+this band. It stays `P2` — it is neither a defect nor a milestone blocker —
+but it mechanizes the doc sweep that every close-out below depends on, and
+that sweep has already missed one provenance gap (PL-033). Order from here:
+PL-032, then PL-023, then PL-026 — whose decision needs a conversation
+rather than a session, and can be answered at any point without waiting its
+turn.
+
 ### PL-026 Decide what the interface shows after a halted step
 `P1` · `S` · `safety` `ux` · needs-decision · added 2026-08-24
 
