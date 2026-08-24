@@ -1,0 +1,381 @@
+"""The command line.
+
+Each command answers one question a session or a maintainer actually asks,
+and answers it in as few lines as the answer allows. Nothing here reads the
+whole store into a person's attention when a summary would do.
+"""
+
+from __future__ import annotations
+
+import argparse
+from collections.abc import Sequence
+from datetime import date
+from pathlib import Path
+
+from . import render
+from .checks import analyze
+from .concurrency import conflicts_for, parallel_batch
+from .config import Config
+from .config import load as load_config
+from .model import Item
+from .plan import features, recommend
+from .release import bump_version, milestones, read_version, release_notes, suggest_version
+from .store import find_item, new_id, read_items, write_item
+from .vcs import branches_in_flight, in_flight_ids
+
+CAPTURE_TEMPLATE = """**Problem.** {title}
+
+**Why it matters.**
+
+**Where.**
+
+**Done when.**
+"""
+
+
+def find_root(start: Path | None = None) -> Path:
+    """The repository root, or the working directory if there is no checkout."""
+    current = (start or Path.cwd()).resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return current
+
+
+def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
+    root = find_root()
+    config = load_config(root)
+    directory = args.items or (root / config.items_dir)
+    return directory, read_items(directory), config
+
+
+def _flight(args: argparse.Namespace) -> set[str]:
+    if getattr(args, "no_git", False):
+        return set()
+    return in_flight_ids(find_root())
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    _, items, config = _load(args)
+    report = analyze(items, args.today or date.today(), config)
+    print(render.format_check(report))
+    return 1 if report.errors else 0
+
+
+def cmd_list(args: argparse.Namespace) -> int:
+    _, items, config = _load(args)
+    report = analyze(items, args.today or date.today(), config)
+    rendered = render.format_list(report, _flight(args))
+    if rendered:
+        print(rendered)
+    return 0
+
+
+def cmd_digest(args: argparse.Namespace) -> int:
+    _, items, config = _load(args)
+    if not items:
+        return 0
+    report = analyze(items, args.today or date.today(), config)
+    rendered = render.format_digest(report, _flight(args))
+    if rendered:
+        print(rendered)
+    return 0
+
+
+def cmd_new(args: argparse.Namespace) -> int:
+    """Capture one or more ideas, with as little ceremony as it is possible to have.
+
+    A title is the only required input. Everything else - the priority, the
+    effort, the band it belongs in - is triage, and demanding it at the moment
+    an idea occurs is how ideas stop being written down.
+
+    Several titles are accepted in one call because that is how they arrive:
+    an interruption rarely carries exactly one thought, and making each one a
+    separate command turns a thirty-second capture into a conversation.
+    """
+    directory, items, _ = _load(args)
+    taken = {item.identifier for item in items}
+    for title in args.title:
+        taken.add(_capture(directory, title, taken, args))
+    return 0
+
+
+def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namespace) -> str:
+    identifier = new_id(taken)
+    item = Item(
+        identifier=identifier,
+        title=title,
+        priority="",
+        effort="",
+        status="untriaged",
+        classes=(),
+        touches=tuple(args.touches or ()),
+        blocked_by=(),
+        feature=args.feature or "",
+        milestone="",
+        added=args.today or date.today(),
+        closed=None,
+        commit="",
+        reason="",
+        body=CAPTURE_TEMPLATE.format(title=title),
+    )
+    path = write_item(directory, item)
+    print(f"{identifier}  {path}")
+    return identifier
+
+
+def cmd_show(args: argparse.Namespace) -> int:
+    _, items, _ = _load(args)
+    item = find_item(items, args.item)
+    if item is None:
+        print(f"no item matching '{args.item}'")
+        return 1
+    print(f"{item.identifier} {item.title}")
+    print(f"  {item.priority or '-'} · {item.effort or '-'} · {item.status}")
+    if item.touches:
+        print(f"  touches: {', '.join(item.touches)}")
+    if item.milestone:
+        print(f"  milestone: {item.milestone}")
+    print()
+    print(item.body.strip())
+    return 0
+
+
+def cmd_concurrent(args: argparse.Namespace) -> int:
+    """What can be worked alongside what.
+
+    Reports what is ruled out and why, never what is certified safe: the
+    file lists are predictions made when each item was written, so an absence
+    of declared overlap is an absence of evidence rather than evidence of
+    absence.
+    """
+    _, items, config = _load(args)
+    report = analyze(items, args.today or date.today(), config)
+    flight = _flight(args)
+    candidates = sorted(report.open_items, key=lambda i: i.sort_key())
+
+    if args.item:
+        item = find_item(items, args.item)
+        if item is None:
+            print(f"no item matching '{args.item}'")
+            return 1
+        blocked = conflicts_for(item, candidates)
+        blocked_ids = {c.other.identifier for c in blocked}
+        free = [
+            c
+            for c in candidates
+            if c.identifier != item.identifier and c.identifier not in blocked_ids
+        ]
+        print(f"{item.identifier} {item.title}")
+        if not item.touches:
+            print("  declares no `touches`; nothing can be ruled out for it")
+        print()
+        print("  Cannot run alongside:")
+        for conflict in blocked or []:
+            print(f"    {conflict.describe()}")
+        if not blocked:
+            print("    nothing")
+        print()
+        print("  No declared overlap (not a guarantee - verify before starting both):")
+        for other in free:
+            flag = " [IN FLIGHT]" if other.identifier in flight else ""
+            print(f"    {other.identifier} {other.title}{flag}")
+        if not free:
+            print("    nothing")
+        return 0
+
+    batch = parallel_batch(candidates, args.limit)
+    print(f"A batch that can be worked at once ({len(batch)} items, best-first):")
+    for item in batch:
+        flag = " [IN FLIGHT]" if item.identifier in flight else ""
+        print(f"  {item.priority} {item.identifier} {item.title}{flag}")
+    print()
+    print("No declared overlap between these. That is not a guarantee: `touches` is")
+    print("a prediction made when each item was written, so verify before starting.")
+    return 0
+
+
+def cmd_next(args: argparse.Namespace) -> int:
+    """What to work on now, and why.
+
+    Answers the question the queue exists to answer, so that "let\'s work on
+    something" needs no reading. Preference goes to work that finishes a
+    feature already underway, because a shipped feature is worth more than
+    equal progress spread across several.
+    """
+    _, items, config = _load(args)
+    report = analyze(items, args.today or date.today(), config)
+    flight = _flight(args)
+    picks = recommend(items, flight, effort=args.effort, limit=args.limit)
+    if not picks:
+        print("Nothing is ready to start.")
+        if report.untriaged:
+            print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
+        return 0
+    print(f"{len(report.open_items)} open. Suggested next:\n")
+    for index, pick in enumerate(picks, start=1):
+        print(f"  {index}. {pick.describe()}\n")
+    if flight:
+        print(f"Excluded, already in flight: {', '.join(sorted(flight))}")
+    if report.advisories:
+        print(
+            f"{len(report.advisories)} grooming advisory(ies) pending; `docket check` to see them."
+        )
+    return 0
+
+
+def cmd_feature(args: argparse.Namespace) -> int:
+    """Progress by feature, so a half-finished one is visible as such."""
+    _, items, _ = _load(args)
+    groups = features(items)
+    if not groups:
+        print("no items are assigned to a feature")
+        return 0
+    if args.name and args.name not in groups:
+        print(f"no feature named '{args.name}'")
+        return 1
+    wanted = [groups[args.name]] if args.name else list(groups.values())
+    for feature in sorted(wanted, key=lambda f: (-f.progress, f.name)):
+        state = "complete" if feature.is_complete else f"{len(feature.open_items)} left"
+        print(f"{feature.name}: {len(feature.done)}/{len(feature.items)} done ({state})")
+        for item in feature.items:
+            mark = "x" if item.status == "done" else " "
+            print(f"  [{mark}] {item.identifier} {item.title}")
+    return 0
+
+
+def cmd_milestone(args: argparse.Namespace) -> int:
+    _, items, _ = _load(args)
+    groups = milestones(items)
+    if not groups:
+        print("no items are assigned to a milestone")
+        return 0
+    wanted = [groups[args.name]] if args.name and args.name in groups else list(groups.values())
+    if args.name and args.name not in groups:
+        print(f"no milestone named '{args.name}'")
+        return 1
+    for milestone in wanted:
+        state = "complete" if milestone.is_complete else f"{len(milestone.outstanding)} outstanding"
+        print(f"{milestone.name}: {len(milestone.done)}/{len(milestone.items)} done ({state})")
+        for item in milestone.items:
+            mark = "x" if item.status == "done" else " "
+            print(f"  [{mark}] {item.identifier} {item.title}")
+    return 0
+
+
+def cmd_release(args: argparse.Namespace) -> int:
+    """Close a milestone: verify it is finished, bump the version, write the notes."""
+    root = find_root()
+    _, items, config = _load(args)
+    groups = milestones(items)
+    milestone = groups.get(args.name)
+    if milestone is None:
+        print(f"no milestone named '{args.name}'")
+        return 1
+    if not milestone.is_complete:
+        print(f"{milestone.name} is not finished; {len(milestone.outstanding)} item(s) still open:")
+        for item in milestone.outstanding:
+            print(f"  {item.identifier} {item.title} ({item.status})")
+        print("\nNothing was changed.")
+        return 1
+
+    current = read_version(root / config.version_file)
+    version = milestone.version
+    if not version or not version[0].isdigit():
+        version = suggest_version(current, milestone.done, config.minor_classes)
+    notes = release_notes(milestone, args.today or date.today())
+    if args.dry_run:
+        print(f"Would bump {current} -> {version}\n")
+        print(notes)
+        return 0
+
+    previous = bump_version(root / config.version_file, version)
+    notes_path = root / "docs" / "releases" / f"{milestone.name}.md"
+    notes_path.parent.mkdir(parents=True, exist_ok=True)
+    notes_path.write_text(notes, encoding="utf-8")
+    print(f"Bumped {previous} -> {version} in {config.version_file}")
+    print(f"Wrote {notes_path.relative_to(root)}")
+    print(f"Next: review, commit, and tag v{version}")
+    return 0
+
+
+def cmd_flight(args: argparse.Namespace) -> int:
+    branches = branches_in_flight(find_root())
+    if not branches:
+        print("no branch names carry an item id")
+        return 0
+    for branch in branches:
+        print(f"{branch.item_id}  {branch.name}")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    # The shared options are attached to the top-level parser *and* to every
+    # subcommand, so `docket --items X check` and `docket check --items X` both
+    # work. Argparse's default insists on the first, which is the one nobody
+    # remembers under a deadline.
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--items", type=Path, default=None, help="path to the item directory")
+    common.add_argument("--today", type=date.fromisoformat, default=None, help="reference date")
+    common.add_argument("--no-git", action="store_true", help="skip branch detection")
+
+    parser = argparse.ArgumentParser(
+        prog="docket", description=__doc__.splitlines()[0], parents=[common]
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    def add(name: str, help_text: str) -> argparse.ArgumentParser:
+        return sub.add_parser(name, help=help_text, parents=[common])
+
+    add("check", "validate the store").set_defaults(func=cmd_check)
+    add("list", "one line per open item").set_defaults(func=cmd_list)
+    add("digest", "the session-start summary").set_defaults(func=cmd_digest)
+    add("flight", "branches carrying item work").set_defaults(func=cmd_flight)
+
+    new = add("new", "capture one or more ideas")
+    new.add_argument("title", nargs="+")
+    new.add_argument("--touches", nargs="*", help="paths the work is expected to reach")
+    new.add_argument("--feature", default=None, help="group this with related work")
+    new.set_defaults(func=cmd_new)
+
+    nxt = add("next", "what to work on now, and why")
+    nxt.add_argument(
+        "--effort",
+        choices=("S", "M", "L"),
+        default=None,
+        help="only work that fits the time available",
+    )
+    nxt.add_argument("--limit", type=int, default=3)
+    nxt.set_defaults(func=cmd_next)
+
+    feature = add("feature", "progress by feature")
+    feature.add_argument("name", nargs="?")
+    feature.set_defaults(func=cmd_feature)
+
+    show = add("show", "print one item")
+    show.add_argument("item")
+    show.set_defaults(func=cmd_show)
+
+    concurrent = add("concurrent", "what can be worked at once")
+    concurrent.add_argument("item", nargs="?", help="check against this item")
+    concurrent.add_argument("--limit", type=int, default=None)
+    concurrent.set_defaults(func=cmd_concurrent)
+
+    milestone = add("milestone", "release membership and progress")
+    milestone.add_argument("name", nargs="?")
+    milestone.set_defaults(func=cmd_milestone)
+
+    release = add("release", "bump the version for a finished milestone")
+    release.add_argument("name")
+    release.add_argument("--dry-run", action="store_true")
+    release.set_defaults(func=cmd_release)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    return int(args.func(args))
+
+
+if __name__ == "__main__":  # pragma: no cover - exercised via __main__.py
+    raise SystemExit(main())

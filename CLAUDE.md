@@ -8,7 +8,8 @@ These instructions apply to all AI coding agents working on this repository.
 not.** When the project owner asks for something, what they are asking for is
 the end state — what will be true once it works. A mechanism named in the
 request is usually there to make the goal concrete, and is open to being
-replaced by a better one.
+replaced by a better one. Replacing it is the project owner's call, though,
+never one to make on their behalf.
 
 So, before building what was described:
 
@@ -18,19 +19,37 @@ So, before building what was described:
   recommend it, with the reasoning and the trade-off, rather than silently
   building the weaker version because it was the one named. "It is what was
   asked for" does not defend a design that will not hold up.
-- Where the better approach is clear and the difference is one of mechanism
-  rather than of outcome, build the better one and say plainly what you did
-  differently and why. Do not stop to ask which mechanism to use when the end
-  state is not in question — that spends a turn on a decision the project
-  owner has already delegated.
-- Do ask when the *goal* itself is ambiguous, or when the better approach
-  would change what the project owner ends up with rather than only how it is
-  built. That is the case where the choice is genuinely theirs.
+- **Then stop, and wait for the answer.** Do not build the better version and
+  report the substitution afterwards. Learning after the fact that the work
+  went a different way is the specific outcome this rule exists to prevent,
+  and a good substitute does not repair it: the project owner is in the loop
+  whenever what gets implemented differs from what they asked for. Approval
+  is expected to be the usual answer, which is a reason to keep the case
+  short — not a reason to skip asking for it.
+- Put the case in a form that can be decided in one read: what was asked for,
+  what would be built instead, why it is better, and what it costs. Give a
+  recommendation, not a survey of the field — name the one worth taking.
+- While the question is open, do the parts of the work that are the same
+  under either answer, and say that is what you did. Do not build the parts
+  that depend on it.
+- Ask before starting at all when the *goal* itself is ambiguous. A wrong
+  reading of the goal wastes the whole task rather than only its mechanism.
 
-This is not license to redefine the goal, widen the scope, or substitute a
-more interesting problem. The end state is theirs; the route to it is open.
-The bar for overriding a proposed mechanism is that the alternative is clearly
-superior *for the same goal* — not that it is the one you would have picked.
+This governs the deliverable, not the session. Ordinary judgment inside an
+approach already agreed — naming, structure, where a thing lives, how it is
+tested, whether the work continues here or moves to a fresh session — stays
+yours. The trigger is a deliverable that would differ materially from the one
+described, not every decision taken while building it.
+
+Nor is this license to redefine the goal, widen the scope, or substitute a
+more interesting problem. The end state is theirs; only the route to it is
+open to argument. The bar for proposing something other than the named
+mechanism is that the alternative is clearly superior *for the same goal* —
+not that it is the one you would have picked. And the safety-critical
+standard below is a floor rather than a preference: where the described
+approach would produce a wrong or misleading clinical value, that is not a
+mechanism preference to be weighed but a correctness problem, and saying so
+is not optional.
 
 ## Architecture and development discipline
 
@@ -59,19 +78,18 @@ to skipping a check before a commit or before finishing a task.
   an unrelated topic rather than continuing a long one, and prefer a fresh
   session over compacting an existing one: compaction costs a summarization
   pass and drops detail that this repository's provenance and safety
-  requirements depend on. `docs/PUNCH_LIST.md` and `docs/WORKING_NOTES.md`
-  exist so that a new session can pick up cold, but picking up cold does not
-  mean reading them whole: rely on the session-start digest for the state of
-  the queue, `python3 tools/punch_list.py list` to see the items, and read
-  the specific entry you are working on plus any `docs/WORKING_NOTES.md`
-  thread it cites. Read `docs/PUNCH_LIST.md` in full only when grooming or
-  reprioritizing, where the briefs are the subject. Update both before
-  ending a session with a thread still open.
+  requirements depend on. `docs/items/` and `docs/WORKING_NOTES.md` exist so
+  that a new session can pick up cold, but picking up cold does not mean
+  reading them whole: rely on the session-start digest for the state of the
+  queue, `docket list` or `docket next` for the items, and read only the item
+  you are working on plus any `docs/WORKING_NOTES.md` thread it cites. One
+  file per item means reading one costs one file. Update both before ending a
+  session with a thread still open.
 - Batch related questions, and related edits, into one turn rather than
   spreading them across several. Each turn resends the entire context.
 - Prefer targeted reads (an offset/limit range) over whole-file reads for
-  large docs (`docs/MODEL.md`, `docs/WORKING_NOTES.md`, `docs/PUNCH_LIST.md`)
-  once you know roughly where the relevant section is. Read the whole file
+  large docs (`docs/MODEL.md`, `docs/WORKING_NOTES.md`, `ROADMAP.md`) once
+  you know roughly where the relevant section is. Read the whole file
   when editing it or when its overall structure matters.
 - Delegate broad codebase search and file lookup to exploration subagents,
   whose transcripts stay out of the main context; a small, fast model is
@@ -105,60 +123,123 @@ to skipping a check before a commit or before finishing a task.
   the maintainer still reviews every safety-critical diff regardless of which
   model drafted it.
 
-## Punch list and work selection
+## Prefer deterministic tooling over repeated model work
 
-`docs/PUNCH_LIST.md` is the prioritized queue of discrete development tasks.
-`ROADMAP.md` holds releases; `docs/WORKING_NOTES.md` holds the narrative
-behind open threads. The `punch-list` skill carries the workflows —
-recommending, capturing, closing out, hotfixing, grooming — and the punch
-list's own header carries the entry format. Invoke the skill rather than
-reconstructing either from here.
+The section above keeps one session cheap. This one keeps every later session
+cheap, and it is the higher-leverage of the two: work moved out of the model
+is paid for once and then runs free, while work left to the model is
+re-derived at full context in every session that needs it.
 
-These rules stay here because a session acts on them before it would have
-any reason to load the skill:
+`tools/doc_check.py` and `subprojects/docket/` are what this looks like here.
+Both replaced a pass a session used to do by hand, and both are deliberately
+partial — they decide what the files on disk can decide, and leave the
+judgment alone.
 
-- **Capture, always.** Any defect, risk, cleanup, optimization,
-  inconsistency, or feature idea identified in a session and not fixed in
-  that same session gets recorded before the session ends. This applies
-  equally to findings the project owner raises and to findings you make on
-  your own while working on something else. Do not ask whether to record it —
-  recording is cheap and losing it is not. Prefer capturing at `P3` over
-  dropping it, and say in your reply that you did.
-- **A finding raised mid-task goes to `docs/inbox/`, not into the queue.**
-  One file per thought, no `PL-` id, committed on its own and left for
-  triage. It carries no id to race another session for and cannot conflict
-  with another branch's note, so it is safe to write no matter what else is
-  in flight — which is what makes it safe to raise an idea at any moment
-  rather than saving it for a quiet one. `docs/inbox/README.md` has the
-  format; the `punch-list` skill has the routing and the triage pass. Write
-  straight into `docs/PUNCH_LIST.md` only when this session's work already
-  *is* the queue, or when the finding is `P0` or safety-critical and has to
-  be visible in the session-start digest immediately.
-- **Name the work after the item.** As soon as a session starts work on a
-  punch-list item, rename the session to lead with the item's ID ("PL-013
-  Triage the review harness's remaining findings"), and put that ID at the
-  front of every commit subject on the branch and of the pull request title.
-  A session addressing more than one item names them all. The rename is
-  neither optional nor blocked — unlike the branch name it can be set at any
-  point in the session, and the punch-list skill says how on each surface.
-  Name the branch after the item too where the surface allows it
-  (`claude/pl-013-triage-review-harness-findings`); a branch generated for
-  the session before it started cannot be renamed, and that is expected
-  rather than a failure. Say in your reply where you put the ID.
-- **Decide where an item's work happens, and act on it.** When the project
-  owner names an item to start, choose between continuing in this session
-  and opening a fresh one, then proceed — do not ask which. The skill's
-  "Mode: start an item" has the criteria, and how to open the fresh session
-  already named and branched correctly where the surface allows it.
-- **`P0` items are hotfixes.** They come before feature work, on their own
-  branch, with a patch version bump and a regression test.
-- **Do not start an `L` item from a punch-list entry.** Promote it into a
-  scoped `ROADMAP.md` milestone first, per the development rules there.
-- **Answer "what should we work on next?" from the queue, not the
-  codebase.** `make punch-list` gives its state and any grooming
-  advisories, `python3 tools/punch_list.py list` gives the items. Lead with
-  that state before naming a task; the skill's recommend mode covers the
-  rest.
+So, when building a mechanism:
+
+- **Find the decidable part and put it in code.** Anything answerable by
+  reading the tree, a data file, or a diff — does this path resolve, is this
+  id already used, does this constant still match the JSON, which
+  documentation lines mention what a change touched — belongs in a script
+  wired into `make check`, a hook, or CI. Prefer this without being asked:
+  it is standing approval for that substitution, and needs no case put for it
+  each time.
+- **Do not script the judgment.** `tools/doc_check.py` decides whether a
+  cited path exists, never whether the sentence around it is still true. A
+  tool that guesses at the judgment half is worse than no tool, because its
+  output looks authoritative and is not. Where that line falls is the design
+  work, and it is worth spending real thought on.
+- **Use the cheapest sufficient tier:** a tool that already exists, then a
+  standard-library script under `tools/`, then a subagent whose transcript
+  stays out of the main context, then the session itself — the last being by
+  a wide margin the most expensive, since its context is resent on every
+  later turn.
+- **Summarizing counts, not only deciding.** `docket next` exists because it
+  answers "which item next" without a session reading the queue at all.
+  Printing the few lines a decision needs, instead of loading the documents
+  that contain them, is the same win as answering a question outright.
+- **The gate is whether it will genuinely run again.** Build when the work
+  recurs — every commit, every close-out, every session start — and the
+  answer is deterministic. Not for a one-off, not around what an existing
+  linter already does, and not where the upkeep would cost more than the
+  passes it saves. Where the benefit is not clear, the answer is no; an
+  unused tool is a maintenance burden that also has to be kept true.
+
+Cost is not the only argument. A script answers identically on every run,
+can carry regression tests, and states its rule where a reviewer can read
+it — which is the safety-critical standard's determinism, traceability, and
+auditability arriving as a side effect. New tools follow the convention the
+existing two set: standard library only, so a hook or a bare checkout can run
+them without the project virtualenv.
+
+## The queue, and how the project owner works
+
+`docs/items/` is the queue: one file per item, read and written through the
+`docket` command (`make docket`, or `PYTHONPATH=subprojects/docket/src python3
+-m docket <command>`). `ROADMAP.md` holds releases; `docs/WORKING_NOTES.md`
+holds narrative behind open threads. The `docket` skill carries the workflows
+and `subprojects/docket/README.md` carries the item format. Invoke the skill
+rather than reconstructing either from here.
+
+**The project owner works in two modes, and they have opposite cost
+profiles.** Recognizing which one is happening is the difference between
+being useful and being expensive.
+
+- **Ideation** — ideas, direction, plans, "what if we". This has to stay
+  cheap, because it often happens when usage is nearly spent, and because a
+  thought lost to a rate limit is the worst available outcome. Capture it and
+  carry on: `docket new` takes several titles in one call, since ideas arrive
+  in clusters. Read nothing you were not already reading, and take no
+  detours.
+- **Implementation** — usage is available and the point is to spend it on
+  work. Here `docket next` picks and the session goes deep.
+
+Do not silently convert the first into the second. An idea raised mid-session
+is captured and the session continues; it becomes work only when the owner
+says so.
+
+The division of labour is theirs to set direction and yours to make it real,
+including the parts they did not think to ask for: the version bump, the
+release notes, the item that should have been filed, the check that should
+have run. Anticipate those rather than waiting to be asked, and keep them off
+the owner's desk.
+
+These rules stay here because a session acts on them before it would have any
+reason to load the skill:
+
+- **Capture, always, and capture cheaply.** Any defect, risk, cleanup,
+  optimization, inconsistency, or idea identified in a session and not fixed
+  in that same session gets recorded before the session ends — findings the
+  owner raises and findings you make on your own alike. `docket new "..."` is
+  the whole procedure: no id to allocate, no band to choose, nothing that can
+  conflict with another branch. Do not ask whether to record it. Say in your
+  reply that you did.
+- **Prefer finishing a feature to advancing several.** Related items share a
+  `feature`; a release is a `milestone`. `docket next` already prefers work
+  that finishes something underway, within its priority band. Do not override
+  that toward novelty.
+- **Name the work after the item.** On starting one, rename the session to
+  lead with its id, and put that id at the front of every commit subject and
+  pull request title. Name the branch too where the session creates it
+  (`claude/pl-k7qx-short-slug`); a branch generated before the session
+  started cannot be renamed, which is expected rather than a failure. Say in
+  your reply where you put the id.
+- **Decide where an item's work happens, and act on it.** Continue here or
+  open a fresh session — choose and proceed, do not ask. The skill has the
+  criteria.
+- **`P0` items are hotfixes.** Before feature work, on their own branch, with
+  a patch version bump and a regression test.
+- **Do not start an `L` item from a queue entry.** Promote it into a scoped
+  `ROADMAP.md` milestone first, per the development rules there.
+- **Answer "what should we work on next?" from `docket next`, not from the
+  codebase.** It ranks the work and gives the reason, excludes what is
+  already in flight on a branch, and says which model the work warrants. Lead
+  with its answer, then add the judgment it cannot have.
+- **Concurrency is ruled out, never certified.** `docket concurrent` proves
+  two items will contend when their declared paths overlap. It cannot prove
+  the reverse — an item with no declared overlap may still wander into a
+  shared file, and one with no `touches` at all is unanalysed rather than
+  safe. Report it that way.
 
 **Sweep the docs before calling an item done.** Landing a change is not
 finishing it. `make check` runs `tools/doc_check.py`, which decides the
