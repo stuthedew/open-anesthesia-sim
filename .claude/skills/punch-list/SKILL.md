@@ -130,19 +130,32 @@ item done, not after the project owner asks whether the docs were updated.
    outright: "Recently completed" is a window on the permanent "Archive"
    ledger, not a substitute for it.
 2. Sweep the docs for drift the change just caused, per `CLAUDE.md`'s
-   "Sweep the docs before calling an item done." Grep `README.md`,
-   `ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/MODEL.md`, and
-   `docs/WORKING_NOTES.md` for the identifiers, filenames, constants, and
-   behavior the change touched. The recurring failure modes in this
-   repository, all of which have actually happened:
+   "Sweep the docs before calling an item done." Do not start by grepping:
+   two commands do the mechanical half, and doing it by hand at the end of a
+   session is what has let drift through before.
+
+   - `make doc-check` decides the three failure modes that need no judgment:
+     a module missing from `docs/ARCHITECTURE.md`'s package map or left there
+     after deletion, a data-file constant missing from `docs/MODEL.md`'s
+     provenance table or carrying a value the JSON no longer holds, and a
+     cited path or section heading that resolves to nothing. These are
+     errors, so `make check` and CI already refuse the change; fix them.
+   - `python3 tools/doc_check.py candidates --base <ref>` prints the
+     documentation lines that mention anything this diff touched. That is the
+     grep, already run. Read the list.
+
+   Then spend the judgment on what no tool can decide, which is whether each
+   statement is still *true*. The recurring failure modes in this repository,
+   all of which have actually happened:
    - a shipped feature still described as deferred or out of scope;
-   - a new module missing from `docs/ARCHITECTURE.md`'s tree;
-   - a new agent/patient data-file field missing from `docs/MODEL.md`'s
-     provenance table — every clinically meaningful constant belongs there
-     even when no equation consumes it;
    - a `docs/MODEL.md` `must`/`must not` the code no longer satisfies;
-   - a cross-reference to a heading or a `WORKING_NOTES.md` thread that has
-     since been renamed or deleted.
+   - a `WORKING_NOTES.md` thread describing a problem that has been solved;
+   - a paragraph that is accurate about the code but describes it as the
+     reason for a decision that no longer applies.
+
+   A finding the checker reports is a defect in one of the two: decide
+   whether the document or the code is wrong, and say which, rather than
+   editing the document until the tool goes quiet.
 3. Fix the drift in the same change as the code. A doc fix deferred to
    "later" is drift that outlives the session that could still explain it.
 4. Distinguish history from current state. A completed milestone's
@@ -151,8 +164,8 @@ item done, not after the project owner asks whether the docs were updated.
    it. Statements of what the project *is* today must match today.
 5. Capture anything found but not fixed as its own entry, per the capture
    rule, rather than leaving it in the reply only.
-6. Re-run `make check` and `make punch-list` after the doc edits, then say
-   in your reply which files you checked.
+6. Re-run `make check` after the doc edits — it runs both checkers — then
+   say in your reply which files you checked.
 
 ## Mode: hotfix a P0
 

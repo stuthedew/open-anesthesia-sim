@@ -591,37 +591,47 @@ loaded and schema-validated from a versioned data file rather than
 hardcoded; full citations, definitions, and reference conditions are
 recorded as `sources` entries in that file, not duplicated here.
 
-| Parameter | Selected value | Unit | Source data file |
+Each row names the exact JSON key path it documents alongside the file, so a
+row is traceable to one stored value rather than to a file that happens to
+contain a matching number. `tools/doc_check.py` (run by `make check` and CI)
+holds the table to the data files in both directions: every row must name a
+key the file holds and state the value it holds, and every numeric parameter
+in every data file must have exactly one row. A derived row states the stored
+value alongside the derived one — the tissue:blood coefficients are computed
+at load time from the tissue:gas and blood:gas values, so their rows name the
+stored tissue:gas key and show the division.
+
+| Parameter | Selected value | Unit | Source (data file · key path) |
 | --- | ---: | --- | --- |
-| Blood:gas partition coefficient | 0.65 | dimensionless | `data/agents/sevoflurane.json` |
-| Vessel-rich tissue:blood coefficient | 1.6923 (= 1.1 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
-| Muscle tissue:blood coefficient | 3.6923 (= 2.4 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
-| Fat tissue:blood coefficient | 52.3077 (= 34.0 / 0.65) | dimensionless | `data/agents/sevoflurane.json` |
-| Blood:gas partition coefficient (isoflurane) | 1.3 | dimensionless | `data/agents/isoflurane.json` |
-| Vessel-rich tissue:blood coefficient (isoflurane) | 1.6154 (= 2.1 / 1.3) | dimensionless | `data/agents/isoflurane.json` |
-| Muscle tissue:blood coefficient (isoflurane) | 3.4615 (= 4.5 / 1.3) | dimensionless | `data/agents/isoflurane.json` |
-| Fat tissue:blood coefficient (isoflurane) | 53.8462 (= 70.0 / 1.3) | dimensionless | `data/agents/isoflurane.json` |
-| Blood:gas partition coefficient (desflurane) | 0.42 | dimensionless | `data/agents/desflurane.json` |
-| Vessel-rich tissue:blood coefficient (desflurane) | 1.2857 (= 0.54 / 0.42) | dimensionless | `data/agents/desflurane.json` |
-| Muscle tissue:blood coefficient (desflurane) | 2.3095 (= 0.97 / 0.42) | dimensionless | `data/agents/desflurane.json` |
-| Fat tissue:blood coefficient (desflurane) | 30.9524 (= 13.0 / 0.42) | dimensionless | `data/agents/desflurane.json` |
-| Reference patient weight | 70.0 | kg | `data/patients/reference_adult.json` |
-| Alveolar gas volume | 2.5 | L | `data/patients/reference_adult.json` |
-| Venous blood-pool volume | 1.0 | L | `data/patients/reference_adult.json` |
-| Vessel-rich tissue volume | 6.0 | L | `data/patients/reference_adult.json` |
-| Muscle tissue volume | 33.0 | L | `data/patients/reference_adult.json` |
-| Fat tissue volume | 14.5 | L | `data/patients/reference_adult.json` |
-| Vessel-rich flow fraction | 0.76 | dimensionless | `data/patients/reference_adult.json` |
-| Muscle flow fraction | 0.18 | dimensionless | `data/patients/reference_adult.json` |
-| Fat flow fraction | 0.06 | dimensionless | `data/patients/reference_adult.json` |
-| Default alveolar ventilation | 4.0 | L/min | `data/patients/reference_adult.json` |
-| Default cardiac output | 5.0 | L/min | `data/patients/reference_adult.json` |
-| Maximum delivered concentration (sevoflurane) | 8.0 | percent | `data/agents/sevoflurane.json` |
-| Maximum delivered concentration (isoflurane) | 5.0 | percent | `data/agents/isoflurane.json` |
-| Maximum delivered concentration (desflurane) | 18.0 | percent | `data/agents/desflurane.json` |
-| 1 MAC, 40-year-old adult (sevoflurane) | 2.0 | percent | `data/agents/sevoflurane.json` |
-| 1 MAC, 40-year-old adult (isoflurane) | 1.2 | percent | `data/agents/isoflurane.json` |
-| 1 MAC, 40-year-old adult (desflurane) | 6.0 | percent | `data/agents/desflurane.json` |
+| Blood:gas partition coefficient | 0.65 | dimensionless | `data/agents/sevoflurane.json` · `blood_gas_partition_coefficient` |
+| Vessel-rich tissue:blood coefficient | 1.6923 (= 1.1 / 0.65) | dimensionless | `data/agents/sevoflurane.json` · `tissue_gas_partition_coefficients.vessel_rich` |
+| Muscle tissue:blood coefficient | 3.6923 (= 2.4 / 0.65) | dimensionless | `data/agents/sevoflurane.json` · `tissue_gas_partition_coefficients.muscle` |
+| Fat tissue:blood coefficient | 52.3077 (= 34.0 / 0.65) | dimensionless | `data/agents/sevoflurane.json` · `tissue_gas_partition_coefficients.fat` |
+| Blood:gas partition coefficient (isoflurane) | 1.3 | dimensionless | `data/agents/isoflurane.json` · `blood_gas_partition_coefficient` |
+| Vessel-rich tissue:blood coefficient (isoflurane) | 1.6154 (= 2.1 / 1.3) | dimensionless | `data/agents/isoflurane.json` · `tissue_gas_partition_coefficients.vessel_rich` |
+| Muscle tissue:blood coefficient (isoflurane) | 3.4615 (= 4.5 / 1.3) | dimensionless | `data/agents/isoflurane.json` · `tissue_gas_partition_coefficients.muscle` |
+| Fat tissue:blood coefficient (isoflurane) | 53.8462 (= 70.0 / 1.3) | dimensionless | `data/agents/isoflurane.json` · `tissue_gas_partition_coefficients.fat` |
+| Blood:gas partition coefficient (desflurane) | 0.42 | dimensionless | `data/agents/desflurane.json` · `blood_gas_partition_coefficient` |
+| Vessel-rich tissue:blood coefficient (desflurane) | 1.2857 (= 0.54 / 0.42) | dimensionless | `data/agents/desflurane.json` · `tissue_gas_partition_coefficients.vessel_rich` |
+| Muscle tissue:blood coefficient (desflurane) | 2.3095 (= 0.97 / 0.42) | dimensionless | `data/agents/desflurane.json` · `tissue_gas_partition_coefficients.muscle` |
+| Fat tissue:blood coefficient (desflurane) | 30.9524 (= 13.0 / 0.42) | dimensionless | `data/agents/desflurane.json` · `tissue_gas_partition_coefficients.fat` |
+| Reference patient weight | 70.0 | kg | `data/patients/reference_adult.json` · `weight_kg` |
+| Alveolar gas volume | 2.5 | L | `data/patients/reference_adult.json` · `alveolar_gas_volume_l` |
+| Venous blood-pool volume | 1.0 | L | `data/patients/reference_adult.json` · `venous_blood_volume_l` |
+| Vessel-rich tissue volume | 6.0 | L | `data/patients/reference_adult.json` · `tissue_groups.vessel_rich.volume_l` |
+| Muscle tissue volume | 33.0 | L | `data/patients/reference_adult.json` · `tissue_groups.muscle.volume_l` |
+| Fat tissue volume | 14.5 | L | `data/patients/reference_adult.json` · `tissue_groups.fat.volume_l` |
+| Vessel-rich flow fraction | 0.76 | dimensionless | `data/patients/reference_adult.json` · `tissue_groups.vessel_rich.perfusion_fraction` |
+| Muscle flow fraction | 0.18 | dimensionless | `data/patients/reference_adult.json` · `tissue_groups.muscle.perfusion_fraction` |
+| Fat flow fraction | 0.06 | dimensionless | `data/patients/reference_adult.json` · `tissue_groups.fat.perfusion_fraction` |
+| Default alveolar ventilation | 4.0 | L/min | `data/patients/reference_adult.json` · `default_alveolar_ventilation_l_min` |
+| Default cardiac output | 5.0 | L/min | `data/patients/reference_adult.json` · `default_cardiac_output_l_min` |
+| Maximum delivered concentration (sevoflurane) | 8.0 | percent | `data/agents/sevoflurane.json` · `max_delivered_concentration_percent` |
+| Maximum delivered concentration (isoflurane) | 5.0 | percent | `data/agents/isoflurane.json` · `max_delivered_concentration_percent` |
+| Maximum delivered concentration (desflurane) | 18.0 | percent | `data/agents/desflurane.json` · `max_delivered_concentration_percent` |
+| 1 MAC, 40-year-old adult (sevoflurane) | 2.0 | percent | `data/agents/sevoflurane.json` · `mac_percent` |
+| 1 MAC, 40-year-old adult (isoflurane) | 1.2 | percent | `data/agents/isoflurane.json` · `mac_percent` |
+| 1 MAC, 40-year-old adult (desflurane) | 6.0 | percent | `data/agents/desflurane.json` · `mac_percent` |
 
 The reference patient weight identifies which patient the volumes and flows
 describe; no equation in this model consumes it (`PatientParameters.weight_kg`
