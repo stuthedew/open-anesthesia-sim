@@ -139,6 +139,10 @@ holds tasks, `docs/WORKING_NOTES.md` holds the narrative behind them.
   hotfixes: their own branch and a patch version bump. When nothing is
   pressing, the alternative is milestone work, which means scoping the next
   milestone in `ROADMAP.md` — not starting unscoped feature work.
+- **Name the session after the item.** As soon as a session starts work on
+  a punch-list item, rename that session to lead with the item's ID (for
+  example, "PL-013 Triage the review harness's remaining findings"), so the
+  session that did the work can be found later from the entry alone.
 - **Do not start an `L` item from a punch-list entry.** Promote it into a
   scoped `ROADMAP.md` milestone first, per the development rules there.
 - **Let the checker do the mechanical half.** `tools/punch_list.py`
