@@ -2,6 +2,8 @@ from copy import deepcopy
 from typing import Any
 
 import pytest
+from pydantic import BaseModel, model_validator
+from pydantic import ValidationError as PydanticValidationError
 
 from anesthesia_sim.core import parameters as parameters_module
 from anesthesia_sim.core.parameters import (
@@ -237,6 +239,62 @@ def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> 
 
     with pytest.raises(ValueError, match="mac_percent"):
         parse_agent_parameters(payload)
+
+
+def test_mac_cross_check_is_a_model_validator_not_a_field_validator() -> None:
+    """Regression (PL-016): the only cross-field agent check must fail closed.
+
+    As a `field_validator` reading `info.data`, the guard saw
+    `max_delivered_concentration_percent` only because that field happened
+    to be declared first. Reordering the two fields turned it into a
+    silent no-op, so a file declaring 40% MAC on a 5% vaporizer would load
+    clean — and `RespiratorySystem.for_agent()` starts every run at 1 MAC.
+    A model validator runs after every field is populated, so declaration
+    order cannot reach it.
+    """
+
+    decorators = parameters_module._AgentPayload.__pydantic_decorators__
+
+    assert "_mac_percent_must_not_exceed_vaporizer_max" in decorators.model_validators
+    assert "_mac_percent_must_not_exceed_vaporizer_max" not in decorators.field_validators
+
+
+def test_mac_cross_check_fires_with_the_fields_declared_in_either_order() -> None:
+    """Run the shipped guard against a model declaring the two fields in
+    the order that previously defeated it.
+    """
+
+    guard = parameters_module._AgentPayload.__dict__["_mac_percent_must_not_exceed_vaporizer_max"]
+    payload = {"mac_percent": 40.0, "max_delivered_concentration_percent": 5.0}
+
+    for first, second in (
+        ("mac_percent", "max_delivered_concentration_percent"),
+        ("max_delivered_concentration_percent", "mac_percent"),
+    ):
+        probe = type(
+            "AgentPayloadFieldOrderProbe",
+            (BaseModel,),
+            {
+                "__annotations__": {first: float, second: float},
+                "guard": model_validator(mode="after")(guard),
+            },
+        )
+
+        assert list(probe.model_fields) == [first, second]
+
+        with pytest.raises(PydanticValidationError, match="mac_percent"):
+            probe.model_validate(payload)
+
+
+def test_every_shipped_agent_can_deliver_its_own_one_mac() -> None:
+    """`for_agent()` starts at 1 MAC, so no shipped file may declare a MAC
+    its own vaporizer cannot reach.
+    """
+
+    for agent_id in ("sevoflurane", "isoflurane", "desflurane"):
+        agent = load_agent_parameters(agent_id)
+
+        assert agent.mac_percent <= agent.max_delivered_concentration_percent
 
 
 def test_rejects_perfusion_fractions_that_do_not_sum_to_one() -> None:
