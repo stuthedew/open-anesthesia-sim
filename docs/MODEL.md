@@ -601,6 +601,12 @@ recorded as `sources` entries in that file, not duplicated here.
 | Fat flow fraction | 0.06 | dimensionless | `data/patients/reference_adult.json` |
 | Default alveolar ventilation | 4.0 | L/min | `data/patients/reference_adult.json` |
 | Default cardiac output | 5.0 | L/min | `data/patients/reference_adult.json` |
+| Maximum delivered concentration (sevoflurane) | 8.0 | percent | `data/agents/sevoflurane.json` |
+| Maximum delivered concentration (isoflurane) | 5.0 | percent | `data/agents/isoflurane.json` |
+| Maximum delivered concentration (desflurane) | 18.0 | percent | `data/agents/desflurane.json` |
+| 1 MAC, 40-year-old adult (sevoflurane) | 2.0 | percent | `data/agents/sevoflurane.json` |
+| 1 MAC, 40-year-old adult (isoflurane) | 1.2 | percent | `data/agents/isoflurane.json` |
+| 1 MAC, 40-year-old adult (desflurane) | 6.0 | percent | `data/agents/desflurane.json` |
 
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
 and holds no independent state (see "Model boundary"). Tissue:blood
@@ -625,6 +631,43 @@ any equation: lower solubility only means faster equilibration through the
 same closed-form solutions, which `tests/reference/test_multi_agent.py`
 checks directly by comparing simulated alveolar/circuit ratios rather than
 only comparing the static coefficient values.
+
+### Delivery-limit and MAC parameters
+
+Two per-agent parameters are carried in the agent data files but take no
+part in the governing equations. Both exist to constrain or initialize a
+user-facing control, and both are recorded here because a value a clinician
+could read or act on is safety-critical whether or not the model integrates
+it.
+
+`max_delivered_concentration_percent` is the maximum concentration the
+agent's real vaporizer can deliver (sevoflurane 8%, isoflurane 5%,
+desflurane 18%). It is the upper bound of the delivered-concentration
+control and is enforced in `SimulationController._build_state`, which clamps
+any requested fraction to it. Its purpose is to keep the simulator from
+offering a dial position that does not exist on the corresponding real
+device. It is a device limit, not a physiologic or safety limit: it says
+nothing about whether a given concentration is appropriate for a patient.
+
+`mac_percent` is 1 MAC for a 40-year-old adult. It is used for exactly one
+thing: choosing the starting position of the delivered-concentration control
+when a run begins, so that a new run starts from a recognizable clinical
+anchor rather than an arbitrary number. It is deliberately not carried into
+the simulation. Specifically, the model does **not**:
+
+- compute or display a MAC fraction, MAC-hours, or age-adjusted MAC;
+- model an effect-site compartment or any depth-of-anesthesia endpoint; or
+- imply that an alveolar concentration equal to `mac_percent` corresponds to
+  any particular clinical state in a particular patient.
+
+MAC is a population ED50 for immobility to a standardized stimulus, varying
+with age and modified by other agents, opioids, temperature, and patient
+factors none of which are modeled here. Presenting a single-agent alveolar
+concentration as though it indexed anesthetic depth would be exactly the
+kind of plausible-but-wrong clinical inference `CLAUDE.md` forbids. The
+values are cited to age-related iso-MAC data in each agent's `sources`
+array; the reasoning for treating them as a starting default only, rather
+than as a modeled quantity, is recorded here.
 
 The project must not tag a release while scientific `TBD` values remain in
 this document. None remain as of this revision.
@@ -873,15 +916,15 @@ The controller exposes immutable snapshots rather than mutable compartment objec
 
 ## Minimum displayed outputs
 
-The v0.1.0 interface must show:
+The interface must show:
 
 - simulated time;
 - run state;
-- delivered sevoflurane concentration;
+- which agent is running;
+- delivered concentration of that agent;
 - circuit or inspired concentration;
 - alveolar or end-tidal-equivalent concentration;
-- arterial concentration;
-- venous concentration;
+- mixed-venous concentration;
 - vessel-rich concentration;
 - muscle concentration;
 - fat concentration;
@@ -889,6 +932,21 @@ The v0.1.0 interface must show:
 - cumulative exhausted amount;
 - total stored amount; and
 - mass-balance residual or status.
+
+Arterial concentration is deliberately **not** in this list. Arterial blood
+is flow-limited in this model and holds no independent state: $F_a \equiv
+F_A$ (see "Model boundary"). A separate arterial readout would therefore
+display the alveolar number a second time under a different name, which
+would present a definitional identity as though it were an independently
+modeled quantity. Earlier revisions of this document required an arterial
+readout; that requirement predates the arterial simplification being made
+explicit and is withdrawn rather than being satisfied by a duplicate label.
+
+Showing which agent is running is a required output, not a convenience: a
+correct concentration attributed to the wrong agent is a presentation
+failure, and the same number means a different clinical depth for each agent
+(2% is about 1 MAC of sevoflurane but roughly a third of a MAC of
+desflurane).
 
 The phrase “end-tidal-equivalent” must not imply that airway sampling dynamics, dead space, or capnography are modeled.
 

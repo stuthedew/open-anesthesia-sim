@@ -18,16 +18,24 @@ delivered agent -> breathing circuit -> alveoli -> blood
                 -> vessel-rich group / muscle / fat -> mixed venous return
 ```
 
-Sevoflurane, isoflurane, and desflurane are all loadable at the core
-simulation level with validated, cited partition data; only sevoflurane is
-currently wired to the interface (a UI agent picker is deferred to a later
-anesthesia-machine milestone). Fresh gas flow, delivered concentration,
-alveolar ventilation, and cardiac output can all be changed live during a
-run. Agent mass delivered, exhausted, and stored across every compartment
-is tracked and checked against a documented numerical tolerance.
+Sevoflurane, isoflurane, and desflurane are each modeled from validated,
+cited partition data and can be picked in the interface. Selecting an agent
+starts a new run at that agent's own 1 MAC: switching agents does **not**
+model washout of the previous agent, because carrying residual agent across
+a switch is a distinct, harder problem left to the anesthesia-machine
+milestone. The delivered-concentration control is limited to each agent's
+real vaporizer maximum.
 
-Not yet modeled: agents beyond these three, IV anesthetics, metabolism,
-effect-site/MAC/BIS predictions, or any decision support. See
+Fresh gas flow, delivered concentration, alveolar ventilation, and cardiac
+output can all be changed live during a run. Agent mass delivered,
+exhausted, and stored across every compartment is tracked and checked
+against a documented numerical tolerance.
+
+Each agent's MAC is used only to pick a clinically sensible starting dial
+position. The simulator does not model anesthetic depth: there is no
+effect-site compartment, and no MAC-fraction, BIS, or other depth readout is
+predicted or displayed. Also not modeled: agents beyond these three, IV
+anesthetics, metabolism, or any decision support. See
 [`docs/MODEL.md`](docs/MODEL.md) for the full model specification, including
 equations, units, parameter provenance, and known limitations, and
 [`ROADMAP.md`](ROADMAP.md) for version history and planned milestones.

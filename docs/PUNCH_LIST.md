@@ -313,23 +313,6 @@ recent detail legible. This is a teaching-design call, not a technical one.
 **Done when.** The displayed time span is a deliberate, documented choice
 rather than an artifact of an earlier payload limit.
 
-### PL-008 Documentation refresh pass
-`P2` · `S` · `docs` · ready · added 2026-08-23
-
-**Problem.** `README.md`, `docs/MODEL.md`, `ROADMAP.md`, and
-`docs/WORKING_NOTES.md` have not been swept since the agent-specific
-vaporizer-max and 1-MAC-default work (commit `7a867e9`) and the
-module-docstring pass.
-**Why it matters.** Stale docs are the main cost driver for cold sessions,
-which is the problem this punch list exists to solve.
-**Where.** `README.md`, `docs/MODEL.md`, `ROADMAP.md`,
-`docs/WORKING_NOTES.md`.
-**First step.** Diff the docs against the current behavior of the app and
-the current contents of `data/agents/*.json`.
-**Done when.** No statement in those four files contradicts the code, and
-resolved threads have been deleted from `docs/WORKING_NOTES.md` rather than
-left in place.
-
 ## P3 — Icebox
 
 ### PL-009 Playback speed multiplier
@@ -378,4 +361,5 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-008 Documentation refresh pass — `2484611`
 - PL-001 Bound the chart payload and decouple simulation from render cadence — `3749588`
