@@ -235,7 +235,8 @@ file and states explicitly that no equation consumes it.
 `P1` · `M` · `planning` · ready · added 2026-08-23
 
 **Problem.** No milestone after v0.2.0 is scoped (v0.2.1 is a validation
-hotfix on that baseline, not a milestone). `ROADMAP.md`'s
+hotfix on that baseline and v0.2.2 a hardening release on it, neither of
+them a milestone). `ROADMAP.md`'s
 development rules require a goal, required scope, definition of done, and
 an explicit out-of-scope list before implementation begins, and the next
 candidate is the modular anesthesia-machine abstraction with normal
@@ -276,61 +277,6 @@ open question, and it can be answered after.
 **Done when.** `docs/MODEL.md` states the pool's time constant and its
 effect on the first minute, and any interface cue is a deliberate decision
 rather than an omission.
-
-### PL-025 Assign a release number to the post-v0.2.1 work
-`P2` · `S` · `planning` · needs-decision · added 2026-08-24
-
-**Problem.** `pyproject.toml` still reads `0.2.1` and the interface header
-still renders "Version 0.2.1", but the code has moved since: PL-018 added a
-third run state, a `failure_reason` field on `SimulationSnapshot`, and a
-changed exception contract across `core/`. `ROADMAP.md`'s version table has
-no row for any of it. Nothing in `ROADMAP.md` is false today — its v0.2.1
-description still describes v0.2.1 — but the displayed version no longer
-identifies the behavior a reader is looking at.
-**Why it matters.** The version is displayed next to clinical values and is
-the handle a reader has for "which model and which interface produced
-this", so it is provenance rather than bookkeeping. Low urgency only
-because the drift is between an untagged working tree and its last
-described release, which is normal mid-development.
-**Where.** `pyproject.toml` (`version`), `ROADMAP.md` (version table,
-"Current baseline").
-**Decision needed.** Whether the remaining harness fixes (PL-021, PL-023)
-fold into one release with PL-018 and PL-022 or each gets its own patch
-number. Folding argues for cutting the number once they land; separating
-argues for bumping now. The roadmap's rule is that a number is chosen for
-the capability boundary it crosses, which is a project-owner call.
-**Done when.** The version in `pyproject.toml` and the `ROADMAP.md` table
-agree with each other and with what the code does.
-
-### PL-032 Mechanize the decidable half of the close-out doc sweep
-`P2` · `M` · `infra` `docs` · ready · added 2026-08-24
-
-**Problem.** `CLAUDE.md`'s "Sweep the docs before calling an item done" has
-a session grep five documents (~113 KB) and judge every hit, at the end of a
-session where each extra turn resends the largest context of the run. Three
-of the failure modes it names need no judgment: a `src/` module missing from
-`docs/ARCHITECTURE.md`'s package map or listed there after deletion, a
-constant missing from `docs/MODEL.md`'s provenance table or carrying a value
-the JSON no longer holds, and a cited path or heading that does not exist.
-**Why it matters.** The manual sweep leaks — `weight_kg` (PL-033) has no
-provenance row today. Stale docs are a safety issue here per `CLAUDE.md`,
-and a mechanical check gates every change for zero session tokens, whether
-or not anyone remembers to sweep.
-**Where.** New `tools/doc_check.py` beside `tools/punch_list.py` (stdlib
-only, same error/advisory split), `Makefile`, `.github/workflows/quality.yml`,
-`docs/PUNCH_LIST.md` ("What is checked automatically"),
-`.claude/skills/punch-list/SKILL.md` (close-out mode).
-**First step.** Implement the package-map ↔ `src/` tree check in both
-directions; it is self-contained and needs no format change. Naming each
-provenance row's JSON key path in its source cell would make the table
-check exact rather than value-matching, so decide that next.
-**Done when.** `make check` fails on package-map, provenance-table, or
-dangling-path drift; a diff-scoped mode prints the candidate list close-out
-now greps for by hand; and the skill delegates the mechanical half while
-keeping the judgment half.
-**Context.** Two cheaper complements to weigh when this lands: an optional
-`**Docs.**` entry field naming affected docs at capture time, and trimming
-`CLAUDE.md`'s punch-list section of what the skill already states verbatim.
 
 ### PL-027 Confirm the per-frame slider write-back on a live Flet client
 `P2` · `S` · `ux` · ready · added 2026-08-24
@@ -598,7 +544,7 @@ deliberately retired.
 
 When the punch list is in good shape and the question is "should we move on
 to the next roadmap feature instead?", the answer lives in `ROADMAP.md`, not
-here. The current state is: v0.2.1 is the baseline, no later milestone is
+here. The current state is: v0.2.2 is the baseline, no later milestone is
 scoped yet, and PL-003 above is the task that scopes the next one.
 
 Ideas that are neither a punch-list task nor a scoped milestone —
@@ -616,6 +562,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-025 Assign a release number to the post-v0.2.1 work — `3099980`
 - PL-031 Record resolved punch-list items in a durable archive — `f5b77ec`
 - PL-021 Reject unknown keys in the parameter-file schemas — `3465dcf`
 - PL-002 Color-code agent selection to real vaporizer colors — `74bec83`
