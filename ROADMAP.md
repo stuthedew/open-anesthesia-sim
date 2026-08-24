@@ -22,24 +22,50 @@ by mechanically incrementing the patch number.
 | v0.0.2 | Completed | Analytically validated ideal breathing-circuit wash-in and washout with no patient uptake. |
 | v0.1.0 | Completed | First patient sevoflurane uptake and distribution model - the "Sevo works" milestone. |
 | v0.2.0 | Completed | Isoflurane and desflurane added as additional loadable volatile agents. |
-| v0.2.1 | Completed / current baseline | Validation hotfix: the vaporizer maximum is enforced in the core and rejects rather than clamps, the agent MAC cross-check fails closed, and the cited reference-adult defaults reach the running app. |
+| v0.2.1 | Completed | Validation hotfix: the vaporizer maximum is enforced in the core and rejects rather than clamps, the agent MAC cross-check fails closed, and the cited reference-adult defaults reach the running app. |
+| v0.2.2 | Completed / current baseline | Hardening and interface-provenance release on the same model: a failed step halts the run visibly instead of leaving it reading "Running", the parameter schemas reject unknown keys, agent selection carries its ISO 5360 identification color, and a dead non-conservative ventilation path is deleted. |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.2.1
+## Current baseline: v0.2.2
 
-v0.2.1 is a validation hotfix on the v0.2.0 model; it changes no equation,
-parameter, or numerical method. It closes three defects found by the
-architecture review of the v0.2.0 baseline (PL-015, PL-016, PL-017): a
-delivered concentration above the agent's real vaporizer maximum is now
-rejected by `core/`, at construction and at every change, rather than
+v0.2.2 is a hardening and interface-provenance release on the v0.2.0 model.
+Like the v0.2.1 hotfix before it, it changes no equation, parameter, or
+numerical method: `docs/MODEL.md`'s specification of the model is unchanged,
+and the v0.0.2 circuit and v0.1.0 sevoflurane reference tests still pass
+unaltered. It carries four punch-list items:
+
+- **PL-018.** A failure inside a step no longer leaves the interface reading
+  "Running" over numbers that have stopped advancing. A run now has a third
+  state, halted; `SimulationSnapshot` carries a `failure_reason`; the
+  interface labels the run "Stopped — simulation error" and warns that the
+  values shown may not reflect a completed step; and Reset clears it. `core/`
+  raises one documented exception hierarchy for this path. What a halted run
+  should *display* beyond that banner is a separate open question (PL-026).
+- **PL-021.** The agent and patient parameter schemas reject unknown keys
+  rather than ignoring them, so a misspelled or obsolete field in a data file
+  fails loudly instead of silently leaving a default in place.
+- **PL-002.** Agent selection carries each agent's ISO 5360:2016 Table 2
+  identification color, with its Munsell-original-to-Pantone-to-sRGB
+  provenance chain and the measured deviation of each screen approximation
+  recorded in `docs/MODEL.md`. The agent name appears everywhere the color
+  does, so color is never the only cue.
+- **PL-022.** `AlveolarCompartment.advance_ventilation` — a dead,
+  non-conservative single-mechanism path that no shipped code called — is
+  deleted.
+
+The preceding v0.2.1 was a validation hotfix on the v0.2.0 model, likewise
+changing no equation, parameter, or numerical method. It closed three defects
+found by the architecture review of the v0.2.0 baseline (PL-015, PL-016,
+PL-017): a delivered concentration above the agent's real vaporizer maximum
+is rejected by `core/`, at construction and at every change, rather than
 clamped in the controller; the agent-file check that 1 MAC is deliverable
-now runs after every field is populated, so field declaration order cannot
-defeat it; and the controller no longer keeps its own copies of the
-reference adult's cited ventilation and cardiac-output defaults, so the
-data file is what the app actually runs. The review harness that reproduces
-these findings is now in `tools/review-verification/`.
+runs after every field is populated, so field declaration order cannot defeat
+it; and the controller no longer keeps its own copies of the reference
+adult's cited ventilation and cardiac-output defaults, so the data file is
+what the app actually runs. The review harness that reproduces these findings
+is in `tools/review-verification/`.
 
 The repository currently models patient uptake and distribution for
 sevoflurane, isoflurane, or desflurane: a constant-volume breathing circuit,
