@@ -594,30 +594,6 @@ rather than an artifact of an earlier payload limit.
 
 ## P3 — Icebox
 
-### PL-042 Detect inbox notes stranded on an unmerged branch
-`P3` · `S` · `session-cost` · ready · added 2026-08-24
-
-**Problem.** An inbox note is committed on whatever branch the capturing
-session was on. If that branch is never merged, the note exists only there:
-`tools/punch_list.py` reads `docs/inbox/` in the current checkout, so no
-other session's digest or `make punch-list` will ever mention it, and the
-thought is lost as silently as if it had stayed in the conversation.
-**Why it matters.** The inbox exists to make capture unloseable. A hole that
-only opens on abandoned branches is exactly the hole nobody notices, because
-the sessions that could notice are the ones that cannot see the note.
-**Where.** `tools/punch_list.py` (`read_inbox`), `.claude/hooks/punch-list-digest.sh`.
-**First step.** Decide whether detection belongs in the tool or in CI. A CI
-job on `main` can run `git log --all --diff-filter=A --name-only` for
-`docs/inbox/` paths absent from the working tree and absent from `main`'s
-history, which the standard-library-only local tool cannot do cheaply
-without shelling out to git on every session start.
-**Done when.** A note committed on a branch that is closed without merging
-is reported somewhere a later session will see it, or the limitation is
-documented in `docs/inbox/README.md` as accepted with the reason.
-**Context.** Raised while building the inbox itself; the mitigation in place
-is that a note is committed alone, so recovering one is a single
-`git cherry-pick`.
-
 ### PL-019 Remove `BreathingCircuit`'s agent-unaware delivered-concentration default
 `P3` · `S` · `refactor` · ready · added 2026-08-24
 
