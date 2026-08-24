@@ -1,4 +1,10 @@
-# Detect inbox notes stranded on an unmerged branch
+---
+id: PL-64LS
+title: Detect inbox notes stranded on an unmerged branch
+status: untriaged
+touches: .claude/hooks/punch-list-digest.sh, tools/punch_list.py
+added: 2026-08-24
+---
 
 `P3` · `S` · `session-cost`
 

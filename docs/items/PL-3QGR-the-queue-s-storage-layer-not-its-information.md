@@ -1,4 +1,10 @@
-# The queue's storage layer, not its information model, is what blocks concurrent work
+---
+id: PL-3QGR
+title: The queue's storage layer, not its information model, is what blocks concurrent work
+status: untriaged
+touches: .claude/hooks/punch-list-digest.sh, .claude/skills/punch-list/SKILL.md, docs/PUNCH_LIST.md, tools/punch_list.py
+added: 2026-08-24
+---
 
 `P2` · `L` · `session-cost`
 

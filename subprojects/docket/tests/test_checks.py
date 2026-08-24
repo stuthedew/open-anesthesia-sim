@@ -1,0 +1,250 @@
+"""Tests for validation and grooming.
+
+A checker that has only ever run against a clean store proves nothing, so
+every rule has a test that constructs the broken input and asserts the rule
+notices.
+"""
+
+from __future__ import annotations
+
+from datetime import date
+
+from docket.checks import analyze
+from docket.model import Item
+
+TODAY = date(2026, 8, 24)
+BRIEF = "**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
+
+
+def _item(identifier: str = "PL-K7QX", **overrides: object) -> Item:
+    base: dict[str, object] = dict(
+        identifier=identifier,
+        title="Do the thing",
+        priority="P2",
+        effort="S",
+        status="ready",
+        classes=("perf",),
+        touches=("a.py",),
+        blocked_by=(),
+        feature="",
+        milestone="",
+        added=date(2026, 8, 1),
+        closed=None,
+        commit="",
+        reason="",
+        body=BRIEF,
+    )
+    base.update(overrides)
+    return Item(**base)  # type: ignore[arg-type]
+
+
+def _errors(*items: Item) -> list[str]:
+    return analyze(list(items), TODAY).errors
+
+
+def _has(messages: list[str], needle: str) -> bool:
+    return any(needle in message for message in messages)
+
+
+def test_a_valid_item_raises_nothing() -> None:
+    report = analyze([_item()], TODAY)
+
+    assert report.errors == []
+    assert report.advisories == []
+
+
+def test_a_missing_id_is_an_error() -> None:
+    assert _has(_errors(_item(identifier="")), "no `id`")
+
+
+def test_a_malformed_id_is_an_error() -> None:
+    assert _has(_errors(_item(identifier="PL-1")), "not a valid item id")
+
+
+def test_a_duplicate_id_is_an_error() -> None:
+    """The collision this scheme is built to avoid is still reported if it happens."""
+    assert _has(_errors(_item(), _item()), "used by more than one file")
+
+
+def test_a_misspelled_field_is_rejected_rather_than_ignored() -> None:
+    item = _item()
+    broken = Item(**{**item.__dict__, "unknown_fields": ("priorty",)})
+
+    assert _has(_errors(broken), "unrecognized field")
+
+
+def test_an_unknown_status_is_an_error() -> None:
+    assert _has(_errors(_item(status="wip")), "is not one of")
+
+
+def test_an_open_item_needs_a_priority_and_an_effort() -> None:
+    messages = _errors(_item(priority="", effort=""))
+
+    assert _has(messages, "no priority")
+    assert _has(messages, "no effort")
+
+
+def test_an_open_item_needs_the_brief_a_stranger_would_read() -> None:
+    assert _has(_errors(_item(body="**Problem.** only this\n")), "brief is missing")
+
+
+def test_a_blocked_item_needs_no_done_when() -> None:
+    """It cannot state its closing condition until its blocker resolves."""
+    blocker = _item("PL-B1B1")
+    blocked = _item(
+        "PL-C2C2",
+        status="blocked",
+        blocked_by=("PL-B1B1",),
+        body="**Problem.** x\n**Why it matters.** y\n",
+    )
+
+    assert _errors(blocker, blocked) == []
+
+
+def test_a_blocked_item_must_name_a_blocker() -> None:
+    assert _has(
+        _errors(_item(status="blocked", body="**Problem.** x\n**Why it matters.** y\n")),
+        "names no blocking item",
+    )
+
+
+def test_a_blocker_that_is_not_an_item_is_an_error() -> None:
+    assert _has(
+        _errors(
+            _item(
+                status="blocked",
+                blocked_by=("PL-Z9Z9",),
+                body="**Problem.** x\n**Why it matters.** y\n",
+            )
+        ),
+        "which is not an item",
+    )
+
+
+def test_an_item_cannot_block_itself() -> None:
+    assert _has(
+        _errors(
+            _item(
+                status="blocked",
+                blocked_by=("PL-K7QX",),
+                body="**Problem.** x\n**Why it matters.** y\n",
+            )
+        ),
+        "lists itself",
+    )
+
+
+def test_needs_decision_must_state_the_decision() -> None:
+    assert _has(_errors(_item(status="needs-decision")), "states no decision to make")
+
+
+def test_needs_decision_passes_when_it_states_one() -> None:
+    assert (
+        _errors(_item(status="needs-decision", body=BRIEF + "**Decision needed.** Which?\n")) == []
+    )
+
+
+def test_safety_work_may_not_sit_in_a_low_band() -> None:
+    assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
+
+
+def test_a_done_item_records_its_commit_and_date() -> None:
+    messages = _errors(_item(status="done", priority="", effort="", added=None))
+
+    assert _has(messages, "records no `commit`")
+    assert _has(messages, "records no `closed` date")
+
+
+def test_a_dropped_item_records_why() -> None:
+    """Without the reason, the same finding gets raised again."""
+    assert _has(
+        _errors(_item(status="dropped", closed=TODAY, priority="", effort="", added=None)),
+        "records no `reason`",
+    )
+
+
+def test_a_closed_item_needs_no_added_date() -> None:
+    """Items closed before this format existed cannot acquire one."""
+    closed = _item(
+        status="done", commit="abc1234", closed=TODAY, added=None, priority="", effort=""
+    )
+
+    assert _errors(closed) == []
+
+
+def test_an_untriaged_item_needs_only_a_title_and_a_body() -> None:
+    """Demanding a priority at capture time is how ideas stop being written down."""
+    captured = _item(
+        status="untriaged",
+        priority="",
+        effort="",
+        classes=(),
+        touches=(),
+        body="Half an idea, written down anyway.\n",
+    )
+
+    assert _errors(captured) == []
+
+
+def test_an_untriaged_item_still_needs_a_body() -> None:
+    assert _has(_errors(_item(status="untriaged", priority="", effort="", body="")), "no body")
+
+
+def test_a_stale_capture_is_a_grooming_advisory() -> None:
+    old = _item(
+        status="untriaged",
+        priority="",
+        effort="",
+        added=date(2026, 7, 1),
+        body="Captured and forgotten.\n",
+    )
+
+    assert _has(analyze([old], TODAY).advisories, "triage or drop them")
+
+
+def test_a_blocked_item_whose_blocker_closed_is_flagged_for_promotion() -> None:
+    done = _item("PL-B1B1", status="done", commit="abc1234", closed=TODAY, priority="", effort="")
+    blocked = _item(
+        "PL-C2C2",
+        status="blocked",
+        blocked_by=("PL-B1B1",),
+        body="**Problem.** x\n**Why it matters.** y\n",
+    )
+
+    assert _has(analyze([done, blocked], TODAY).advisories, "every blocker has closed")
+
+
+def test_an_overfull_top_band_is_an_advisory() -> None:
+    band = [_item(f"PL-B1B{n}", priority="P1") for n in range(7)]
+
+    assert _has(analyze(band, TODAY).advisories, "a session can choose between at a glance")
+
+
+def test_a_top_band_of_mostly_open_decisions_is_an_advisory() -> None:
+    band = [
+        _item(
+            "PL-B1B1",
+            priority="P1",
+            status="needs-decision",
+            body=BRIEF + "**Decision needed.** ?\n",
+        ),
+        _item(
+            "PL-C2C2",
+            priority="P1",
+            status="needs-decision",
+            body=BRIEF + "**Decision needed.** ?\n",
+        ),
+        _item("PL-D3D3", priority="P1"),
+    ]
+
+    assert _has(analyze(band, TODAY).advisories, "schedule the decisions")
+
+
+def test_process_work_crowding_the_top_band_is_an_advisory() -> None:
+    band = [
+        _item("PL-B1B1", priority="P1", classes=("session-cost",)),
+        _item("PL-C2C2", priority="P1", classes=("docs",)),
+        _item("PL-D3D3", priority="P1", classes=("perf",)),
+    ]
+
+    assert _has(analyze(band, TODAY).advisories, "outnumbers")
