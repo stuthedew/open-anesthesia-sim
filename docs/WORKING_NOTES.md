@@ -83,6 +83,59 @@ Stepping is exact-closed-form per step, so a larger step is a model-fidelity
 question, not just a performance one. Being an `L`, it needs scoping into a
 `ROADMAP.md` milestone before implementation.
 
+## Open thread: the unmerged architecture review - PL-013
+
+An independent architecture review of the v0.2.0 baseline (commit
+`3251ebf`) produced an executable harness under `tools/review-verification/`
+rather than a prose write-up alone: every numeric claim it makes is
+reproduced by a script, so a later reader can re-run the claim instead of
+trusting the text. The harness was committed to
+`claude/repo-architecture-review-3h39kh` (`0ccfa44`) and never merged. That
+branch is the only surviving record of the review.
+
+Re-run against `main` on 2026-08-24, `verify_physics.py` confirms all three
+physics claims and `verify_findings.py` reproduces all nine findings. The
+physics side matters independently of the defects: it re-derives the
+`docs/MODEL.md` equations from the parameter files with a from-scratch RK4
+that imports no solver from `core/`, so agreement is genuine verification
+rather than a tautology. It also shows a single matrix exponential is exact
+(~1e-15) where the shipped pairwise split is not (~2e-5), which is the
+evidence behind the review's central architectural recommendation. The
+review's own note is that the remedy for the splitting error is not to adopt
+`expm` outright but to promote the RK4 oracle into `tests/reference/` with
+pinned vectors, so the coupled model is checked against an independent
+solution on every CI run.
+
+Three findings are promoted to `P0` as PL-015, PL-016, and PL-017. The six
+that remain under PL-013, in the harness's own numbering:
+
+- `P1-1` - `core/` raises bare `ValueError` outside its
+  `AnesthesiaSimulationError` hierarchy, and the simulation timer in
+  `app/simulation_view.py` has no exception handling, so a raise kills the
+  asyncio task while the UI still reads "Running". Stale-state display of a
+  dead simulation is a human-factors failure, not just an ergonomic one.
+- `P1-4` - no Pydantic model in `core/parameters.py` sets
+  `extra='forbid'`, so a misspelled key in a safety-critical data file
+  loads clean and the intended value silently does not apply.
+- `P1-6` - `advance_ventilation` has no call site inside `core/` and does
+  not conserve agent mass (alveolar amount rises 0.005263 L with no
+  matching circuit debit). Dead code that models the same physics
+  incorrectly is a trap for the next reader.
+- `P2-1` - the mass-balance check passes (residual 2.22e-15 L) while the
+  dynamics are visibly wrong: `dt=10 s` differs from `dt=0.1 s` by 0.157
+  percentage points of alveolar fraction. Conservation is necessary but
+  nowhere near sufficient as a correctness gate, and it is currently the
+  only one.
+- `P2-4` - the 1.0 L venous pool dominates early mixed-venous values,
+  depressing them 55% at 30 s and 34% at 60 s against a near-instant-mixing
+  comparison. This is a modelling choice to document or revisit, not
+  necessarily a defect.
+
+Fixing a finding flips its check to FIXED and makes the harness exit `1`,
+which is the intended signal that the review write-up is stale for that
+item - not a build failure. The scripts live outside `src/` and `tests/`
+deliberately and are not part of the test suite.
+
 ## Aspirational: power-user custom agents (not scoped, not started)
 
 The project owner's stated future direction, raised while discussing

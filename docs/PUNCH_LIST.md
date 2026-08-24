@@ -136,9 +136,118 @@ the conditions, and a session makes the call.
 
 ## P0 — Now
 
-_None._
+The three items below are handled as one hotfix branch with a single patch
+bump to v0.2.1, not three — decided 2026-08-24, overriding the one-branch-
+per-`P0` default in "Priority" above, because they are independent, small,
+and all validation hardening. Add the v0.2.1 row to `ROADMAP.md`'s version
+table when the fix lands.
+
+Do PL-013's cherry-pick of `0ccfa44` first. It is four new files with no
+overlap, and it gives all three fixes an executable acceptance check
+(`P1-2`, `P1-3`, `P1-5`) instead of only the regression tests written
+alongside them.
+
+### PL-015 Reject an out-of-range delivered concentration instead of simulating it
+`P0` · `S` · `safety` `defect` · ready · added 2026-08-24
+
+**Problem.** `SimulationController.set_delivered_concentration`
+(`app/controller.py:225`) passes its argument straight through to
+`RespiratorySystem` and then to the circuit with no bound check. The
+vaporizer maximum is applied only in `_build_state`, as
+`min(requested_fraction, max_fraction)`. Calling the setter with 0.50 on
+isoflurane (5.0% maximum) is accepted and simulated as 50%.
+**Why it matters.** The whole simulation then runs from a delivered
+concentration no real vaporizer can produce, and every downstream displayed
+value — circuit, alveolar, arterial, tissue curves — is a plausible-looking
+number from an impossible input. Today only the UI slider bounds the value,
+so the guard is in the presentation layer rather than the model.
+**Where.** `app/controller.py` (`set_delivered_concentration`,
+`_build_state`), `core/respiratory_system.py:115`, `core/circuit.py`.
+**First step.** Validate in `core/`, not the controller: reject a fraction
+outside `(0, max]` with an `AnesthesiaSimulationError` subclass. Make
+`_build_state` reject too rather than silently clamping — silent coercion
+of a safety-critical input is what `CLAUDE.md` forbids — and update the
+docstring that currently documents the clamp.
+**Done when.** Both paths reject out-of-range input, a regression test
+covers the 50%-on-a-5%-vaporizer case, and the `P1-2` check in PL-013's
+harness reports FIXED.
+
+### PL-016 Make the agent MAC cross-check fail closed
+`P0` · `S` · `safety` `science` `defect` · ready · added 2026-08-24
+
+**Problem.** `_AgentPayload._mac_percent_must_not_exceed_vaporizer_max`
+(`core/parameters.py:199`) reads `max_delivered_concentration_percent` out
+of `info.data`. Pydantic populates `info.data` in field-declaration order,
+so the key is present only because `max_delivered_concentration_percent`
+happens to be declared first. Reorder the two fields — or let the maximum
+fail its own validation — and `info.data.get` returns `None`, the guard
+returns the value unchecked, and an agent file declaring 40% MAC on a 5%
+vaporizer loads clean.
+**Why it matters.** This is the only cross-field check on the agent data
+files, and MAC drives the default delivered concentration
+(`_build_state` starts at 1 MAC). A guard that silently no-ops on a field
+reordering is worse than no guard: it reads as validation coverage that
+does not exist.
+**Where.** `core/parameters.py` (`_AgentPayload`),
+`data/agents/*.json`.
+**First step.** Replace the `field_validator` with a
+`model_validator(mode="after")`, which sees every field regardless of
+declaration order.
+**Done when.** The check fires independent of field order, a regression
+test declares the fields in the failing order and asserts rejection, and
+the `P1-5` check in PL-013's harness reports FIXED.
+
+### PL-017 Source the patient defaults from the data file, not controller literals
+`P0` · `S` · `safety` `science` `defect` · ready · added 2026-08-24
+
+**Problem.** `SimulationController.__init__` hardcodes
+`alveolar_ventilation_l_min = 4.0` and `cardiac_output_l_min = 5.0` as
+Python literals. `data/patients/reference_adult.json` declares the same two
+values with their citations, but nothing reads
+`default_alveolar_ventilation_l_min` outside the schema, and
+`default_cardiac_output_l_min` reaches only `core/patient.py`. Edit the
+data file to 6.5 / 5.5 and the running app still uses 5.0 / 4.0.
+**Why it matters.** The numbers agree today, so the duplication is
+invisible; that is what makes it dangerous. The data file carries the
+provenance under `docs/MODEL.md`, so the app is running values whose
+citation trail points at a file it does not actually consult. Any future
+correction to the cited defaults would silently not take effect.
+**Where.** `app/controller.py` (`__init__`), `core/parameters.py:236-237`,
+`core/patient.py:59`, `data/patients/reference_adult.json`.
+**First step.** Drop the literals and take both defaults from the loaded
+`PatientParameters`, keeping the constructor arguments as explicit
+overrides.
+**Done when.** Changing the data file changes the app's starting values, a
+regression test asserts that, and the `P1-3` check in PL-013's harness
+reports FIXED.
 
 ## P1 — Next
+
+### PL-013 Land the review harness and triage its six remaining findings
+`P1` · `M` · `safety` `science` `defect` · ready · added 2026-08-24
+
+**Problem.** The branch `claude/repo-architecture-review-3h39kh` carries the
+only surviving record of an independent architecture review of the v0.2.0
+baseline: an executable harness under `tools/review-verification/` that
+reproduces nine findings on demand. It was never merged, and until
+PL-015 through PL-017 were filed none of the nine appeared in this file.
+Re-run against `main` on 2026-08-24, all nine still reproduce and all three
+physics claims still hold.
+**Why it matters.** Three of the nine were safety-critical enough to
+promote to `P0` (PL-015, PL-016, PL-017), and the harness is what proves
+they are fixed. Deleting the branch discards the evidence for all nine and
+the only independent check on the physics claims in `docs/MODEL.md`.
+**Where.** `tools/review-verification/` on that branch; `core/` validation
+and parameter loading; `app/simulation_view.py` timer.
+**First step.** Cherry-pick `0ccfa44` onto `main` (it applies cleanly —
+four new files, no overlap) and re-run both scripts, so the P0 fixes have a
+check to flip. The three safety findings are split out as PL-015, PL-016,
+and PL-017; the six that remain are listed in the working-notes thread.
+**Done when.** The harness is on `main`, each remaining finding is either an
+entry here or explicitly declined with a reason, and the branch is
+deleted.
+**Context.** `docs/WORKING_NOTES.md` § "Open thread: the unmerged
+architecture review".
 
 ### PL-002 Color-code agent selection to real vaporizer colors
 `P1` · `M` · `ux` `safety` · ready · added 2026-08-23
@@ -180,6 +289,26 @@ version number assigned, matching the structure of the completed v0.1.0 and
 v0.2.0 sections.
 
 ## P2 — Queued
+
+### PL-014 Land or discard the unmerged punch-list model-guidance work
+`P2` · `S` · `infra` `docs` · ready · added 2026-08-24
+
+**Problem.** The branch `claude/punch-list-tracking-u1159v` holds two
+unmerged commits (`cd3b255`, `7015d3f`) that add `Entry.model_guidance` and
+`_with_guidance` to `tools/punch_list.py`, with tests, so the startup digest
+names which model a recommended item warrants instead of leaving the rule to
+a session's memory. `main` has the general model-matching rule in
+`CLAUDE.md` but not this mechanization.
+**Why it matters.** Small and self-contained, but it is real work that is
+lost if the branch is pruned, and the rule it automates is the one that
+decides whether a safety-critical item gets the strongest model.
+**Where.** `tools/punch_list.py`, `tests/unit/test_punch_list_tool.py`,
+`CLAUDE.md`, `.claude/skills/punch-list/SKILL.md`.
+**First step.** Cherry-pick both commits onto `main`. The only conflict is
+in this file, where the branch still lists PL-001 as open; take `main`'s
+side and drop that block.
+**Done when.** The commits are on `main` with the quality suite green, or
+the branch is deleted with a stated reason for declining them.
 
 ### PL-004 Decide the fate of `SimulationSnapshot.circuit_time_constant_s`
 `P2` · `S` · `defect` · needs-decision · added 2026-08-23
