@@ -577,7 +577,7 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
-- PL-018 Keep a core failure from silently killing a running simulation — `PENDING`
+- PL-018 Keep a core failure from silently killing a running simulation — `4c442ef`
 - PL-013 Triage the review harness's four remaining findings — `f51762a`
 - PL-014 Land or discard the unmerged punch-list model-guidance work — `7714386`
 - PL-015 Reject an out-of-range delivered concentration instead of simulating it — `bc5f823`
