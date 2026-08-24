@@ -26,8 +26,7 @@ class AgentColorScheme:
 
 
 # ISO 5360:2016, Table 2 specifies agent-identification colors for anaesthetic
-# vaporizer filling systems. It is the relevant device standard; ASTM D4774
-# concerns user-applied syringe labels, not vaporizers. The ISO standard gives
+# vaporizer filling systems. The ISO standard gives
 # print color-system references rather than sRGB values, so these fills are the
 # nearest commonly published sRGB equivalents of its Pantone references:
 # https://www.iso.org/standard/68417.html
