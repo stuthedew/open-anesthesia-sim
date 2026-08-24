@@ -719,7 +719,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
-- PL-040 Stop displaying more decimals than the model can support — `PENDING`
+- PL-040 Stop displaying more decimals than the model can support — `1971a9f`
 - PL-041 Put the item ID where the branch name cannot carry it — `fb01800`
 - PL-023 Gate the coupled dynamics on an independent solution, not just mass balance — `f5cd82b`
 - PL-034 Trim `CLAUDE.md`'s punch-list section of what the skill restates — `22e7876`
