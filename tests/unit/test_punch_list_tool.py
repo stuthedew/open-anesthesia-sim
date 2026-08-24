@@ -581,6 +581,41 @@ def test_digest_reminds_about_grooming_only_when_due() -> None:
     assert "Grooming due: 1 advisory" in stale
 
 
+def test_digest_says_where_to_put_the_id_when_the_branch_cannot_carry_it() -> None:
+    report = _analyze(_document(_entry(effort="S")))
+
+    digest = punch_list.format_digest(report, "claude/next-priorities-nvttng")
+
+    assert "carries no PL id" in digest
+    assert "commit subject" in digest
+
+
+def test_digest_stays_quiet_when_the_branch_already_carries_the_id() -> None:
+    report = _analyze(_document(_entry(effort="S")))
+
+    digest = punch_list.format_digest(report, "claude/pl-032-punch-list-oo8rpi")
+
+    assert "carries no PL id" not in digest
+
+
+def test_digest_stays_quiet_on_main_and_without_a_branch() -> None:
+    """Neither case is a session about to commit under the wrong name."""
+    report = _analyze(_document(_entry(effort="S")))
+
+    assert "carries no PL id" not in punch_list.format_digest(report, "main")
+    assert "carries no PL id" not in punch_list.format_digest(report, "")
+    assert "carries no PL id" not in punch_list.format_digest(report)
+
+
+def test_a_random_branch_suffix_does_not_read_as_an_id() -> None:
+    """`pl` followed by digits only counts as an id when hyphenated."""
+    report = _analyze(_document(_entry(effort="S")))
+
+    digest = punch_list.format_digest(report, "claude/groom-the-queue-pl042x")
+
+    assert "carries no PL id" in digest
+
+
 def test_digest_is_empty_for_an_empty_queue() -> None:
     assert punch_list.format_digest(_analyze(_document())) == ""
 

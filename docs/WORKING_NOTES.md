@@ -35,7 +35,9 @@ appropriate, and its entry here should be deleted rather than left stale.
   agent's 1 MAC rather than switching mid-run — residual-agent washout
   across a switch is still the anesthesia-machine milestone's work, and
   `SimulationController.set_agent`'s docstring is the place that says so.
-  Work happens directly on `main` unless a session has reason to branch.
+  Work now happens on a per-session branch merged into `main` by pull
+  request, not directly on `main`; `CLAUDE.md` says how that branch, its
+  commits, and the pull request carry the punch-list item's ID.
 - `docs/MODEL.md` and `ROADMAP.md` are up to date with the v0.2.0
   implementation: the arterial-blood simplification is documented
   explicitly (flow-limited, `F_a \equiv F_A`, no separate compartment,

@@ -14,4 +14,8 @@ root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}
 tool="$root/tools/punch_list.py"
 [ -r "$tool" ] || exit 0
 
-python3 "$tool" digest 2>/dev/null || exit 0
+# The branch name decides whether the digest also says where to put the item
+# id. Absent outside a git checkout, in which case the digest simply omits it.
+branch="$(git -C "$root" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+
+python3 "$tool" digest ${branch:+--branch "$branch"} 2>/dev/null || exit 0
