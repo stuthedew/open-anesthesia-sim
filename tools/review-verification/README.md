@@ -7,8 +7,8 @@ the claim instead of trusting the write-up.
 
 Seven of the nine checks have since been fixed and now report `FIXED`:
 `P1-2` (PL-015), `P1-3` (PL-017), and `P1-5` (PL-016) in v0.2.1; `P1-1`
-(both of its checks, PL-018), `P1-6` (PL-022), and `P1-4` (PL-021) after
-that. Their rows below describe the reviewed v0.2.0 behaviour, which is what
+(both of its checks, PL-018), `P1-6` (PL-022), and `P1-4` (PL-021) in
+v0.2.2. Their rows below describe the reviewed v0.2.0 behaviour, which is what
 the checks still probe for. `verify_findings.py` therefore exits `1` on a current
 tree, as designed.
 
