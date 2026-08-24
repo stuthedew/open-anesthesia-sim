@@ -23,3 +23,4 @@ jobs:
       - run: uv run mypy src
       - run: uv run pytest
       - run: uv run python tools/punch_list.py check
+      - run: uv run python tools/doc_check.py check
