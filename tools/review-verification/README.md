@@ -5,6 +5,12 @@ baseline (commit `3251ebf`). Every numeric claim the review makes is
 produced by a script here, so a later reader — human or agent — can re-run
 the claim instead of trusting the write-up.
 
+Three findings have since been fixed and now report `FIXED`: `P1-2`
+(PL-015), `P1-3` (PL-017), and `P1-5` (PL-016), all in v0.2.1. Their rows
+below describe the reviewed v0.2.0 behaviour, which is what the checks
+still probe for. `verify_findings.py` therefore exits `1` on a current
+tree, as designed.
+
 These scripts are **not** part of the test suite and **not** a fix for
 anything they report. They are read-only diagnostics that live outside
 `src/` and `tests/` deliberately.
@@ -39,9 +45,9 @@ two is genuine verification rather than a tautology.
 
 | Check | Claim |
 | --- | --- |
-| `P2-2` | The shipped operator split reproduces the documented equations (worst max-abs error ~4e-5 at `Δt = 0.1 s`). |
+| `P2-2` | The shipped operator split reproduces the documented equations (worst max-abs error ~2e-5 at `Δt = 0.1 s`, 5% delivered). |
 | `P2-3` | The splitting error is genuinely first order — halving `Δt` halves the error, ratio 2.00 at every refinement. |
-| `ARCH` | The system is linear and time-invariant within a step, so a single matrix exponential is *exact* (~1e-15) where the pairwise split is not (~2e-5). |
+| `ARCH` | The system is linear and time-invariant within a step, so a single matrix exponential is *exact* (~1e-15) where the pairwise split is not (~1e-5). |
 
 The `ARCH` check is the evidence behind the review's central architectural
 recommendation. It builds a scaling-and-squaring matrix exponential in pure
@@ -73,9 +79,17 @@ documented private import.
 - `P1-3` monkeypatches `respiratory_system.load_reference_adult_parameters`
   with a `dataclasses.replace` copy carrying different defaults, then
   restores it in a `finally` block. Nothing on disk is touched.
-- `P1-5` demonstrates the Pydantic mechanism on a minimal model built at
-  runtime rather than mutating `_AgentPayload`, so the check is safe to run
-  and still shows the exact failure mode.
+- `P1-5` pulls the shipped guard function off `_AgentPayload` and
+  re-registers it — the way the shipped model registers it — on minimal
+  models declaring the two fields in each order, rather than mutating
+  `_AgentPayload` itself. The check is safe to run and probes the real
+  guard, not a look-alike.
+- `P1-2` reports `FIXED` when the request is rejected outright, and also
+  if it were clamped: what it tests is that the run does not continue at a
+  dial position the vaporizer does not have.
+- Both scripts run at 5% delivered, the highest concentration all three
+  shipped vaporizers can produce. 8%, the reviewed operating point, is now
+  rejected for isoflurane rather than simulated.
 - `P1-6` scans every shipped module's source for a `.advance_ventilation(`
   call site. If someone wires the method up, this check flips to `FIXED` —
   which would be the wrong outcome for the right reason, so read the detail

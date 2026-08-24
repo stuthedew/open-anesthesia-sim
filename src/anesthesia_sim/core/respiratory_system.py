@@ -69,13 +69,26 @@ class RespiratorySystem:
 
     @classmethod
     def for_agent(cls, agent_id: str) -> RespiratorySystem:
-        """Build a system for any built-in agent (see `AGENT_DATA_FILENAMES`)."""
+        """Build a system for any built-in agent (see `AGENT_DATA_FILENAMES`).
+
+        The circuit carries that agent's own vaporizer maximum, and starts
+        at its own 1 MAC rather than at `BreathingCircuit`'s agent-unaware
+        default, so a system built here can never begin at a dial position
+        the corresponding real device does not have. The MAC start is
+        guaranteed to be within the maximum by the cross-field check in
+        `core/parameters.py`.
+        """
 
         agent = load_agent_parameters(agent_id)
         patient_parameters = load_reference_adult_parameters()
 
         return cls(
-            circuit=BreathingCircuit(),
+            circuit=BreathingCircuit(
+                delivered_concentration_fraction=(agent.mac_percent / 100.0),
+                max_delivered_concentration_fraction=(
+                    agent.max_delivered_concentration_percent / 100.0
+                ),
+            ),
             alveoli=AlveolarCompartment(
                 gas_volume_l=(patient_parameters.alveolar_gas_volume_l),
                 alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),

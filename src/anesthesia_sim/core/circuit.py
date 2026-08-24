@@ -1,11 +1,18 @@
 """The breathing circuit: an ideal, well-mixed gas volume that receives
 delivered fresh gas at a set concentration and exchanges agent with the
 alveolar compartment (`alveolar.py`) on every step.
+
+The circuit also owns the vaporizer delivery limit
+(`max_delivered_concentration_fraction`), because it owns the delivered
+concentration itself: enforcing the limit here means every path that can
+change that value — core, controller, or UI — is bounded by the same
+guard, rather than relying on the presentation layer to bound it.
 """
 
 from dataclasses import dataclass
 from math import exp, inf
 
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
     require_concentration_fraction,
     require_nonnegative_finite,
@@ -25,12 +32,22 @@ class FreshGasExchange:
 
 @dataclass(slots=True)
 class BreathingCircuit:
-    """Ideal, well-mixed breathing circuit with constant volume."""
+    """Ideal, well-mixed breathing circuit with constant volume.
+
+    `max_delivered_concentration_fraction` is the vaporizer's calibrated
+    dial maximum for the agent in use. It defaults to 1.0, meaning "no
+    device limit declared", which is only appropriate for a circuit built
+    without an agent (a bare unit test of circuit physics). Every
+    agent-aware path builds the circuit through
+    `RespiratorySystem.for_agent()`, which sets the real limit from the
+    agent data file.
+    """
 
     circuit_volume_l: float = 6.0
     fresh_gas_flow_l_min: float = 4.0
     delivered_concentration_fraction: float = 0.08
     circuit_concentration_fraction: float = 0.0
+    max_delivered_concentration_fraction: float = 1.0
 
     def __post_init__(self) -> None:
         require_positive_finite(
@@ -42,13 +59,42 @@ class BreathingCircuit:
             self.fresh_gas_flow_l_min,
         )
         require_concentration_fraction(
+            "max_delivered_concentration_fraction",
+            self.max_delivered_concentration_fraction,
+        )
+        require_positive_finite(
+            "max_delivered_concentration_fraction",
+            self.max_delivered_concentration_fraction,
+        )
+        require_concentration_fraction(
             "delivered_concentration_fraction",
             self.delivered_concentration_fraction,
         )
+        self._require_deliverable(self.delivered_concentration_fraction)
         require_concentration_fraction(
             "circuit_concentration_fraction",
             self.circuit_concentration_fraction,
         )
+
+    def _require_deliverable(
+        self,
+        delivered_concentration_fraction: float,
+    ) -> None:
+        """Reject a concentration the vaporizer in use cannot produce.
+
+        Rejecting rather than clamping is deliberate: a silently clamped
+        dial position would simulate, display, and chart a concentration
+        the caller did not ask for, which is the plausible-but-wrong
+        clinical value `CLAUDE.md` forbids. Zero is always allowed — it is
+        the vaporizer turned off, which is how washout begins.
+        """
+
+        if delivered_concentration_fraction > self.max_delivered_concentration_fraction:
+            raise SimulationConfigurationError(
+                "delivered_concentration_fraction exceeds the vaporizer maximum "
+                f"({delivered_concentration_fraction * 100.0:g}% requested, "
+                f"{self.max_delivered_concentration_fraction * 100.0:g}% maximum)"
+            )
 
     @property
     def agent_amount_l(self) -> float:
@@ -89,10 +135,13 @@ class BreathingCircuit:
         self,
         delivered_concentration_fraction: float,
     ) -> None:
+        """Set the vaporizer dial, rejecting anything it cannot deliver."""
+
         require_concentration_fraction(
             "delivered_concentration_fraction",
             delivered_concentration_fraction,
         )
+        self._require_deliverable(delivered_concentration_fraction)
         self.delivered_concentration_fraction = delivered_concentration_fraction
 
     def set_agent_amount(

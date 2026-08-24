@@ -17,10 +17,10 @@ import dataclasses
 import importlib.resources
 import inspect
 import json
-from typing import Annotated, Any
+from typing import Any
 
 from _report import FIXED, REPRODUCED, Report, main_guard
-from pydantic import BaseModel, BeforeValidator, ValidationInfo, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from anesthesia_sim.app import controller, simulation_view
 from anesthesia_sim.app.controller import SimulationController
@@ -28,6 +28,7 @@ from anesthesia_sim.core import (
     alveolar,
     blood,
     circuit,
+    parameters,
     patient,
     respiratory_system,
     simulation,
@@ -107,19 +108,39 @@ def check_loop_dies_silently(report: Report) -> None:
 
 
 def check_vaporizer_max_bypass(report: Report) -> None:
-    """P1-2: the setter path does not clamp to the agent's vaporizer maximum."""
+    """P1-2: the setter path does not bound the agent's vaporizer maximum.
+
+    Fixed means the setter rejects the request outright. A clamp would
+    also stop the impossible value being simulated, so the stored
+    concentration is checked either way: what must never happen is a run
+    continuing at a dial position the vaporizer does not have.
+    """
 
     sim = SimulationController(agent_id="isoflurane")
     maximum = sim.snapshot().max_delivered_concentration_percent
+    rejected: Exception | None = None
 
-    sim.set_delivered_concentration(0.50)
+    try:
+        sim.set_delivered_concentration(0.50)
+    except AnesthesiaSimulationError as error:
+        rejected = error
+
     resulting = sim.snapshot().delivered_concentration_fraction * 100.0
+    detail = (
+        f"agent maximum {maximum:.1f}%, "
+        + (
+            f"rejected ({type(rejected).__name__})"
+            if rejected is not None
+            else "accepted and simulated"
+        )
+        + f", running at {resulting:.1f}%"
+    )
 
     report.record(
         "P1-2",
         "set_delivered_concentration ignores the vaporizer maximum",
         REPRODUCED if resulting > maximum else FIXED,
-        f"agent maximum {maximum:.1f}%, accepted and simulated {resulting:.1f}%",
+        detail,
     )
 
 
@@ -192,36 +213,38 @@ def check_schema_ignores_unknown_keys(report: Report) -> None:
 
 
 def check_mac_cross_check_is_order_dependent(report: Report) -> None:
-    """P1-5: the only cross-field agent check depends on declaration order."""
+    """P1-5: the only cross-field agent check depends on declaration order.
 
-    def positive_percent(value: object) -> float:
-        numeric = float(value)  # type: ignore[arg-type]
+    Probed against the shipped guard rather than a look-alike: the guard
+    function is pulled off `_AgentPayload` and re-registered, the way the
+    shipped model registers it, in a model that declares the two fields in
+    each order. The original `field_validator` reading `info.data` fires
+    only when the maximum is declared first; a `model_validator` sees a
+    fully populated instance, so declaration order cannot reach it.
+    """
 
-        if not 0.0 < numeric <= 100.0:
-            raise ValueError("must be a percent above zero")
-
-        return numeric
-
-    Percent = Annotated[float, BeforeValidator(positive_percent)]
+    payload_model = parameters._AgentPayload  # noqa: SLF001 - the guard under test
+    guard_name = "_mac_percent_must_not_exceed_vaporizer_max"
+    guard = payload_model.__dict__[guard_name]
+    registered_as_model_validator = (
+        guard_name in payload_model.__pydantic_decorators__.model_validators
+    )
 
     def build(first: str, second: str) -> type[BaseModel]:
-        def guard(cls: type, value: float, info: ValidationInfo) -> float:
-            maximum = info.data.get("max_delivered_concentration_percent")
-
-            if maximum is not None and value > maximum:
-                raise ValueError("mac_percent must not exceed the vaporizer maximum")
-
-            return value
-
+        registered = (
+            model_validator(mode="after")(guard)
+            if registered_as_model_validator
+            else field_validator("mac_percent")(classmethod(guard))
+        )
         namespace: dict[str, Any] = {
-            "__annotations__": {first: Percent, second: Percent},
-            "guard": field_validator("mac_percent")(classmethod(guard)),
+            "__annotations__": {first: float, second: float},
+            "guard": registered,
         }
 
         return type("OrderProbe", (BaseModel,), namespace)
 
     payload = {"max_delivered_concentration_percent": 5.0, "mac_percent": 40.0}
-    outcomes: dict[str, bool] = {}
+    accepted: dict[str, bool] = {}
 
     for first, second in (
         ("max_delivered_concentration_percent", "mac_percent"),
@@ -229,18 +252,18 @@ def check_mac_cross_check_is_order_dependent(report: Report) -> None:
     ):
         try:
             build(first, second).model_validate(payload)
-            outcomes[first] = True  # accepted: the guard did not fire
+            accepted[first] = True  # accepted: the guard did not fire
         except Exception:  # noqa: BLE001 - any validation failure means it fired
-            outcomes[first] = False
-
-    fails_open = outcomes["mac_percent"] and not outcomes["max_delivered_concentration_percent"]
+            accepted[first] = False
 
     report.record(
         "P1-5",
         "MAC cross-check silently no-ops if the fields are reordered",
-        REPRODUCED if fails_open else FIXED,
-        "max declared first -> rejected (guard fires)\n"
-        "mac declared first -> ACCEPTED: 40% MAC on a 5% vaporizer",
+        REPRODUCED if any(accepted.values()) else FIXED,
+        "max declared first -> "
+        + ("ACCEPTED" if accepted["max_delivered_concentration_percent"] else "rejected")
+        + "\nmac declared first -> "
+        + ("ACCEPTED: 40% MAC on a 5% vaporizer" if accepted["mac_percent"] else "rejected"),
     )
 
 

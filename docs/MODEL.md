@@ -643,17 +643,28 @@ it.
 `max_delivered_concentration_percent` is the maximum concentration the
 agent's real vaporizer can deliver (sevoflurane 8%, isoflurane 5%,
 desflurane 18%). It is the upper bound of the delivered-concentration
-control and is enforced in `SimulationController._build_state`, which clamps
-any requested fraction to it. Its purpose is to keep the simulator from
-offering a dial position that does not exist on the corresponding real
-device. It is a device limit, not a physiologic or safety limit: it says
-nothing about whether a given concentration is appropriate for a patient.
+control, and it is enforced in the core: `BreathingCircuit` carries the
+limit for the agent in use (set by `RespiratorySystem.for_agent()`) and
+**must reject** any delivered concentration above it, at construction and
+at every later change, rather than clamping to it. A clamp would run,
+display, and chart a dial position the caller never requested, which is
+indistinguishable on screen from one they did. Zero is always accepted: it
+is the vaporizer turned off, which is how washout begins. Its purpose is to
+keep the simulator from offering a dial position that does not exist on the
+corresponding real device. It is a device limit, not a physiologic or
+safety limit: it says nothing about whether a given concentration is
+appropriate for a patient.
 
 `mac_percent` is 1 MAC for a 40-year-old adult. It is used for exactly one
 thing: choosing the starting position of the delivered-concentration control
 when a run begins, so that a new run starts from a recognizable clinical
-anchor rather than an arbitrary number. It is deliberately not carried into
-the simulation. Specifically, the model does **not**:
+anchor rather than an arbitrary number. `RespiratorySystem.for_agent()`
+applies it, so the starting dial position is agent-specific in the core
+rather than in the controller, and every agent file **must** declare a
+`mac_percent` its own vaporizer can deliver — a cross-field check in
+`core/parameters.py` enforces that, and runs after every field is
+populated so it cannot be defeated by field declaration order. It is
+deliberately not carried into the simulation. Specifically, the model does **not**:
 
 - compute or display a MAC fraction, MAC-hours, or age-adjusted MAC;
 - model an effect-site compartment or any depth-of-anesthesia endpoint; or
@@ -688,6 +699,7 @@ The implementation must preserve the following invariants:
 - changing a setting does not reset stored state;
 - Pause prevents simulation-time advancement;
 - Reset clears dynamic state while preserving settings;
+- a delivered concentration above the agent's vaporizer maximum is rejected, not clamped;
 - zero fresh gas flow prevents new external delivery;
 - zero ventilation prevents circuit-to-patient ventilatory exchange;
 - zero cardiac output prevents pulmonary and tissue perfusion;
