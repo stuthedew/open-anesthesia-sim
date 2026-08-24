@@ -84,7 +84,7 @@ def format_digest(report: Report, in_flight: set[str] | None = None) -> str:
     if report.untriaged:
         lines.append(
             f"  {_plural(len(report.untriaged), 'item', 'items')} untriaged; "
-            "`docket triage` to fold them into the queue."
+            "`bin/docket triage` to fold them into the queue."
         )
     if report.errors:
         lines.append(f"  {_plural(len(report.errors), 'error', 'errors')}; run `make docket`.")
@@ -93,7 +93,7 @@ def format_digest(report: Report, in_flight: set[str] | None = None) -> str:
             f"  Grooming due: {_plural(len(report.advisories), 'advisory', 'advisories')} "
             "(`make docket` to see them)."
         )
-    lines.append("`docket list` shows the queue; read an item's brief before starting it.")
+    lines.append("`bin/docket list` shows the queue; read an item's brief before starting it.")
     return "\n".join(lines)
 
 

@@ -12,8 +12,7 @@ set -uo pipefail
 command -v python3 >/dev/null 2>&1 || exit 0
 
 root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-package="$root/subprojects/docket/src"
-[ -d "$package" ] || exit 0
+[ -x "$root/bin/docket" ] || exit 0
 [ -d "$root/docs/items" ] || exit 0
 
-PYTHONPATH="$package" python3 -m docket digest 2>/dev/null || exit 0
+"$root/bin/docket" digest 2>/dev/null || exit 0

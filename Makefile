@@ -8,7 +8,7 @@ check: sync
 	uv run ruff check .
 	uv run mypy src
 	uv run pytest
-	PYTHONPATH=subprojects/docket/src python3 -m docket check
+	bin/docket check
 	python3 tools/doc_check.py check
 
 fix:
@@ -19,7 +19,7 @@ test:
 	uv run pytest
 
 punch-list:
-	PYTHONPATH=subprojects/docket/src python3 -m docket check
+	bin/docket check
 
 doc-check:
 	python3 tools/doc_check.py check
