@@ -72,7 +72,7 @@ make check       # ruff format --check, ruff check, mypy (strict), pytest,
                  # then the punch-list and documentation checkers
 make fix         # ruff format, ruff check --fix
 make test        # pytest only
-make punch-list  # validate docs/PUNCH_LIST.md
+make punch-list  # validate docs/PUNCH_LIST.md and list the pending inbox
 make doc-check   # validate the package map, provenance table, and doc citations
 ```
 
@@ -89,6 +89,9 @@ and must pass before a change is considered complete.
 - [`ROADMAP.md`](ROADMAP.md) — authoritative version and milestone map.
 - [`docs/PUNCH_LIST.md`](docs/PUNCH_LIST.md) — prioritized queue of open
   development tasks: defects, cleanups, optimizations, and small features.
+- [`docs/inbox/`](docs/inbox/README.md) — captured-but-untriaged notes on
+  their way into the punch list, one file per thought. Written from any
+  branch at any time; nothing is meant to stay there.
 - [`docs/WORKING_NOTES.md`](docs/WORKING_NOTES.md) — cross-session log of
   open threads, diagnoses, and the rationale behind decisions.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how `core/`, `app/`, and
