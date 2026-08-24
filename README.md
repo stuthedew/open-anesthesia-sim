@@ -68,10 +68,18 @@ make run
 ## Development
 
 ```bash
-make check   # ruff format --check, ruff check, mypy (strict), pytest
-make fix     # ruff format, ruff check --fix
-make test    # pytest only
+make check       # ruff format --check, ruff check, mypy (strict), pytest,
+                 # then the punch-list and documentation checkers
+make fix         # ruff format, ruff check --fix
+make test        # pytest only
+make punch-list  # validate docs/PUNCH_LIST.md
+make doc-check   # validate the package map, provenance table, and doc citations
 ```
+
+The last two are stdlib-only scripts in `tools/`, so they run in a bare
+checkout. `tools/doc_check.py` also has a `candidates` mode that prints the
+documentation lines mentioning anything a diff changed, for the sweep a
+change needs before it is complete.
 
 `make check` mirrors the checks run in CI (`.github/workflows/quality.yml`)
 and must pass before a change is considered complete.
