@@ -214,34 +214,32 @@ the accounting validator on every step.
 **Done when.** What a halted run displays is a recorded decision with its
 reasoning, and `docs/MODEL.md`'s interface rules state it.
 
-### PL-040 Stop displaying more decimals than the model can support
-`P1` · `S` · `safety` `ux` · needs-decision · added 2026-08-24
+### PL-042 Bound the splitting error across the settings envelope, not one point
+`P1` · `S` · `safety` `science` · ready · added 2026-08-24
 
-**Problem.** `SimulationView._format_percent` renders every concentration as
-`f"{fraction * 100.0:.3f}%"` — thousandths of a percentage point. The
-operator split is not accurate to that. Measured against the independent
-solution added by PL-023, the shipped step disagrees with the true solution
-by up to 2.5e-5 in fraction, i.e. 0.0025 percentage points, so the third
-displayed decimal is numerical noise and the second is at the edge of it.
-Parameter uncertainty is coarser again.
-**Why it matters.** `CLAUDE.md` requires displayed precision to be justified
-by model fidelity and interpretability, and forbids presentation implying
-more certainty than the model supports. A trainee reading `2.134%` may
-reasonably infer the simulator resolves thousandths of a percent; it does
-not, and clinical agent monitors report 0.1 percentage point.
-**Where.** `app/simulation_view.py` (`_format_percent` and the chart axis
-labels sharing its scale), `docs/MODEL.md` § "Minimum displayed outputs",
-and the view-formatting tests in `tests/unit/`.
-**Decision needed.** How many decimals each displayed quantity earns, and
-whether the answer is uniform. Two decimals suit circuit, alveolar, and
-mixed-venous values, but muscle and fat sit near 1e-6 fraction early in a run
-and would read `0.00%` for minutes, erasing the wash-in the display exists to
-teach. Uniform reduction, per-compartment precision, and a
-significant-figures rule are all defensible; the rationale is what must be
-recorded, not a precision tuned by eye.
-**Done when.** Displayed precision is a recorded decision tied to model
-fidelity, `docs/MODEL.md` states it alongside the displayed outputs, and the
-formatting tests pin it.
+**Problem.** `tests/reference/test_coupled_dynamics.py` bounds the
+first-order splitting coefficient at one operating point — 5% delivered,
+4 L/min fresh gas, default ventilation and cardiac output — while
+`docs/MODEL.md` § "Independent-solution test" presents the resulting
+\(C_{\max} = 5\times10^{-4}\ \mathrm{s^{-1}}\) as a bound on the split. It
+is not one: measured over the interface's own slider limits it reaches about
+\(1.2\times10^{-3}\ \mathrm{s^{-1}}\), in a configuration three sliders can
+produce.
+**Why it matters.** The absolute error there is still small (0.012 percentage
+points), so no displayed value is wrong today. The gap is in the gate: a
+change that degraded the split at high flow would pass CI, because CI never
+looks there. A release gate narrower than the reachable input domain is a
+verification claim broader than its evidence.
+**Where.** `tests/reference/test_coupled_dynamics.py` (`DELIVERED_FRACTION`,
+`FRESH_GAS_FLOW_L_MIN`, `HORIZONS_S`, and the fixed patient defaults),
+`docs/MODEL.md` § "Independent-solution test" and § "Displayed precision".
+**First step.** Parameterize the oracle over delivered fraction, fresh gas
+flow, alveolar ventilation, and cardiac output, then measure the corners
+before choosing the new bound — the bound follows the measurement.
+**Done when.** The gate bounds the coefficient over the settings the
+interface can produce, and `docs/MODEL.md` states the domain it covers.
+**Context.** `docs/WORKING_NOTES.md`, "Splitting error outside the gate's
+operating point".
 
 ### PL-037 Check the branch is current against `main` before starting an item
 `P1` · `S` · `session-cost` `infra` · ready · added 2026-08-24
@@ -288,6 +286,34 @@ out-of-scope list is what keeps the milestone narrow.
 version number assigned, matching the structure of the completed v0.1.0 and
 v0.2.0 sections.
 ## P2 — Queued
+
+### PL-043 Decide whether the vaporizer dial should move in real increments
+`P2` · `S` · `ux` `feature` · needs-decision · added 2026-08-24
+
+**Problem.** `_delivered_concentration_slider` has no `divisions`, so the
+delivered-agent setting is continuous over 0 to the agent's dial maximum. A
+user can set 4.37% sevoflurane. Real variable-bypass vaporizers are dialed in
+discrete increments — commonly 0.2% over the low range and larger above it —
+and the Tec 6 desflurane vaporizer is dialed in 1% steps over most of its
+range. PL-040 fixed how the setting is *displayed* (0.01 percentage points,
+matching the modeled concentrations it produces); it did not touch what the
+control can be set to.
+**Why it matters.** The delivered concentration is the one number in this
+interface a user maps directly onto a physical action at a real machine, so a
+control that offers positions no vaporizer has teaches a dial that does not
+exist. Against that: the continuous control is a better instrument for
+exploring the model's response, which is the simulator's actual purpose, and
+quantizing it would make some of the model's behavior unreachable.
+**Where.** `app/simulation_view.py` (`_delivered_concentration_slider` and
+`_handle_delivered_concentration_change`), the agent data files if the
+increment becomes a cited per-agent parameter, `docs/MODEL.md` § "Runtime
+controls".
+**Decision needed.** Leave the control continuous and say so; quantize it to
+per-agent cited increments; or quantize with an explicit fine-adjust escape.
+An increment adopted per agent is a device-capability parameter and needs the
+same citation discipline as `max_delivered_concentration_percent`.
+**Done when.** The choice and its reasoning are recorded, and `docs/MODEL.md`
+§ "Runtime controls" states what the delivered-concentration control offers.
 
 ### PL-038 Verify what a mid-session `CLAUDE.md` edit actually invalidates
 `P2` · `S` · `session-cost` `docs` · ready · added 2026-08-24
@@ -693,6 +719,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-040 Stop displaying more decimals than the model can support — `PENDING`
 - PL-041 Put the item ID where the branch name cannot carry it — `fb01800`
 - PL-023 Gate the coupled dynamics on an independent solution, not just mass balance — `f5cd82b`
 - PL-034 Trim `CLAUDE.md`'s punch-list section of what the skill restates — `22e7876`
