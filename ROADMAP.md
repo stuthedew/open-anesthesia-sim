@@ -40,11 +40,16 @@ files rather than hardcoded. Full equations, units, assumptions, parameter
 provenance, numerical method, and known limitations are documented in
 `docs/MODEL.md`.
 
-The current model does not include a UI control for selecting which agent
-is running (all three are loadable at the core level; only sevoflurane is
-wired to the interface pending the anesthesia-machine milestone), other
-volatile agents beyond these three, metabolism, IV anesthetics, effect-site
-models, or clinical predictions or recommendations of any kind. See
+A basic agent-selection control was added to the interface after the v0.2.0
+milestone closed (commit `00791b1`, outside that milestone's scope — see its
+out-of-scope list below). It restarts the run at the selected agent's own
+1 MAC rather than switching agent mid-run: residual-agent washout across a
+switch, and the interlock behavior that governs it on a real machine, remain
+the anesthesia-machine milestone's work.
+
+The current model does not include mid-run agent switching, other volatile
+agents beyond these three, metabolism, IV anesthetics, effect-site models,
+or clinical predictions or recommendations of any kind. See
 `docs/MODEL.md`'s "Known limitations" for the complete list.
 
 ## Completed: v0.1.0 - first patient sevo model
@@ -180,7 +185,10 @@ v0.2.0 is complete only when:
   interlock behavior belong to the anesthesia-machine milestone (item 1 in
   "Planned milestones" below); this milestone only needs the model to be
   capable of running as isoflurane or desflurane, not to expose that choice
-  in the interface yet.
+  in the interface yet. (Recorded as this milestone's scope at tag time. A
+  basic picker was in fact added afterwards in commit `00791b1`; it restarts
+  the run rather than switching mid-run, so the interlock and
+  residual-washout work this excluded is still outstanding.)
 - Vaporizer-specific delivery-device physics (e.g. desflurane's heated,
   pressurized vaporizer requirement) — this milestone models uptake and
   distribution only, not the delivery device.
@@ -299,8 +307,8 @@ specified.
     hoc settings screen.
 
 Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
-milestone — see "Next milestone: v0.2.0" above — so it no longer appears
-here. Further volatile agents beyond isoflurane and desflurane (halothane,
+milestone, delivered as v0.2.0 — see "Completed: v0.2.0" above — so it no
+longer appears here. Further volatile agents beyond isoflurane and desflurane (halothane,
 enflurane, ether, xenon; not nitrous oxide, which is covered by items 6-7
 above) remain an unscoped later idea, to be added back here as its own item
 once someone is ready to scope it.

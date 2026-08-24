@@ -80,6 +80,39 @@ session makes on its own that will not be fixed in that session.
 6. Capturing is not doing. Unless the project owner asked for the fix,
    record it and continue the current task.
 
+## Mode: close out a completed item
+
+Triggered whenever work from an entry lands. Run this before reporting the
+item done, not after the project owner asks whether the docs were updated.
+
+1. Move the entry to "Recently completed" with its commit reference, and
+   delete any now-resolved `docs/WORKING_NOTES.md` thread for it. Leaving
+   the thread is what trips the checker's advisory.
+2. Sweep the docs for drift the change just caused, per `CLAUDE.md`'s
+   "Sweep the docs before calling an item done." Grep `README.md`,
+   `ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/MODEL.md`, and
+   `docs/WORKING_NOTES.md` for the identifiers, filenames, constants, and
+   behavior the change touched. The recurring failure modes in this
+   repository, all of which have actually happened:
+   - a shipped feature still described as deferred or out of scope;
+   - a new module missing from `docs/ARCHITECTURE.md`'s tree;
+   - a new agent/patient data-file field missing from `docs/MODEL.md`'s
+     provenance table — every clinically meaningful constant belongs there
+     even when no equation consumes it;
+   - a `docs/MODEL.md` `must`/`must not` the code no longer satisfies;
+   - a cross-reference to a heading or a `WORKING_NOTES.md` thread that has
+     since been renamed or deleted.
+3. Fix the drift in the same change as the code. A doc fix deferred to
+   "later" is drift that outlives the session that could still explain it.
+4. Distinguish history from current state. A completed milestone's
+   out-of-scope list is a record of what that milestone chose, and stays as
+   written; annotate it with what landed afterwards rather than rewriting
+   it. Statements of what the project *is* today must match today.
+5. Capture anything found but not fixed as its own entry, per the capture
+   rule, rather than leaving it in the reply only.
+6. Re-run `make check` and `make punch-list` after the doc edits, then say
+   in your reply which files you checked.
+
 ## Mode: hotfix a P0
 
 1. Branch rather than working on `main`. Existing conventions in this repo:

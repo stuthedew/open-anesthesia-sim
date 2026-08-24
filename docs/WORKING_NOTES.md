@@ -28,9 +28,13 @@ appropriate, and its entry here should be deleted rather than left stale.
 
 - `build/v0.1.0-sevo-patient` was fast-forward merged into `main` and the
   remote branch deleted; `main` is now the v0.2.0 baseline (isoflurane and
-  desflurane added as additional loadable agents, both loaded through
-  `load_agent_parameters(agent_id)` in `core/parameters.py`; only
-  sevoflurane is wired to the running app/UI, per v0.2.0's explicit scope).
+  desflurane added as additional loadable agents, all loaded through
+  `load_agent_parameters(agent_id)` in `core/parameters.py`). All three are
+  selectable in the running app: a basic picker was added in `00791b1`,
+  after v0.2.0 closed and outside its scope. It restarts the run at the new
+  agent's 1 MAC rather than switching mid-run — residual-agent washout
+  across a switch is still the anesthesia-machine milestone's work, and
+  `SimulationController.set_agent`'s docstring is the place that says so.
   Work happens directly on `main` unless a session has reason to branch.
 - `docs/MODEL.md` and `ROADMAP.md` are up to date with the v0.2.0
   implementation: the arterial-blood simplification is documented
