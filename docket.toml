@@ -1,0 +1,24 @@
+# docket settings for this repository. Every value here is also the package
+# default; they are written out so that the policy is visible at the project
+# root rather than only in the tool, and so that changing one is an edit to
+# this repository rather than to a subproject shared with others.
+[docket]
+items_dir = "docs/items"
+
+# Subject matter that may not sit in the lower bands however small the task
+# looks, per CLAUDE.md's safety-critical standard.
+safety_classes = ["safety", "science"]
+
+# Work on how the project is built rather than on the product it builds.
+process_classes = ["session-cost", "docs", "infra"]
+
+# Past this, the top band stops answering "what next?" at a glance.
+top_band_limit = 5
+
+# Past this, an untriaged capture has become a second queue nobody reads.
+untriaged_stale_days = 14
+
+# Classes that make a release a minor version bump rather than a patch.
+minor_classes = ["feature"]
+
+version_file = "pyproject.toml"

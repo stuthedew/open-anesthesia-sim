@@ -1,0 +1,173 @@
+---
+name: docket
+description: Read, add to, and work this repository's development queue in docs/items/. Use when the project owner asks what to work on next, what is left, what the priorities are, or whether to start the next milestone; when they have usage time available and no particular plan; when they flag a bug, cleanup, optimization, or idea to track for later; when a session's own work turns up a finding that will not be fixed in that session; when they name an item to start ("let's do PL-K7QX"); when they ask what can be worked on at the same time; and when asked to triage, reprioritize, groom, or ship a release.
+---
+
+# docket
+
+The queue lives in `docs/items/`, one file per item. `subprojects/docket/README.md`
+documents the format and the commands; this skill covers when to reach for
+which, and the few judgments the tool deliberately does not make.
+
+Run everything through `make docket` or `PYTHONPATH=subprojects/docket/src
+python3 -m docket <command>`.
+
+**Do not read the store to answer a question a command answers.** `next`,
+`list`, `check`, and `concurrent` exist so a session spends tokens on the
+work rather than on the queue. Read an item's file when implementing it.
+
+## The two modes this queue serves
+
+The project owner works in two distinct modes, and they have opposite cost
+profiles. Recognize which one is happening and behave accordingly.
+
+**Ideation.** Ideas, plans, direction, "what if we". This must stay cheap,
+because it often happens when usage is nearly exhausted, and because losing a
+thought to a rate limit is the worst outcome available. Capture with `docket
+new`, take no detours, read nothing you were not already reading. Several
+ideas arrive at once — `docket new` takes several titles in one call, so
+capture them in one command rather than one per turn.
+
+**Implementation.** Usage is available and the point is to burn it on work.
+Here `docket next` picks, and the session goes deep.
+
+Do not silently convert the first into the second. An idea raised mid-session
+gets captured and the session continues; it does not become an implementation
+detour unless the owner says so.
+
+## Mode: capture
+
+Triggered by the owner raising anything, or by a finding this session makes
+that it will not fix.
+
+```bash
+docket new "The induction curve looks wrong at low flows"
+```
+
+That is the whole procedure. No id to allocate, no band to choose, no file to
+edit, nothing to conflict with another branch. Write the brief into the item
+if the context is live and worth keeping — it is expensive to reconstruct
+later and cheap to write now — but never let a missing brief stop the
+capture.
+
+Never hold a finding in conversation until the current work lands. The
+container is ephemeral; an uncommitted thought is one interruption from gone.
+Commit the new item on its own so it survives an abandoned branch.
+
+## Mode: recommend what to work on
+
+Triggered by "what should we work on next", "I have some time", "what's left".
+
+```bash
+docket next            # or: docket next --effort S
+```
+
+It gives the ranking and the reason, already honoring `P0` first, then work
+that finishes a feature already underway, then priority — and it excludes
+what is in flight on a branch. Lead the reply with its answer. Add judgment
+the tool cannot have: whether the item is still real, and how it fits what
+the owner said they were trying to do.
+
+`docket next` states which model the work warrants. That is not a suggestion
+to weigh: safety- or science-classed work, and any item whose next step is an
+unresolved decision, wants the strongest available model at high effort, for
+both the change and the review of it. Say so before work starts — a model
+switch mid-session costs a cold cache.
+
+Recommend a **fresh session** when this one is long or was about something
+else. Give the exact line to paste, on its own:
+
+```text
+PL-K7QX Decide what the interface shows after a halted step
+```
+
+That message sets the next session's name and branch, so it must carry the id
+and title verbatim.
+
+## Mode: work several items at once
+
+Triggered by "can we do these together", or by planning a batch.
+
+```bash
+docket concurrent            # a batch that can run together
+docket concurrent PL-K7QX    # what can run alongside this one
+```
+
+**Report what it rules out, never what it certifies.** Declared overlap
+proves contention; absence of overlap proves only that nobody foresaw a
+collision. Say that plainly rather than presenting a clean result as a
+guarantee, and treat an item with no `touches` as unanalysed rather than
+safe — fill its `touches` in instead.
+
+## Mode: start an item
+
+Decide where the work happens and act on it — do not ask. Continue here when
+this session's context is an asset (short, already about this item, just
+diagnosed it). Start fresh when it is a liability (already completed
+something else, long, or the item wants a model this session is not running).
+
+Then name the work after the item, because a session list is unsearchable
+otherwise:
+
+- **Session name** — rename immediately to lead with the id. On a remote
+  session, `set_session_title` via the `claude-code-remote` MCP server.
+- **Commit subjects and PR title** — always carry the id. These outlive the
+  branch.
+- **Branch** — `claude/pl-k7qx-short-slug` where the session creates it. A
+  branch generated before the session started cannot be renamed; that is
+  expected, and the commits carry the id instead. Say so in the reply.
+
+Set the item's `status` and `feature` as work begins, and add `touches` if it
+is missing — that is what makes the next concurrency answer correct.
+
+## Mode: triage
+
+Triggered by the digest reporting untriaged items, or by a grooming pass.
+
+Read each untriaged item and fill in what capture deliberately skipped:
+`priority`, `effort`, `classes`, `touches`, and `feature` when it belongs
+with related work. Safety-critical work starts at `P0` or `P1`; the checker
+enforces that. Process work — work on how the project is built rather than on
+the product — does not enter the top band when it would outnumber the product
+work already there.
+
+An item that should not be done becomes `status: dropped` with a `reason`.
+Never delete the file: the reason is what stops the finding being re-raised.
+
+## Mode: group work into features and ship it
+
+The owner would rather finish one feature than advance fifteen. Assign
+related items a shared `feature`, and a `milestone` when they belong to a
+release.
+
+```bash
+docket feature              # progress per feature
+docket milestone v0.3.0     # what is in the release, and what is left
+docket release v0.3.0 --dry-run
+docket release v0.3.0       # bumps the version, writes the notes
+```
+
+`release` refuses an unfinished milestone. It stops before tagging, on
+purpose — review the bump and the generated notes, then commit and tag.
+
+## Mode: close out an item
+
+1. Set `status: done`, record the `commit`, and set `closed`.
+2. **Sweep the docs.** `make doc-check` decides the package-map,
+   provenance-table, and dangling-citation questions outright, and
+   `python3 tools/doc_check.py candidates --base <ref>` prints the
+   documentation lines mentioning anything the diff touched.
+
+   Spend the judgment on what neither can decide: whether each statement is
+   still *true*. Stale documentation is a safety issue here — a reader who
+   trusts a wrong statement about which agent is running or what a value
+   means can reach a wrong clinical conclusion from a correct number. Say in
+   the reply which files were checked.
+3. Capture anything found but not fixed as its own item.
+4. Re-run `make check`.
+
+## Always
+
+`make docket` after editing the store — it gates `make check` and CI, and its
+errors mean an item is about to be silently wrong. Commit item changes with
+the work they describe. An uncommitted queue is a lost queue.
