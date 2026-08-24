@@ -125,10 +125,20 @@ holds tasks, `docs/WORKING_NOTES.md` holds the narrative behind them.
   known queue rather than a single suggestion. Then read
   `docs/PUNCH_LIST.md` and recommend from it, matching effort to the
   session time available rather than re-deriving the options from the
-  codebase. `P0` items come first and are handled as hotfixes: their own
-  branch and a patch version bump. When nothing is pressing, the
-  alternative is milestone work, which means scoping the next milestone in
-  `ROADMAP.md` — not starting unscoped feature work.
+  codebase. State which model the recommended item warrants
+  (`tools/punch_list.py`'s `Entry.model_guidance` names the same rule),
+  independent of whatever model this session happens to be running: a
+  `safety`- or `science`-tagged item, or one still at `needs-decision`, is
+  reasoning-heavy per the model-matching rule above and warrants the
+  strongest available model at high effort; say so before work starts, not
+  after, since a mid-session switch costs a cold cache. Recommending an
+  item and starting it in the current session are different acts: when
+  this session is already long or was about something else, hand the item
+  to a fresh one with the entry and the notes it cites, per the
+  session-efficiency rules above. `P0` items come first and are handled as
+  hotfixes: their own branch and a patch version bump. When nothing is
+  pressing, the alternative is milestone work, which means scoping the next
+  milestone in `ROADMAP.md` — not starting unscoped feature work.
 - **Do not start an `L` item from a punch-list entry.** Promote it into a
   scoped `ROADMAP.md` milestone first, per the development rules there.
 - **Let the checker do the mechanical half.** `tools/punch_list.py`
