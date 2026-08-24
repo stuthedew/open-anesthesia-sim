@@ -278,6 +278,36 @@ open question, and it can be answered after.
 effect on the first minute, and any interface cue is a deliberate decision
 rather than an omission.
 
+### PL-032 Mechanize the decidable half of the close-out doc sweep
+`P2` · `M` · `infra` `docs` · ready · added 2026-08-24
+
+**Problem.** `CLAUDE.md`'s "Sweep the docs before calling an item done" has
+a session grep five documents (~113 KB) and judge every hit, at the end of a
+session where each extra turn resends the largest context of the run. Three
+of the failure modes it names need no judgment: a `src/` module missing from
+`docs/ARCHITECTURE.md`'s package map or listed there after deletion, a
+constant missing from `docs/MODEL.md`'s provenance table or carrying a value
+the JSON no longer holds, and a cited path or heading that does not exist.
+**Why it matters.** The manual sweep leaks — `weight_kg` (PL-033) has no
+provenance row today. Stale docs are a safety issue here per `CLAUDE.md`,
+and a mechanical check gates every change for zero session tokens, whether
+or not anyone remembers to sweep.
+**Where.** New `tools/doc_check.py` beside `tools/punch_list.py` (stdlib
+only, same error/advisory split), `Makefile`, `.github/workflows/quality.yml`,
+`docs/PUNCH_LIST.md` ("What is checked automatically"),
+`.claude/skills/punch-list/SKILL.md` (close-out mode).
+**First step.** Implement the package-map ↔ `src/` tree check in both
+directions; it is self-contained and needs no format change. Naming each
+provenance row's JSON key path in its source cell would make the table
+check exact rather than value-matching, so decide that next.
+**Done when.** `make check` fails on package-map, provenance-table, or
+dangling-path drift; a diff-scoped mode prints the candidate list close-out
+now greps for by hand; and the skill delegates the mechanical half while
+keeping the judgment half.
+**Context.** Two cheaper complements to weigh when this lands: an optional
+`**Docs.**` entry field naming affected docs at capture time, and trimming
+`CLAUDE.md`'s punch-list section of what the skill already states verbatim.
+
 ### PL-027 Confirm the per-frame slider write-back on a live Flet client
 `P2` · `S` · `ux` · ready · added 2026-08-24
 
