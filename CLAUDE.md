@@ -30,15 +30,19 @@ to skipping a check before a commit or before finishing a task.
   session over compacting an existing one: compaction costs a summarization
   pass and drops detail that this repository's provenance and safety
   requirements depend on. `docs/PUNCH_LIST.md` and `docs/WORKING_NOTES.md`
-  exist so that a new session can pick up cold — read them and `CLAUDE.md`
-  at the start of a task instead of relying on a long prior conversation,
-  and update them before ending a session with a thread still open.
+  exist so that a new session can pick up cold, but picking up cold does not
+  mean reading them whole: rely on the session-start digest for the state of
+  the queue, `python3 tools/punch_list.py list` to see the items, and read
+  the specific entry you are working on plus any `docs/WORKING_NOTES.md`
+  thread it cites. Read `docs/PUNCH_LIST.md` in full only when grooming or
+  reprioritizing, where the briefs are the subject. Update both before
+  ending a session with a thread still open.
 - Batch related questions, and related edits, into one turn rather than
   spreading them across several. Each turn resends the entire context.
 - Prefer targeted reads (an offset/limit range) over whole-file reads for
-  large docs (`docs/MODEL.md`, `docs/WORKING_NOTES.md`) once you know
-  roughly where the relevant section is. Read the whole file when editing
-  it or when its overall structure matters.
+  large docs (`docs/MODEL.md`, `docs/WORKING_NOTES.md`, `docs/PUNCH_LIST.md`)
+  once you know roughly where the relevant section is. Read the whole file
+  when editing it or when its overall structure matters.
 - Delegate broad codebase search and file lookup to exploration subagents,
   whose transcripts stay out of the main context; a small, fast model is
   appropriate for them (`CLAUDE_CODE_SUBAGENT_MODEL` in Claude Code). Treat
@@ -73,11 +77,15 @@ to skipping a check before a commit or before finishing a task.
 
 ## Punch list and work selection
 
-`docs/PUNCH_LIST.md` is the prioritized queue of discrete development
-tasks. It carries the format spec, the priority/effort/status definitions,
-and the current items; read it rather than relying on a restatement here.
-The division of labor is: `ROADMAP.md` holds releases, `docs/PUNCH_LIST.md`
-holds tasks, `docs/WORKING_NOTES.md` holds the narrative behind them.
+`docs/PUNCH_LIST.md` is the prioritized queue of discrete development tasks.
+`ROADMAP.md` holds releases; `docs/WORKING_NOTES.md` holds the narrative
+behind open threads. The `punch-list` skill carries the workflows —
+recommending, capturing, closing out, hotfixing, grooming — and the punch
+list's own header carries the entry format. Invoke the skill rather than
+reconstructing either from here.
+
+These rules stay here because a session acts on them before it would have
+any reason to load the skill:
 
 - **Capture, always.** Any defect, risk, cleanup, optimization,
   inconsistency, or feature idea identified in a session and not fixed in
@@ -87,78 +95,33 @@ holds tasks, `docs/WORKING_NOTES.md` holds the narrative behind them.
   Do not ask whether to record it — recording is cheap and losing it is
   not. Prefer capturing at `P3` over dropping it, and say in your reply
   that you did.
-- **Reprioritize, don't just append.** A new entry can demote what was
-  previously next, and resolving a blocker promotes what it blocked. Place
-  a new item at its correct priority rather than at the end of the file.
-- **Close the loop.** When work lands, move its entry to "Recently
-  completed" with the commit reference in the same change, and delete any
-  now-stale `docs/WORKING_NOTES.md` thread for it.
-- **Sweep the docs before calling an item done.** Landing a change is not
-  finishing it. Before you report an item complete, check every file that
-  could now describe the code wrongly, and fix what drifted in the same
-  change as the code. Start with `tools/doc_check.py`, not with a grep: its
-  `check` mode (run by `make check` and CI) decides the package-map,
-  provenance-table, and dangling-citation questions outright, and
-  `python3 tools/doc_check.py candidates --base <ref>` prints the
-  documentation lines mentioning anything the diff touched — the grep of
-  `README.md`, `ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/MODEL.md`, and
-  `docs/WORKING_NOTES.md`, already run. Spend the judgment on what it cannot
-  decide, which is whether each statement is still true. Ask specifically:
-  - Does any file still describe the old behavior as current, or a shipped
-    feature as deferred?
-  - Did it invalidate a cross-reference — a `WORKING_NOTES.md` thread now
-    deleted, a milestone heading now renamed, a "see X above" now pointing
-    nowhere?
-  - Does a `must`/`must not` statement in `docs/MODEL.md` still match what
-    the code does? A spec requiring something the app does not do is a
-    defect in one of the two; decide which, and say so rather than quietly
-    rewriting the spec to match the code.
-
-  Stale documentation is a safety issue in this repository, not tidiness: a
-  reader who trusts a wrong statement about which agent is running, what a
-  value means, or what the interface displays can reach a wrong clinical
-  conclusion from a correct number. Anything found but deliberately not
-  fixed becomes a punch-list entry under the capture rule. Say in your reply
-  which files you checked, not merely that you updated the docs.
-- **Answer "what should we work on next?" from the file.** Lead with the
-  state of the queue — how many items are open, by priority, and whether
-  grooming is due — before naming any task, so the choice is made against a
-  known queue rather than a single suggestion. Then read
-  `docs/PUNCH_LIST.md` and recommend from it, matching effort to the
-  session time available rather than re-deriving the options from the
-  codebase. State which model the recommended item warrants
-  (`tools/punch_list.py`'s `Entry.model_guidance` names the same rule),
-  independent of whatever model this session happens to be running: a
-  `safety`- or `science`-tagged item, or one still at `needs-decision`, is
-  reasoning-heavy per the model-matching rule above and warrants the
-  strongest available model at high effort; say so before work starts, not
-  after, since a mid-session switch costs a cold cache. Recommending an
-  item and starting it in the current session are different acts: when
-  this session is already long or was about something else, hand the item
-  to a fresh one with the entry and the notes it cites, per the
-  session-efficiency rules above. `P0` items come first and are handled as
-  hotfixes: their own branch and a patch version bump. When nothing is
-  pressing, the alternative is milestone work, which means scoping the next
-  milestone in `ROADMAP.md` — not starting unscoped feature work.
 - **Name the session and its branch after the item.** As soon as a session
-  starts work on a punch-list item, rename that session to lead with the
-  item's ID (for example, "PL-013 Triage the review harness's remaining
-  findings"), and give the branch the same lead (for example,
-  `claude/pl-013-triage-review-harness-findings`), so the work can be found
-  later from the entry alone — in the session list and in the branch and
-  pull-request history alike. When the branch was named before the item was
-  chosen and the session is not free to rename it, put the item's ID at the
-  front of the first commit message on that branch instead, and say in the
-  reply that the branch name does not carry it.
+  starts work on a punch-list item, rename that session and name its branch
+  to lead with the item's ID ("PL-013 Triage the review harness's remaining
+  findings", `claude/pl-013-triage-review-harness-findings`), so the work
+  can be found later from the entry alone. When the branch was named before
+  the item was chosen and the session cannot rename it, put the ID at the
+  front of the first commit message instead, and say so in your reply.
+- **`P0` items are hotfixes.** They come before feature work, on their own
+  branch, with a patch version bump and a regression test.
 - **Do not start an `L` item from a punch-list entry.** Promote it into a
   scoped `ROADMAP.md` milestone first, per the development rules there.
-- **Let the checker do the mechanical half.** `tools/punch_list.py`
-  (`make punch-list`, also run by `make check` and CI) validates entry
-  format and cross-references, and reports grooming advisories. Run it
-  after editing the punch list. Its errors mean an item is about to be
-  silently lost; its advisories mean a grooming pass is due, which is a
-  judgment call to raise with the project owner rather than to act on
-  unilaterally.
+- **Answer "what should we work on next?" from the queue, not the
+  codebase.** `make punch-list` gives its state and any grooming
+  advisories, `python3 tools/punch_list.py list` gives the items. Lead with
+  that state before naming a task; the skill's recommend mode covers the
+  rest.
+
+**Sweep the docs before calling an item done.** Landing a change is not
+finishing it. `make check` runs `tools/doc_check.py`, which decides the
+package-map, provenance-table, and dangling-citation questions outright, and
+`python3 tools/doc_check.py candidates --base <ref>` prints the documentation
+lines mentioning anything the diff touched. Spend the judgment on what neither
+can decide: whether each statement is still *true*. Stale documentation is a
+safety issue here, not tidiness — a reader who trusts a wrong statement about
+which agent is running, what a value means, or what the interface displays can
+reach a wrong clinical conclusion from a correct number. Say in your reply
+which files you checked, not merely that you updated the docs.
 
 ## Safety-critical clinical-output standard
 

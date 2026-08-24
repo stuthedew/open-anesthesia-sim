@@ -140,148 +140,49 @@ later session.
 
 ### What is checked automatically
 
-`tools/punch_list.py` handles the mechanical half. Run it with `make
-punch-list`; `make check` and CI run it too, and a `SessionStart` hook emits
-a short digest of the queue at the start of every session. The digest also
-names which model an item warrants (`Entry.model_guidance`), deriving it
-from the entry's own class tags and status rather than leaving a session to
-recall the rule in `CLAUDE.md`. It reports two kinds of finding, and the
-split is the point:
+`tools/punch_list.py` handles the mechanical half of grooming. Run it with
+`make punch-list`; `make check` and CI run it too, and a `SessionStart` hook
+emits a short digest of the queue at the start of every session.
+`python3 tools/punch_list.py list` prints one line per open item, which is
+the cheap way to see the queue without reading these briefs.
 
-- **Errors** mean this file is wrong: a reused id, an entry filed under a
-  band its metadata contradicts, a missing brief field, an item marked
-  `blocked` that names no blocker, a `safety` or `science` item parked below
-  `P1`, a `PL-` reference pointing at nothing, an id recorded as resolved in
-  two places at once. These fail the build, because each one silently loses
-  information. References resolve against the archive as well as the queue,
-  so archiving an item never breaks a pointer to it.
-- **Advisories** mean a judgment is due: a brief that has grown into
-  narrative, an item still blocked by something that has landed, an item
-  that has sat at `P1` for months, a queue with nothing short and ready in
-  it for a session with time to spare. These never fail a build. They are
-  the reminder that a grooming pass is worth doing.
+What matters here is the split between the two things it reports, because
+they are addressed to different readers:
 
-What the tool deliberately does not do is decide anything. Whether the top
-`P1` is still the right next thing, whether an entry should be split, and
-whether a priority still reflects reality are judgment calls about this
-project; automating them would produce confident nonsense. The tool detects
-the conditions, and a session makes the call.
+- **Errors** mean this file is wrong — a reused id, a missing brief field, a
+  `safety` or `science` item parked below `P1`, a `PL-` reference pointing
+  at nothing. Each one silently loses information, so they fail the build.
+  References resolve against the archive as well as the queue, so archiving
+  an item never breaks a pointer to it.
+- **Advisories** mean a judgment is due, usually about the shape of the top
+  band rather than the length of the file. They never fail a build, and they
+  are a call to put a grooming pass to the project owner, not licence to
+  start one.
 
-`tools/doc_check.py` does the same job for the documentation itself, and runs
-beside it in `make check`, `make doc-check`, and CI. Its errors are the three
-close-out failure modes that need no judgment:
+`tools/doc_check.py` does the same job for the documentation itself and runs
+beside it in `make check`, `make doc-check`, and CI: it decides the
+package-map, provenance-table, and citation questions, and its `candidates`
+mode prints the documentation lines a diff puts in question.
 
-- **Package map.** A module under `src/anesthesia_sim/` (or `tools/`) with no
-  line in the matching tree in `docs/ARCHITECTURE.md`, or a line left in a
-  tree after the file was deleted. `__init__.py` is excluded, and a directory
-  drawn without children stands for its whole subtree.
-- **Provenance table.** A numeric parameter in a `data/**/*.json` file with no
-  row in `docs/MODEL.md`'s provenance table, a row naming a key its file does
-  not hold, a row whose stated value the file no longer holds, or a constant
-  documented twice. Each row names its exact JSON key path, which is what
-  makes the check exact rather than a search for a matching number.
-- **Citations.** A code-span path, a relative link, or a quoted section
-  heading that resolves to nothing. Paths resolve against the repository root
-  and against `src/anesthesia_sim/`, since the documentation writes both. A
-  quoted phrase is read as a section citation only after `see`/`under` or
-  immediately before `above`/`below`; with a directional cue it must name a
-  heading in the citing file, otherwise a heading in any documentation file.
-
-`python3 tools/doc_check.py candidates --base <ref>` is the other half: it
-prints the documentation lines that mention anything a diff changed, which is
-the list a close-out otherwise builds by grepping five files by hand. It
-decides nothing — each line still has to be read.
-
-What neither tool can check is whether a statement is *true*: whether a
-`must` in `docs/MODEL.md` still matches the code, whether a milestone's
-out-of-scope list has quietly become a lie, whether a paragraph describes a
-shipped feature as deferred. That is what a close-out sweep is still for.
+Neither tool decides anything that needs judgment — whether the top `P1` is
+still the right next thing, whether a priority reflects reality, whether a
+statement in another document is still *true*. They detect the conditions;
+a session makes the call. For the exact checks and their thresholds, read
+the tools; for the workflows that act on them, use the `punch-list` skill.
 
 ---
 
 ## P1 — Next
 
-**Running order, updated 2026-08-24.** `session-cost` work leads this band,
-because it is the multiplier on everything after it: a session that spends
-fewer tokens on process works more of the queue, and that compounds over
-every session that follows. Cheap and certain first, speculative last —
-PL-034 removes duplication from the file resent on every request, PL-035 is
-a short decision. PL-023 then comes ahead of PL-036 because a science-tagged
-correctness gate outranks a tooling item whose payoff is still uncertain.
-PL-026 needs a conversation rather than a session and can be answered at any
-point without waiting its turn. PL-003 is milestone scoping and follows the
-band.
-
-Order: PL-037, PL-034, PL-035, PL-023, PL-036, PL-026, PL-003.
-
-### PL-037 Check the branch is current against `main` before starting an item
-`P1` · `S` · `session-cost` `infra` · ready · added 2026-08-24
-
-**Problem.** Nothing in `CLAUDE.md` or the punch-list skill tells a session
-to verify its branch against `main` before it starts work. A session that
-picks up a branch whose pull request has already been merged stacks new
-commits on merged history; one that starts from a stale base does the work
-against code that has since moved.
-**Why it matters.** Both cost a full rework cycle — the most expensive kind
-of waste, since it is paid at the end of a session in merge conflicts rather
-than at the start in one command. This actually happened: the session that
-landed PL-032 was asked to check, found its own branch had been merged as
-PR 19, and had to restart the branch from `main` before continuing.
-**Where.** `.claude/skills/punch-list/SKILL.md` (a step before "Mode:
-recommend what to work on" hands off, and in "Mode: hotfix"), possibly
-`CLAUDE.md`'s "Punch list and work selection".
-**First step.** Write the check as the three commands it actually takes:
-`git fetch origin main`, `git rev-list --left-right --count origin/main...HEAD`,
-and — when the branch is behind with nothing ahead — restart it from `main`
-rather than merging into it.
-**Done when.** The handoff a recommendation produces names the check, so a
-fresh session runs it before its first edit rather than discovering the
-problem at push time.
-
-### PL-034 Trim `CLAUDE.md`'s punch-list section of what the skill restates
-`P1` · `S` · `docs` `session-cost` · ready · added 2026-08-24
-
-**Problem.** `CLAUDE.md`'s "Punch list and work selection" and
-`.claude/skills/punch-list/SKILL.md` state several of the same rules, in
-places verbatim — the capture rule, the model-matching rule, the close-out
-sweep. `CLAUDE.md` sits in the cached prefix of every request in every
-session; the skill loads only when the punch list is the subject.
-**Why it matters.** Duplication in the always-resident file costs tokens on
-every turn of every session, and gives two places for the same rule to drift
-apart. PL-032 already moved the sweep's mechanics into the skill and the
-tool, so `CLAUDE.md`'s copy is now the stale-prone one.
-**Where.** `CLAUDE.md` ("Punch list and work selection"),
-`.claude/skills/punch-list/SKILL.md`.
-**First step.** Diff the two section by section and mark each rule as
-belonging to one file or the other. `CLAUDE.md` should keep what a session
-must know without loading the skill — that the file exists, that capture is
-mandatory, that the skill handles the rest.
-**Done when.** No rule is stated in full in both files, and `CLAUDE.md`'s
-punch-list section is shorter than it is now without losing a rule.
-**Context.** Raised as a complement in PL-032's brief; deferred because
-`CLAUDE.md` edits invalidate the prefix cache and are best done in their own
-session.
-
-### PL-035 Consider a `**Docs.**` entry field naming the docs a task will touch
-`P1` · `S` · `docs` `infra` `session-cost` · needs-decision · added 2026-08-24
-
-**Problem.** Close-out has to work out which documents a change could have
-invalidated after the change is written. The session that captured the item
-often already knew — it just had nowhere in the entry format to say so.
-**Why it matters.** `tools/doc_check.py candidates` narrows the sweep from a
-diff, but it only finds documents that already name something the diff
-touched. A document that *should* mention a new feature and does not is
-exactly what it cannot see, and is a failure mode that has happened here.
-**Where.** `docs/PUNCH_LIST.md` (entry format), `tools/punch_list.py`
-(`_check_entry`), `.claude/skills/punch-list/SKILL.md` (capture mode).
-**Decision needed.** Whether an optional field earns its cost. Against: an
-optional field that is usually omitted is noise, and a wrong guess at
-capture time may be worse than no guess. For: it is free to write when the
-capturing session already knows, and close-out reads it for nothing. Decide
-also whether the checker should validate that the named paths exist, which
-`doc_check.py`'s resolver already does for prose.
-**Done when.** The field is either in the format spec and validated, or the
-decision not to add it is recorded in "Archive" with its reason.
+**Running order, updated 2026-08-24.** The simulator's own correctness leads
+this band. `session-cost` work is a multiplier on every session after it and
+is worth promoting, but the promotion has no natural ceiling and it had taken
+four of seven P1 slots ahead of the science and safety items; PL-035 and
+PL-036 went to `P2` in that pass, and PL-034 landed. PL-037 stays because it
+is `S`, certain, and prevents a whole wasted session. So: PL-023 first, a
+science-tagged correctness gate; then PL-026, safety-tagged and answerable in
+a conversation rather than a session, so it can be taken out of turn; then
+PL-037; then PL-003, which is milestone scoping and follows the band.
 
 ### PL-023 Gate the coupled dynamics on an independent solution, not just mass balance
 `P1` · `M` · `science` `infra` · ready · added 2026-08-24
@@ -306,27 +207,6 @@ independent integration, and the tolerance is justified against the measured
 first-order splitting error rather than fitted to today's numbers.
 **Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
 harness".
-
-### PL-036 Extend `doc_check.py` to the statements it currently cannot decide
-`P1` · `M` · `docs` `infra` `session-cost` · needs-decision · added 2026-08-24
-
-**Problem.** `tools/doc_check.py` checks that cited things *exist*. It
-cannot check that a sentence about them is *true*: a `must` in
-`docs/MODEL.md` the code no longer satisfies, a shipped feature still
-described as deferred, a displayed value whose units the interface changed.
-**Why it matters.** Those are the remaining close-out failure modes, and
-they are the ones with clinical consequence — `CLAUDE.md` calls a stale
-statement about what a value means a safety issue, not tidiness.
-**Where.** `tools/doc_check.py`, `docs/MODEL.md` ("Required invariants",
-"Minimum displayed outputs").
-**Decision needed.** Whether any of it is mechanizable without producing
-confident nonsense. One candidate is concrete: `docs/MODEL.md`'s "Minimum
-displayed outputs" could name the `SimulationSnapshot` field behind each
-displayed value, making the list checkable against the dataclass the way the
-provenance table is now checkable against the JSON. Whether the `must`
-statements can be tied to named tests is the harder half.
-**Done when.** Either a further check is implemented, or the decision that
-this half stays human is recorded with its reasoning.
 
 ### PL-026 Decide what the interface shows after a halted step
 `P1` · `S` · `safety` `ux` · needs-decision · added 2026-08-24
@@ -356,6 +236,30 @@ the accounting validator on every step.
 **Done when.** What a halted run displays is a recorded decision with its
 reasoning, and `docs/MODEL.md`'s interface rules state it.
 
+### PL-037 Check the branch is current against `main` before starting an item
+`P1` · `S` · `session-cost` `infra` · ready · added 2026-08-24
+
+**Problem.** Nothing in `CLAUDE.md` or the punch-list skill tells a session
+to verify its branch against `main` before it starts work. A session that
+picks up a branch whose pull request has already been merged stacks new
+commits on merged history; one that starts from a stale base does the work
+against code that has since moved.
+**Why it matters.** Both cost a full rework cycle — the most expensive kind
+of waste, since it is paid at the end of a session in merge conflicts rather
+than at the start in one command. This actually happened: the session that
+landed PL-032 was asked to check, found its own branch had been merged as
+PR 19, and had to restart the branch from `main` before continuing.
+**Where.** `.claude/skills/punch-list/SKILL.md` (a step before "Mode:
+recommend what to work on" hands off, and in "Mode: hotfix"), possibly
+`CLAUDE.md`'s "Punch list and work selection".
+**First step.** Write the check as the three commands it actually takes:
+`git fetch origin main`, `git rev-list --left-right --count origin/main...HEAD`,
+and — when the branch is behind with nothing ahead — restart it from `main`
+rather than merging into it.
+**Done when.** The handoff a recommendation produces names the check, so a
+fresh session runs it before its first edit rather than discovering the
+problem at push time.
+
 ### PL-003 Scope the next milestone in ROADMAP.md
 `P1` · `M` · `planning` · ready · added 2026-08-23
 
@@ -377,6 +281,102 @@ out-of-scope list is what keeps the milestone narrow.
 version number assigned, matching the structure of the completed v0.1.0 and
 v0.2.0 sections.
 ## P2 — Queued
+
+### PL-038 Verify what a mid-session `CLAUDE.md` edit actually invalidates
+`P2` · `S` · `session-cost` `docs` · ready · added 2026-08-24
+
+**Problem.** `CLAUDE.md`'s "Session and tool-use efficiency" section says to
+edit `CLAUDE.md` and the core docs in their own session, because "they sit in
+the cached prefix of every request, so editing one partway through a session
+invalidates that cache for the rest of it." Anthropic's documentation
+describes a different mechanism: `CLAUDE.md` is read at session start and
+delivered as a user message, and is re-injected from disk only after
+compaction. On that description an edit to the file on disk does not alter
+the copy already in the message history, and so does not invalidate the
+prefix mid-session.
+**Why it matters.** If the claim is wrong it is costing sessions directly, in
+the least visible way: it pushes work onto a second session — a cold cache
+and a re-read of the same files — to avoid a penalty that may not exist. The
+advice is also load-bearing for how this repository schedules its own
+process work.
+**Where.** `CLAUDE.md`, "Session and tool-use efficiency", the bullet
+beginning "Edit `CLAUDE.md` and the core docs in their own session".
+**First step.** Check the current Claude Code documentation on how memory
+files are loaded and what survives compaction, then edit a `CLAUDE.md`
+mid-session and compare reported cache-read and cache-write token counts on
+the turns either side of the edit.
+**Done when.** The bullet states what actually happens, and either keeps the
+same-session recommendation with a correct reason or drops it.
+**Context.** Raised by the punch-list workflow review of 2026-08-24, which
+relied on the same documentation while assessing what is resident in context.
+
+### PL-039 Stop attributing band-level prose to the entry above it
+`P2` · `S` · `defect` `infra` · ready · added 2026-08-24
+
+**Problem.** `tools/punch_list.py` ends an entry's body at the next `###` or
+`##` heading, so any prose written between entries — a band-level note, a
+running-order paragraph — is parsed as part of the preceding entry. This is
+not theoretical: the P1 band's running-order note was silently counted into
+PL-037's body, pushing it to 35 lines and firing a spurious
+`MAX_ENTRY_LINES` advisory against an entry that was within its brief.
+**Why it matters.** The line count is the visible symptom; `Entry.blockers`
+is the real one. It reads `PL-` references out of the same body, so a band
+note that mentions an item would be read as a dependency of whichever entry
+happens to sit above it, and a `blocked` item could be promoted or held on a
+reference nobody wrote about it.
+**Where.** `tools/punch_list.py`, `parse()` and `Entry.blockers`;
+`tests/unit/test_punch_list_tool.py`.
+**First step.** Decide whether band notes are legal in the format at all. If
+they are, end an entry's body at the first blank-line-separated block that
+is not part of its brief, and give the file's "Entry format" section a line
+saying where a band note may go. If they are not, make one an error.
+**Done when.** A band-level note between two entries changes neither the
+preceding entry's line count nor its blockers, with a test that fails on
+today's parser.
+**Context.** Found while grooming the P1 band on 2026-08-24; the stale note
+that triggered it was rewritten in the same pass.
+
+### PL-036 Extend `doc_check.py` to the statements it currently cannot decide
+`P2` · `M` · `docs` `infra` `session-cost` · needs-decision · added 2026-08-24
+
+**Problem.** `tools/doc_check.py` checks that cited things *exist*. It
+cannot check that a sentence about them is *true*: a `must` in
+`docs/MODEL.md` the code no longer satisfies, a shipped feature still
+described as deferred, a displayed value whose units the interface changed.
+**Why it matters.** Those are the remaining close-out failure modes, and
+they are the ones with clinical consequence — `CLAUDE.md` calls a stale
+statement about what a value means a safety issue, not tidiness.
+**Where.** `tools/doc_check.py`, `docs/MODEL.md` ("Required invariants",
+"Minimum displayed outputs").
+**Decision needed.** Whether any of it is mechanizable without producing
+confident nonsense. One candidate is concrete: `docs/MODEL.md`'s "Minimum
+displayed outputs" could name the `SimulationSnapshot` field behind each
+displayed value, making the list checkable against the dataclass the way the
+provenance table is now checkable against the JSON. Whether the `must`
+statements can be tied to named tests is the harder half.
+**Done when.** Either a further check is implemented, or the decision that
+this half stays human is recorded with its reasoning.
+
+### PL-035 Consider a `**Docs.**` entry field naming the docs a task will touch
+`P2` · `S` · `docs` `infra` `session-cost` · needs-decision · added 2026-08-24
+
+**Problem.** Close-out has to work out which documents a change could have
+invalidated after the change is written. The session that captured the item
+often already knew — it just had nowhere in the entry format to say so.
+**Why it matters.** `tools/doc_check.py candidates` narrows the sweep from a
+diff, but it only finds documents that already name something the diff
+touched. A document that *should* mention a new feature and does not is
+exactly what it cannot see, and is a failure mode that has happened here.
+**Where.** `docs/PUNCH_LIST.md` (entry format), `tools/punch_list.py`
+(`_check_entry`), `.claude/skills/punch-list/SKILL.md` (capture mode).
+**Decision needed.** Whether an optional field earns its cost. Against: an
+optional field that is usually omitted is noise, and a wrong guess at
+capture time may be worse than no guess. For: it is free to write when the
+capturing session already knows, and close-out reads it for nothing. Decide
+also whether the checker should validate that the named paths exist, which
+`doc_check.py`'s resolver already does for prose.
+**Done when.** The field is either in the format spec and validated, or the
+decision not to add it is recorded in "Archive" with its reason.
 
 ### PL-024 Document what the venous pool does to early mixed-venous readings
 `P2` · `S` · `docs` `ux` · ready · added 2026-08-24
@@ -686,6 +686,7 @@ rather than being deleted. One line each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-034 Trim `CLAUDE.md`'s punch-list section of what the skill restates — `22e7876`
 - PL-032 Mechanize the decidable half of the close-out doc sweep — `3f786b5`
 - PL-033 Record the reference patient's weight in the provenance table — `ebcf990`
 - PL-025 Assign a release number to the post-v0.2.1 work — `3099980`

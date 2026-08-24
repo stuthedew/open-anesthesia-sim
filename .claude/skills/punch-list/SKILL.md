@@ -22,7 +22,9 @@ left", "are we in a good spot to move on".
 
 1. Run `make punch-list` before anything else. It is instant, and it gives
    exact counts and any pending advisories — more current than the
-   session-start digest, which does not know about items added since.
+   session-start digest, which does not know about items added since. Its
+   advisories are a judgment call to put to the project owner, not one to
+   act on unilaterally.
 2. **Open the reply with the state of the queue, before naming any task.**
    Two lines at most:
    - How many items are open, broken down by priority.
@@ -35,8 +37,18 @@ left", "are we in a good spot to move on".
    If the owner would rather get on with the work, that is their call: note
    it and continue to the recommendation. The obligation is to surface the
    state, not to insist on acting on it.
-3. Then read `docs/PUNCH_LIST.md` itself. Do not survey the codebase first —
-   the file exists so that step is unnecessary.
+3. Then run `python3 tools/punch_list.py list` for the queue itself: one
+   line per item, carrying band, effort, status, and model guidance — every
+   field the choice below actually turns on. Read the full briefs only for
+   the two or three items you are going to name, and the whole file only
+   when this is a grooming pass. The listing costs a fortieth of the file
+   and the file is mostly brief prose that matters once an item is chosen,
+   not while choosing between them.
+
+   Do not survey the codebase first — the queue exists so that step is
+   unnecessary. Equally, do not recommend from the listing alone: a
+   one-line title is exactly the kind of thing that looks actionable and is
+   not, and the brief is what says whether the item is still real.
 4. Ask how much time or usage is available if it is not obvious, since it
    changes the answer between an `S` and an `M`. Ask once, briefly, and
    only if it is genuinely ambiguous.
@@ -111,11 +123,18 @@ session makes on its own that will not be fixed in that session.
    anywhere in the file, including "Recently completed" and "Archive".
 3. Place it at its correct priority, which may demote something else.
    Anything on a safety-critical path per `CLAUDE.md` starts at `P0` or
-   `P1`, regardless of how small it is. So does anything classed
-   `session-cost` — work that reduces what a session spends on process
-   rather than on the product — because its payoff compounds across every
-   session after it. Tag it `session-cost`, not `perf`: `perf` is the
-   running application, `session-cost` is the cost of developing it.
+   `P1`, regardless of how small it is.
+
+   Work classed `session-cost` — work that reduces what a session spends on
+   process rather than on the product — is also worth promoting, because its
+   payoff compounds across every session after it. Tag it `session-cost`,
+   not `perf`: `perf` is the running application, `session-cost` is the cost
+   of developing it. But that promotion has a ceiling, and it is the one
+   rule here that has actually misfired: process work accumulated until it
+   held four of the seven items in `P1`, ahead of the simulator's own
+   science and safety items. **Process work does not enter `P1` when doing
+   so would leave it outnumbering the product work already there.** Put it
+   at `P2` instead and say why. `make punch-list` checks this.
 4. If the reasoning is longer than the brief holds, put the long form in
    `docs/WORKING_NOTES.md` and cite the `PL-` id in that thread's heading.
 5. Do not ask permission to record something. Capture at `P3` rather than
@@ -197,6 +216,17 @@ punch-list` output, or by a direct request.
    the agenda for this pass.
 2. Re-read the priorities as a set, not one at a time. Ask whether the top
    `P1` is still the thing that should happen next.
+
+   Most of a grooming pass is the shape of the top band, not the length of
+   the file — a session reads the band it would pick from, not the whole
+   queue. Three things make that band unreadable, and `make punch-list`
+   reports each of them directly: it holds more than about five items, most
+   of what is in it is `needs-decision` rather than `ready`, or process work
+   (`session-cost`, `docs`, `infra`) outnumbers the product work beside it.
+   The remedy for all three is demotion, not deletion. Where the third one
+   fires, the items to demote are the process ones, however compounding
+   their payoff: `CLAUDE.md` ranks the simulator's correctness above the
+   workflow that builds it.
 3. Promote `blocked` items whose blocker has landed.
 4. Split any entry that has grown two independent halves — a smaller piece
    that fits leftover time is more useful than one large item that never
@@ -220,6 +250,11 @@ punch-list` output, or by a direct request.
 Run `make punch-list` after editing the file. It is instant, it gates
 `make check` and CI, and its errors mean an item is about to be silently
 lost.
+
+Prefer `python3 tools/punch_list.py list` over reading `docs/PUNCH_LIST.md`
+whenever the question is *which* item rather than *what* an item says. Read
+the file whole when grooming or reprioritizing, where the briefs are the
+subject; read a single entry when implementing it.
 
 Commit punch-list changes with the work they describe when there is
 related work, or on their own when there is not. An uncommitted punch list
