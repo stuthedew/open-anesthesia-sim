@@ -549,6 +549,20 @@ that bounds this error empirically across supported step sizes. A
 fourth-order Runge–Kutta method would remove the splitting error but was not
 required to pass the documented tolerances at `SIMULATION_STEP_S = 0.1`.
 
+The split has an applicability domain, and stepping outside it must fail
+rather than produce a number. At a large enough \(\Delta t\) the
+sequential composition drives an amount negative — step 5 tries to remove
+more agent from alveolar gas than step 2 left in it — and the compartment
+guard rejects the result. `RespiratorySystem.advance()` reports that as
+`SimulationNumericalError`: the step is abandoned, simulation time does not
+advance, and the caller must stop the run rather than read the partially
+applied state as a result. Preferring an obvious failure to a
+plausible-looking number is the required behavior here, not a defensive
+extra. The step at which this first occurs depends on the agent and the
+current state; at the shipped `SIMULATION_STEP_S = 0.1` it does not occur,
+and the step-refinement gate is what keeps the shipped step well inside the
+domain.
+
 The implementation must not depend on:
 
 - wall-clock elapsed time;
@@ -888,7 +902,9 @@ Reset must:
 - clear circuit, alveolar, blood, and tissue agent amounts;
 - clear concentration and mass-accounting history;
 - reset cumulative delivered and exhausted amounts;
-- restore the mass-balance residual to zero; and
+- restore the mass-balance residual to zero;
+- clear any recorded failure state, so a session halted by a failed step
+  becomes startable again from a clean state; and
 - preserve the user’s selected settings.
 
 ## Interface boundary
@@ -899,6 +915,8 @@ The Flet interface may:
 - convert fractions to percent;
 - collect user settings;
 - issue Start, Pause, and Reset commands;
+- halt a run and record why when the core raises, and report a value the
+  core refused;
 - render snapshot histories;
 - select which recorded samples a plotted trace draws, subject to the
   constraint below; and
@@ -921,8 +939,10 @@ The Flet interface must not:
 - calculate mixed-venous return;
 - integrate equations;
 - correct negative stores;
-- calculate mass balance; or
-- modify core state directly.
+- calculate mass balance;
+- modify core state directly;
+- continue a run past a step the core could not complete; or
+- present a run halted by a failure as though it were paused.
 
 The controller exposes immutable snapshots rather than mutable compartment objects.
 
@@ -931,7 +951,9 @@ The controller exposes immutable snapshots rather than mutable compartment objec
 The interface must show:
 
 - simulated time;
-- run state;
+- run state, with running, paused, and halted-by-failure distinguishable
+  from one another;
+- why a run halted, whenever one has;
 - which agent is running;
 - delivered concentration of that agent;
 - circuit or inspired concentration;
@@ -959,6 +981,15 @@ correct concentration attributed to the wrong agent is a presentation
 failure, and the same number means a different clinical depth for each agent
 (2% is about 1 MAC of sevoflurane but roughly a third of a MAC of
 desflurane).
+
+Distinguishing a halted run from a paused one is required for the same
+reason. Both stop the numbers advancing, but a pause leaves state the
+reader can trust while a halt may leave a compartment partway through a
+step that never completed. A halted run displayed as "Paused" therefore
+gives the reader no cue that anything is wrong with the values beside it —
+the stale-state failure this specification's interface rules exist to
+prevent — and a display that is merely frozen, with no state change at all,
+is worse still.
 
 The phrase “end-tidal-equivalent” must not imply that airway sampling dynamics, dead space, or capnography are modeled.
 

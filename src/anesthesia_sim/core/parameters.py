@@ -7,6 +7,12 @@ rest of the core never imports Pydantic. The `_AgentPayload`/
 `data/agents/*.json` and `data/patients/*.json` on load and are never
 exposed outside this module; `parse_agent_parameters()` and
 `parse_reference_adult_parameters()` are the seam between the two.
+
+Raises inside the Pydantic validators below are deliberately bare
+`ValueError`s: Pydantic collects those into a `ValidationError`, and a
+project exception raised there would not be collected the same way. Every
+raise this module makes to a *caller* is a `SimulationConfigurationError`,
+so `core/` presents one exception hierarchy at its boundary.
 """
 
 from __future__ import annotations
@@ -19,6 +25,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
+
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 SUPPORTED_SCHEMA_VERSION = 1
 FLOW_FRACTION_TOLERANCE = 1e-12
@@ -272,7 +280,7 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
     try:
         model = _AgentPayload.model_validate(payload)
     except PydanticValidationError as error:
-        raise ValueError(str(error)) from error
+        raise SimulationConfigurationError(str(error)) from error
 
     coefficients = model.tissue_gas_partition_coefficients
 
@@ -298,7 +306,7 @@ def parse_reference_adult_parameters(
     try:
         model = _ReferenceAdultPayload.model_validate(payload)
     except PydanticValidationError as error:
-        raise ValueError(str(error)) from error
+        raise SimulationConfigurationError(str(error)) from error
 
     tissue_groups = model.tissue_groups
 
@@ -343,7 +351,7 @@ def load_agent_parameters(agent_id: str) -> AgentParameters:
     filename = AGENT_DATA_FILENAMES.get(agent_id)
 
     if filename is None:
-        raise ValueError(
+        raise SimulationConfigurationError(
             f"unknown agent_id: {agent_id!r}; expected one of {sorted(AGENT_DATA_FILENAMES)}"
         )
 
@@ -351,7 +359,9 @@ def load_agent_parameters(agent_id: str) -> AgentParameters:
     parameters = parse_agent_parameters(payload)
 
     if parameters.id != agent_id:
-        raise ValueError(f"{filename} declares id {parameters.id!r}, expected {agent_id!r}")
+        raise SimulationConfigurationError(
+            f"{filename} declares id {parameters.id!r}, expected {agent_id!r}"
+        )
 
     return parameters
 

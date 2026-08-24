@@ -25,6 +25,10 @@ from anesthesia_sim.core.circuit import (
     BreathingCircuit,
     FreshGasExchange,
 )
+from anesthesia_sim.core.exceptions import (
+    SimulationConfigurationError,
+    SimulationNumericalError,
+)
 from anesthesia_sim.core.parameters import (
     load_agent_parameters,
     load_reference_adult_parameters,
@@ -147,12 +151,47 @@ class RespiratorySystem:
         self,
         simulation_step_s: float,
     ) -> RespiratoryStepResult:
-        """Advance one conservative, validated simulation step."""
+        """Advance one conservative, validated simulation step.
+
+        Raises:
+            SimulationConfigurationError: `simulation_step_s` is not a
+                positive finite number. Checked before anything is
+                changed, so the system is untouched and the caller can
+                retry with a valid step.
+            SimulationNumericalError: the step began but could not be
+                completed — a compartment guard rejected a value produced
+                by the step itself, typically because the step was large
+                enough for the operator split to drive an amount negative
+                or a fraction outside zero through one. Compartment state
+                is left partway through the step and must not be read as a
+                simulation result; the caller must stop the run rather
+                than continue from it.
+        """
 
         require_positive_finite(
             "simulation_step_s",
             simulation_step_s,
         )
+
+        try:
+            return self._advance_step(simulation_step_s)
+        except SimulationConfigurationError as error:
+            # A guard reached here means the step produced a state the
+            # model cannot represent, not that the caller passed a bad
+            # value: the arguments were already checked above. Restating
+            # it as a numerical error is what lets a caller tell "your
+            # setting was refused, nothing changed" apart from "the run is
+            # no longer trustworthy". The original guard is kept as the
+            # cause so the failing invariant stays traceable.
+            raise SimulationNumericalError(
+                f"the simulation step of {simulation_step_s} s could not be completed: {error}"
+            ) from error
+
+    def _advance_step(
+        self,
+        simulation_step_s: float,
+    ) -> RespiratoryStepResult:
+        """Apply one step's transfers, assuming the step size is valid."""
 
         fresh_gas_exchange = self.circuit.advance_fresh_gas(simulation_step_s)
 

@@ -2,6 +2,7 @@ from math import exp, inf
 
 import pytest
 
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.tissue import TissueGroup
 
 
@@ -122,7 +123,7 @@ def test_reset_clears_agent_and_preserves_parameters() -> None:
 def test_rejects_invalid_tissue_volume(
     invalid_value: float,
 ) -> None:
-    with pytest.raises(ValueError, match="volume_l"):
+    with pytest.raises(SimulationConfigurationError, match="volume_l"):
         TissueGroup(
             name="test",
             volume_l=invalid_value,

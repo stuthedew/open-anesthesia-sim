@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
+    SimulationExecutionError,
 )
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.respiratory_system import RespiratorySystem
@@ -57,6 +58,15 @@ class SimulationSnapshot:
     agent_accounting_absolute_error_l: float
     agent_accounting_passes_validation: bool
     concentration_history: tuple[SimulationHistorySample, ...]
+    failure_reason: str | None
+    """Why the run stopped abnormally, or `None` if it did not.
+
+    A non-`None` value means a step or a setting raised and the session is
+    halted: `is_running` is `False`, but this is not the same state as a
+    user pause, and the interface must not present it as one. Every other
+    field in this snapshot was read after the failure, so a compartment
+    value may reflect a step that never completed.
+    """
 
 
 class SimulationController:
@@ -82,6 +92,7 @@ class SimulationController:
         """
 
         self._is_running = False
+        self._failure_reason: str | None = None
         self._build_state(
             agent_id=agent_id,
             circuit_volume_l=circuit_volume_l,
@@ -136,9 +147,40 @@ class SimulationController:
         self._state = SimulationState(respiratory_system=respiratory_system)
         self._concentration_history: list[SimulationHistorySample] = [self._build_history_sample()]
 
+        # Every compartment above is newly constructed, so no state survives
+        # from a run that failed: a stale failure reason would halt a
+        # session that has nothing wrong with it.
+        self._failure_reason = None
+
     @property
     def is_running(self) -> bool:
         return self._is_running
+
+    @property
+    def has_failed(self) -> bool:
+        """Whether the session is halted by a failure rather than paused."""
+
+        return self._failure_reason is not None
+
+    def fail(self, reason: str) -> None:
+        """Halt the session because something raised, recording why.
+
+        Distinct from `pause()`: a pause is a user decision and the run can
+        be resumed from exactly where it stopped, while a failure means a
+        step or a setting raised and the state it left behind may not be a
+        completed step. Resuming is not offered, because continuing from a
+        partially applied step would extend a run whose trajectory is no
+        longer the one the model defines: only starting a fresh run clears
+        it, via `reset()` or `set_agent()`.
+        """
+
+        self._is_running = False
+
+        # The first failure is the one that explains the rest, so a later
+        # raise (e.g. from the render loop reacting to the same broken
+        # state) must not overwrite it.
+        if self._failure_reason is None:
+            self._failure_reason = reason
 
     def set_agent(self, agent_id: str) -> None:
         """Start fresh with a different agent at that agent's own 1 MAC.
@@ -153,6 +195,8 @@ class SimulationController:
         Mid-run agent switching with residual washout accounting is a
         distinct, harder feature (see ROADMAP.md's anesthesia-machine
         milestone); this always begins a new run rather than attempting it.
+        Because it begins a new run it also clears a failed session, the
+        same way `reset()` does.
         """
 
         self.pause()
@@ -201,18 +245,38 @@ class SimulationController:
             agent_accounting_absolute_error_l=(accounting.absolute_error_l),
             agent_accounting_passes_validation=(accounting.passes_validation),
             concentration_history=tuple(self._concentration_history),
+            failure_reason=self._failure_reason,
         )
 
     def start(self) -> None:
+        """Start or resume the run, refusing to resume a failed session.
+
+        Raising rather than quietly declining is deliberate: silently
+        ignoring a start would leave the interface showing a stopped run
+        with no indication that starting it did nothing, which is the
+        hidden mode `CLAUDE.md` forbids.
+        """
+
+        if self._failure_reason is not None:
+            raise SimulationExecutionError(
+                f"cannot resume a failed simulation ({self._failure_reason}); reset it first"
+            )
+
         self._is_running = True
 
     def pause(self) -> None:
         self._is_running = False
 
     def reset(self) -> None:
-        """Stop the run and clear dynamic state while preserving settings."""
+        """Stop the run, clear any failure, and clear dynamic state.
+
+        Settings are preserved. This is the only way out of a failed
+        session: the compartments are rebuilt to their initial state, so
+        nothing carries over from the step that failed.
+        """
 
         self.pause()
+        self._failure_reason = None
         self._state.reset()
         self._concentration_history = [self._build_history_sample()]
 

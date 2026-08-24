@@ -31,6 +31,11 @@ output can all be changed live during a run. Agent mass delivered,
 exhausted, and stored across every compartment is tracked and checked
 against a documented numerical tolerance.
 
+A setting the model refuses is reported as refused and leaves the run
+alone. A failure the model cannot continue past halts the run and says so,
+rather than leaving the display reading "Running" over numbers that have
+stopped advancing; a halted run is cleared by Reset.
+
 Each agent's MAC is used only to pick a clinically sensible starting dial
 position. The simulator does not model anesthetic depth: there is no
 effect-site compartment, and no MAC-fraction, BIS, or other depth readout is

@@ -66,7 +66,7 @@ def test_exact_update_is_independent_of_step_size() -> None:
 def test_rejects_invalid_circuit_volume(
     circuit_volume_l: float,
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(circuit_volume_l=circuit_volume_l)
 
 
@@ -77,7 +77,7 @@ def test_rejects_invalid_circuit_volume(
 def test_rejects_invalid_fresh_gas_flow(
     fresh_gas_flow_l_min: float,
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(fresh_gas_flow_l_min=fresh_gas_flow_l_min)
 
 
@@ -88,7 +88,7 @@ def test_rejects_invalid_fresh_gas_flow(
 def test_rejects_invalid_delivered_concentration(
     delivered_concentration_fraction: float,
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(delivered_concentration_fraction=(delivered_concentration_fraction))
 
 
@@ -147,7 +147,7 @@ def test_accepts_a_delivered_concentration_of_zero() -> None:
 def test_rejects_invalid_vaporizer_maximum(
     max_delivered_concentration_fraction: float,
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(
             delivered_concentration_fraction=0.0,
             max_delivered_concentration_fraction=(max_delivered_concentration_fraction),
