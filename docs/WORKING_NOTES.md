@@ -83,7 +83,7 @@ Stepping is exact-closed-form per step, so a larger step is a model-fidelity
 question, not just a performance one. Being an `L`, it needs scoping into a
 `ROADMAP.md` milestone before implementation.
 
-## Open thread: the architecture review harness - PL-021, PL-022, PL-023, PL-024
+## Open thread: the architecture review harness - PL-021, PL-023, PL-024
 
 An independent architecture review of the v0.2.0 baseline (commit
 `3251ebf`) produced an executable harness under `tools/review-verification/`
@@ -98,12 +98,13 @@ safety-critical findings it carried were fixed in v0.2.1 (`bc5f823`) and
 their checks now report FIXED: `P1-2`, `P1-3`, and `P1-5`. Both scripts now
 run at 5% delivered rather than 8%, since 8% is no longer a deliverable
 isoflurane dial position. `P1-1`'s two checks were fixed after that, by the
-exception-hierarchy and guarded-loop work; five of the harness's nine
-checks are now FIXED and four still reproduce. No release number has been
+exception-hierarchy and guarded-loop work, and `P1-6` after that when the
+dead `advance_ventilation` method was deleted; six of the harness's nine
+checks are now FIXED and three still reproduce. No release number has been
 assigned to the work landed since v0.2.1 - see PL-025.
 
 Re-run after those fixes, `verify_physics.py` confirms all three physics
-claims and `verify_findings.py` reproduces the four checks behind the four
+claims and `verify_findings.py` reproduces the three checks behind the three
 remaining findings. The physics side
 matters independently of the defects: it re-derives the
 `docs/MODEL.md` equations from the parameter files with a from-scratch RK4
@@ -117,7 +118,8 @@ pinned vectors, so the coupled model is checked against an independent
 solution on every CI run.
 
 Every finding that still reproduces is tracked. In the harness's own
-numbering (`P1-1` is closed; see the punch list's completed section):
+numbering (`P1-1` and `P1-6` are closed; see the punch list's completed
+section):
 
 - `P1-4` - PL-021, no `extra='forbid'` on the parameter-file schemas.
   Triage sharpened the claim: a misspelling that removes a required key is
@@ -125,9 +127,6 @@ numbering (`P1-1` is closed; see the punch list's completed section):
   extra* key — a renamed field, a units-suffixed variant, or a typo'd
   duplicate sitting beside the correct one — which loads clean and does
   nothing.
-- `P1-6` - PL-022, dead and non-conservative `advance_ventilation`. Note
-  that deleting the method breaks the harness check rather than flipping it
-  to FIXED, so the two have to move together.
 - `P2-1` - PL-023, mass balance cannot detect a wrong rate. The remedy is
   the RK4-oracle promotion described above, not adopting `expm`.
 - `P2-4` - PL-024, the venous pool's 12 s mixing time constant shaping the
