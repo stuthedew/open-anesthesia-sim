@@ -244,15 +244,49 @@ branch name.
 
 ## Mode: capture a new item
 
-Triggered by the project owner flagging something, or by a finding a
-session makes on its own that will not be fixed in that session.
+Triggered by the project owner flagging something — including mid-task, as
+an aside, while this session is working on something else — or by a finding
+a session makes on its own that will not be fixed in that session.
 
-1. Write the entry in the file's documented format. The brief must let a
-   cold reader act: problem, why it matters, where in the code, first step,
-   and the condition that closes it.
-2. Allocate the next unused `PL-` id — one past the highest that appears
-   anywhere in the file, including "Recently completed" and "Archive".
-3. Place it at its correct priority, which may demote something else.
+**Decide where it goes first, and decide it from what this session is
+already doing rather than from how good the finding is.**
+
+- **`docs/inbox/`** is the default, and it is the whole answer to "can I
+  raise this while you are in the middle of something". A note is a new file
+  carrying no `PL-` id, so it cannot conflict with a note another branch
+  added and cannot race another session for the same id — the two ways a
+  mid-task punch-list edit actually breaks things. `docs/inbox/README.md`
+  carries the format and the reasoning.
+- **`docs/PUNCH_LIST.md` directly** in two cases. When this session's work
+  *is* the queue — a grooming pass, a recommendation, a close-out — the
+  entry is the commit rather than a detour inside one, and there is nothing
+  in flight for it to collide with. And when the finding is `P0` or
+  safety-critical, which has to be visible in the queue and in the
+  session-start digest now, not after a triage pass; take the conflict risk
+  and say in your reply that you did.
+
+Never hold a finding in the conversation until the current work lands. A
+session's container is ephemeral, so a thought that is only in the
+conversation is a thought that is one interruption from being lost, and
+that is the failure this whole file exists to prevent.
+
+### Writing it
+
+1. Write it for a reader with no memory of the originating conversation:
+   problem, why it matters, where in the code, first step, and the condition
+   that closes it. Do this in the capturing session even for a note — the
+   context is live here and gone by triage, and the brief is the expensive
+   half. If the thought is genuinely half-formed, say what was observed and
+   what is not yet known rather than inventing a brief around it.
+2. For a note, stop there: name the file for the day it was captured, as
+   YYYY-MM-DD-short-slug.md under `docs/inbox/`, add the
+   proposed band as the optional metadata line only if this session knows it,
+   and commit it on its own so it survives a branch that is later abandoned.
+   The next two steps are triage's, not yours.
+3. For an entry, allocate the next unused `PL-` id — one past the highest
+   that appears anywhere in the file, including "Recently completed" and
+   "Archive" — and place it at its correct priority, which may demote
+   something else.
    Anything on a safety-critical path per `CLAUDE.md` starts at `P0` or
    `P1`, regardless of how small it is.
 
@@ -268,10 +302,44 @@ session makes on its own that will not be fixed in that session.
    at `P2` instead and say why. `make punch-list` checks this.
 4. If the reasoning is longer than the brief holds, put the long form in
    `docs/WORKING_NOTES.md` and cite the `PL-` id in that thread's heading.
+   A note has no id to cite yet, so keep its reasoning in the note and move
+   it at triage.
 5. Do not ask permission to record something. Capture at `P3` rather than
-   dropping it, and mention in your reply that you did.
+   dropping it, and mention in your reply that you did — and say which of the
+   two places it went, since one of them still needs a triage pass.
 6. Capturing is not doing. Unless the project owner asked for the fix,
-   record it and continue the current task.
+   record it and continue the current task. This is what makes an aside cost
+   the session almost nothing: one file, one commit, back to the work.
+
+## Mode: triage the inbox
+
+Triggered by the session-start digest or `make punch-list` reporting notes
+pending, or by a grooming pass, which should always start here — grooming a
+queue that is missing half its recent input reprioritizes the wrong set.
+
+Triage is where the ids are allocated and the bands are chosen, so unlike
+capture it is not safe to do from two places at once. Do it when the punch
+list is otherwise idle: on a branch of its own from current `main`, or as
+the first act of a session whose work is the queue. Do not triage from
+inside unrelated feature work — that reintroduces exactly the conflict the
+inbox removed.
+
+1. `make punch-list` lists what is pending, with each note's proposed band.
+2. Read each note in full. The proposed band is a starting point from a
+   session that had the context, not a decision: place the entry where it
+   belongs against the queue as it stands now, which may demote something
+   else, and apply the same rules capture does — safety-critical work starts
+   at `P0` or `P1`, process work does not enter `P1` when it would outnumber
+   the product work there.
+3. Allocate ids in filename order, so the ids run in capture order.
+4. Delete each note in the same commit that adds its entry. A note that
+   survives its own triage becomes a duplicate finding.
+5. A note that should not become an entry still leaves a record: put a line
+   in `Archive` with the date and a one-clause reason. An idea dropped
+   silently is an idea that gets raised again, and the project owner cannot
+   tell a rejection from an oversight.
+6. Re-run `make punch-list`. It should report a clean file and an empty
+   inbox.
 
 ## Mode: close out a completed item
 

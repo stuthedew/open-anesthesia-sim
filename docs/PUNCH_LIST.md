@@ -7,14 +7,15 @@ task and start it cold without re-deriving the problem.
 
 ## How this file relates to the other planning files
 
-Three files, three jobs. Keeping them separate is what keeps each one cheap
-to read:
+Three files and a doorstep, four jobs. Keeping them separate is what keeps
+each one cheap to read:
 
 | File | Holds | Churn |
 | --- | --- | --- |
 | `ROADMAP.md` | The authoritative version and milestone map: which release comes next and what it must contain. | Low |
 | `docs/PUNCH_LIST.md` (this file) | The prioritized work queue: every defect, fix, cleanup, optimization, and small feature identified in any session. | High |
 | `docs/WORKING_NOTES.md` | Long-form narrative for open threads: diagnoses, options considered and rejected, decision rationale, aspirational direction. | Medium |
+| `docs/inbox/` | Captured-but-untriaged thoughts, one file per note. Everything here is on its way into this file and nothing is meant to stay. | High |
 
 Rule of thumb:
 
@@ -23,6 +24,8 @@ Rule of thumb:
 - **Reasoning too long to fit in a task entry** belongs in
   `docs/WORKING_NOTES.md`, and the task entry here links to it rather than
   duplicating it.
+- **A thought raised while a session is doing something else** belongs in
+  `docs/inbox/` until someone triages it into this file.
 
 An item large enough to need its own goal, required scope, definition of
 done, and out-of-scope list is not a punch-list item: it is a milestone.
@@ -38,6 +41,15 @@ own. Nothing that matters may live only in a conversation.
 
 Adding an entry is cheap and reversible; losing a finding is not. When in
 doubt, capture it at `P3` rather than dropping it.
+
+A session that is in the middle of other work records it in `docs/inbox/`
+instead — a note there takes no `PL-` id and adds no line to this file, so it
+cannot collide with another branch doing the same thing, and the thought is
+committed at the moment it is raised rather than held until the current work
+lands. `docs/inbox/README.md` has the format. Triage folds those notes into
+this file; `make punch-list` reports how many are waiting. The exception is
+anything `P0` or safety-critical, which is written here directly so that the
+session-start digest carries it immediately.
 
 ## Entry format
 
@@ -581,6 +593,30 @@ recent detail legible. This is a teaching-design call, not a technical one.
 rather than an artifact of an earlier payload limit.
 
 ## P3 — Icebox
+
+### PL-042 Detect inbox notes stranded on an unmerged branch
+`P3` · `S` · `session-cost` · ready · added 2026-08-24
+
+**Problem.** An inbox note is committed on whatever branch the capturing
+session was on. If that branch is never merged, the note exists only there:
+`tools/punch_list.py` reads `docs/inbox/` in the current checkout, so no
+other session's digest or `make punch-list` will ever mention it, and the
+thought is lost as silently as if it had stayed in the conversation.
+**Why it matters.** The inbox exists to make capture unloseable. A hole that
+only opens on abandoned branches is exactly the hole nobody notices, because
+the sessions that could notice are the ones that cannot see the note.
+**Where.** `tools/punch_list.py` (`read_inbox`), `.claude/hooks/punch-list-digest.sh`.
+**First step.** Decide whether detection belongs in the tool or in CI. A CI
+job on `main` can run `git log --all --diff-filter=A --name-only` for
+`docs/inbox/` paths absent from the working tree and absent from `main`'s
+history, which the standard-library-only local tool cannot do cheaply
+without shelling out to git on every session start.
+**Done when.** A note committed on a branch that is closed without merging
+is reported somewhere a later session will see it, or the limitation is
+documented in `docs/inbox/README.md` as accepted with the reason.
+**Context.** Raised while building the inbox itself; the mitigation in place
+is that a note is committed alone, so recovering one is a single
+`git cherry-pick`.
 
 ### PL-019 Remove `BreathingCircuit`'s agent-unaware delivered-concentration default
 `P3` · `S` · `refactor` · ready · added 2026-08-24
