@@ -6,6 +6,7 @@ from pydantic import BaseModel, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
 from anesthesia_sim.core import parameters as parameters_module
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     load_agent_parameters,
     load_reference_adult_parameters,
@@ -144,7 +145,7 @@ def test_desflurane_is_less_soluble_than_sevoflurane_which_is_less_soluble_than_
 
 
 def test_rejects_unknown_agent_id() -> None:
-    with pytest.raises(ValueError, match="unknown agent_id"):
+    with pytest.raises(SimulationConfigurationError, match="unknown agent_id"):
         load_agent_parameters("halothane")
 
 
@@ -155,7 +156,7 @@ def test_rejects_agent_file_with_mismatched_id(monkeypatch: Any) -> None:
         "isoflurane.json",
     )
 
-    with pytest.raises(ValueError, match="expected 'sevoflurane'"):
+    with pytest.raises(SimulationConfigurationError, match="expected 'sevoflurane'"):
         load_agent_parameters("sevoflurane")
 
 
@@ -179,7 +180,7 @@ def test_rejects_unknown_schema_version() -> None:
     payload = _valid_agent_payload()
     payload["schema_version"] = 2
 
-    with pytest.raises(ValueError, match="unsupported schema_version"):
+    with pytest.raises(SimulationConfigurationError, match="unsupported schema_version"):
         parse_agent_parameters(payload)
 
 
@@ -188,7 +189,7 @@ def test_rejects_nonfinite_partition_coefficient() -> None:
     payload["blood_gas_partition_coefficient"] = float("nan")
 
     with pytest.raises(
-        ValueError,
+        SimulationConfigurationError,
         match="blood_gas_partition_coefficient",
     ):
         parse_agent_parameters(payload)
@@ -199,7 +200,7 @@ def test_rejects_max_delivered_concentration_percent_over_100() -> None:
     payload["max_delivered_concentration_percent"] = 150.0
 
     with pytest.raises(
-        ValueError,
+        SimulationConfigurationError,
         match="max_delivered_concentration_percent",
     ):
         parse_agent_parameters(payload)
@@ -210,7 +211,7 @@ def test_rejects_nonpositive_max_delivered_concentration_percent() -> None:
     payload["max_delivered_concentration_percent"] = 0.0
 
     with pytest.raises(
-        ValueError,
+        SimulationConfigurationError,
         match="max_delivered_concentration_percent",
     ):
         parse_agent_parameters(payload)
@@ -220,7 +221,7 @@ def test_rejects_mac_percent_over_100() -> None:
     payload = _valid_agent_payload()
     payload["mac_percent"] = 150.0
 
-    with pytest.raises(ValueError, match="mac_percent"):
+    with pytest.raises(SimulationConfigurationError, match="mac_percent"):
         parse_agent_parameters(payload)
 
 
@@ -228,7 +229,7 @@ def test_rejects_nonpositive_mac_percent() -> None:
     payload = _valid_agent_payload()
     payload["mac_percent"] = 0.0
 
-    with pytest.raises(ValueError, match="mac_percent"):
+    with pytest.raises(SimulationConfigurationError, match="mac_percent"):
         parse_agent_parameters(payload)
 
 
@@ -237,7 +238,7 @@ def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> 
     payload["max_delivered_concentration_percent"] = 8.0
     payload["mac_percent"] = 9.0
 
-    with pytest.raises(ValueError, match="mac_percent"):
+    with pytest.raises(SimulationConfigurationError, match="mac_percent"):
         parse_agent_parameters(payload)
 
 
@@ -309,7 +310,7 @@ def test_rejects_perfusion_fractions_that_do_not_sum_to_one() -> None:
     payload["tissue_groups"] = tissue_groups
 
     with pytest.raises(
-        ValueError,
+        SimulationConfigurationError,
         match="perfusion fractions must sum to 1",
     ):
         parse_reference_adult_parameters(payload)
@@ -320,7 +321,7 @@ def test_rejects_missing_provenance() -> None:
     payload["sources"] = []
 
     with pytest.raises(
-        ValueError,
+        SimulationConfigurationError,
         match="sources must contain at least one reference",
     ):
         parse_agent_parameters(payload)

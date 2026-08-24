@@ -6,6 +6,7 @@ arterial input, under this model's flow-limited arterial simplification.
 from dataclasses import dataclass
 from math import exp, inf
 
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
     require_concentration_fraction,
     require_nonnegative_finite,
@@ -43,7 +44,7 @@ class VenousBloodCompartment:
         )
 
         if self.agent_amount_l > self.capacity_l:
-            raise ValueError("agent_amount_l exceeds venous blood capacity")
+            raise SimulationConfigurationError("agent_amount_l exceeds venous blood capacity")
 
     @property
     def capacity_l(self) -> float:

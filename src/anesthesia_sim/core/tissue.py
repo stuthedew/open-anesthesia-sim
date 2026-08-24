@@ -6,6 +6,7 @@ independently of every other tissue group.
 from dataclasses import dataclass
 from math import exp, inf
 
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
     require_concentration_fraction,
     require_nonnegative_finite,
@@ -30,7 +31,7 @@ class TissueGroup:
 
     def __post_init__(self) -> None:
         if not self.name.strip():
-            raise ValueError("name must be a nonempty string")
+            raise SimulationConfigurationError("name must be a nonempty string")
 
         require_positive_finite("volume_l", self.volume_l)
         require_positive_finite(
@@ -39,7 +40,7 @@ class TissueGroup:
         )
 
         if self.perfusion_fraction > PERFUSION_FRACTION_UPPER_BOUND:
-            raise ValueError("perfusion_fraction must not exceed 1")
+            raise SimulationConfigurationError("perfusion_fraction must not exceed 1")
 
         require_positive_finite(
             "blood_gas_partition_coefficient",
@@ -59,7 +60,7 @@ class TissueGroup:
         )
 
         if self.agent_amount_l > self.capacity_l:
-            raise ValueError(
+            raise SimulationConfigurationError(
                 "agent_amount_l exceeds the tissue capacity for a concentration fraction of 1"
             )
 

@@ -83,7 +83,7 @@ Stepping is exact-closed-form per step, so a larger step is a model-fidelity
 question, not just a performance one. Being an `L`, it needs scoping into a
 `ROADMAP.md` milestone before implementation.
 
-## Open thread: the architecture review harness - PL-018, PL-021, PL-022, PL-023, PL-024
+## Open thread: the architecture review harness - PL-021, PL-022, PL-023, PL-024
 
 An independent architecture review of the v0.2.0 baseline (commit
 `3251ebf`) produced an executable harness under `tools/review-verification/`
@@ -97,11 +97,14 @@ since been deleted, so the harness is the whole record. The three
 safety-critical findings it carried were fixed in v0.2.1 (`bc5f823`) and
 their checks now report FIXED: `P1-2`, `P1-3`, and `P1-5`. Both scripts now
 run at 5% delivered rather than 8%, since 8% is no longer a deliverable
-isoflurane dial position.
+isoflurane dial position. `P1-1`'s two checks were fixed after that, by the
+exception-hierarchy and guarded-loop work; five of the harness's nine
+checks are now FIXED and four still reproduce. No release number has been
+assigned to the work landed since v0.2.1 - see PL-025.
 
 Re-run after those fixes, `verify_physics.py` confirms all three physics
-claims and `verify_findings.py` reproduces the six checks behind the five
-remaining findings (`P1-1` accounts for two of them). The physics side
+claims and `verify_findings.py` reproduces the four checks behind the four
+remaining findings. The physics side
 matters independently of the defects: it re-derives the
 `docs/MODEL.md` equations from the parameter files with a from-scratch RK4
 that imports no solver from `core/`, so agreement is genuine verification
@@ -113,10 +116,9 @@ review's own note is that the remedy for the splitting error is not to adopt
 pinned vectors, so the coupled model is checked against an independent
 solution on every CI run.
 
-Every reproduced finding is now tracked. In the harness's own numbering:
+Every finding that still reproduces is tracked. In the harness's own
+numbering (`P1-1` is closed; see the punch list's completed section):
 
-- `P1-1` - PL-018, a core raise outside the project's exception hierarchy
-  plus an unguarded simulation timer.
 - `P1-4` - PL-021, no `extra='forbid'` on the parameter-file schemas.
   Triage sharpened the claim: a misspelling that removes a required key is
   already rejected as a missing field, so the live hole is the *unknown

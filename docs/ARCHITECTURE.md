@@ -37,8 +37,8 @@ executable code.
 src/anesthesia_sim/
 ├── app_metadata.py      # app name, version (from package metadata), bundle id
 ├── core/                # scientific simulation — no Flet dependency
-│   ├── validation.py              # shared input-validation helpers
-│   ├── exceptions.py              # exception hierarchy
+│   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError)
+│   ├── exceptions.py              # exception hierarchy; every core failure is inside it
 │   ├── parameters.py              # load + validate agent/patient JSON data
 │   ├── circuit.py                 # breathing circuit compartment
 │   ├── alveolar.py                # alveolar gas compartment
@@ -111,8 +111,37 @@ snapshot carries the complete `SimulationHistorySample` record of the run:
 one sample per simulation step, not trimmed (see `docs/PUNCH_LIST.md`).
 `app/simulation_view.py` reads only from that snapshot — it formats
 fractions as percentages, builds the chart, and wires slider/button
-callbacks straight to controller setters. It performs no physiological or
-unit calculation of its own.
+callbacks through `_apply_setting` to controller setters. It performs no
+physiological or unit calculation of its own.
+
+**Failure direction:** every failure `core/` reports is a subclass of
+`AnesthesiaSimulationError` (`core/exceptions.py`), never a bare
+`ValueError`, so the interface can recognise a simulation failure and act
+on it. The hierarchy's two branches mean different things and get
+different treatment:
+
+- `SimulationConfigurationError` — a value was rejected before it changed
+  anything. Raised by the guards in `core/validation.py`, by compartment
+  constructors and setters, and by the parameter-file loaders. The view's
+  `_apply_setting` catches it, restores the control from the snapshot, and
+  says the setting was refused; the run is untouched and keeps going.
+- `SimulationExecutionError` (and its `SimulationNumericalError` /
+  `AgentSimulationValidationError` subclasses) — a step began and could
+  not be completed, so compartment state may sit partway through it.
+  `RespiratorySystem.advance()` is what makes this distinction: it checks
+  its own arguments first, then restates any guard reached during the step
+  as a `SimulationNumericalError`, keeping the original as `__cause__`.
+
+Both view loops are guarded, and both call `SimulationController.fail()`
+on any exception — a `TypeError` from a refactor kills an asyncio task
+exactly as silently as a modelling failure does. `fail()` is a third run
+state, carried on the snapshot as `failure_reason` and rendered as
+"Stopped — simulation error" with a banner over the values: a halted run
+must never present as a pause, because the numbers beside it may come from
+a step that never finished. It cannot be resumed, only cleared by `reset()`
+or by starting a fresh run with `set_agent()`. Neither loop returns on
+failure — they are started once, at mount, so a loop that exited could
+never be restarted.
 
 Drawing that full record every frame is what made the render payload grow
 with run length, so the view draws a bounded subset instead: which samples a

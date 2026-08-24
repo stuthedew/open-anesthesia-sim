@@ -3,6 +3,7 @@ from math import exp, inf
 import pytest
 
 from anesthesia_sim.core.alveolar import AlveolarCompartment
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 
 def test_one_time_constant_reaches_expected_fraction() -> None:
@@ -82,7 +83,7 @@ def test_rejects_blood_uptake_larger_than_available_amount() -> None:
     alveoli.set_concentration_fraction(0.01)
 
     with pytest.raises(
-        ValueError,
+        SimulationConfigurationError,
         match="resulting_agent_amount_l",
     ):
         alveoli.apply_blood_uptake(alveoli.agent_amount_l + 0.001)

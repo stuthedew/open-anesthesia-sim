@@ -5,6 +5,14 @@ user. It renders immutable controller snapshots, translates concentration
 fractions to display percentages, and forwards user settings to the controller
 without implementing physiological calculations or modifying model state
 directly.
+
+It is also the only layer that can tell a user what a raise out of `core/`
+means for what they are looking at, so both timer loops and every setting
+callback are guarded. The two outcomes are deliberately different: a
+refused setting leaves a trustworthy run alone and says the setting did
+not take, while a raise from a step halts the run and says so, because the
+alternative — an asyncio task dying behind a display that still reads
+"Running" — leaves the reader no cue that the numbers stopped advancing.
 """
 
 import asyncio
@@ -30,6 +38,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME, APP_VERSION
+from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 
 SIMULATION_STEP_S = 0.1
@@ -136,6 +145,17 @@ class SimulationView:
             "Paused",
             color=MUTED,
             weight=ft.FontWeight.BOLD,
+        )
+        # Why the last setting change did not take, or None if it did. Held
+        # in the view rather than the controller because a refused setting
+        # changes nothing about the simulation — there is no core state for
+        # it to belong to.
+        self._rejected_setting_notice: str | None = None
+        self._notice_text = ft.Text(
+            "",
+            color=WARNING,
+            weight=ft.FontWeight.BOLD,
+            visible=False,
         )
         self._elapsed_time_text = self._build_metric_value("0.0 s")
         self._circuit_concentration_text = self._build_metric_value("0.000%")
@@ -344,6 +364,10 @@ class SimulationView:
                             alignment=(ft.MainAxisAlignment.SPACE_BETWEEN),
                             wrap=True,
                         ),
+                        # Directly under the run controls and above every
+                        # displayed value, so a halted run is read before the
+                        # numbers it calls into question.
+                        self._notice_text,
                         self._build_parameter_controls(),
                         self._build_concentration_metrics(),
                         ft.ResponsiveRow(
@@ -729,8 +753,22 @@ class SimulationView:
         )
         self._concentration_chart.max_y = snapshot.max_delivered_concentration_percent
 
-        self._status_text.value = "Running" if snapshot.is_running else "Paused"
-        self._status_text.color = ACCENT if snapshot.is_running else MUTED
+        has_failed = snapshot.failure_reason is not None
+
+        # Three states, not two. A halted run must never render as a pause:
+        # the values on screen may come from a step that never completed,
+        # and a reader who sees "Paused" has no reason to distrust them.
+        if has_failed:
+            self._status_text.value = "Stopped — simulation error"
+            self._status_text.color = WARNING
+        elif snapshot.is_running:
+            self._status_text.value = "Running"
+            self._status_text.color = ACCENT
+        else:
+            self._status_text.value = "Paused"
+            self._status_text.color = MUTED
+
+        self._refresh_notice(snapshot.failure_reason)
         self._elapsed_time_text.value = f"{snapshot.elapsed_s:.1f} s"
         self._circuit_concentration_text.value = self._format_percent(
             snapshot.circuit_concentration_fraction
@@ -758,7 +796,18 @@ class SimulationView:
         self._alveolar_ventilation_text.value = f"{snapshot.alveolar_ventilation_l_min:.1f} L/min"
         self._cardiac_output_text.value = f"{snapshot.cardiac_output_l_min:.1f} L/min"
 
-        self._start_button.disabled = snapshot.is_running
+        # Every slider is driven from the snapshot, not left wherever the
+        # user dragged it. A refused setting must not leave a control
+        # reading one value while the simulation runs at another: the
+        # control is a display of model state as much as an input to it.
+        self._fresh_gas_flow_slider.value = snapshot.fresh_gas_flow_l_min
+        self._alveolar_ventilation_slider.value = snapshot.alveolar_ventilation_l_min
+        self._cardiac_output_slider.value = snapshot.cardiac_output_l_min
+
+        # A failed run cannot be resumed — only reset — so Start must not
+        # invite it. `is_running` alone would leave Start enabled here,
+        # since a failed session is stopped.
+        self._start_button.disabled = snapshot.is_running or has_failed
         self._pause_button.disabled = not snapshot.is_running
 
         if snapshot.agent_accounting_passes_validation:
@@ -876,13 +925,62 @@ class SimulationView:
         self._refresh_view()
         self._page.update()
 
+    def _apply_setting(self, apply_setting: Callable[[], None]) -> None:
+        """Apply one user setting, reporting a refusal instead of losing it.
+
+        A `SimulationConfigurationError` here means the core rejected the
+        value and changed nothing, so the run is untouched and must not be
+        marked failed. What must not happen is the raise escaping into
+        Flet's event dispatch: the control would keep the refused value
+        while the simulation kept running at the old one, which is the
+        correct number under the wrong label that `CLAUDE.md` treats as a
+        safety failure. `_refresh_view` restores the control from the
+        snapshot on the way out.
+        """
+
+        try:
+            apply_setting()
+        except AnesthesiaSimulationError as error:
+            self._rejected_setting_notice = f"Setting refused — {error}"
+        else:
+            self._rejected_setting_notice = None
+
+        self._refresh_and_render()
+
+    def _refresh_notice(self, failure_reason: str | None) -> None:
+        """Show the halted-run banner, or a refused setting, or nothing.
+
+        A halted run outranks a refused setting: it describes the state of
+        everything else on screen, where a refusal describes only one
+        control.
+        """
+
+        if failure_reason is not None:
+            self._notice_text.value = (
+                f"Simulation stopped — {failure_reason}. "
+                "The values shown may not reflect a completed step. "
+                "Reset to start a new run."
+            )
+            self._notice_text.visible = True
+            return
+
+        if self._rejected_setting_notice is not None:
+            self._notice_text.value = (
+                f"{self._rejected_setting_notice}. "
+                "The simulation is unchanged and still running its previous setting."
+            )
+            self._notice_text.visible = True
+            return
+
+        self._notice_text.value = ""
+        self._notice_text.visible = False
+
     def _handle_start(
         self,
         event: ft.Event[ft.Button],
     ) -> None:
         del event
-        self._controller.start()
-        self._refresh_and_render()
+        self._apply_setting(self._controller.start)
 
     def _handle_pause(
         self,
@@ -898,6 +996,7 @@ class SimulationView:
     ) -> None:
         del event
         self._controller.reset()
+        self._rejected_setting_notice = None
         self._refresh_and_render()
 
     def _handle_agent_change(
@@ -907,8 +1006,8 @@ class SimulationView:
         if event.control.value is None:
             return
 
-        self._controller.set_agent(event.control.value)
-        self._refresh_and_render()
+        agent_id = event.control.value
+        self._apply_setting(lambda: self._controller.set_agent(agent_id))
 
     def _handle_fresh_gas_flow_change(
         self,
@@ -917,8 +1016,8 @@ class SimulationView:
         if event.control.value is None:
             return
 
-        self._controller.set_fresh_gas_flow(float(event.control.value))
-        self._refresh_and_render()
+        fresh_gas_flow_l_min = float(event.control.value)
+        self._apply_setting(lambda: self._controller.set_fresh_gas_flow(fresh_gas_flow_l_min))
 
     def _handle_delivered_concentration_change(
         self,
@@ -928,8 +1027,9 @@ class SimulationView:
             return
 
         delivered_concentration_fraction = float(event.control.value) / 100.0
-        self._controller.set_delivered_concentration(delivered_concentration_fraction)
-        self._refresh_and_render()
+        self._apply_setting(
+            lambda: self._controller.set_delivered_concentration(delivered_concentration_fraction)
+        )
 
     def _handle_alveolar_ventilation_change(
         self,
@@ -938,8 +1038,10 @@ class SimulationView:
         if event.control.value is None:
             return
 
-        self._controller.set_alveolar_ventilation(float(event.control.value))
-        self._refresh_and_render()
+        alveolar_ventilation_l_min = float(event.control.value)
+        self._apply_setting(
+            lambda: self._controller.set_alveolar_ventilation(alveolar_ventilation_l_min)
+        )
 
     def _handle_cardiac_output_change(
         self,
@@ -948,8 +1050,30 @@ class SimulationView:
         if event.control.value is None:
             return
 
-        self._controller.set_cardiac_output(float(event.control.value))
-        self._refresh_and_render()
+        cardiac_output_l_min = float(event.control.value)
+        self._apply_setting(lambda: self._controller.set_cardiac_output(cardiac_output_l_min))
+
+    def _halt_run(self, error: Exception) -> None:
+        """Stop the run and put the failure on screen.
+
+        The exception type is recorded alongside its message rather than
+        being used to decide whether to stop: a `TypeError` from a future
+        refactor kills the loop exactly as silently as a modelling failure
+        does, and both leave a display that would otherwise keep reading
+        "Running" over numbers that stopped advancing.
+        """
+
+        self._controller.fail(f"{type(error).__name__}: {error}")
+
+        try:
+            self._refresh_and_render()
+        except Exception:  # noqa: BLE001 - see comment
+            # The interface could not be updated to show the failure. The
+            # run is stopped regardless, which is the part that matters: a
+            # frozen display over a stopped simulation is at worst
+            # uninformative, while one over a running simulation is
+            # actively misleading.
+            pass
 
     async def _run_simulation_timer(self) -> None:
         """Advance the running simulation one fixed step per tick.
@@ -959,13 +1083,24 @@ class SimulationView:
         time or of how long a redraw took, so a slow or skipped frame cannot
         change the trajectory: identical inputs still produce identical
         results.
+
+        The loop survives a failed step rather than returning: the task is
+        started once, at mount, so a loop that exits could never be
+        restarted and Reset would leave the interface permanently dead.
+        Halting clears `is_running`, so the loop idles until the user
+        starts a fresh run.
         """
 
         while True:
             await asyncio.sleep(SIMULATION_STEP_S)
 
-            if self._controller.is_running:
+            if not self._controller.is_running:
+                continue
+
+            try:
                 self._controller.advance(SIMULATION_STEP_S)
+            except Exception as error:  # noqa: BLE001 - see _halt_run
+                self._halt_run(error)
 
     async def _run_render_timer(self) -> None:
         """Redraw the running simulation on its own, slower cadence.
@@ -975,13 +1110,22 @@ class SimulationView:
         redraw immediately rather than waiting for this tick, so a control
         never appears unresponsive and the view is never left showing state
         the user has already changed.
+
+        Guarded for the mirror-image reason the simulation loop is: a dead
+        render loop leaves a frozen display over a simulation that is still
+        advancing, so the values on screen silently stop being current.
         """
 
         while True:
             await asyncio.sleep(RENDER_INTERVAL_S)
 
-            if self._controller.is_running:
+            if not self._controller.is_running:
+                continue
+
+            try:
                 self._refresh_and_render()
+            except Exception as error:  # noqa: BLE001 - see _halt_run
+                self._halt_run(error)
 
     @staticmethod
     def _build_metric_value(
