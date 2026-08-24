@@ -8,7 +8,7 @@ breathing circuit, alveolar gas, blood, and tissue compartments.
 monitoring device.** No output should be used to guide real-world patient
 care.
 
-## Current status: v0.2.1
+## Current status: v0.2.2
 
 The simulator models volatile-agent wash-in, uptake, tissue distribution,
 mixed-venous return, and washout in a single reference adult patient:
@@ -19,7 +19,8 @@ delivered agent -> breathing circuit -> alveoli -> blood
 ```
 
 Sevoflurane, isoflurane, and desflurane are each modeled from validated,
-cited partition data and can be picked in the interface. Selecting an agent
+cited partition data and can be picked in the interface, which identifies the
+selected agent by name and by its ISO 5360 vaporizer color. Selecting an agent
 starts a new run at that agent's own 1 MAC: switching agents does **not**
 model washout of the previous agent, because carrying residual agent across
 a switch is a distinct, harder problem left to the anesthesia-machine
