@@ -218,9 +218,10 @@ reports FIXED.
 **Problem.** The branch `claude/repo-architecture-review-3h39kh` carries the
 only surviving record of an independent architecture review of the v0.2.0
 baseline: an executable harness under `tools/review-verification/` that
-reproduces nine findings on demand. It was never merged, and none of the
-nine findings appear in this file. Re-run against `main` on 2026-08-24, all
-nine still reproduce and all three physics claims still hold.
+reproduces nine findings on demand. It was never merged, and until
+PL-015 through PL-017 were filed none of the nine appeared in this file.
+Re-run against `main` on 2026-08-24, all nine still reproduce and all three
+physics claims still hold.
 **Why it matters.** Three of the nine were safety-critical enough to
 promote to `P0` (PL-015, PL-016, PL-017), and the harness is what proves
 they are fixed. Deleting the branch discards the evidence for all nine and
