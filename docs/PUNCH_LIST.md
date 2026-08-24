@@ -136,6 +136,17 @@ the conditions, and a session makes the call.
 
 ## P0 — Now
 
+The three items below are handled as one hotfix branch with a single patch
+bump to v0.2.1, not three — decided 2026-08-24, overriding the one-branch-
+per-`P0` default in "Priority" above, because they are independent, small,
+and all validation hardening. Add the v0.2.1 row to `ROADMAP.md`'s version
+table when the fix lands.
+
+Do PL-013's cherry-pick of `0ccfa44` first. It is four new files with no
+overlap, and it gives all three fixes an executable acceptance check
+(`P1-2`, `P1-3`, `P1-5`) instead of only the regression tests written
+alongside them.
+
 ### PL-015 Reject an out-of-range delivered concentration instead of simulating it
 `P0` · `S` · `safety` `defect` · ready · added 2026-08-24
 
