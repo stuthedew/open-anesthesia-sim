@@ -7,14 +7,15 @@ task and start it cold without re-deriving the problem.
 
 ## How this file relates to the other planning files
 
-Three files, three jobs. Keeping them separate is what keeps each one cheap
-to read:
+Three files and a doorstep, four jobs. Keeping them separate is what keeps
+each one cheap to read:
 
 | File | Holds | Churn |
 | --- | --- | --- |
 | `ROADMAP.md` | The authoritative version and milestone map: which release comes next and what it must contain. | Low |
 | `docs/PUNCH_LIST.md` (this file) | The prioritized work queue: every defect, fix, cleanup, optimization, and small feature identified in any session. | High |
 | `docs/WORKING_NOTES.md` | Long-form narrative for open threads: diagnoses, options considered and rejected, decision rationale, aspirational direction. | Medium |
+| `docs/inbox/` | Captured-but-untriaged thoughts, one file per note. Everything here is on its way into this file and nothing is meant to stay. | High |
 
 Rule of thumb:
 
@@ -23,6 +24,8 @@ Rule of thumb:
 - **Reasoning too long to fit in a task entry** belongs in
   `docs/WORKING_NOTES.md`, and the task entry here links to it rather than
   duplicating it.
+- **A thought raised while a session is doing something else** belongs in
+  `docs/inbox/` until someone triages it into this file.
 
 An item large enough to need its own goal, required scope, definition of
 done, and out-of-scope list is not a punch-list item: it is a milestone.
@@ -38,6 +41,15 @@ own. Nothing that matters may live only in a conversation.
 
 Adding an entry is cheap and reversible; losing a finding is not. When in
 doubt, capture it at `P3` rather than dropping it.
+
+A session that is in the middle of other work records it in `docs/inbox/`
+instead — a note there takes no `PL-` id and adds no line to this file, so it
+cannot collide with another branch doing the same thing, and the thought is
+committed at the moment it is raised rather than held until the current work
+lands. `docs/inbox/README.md` has the format. Triage folds those notes into
+this file; `make punch-list` reports how many are waiting. The exception is
+anything `P0` or safety-critical, which is written here directly so that the
+session-start digest carries it immediately.
 
 ## Entry format
 

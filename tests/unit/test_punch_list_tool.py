@@ -84,8 +84,21 @@ def _document(
 
 def _analyze(text: str, **kwargs: object) -> punch_list.Report:
     related = kwargs.pop("related", None)
+    notes = kwargs.pop("notes", None)
     assert not kwargs
-    return punch_list.analyze(text, TODAY, related)  # type: ignore[arg-type]
+    return punch_list.analyze(text, TODAY, related, notes)  # type: ignore[arg-type]
+
+
+def _note(
+    name: str = "2026-08-23-do-a-thing.md",
+    *,
+    title: str = "# Do a thing",
+    metadata: str | None = "`P2` · `S` · `ux`",
+    body: str = "**Problem.** Something looked wrong.",
+) -> punch_list.Note:
+    """Build one inbox note, minus whatever a test removes."""
+    lines = [title, "", *([metadata, ""] if metadata is not None else []), body]
+    return punch_list.parse_note(name, "\n".join(lines) + "\n")
 
 
 def _messages(items: list[str], needle: str) -> bool:
@@ -688,3 +701,132 @@ def test_check_exits_zero_on_a_clean_file(tmp_path: Path) -> None:
 def test_missing_file_is_silent(tmp_path: Path) -> None:
     """A checkout without a punch list must not make session start noisy."""
     assert punch_list.main(["digest", "--file", str(tmp_path / "absent.md")]) == 0
+
+
+# --- inbox -----------------------------------------------------------------
+
+
+def test_parses_a_note() -> None:
+    note = _note()
+
+    assert note.title == "Do a thing"
+    assert note.captured == date(2026, 8, 23)
+    assert (note.priority, note.effort, note.classes) == ("P2", "S", ("ux",))
+    assert "Something looked wrong." in note.body
+
+
+def test_a_note_needs_no_metadata_line() -> None:
+    """Capture must never be blocked on knowing the band. The line is optional."""
+    note = _note(metadata=None, body="The induction curve looked wrong; no idea why yet.")
+
+    assert note.title == "Do a thing"
+    assert (note.priority, note.effort, note.classes) == ("", "", ())
+    assert _analyze(_document(_entry()), notes=[note]).errors == []
+
+
+def test_prose_holding_a_backticked_path_is_not_read_as_metadata() -> None:
+    """A first line that names no priority is body, not a proposed band."""
+    note = _note(metadata=None, body="Looks like `core/thing.py` rounds before it scales.")
+
+    assert note.classes == ()
+
+
+def test_an_undated_note_name_is_an_error() -> None:
+    report = _analyze(_document(_entry()), notes=[_note("do-a-thing.md")])
+
+    assert _messages(report.errors, "carries no capture date")
+
+
+def test_an_impossible_date_in_a_note_name_is_an_error() -> None:
+    report = _analyze(_document(_entry()), notes=[_note("2026-02-31-do-a-thing.md")])
+
+    assert _messages(report.errors, "carries no capture date")
+
+
+def test_a_note_without_a_title_is_an_error() -> None:
+    report = _analyze(_document(_entry()), notes=[_note(title="Do a thing")])
+
+    assert _messages(report.errors, "no '# ' title line")
+
+
+def test_a_note_without_a_body_is_an_error() -> None:
+    report = _analyze(_document(_entry()), notes=[_note(metadata=None, body="")])
+
+    assert _messages(report.errors, "no body")
+
+
+def test_a_valid_note_raises_nothing() -> None:
+    report = _analyze(_document(_entry(effort="S")), notes=[_note()])
+
+    assert report.errors == []
+    assert report.advisories == []
+
+
+def test_a_note_left_pending_too_long_is_a_grooming_advisory() -> None:
+    old = _note("2026-07-01-do-a-thing.md")
+    report = _analyze(_document(_entry()), notes=[old])
+
+    assert report.errors == []
+    assert _messages(report.advisories, "pending more than 14 days")
+    assert _messages(report.advisories, "2026-07-01-do-a-thing.md")
+
+
+def test_read_inbox_sorts_by_capture_date_and_skips_the_readme(tmp_path: Path) -> None:
+    inbox = tmp_path / "inbox"
+    inbox.mkdir()
+    (inbox / "README.md").write_text("# Inbox\n\nFormat docs, not a note.\n", encoding="utf-8")
+    for name in ("2026-08-20-second.md", "2026-08-01-first.md"):
+        (inbox / name).write_text("# Title\n\n**Problem.** Thing.\n", encoding="utf-8")
+
+    assert [n.name for n in punch_list.read_inbox(inbox)] == [
+        "2026-08-01-first.md",
+        "2026-08-20-second.md",
+    ]
+
+
+def test_read_inbox_is_empty_without_a_directory(tmp_path: Path) -> None:
+    assert punch_list.read_inbox(tmp_path / "absent") == []
+
+
+def test_check_lists_pending_notes_with_their_proposed_band() -> None:
+    rendered = punch_list.format_check(_analyze(_document(_entry()), notes=[_note()]))
+
+    assert "Inbox (docs/inbox/): 1 note pending triage:" in rendered
+    assert "2026-08-23-do-a-thing.md - Do a thing (proposed P2, S, ux)" in rendered
+
+
+def test_digest_reports_pending_notes() -> None:
+    digest = punch_list.format_digest(_analyze(_document(_entry()), notes=[_note()]))
+
+    assert "Inbox: 1 note pending triage in docs/inbox/" in digest
+
+
+def test_digest_reports_pending_notes_even_with_an_empty_queue() -> None:
+    """An empty queue is exactly when an unread note is easiest to lose."""
+    digest = punch_list.format_digest(_analyze(_document(), notes=[_note()]))
+
+    assert "Inbox: 1 note pending triage" in digest
+
+
+def test_digest_and_list_stay_silent_on_an_empty_inbox() -> None:
+    report = _analyze(_document(_entry()))
+
+    assert "Inbox" not in punch_list.format_digest(report)
+    assert "Inbox" not in punch_list.format_list(report)
+
+
+def test_list_reports_pending_notes() -> None:
+    listing = punch_list.format_list(_analyze(_document(_entry()), notes=[_note()]))
+
+    assert "Inbox: 1 note pending triage in docs/inbox/" in listing
+
+
+def test_check_reads_the_inbox_beside_the_punch_list(tmp_path: Path) -> None:
+    """The inbox is resolved from the file being checked, not from the repository."""
+    punch = tmp_path / "PUNCH_LIST.md"
+    punch.write_text(_document(_entry(effort="S")), encoding="utf-8")
+    inbox = tmp_path / "inbox"
+    inbox.mkdir()
+    (inbox / "broken.md").write_text("# Untitled\n\n**Problem.** Thing.\n", encoding="utf-8")
+
+    assert punch_list.main(["check", "--file", str(punch), "--today", "2026-08-23"]) == 1

@@ -174,7 +174,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-├── punch_list.py         # checks and lists docs/PUNCH_LIST.md; also emits the session digest
+├── punch_list.py         # checks and lists docs/PUNCH_LIST.md and docs/inbox/; emits the session digest
 ├── doc_check.py          # validates this map, MODEL.md's provenance table, and doc citations
 └── review-verification/  # read-only harness reproducing the v0.2.0 architecture-review findings
 ```
