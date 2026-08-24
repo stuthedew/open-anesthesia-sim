@@ -15,10 +15,18 @@ without action - dropped, folded into another entry, superseded. Ids in
 either record still resolve, so a `PL-` reference from `ROADMAP.md` or
 `docs/WORKING_NOTES.md` does not dangle once the item has been archived.
 
+Items also arrive through `docs/inbox/`, the capture channel for a thought
+that turns up while something else is in flight: one file per note, no `PL-`
+id, so any number of branches can capture at once without conflicting in the
+punch list or racing each other for the same id. Notes are read here only to
+be counted, validated, and aged. Turning one into an entry is judgment, and
+stays with the punch-list skill.
+
 Three modes:
 
-- `check`   full report. Errors exit non-zero and gate `make check`;
-            grooming advisories are informational and never fail a build.
+- `check`   full report, including the pending inbox. Errors exit non-zero
+            and gate `make check`; grooming advisories are informational and
+            never fail a build.
 - `digest`  the few lines injected at session start by the `SessionStart`
             hook, including an advisory count when grooming is due and, when
             `--branch` names a branch that cannot carry an item id, where to
@@ -101,6 +109,21 @@ ADDED_RE = re.compile(r"\badded (\d{4}-\d{2}-\d{2})\b")
 BLOCKED_BY_RE = re.compile(r"\*\*Blocked by\.\*\*(.+?)(?=\n\*\*|\Z)", re.DOTALL)
 CODE_TOKEN_RE = re.compile(r"`([^`]+)`")
 
+# The inbox: one file per captured thought, named for the day it was captured.
+# Two properties are what make it safe to write to from any branch at any
+# time. A note is a new file, so it cannot textually conflict with a note
+# another branch added; and it carries no `PL-` id, so two sessions capturing
+# at once cannot allocate the same one. Both of those hazards are real in
+# `docs/PUNCH_LIST.md`, where every entry lands in one file at a position
+# chosen by priority and takes the next id in sequence.
+INBOX_DIRNAME = "inbox"
+INBOX_NAME_RE = re.compile(r"(\d{4}-\d{2}-\d{2})-[a-z0-9][a-z0-9-]*\.md$")
+INBOX_TITLE_RE = re.compile(r"^#\s+(\S.*?)\s*$")
+
+# Past this, a note has stopped being a capture and become a second queue
+# nobody reads. The advisory says so; it never fails a build.
+INBOX_STALE_DAYS = 14
+
 
 @dataclass(frozen=True)
 class Entry:
@@ -155,11 +178,38 @@ class Entry:
         return None
 
 
+@dataclass(frozen=True)
+class Note:
+    """One captured thought in `docs/inbox/`, not yet triaged into an entry.
+
+    Deliberately less structured than an `Entry`: no id, no status, no
+    required brief. The channel exists so that capturing costs nothing and
+    never has to wait for whatever else is in flight, and a format that can
+    reject a half-formed thought would defeat that. What a note must carry is
+    the pair triage cannot reconstruct afterwards - what it is called, and
+    when it was captured - plus, when the capturing session knew enough to
+    say, a proposed band.
+    """
+
+    name: str
+    title: str
+    priority: str
+    effort: str
+    classes: tuple[str, ...]
+    captured: date | None
+    body: str
+
+    def age(self, today: date) -> int | None:
+        """Days since capture, or None when the filename carries no date."""
+        return None if self.captured is None else (today - self.captured).days
+
+
 @dataclass
 class Report:
     """Findings, split by whether a machine or a human has to resolve them."""
 
     entries: list[Entry] = field(default_factory=list)
+    notes: list[Note] = field(default_factory=list)
     completed: list[str] = field(default_factory=list)
     archived: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
@@ -274,6 +324,100 @@ def parse(text: str) -> Report:
         )
 
     return report
+
+
+def parse_note(name: str, text: str) -> Note:
+    """Read one inbox note.
+
+    Nothing is guessed at: a missing title or an undated filename comes back
+    empty and is reported by `_check_notes`, rather than being inferred from
+    the file's contents or its mtime. A note whose capture date came from the
+    filesystem would lose it the first time the repository was re-cloned,
+    which is exactly when the age matters.
+    """
+    match = INBOX_NAME_RE.match(name)
+    captured: date | None = None
+    if match is not None:
+        try:
+            captured = date.fromisoformat(match.group(1))
+        except ValueError:
+            captured = None
+
+    lines = text.splitlines()
+    title = ""
+    body_lines = lines
+    for index, line in enumerate(lines):
+        heading = INBOX_TITLE_RE.match(line)
+        if heading is not None:
+            title = heading.group(1)
+            body_lines = lines[index + 1 :]
+            break
+
+    # The metadata line is optional, so it is only read as one when it
+    # actually names a priority. Otherwise a note that opens with ordinary
+    # prose containing a backticked path would report that path as a class.
+    metadata = next((line for line in body_lines if line.strip()), "")
+    priority, effort, _status, classes, _added = _parse_metadata(metadata)
+    if not priority:
+        effort, classes = "", ()
+
+    return Note(
+        name=name,
+        title=title,
+        priority=priority,
+        effort=effort,
+        classes=classes,
+        captured=captured,
+        body="\n".join(body_lines),
+    )
+
+
+def read_inbox(directory: Path) -> list[Note]:
+    """Read every pending note, oldest capture date first.
+
+    Sorting by filename sorts by capture date, because the date leads the
+    name. `README.md` documents the format and is not a note.
+    """
+    if not directory.is_dir():
+        return []
+    return [
+        parse_note(path.name, path.read_text(encoding="utf-8"))
+        for path in sorted(directory.glob("*.md"))
+        if path.name != "README.md"
+    ]
+
+
+def _check_notes(report: Report, today: date) -> None:
+    """Validate the inbox and flag notes that have stopped being recent.
+
+    The bar is low on purpose - a note is a thought, not an entry - but the
+    two things a later triage session cannot reconstruct are enforced, and a
+    note that has sat long enough to be forgotten is raised for grooming.
+    """
+    for note in report.notes:
+        where = f"docs/{INBOX_DIRNAME}/{note.name}"
+        if note.captured is None:
+            report.errors.append(
+                f"{where}: filename carries no capture date; rename it "
+                "'YYYY-MM-DD-short-slug.md' so the note's age stays visible"
+            )
+        if not note.title:
+            report.errors.append(f"{where}: no '# ' title line; a note has to say what it is")
+        if not note.body.strip():
+            report.errors.append(
+                f"{where}: no body; a title alone cannot be triaged by a session "
+                "that was not there when it was captured"
+            )
+
+    stale = [
+        n for n in report.notes if (age := n.age(today)) is not None and age > INBOX_STALE_DAYS
+    ]
+    if stale:
+        report.advisories.append(
+            f"{_plural(len(stale), 'inbox note has', 'inbox notes have')} been pending more than "
+            f"{INBOX_STALE_DAYS} days ({', '.join(n.name for n in stale)}); triage them into "
+            "entries, or archive them with a reason"
+        )
 
 
 def _check_entry(entry: Entry, report: Report) -> None:
@@ -425,9 +569,15 @@ def _groom(report: Report, today: date, related: dict[Path, str]) -> None:
                 )
 
 
-def analyze(text: str, today: date, related: dict[Path, str] | None = None) -> Report:
+def analyze(
+    text: str,
+    today: date,
+    related: dict[Path, str] | None = None,
+    notes: Sequence[Note] | None = None,
+) -> Report:
     """Parse, validate, and groom in one pass."""
     report = parse(text)
+    report.notes = list(notes or [])
 
     seen: dict[str, Entry] = {}
     for entry in report.entries:
@@ -454,12 +604,37 @@ def analyze(text: str, today: date, related: dict[Path, str] | None = None) -> R
             "an item is recorded once, in one of them"
         )
 
+    _check_notes(report, today)
     _groom(report, today, related or {})
     return report
 
 
 def _plural(count: int, singular: str, plural: str) -> str:
     return f"{count} {singular if count == 1 else plural}"
+
+
+def _format_note(note: Note) -> str:
+    """One line for a pending note: what it is, and what it proposes."""
+    proposed = ""
+    if note.priority:
+        marks = [note.priority, *([note.effort] if note.effort else []), *note.classes]
+        proposed = f" (proposed {', '.join(marks)})"
+    return f"{note.name} - {note.title or '(untitled)'}{proposed}"
+
+
+def _format_inbox_line(report: Report) -> str:
+    """The one-line inbox summary shared by the digest and the listing.
+
+    Empty when the inbox is, because both of its callers are text resent on
+    every turn of a session.
+    """
+    if not report.notes:
+        return ""
+    return (
+        f"Inbox: {_plural(len(report.notes), 'note', 'notes')} pending triage in "
+        f"docs/{INBOX_DIRNAME}/ - fold them into the queue when it is otherwise idle "
+        "(`make punch-list` lists them)."
+    )
 
 
 def format_check(report: Report) -> str:
@@ -481,6 +656,13 @@ def format_check(report: Report) -> str:
             "Grooming advisories (judgment needed; run the punch-list skill's groom mode):"
         )
         lines.extend(f"  {message}" for message in report.advisories)
+    if report.notes:
+        lines.append("")
+        lines.append(
+            f"Inbox (docs/{INBOX_DIRNAME}/): "
+            f"{_plural(len(report.notes), 'note', 'notes')} pending triage:"
+        )
+        lines.extend(f"  {_format_note(note)}" for note in report.notes)
     if not report.errors and not report.advisories:
         lines.append("No errors, nothing due for grooming.")
     return "\n".join(lines)
@@ -515,6 +697,9 @@ def format_list(report: Report) -> str:
         lines.append(
             f"{entry.priority} {entry.identifier:<{width}} {entry.title} ({', '.join(marks)})"
         )
+    inbox = _format_inbox_line(report)
+    if inbox:
+        lines.append(inbox)
     lines.append("Read an entry's brief before starting it; this listing is for choosing.")
     return "\n".join(lines)
 
@@ -550,7 +735,8 @@ def format_digest(report: Report, branch: str | None = None) -> str:
     Kept short on purpose: this text is resent on every turn of the session.
     """
     if not report.entries:
-        return ""
+        inbox = _format_inbox_line(report)
+        return f"  {inbox}" if inbox else ""
 
     counts = report.counts
     lines = [
@@ -585,6 +771,10 @@ def format_digest(report: Report, branch: str | None = None) -> str:
             f"  Grooming due: {_plural(len(report.advisories), 'advisory', 'advisories')} "
             "(`make punch-list` to see them). Offer a grooming pass before taking new work."
         )
+
+    inbox = _format_inbox_line(report)
+    if inbox:
+        lines.append(f"  {inbox}")
 
     note = format_branch_note(branch)
     if note:
@@ -625,7 +815,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         for candidate in (docs / "WORKING_NOTES.md", docs.parent / "ROADMAP.md")
         if candidate.is_file()
     }
-    report = analyze(path.read_text(encoding="utf-8"), args.today or date.today(), related)
+    report = analyze(
+        path.read_text(encoding="utf-8"),
+        args.today or date.today(),
+        related,
+        read_inbox(docs / INBOX_DIRNAME),
+    )
 
     if args.mode in ("digest", "list"):
         rendered = (
