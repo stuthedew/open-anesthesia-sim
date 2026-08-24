@@ -218,26 +218,6 @@ first-order splitting error rather than fitted to today's numbers.
 **Context.** `docs/WORKING_NOTES.md` § "Open thread: the architecture review
 harness".
 
-### PL-002 Color-code agent selection to real vaporizer colors
-`P1` · `M` · `ux` `safety` · ready · added 2026-08-23
-
-**Problem.** The agent dropdown and selected-agent display are visually
-neutral. Clinical vaporizers use a standardized per-agent color-keyed fill
-system (the North American convention is commonly cited to ASTM D4774) so
-that an agent is never mistaken for another at a glance.
-**Why it matters.** This mirrors a real safety feature rather than being
-styling. A wrong color-to-agent mapping would be actively misleading rather
-than merely neutral, which makes it a presentation-correctness issue under
-`CLAUDE.md`.
-**Where.** `app/simulation_view.py` (dropdown and header construction),
-`app/theme.py`.
-**First step.** Verify the agent-to-color mapping against an authoritative
-current source. Do not implement from recalled colors.
-**Done when.** Each agent's control and header display carry the verified
-color, text contrast against each fill is checked (including for
-color-vision deficiency, since color must not be the only cue), and the
-source for the mapping is cited where the constants live.
-
 ### PL-003 Scope the next milestone in ROADMAP.md
 `P1` · `M` · `planning` · ready · added 2026-08-23
 
@@ -580,6 +560,7 @@ each, in the form the checker reads:
 - PL-000 Title of the completed item — `abc1234`
 ```
 
+- PL-002 Color-code agent selection to real vaporizer colors — `74bec83`
 - PL-022 Delete the dead, non-conservative `advance_ventilation` — `956e710`
 - PL-018 Keep a core failure from silently killing a running simulation — `4c442ef`
 - PL-013 Triage the review harness's four remaining findings — `f51762a`
