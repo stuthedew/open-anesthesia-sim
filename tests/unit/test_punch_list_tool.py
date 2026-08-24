@@ -386,12 +386,120 @@ def test_working_notes_thread_for_a_completed_item_is_flagged() -> None:
 
 def test_oversized_queue_is_flagged() -> None:
     entries = [
-        _entry(f"PL-{n:03d}", effort="S", title=f"Item {n}")
+        _entry(f"PL-{n:03d}", priority="P3", effort="S", title=f"Item {n}")
         for n in range(1, punch_list.MAX_OPEN_ITEMS + 3)
     ]
     report = _analyze(_document(*entries))
 
-    assert _messages(report.advisories, "stops being read")
+    assert _messages(report.advisories, "become a backlog")
+
+
+def test_a_long_but_well_shaped_queue_is_not_flagged() -> None:
+    """Length alone is not a defect. A queue whose top band is short, mostly
+    ready, and mostly product work answers "what is next?" however many items
+    sit behind it in the icebox, and must not draw an advisory that trains its
+    reader to dismiss the ones that matter."""
+    top = [
+        _entry(f"PL-{n:03d}", priority="P1", effort="S", classes=("defect",), title=f"Top {n}")
+        for n in range(1, punch_list.MAX_BAND_ITEMS + 1)
+    ]
+    icebox = [
+        _entry(f"PL-1{n:02d}", priority="P3", effort="S", title=f"Later {n}")
+        for n in range(1, punch_list.MAX_OPEN_ITEMS - punch_list.MAX_BAND_ITEMS + 1)
+    ]
+    report = _analyze(_document(*top, *icebox))
+
+    assert report.errors == []
+    assert report.advisories == []
+
+
+# --- grooming: the shape of the top band ------------------------------------
+
+
+def test_wide_top_band_is_flagged() -> None:
+    entries = [
+        _entry(f"PL-{n:03d}", priority="P1", effort="S", classes=("defect",), title=f"Item {n}")
+        for n in range(1, punch_list.MAX_BAND_ITEMS + 2)
+    ]
+    report = _analyze(_document(*entries))
+
+    assert _messages(report.advisories, '"what is next?" has no answer')
+
+
+def test_top_band_of_open_decisions_is_flagged() -> None:
+    """A band nothing can be started from needs decisions scheduled, not tasks."""
+    report = _analyze(
+        _document(
+            _entry("PL-001", priority="P1", effort="S", status="needs-decision"),
+            _entry("PL-002", priority="P1", effort="S", status="needs-decision"),
+            _entry("PL-003", priority="P1", effort="S", status="ready"),
+        )
+    )
+
+    assert _messages(report.advisories, "schedule the decisions, they are the work")
+
+
+def test_top_band_of_mostly_ready_items_is_not_flagged() -> None:
+    report = _analyze(
+        _document(
+            _entry("PL-001", priority="P1", effort="S", status="needs-decision"),
+            _entry("PL-002", priority="P1", effort="S", status="ready"),
+            _entry("PL-003", priority="P1", effort="S", status="ready"),
+        )
+    )
+
+    assert not _messages(report.advisories, "schedule the decisions")
+
+
+def test_top_band_crowded_by_process_work_is_flagged() -> None:
+    """The capture rule promotes `session-cost` work to P1 and sets no ceiling,
+    so process items accumulate at the top ahead of the simulator's own
+    correctness. This is the check that notices."""
+    report = _analyze(
+        _document(
+            _entry("PL-001", priority="P1", effort="S", classes=("session-cost", "infra")),
+            _entry("PL-002", priority="P1", effort="S", classes=("docs", "session-cost")),
+            _entry("PL-003", priority="P1", effort="S", classes=("science",)),
+        )
+    )
+
+    assert _messages(report.advisories, "2 of 3 items are process work")
+    assert _messages(report.advisories, "PL-001, PL-002")
+
+
+def test_a_mixed_class_item_is_not_counted_as_process_work() -> None:
+    """`science` and `infra` together is science work that happens to touch
+    tooling, not process overhead."""
+    report = _analyze(
+        _document(
+            _entry("PL-001", priority="P1", effort="S", classes=("science", "infra")),
+            _entry("PL-002", priority="P1", effort="S", classes=("docs", "session-cost")),
+        )
+    )
+
+    assert not _messages(report.advisories, "process work")
+
+
+def test_band_checks_apply_to_p0_when_a_hotfix_is_open() -> None:
+    """P0 is the band a session reads when anything sits in it."""
+    entries = [
+        _entry(f"PL-{n:03d}", priority="P0", effort="S", classes=("safety",), title=f"Item {n}")
+        for n in range(1, punch_list.MAX_BAND_ITEMS + 2)
+    ]
+    report = _analyze(_document(*entries))
+
+    assert _messages(report.advisories, "P0: 6 items in the top band")
+
+
+def test_a_wide_icebox_does_not_trip_the_band_checks() -> None:
+    """The icebox is allowed to be wide; that is what it is for."""
+    entries = [
+        _entry(f"PL-{n:03d}", priority="P3", effort="S", title=f"Item {n}")
+        for n in range(1, punch_list.MAX_BAND_ITEMS + 3)
+    ]
+    report = _analyze(_document(*entries, _entry("PL-900", priority="P1", effort="S")))
+
+    assert not _messages(report.advisories, "in the top band")
 
 
 # --- model guidance ---------------------------------------------------------
@@ -475,6 +583,56 @@ def test_digest_reminds_about_grooming_only_when_due() -> None:
 
 def test_digest_is_empty_for_an_empty_queue() -> None:
     assert punch_list.format_digest(_analyze(_document())) == ""
+
+
+def test_list_carries_every_field_a_recommendation_branches_on() -> None:
+    report = _analyze(
+        _document(
+            _entry("PL-001", priority="P1", effort="S", status="ready", title="Fix the thing"),
+            _entry("PL-002", priority="P2", effort="M", status="blocked", title="Wait on it"),
+        )
+    )
+    listing = punch_list.format_list(report)
+
+    assert "P1 PL-001 Fix the thing (S, ready)" in listing
+    assert "P2 PL-002 Wait on it (M, blocked)" in listing
+
+
+def test_list_carries_model_guidance() -> None:
+    """So that choosing from the listing does not need the file to apply
+    CLAUDE.md's model-matching rule."""
+    report = _analyze(_document(_entry("PL-001", effort="S", classes=("safety",))))
+
+    assert "safety-tagged, strongest model" in punch_list.format_list(report)
+
+
+def test_list_says_it_is_not_enough_to_work_from() -> None:
+    """The brief is what makes an item startable cold; a one-line title looks
+    actionable and is not."""
+    report = _analyze(_document(_entry(effort="S")))
+
+    assert "Read an entry's brief before starting it" in punch_list.format_list(report)
+
+
+def test_list_is_one_line_per_item_plus_a_header_and_a_footer() -> None:
+    entries = [_entry(f"PL-{n:03d}", effort="S", title=f"Item {n}") for n in range(1, 8)]
+    listing = punch_list.format_list(_analyze(_document(*entries)))
+
+    assert len(listing.splitlines()) == len(entries) + 2
+
+
+def test_list_is_far_cheaper_than_the_file_it_summarizes() -> None:
+    """The whole point of the mode. Briefs are the bulk of the file and are
+    not needed to choose between items."""
+    entries = [_entry(f"PL-{n:03d}", effort="S", title=f"Item {n}") for n in range(1, 20)]
+    document = _document(*entries)
+    listing = punch_list.format_list(_analyze(document))
+
+    assert len(listing) < len(document) / 4
+
+
+def test_list_is_empty_for_an_empty_queue() -> None:
+    assert punch_list.format_list(_analyze(_document())) == ""
 
 
 def test_check_exits_nonzero_on_errors(tmp_path: Path) -> None:

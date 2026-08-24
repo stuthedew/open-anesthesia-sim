@@ -15,12 +15,16 @@ without action - dropped, folded into another entry, superseded. Ids in
 either record still resolve, so a `PL-` reference from `ROADMAP.md` or
 `docs/WORKING_NOTES.md` does not dangle once the item has been archived.
 
-Two modes:
+Three modes:
 
 - `check`   full report. Errors exit non-zero and gate `make check`;
             grooming advisories are informational and never fail a build.
 - `digest`  the few lines injected at session start by the `SessionStart`
             hook, including an advisory count when grooming is due.
+- `list`    one line per open item. The cheap way to see the whole queue:
+            reading the file itself costs roughly twenty-five times as much,
+            and most of that is brief prose that only matters once an item
+            has been chosen.
 
 Standard library only, so the session-start hook does not depend on the
 project virtualenv being synced.
@@ -43,14 +47,32 @@ STATUSES = ("ready", "needs-decision", "blocked")
 # not sit in the lower priority bands however small the task looks.
 SAFETY_CLASSES = ("safety", "science")
 
+# Classes that describe work on the development process rather than on the
+# simulator: the punch list itself, the checkers, the documentation about how
+# to work here. An entry counts as process work only when every one of its
+# classes is in this set, so a `science`-and-`infra` item is still science.
+#
+# These are worth doing - their payoff compounds across sessions, which is why
+# the capture rule promotes them - but the promotion has no natural ceiling,
+# and left unchecked they colonize the top band ahead of the product work.
+PROCESS_CLASSES = ("session-cost", "docs", "infra")
+
 # A brief longer than this has stopped being a brief; the excess is narrative
 # and belongs in docs/WORKING_NOTES.md. The file asks for roughly twenty
 # lines; this leaves real headroom above that, because an advisory that
 # fires on a one-line edit is an advisory that gets ignored.
 MAX_ENTRY_LINES = 28
 
-# Beyond this the queue is too long to be a queue.
-MAX_OPEN_ITEMS = 18
+# Beyond this the queue has probably stopped being a queue and started being a
+# backlog. This is deliberately loose: a long *accurate* queue is not itself a
+# problem, and an advisory that fires on a healthy file is one that gets
+# ignored. What actually makes a queue unreadable is the shape of its top band,
+# which the three checks below measure directly.
+MAX_OPEN_ITEMS = 25
+
+# How many items the top band can hold before "what is next?" stops having an
+# answer. Nobody reads a queue by its total; they read the band at the top.
+MAX_BAND_ITEMS = 5
 
 # Beyond this, "Recently completed" has stopped being recent. The excess moves
 # to the permanent archive ledger rather than being deleted, so the ids keep
@@ -287,6 +309,47 @@ def _check_entry(entry: Entry, report: Report) -> None:
         )
 
 
+def _is_process_work(entry: Entry) -> bool:
+    """Whether this item improves how the project is developed, not the app."""
+    return bool(entry.classes) and all(c in PROCESS_CLASSES for c in entry.classes)
+
+
+def _groom_top_band(report: Report) -> None:
+    """Flag a top band that has stopped answering "what should we do next?".
+
+    Total queue length is a weak proxy for that question: a session reads the
+    band it would pick from, not the whole file. Three things make that band
+    unreadable, and each is checked directly - it is too wide, too little of it
+    can actually be started, or process work has crowded out the product.
+    """
+    band = next((p for p in ("P0", "P1") if any(e.priority == p for e in report.entries)), None)
+    if band is None:
+        return
+    items = [e for e in report.entries if e.priority == band]
+
+    if len(items) > MAX_BAND_ITEMS:
+        report.advisories.append(
+            f"{band}: {len(items)} items in the top band; more than about {MAX_BAND_ITEMS} "
+            'and "what is next?" has no answer - demote the ones that are not'
+        )
+
+    undecided = [e for e in items if e.status == "needs-decision"]
+    startable = [e for e in items if e.status == "ready"]
+    if undecided and len(undecided) >= len(startable):
+        report.advisories.append(
+            f"{band}: {len(undecided)} of {len(items)} items are needs-decision and only "
+            f"{len(startable)} ready; schedule the decisions, they are the work"
+        )
+
+    process = [e for e in items if _is_process_work(e)]
+    if len(process) > len(items) - len(process):
+        report.advisories.append(
+            f"{band}: {len(process)} of {len(items)} items are process work "
+            f"({', '.join(e.identifier for e in process)}); CLAUDE.md ranks the "
+            "simulator's correctness above the workflow that builds it"
+        )
+
+
 def _groom(report: Report, today: date, related: dict[Path, str]) -> None:
     """Flag the conditions that make a grooming pass worth a session."""
     resolved = report.resolved
@@ -317,9 +380,12 @@ def _groom(report: Report, today: date, related: dict[Path, str]) -> None:
                     "do it, demote it, or drop it"
                 )
 
+    _groom_top_band(report)
+
     if len(report.entries) > MAX_OPEN_ITEMS:
         report.advisories.append(
-            f"queue: {len(report.entries)} open items; a queue this long stops being read"
+            f"queue: {len(report.entries)} open items; consider whether P3 has stopped "
+            "being an icebox and become a backlog"
         )
     if len(report.completed) > MAX_COMPLETED_ITEMS:
         report.advisories.append(
@@ -409,6 +475,39 @@ def format_check(report: Report) -> str:
     return "\n".join(lines)
 
 
+def format_list(report: Report) -> str:
+    """Render one line per open item: the queue without the briefs.
+
+    This is the cheap way to see the whole queue. Reading the file itself
+    costs roughly twenty-five times as much, and almost all of that is brief
+    prose a session choosing between items does not need. Every field the
+    punch-list skill's recommendation actually branches on - band, effort,
+    status, and whether CLAUDE.md's model-matching rule applies - is here.
+
+    It is deliberately not enough to work from. The closing line says so,
+    because a one-line title is exactly the kind of thing that looks
+    actionable and is not: the brief is what makes an item startable cold.
+    """
+    if not report.entries:
+        return ""
+
+    counts = report.counts
+    lines = [
+        f"Punch list (docs/PUNCH_LIST.md): {len(report.entries)} open - "
+        f"{', '.join(f'{n} {p}' for p, n in counts.items())}."
+    ]
+    width = max(len(e.identifier) for e in report.entries)
+    for entry in report.entries:
+        marks = [entry.effort, entry.status]
+        if entry.model_guidance is not None:
+            marks.append(f"{entry.model_guidance}, strongest model")
+        lines.append(
+            f"{entry.priority} {entry.identifier:<{width}} {entry.title} ({', '.join(marks)})"
+        )
+    lines.append("Read an entry's brief before starting it; this listing is for choosing.")
+    return "\n".join(lines)
+
+
 def _with_guidance(line: str, entry: Entry) -> str:
     """Append the model-matching note to a digest line, if the entry has one."""
     if entry.model_guidance is None:
@@ -459,7 +558,8 @@ def format_digest(report: Report) -> str:
         )
 
     lines.append(
-        "Read the file before recommending what to work on. Any finding not fixed this "
+        "`python3 tools/punch_list.py list` shows the queue; read an entry's brief before "
+        "starting it, and the whole file only when grooming. Any finding not fixed this "
         "session gets an entry there before the session ends."
     )
     return "\n".join(lines)
@@ -467,7 +567,7 @@ def format_digest(report: Report) -> str:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("mode", choices=("check", "digest"))
+    parser.add_argument("mode", choices=("check", "digest", "list"))
     parser.add_argument("--file", type=Path, default=None, help="path to the punch list")
     parser.add_argument("--today", type=date.fromisoformat, default=None, help="reference date")
     args = parser.parse_args(argv)
@@ -489,10 +589,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     }
     report = analyze(path.read_text(encoding="utf-8"), args.today or date.today(), related)
 
-    if args.mode == "digest":
-        digest = format_digest(report)
-        if digest:
-            print(digest)
+    if args.mode in ("digest", "list"):
+        rendered = format_digest(report) if args.mode == "digest" else format_list(report)
+        if rendered:
+            print(rendered)
         return 0
 
     print(format_check(report))
