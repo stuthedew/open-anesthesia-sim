@@ -108,7 +108,7 @@ session makes on its own that will not be fixed in that session.
    cold reader act: problem, why it matters, where in the code, first step,
    and the condition that closes it.
 2. Allocate the next unused `PL-` id — one past the highest that appears
-   anywhere in the file, including "Recently completed".
+   anywhere in the file, including "Recently completed" and "Archive".
 3. Place it at its correct priority, which may demote something else.
    Anything on a safety-critical path per `CLAUDE.md` starts at `P0` or
    `P1`, regardless of how small it is.
@@ -126,7 +126,9 @@ item done, not after the project owner asks whether the docs were updated.
 
 1. Move the entry to "Recently completed" with its commit reference, and
    delete any now-resolved `docs/WORKING_NOTES.md` thread for it. Leaving
-   the thread is what trips the checker's advisory.
+   the thread is what trips the checker's advisory. Never delete the entry
+   outright: "Recently completed" is a window on the permanent "Archive"
+   ledger, not a substitute for it.
 2. Sweep the docs for drift the change just caused, per `CLAUDE.md`'s
    "Sweep the docs before calling an item done." Grep `README.md`,
    `ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/MODEL.md`, and
@@ -184,9 +186,17 @@ punch-list` output, or by a direct request.
    gets picked up.
 5. Promote `L` items into scoped `ROADMAP.md` milestones, or leave them in
    the icebox with a note saying scoping is the next step.
-6. Delete resolved `docs/WORKING_NOTES.md` threads rather than leaving them
-   stale, and trim "Recently completed" once it stops being useful history.
-7. Re-run `make punch-list` before finishing; it should come back clean.
+6. Record every disposal in "Archive"; never delete an entry outright.
+   An item dropped, folded into another entry, or superseded gets an
+   `Archive` line with the date and a one-clause reason — the reason is
+   what stops the next session re-raising the same finding. Trimming
+   "Recently completed" also means *moving* its lines to "Archive", not
+   deleting them: `ROADMAP.md` and `docs/WORKING_NOTES.md` cite completed
+   ids permanently, and the checker errors on a reference it cannot
+   resolve.
+7. Delete resolved `docs/WORKING_NOTES.md` threads rather than leaving them
+   stale.
+8. Re-run `make punch-list` before finishing; it should come back clean.
 
 ## Always
 

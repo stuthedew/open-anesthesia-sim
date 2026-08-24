@@ -9,6 +9,12 @@ next thing, whether an entry should be split - which this tool deliberately
 does not attempt. It only detects the conditions that make that judgment
 worth spending a session on, and says so.
 
+An item leaves the queue in one of two ways, and both are recorded rather
+than deleted: it is completed with a commit reference, or it is closed
+without action - dropped, folded into another entry, superseded. Ids in
+either record still resolve, so a `PL-` reference from `ROADMAP.md` or
+`docs/WORKING_NOTES.md` does not dangle once the item has been archived.
+
 Two modes:
 
 - `check`   full report. Errors exit non-zero and gate `make check`;
@@ -45,6 +51,10 @@ MAX_ENTRY_LINES = 28
 
 # Beyond this the queue is too long to be a queue.
 MAX_OPEN_ITEMS = 18
+
+# Beyond this, "Recently completed" has stopped being recent. The excess moves
+# to the permanent archive ledger rather than being deleted, so the ids keep
+# resolving.
 MAX_COMPLETED_ITEMS = 10
 
 # An item nobody has touched in this long is either not real or mis-prioritized.
@@ -118,8 +128,20 @@ class Report:
 
     entries: list[Entry] = field(default_factory=list)
     completed: list[str] = field(default_factory=list)
+    archived: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     advisories: list[str] = field(default_factory=list)
+
+    @property
+    def resolved(self) -> set[str]:
+        """Every id that has left the queue, however it left.
+
+        A reference resolves against this rather than against the recent
+        completions alone, so aging an item out of "Recently completed" or
+        closing one without action never turns a live cross-reference into a
+        build error.
+        """
+        return set(self.completed) | set(self.archived)
 
     @property
     def counts(self) -> dict[str, int]:
@@ -143,7 +165,7 @@ def _parse_metadata(line: str) -> tuple[str, str, str, tuple[str, ...], date | N
 
 
 def parse(text: str) -> Report:
-    """Parse the punch list into entries and completed ids.
+    """Parse the punch list into open entries and resolved ids.
 
     Fenced blocks are skipped so the entry-format example in the file's own
     header is never mistaken for a real item.
@@ -169,12 +191,18 @@ def parse(text: str) -> Report:
         if band_match:
             band = band_match.group(1)
         elif line.startswith("## "):
-            band = "completed" if line.startswith("## Recently completed") else ""
+            if line.startswith("## Recently completed"):
+                band = "completed"
+            elif line.startswith("## Archive"):
+                band = "archive"
+            else:
+                band = ""
 
-        if band == "completed":
-            completed_match = COMPLETED_RE.match(line)
-            if completed_match:
-                report.completed.append(completed_match.group(1))
+        if band in ("completed", "archive"):
+            resolved_match = COMPLETED_RE.match(line)
+            if resolved_match:
+                target = report.completed if band == "completed" else report.archived
+                target.append(resolved_match.group(1))
             index += 1
             continue
 
@@ -261,7 +289,7 @@ def _check_entry(entry: Entry, report: Report) -> None:
 
 def _groom(report: Report, today: date, related: dict[Path, str]) -> None:
     """Flag the conditions that make a grooming pass worth a session."""
-    completed = set(report.completed)
+    resolved = report.resolved
 
     for entry in report.entries:
         if entry.line_count > MAX_ENTRY_LINES:
@@ -270,7 +298,7 @@ def _groom(report: Report, today: date, related: dict[Path, str]) -> None:
                 "move the narrative to docs/WORKING_NOTES.md"
             )
         if entry.status == "blocked":
-            landed = [ref for ref in entry.blockers if ref in completed]
+            landed = [ref for ref in entry.blockers if ref in resolved]
             if landed:
                 report.advisories.append(
                     f"{entry.identifier}: blocked by {', '.join(landed)}, which has landed; "
@@ -295,8 +323,8 @@ def _groom(report: Report, today: date, related: dict[Path, str]) -> None:
         )
     if len(report.completed) > MAX_COMPLETED_ITEMS:
         report.advisories.append(
-            f"archive: {len(report.completed)} completed items; trim the ones that have "
-            "stopped being useful history"
+            f"archive: {len(report.completed)} items under 'Recently completed'; move the "
+            "ones that have stopped being recent to the 'Archive' ledger"
         )
     if not any(
         e.effort == "S" and e.status == "ready" and e.priority != "P3" for e in report.entries
@@ -306,18 +334,17 @@ def _groom(report: Report, today: date, related: dict[Path, str]) -> None:
             "pick up; consider splitting a larger item"
         )
 
-    known = {e.identifier for e in report.entries} | completed
+    known = {e.identifier for e in report.entries} | resolved
     for path, text in related.items():
         for reference in sorted(set(REFERENCE_RE.findall(text))):
             if reference not in known:
                 report.errors.append(
-                    f"{path}: references {reference}, which is in neither the queue nor "
-                    "the completed archive"
+                    f"{path}: references {reference}, which is in neither the queue nor the archive"
                 )
-            elif reference in completed and path.name == "WORKING_NOTES.md":
+            elif reference in resolved and path.name == "WORKING_NOTES.md":
                 report.advisories.append(
-                    f"{path}: still carries a thread for {reference}, which is completed; "
-                    "delete it rather than leaving it stale"
+                    f"{path}: still carries a thread for {reference}, which has left the "
+                    "queue; delete it rather than leaving it stale"
                 )
 
 
@@ -336,11 +363,19 @@ def analyze(text: str, today: date, related: dict[Path, str] | None = None) -> R
             seen[entry.identifier] = entry
         _check_entry(entry, report)
 
-    for identifier in report.completed:
+    records = [(i, "completed") for i in report.completed]
+    records += [(i, "archived") for i in report.archived]
+    for identifier, disposal in records:
         if identifier in seen:
             report.errors.append(
-                f"{identifier}: listed as completed but still open at line {seen[identifier].line}"
+                f"{identifier}: listed as {disposal} but still open at line {seen[identifier].line}"
             )
+
+    for identifier in sorted(set(report.completed) & set(report.archived)):
+        report.errors.append(
+            f"{identifier}: recorded under both 'Recently completed' and 'Archive'; "
+            "an item is recorded once, in one of them"
+        )
 
     _groom(report, today, related or {})
     return report

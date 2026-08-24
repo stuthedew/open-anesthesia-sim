@@ -56,10 +56,13 @@ appropriate, and its entry here should be deleted rather than left stale.
   separate cadences. A live Flet client was not available in the session that
   did this work, so the repaint mechanism was deliberately left unchanged —
   see PL-010 before optimizing it further.
-- Known dead field: `SimulationSnapshot.circuit_time_constant_s` is still
-  computed but has had no corresponding display widget since the v0.1.0 UI
-  rewrite (v0.0.2 showed it; v0.1.0 doesn't). Not yet decided whether to
-  restore the display or remove the field; tracked as PL-004.
+- Two uncalled descriptive quantities remain in the core:
+  `SimulationSnapshot.circuit_time_constant_s`, still computed but with no
+  display widget since the v0.1.0 UI rewrite (v0.0.2 showed it; v0.1.0
+  doesn't), and `AlveolarCompartment.time_constant_s`, whose only consumer
+  went with `advance_ventilation`. Neither is the coupled time constant.
+  Not yet decided whether to delete them or label them; tracked together as
+  PL-004.
 
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 
