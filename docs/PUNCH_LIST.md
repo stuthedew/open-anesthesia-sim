@@ -445,6 +445,34 @@ recent detail legible. This is a teaching-design call, not a technical one.
 **Done when.** The displayed time span is a deliberate, documented choice
 rather than an artifact of an earlier payload limit.
 
+### PL-031 Record dropped punch-list items instead of deleting them
+`P2` · `S` · `infra` · ready · added 2026-08-24
+
+**Problem.** The file has a place for items that land ("Recently
+completed") and for items promoted into a milestone (a one-line pointer),
+but none for items closed without action. The checker's own staleness
+advisory invites that outcome — "do it, demote it, or drop it" — and the
+skill's groom mode never says where a drop is written down. A dropped
+entry therefore leaves the file entirely, and "Recently completed" is
+itself trimmed past ten items, so both disposal paths end in deletion.
+**Why it matters.** The stated purpose of this file is that work identified
+in one session is never lost. Git history is a weak fallback: recovering a
+dropped item requires already knowing it existed. Without the reason a
+finding was rejected, the same finding gets re-raised, re-investigated, and
+re-argued in a later session — the exact cost the capture rule exists to
+avoid.
+**Where.** `docs/PUNCH_LIST.md` (a new archive section next to "Recently
+completed"), `tools/punch_list.py` (`COMPLETED_RE` and the cross-reference
+check at `_groom`, so a dropped id still resolves and does not become a
+build error), `.claude/skills/punch-list/SKILL.md` (groom mode step for
+recording a drop).
+**First step.** Add a "Closed without action" section taking one line per
+item — id, title, date, and a one-clause reason — and teach the checker to
+read it as a resolved id alongside the completed archive.
+**Done when.** A grooming pass can drop an item and leave a durable record
+of what it was and why it was dropped, and `make punch-list` still resolves
+references to it.
+
 ## P3 — Icebox
 
 ### PL-019 Remove `BreathingCircuit`'s agent-unaware delivered-concentration default
