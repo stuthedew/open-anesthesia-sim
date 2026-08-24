@@ -995,8 +995,11 @@ The Flet interface must not:
 - correct negative stores;
 - calculate mass balance;
 - modify core state directly;
-- continue a run past a step the core could not complete; or
-- present a run halted by a failure as though it were paused.
+- continue a run past a step the core could not complete;
+- present a run halted by a failure as though it were paused; or
+- display a concentration at a finer resolution than "Displayed precision"
+  justifies, or render a value the model does not resolve as though it were
+  a value the model asserts.
 
 The controller exposes immutable snapshots rather than mutable compartment objects.
 
@@ -1091,6 +1094,145 @@ prevent — and a display that is merely frozen, with no state change at all,
 is worse still.
 
 The phrase “end-tidal-equivalent” must not imply that airway sampling dynamics, dead space, or capnography are modeled.
+
+### Displayed precision
+
+Every modeled concentration and relative partial pressure is displayed at a
+fixed resolution of **0.01 percentage points** — two decimals of a percent —
+uniformly across all six compartments. The delivered-agent setting uses the
+same resolution — in the readout beside its slider and in the slider's own
+drag label alike — so the value a reader dials and the values it produces
+are read at one scale. A positive value that would round to `0.00%` is
+displayed as `<0.01%` rather than as zero.
+
+This is a recorded decision (PL-040), not a formatting convention, because
+displayed precision is a claim about what the model can support. Earlier
+revisions displayed three decimals; the third and part of the second were
+below the solver's own error, which is to say the interface was rendering
+numerical noise as though it were model output.
+
+**What the solver's error actually is.** The shipped step is a first-order
+operator split (see "Selected method (as implemented)"), and its
+disagreement with the independent solution is what sets the floor. Measured
+against a from-scratch RK4 integration of the governing equations — the same
+oracle construction as `tests/reference/test_coupled_dynamics.py`, extended
+across the settings the interface actually exposes — the worst disagreement
+in any of the six displayed states, over an hour of simulated time, is:
+
+| Operating point | Worst error over 3600 s |
+| --- | --- |
+| Default flows, dial at 1 MAC | 1.7×10⁻³ percentage points |
+| Default flows, dial at the agent's maximum | 5.0×10⁻³ percentage points |
+| Maximum flows, dial at the agent's maximum | 1.2×10⁻² percentage points |
+
+Default flows are 4 L/min fresh gas with the reference adult's default
+alveolar ventilation and cardiac output; maximum flows are the interface's
+own slider limits for fresh gas, alveolar ventilation, and cardiac output,
+and the maximum dial is each agent's `max_delivered_concentration_percent`. The
+worst case in each row is an alveolar or mixed-venous value during the
+wash-in transient, which is where the split is under the most strain.
+
+**Why 0.01 percentage points follows.** At that resolution the last
+displayed digit is uncertain by roughly a fifth of a count in ordinary use,
+half a count at a maximum dial setting, and about one count at the extreme
+corner of the settings envelope. That is the conventional and honest
+relationship between an instrument's last digit and its error: the final
+digit is the uncertain one. At the previous 0.001 percentage points the last
+digit was uncertain by two to twelve counts and the digit before it by up to
+one, so two of the three displayed decimals carried no information about the
+model.
+
+**Why the resolution is uniform rather than per-compartment.** The six
+readouts sit in one row and are read comparatively — the reason for showing
+them together is that a reader can see the circuit lead the alveoli lead the
+tissues. Different decimal counts across those tiles would put different
+magnitudes at the same glyph position, so a value scanned rather than read
+would be misjudged by a factor of ten. The solver's error is also bounded in
+*absolute* percentage points and is of the same order in every compartment,
+so a single absolute resolution is the direct expression of it.
+
+**Why not a significant-figures rule.** A significant-figures rule gives the
+smallest values the most decimal places, and the small values are exactly
+where this model supports the least. Relative to their own magnitude the
+sparsely filled compartments are the least accurate states in the system:
+in the first ten seconds of a run the mixed-venous, muscle, and fat
+fractions carry 3–6% relative error, falling below 0.1% only after several
+minutes. Three significant figures on the fat fraction at ten seconds would
+imply a relative resolution of 0.1% on a number whose relative error is 3%,
+over-claiming by a factor of thirty — and doing so most severely in the
+readouts where a reader has least ability to notice.
+
+**Why not the 0.1 percentage points clinical monitors report.** Agent
+monitors display end-tidal and inspired concentrations to a tenth of a
+percentage point, and the circuit and alveolar readouts alone would be well
+matched to that. This simulator, though, displays compartments no monitor
+shows. At 1 MAC the fat fraction reaches only 0.032% (sevoflurane) and
+0.015% (isoflurane) after a full hour, so at monitor resolution both would
+read `0.0%` for the entire run, and muscle would read `0.0%` for its first
+three minutes (desflurane) to fifteen minutes (isoflurane). Rounding to
+clinical convention would erase the slow-compartment wash-in that is the
+reason for displaying those compartments at all. 0.01 percentage points is
+the coarsest resolution that keeps every displayed compartment legible and
+the finest the numerics support; the two constraints meet at one value
+rather than being traded off.
+
+**Why a below-resolution value is marked rather than shown as zero.** Even
+at 0.01 percentage points the slow compartments start below the last digit.
+At 1 MAC with default flows, muscle first rounds to a nonzero value at 57 s
+(desflurane), 125 s (sevoflurane), and 190 s (isoflurane); fat at 237 s,
+780 s, and 1474 s respectively. Displaying `0.00%` across those intervals
+would state that the compartment holds no agent, which the model does not
+say — it says the compartment is filling, below what the display resolves.
+`<0.01%` states exactly that, and it keeps `0.00%` meaning the one thing it
+should: nothing has arrived yet, as before a run starts. This is the
+distinction between a value the model asserts and a value the display cannot
+carry, and the interface must preserve it rather than adding a decimal the
+model cannot support.
+
+A negative fraction is deliberately excluded from the below-resolution form.
+The compartment guards make one impossible, so a negative reaching the
+formatter means something upstream is wrong, and it must remain visible as
+an anomaly rather than be absorbed into a plausible small positive reading.
+
+**Why parameter uncertainty does not govern this.** A partition coefficient
+is a measured population quantity carrying real uncertainty, and this
+model's absolute agreement with any individual patient is limited by that
+far more than by any solver error. It is nonetheless not what sets the
+number of decimals, and the distinction is worth stating: parameter
+uncertainty displaces a whole trajectory, while displayed resolution governs
+how finely two moments *within one run* can be told apart. Within a run the
+parameters are fixed and the simulation is deterministic, so what limits
+resolution is the per-step solver error, which the table above measures.
+Parameter uncertainty is disclosed where it belongs — in "Parameter
+provenance", which records each value's source, definition, and reference
+conditions — rather than encoded in a decimal count. The consequence for a
+reader is explicit, and the "Known limitations" list is where it is made
+good: no displayed value may be read as accurate to its last digit as a
+prediction about a patient. It is accurate to its last digit as a statement
+about this model with these parameters.
+
+**Precision elsewhere in the interface, and why it differs.** Simulated
+time is displayed to 0.1 s, which is exactly `SIMULATION_STEP_S`: the
+display resolves one step and no finer. Fresh gas flow, alveolar
+ventilation, and cardiac output are displayed to 0.1 L/min, matching the
+resolution of the flow controls that set them. A slider's drag label must
+carry the same number of decimals as the readout beside it: the two show one
+quantity, and a label that rounds where the readout does not leaves a reader
+unable to tell which value is the setting in force. The agent-accounting panel
+displays amounts to 10⁻⁶ L and its residual in scientific notation, and that
+is deliberately finer than any clinical reading: the panel is a numerical
+diagnostic whose job is to make a residual of order 10⁻¹⁵ L visible, not a
+value a reader interprets clinically. Precision in this interface is set by
+what each number is for, and the rule above governs the clinical readouts.
+
+The chart plots the same percentages on a shared linear axis scaled to the
+agent's maximum dial setting. Its resolution is set by pixels rather than by
+decimals, and it is coarser than the numeric readouts throughout; the
+readouts, not the traces, are where a value is read.
+
+`app/simulation_view.py` holds the resolution as a single constant with the
+formatter derived from it, and `tests/unit/test_simulation_view.py` pins
+both. A change to either is a change to this section.
 
 ## Assumptions
 
