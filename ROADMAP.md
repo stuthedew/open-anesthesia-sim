@@ -324,6 +324,57 @@ development rules below.
   scoped release — or in `docs/items/` when they are a task rather
   than a release.
 
+## The debt gate
+
+**Recorded technical debt is cleared before a new milestone begins.** Phase 0
+applies this once, to get out of a queue that had stopped shrinking. This
+section makes it standing: it runs again before every milestone, not only the
+first.
+
+The reason is that debt is cheapest to clear while the code it describes is
+still the code someone remembers. A defect carried across a milestone boundary
+has to be re-diagnosed against a codebase that has since moved, and a decision
+left unanswered stops being a decision anyone can make. Deferred debt is not
+kept; it is paid for twice or silently dropped.
+
+### What counts
+
+Debt is what the queue already records, minus new work. An open item is debt
+when it is classed `defect`, `safety`, `science`, `refactor`, `perf`, or as
+process work (`session-cost`, `docs`, `infra`), or when its status is
+`needs-decision` — an unanswered decision is debt whatever it is about.
+
+An item classed `feature` or `planning` is **not** debt. It is the work the
+gate exists to protect, and counting it would make the rule say "do everything
+before doing anything", which no gate can open.
+
+Clearing means `done` **or** `dropped` with the reason recorded. Deciding
+something is not worth doing is a legitimate way to clear it, and often the
+right one; what is not legitimate is leaving it open and starting anyway.
+
+### The gate is a snapshot, not a moving target
+
+**When a milestone is scoped, the debt list is frozen at that moment.**
+Findings captured during the clearing pass go to the *next* gate, not this one.
+
+This is the part that makes the rule survivable rather than a deadlock. Work
+generates findings — clearing thirteen items in one session generated fourteen
+new ones, which is normal and is the capture rule doing its job. Against a
+moving gate, that is a queue which can never empty and a milestone which can
+never start; the rule would then be abandoned rather than followed, which is
+worse than not having it.
+
+Two exceptions re-enter the current gate rather than waiting for the next:
+anything at `P0`, and anything classed `safety` or `science`. Those are not
+deferrable by this project's own standard, and a gate that let them wait would
+be inverting the reason it exists.
+
+### Recording it
+
+Record the frozen list in the milestone's own section here, as the item ids it
+had to clear. A gate nobody wrote down is a gate that gets renegotiated, and
+the point of freezing the list is that it cannot be.
+
 ## Development pathway
 
 The numbered list below is the catalogue; this is the order it is intended to
