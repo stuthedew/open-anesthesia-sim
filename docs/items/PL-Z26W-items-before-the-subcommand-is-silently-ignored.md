@@ -1,11 +1,12 @@
 ---
 id: PL-Z26W
 title: `--items` before the subcommand is silently ignored, so docket answers about the wrong store
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.2.4
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-25
 closed: 2026-08-25

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety
 feature: core-guard-coverage
+milestone: v0.2.4
 touches: tests/unit/test_simulation_view.py
 added: 2026-08-25
 closed: 2026-08-25

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, session-cost
 feature: delegation
+milestone: v0.2.4
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-25
 closed: 2026-08-25
