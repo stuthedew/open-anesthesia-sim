@@ -28,6 +28,7 @@ by mechanically incrementing the patch number.
 
 | v0.2.3 | Completed | Phase 0 triage and release provenance. |
 | v0.2.4 | Completed / current baseline | Verification and delegation release on the same model: fourteen previously untested capacity and validation guards in the scientific core and the controller now have tests, `_halt_run`'s deliberate suppression is covered by a test rather than only a comment, and work whose success a command can prove can be handed to a cheaper model and verified in one step. |
+| v0.3.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
@@ -136,6 +137,67 @@ The current model does not include mid-run agent switching, other volatile
 agents beyond these three, metabolism, IV anesthetics, effect-site models,
 or clinical predictions or recommendations of any kind. See
 `docs/MODEL.md`'s "Known limitations" for the complete list.
+
+## The plan
+
+One timeline. Debt clearing and feature milestones are steps on the same
+plan, in the order they happen — the gates are not a background assumption
+behind the features, they are half the work.
+
+### What MVP means here
+
+**The MVP is complete when a learner can run a case, branch it at a decision
+point, and compare the two managements side by side — in the unit clinicians
+reason in, on a time base that spans a case.**
+
+That is the Graph and the Overlay of the Gas Man reference simulator, which
+is the design this project is building on. Everything after it extends a
+working teaching tool rather than working toward one. The boundary is drawn
+there because comparison is what isolates the variable under study: running
+one case teaches a curve, and running the same case two ways teaches why the
+curve moved. A simulator that cannot do the second is a demonstration, not a
+teaching tool.
+
+Two releases reach it, and both are interface releases on the existing,
+already-validated model:
+
+- **v0.3.0, the teachable case** — one case end to end, in clinical units, at
+  a speed and on a time base that make its lessons observable at all.
+- **v0.4.0, the case you can branch** — bookmarks, forking from them, and
+  side-by-side comparison of the branches.
+
+### The timeline
+
+| # | Step | What it is | Size |
+| --- | --- | --- | --- |
+| 1 | **Gate 0** | The frozen debt list, recorded under v0.3.0 below. 14 items outside the milestone's scope. | 2 M, 12 S |
+| 2 | **v0.3.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt cleared by the milestone itself. | 5 M, 6 S |
+| 3 | **Gate 1** | Frozen when v0.4.0 is scoped. Contents unknown by construction: v0.3.0's own findings land here. | — |
+| 4 | **v0.4.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
+| — | **MVP complete** | A learner can run, branch, and compare a case. | — |
+| 5 | **Gate 2** | Frozen when v0.5.0 is scoped. | — |
+| 6 | **v0.5.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
+| 7 | **Gate 3** | Frozen when v0.6.0 is scoped. | — |
+| 8 | **v0.6.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. | — |
+| 9+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. | — |
+
+Rows 4 to 8 are the intended order and are not yet scoped; each becomes real
+only when it gets its own goal, required scope, definition of done and
+out-of-scope list here, per the development rules. Row 4's internal ordering —
+forking and comparison ahead of save/load and replay — is a deliberate
+departure from "Development pathway"'s Phase 3 sequence, on the grounds that
+branching within one session is the teaching payload while persistence is a
+convenience; it is recorded here as a proposal rather than a decision, and
+Phase 3's stated order stands until v0.4.0 is scoped.
+
+### Why the gates are on this list and not behind it
+
+A gate that lives in a separate document, or in a session's memory, is
+renegotiated every time it is inconvenient. Put on the timeline it is a step
+with a size, and skipping it is visible as skipping a step. The cadence that
+generates rows 1, 3, 5 and 7 is specified under "The debt gate" below; the
+rule is that scoping a milestone freezes its gate, and the gate clears before
+that milestone's implementation begins.
 
 ## Completed: v0.1.0 - first patient sevo model
 
@@ -297,16 +359,218 @@ mass-balance closure for both new agents; and `docs/MODEL.md`'s parameter
 provenance table and new "v0.2.0: isoflurane and desflurane" subsection
 record both agents' sourcing.
 
-## Next milestone
+## Next milestone: v0.3.0 - the teachable case
 
-No milestone after v0.2.3 has been scoped yet. The next candidate, per
-"Development pathway" below, is generalizing the patient's state from one
-volatile agent to a set of simultaneously present substances — the change
-that agent switching, nitrous oxide, and the second-gas effect all wait on,
-and the one that decides how much refactoring intravenous agents cost later.
-It must be fully specified here (goal, required scope, definition of done,
-and explicit out-of-scope list) before implementation begins, per the
-development rules below.
+### Goal
+
+Make the model teachable. The science is sound and its lessons are currently
+unreachable, for three measurable reasons:
+
+- the run advances at 1x real time (`app/simulation_view.py`, one 0.1 s step
+  per 0.1 s sleep), while the compartments that make uptake and distribution
+  worth teaching have time constants of 135 min (muscle) and 42 h (fat) for
+  sevoflurane at reference settings - so the reservoirs that cause
+  context-sensitive emergence cannot be observed at all;
+- the chart shows a rolling five-minute window on an axis labelled in
+  seconds and scaled to the vaporizer's dial maximum, so a 1 MAC run occupies
+  the bottom quarter of the plot and everything slower than the vessel-rich
+  group scrolls away flat; and
+- every value is a percentage of an atmosphere, so three agents whose MACs
+  differ threefold are displayed as though their numbers were comparable.
+
+The end state: a learner runs one case from induction to emergence - in
+compressed time they can sit through, in the unit clinicians reason in, on a
+time base that spans a case - changes something, sees on the record when they
+changed it, turns the vaporizer off, and watches it come down against a
+labelled reference.
+
+This milestone changes no equation, parameter, or numerical method. It is a
+minor rather than a patch because it adds a displayed clinical unit, a new
+time base, and a run-rate control: capability boundaries in what the
+interface asserts, even though the model behind them is untouched.
+
+It promotes planned-milestone item 25 (playback multiplier) in full and the
+recording half of item 8 (control-input timeline). It does not promote item
+26 (bookmarks) or item 12 (forking), but it is designed so that neither is
+blocked - see "Designed for forking" below.
+
+### Debt gate: the frozen list
+
+**Frozen 2026-08-25, the day this milestone was scoped.** Twenty open items
+are debt by "The debt gate" below — classed `defect`, `safety`, `science`,
+`refactor` or `perf`, or at `needs-decision`. Six of them are inside this
+milestone's own Required scope and are cleared by it, per "Debt inside the
+milestone's own scope". The other fourteen clear before implementation begins.
+The list itself stays frozen; what follows records which of the fourteen have
+cleared since, per "The cadence" below.
+
+**Cleared before v0.3.0 begins (14 items; 2 done as of 2026-08-25).**
+
+*Core correctness — both safety- or science-classed, both wanting the
+strongest model:*
+
+- PL-026 (M) Make the simulation step transactional so a halt leaves no
+  partial state
+- PL-042 (S) Bound the splitting error across the settings envelope, not one
+  point
+
+*Core boundaries — the whole `core-boundaries` feature, all `refactor`:*
+
+- PL-006 (M) Clarify what `RespiratorySystem` actually owns
+- PL-004 (S) Decide the fate of the two uncalled descriptive time constants
+- PL-007 (S) Make the payload/public-dataclass pattern self-evident in
+  `core/parameters.py`
+- PL-019 (S) Remove `BreathingCircuit`'s agent-unaware delivered-concentration
+  default
+
+*Live process machinery that does not reliably work — `defect` by the rule
+under "What counts":*
+
+- PL-G049 (S) A `verify:` command that has never been run is not a
+  specification
+- PL-674D (S) `docket release` bumps `pyproject.toml` but leaves `uv.lock`
+  stale, breaking `make check`
+- PL-0RFH (S) `docs/worker.md` buries the carve-out that lets a worker decide
+  anything at all
+- PL-R0SR (S) `docs/worker.md` should say that corrections arrive by pulling
+  the branch, never in chat
+- PL-4F6P (S) A `**Worked.**` note said "nothing the brief did not specify"
+  for a test that reached into a private class
+
+*Documentation, performance, and the one decision that is the project
+owner's:*
+
+- PL-Z4GF (S) — **done for the README half** (commit `d40ff83`). This file's
+  own duplicated v0.2.3 table row and stale "Current baseline" heading, also
+  named in this item's original scope, were not touched by that commit and
+  are still open. A separate item, PL-SWFM, was filed for the same problem by
+  a session that had not seen this freeze; whether it belongs in this gate
+  (continuing PL-Z4GF's frozen scope) or the next one (a post-freeze finding)
+  is unresolved — flagged for the project owner rather than decided here.
+- PL-010 (S) Stop rebuilding render objects on every frame
+- PL-Y2GG (S) — **done.** Apache-2.0, chosen by the project owner (commit
+  `d40ff83`).
+
+**Cleared by v0.3.0 itself (6 items).** Each appears in Required scope above:
+PL-DHV7 (MAC as a displayed unit), PL-VM40 (simulated time from a step count),
+PL-F52R (the MAC-awake reference band), PL-ZRSP (the F_A/F_I trace), PL-R3KB
+(agent selection discarding a run), PL-011 (bounding the concentration
+history).
+
+Findings made while clearing this gate go to Gate 1, except `P0` and
+`safety`/`science` findings, which re-enter here.
+
+### Required scope
+
+- **Simulated time becomes an exact function of step count.**
+  `SimulationState.elapsed_s` accumulates `+= simulation_step_s` per step
+  today; derive it from an integer step counter instead, and fix the step at
+  0.1 s. The run loop advances a fixed number of steps per tick and never
+  catches up to the wall clock: a slow machine runs slower, it does not run
+  differently.
+- **A playback multiplier**, implemented as steps per tick and never as a
+  larger step, with the current rate visible beside the clock at all times.
+- **MAC multiples as a display unit** across every readout and both chart
+  axes, alongside percent, with the agent's `mac_percent` provenance
+  traceable from the display (queue item PL-DHV7).
+- **A case-length time base**: minutes rather than seconds, selectable 15,
+  30 and 60 minute scales plus a fit-the-run scale (queue item PL-SSBP).
+- **A vertical scale that fits the run** rather than the vaporizer's dial
+  maximum. In MAC mode the axis becomes agent-independent, which is what
+  makes a cross-agent comparison honest.
+- **A recorded control-input timeline**: every fresh gas flow, vaporizer
+  dial, alveolar ventilation and cardiac-output change stamped with the
+  simulated time it took effect, held with the state it describes, and
+  marked on the chart. The recording half of planned-milestone item 8, not
+  the replay half.
+- **Changing agent becomes an explicit new case** rather than a selector
+  that silently discards the run and its history (queue item PL-R3KB).
+- **A MAC-awake reference band** on the chart: a cited population median for
+  return of responsiveness, drawn as a band and labelled as a population
+  reference, never as a per-patient time prediction.
+- **An F_A/F_I trace**, the ratio the uptake literature plots, with the
+  interpretive caveat that it means what the textbook curve means only while
+  inspired concentration is held constant.
+- **A bounded concentration history** (queue item PL-011), which stops being
+  optional once a four-hour run at 10 Hz records 144,000 samples.
+- **A documentation sweep**: `docs/MODEL.md`'s interface boundary, minimum
+  displayed outputs and displayed-precision sections, and `README.md`.
+
+### Designed for forking
+
+Forking a case at a point on it, to compare two managements of the same
+patient, is planned-milestone item 12 and is not built here. Item 12's
+required property - a branch reproduces its parent exactly at every recorded
+sample up to the branch point, element-wise rather than within a tolerance -
+is expensive to retrofit and cheap to preserve, so this milestone preserves
+it:
+
+- deriving elapsed time from an integer step count removes the accumulation
+  order that would otherwise make a resimulated prefix differ from a
+  straight-through one;
+- fixing the step at 0.1 s regardless of playback rate removes the step-size
+  divergence;
+- never catching up to the wall clock removes the machine-speed dependence
+  in the number of steps taken, which is the subtlest of the three and would
+  otherwise make every run irreproducible on a different computer; and
+- the control-input timeline is what lets a point *between* recorded samples
+  be reached by resimulation at all.
+
+What is deliberately *not* designed for in advance: per-compartment agent
+amounts in the snapshot, a schematic view, run comparison, or a snapshot
+policy. Those are cheap to add when their milestone arrives, and adding
+unused structure now would be speculative generality rather than
+groundwork. The distinction is whether retrofitting invalidates recorded
+runs or merely adds a field.
+
+### Definition of done
+
+v0.3.0 is complete only when:
+
+- two runs given identical inputs produce element-wise identical recorded
+  history at every playback multiplier, asserted by test, and identical
+  history on a machine of any speed;
+- the simulation step is 0.1 s at every playback multiplier, asserted by
+  test;
+- a learner can read every graphed compartment in MAC multiples and in
+  percent, and can trace the agent's MAC value to its cited source from the
+  display;
+- a three-hour case can be run, watched, and read end to end in a few
+  minutes of wall clock, with the muscle and fat curves visibly diverging
+  from the alveolar one;
+- every control change during a run is recorded with the simulated time it
+  took effect, and is visible on the chart;
+- changing agent cannot discard a run without the user being told what will
+  be lost and confirming;
+- the MAC-awake band and the F_A/F_I trace each carry, at the point of
+  display, what they do and do not assert;
+- `docs/MODEL.md` states the MAC transformation, what a MAC multiple on a
+  non-alveolar compartment does not claim, the reproducibility guarantee
+  above, and the interface's new obligations;
+- the v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference
+  tests remain unchanged and passing, and no equation, parameter or
+  numerical method has changed; and
+- Ruff formatting and linting, strict mypy, pytest, and GitHub Actions all
+  pass.
+
+### Explicitly out of scope for v0.3.0
+
+- Nitrous oxide, coadministered gases, and the concentration and second-gas
+  effects (items 6-7). This milestone is deliberately taken ahead of them;
+  see the note in "Development pathway".
+- The multi-substance patient state (Phase 1). Nothing here requires it, and
+  the view already consumes an immutable snapshot, so the MAC readout is the
+  only piece that changes shape when a second substance lands.
+- The anesthesia-machine abstraction, interlocks, agent switching with
+  residual washout, direct injection, and end-tidal control (items 1-5).
+- Run bookmarks (item 26), forking (item 12), save/load (item 9), replay
+  (item 10) and run comparison (item 11) - the replay half of item 8's
+  timeline included. Only recording is in scope.
+- A schematic compartment view (item 27) and agent cost (item 28).
+- A second patient, weight-based scaling, age-adjusted MAC, dead space,
+  airway sampling delay, or any depth, BIS or effect-site model.
+- Horizontal panning of the chart window (queue item PL-Z7LY), which the
+  fit-run scale makes optional rather than necessary.
 
 ## Development rules for scientific milestones
 
@@ -385,6 +649,43 @@ anything at `P0`, and anything classed `safety` or `science`. Those are not
 deferrable by this project's own standard, and a gate that let them wait would
 be inverting the reason it exists.
 
+### The cadence
+
+The gate is a recurring step on the plan, not a precondition assumed in the
+background. Every milestone runs the same four beats, and "The plan" above
+shows them on one timeline with the milestones they gate:
+
+1. **Scope** the milestone here — goal, required scope, definition of done,
+   explicit out-of-scope list. Scoping is the act that freezes the list.
+2. **Freeze and record** the debt list in that milestone's own section, as
+   item ids, on the day it was frozen.
+3. **Clear** it — every item `done`, or `dropped` with its reason — before
+   implementation of the milestone begins.
+4. **Implement** the milestone. Findings made while clearing, and while
+   implementing, go to the next gate, except `P0` and `safety`/`science`
+   findings, which re-enter this one.
+
+A milestone whose gate has not been recorded has not been scoped, whatever
+else has been written about it.
+
+### Debt inside the milestone's own scope
+
+**Debt that the milestone itself exists to clear is cleared *by* it, not
+before it.** This carve-out is necessary rather than convenient: v0.3.0 was
+scoped in part *because* six safety, science, defect and perf items were all
+symptoms of the same thing, and requiring them to be cleared before the
+milestone that clears them is a rule with no satisfying order.
+
+The test is whether the item appears in the milestone's "Required scope". If
+it does, it is milestone work and is listed in the frozen gate under a heading
+that says so; the gate is open when everything *outside* the milestone's scope
+is clear. If it does not, it is cleared first, whatever it is about.
+
+This does not weaken the `safety`/`science` re-entry rule above. Such an item
+inside the scope is still not deferrable — it just cannot be finished earlier
+than the work it is part of, and the milestone's definition of done is what
+holds it.
+
 ### Recording it
 
 Record the frozen list in the milestone's own section here, as the item ids it
@@ -402,31 +703,47 @@ The organizing goal is a mature inhalational simulator before any intravenous
 work begins: the science first, then an interface that can actually drive it,
 then reproducibility, then IV.
 
-**Phase 0 — foundation.** No new feature work until the existing queue is
-closed out. Not because features are unwelcome, but because the last stretch
-of work felt like whack-a-mole, and it is worth being precise about why: the
-queue holds almost no defects. What it holds is decisions nobody has made.
+**Phase 0 — foundation. Superseded by the standing debt gate, 2026-08-25.**
 
-At the time this was written, nine of twenty-four open items sat at
-`needs-decision` — over a third of the queue could not be picked up by anyone,
-so it never visibly shrank however much work got done. That is the thing to
-fix before adding to it, because the same ratio applied to a larger queue is
-what makes a backlog stop meaning anything.
+Phase 0 is not closed, and on its own terms it cannot be. Its closing
+conditions are reproduced below unchanged, followed by their state at the date
+above.
 
-"All bugs squashed" is not a closing condition, since absence of defects
-cannot be demonstrated. This one can be checked:
+Its original text: no new feature work until the existing queue is closed out.
+Not because features are unwelcome, but because the last stretch of work felt
+like whack-a-mole, and it is worth being precise about why: the queue holds
+almost no defects. What it holds is decisions nobody has made. At the time
+that was written, nine of twenty-four open items sat at `needs-decision` — over
+a third of the queue could not be picked up by anyone, so it never visibly
+shrank however much work got done. "All bugs squashed" is not a closing
+condition, since absence of defects cannot be demonstrated. These were:
 
-- no open item classed `safety`, `science` or `defect`;
-- no open item classed only as process work (`session-cost`, `docs`, `infra`)
-  — the workflow is either finished or explicitly deferred;
-- no item left at `needs-decision`: each is answered and made `ready`, or
-  dropped with its reason recorded;
-- every outstanding branch merged and a release cut, so the tree is not
-  carrying half-landed work into Phase 1.
+| Phase 0 closing condition | State on 2026-08-25 |
+| --- | --- |
+| no open item classed `safety`, `science` or `defect` | **Not met.** 6 safety/science and 8 defect-classed items open. |
+| no open item classed only as process work (`session-cost`, `docs`, `infra`) | **Not met.** 11 such items open. |
+| no item left at `needs-decision` | **Met**, and deliberately unmet again the same day: PL-Y2GG (the license choice) was moved *to* `needs-decision` because it holds a decision only the project owner can make, and recording that is more honest than a `ready` nobody can act on. |
+| every outstanding branch merged and a release cut | **Met** for merges — `claude/pl-64ls-promote` is gone from the remote — and v0.2.4 is cut. |
 
-Implementing a planned milestone during this phase is fine where it falls out
-of foundation work naturally. Starting one because it is more interesting than
-the queue is the thing being deferred.
+**Why superseded rather than pursued.** The first two conditions ask the queue
+to reach zero in categories that every working session refills. The queue held
+24 open items when Phase 0 was written and holds 48 now: it doubled during the
+period Phase 0 was meant to be draining it, which is not a failure of effort
+but the capture rule working as designed. A gate that requires a refilling
+queue to empty is a gate that never opens, and the honest outcomes for such a
+rule are that it gets quietly abandoned or that it blocks all work forever.
+
+"The debt gate" above is the mechanism that replaced it, and it is strictly
+better for the same purpose: it freezes a list at a moment rather than chasing
+a moving one, so it is always finite and always openable, and it recurs before
+every milestone rather than once. Everything Phase 0 was trying to buy — debt
+cleared while the code it describes is still fresh, decisions answered rather
+than accumulated — the gate buys on a cadence instead of in one push.
+
+So Phase 0 is retired as a phase. Its unmet conditions are not carried forward
+as a backlog; the items behind them are in the current frozen gate, where they
+can be worked and finished. Implementing a planned milestone is no longer held
+by Phase 0, only by its own gate.
 
 **Phase 1 — scientific maturity.** Generalize the patient's state from one
 agent to N simultaneously present substances, then items 6 and 7 (nitrous
@@ -452,6 +769,22 @@ effect is the phenomenon this class of simulator is most used to teach, so
 without it there is no credible inhalational simulator to build an interface
 on; and it changes the core equations, so an interface built on a single-gas
 core would be reworked when it lands.
+
+**Reordering (project owner, 2026-08-25): the teachable case is taken ahead
+of Phase 1.** As written below, Phase 1's substance generalization and nitrous
+oxide precede all interface work, on the reasoning that an interface built on
+a single-gas core would be reworked. That ordering was reconsidered once the
+interface was measured against what a learner can actually do with it: the
+run advances at 1x real time and the chart spans five minutes, so neither the
+muscle nor the fat curve can be observed, and no lesson in uptake and
+distribution currently reaches anyone. Building coupled-gas equations first
+would produce a more capable engine that still teaches nobody, and would do it
+without the feedback from real teaching use that should shape what the
+multi-gas display looks like. The rework this accepts is bounded and known:
+the view consumes an immutable `SimulationSnapshot`, so the time base,
+playback, event marks and axis handling are substance-agnostic, and the MAC
+readout - which becomes a MAC sum when a second substance lands - is the piece
+that changes. v0.3.0 is that work; Phase 1 follows it unchanged.
 
 **Phase 2 — an interface that can drive the machine.** Consolidate the
 display constants named in item 24 first, then item 24 itself, then items 5,
@@ -616,6 +949,8 @@ specified.
     than real time without changing the simulation's own time step. Kept
     separate from deterministic replay (item 10): replay reproduces a recorded
     run, while this changes the rate at which any run is displayed.
+    *Promoted into the scoped v0.3.0 milestone - see "Next milestone:
+    v0.3.0 - the teachable case" above.*
 26. Add run bookmarks that halt a run at a target, after item 25. There is
     currently no way to say "run fast until something happens, then stop": a
     learner comparing gas-management strategies has to watch the clock and
@@ -652,6 +987,23 @@ specified.
     differently from "reached" rather than stopping silently. Bookmarks are
     part of the saved scenario rather than session-local, so item 12 can
     branch from them.
+
+27. Add a schematic compartment view alongside the graph - the interactive
+    "Picture" of the Gas Man reference simulator, in which the machine,
+    circuit, lungs and tissue groups are drawn to scale and fill as agent
+    enters them. This teaches something the graph structurally cannot: the
+    graph plots partial pressure, so fat reads near zero for hours while
+    holding more agent than every other compartment combined. Where the drug
+    *is*, in millilitres, and where the *tension* is are different questions,
+    and confusing them is a standard novice error. Needs per-compartment agent
+    amounts exposed on the snapshot, which the core already computes and the
+    snapshot does not yet carry.
+28. Add agent cost, from the exhausted-agent amount the model already tracks.
+    The economic argument for low fresh gas flow is a standard teaching point
+    and currently the one lesson in this class of simulator that the
+    application has the numbers for and does not draw. Depends on nothing;
+    kept out of the v0.3.0 scope because it is an addition rather than a
+    prerequisite.
 
 Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
 milestone, delivered as v0.2.0 — see "Completed: v0.2.0" above — so it no

@@ -3,10 +3,12 @@ id: PL-003
 title: Scope the next milestone in ROADMAP.md
 priority: P1
 effort: M
-status: ready
+status: done
 classes: planning
 touches: ROADMAP.md
 added: 2026-08-23
+commit: 621d9a6
+closed: 2026-08-25
 ---
 
 **Problem.** No milestone after v0.2.0 is scoped (v0.2.1 is a validation
