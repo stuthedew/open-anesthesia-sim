@@ -1,16 +1,56 @@
+from dataclasses import replace
+
 import pytest
 
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     load_reference_adult_parameters,
     load_sevoflurane_parameters,
 )
-from anesthesia_sim.core.patient import PatientCompartments
+from anesthesia_sim.core.patient import FLOW_FRACTION_TOLERANCE, PatientCompartments
 
 
 def _build_patient() -> PatientCompartments:
     return PatientCompartments.from_parameters(
         agent=load_sevoflurane_parameters(),
         patient=load_reference_adult_parameters(),
+    )
+
+
+def test_rejects_perfusion_sum_outside_tolerance() -> None:
+    agent = load_sevoflurane_parameters()
+    parameters = load_reference_adult_parameters()
+    invalid_parameters = replace(
+        parameters,
+        fat_perfusion_fraction=(parameters.fat_perfusion_fraction - 2.0 * FLOW_FRACTION_TOLERANCE),
+    )
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^tissue perfusion fractions must sum to 1$",
+    ):
+        PatientCompartments.from_parameters(
+            agent=agent,
+            patient=invalid_parameters,
+        )
+
+
+def test_accepts_perfusion_sum_inside_tolerance() -> None:
+    agent = load_sevoflurane_parameters()
+    parameters = load_reference_adult_parameters()
+    valid_parameters = replace(
+        parameters,
+        fat_perfusion_fraction=(parameters.fat_perfusion_fraction - 0.5 * FLOW_FRACTION_TOLERANCE),
+    )
+
+    patient = PatientCompartments.from_parameters(
+        agent=agent,
+        patient=valid_parameters,
+    )
+
+    assert patient.total_perfusion_fraction == pytest.approx(
+        1.0,
+        abs=FLOW_FRACTION_TOLERANCE,
     )
 
 

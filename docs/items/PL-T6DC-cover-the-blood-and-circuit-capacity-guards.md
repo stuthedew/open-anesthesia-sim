@@ -56,3 +56,5 @@ which measures exactly what this item is responsible for.
 
 **Done when.** the `verify:` command above
 passes and `make check` is green.
+
+**Worked.** Nothing the brief did not specify.

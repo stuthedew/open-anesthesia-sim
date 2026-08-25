@@ -6,6 +6,16 @@ from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 
+def test_rejects_agent_amount_above_circuit_capacity() -> None:
+    circuit = BreathingCircuit()
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^agent_amount_l exceeds circuit capacity$",
+    ):
+        circuit.set_agent_amount(6.1)
+
+
 def test_one_time_constant_reaches_expected_fraction() -> None:
     circuit = BreathingCircuit(
         circuit_volume_l=6.0,
