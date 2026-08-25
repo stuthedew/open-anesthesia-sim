@@ -401,8 +401,10 @@ are debt by "The debt gate" below — classed `defect`, `safety`, `science`,
 `refactor` or `perf`, or at `needs-decision`. Six of them are inside this
 milestone's own Required scope and are cleared by it, per "Debt inside the
 milestone's own scope". The other fourteen clear before implementation begins.
+The list itself stays frozen; what follows records which of the fourteen have
+cleared since, per "The cadence" below.
 
-**Cleared before v0.3.0 begins (14 items).**
+**Cleared before v0.3.0 begins (14 items; 2 done as of 2026-08-25).**
 
 *Core correctness — both safety- or science-classed, both wanting the
 strongest model:*
@@ -438,11 +440,16 @@ under "What counts":*
 *Documentation, performance, and the one decision that is the project
 owner's:*
 
-- PL-Z4GF (S) README's current-status heading, and this file's duplicated
-  v0.2.3 table row, name the wrong release
+- PL-Z4GF (S) — **done for the README half** (commit `d40ff83`). This file's
+  own duplicated v0.2.3 table row and stale "Current baseline" heading, also
+  named in this item's original scope, were not touched by that commit and
+  are still open. A separate item, PL-SWFM, was filed for the same problem by
+  a session that had not seen this freeze; whether it belongs in this gate
+  (continuing PL-Z4GF's frozen scope) or the next one (a post-freeze finding)
+  is unresolved — flagged for the project owner rather than decided here.
 - PL-010 (S) Stop rebuilding render objects on every frame
-- PL-Y2GG (S, `needs-decision`) Add a LICENSE file and a `pyproject` license
-  field — blocked on the project owner choosing a license, and on nothing else
+- PL-Y2GG (S) — **done.** Apache-2.0, chosen by the project owner (commit
+  `d40ff83`).
 
 **Cleared by v0.3.0 itself (6 items).** Each appears in Required scope above:
 PL-DHV7 (MAC as a displayed unit), PL-VM40 (simulated time from a step count),
