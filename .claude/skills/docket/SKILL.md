@@ -123,7 +123,7 @@ behind it, or by the owner asking what is next when nothing pressing is open.
 parking if something brings it back, and the roadmap does not announce itself
 the way the digest does.
 
-> "v0.2.3 is out and what is left is four small items. The next planned
+> "v0.2.4 is out and what is left is four small items. The next planned
 > milestone is the anesthesia-machine abstraction — the interlock baseline
 > everything else on the list builds on. Want to scope it? That is a design
 > round, and it would come out as items."
@@ -265,7 +265,7 @@ Raise it the way a colleague would: what got done, what it completes, what the
 version would be, and a question.
 
 > "PL-010 and PL-011 landed, so chart-readout is finished — four items. That
-> makes a natural v0.2.3. Want me to cut it?"
+> makes a natural v0.2.4. Want me to cut it?"
 
 ```bash
 docket status               # includes what is releasable
