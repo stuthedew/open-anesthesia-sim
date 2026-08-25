@@ -79,10 +79,39 @@ naming the feature and writing the briefs is the job being delegated — asking
 "which items should this be?" or "what should we call the feature?" returns it.
 Propose an answer and invite correction; do not ask an open question.
 
-If the idea is one thing rather than several, it is one item, and it does not
-need a design round — say so and capture it. If it is genuinely a milestone —
-its own goal, scope and definition of done — say so and scope it in
-`ROADMAP.md` instead.
+**Where a thing lands depends on how ready it is, not on how big it is.**
+
+| What the owner said | Where it goes |
+| --- | --- |
+| "Make this specific change" | A queue item, now. It is actionable already. |
+| "I want this feature eventually" | One line of intent in `ROADMAP.md`'s "Planned milestones". No items. |
+| "Let's build this" | The design round above, then items once settled. |
+
+The middle row is the one that goes wrong. An aspirational feature filed as an
+`L` queue item is work that cannot be worked: it sits at the bottom of the
+queue being skipped by every session that reads past it, while looking like
+something anyone could pick up. `ROADMAP.md` keeps such items deliberately
+unspecified — no goal, no scope, no definition of done — until someone is
+ready to scope one, which is exactly the right shape for intent.
+
+## Mode: bring the roadmap back into the queue
+
+Triggered by the queue thinning out, by a release shipping with little left
+behind it, or by the owner asking what is next when nothing pressing is open.
+
+**Offer this; do not wait for it.** Intent parked on the roadmap is only worth
+parking if something brings it back, and the roadmap does not announce itself
+the way the digest does.
+
+> "v0.2.3 is out and what is left is four small items. The next planned
+> milestone is the anesthesia-machine abstraction — the interlock baseline
+> everything else on the list builds on. Want to scope it? That is a design
+> round, and it would come out as items."
+
+Then run the design round: goal, required scope, definition of done, and an
+explicit out-of-scope list, written into `ROADMAP.md` per the development
+rules there — *then* the items. A milestone is scoped before implementation
+begins, not discovered during it.
 
 **The exception is a session that is about to end with the thread open.** A
 design still under discussion when the session stops is lost like anything

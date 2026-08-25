@@ -253,8 +253,26 @@ reason to load the skill:
   criteria.
 - **`P0` items are hotfixes.** Before feature work, on their own branch, with
   a patch version bump and a regression test.
+- **Capture intent, and route it by how ready it is.** What the owner says
+  they want always gets recorded; where it goes depends on whether it can be
+  acted on:
+  - A **specific change** — a code tweak, a defect, a named improvement — is a
+    queue item, written now. It is already actionable, so nothing is gained by
+    deferring it.
+  - A **feature wanted but not yet ready to build** goes to `ROADMAP.md`'s
+    "Planned milestones" as one line of intent, not into the queue. It is
+    deliberately left unscoped there. Filing it as an `L` queue item instead
+    puts something in the work queue that cannot be worked, and it sits at the
+    bottom being skipped by every session that reads past it.
+  - A **feature being designed right now** gets the design round above, then
+    items once the shape has settled.
 - **Do not start an `L` item from a queue entry.** Promote it into a scoped
   `ROADMAP.md` milestone first, per the development rules there.
+- **Close the loop back to the roadmap.** Intent parked there is only worth
+  parking if something brings it back. When the queue thins out, or a release
+  ships and the work that remains is small, say so and offer to scope the next
+  planned milestone into items — that is the moment the design round is worth
+  spending on, and nobody else is going to notice it has arrived.
 - **Answer "what should we work on next?" at feature altitude.** `bin/docket
   status` groups the project the way a decision is actually made — what is
   underway, what has not started, what is individually urgent. Lead with that,
