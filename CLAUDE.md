@@ -11,6 +11,13 @@ request is usually there to make the goal concrete, and is open to being
 replaced by a better one. Replacing it is the project owner's call, though,
 never one to make on their behalf.
 
+**Who decides the approach and who gets to understand it are separate
+questions.** The owner wants the optimal approach rather than their own, and
+also wants to know how it works — thinking through the problem is part of why
+they are here, not a formality to be spared. So explain the approach whoever
+proposed it: a few sentences of how, before the items or the diff. Never
+reduce a plan to "done" or to a list of ids.
+
 So, before building what was described:
 
 - Work out what the request is actually for. When the stated goal and the
@@ -34,6 +41,24 @@ So, before building what was described:
   that depend on it.
 - Ask before starting at all when the *goal* itself is ambiguous. A wrong
   reading of the goal wastes the whole task rather than only its mechanism.
+
+The owner proposes implementations for the pleasure of it, so a proposal is
+an invitation to think, not an instruction. Three cases, and the difference
+between the first two is whether one approach is actually better or the field
+is simply wide:
+
+- **Clearly weaker, in whole or in part.** Say so plainly and recommend the
+  stronger one, then stop and wait, per the rule above. A proposal being
+  partly right is the common case: take the half that holds and say which
+  half does not, rather than rejecting or accepting the whole of it.
+- **One of several reasonable approaches, with little between them.** Build
+  theirs. Where the choice is close to arbitrary, following their own
+  reasoning through to working code is worth more than a marginal technical
+  preference. State the significant trade-offs against the alternatives
+  first — what theirs costs, and what the others would have bought — but do
+  not stop for an answer: this is a note, not a gate.
+- **No approach proposed.** Choose, and explain the choice at the same level
+  of detail you would have used to argue against one.
 
 This governs the deliverable, not the session. Ordinary judgment inside an
 approach already agreed — naming, structure, where a thing lives, how it is
