@@ -888,9 +888,30 @@ specified.
     *Scope (project owner, 2026-08-25).* Flat, not a tree: one trunk run
     with N branches taken from points on it. Sub-forks of forks are
     deliberately out — they multiply without bound and buy little over
-    re-branching from the trunk. Branch points are expected to be bookmarks
-    (item 26); an arbitrary time is the rare case, served by resimulating
-    from the nearest prior bookmark, which needs item 8's input timeline.
+    re-branching from the trunk.
+
+    *Branch points (project owner, 2026-08-25, confirmed against the Gas Man
+    Owner's Manual, "Replaying Simulations" and "Edit menu — Rewind").*
+    Supersedes this note's original framing, which treated bookmarks as the
+    branch mechanism and an arbitrary point as a rare, resimulated fallback.
+    A branch point is not only a placed bookmark: any recorded
+    control-input-timeline event — a fresh-gas-flow, vaporizer, ventilation,
+    or cardiac-output change, whether or not a bookmark sits there — is
+    itself a valid branch point. This matches Gas Man's own behavior: making
+    a substantive change during replay truncates the run at that point, and
+    continuing extends it "with new, alternate results, just as it would
+    have done had the original simulation included the revising adjustment."
+    This project's forking generalizes that single-track truncate-and-continue
+    behavior — Gas Man keeps one active timeline, overwritten past the change
+    point — into true forking, where the pre-change branch is kept rather
+    than discarded, so both are available for item 11's side-by-side
+    comparison. Because item 8's control-input timeline already stamps every
+    such change with its simulated time, resimulating from any of them is not
+    a rare fallback but the ordinary case — cheap, per the measurement below,
+    and needing nothing beyond item 8's own data. Bookmarks (item 26) remain
+    useful as the *named, threshold-triggered* subset a learner can
+    fast-forward to and fork from repeatably; they are not the only subset
+    that qualifies.
 
     *Required property.* A branch taken at time t must reproduce its
     parent's state exactly at every recorded sample up to t — asserted
@@ -956,9 +977,12 @@ specified.
     learner comparing gas-management strategies has to watch the clock and
     pause by hand, which is neither repeatable nor possible at speed.
     Bookmarks are what make fast-forward usable, and they are the branch
-    points item 12 expects users to fork from far more often than an
-    arbitrary time, so the bookmark set is what a snapshot policy should key
-    on.
+    points a learner deliberately returns to by name — item 12's "Branch
+    points" note treats every control-input-timeline event as a valid branch
+    point, not bookmarks alone, but the bookmark set is still what a
+    snapshot policy should key on: it is the subset a learner is expected to
+    revisit repeatedly, so it is worth keeping cheap to reach even where an
+    arbitrary timeline point is not.
 
     *Scope floor (project owner, 2026-08-25).* The Gas Man reference
     simulator's bookmark set is the minimum: an absolute simulated time, and
