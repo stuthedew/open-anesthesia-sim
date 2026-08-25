@@ -3,11 +3,13 @@ id: PL-D7JQ
 title: `docket verify` - prove delegated work stayed inside its commission
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra, session-cost
 feature: delegation
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-08-25
+closed: 2026-08-25
+commit: PENDING
 ---
 
 **Problem.** A passing check proves the check passed. It does not prove the
