@@ -300,9 +300,11 @@ reason to load the skill:
   `ROADMAP.md` milestone first, per the development rules there.
 - **Clear recorded debt before a new milestone begins.** `ROADMAP.md`'s "The
   debt gate" is the rule: open items classed `defect`, `safety`, `science`,
-  `refactor`, `perf` or as process work, and anything at `needs-decision`, are
-  cleared — `done`, or `dropped` with the reason — before milestone work
-  starts. `feature` and `planning` items are not debt. The list is frozen when
+  `refactor` or `perf`, and anything at `needs-decision`, are cleared — `done`,
+  or `dropped` with the reason — before milestone work starts. Process work is
+  debt once the mechanism is live and unreliable, not while it is still being
+  built; that case is classed `defect` like any other, so the class carries the
+  rule. `feature` and `planning` items are not debt. The list is frozen when
   the milestone is scoped, so findings made while clearing go to the next gate
   rather than extending this one; `P0` and safety- or science-classed findings
   are the exceptions and re-enter immediately. Say which gate a piece of work
@@ -424,7 +426,7 @@ Apply the following principles when making recommendations:
 - Prioritize recommendations by consequence. Safety, scientific correctness, misleading output, and irreversible architectural problems outrank visual polish or minor code style.
 - Distinguish a required correctness/safety issue from a high-value recommendation and from optional polish.
 - Do not create scope creep by silently implementing out-of-milestone ideas. Recommend them and explain their value; implement them only when they fit the current milestone or the user approves the scope change.
-- Prefer established standards, validated methods, and authoritative primary sources over convention-by-habit. When a recommendation depends on current standards, guidance, libraries, or evidence, verify the current source rather than relying on memory.
+- Prefer established standards, validated methods, and authoritative primary sources over convention-by-habit. Where a recommendation depends on current standards, guidance, libraries, or evidence, consult the source rather than memory - **before** forming the recommendation, not to confirm one already given. This covers how the project is run as much as what it builds: technical-debt policy, delegation and review design, testing strategy and release process are well-studied problems with published evidence, and advice on one of them from memory is worth no more than a solubility coefficient from memory. Recommending first and researching afterwards produces advice that has to be withdrawn, which costs the owner a decision they already made and more than the search would have.
 - Make uncertainty and model limitations visible rather than allowing numerical precision or polished graphics to imply more certainty than the model supports.
 - Avoid false precision in displayed outputs. Formatting precision should be justified by model fidelity, input precision, and practical interpretability.
 - Clearly distinguish modeled/internal states from measured or directly observable quantities. Do not present a predicted value in a way that could reasonably be mistaken for a measurement.

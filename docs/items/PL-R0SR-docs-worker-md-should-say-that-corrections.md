@@ -4,7 +4,7 @@ title: `docs/worker.md` should say that corrections arrive by pulling the branch
 status: ready
 priority: P2
 effort: S
-classes: docs, session-cost
+classes: defect, docs, session-cost
 feature: worker-instructions
 touches: docs/worker.md
 added: 2026-08-25
