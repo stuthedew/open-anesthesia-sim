@@ -9,7 +9,7 @@
       "Grep",
       "Bash(make check)",
       "Bash(make docket)",
-      "Bash(python3 -m docket *)",
+      "Bash(bin/docket *)",
       "Bash(make test)",
       "Bash(make fix)",
       "Bash(make sync)",

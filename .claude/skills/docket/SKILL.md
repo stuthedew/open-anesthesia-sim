@@ -9,8 +9,8 @@ The queue lives in `docs/items/`, one file per item. `subprojects/docket/README.
 documents the format and the commands; this skill covers when to reach for
 which, and the few judgments the tool deliberately does not make.
 
-Run everything through `make docket` or `PYTHONPATH=subprojects/docket/src
-python3 -m docket <command>`.
+Run everything through `bin/docket <command>`, which needs no virtualenv and
+no install step. `make docket` is the same validation, wired into `make check`.
 
 **Do not read the store to answer a question a command answers.** `next`,
 `list`, `check`, and `concurrent` exist so a session spends tokens on the
