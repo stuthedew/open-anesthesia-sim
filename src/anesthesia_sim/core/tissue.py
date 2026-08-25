@@ -34,30 +34,19 @@ class TissueGroup:
             raise SimulationConfigurationError("name must be a nonempty string")
 
         require_positive_finite("volume_l", self.volume_l)
-        require_positive_finite(
-            "perfusion_fraction",
-            self.perfusion_fraction,
-        )
+        require_positive_finite("perfusion_fraction", self.perfusion_fraction)
 
         if self.perfusion_fraction > PERFUSION_FRACTION_UPPER_BOUND:
             raise SimulationConfigurationError("perfusion_fraction must not exceed 1")
 
         require_positive_finite(
-            "blood_gas_partition_coefficient",
-            self.blood_gas_partition_coefficient,
+            "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
         )
         require_positive_finite(
-            "tissue_gas_partition_coefficient",
-            self.tissue_gas_partition_coefficient,
+            "tissue_gas_partition_coefficient", self.tissue_gas_partition_coefficient
         )
-        require_nonnegative_finite(
-            "blood_flow_l_min",
-            self.blood_flow_l_min,
-        )
-        require_nonnegative_finite(
-            "agent_amount_l",
-            self.agent_amount_l,
-        )
+        require_nonnegative_finite("blood_flow_l_min", self.blood_flow_l_min)
+        require_nonnegative_finite("agent_amount_l", self.agent_amount_l)
 
         if self.agent_amount_l > self.capacity_l:
             raise SimulationConfigurationError(
@@ -105,29 +94,16 @@ class TissueGroup:
     def set_blood_flow(self, blood_flow_l_min: float) -> None:
         """Change tissue blood flow without changing stored agent."""
 
-        require_nonnegative_finite(
-            "blood_flow_l_min",
-            blood_flow_l_min,
-        )
+        require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
         self.blood_flow_l_min = blood_flow_l_min
 
-    def set_partial_pressure_fraction(
-        self,
-        partial_pressure_fraction: float,
-    ) -> None:
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: float) -> None:
         """Set tissue state from a partial-pressure-equivalent fraction."""
 
-        require_concentration_fraction(
-            "partial_pressure_fraction",
-            partial_pressure_fraction,
-        )
+        require_concentration_fraction("partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.capacity_l * partial_pressure_fraction
 
-    def advance(
-        self,
-        arterial_fraction: float,
-        simulation_step_s: float,
-    ) -> float:
+    def advance(self, arterial_fraction: float, simulation_step_s: float) -> float:
         """Advance exactly for constant arterial fraction and blood flow.
 
         Returns the signed change in tissue agent amount. A positive value
@@ -135,14 +111,8 @@ class TissueGroup:
         from the tissue to blood.
         """
 
-        require_concentration_fraction(
-            "arterial_fraction",
-            arterial_fraction,
-        )
-        require_positive_finite(
-            "simulation_step_s",
-            simulation_step_s,
-        )
+        require_concentration_fraction("arterial_fraction", arterial_fraction)
+        require_positive_finite("simulation_step_s", simulation_step_s)
 
         if self.blood_flow_l_min == 0.0:
             return 0.0

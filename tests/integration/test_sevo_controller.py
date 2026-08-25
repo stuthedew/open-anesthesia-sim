@@ -11,9 +11,7 @@ from anesthesia_sim.app.simulation_view import (
 
 
 def _advance_for(
-    controller: SimulationController,
-    duration_s: float,
-    simulation_step_s: float = 0.1,
+    controller: SimulationController, duration_s: float, simulation_step_s: float = 0.1
 ) -> None:
     step_count = round(duration_s / simulation_step_s)
 

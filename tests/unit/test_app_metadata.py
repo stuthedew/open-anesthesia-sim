@@ -24,9 +24,7 @@ def test_app_version_matches_pyproject_toml() -> None:
     assert app_metadata.APP_VERSION == declared_version
 
 
-def test_app_version_falls_back_when_package_metadata_missing(
-    monkeypatch: Any,
-) -> None:
+def test_app_version_falls_back_when_package_metadata_missing(monkeypatch: Any) -> None:
     """A frozen/bundled build without preserved package metadata must not
     crash on import; it must fall back to a visibly unknown version."""
 

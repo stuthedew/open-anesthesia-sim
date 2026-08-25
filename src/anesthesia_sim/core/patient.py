@@ -7,14 +7,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from anesthesia_sim.core.blood import (
-    VenousBloodCompartment,
-)
+from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.parameters import (
-    AgentParameters,
-    ReferenceAdultParameters,
-)
+from anesthesia_sim.core.parameters import AgentParameters, ReferenceAdultParameters
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.validation import (
     require_concentration_fraction,
@@ -36,10 +31,7 @@ class PatientCompartments:
     venous_blood: VenousBloodCompartment
 
     def __post_init__(self) -> None:
-        require_nonnegative_finite(
-            "cardiac_output_l_min",
-            self.cardiac_output_l_min,
-        )
+        require_nonnegative_finite("cardiac_output_l_min", self.cardiac_output_l_min)
 
         if abs(self.total_perfusion_fraction - 1.0) > FLOW_FRACTION_TOLERANCE:
             raise SimulationConfigurationError("tissue perfusion fractions must sum to 1")
@@ -48,9 +40,7 @@ class PatientCompartments:
 
     @classmethod
     def from_parameters(
-        cls,
-        agent: AgentParameters,
-        patient: ReferenceAdultParameters,
+        cls, agent: AgentParameters, patient: ReferenceAdultParameters
     ) -> PatientCompartments:
         """Construct the v0.1.0 reference patient."""
 
@@ -90,11 +80,7 @@ class PatientCompartments:
 
     @property
     def tissues(self) -> tuple[TissueGroup, ...]:
-        return (
-            self.vessel_rich,
-            self.muscle,
-            self.fat,
-        )
+        return (self.vessel_rich, self.muscle, self.fat)
 
     @property
     def total_perfusion_fraction(self) -> float:
@@ -122,45 +108,26 @@ class PatientCompartments:
             sum(tissue.agent_amount_l for tissue in self.tissues) + self.venous_blood.agent_amount_l
         )
 
-    def set_cardiac_output(
-        self,
-        cardiac_output_l_min: float,
-    ) -> None:
+    def set_cardiac_output(self, cardiac_output_l_min: float) -> None:
         """Change cardiac output without changing stored agent."""
 
-        require_nonnegative_finite(
-            "cardiac_output_l_min",
-            cardiac_output_l_min,
-        )
+        require_nonnegative_finite("cardiac_output_l_min", cardiac_output_l_min)
         self.cardiac_output_l_min = cardiac_output_l_min
         self._update_blood_flows()
 
-    def advance(
-        self,
-        arterial_fraction: float,
-        simulation_step_s: float,
-    ) -> float:
+    def advance(self, arterial_fraction: float, simulation_step_s: float) -> float:
         """Advance tissues and venous blood.
 
         Returns the signed change in total patient agent.
         """
 
-        require_concentration_fraction(
-            "arterial_fraction",
-            arterial_fraction,
-        )
-        require_positive_finite(
-            "simulation_step_s",
-            simulation_step_s,
-        )
+        require_concentration_fraction("arterial_fraction", arterial_fraction)
+        require_positive_finite("simulation_step_s", simulation_step_s)
 
         initial_amount_l = self.total_agent_amount_l
 
         for tissue in self.tissues:
-            tissue.advance(
-                arterial_fraction=arterial_fraction,
-                simulation_step_s=simulation_step_s,
-            )
+            tissue.advance(arterial_fraction=arterial_fraction, simulation_step_s=simulation_step_s)
 
         self.venous_blood.advance(
             tissue_return_fraction=(self.tissue_return_fraction),

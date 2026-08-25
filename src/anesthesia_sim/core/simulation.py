@@ -8,14 +8,8 @@ from dataclasses import dataclass, field
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.respiratory_system import (
-    RespiratoryStepResult,
-    RespiratorySystem,
-)
-from anesthesia_sim.core.validation import (
-    require_nonnegative_finite,
-    require_positive_finite,
-)
+from anesthesia_sim.core.respiratory_system import RespiratoryStepResult, RespiratorySystem
+from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
 
 
 @dataclass(slots=True)
@@ -40,16 +34,10 @@ class SimulationState:
     def patient(self) -> PatientCompartments:
         return self.respiratory_system.patient
 
-    def advance(
-        self,
-        simulation_step_s: float,
-    ) -> RespiratoryStepResult:
+    def advance(self, simulation_step_s: float) -> RespiratoryStepResult:
         """Advance the complete system and time as one operation."""
 
-        require_positive_finite(
-            "simulation_step_s",
-            simulation_step_s,
-        )
+        require_positive_finite("simulation_step_s", simulation_step_s)
 
         result = self.respiratory_system.advance(simulation_step_s)
         self.elapsed_s += simulation_step_s

@@ -26,22 +26,12 @@ class VenousBloodCompartment:
     agent_amount_l: float = 0.0
 
     def __post_init__(self) -> None:
+        require_positive_finite("volume_l", self.volume_l)
         require_positive_finite(
-            "volume_l",
-            self.volume_l,
+            "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
         )
-        require_positive_finite(
-            "blood_gas_partition_coefficient",
-            self.blood_gas_partition_coefficient,
-        )
-        require_nonnegative_finite(
-            "blood_flow_l_min",
-            self.blood_flow_l_min,
-        )
-        require_nonnegative_finite(
-            "agent_amount_l",
-            self.agent_amount_l,
-        )
+        require_nonnegative_finite("blood_flow_l_min", self.blood_flow_l_min)
+        require_nonnegative_finite("agent_amount_l", self.agent_amount_l)
 
         if self.agent_amount_l > self.capacity_l:
             raise SimulationConfigurationError("agent_amount_l exceeds venous blood capacity")
@@ -67,48 +57,26 @@ class VenousBloodCompartment:
 
         return SECONDS_PER_MINUTE * self.volume_l / self.blood_flow_l_min
 
-    def set_blood_flow(
-        self,
-        blood_flow_l_min: float,
-    ) -> None:
+    def set_blood_flow(self, blood_flow_l_min: float) -> None:
         """Change blood flow without changing stored agent."""
 
-        require_nonnegative_finite(
-            "blood_flow_l_min",
-            blood_flow_l_min,
-        )
+        require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
         self.blood_flow_l_min = blood_flow_l_min
 
-    def set_concentration_fraction(
-        self,
-        concentration_fraction: float,
-    ) -> None:
+    def set_concentration_fraction(self, concentration_fraction: float) -> None:
         """Set venous state from an equilibrium fraction."""
 
-        require_concentration_fraction(
-            "concentration_fraction",
-            concentration_fraction,
-        )
+        require_concentration_fraction("concentration_fraction", concentration_fraction)
         self.agent_amount_l = self.capacity_l * concentration_fraction
 
-    def advance(
-        self,
-        tissue_return_fraction: float,
-        simulation_step_s: float,
-    ) -> float:
+    def advance(self, tissue_return_fraction: float, simulation_step_s: float) -> float:
         """Mix tissue return into venous blood exactly.
 
         Returns the signed change in venous agent amount.
         """
 
-        require_concentration_fraction(
-            "tissue_return_fraction",
-            tissue_return_fraction,
-        )
-        require_positive_finite(
-            "simulation_step_s",
-            simulation_step_s,
-        )
+        require_concentration_fraction("tissue_return_fraction", tissue_return_fraction)
+        require_positive_finite("simulation_step_s", simulation_step_s)
 
         if self.blood_flow_l_min == 0.0:
             return 0.0

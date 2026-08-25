@@ -5,12 +5,8 @@ accounting identity documented on `AgentSimulationValidator`.
 
 from dataclasses import dataclass
 
-from anesthesia_sim.core.exceptions import (
-    AgentSimulationValidationError,
-)
-from anesthesia_sim.core.validation import (
-    require_nonnegative_finite,
-)
+from anesthesia_sim.core.exceptions import AgentSimulationValidationError
+from anesthesia_sim.core.validation import require_nonnegative_finite
 
 AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
 AGENT_ACCOUNTING_RELATIVE_TOLERANCE = 1e-9
@@ -47,48 +43,27 @@ class AgentSimulationValidator:
     exhausted_agent_l: float = 0.0
 
     def __post_init__(self) -> None:
-        require_nonnegative_finite(
-            "initial_agent_l",
-            self.initial_agent_l,
-        )
-        require_nonnegative_finite(
-            "delivered_agent_l",
-            self.delivered_agent_l,
-        )
-        require_nonnegative_finite(
-            "exhausted_agent_l",
-            self.exhausted_agent_l,
-        )
+        require_nonnegative_finite("initial_agent_l", self.initial_agent_l)
+        require_nonnegative_finite("delivered_agent_l", self.delivered_agent_l)
+        require_nonnegative_finite("exhausted_agent_l", self.exhausted_agent_l)
 
     def record_external_agent_transfer(
-        self,
-        delivered_agent_l: float,
-        exhausted_agent_l: float,
+        self, delivered_agent_l: float, exhausted_agent_l: float
     ) -> None:
         """Record agent entering and leaving the modeled system."""
 
-        require_nonnegative_finite(
-            "delivered_agent_l",
-            delivered_agent_l,
-        )
-        require_nonnegative_finite(
-            "exhausted_agent_l",
-            exhausted_agent_l,
-        )
+        require_nonnegative_finite("delivered_agent_l", delivered_agent_l)
+        require_nonnegative_finite("exhausted_agent_l", exhausted_agent_l)
 
         self.delivered_agent_l += delivered_agent_l
         self.exhausted_agent_l += exhausted_agent_l
 
     def check_agent_accounting(
-        self,
-        currently_stored_agent_l: float,
+        self, currently_stored_agent_l: float
     ) -> AgentSimulationValidationResult:
         """Calculate whether all delivered agent is accounted for."""
 
-        require_nonnegative_finite(
-            "currently_stored_agent_l",
-            currently_stored_agent_l,
-        )
+        require_nonnegative_finite("currently_stored_agent_l", currently_stored_agent_l)
 
         unaccounted_agent_l = (
             self.initial_agent_l
@@ -99,8 +74,7 @@ class AgentSimulationValidator:
         absolute_error_l = abs(unaccounted_agent_l)
 
         accounting_scale_l = max(
-            self.initial_agent_l + self.delivered_agent_l,
-            MINIMUM_RELATIVE_SCALE_L,
+            self.initial_agent_l + self.delivered_agent_l, MINIMUM_RELATIVE_SCALE_L
         )
         relative_error = absolute_error_l / accounting_scale_l
 
@@ -120,10 +94,7 @@ class AgentSimulationValidator:
             passes_validation=passes_validation,
         )
 
-    def require_valid_agent_accounting(
-        self,
-        check: AgentSimulationValidationResult,
-    ) -> None:
+    def require_valid_agent_accounting(self, check: AgentSimulationValidationResult) -> None:
         """Raise a specific numerical error if validation fails."""
 
         if check.passes_validation:
@@ -141,16 +112,10 @@ class AgentSimulationValidator:
             f"{check.currently_stored_agent_l:.6e} L"
         )
 
-    def reset(
-        self,
-        initial_agent_l: float = 0.0,
-    ) -> None:
+    def reset(self, initial_agent_l: float = 0.0) -> None:
         """Begin a new accounting period."""
 
-        require_nonnegative_finite(
-            "initial_agent_l",
-            initial_agent_l,
-        )
+        require_nonnegative_finite("initial_agent_l", initial_agent_l)
 
         self.initial_agent_l = initial_agent_l
         self.delivered_agent_l = 0.0

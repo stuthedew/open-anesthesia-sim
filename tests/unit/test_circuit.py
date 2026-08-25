@@ -10,17 +10,14 @@ def test_rejects_agent_amount_above_circuit_capacity() -> None:
     circuit = BreathingCircuit()
 
     with pytest.raises(
-        SimulationConfigurationError,
-        match="^agent_amount_l exceeds circuit capacity$",
+        SimulationConfigurationError, match="^agent_amount_l exceeds circuit capacity$"
     ):
         circuit.set_agent_amount(6.1)
 
 
 def test_one_time_constant_reaches_expected_fraction() -> None:
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
-        fresh_gas_flow_l_min=6.0,
-        delivered_concentration_fraction=1.0,
+        circuit_volume_l=6.0, fresh_gas_flow_l_min=6.0, delivered_concentration_fraction=1.0
     )
 
     circuit.advance(circuit.time_constant_s)
@@ -64,40 +61,24 @@ def test_exact_update_is_independent_of_step_size() -> None:
         many_steps.advance(0.1)
 
     assert many_steps.circuit_concentration_fraction == pytest.approx(
-        one_step.circuit_concentration_fraction,
-        rel=1e-12,
+        one_step.circuit_concentration_fraction, rel=1e-12
     )
 
 
-@pytest.mark.parametrize(
-    "circuit_volume_l",
-    [0.0, -1.0, float("inf")],
-)
-def test_rejects_invalid_circuit_volume(
-    circuit_volume_l: float,
-) -> None:
+@pytest.mark.parametrize("circuit_volume_l", [0.0, -1.0, float("inf")])
+def test_rejects_invalid_circuit_volume(circuit_volume_l: float) -> None:
     with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(circuit_volume_l=circuit_volume_l)
 
 
-@pytest.mark.parametrize(
-    "fresh_gas_flow_l_min",
-    [-1.0, float("nan")],
-)
-def test_rejects_invalid_fresh_gas_flow(
-    fresh_gas_flow_l_min: float,
-) -> None:
+@pytest.mark.parametrize("fresh_gas_flow_l_min", [-1.0, float("nan")])
+def test_rejects_invalid_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
     with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(fresh_gas_flow_l_min=fresh_gas_flow_l_min)
 
 
-@pytest.mark.parametrize(
-    "delivered_concentration_fraction",
-    [-0.01, 1.01, float("nan")],
-)
-def test_rejects_invalid_delivered_concentration(
-    delivered_concentration_fraction: float,
-) -> None:
+@pytest.mark.parametrize("delivered_concentration_fraction", [-0.01, 1.01, float("nan")])
+def test_rejects_invalid_delivered_concentration(delivered_concentration_fraction: float) -> None:
     with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(delivered_concentration_fraction=(delivered_concentration_fraction))
 
@@ -110,8 +91,7 @@ def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
     """
 
     circuit = BreathingCircuit(
-        delivered_concentration_fraction=0.02,
-        max_delivered_concentration_fraction=0.05,
+        delivered_concentration_fraction=0.02, max_delivered_concentration_fraction=0.05
     )
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
@@ -123,15 +103,13 @@ def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
 def test_rejects_construction_above_the_vaporizer_maximum() -> None:
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
         BreathingCircuit(
-            delivered_concentration_fraction=0.08,
-            max_delivered_concentration_fraction=0.05,
+            delivered_concentration_fraction=0.08, max_delivered_concentration_fraction=0.05
         )
 
 
 def test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum() -> None:
     circuit = BreathingCircuit(
-        delivered_concentration_fraction=0.02,
-        max_delivered_concentration_fraction=0.05,
+        delivered_concentration_fraction=0.02, max_delivered_concentration_fraction=0.05
     )
     circuit.set_delivered_concentration(0.05)
 
@@ -142,8 +120,7 @@ def test_accepts_a_delivered_concentration_of_zero() -> None:
     """The vaporizer off is always a valid dial position: it is washout."""
 
     circuit = BreathingCircuit(
-        delivered_concentration_fraction=0.02,
-        max_delivered_concentration_fraction=0.05,
+        delivered_concentration_fraction=0.02, max_delivered_concentration_fraction=0.05
     )
     circuit.set_delivered_concentration(0.0)
 
@@ -151,12 +128,9 @@ def test_accepts_a_delivered_concentration_of_zero() -> None:
 
 
 @pytest.mark.parametrize(
-    "max_delivered_concentration_fraction",
-    [0.0, -0.01, 1.01, float("nan"), float("inf")],
+    "max_delivered_concentration_fraction", [0.0, -0.01, 1.01, float("nan"), float("inf")]
 )
-def test_rejects_invalid_vaporizer_maximum(
-    max_delivered_concentration_fraction: float,
-) -> None:
+def test_rejects_invalid_vaporizer_maximum(max_delivered_concentration_fraction: float) -> None:
     with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(
             delivered_concentration_fraction=0.0,

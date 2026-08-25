@@ -28,16 +28,11 @@ and the readouts can never disagree about the current state.
 from bisect import bisect_left
 from collections.abc import Callable, Sequence
 
-__all__ = [
-    "first_index_at_or_after",
-    "select_envelope_indices",
-]
+__all__ = ["first_index_at_or_after", "select_envelope_indices"]
 
 
 def first_index_at_or_after[SampleT](
-    samples: Sequence[SampleT],
-    window_start_s: float,
-    time_of: Callable[[SampleT], float],
+    samples: Sequence[SampleT], window_start_s: float, time_of: Callable[[SampleT], float]
 ) -> int:
     """Index of the first sample at or after the start of the visible window.
 
@@ -60,10 +55,7 @@ def first_index_at_or_after[SampleT](
     return bisect_left(samples, window_start_s, key=time_of)
 
 
-def select_envelope_indices(
-    values: Sequence[float],
-    max_points: int,
-) -> list[int]:
+def select_envelope_indices(values: Sequence[float], max_points: int) -> list[int]:
     """Select at most `max_points` sample indices, preserving every extreme.
 
     Splits `values` into equal-width buckets of consecutive samples and keeps
