@@ -35,10 +35,39 @@ Do not silently convert the first into the second. An idea raised mid-session
 gets captured and the session continues; it does not become an implementation
 detour unless the owner says so.
 
+## Mode: turn an idea into work
+
+Triggered by the owner describing something they want — a feature, a problem,
+a direction. **They describe the outcome; decomposing it is yours.**
+
+Never hand the decomposition back. Asking "which items should this be?" or
+"what should we call the feature?" or "which ones go in this release?" is
+asking them to do the job they are delegating. They should be able to say
+"the chart should let you scrub back through a run" and then hear nothing
+until there is a plan to react to.
+
+So: work out what the idea breaks into, name the feature, write each item with
+a brief a stranger could act on, and create them in one call.
+
+```bash
+docket new --feature run-scrubbing \
+  "Keep the full run in the controller's history buffer" \
+  "Add a scrub control to the chart axis" \
+  "Decide what the readouts show while scrubbed away from now"
+```
+
+Then report the shape, not the mechanics: what the feature is, what it broke
+into, roughly how big, and what you would do first. Item ids belong in the
+reply as references, never as something they have to supply.
+
+If the idea is one thing rather than several, it is one item; do not inflate
+it. If it is genuinely a milestone — its own goal, scope and definition of
+done — say so and scope it in `ROADMAP.md` instead.
+
 ## Mode: capture
 
-Triggered by the owner raising anything, or by a finding this session makes
-that it will not fix.
+Triggered by the owner raising a passing thought, or by a finding this session
+makes that it will not fix.
 
 ```bash
 docket new "The induction curve looks wrong at low flows"
@@ -59,10 +88,18 @@ Commit the new item on its own so it survives an abandoned branch.
 Triggered by "what should we work on next", "I have some time", "what's left".
 
 ```bash
-docket next            # or: docket next --effort S
+docket status          # features first - lead with this
+docket next            # the specific next item, with its reason
 ```
 
-It gives the ranking and the reason, already honoring `P0` first, then work
+**Answer at feature altitude first.** "We could finish chart-readout — two
+items left, both small — or start vaporizer-controls, which is four. Outside
+those, PL-026 is safety-tagged and wants doing regardless." Nobody chooses
+what to do next by reading twenty item titles, and a list of ids is a list of
+homework. Drop to specific items once a direction is picked, or when
+something individually urgent outranks the grouping.
+
+`docket next` gives the ranking and the reason, already honoring `P0` first, then work
 that finishes a feature already underway, then priority — and it excludes
 what is in flight on a branch. Lead the reply with its answer. Add judgment
 the tool cannot have: whether the item is still real, and how it fits what
@@ -134,21 +171,32 @@ work already there.
 An item that should not be done becomes `status: dropped` with a `reason`.
 Never delete the file: the reason is what stops the finding being re-raised.
 
-## Mode: group work into features and ship it
+## Mode: ship a release
 
-The owner would rather finish one feature than advance fifteen. Assign
-related items a shared `feature`, and a `milestone` when they belong to a
-release.
+**Offer this; do not wait to be asked.** The session-start digest says when
+there is enough finished work to be worth raising, and the release itself
+takes no arguments — the store already knows what has shipped and what has
+not. There is nothing for the owner to look up, so asking them to is pure
+friction.
+
+Raise it the way a colleague would: what got done, what it completes, what the
+version would be, and a question.
+
+> "PL-010 and PL-011 landed, so chart-readout is finished — four items. That
+> makes a natural v0.2.3. Want me to cut it?"
 
 ```bash
-docket feature              # progress per feature
-docket milestone v0.3.0     # what is in the release, and what is left
-docket release v0.3.0 --dry-run
-docket release v0.3.0       # bumps the version, writes the notes
+docket status               # includes what is releasable
+docket release --dry-run    # the notes and the bump, without writing
+docket release              # infers the version; --version to override
 ```
 
-`release` refuses an unfinished milestone. It stops before tagging, on
-purpose — review the bump and the generated notes, then commit and tag.
+The version is inferred: a minor bump when `feature`-classed work went out, a
+patch otherwise. A major bump is never inferred, because breaking a published
+interface is a decision rather than a fact about labels — raise that one.
+
+`release` stops before tagging on purpose: review the bump and the generated
+notes, then commit and tag.
 
 ## Mode: close out an item
 

@@ -92,3 +92,47 @@ def test_release_notes_are_generated_from_the_items() -> None:
     assert "## v0.3.0 - 2026-08-24" in notes
     assert "PL-1111" in notes and "PL-2222" in notes
     assert "`abc1234`" in notes
+
+
+def test_finished_work_is_unreleased_until_a_version_stamps_it() -> None:
+    """The default state of closed work, so nobody has to predict its release."""
+    from docket.release import unreleased
+
+    fresh = _item("PL-1111", milestone="")
+    shipped = _item("PL-2222", milestone="v0.2.2")
+
+    assert [i.identifier for i in unreleased([fresh, shipped])] == ["PL-1111"]
+
+
+def test_readiness_reports_what_would_ship_and_what_it_completes() -> None:
+    from docket.plan import Feature  # noqa: F401  (documents the coupling)
+    from docket.release import readiness
+
+    done = _item("PL-1111", milestone="")
+    done = done.__class__(**{**done.__dict__, "feature": "alpha"})
+    ready = readiness([done], "0.2.2", ("feature",))
+
+    assert [i.identifier for i in ready.shippable] == ["PL-1111"]
+    assert ready.completed_features == ["alpha"]
+    assert ready.suggested_version == "0.2.3"
+
+
+def test_a_completed_feature_is_worth_raising_on_its_own() -> None:
+    """Even one item, if it finishes something describable."""
+    from docket.release import Readiness
+
+    small = Readiness([_item("PL-1111")], ["alpha"], [], "0.2.2", "0.2.3")
+    trivial = Readiness([_item("PL-1111")], [], [], "0.2.2", "0.2.3")
+
+    assert small.is_worth_cutting
+    assert not trivial.is_worth_cutting
+
+
+def test_stamping_records_the_release_without_touching_anything_else() -> None:
+    from docket.release import stamp
+
+    (stamped,) = stamp([_item("PL-1111", milestone="")], "v0.2.3")
+
+    assert stamped.milestone == "v0.2.3"
+    assert stamped.status == "done"
+    assert stamped.commit == "abc1234"

@@ -2,6 +2,7 @@
 id: PL-016
 title: Make the agent MAC cross-check fail closed
 status: done
+milestone: v0.2.2
 closed: 2026-08-24
 commit: bc5f823
 reason: closed without action

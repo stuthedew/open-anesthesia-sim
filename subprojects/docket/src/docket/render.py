@@ -59,8 +59,14 @@ def format_list(report: Report, in_flight: set[str] | None = None) -> str:
     return "\n".join(lines)
 
 
-def format_digest(report: Report, in_flight: set[str] | None = None) -> str:
-    """The few lines injected into session context at startup."""
+def format_digest(report: Report, in_flight: set[str] | None = None, ready: object = None) -> str:
+    """The few lines injected into session context at startup.
+
+    The release line is here rather than left for someone to ask about,
+    because nobody asks. Finished work sits unshipped until a person happens
+    to wonder, and the store already knows when there is enough of it to be
+    worth raising.
+    """
     flight = in_flight or set()
     if not report.items:
         return ""
@@ -93,7 +99,18 @@ def format_digest(report: Report, in_flight: set[str] | None = None) -> str:
             f"  Grooming due: {_plural(len(report.advisories), 'advisory', 'advisories')} "
             "(`make docket` to see them)."
         )
-    lines.append("`bin/docket list` shows the queue; read an item's brief before starting it.")
+    if ready is not None and getattr(ready, "is_worth_cutting", False):
+        completes = (
+            f", completing {', '.join(ready.completed_features)}"  # type: ignore[attr-defined]
+            if ready.completed_features  # type: ignore[attr-defined]
+            else ""
+        )
+        lines.append(
+            f"  Releasable: {len(ready.shippable)} finished item(s) since "  # type: ignore[attr-defined]
+            f"{ready.current_version}{completes}. Offer {ready.suggested_version} "  # type: ignore[attr-defined]
+            "before taking new work."
+        )
+    lines.append("`bin/docket status` shows the project by feature; `list` shows every item.")
     return "\n".join(lines)
 
 
@@ -135,4 +152,79 @@ def format_priority_groups(items: list[Item]) -> str:
         lines.append(f"{priority} ({len(band)})")
         for item in sorted(band, key=lambda i: i.sort_key()):
             lines.append(f"  {item.identifier} {item.title}")
+    return "\n".join(lines)
+
+
+def format_status(report: Report, ready: object = None, in_flight: set[str] | None = None) -> str:
+    """The whole project at feature altitude, which is the altitude decisions happen at.
+
+    `format_list` answers "which item", and that is the wrong question to open
+    with. Nobody decides what to do next by reading twenty-three item titles;
+    they decide by knowing which halves of the project are underway, which
+    have not started, and what is urgent enough to ignore all of that. So this
+    leads with features, names only the next item inside each, and keeps the
+    individually-urgent work in a section of its own.
+    """
+    from .plan import features as group_features
+
+    flight = in_flight or set()
+    grouped = group_features(report.items)
+    lines: list[str] = []
+
+    underway = [f for f in grouped.values() if f.is_underway]
+    not_started = [f for f in grouped.values() if f.open_items and not f.done]
+    complete = [f for f in grouped.values() if f.is_complete]
+
+    def next_in(feature: object) -> str:
+        candidates = sorted(
+            (i for i in feature.open_items if i.status != "blocked"),  # type: ignore[attr-defined]
+            key=lambda i: i.sort_key(),
+        )
+        if not candidates:
+            return "all remaining work is blocked"
+        item = candidates[0]
+        mark = " [IN FLIGHT]" if item.identifier in flight else ""
+        return f"next: {item.identifier} {item.title} ({item.effort}){mark}"
+
+    if underway:
+        lines.append("Underway")
+        for feature in sorted(underway, key=lambda f: -f.progress):
+            lines.append(
+                f"  {feature.name:<20} {len(feature.done)}/{len(feature.items)}  {next_in(feature)}"
+            )
+    if not_started:
+        lines.append("")
+        lines.append("Not started")
+        for feature in sorted(not_started, key=lambda f: f.name):
+            efforts = ", ".join(sorted({i.effort for i in feature.open_items if i.effort}))
+            lines.append(f"  {feature.name:<20} 0/{len(feature.items)}  ({efforts})")
+
+    loose = [
+        i
+        for i in report.open_items
+        if not i.feature and i.status != "blocked" and i.identifier not in flight
+    ]
+    if loose:
+        lines.append("")
+        lines.append("Outside any feature - picked on priority alone")
+        for item in sorted(loose, key=lambda i: i.sort_key())[:5]:
+            note = f" - {item.model_guidance}" if item.model_guidance else ""
+            lines.append(f"  {item.priority} {item.identifier} {item.title} ({item.effort}{note})")
+
+    if complete:
+        lines.append("")
+        lines.append(f"Finished: {', '.join(sorted(f.name for f in complete))}")
+
+    if ready is not None and getattr(ready, "shippable", None):
+        lines.append("")
+        done_note = (
+            f", completing {', '.join(ready.completed_features)}"  # type: ignore[attr-defined]
+            if ready.completed_features  # type: ignore[attr-defined]
+            else ", completing no feature yet"
+        )
+        lines.append(
+            f"Unreleased: {len(ready.shippable)} finished item(s) since "  # type: ignore[attr-defined]
+            f"{ready.current_version}{done_note}."  # type: ignore[attr-defined]
+        )
+        lines.append(f"  Next version would be {ready.suggested_version}.")  # type: ignore[attr-defined]
     return "\n".join(lines)
