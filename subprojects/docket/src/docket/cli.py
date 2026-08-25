@@ -79,7 +79,7 @@ def cmd_check(args: argparse.Namespace) -> int:
 def cmd_list(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    rendered = render.format_list(report, _flight(args))
+    rendered = render.format_list(report, _flight(args), config.protected_paths)
     if rendered:
         print(rendered)
     return 0

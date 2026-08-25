@@ -7,6 +7,7 @@ status: ready
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_patient.py
+verify: uv run pytest tests/unit/test_patient.py --cov=src/anesthesia_sim/core/patient.py --cov-fail-under=100
 added: 2026-08-25
 ---
 
@@ -38,12 +39,6 @@ item.
 Cover both sides of the tolerance: a sum outside it raises, and a sum just
 inside it does not. A one-sided test would pass against a guard that rejects
 everything.
-
-**Verify.** `uv run pytest tests/unit/test_patient.py --cov=src/anesthesia_sim/core/patient.py --cov-fail-under=100`
-
-This is the command that proves the item done. It moves to a `verify:`
-front-matter field once PL-G3TG lands; until then the store rejects the
-field, which is the checker working as intended.
 
 **Done when.** `uv run pytest tests/unit/test_patient.py --cov=src/anesthesia_sim/core/patient.py --cov-fail-under=100`
 passes and `make check` is green.
