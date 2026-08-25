@@ -18,6 +18,17 @@ Man. They are also the natural branch points for PL-RRWV — the owner expects
 users to fork at a bookmark far more often than at an arbitrary time — so the
 bookmark set is what a snapshot policy should key on.
 
+**Scope floor (owner, 2026-08-25).** Whatever bookmark kinds the Gas Man
+Workbook documents are the minimum set to implement; the two below are a
+starting point, not the specification. **The list is not yet recorded here** -
+gasmanweb.com and the help mirror at gasmanhelp.medmansimulations.org are both
+blocked by this environment's network egress policy, and search snippets do
+not confirm the feature set (the published help index lists File, Edit, View,
+Tools, Anesthesia, and Special menus, with no bookmark command surfaced).
+Do not start this item until the Workbook's list is written down here from
+the source; specifying it from recollection of a commercial product would put
+an unverified claim in the spec.
+
 **Where.** New core concept (bookmark definitions and crossing detection
 belong in `core/`, not in a UI callback); `app/controller.py` for the halt;
 `app/simulation_view.py` for setting and listing them.
