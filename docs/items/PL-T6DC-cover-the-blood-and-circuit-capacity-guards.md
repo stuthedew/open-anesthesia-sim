@@ -3,12 +3,14 @@ id: PL-T6DC
 title: Cover the blood and circuit capacity guards
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_blood.py, tests/unit/test_circuit.py
 verify: uv run pytest --cov=anesthesia_sim.core.blood --cov=anesthesia_sim.core.circuit --cov-fail-under=100
 added: 2026-08-25
+closed: 2026-08-25
+commit: PENDING
 ---
 
 **Problem.** Two capacity guards never execute under the test suite.

@@ -3,12 +3,14 @@ id: PL-3TMW
 title: Cover the tissue compartment's three configuration guards
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_tissue.py
 verify: uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100
 added: 2026-08-25
+closed: 2026-08-25
+commit: PENDING
 ---
 
 **Problem.** Three guards in `core/tissue.py` never execute under the test suite. Line

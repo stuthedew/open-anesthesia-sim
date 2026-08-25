@@ -3,12 +3,14 @@ id: PL-5BTB
 title: Cover the parameter validators' four rejection paths
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_parameters.py
 verify: uv run pytest --cov=anesthesia_sim.core.parameters --cov-fail-under=100
 added: 2026-08-25
+closed: 2026-08-25
+commit: PENDING
 ---
 
 **Problem.** Four rejection paths in `core/parameters.py` never execute under

@@ -3,12 +3,14 @@ id: PL-7QS3
 title: Cover the patient's perfusion-sum guard
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_patient.py
 verify: uv run pytest --cov=anesthesia_sim.core.patient --cov-fail-under=100
 added: 2026-08-25
+closed: 2026-08-25
+commit: PENDING
 ---
 
 **Problem.** One guard in `core/patient.py` never executes under the test suite. Line 45
