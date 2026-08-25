@@ -3,12 +3,14 @@ id: PL-QGZV
 title: Cover the alveolar compartment's three capacity and type guards
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_alveolar.py
 verify: uv run pytest --cov=anesthesia_sim.core.alveolar --cov-fail-under=100
 added: 2026-08-25
+closed: 2026-08-25
+commit: PENDING
 ---
 
 **Problem.** Three guards in `core/alveolar.py` never execute under the test suite.
