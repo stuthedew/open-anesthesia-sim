@@ -5,7 +5,7 @@ priority: P1
 effort: M
 status: ready
 classes: safety, science
-feature: chart-readout
+feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md
 added: 2026-08-25
 ---

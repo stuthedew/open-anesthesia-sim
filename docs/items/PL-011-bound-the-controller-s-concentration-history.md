@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: perf
-feature: chart-readout
+feature: teachable-case
 touches: src/anesthesia_sim/app/controller.py
 added: 2026-08-23
 ---
