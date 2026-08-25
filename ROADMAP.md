@@ -984,16 +984,23 @@ specified.
     revisit repeatedly, so it is worth keeping cheap to reach even where an
     arbitrary timeline point is not.
 
-    *Scope floor (project owner, 2026-08-25).* The Gas Man reference
-    simulator's bookmark set is the minimum: an absolute simulated time, and
-    a percent of MAC on every graphed compartment — circuit, alveolar,
-    vessel-rich, muscle, fat and mixed-venous alike, not the alveolar trace
-    only. Recorded from the project owner's own account of that software;
-    the vendor documentation could not be consulted from the session that
-    captured it, so treat the two kinds as the specification and the wording
-    as second-hand. The MAC kind cannot be specified in a unit the
-    application does not have, so PL-DHV7 (MAC as a displayed unit) lands
-    first.
+    *Scope floor (project owner, 2026-08-25, confirmed against the Gas Man
+    Owner's Manual, "Using Bookmarks," and current-application screenshots
+    the project owner supplied).* The Gas Man reference simulator's bookmark
+    set is the minimum, and is two distinct mechanisms under one dialog
+    ("Place or Remove a Bookmark"), not one kind with two flavors: **time
+    bookmarks** — an absolute simulated time (hours/min/sec), which is all
+    the manual's own "Using Bookmarks" section describes and is the older of
+    the two — and **MAC targets** — a percent of MAC on a chosen graphed
+    compartment (circuit, alveolar, vessel-rich, muscle, fat or mixed-venous,
+    not the alveolar trace only), added to the application after that manual
+    text was written and confirmed only from the current UI, not the manual.
+    Keep both as first-class, separately listed collections rather than
+    merging them into one "bookmark" type with a kind field — that is the
+    shape Gas Man's own dialog uses, and it is what lets a UI list bookmarks
+    and targets separately the way the reference does. The MAC kind cannot
+    be specified in a unit the application does not have, so PL-DHV7 (MAC as
+    a displayed unit) lands first.
 
     *Required properties.* Crossings are tested on every simulation step,
     not once per rendered frame: testing per frame overshoots by the whole
