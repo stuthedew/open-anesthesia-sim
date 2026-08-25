@@ -265,6 +265,19 @@ reason to load the skill:
   (`claude/pl-k7qx-short-slug`); a branch generated before the session
   started cannot be renamed, which is expected rather than a failure. Say in
   your reply where you put the id.
+- **Never write an item id bare in a reply.** Ids are random rather than
+  sequential, which is what lets two branches capture work without
+  coordinating — but it means an id carries no information at all. `PL-7YZH`
+  does not hint at what it is the way `PL-042` at least hints at when it was
+  filed, so a reader meeting one cold has to go and open a file. Gloss every
+  mention: the id, then a few words of what it is —
+  `PL-7YZH (test the untested failure paths in the core)`. Repeat the gloss
+  each time rather than only on first use, since replies are read out of
+  order and skimmed. This matters most in the closing block of actions: a
+  decision asked about an unglossed id cannot be made without going to look
+  for it, which is precisely the friction that block exists to remove. Cost
+  is a few words; the alternative is making the owner do a lookup to read
+  their own action list.
 - **Decide where an item's work happens, and act on it.** Continue here or
   open a fresh session — choose and proceed, do not ask. The skill has the
   criteria.
