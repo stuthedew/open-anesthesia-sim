@@ -1,7 +1,12 @@
 ---
 id: PL-JL24
 title: `git cat-file -e` passes for orphaned commits, so a hash check that uses it can pass on a dangling hash
-status: untriaged
+status: ready
+priority: P2
+effort: S
+classes: infra, session-cost
+feature: commit-provenance
+touches: subprojects/docket/src/docket/vcs.py
 added: 2026-08-25
 ---
 

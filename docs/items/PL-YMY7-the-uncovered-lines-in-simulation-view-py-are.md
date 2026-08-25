@@ -1,7 +1,12 @@
 ---
 id: PL-YMY7
 title: The uncovered lines in `simulation_view.py` are Flet-construction paths, not guards
-status: untriaged
+status: ready
+priority: P3
+effort: S
+classes: test, docs
+feature: core-guard-coverage
+touches: docs/items/PL-7YZH-test-the-two-failure-paths-in-simulation-view.md
 added: 2026-08-25
 ---
 
