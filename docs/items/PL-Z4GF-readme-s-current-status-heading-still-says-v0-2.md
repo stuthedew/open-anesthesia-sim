@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.2.5
 touches: README.md
 added: 2026-08-25
 closed: 2026-08-25
