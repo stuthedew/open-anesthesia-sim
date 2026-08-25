@@ -3,11 +3,13 @@ id: PL-012
 title: Decide whether the chart should show the whole run
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: ux
 feature: chart-readout
 touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-08-23
+closed: 2026-08-25
+reason: Answered by the scoped v0.3.0 milestone rather than left open. ROADMAP.md's "Next milestone: v0.3.0 - the teachable case" settles it: the chart gets selectable 15, 30 and 60 minute scales plus a fit-the-run scale (PL-SSBP), so the run is viewable whole and windowed both. The question this item held open no longer has two sides.
 ---
 
 **Problem.** The chart shows a scrolling 300 s window (`MAX_CHART_WINDOW_S`),

@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: ux, feature
-feature: chart-readout
+feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-08-25
 ---

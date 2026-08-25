@@ -28,6 +28,7 @@ by mechanically incrementing the patch number.
 
 | v0.2.3 | Completed | Phase 0 triage and release provenance. |
 | v0.2.4 | Completed / current baseline | Verification and delegation release on the same model: fourteen previously untested capacity and validation guards in the scientific core and the controller now have tests, `_halt_run`'s deliberate suppression is covered by a test rather than only a comment, and work whose success a command can prove can be handed to a cheaper model and verified in one step. |
+| v0.3.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
@@ -297,16 +298,152 @@ mass-balance closure for both new agents; and `docs/MODEL.md`'s parameter
 provenance table and new "v0.2.0: isoflurane and desflurane" subsection
 record both agents' sourcing.
 
-## Next milestone
+## Next milestone: v0.3.0 - the teachable case
 
-No milestone after v0.2.3 has been scoped yet. The next candidate, per
-"Development pathway" below, is generalizing the patient's state from one
-volatile agent to a set of simultaneously present substances — the change
-that agent switching, nitrous oxide, and the second-gas effect all wait on,
-and the one that decides how much refactoring intravenous agents cost later.
-It must be fully specified here (goal, required scope, definition of done,
-and explicit out-of-scope list) before implementation begins, per the
-development rules below.
+### Goal
+
+Make the model teachable. The science is sound and its lessons are currently
+unreachable, for three measurable reasons:
+
+- the run advances at 1x real time (`app/simulation_view.py`, one 0.1 s step
+  per 0.1 s sleep), while the compartments that make uptake and distribution
+  worth teaching have time constants of 135 min (muscle) and 42 h (fat) for
+  sevoflurane at reference settings - so the reservoirs that cause
+  context-sensitive emergence cannot be observed at all;
+- the chart shows a rolling five-minute window on an axis labelled in
+  seconds and scaled to the vaporizer's dial maximum, so a 1 MAC run occupies
+  the bottom quarter of the plot and everything slower than the vessel-rich
+  group scrolls away flat; and
+- every value is a percentage of an atmosphere, so three agents whose MACs
+  differ threefold are displayed as though their numbers were comparable.
+
+The end state: a learner runs one case from induction to emergence - in
+compressed time they can sit through, in the unit clinicians reason in, on a
+time base that spans a case - changes something, sees on the record when they
+changed it, turns the vaporizer off, and watches it come down against a
+labelled reference.
+
+This milestone changes no equation, parameter, or numerical method. It is a
+minor rather than a patch because it adds a displayed clinical unit, a new
+time base, and a run-rate control: capability boundaries in what the
+interface asserts, even though the model behind them is untouched.
+
+It promotes planned-milestone item 25 (playback multiplier) in full and the
+recording half of item 8 (control-input timeline). It does not promote item
+26 (bookmarks) or item 12 (forking), but it is designed so that neither is
+blocked - see "Designed for forking" below.
+
+### Required scope
+
+- **Simulated time becomes an exact function of step count.**
+  `SimulationState.elapsed_s` accumulates `+= simulation_step_s` per step
+  today; derive it from an integer step counter instead, and fix the step at
+  0.1 s. The run loop advances a fixed number of steps per tick and never
+  catches up to the wall clock: a slow machine runs slower, it does not run
+  differently.
+- **A playback multiplier**, implemented as steps per tick and never as a
+  larger step, with the current rate visible beside the clock at all times.
+- **MAC multiples as a display unit** across every readout and both chart
+  axes, alongside percent, with the agent's `mac_percent` provenance
+  traceable from the display (queue item PL-DHV7).
+- **A case-length time base**: minutes rather than seconds, selectable 15,
+  30 and 60 minute scales plus a fit-the-run scale (queue item PL-SSBP).
+- **A vertical scale that fits the run** rather than the vaporizer's dial
+  maximum. In MAC mode the axis becomes agent-independent, which is what
+  makes a cross-agent comparison honest.
+- **A recorded control-input timeline**: every fresh gas flow, vaporizer
+  dial, alveolar ventilation and cardiac-output change stamped with the
+  simulated time it took effect, held with the state it describes, and
+  marked on the chart. The recording half of planned-milestone item 8, not
+  the replay half.
+- **Changing agent becomes an explicit new case** rather than a selector
+  that silently discards the run and its history (queue item PL-R3KB).
+- **A MAC-awake reference band** on the chart: a cited population median for
+  return of responsiveness, drawn as a band and labelled as a population
+  reference, never as a per-patient time prediction.
+- **An F_A/F_I trace**, the ratio the uptake literature plots, with the
+  interpretive caveat that it means what the textbook curve means only while
+  inspired concentration is held constant.
+- **A bounded concentration history** (queue item PL-011), which stops being
+  optional once a four-hour run at 10 Hz records 144,000 samples.
+- **A documentation sweep**: `docs/MODEL.md`'s interface boundary, minimum
+  displayed outputs and displayed-precision sections, and `README.md`.
+
+### Designed for forking
+
+Forking a case at a point on it, to compare two managements of the same
+patient, is planned-milestone item 12 and is not built here. Item 12's
+required property - a branch reproduces its parent exactly at every recorded
+sample up to the branch point, element-wise rather than within a tolerance -
+is expensive to retrofit and cheap to preserve, so this milestone preserves
+it:
+
+- deriving elapsed time from an integer step count removes the accumulation
+  order that would otherwise make a resimulated prefix differ from a
+  straight-through one;
+- fixing the step at 0.1 s regardless of playback rate removes the step-size
+  divergence;
+- never catching up to the wall clock removes the machine-speed dependence
+  in the number of steps taken, which is the subtlest of the three and would
+  otherwise make every run irreproducible on a different computer; and
+- the control-input timeline is what lets a point *between* recorded samples
+  be reached by resimulation at all.
+
+What is deliberately *not* designed for in advance: per-compartment agent
+amounts in the snapshot, a schematic view, run comparison, or a snapshot
+policy. Those are cheap to add when their milestone arrives, and adding
+unused structure now would be speculative generality rather than
+groundwork. The distinction is whether retrofitting invalidates recorded
+runs or merely adds a field.
+
+### Definition of done
+
+v0.3.0 is complete only when:
+
+- two runs given identical inputs produce element-wise identical recorded
+  history at every playback multiplier, asserted by test, and identical
+  history on a machine of any speed;
+- the simulation step is 0.1 s at every playback multiplier, asserted by
+  test;
+- a learner can read every graphed compartment in MAC multiples and in
+  percent, and can trace the agent's MAC value to its cited source from the
+  display;
+- a three-hour case can be run, watched, and read end to end in a few
+  minutes of wall clock, with the muscle and fat curves visibly diverging
+  from the alveolar one;
+- every control change during a run is recorded with the simulated time it
+  took effect, and is visible on the chart;
+- changing agent cannot discard a run without the user being told what will
+  be lost and confirming;
+- the MAC-awake band and the F_A/F_I trace each carry, at the point of
+  display, what they do and do not assert;
+- `docs/MODEL.md` states the MAC transformation, what a MAC multiple on a
+  non-alveolar compartment does not claim, the reproducibility guarantee
+  above, and the interface's new obligations;
+- the v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference
+  tests remain unchanged and passing, and no equation, parameter or
+  numerical method has changed; and
+- Ruff formatting and linting, strict mypy, pytest, and GitHub Actions all
+  pass.
+
+### Explicitly out of scope for v0.3.0
+
+- Nitrous oxide, coadministered gases, and the concentration and second-gas
+  effects (items 6-7). This milestone is deliberately taken ahead of them;
+  see the note in "Development pathway".
+- The multi-substance patient state (Phase 1). Nothing here requires it, and
+  the view already consumes an immutable snapshot, so the MAC readout is the
+  only piece that changes shape when a second substance lands.
+- The anesthesia-machine abstraction, interlocks, agent switching with
+  residual washout, direct injection, and end-tidal control (items 1-5).
+- Run bookmarks (item 26), forking (item 12), save/load (item 9), replay
+  (item 10) and run comparison (item 11) - the replay half of item 8's
+  timeline included. Only recording is in scope.
+- A schematic compartment view (item 27) and agent cost (item 28).
+- A second patient, weight-based scaling, age-adjusted MAC, dead space,
+  airway sampling delay, or any depth, BIS or effect-site model.
+- Horizontal panning of the chart window (queue item PL-Z7LY), which the
+  fit-run scale makes optional rather than necessary.
 
 ## Development rules for scientific milestones
 
@@ -452,6 +589,22 @@ effect is the phenomenon this class of simulator is most used to teach, so
 without it there is no credible inhalational simulator to build an interface
 on; and it changes the core equations, so an interface built on a single-gas
 core would be reworked when it lands.
+
+**Reordering (project owner, 2026-08-25): the teachable case is taken ahead
+of Phase 1.** As written below, Phase 1's substance generalization and nitrous
+oxide precede all interface work, on the reasoning that an interface built on
+a single-gas core would be reworked. That ordering was reconsidered once the
+interface was measured against what a learner can actually do with it: the
+run advances at 1x real time and the chart spans five minutes, so neither the
+muscle nor the fat curve can be observed, and no lesson in uptake and
+distribution currently reaches anyone. Building coupled-gas equations first
+would produce a more capable engine that still teaches nobody, and would do it
+without the feedback from real teaching use that should shape what the
+multi-gas display looks like. The rework this accepts is bounded and known:
+the view consumes an immutable `SimulationSnapshot`, so the time base,
+playback, event marks and axis handling are substance-agnostic, and the MAC
+readout - which becomes a MAC sum when a second substance lands - is the piece
+that changes. v0.3.0 is that work; Phase 1 follows it unchanged.
 
 **Phase 2 — an interface that can drive the machine.** Consolidate the
 display constants named in item 24 first, then item 24 itself, then items 5,
@@ -616,6 +769,8 @@ specified.
     than real time without changing the simulation's own time step. Kept
     separate from deterministic replay (item 10): replay reproduces a recorded
     run, while this changes the rate at which any run is displayed.
+    *Promoted into the scoped v0.3.0 milestone - see "Next milestone:
+    v0.3.0 - the teachable case" above.*
 26. Add run bookmarks that halt a run at a target, after item 25. There is
     currently no way to say "run fast until something happens, then stop": a
     learner comparing gas-management strategies has to watch the clock and
@@ -652,6 +807,23 @@ specified.
     differently from "reached" rather than stopping silently. Bookmarks are
     part of the saved scenario rather than session-local, so item 12 can
     branch from them.
+
+27. Add a schematic compartment view alongside the graph - the interactive
+    "Picture" of the Gas Man reference simulator, in which the machine,
+    circuit, lungs and tissue groups are drawn to scale and fill as agent
+    enters them. This teaches something the graph structurally cannot: the
+    graph plots partial pressure, so fat reads near zero for hours while
+    holding more agent than every other compartment combined. Where the drug
+    *is*, in millilitres, and where the *tension* is are different questions,
+    and confusing them is a standard novice error. Needs per-compartment agent
+    amounts exposed on the snapshot, which the core already computes and the
+    snapshot does not yet carry.
+28. Add agent cost, from the exhausted-agent amount the model already tracks.
+    The economic argument for low fresh gas flow is a standard teaching point
+    and currently the one lesson in this class of simulator that the
+    application has the numbers for and does not draw. Depends on nothing;
+    kept out of the v0.3.0 scope because it is an addition rather than a
+    prerequisite.
 
 Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
 milestone, delivered as v0.2.0 — see "Completed: v0.2.0" above — so it no
