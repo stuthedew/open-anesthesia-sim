@@ -18,16 +18,41 @@ Man. They are also the natural branch points for PL-RRWV — the owner expects
 users to fork at a bookmark far more often than at an arbitrary time — so the
 bookmark set is what a snapshot policy should key on.
 
-**Scope floor (owner, 2026-08-25).** Whatever bookmark kinds the Gas Man
-Workbook documents are the minimum set to implement; the two below are a
-starting point, not the specification. **The list is not yet recorded here** -
-gasmanweb.com and the help mirror at gasmanhelp.medmansimulations.org are both
-blocked by this environment's network egress policy, and search snippets do
-not confirm the feature set (the published help index lists File, Edit, View,
-Tools, Anesthesia, and Special menus, with no bookmark command surfaced).
-Do not start this item until the Workbook's list is written down here from
-the source; specifying it from recollection of a commercial product would put
-an unverified claim in the spec.
+**Scope floor (owner, 2026-08-25).** The reference simulator's bookmark set
+is the minimum to implement, and the owner states it as two kinds:
+
+1. **Time points** - halt at an absolute simulated time.
+2. **Percent of MAC, on every graphed compartment** - circuit, alveolar,
+   vessel-rich, muscle, fat, and mixed-venous alike, not the alveolar trace
+   only.
+
+Recorded from the project owner's own account of the software; the vendor
+documentation could not be consulted from the session that captured this
+(gasmanweb.com and its help mirror are both refused by the environment's
+network egress policy). Treat the two kinds above as the specification and
+the wording as second-hand.
+
+**Prerequisite.** Kind 2 cannot be specified in a unit the application does
+not have: MAC is currently internal only. PL-DHV7 has to land first.
+
+**Design notes.** Two things the bookmark kinds above leave open, both of
+which change behaviour and neither of which is inferable from the reference
+simulator's feature list:
+
+- *Crossing direction.* The same threshold means different things during
+  wash-in and washout. A bookmark at 0.8 MAC on the VRG set while the VRG is
+  already above 0.8 either fires immediately or never, depending on an
+  unstated rule. Make direction explicit - rising, falling, or either - and
+  show it wherever the bookmark is listed.
+- *Thresholds that are never reached.* Compartments approach their
+  asymptotes; a threshold set above one is unreachable, and a run that chases
+  it forever is the failure mode the run-time cap (PL-011) exists to catch.
+  The bookmark needs a distinct "not reached, run-time cap hit" outcome that
+  reads differently from "reached", rather than a silent stop.
+
+Crossing detection has its own item (PL-PFM1). Bookmarks must be part of the
+saved scenario, not session-local, if they are to serve as branch points
+(PL-RRWV).
 
 **Where.** New core concept (bookmark definitions and crossing detection
 belong in `core/`, not in a UI callback); `app/controller.py` for the halt;

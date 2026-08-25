@@ -268,11 +268,19 @@ its parent was simulated straight through can diverge from the parent
 *before* the branch point by floating-point rounding, which is precisely the
 divergence a strategy comparison is meant to rule out.
 
-**Open question for the owner**, not yet answered: whether MAC-denominated
-bookmarks ("0.8 MAC") are wanted before MAC is a first-class displayed
-quantity. `mac_percent` exists per agent in `core/parameters.py` and the
-agent data files, but MAC presentation was explicitly out of scope for
-v0.1.0.
+**Bookmark set, settled 2026-08-25.** The owner names the reference
+simulator's two kinds as the floor: absolute time points, and percent of MAC
+on *every* graphed compartment - circuit, alveolar, VRG, muscle, fat, venous -
+not the alveolar trace alone. The vendor documentation could not be checked
+from the capturing session (gasmanweb.com and its help mirror are both
+refused by the environment's network egress policy), so this is recorded as
+the owner's account rather than as a citation. Full detail in PL-X9R0.
+
+That answers the MAC question by forcing it: MAC-per-compartment bookmarks
+cannot be built while MAC is internal-only, so making MAC a displayed unit
+(PL-DHV7) moves from "someday" to a prerequisite. Its hard part is not the
+division - it is that a MAC multiple on a tissue compartment asserts
+something narrower than it appears to, and the label has to say which.
 
 ## Aspirational: power-user custom agents (not scoped, not started)
 
