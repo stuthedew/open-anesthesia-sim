@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from docket.cli import main
+from docket.cli import build_parser, main, merge_shared
 
 READY = """---
 id: PL-B1B1
@@ -155,3 +155,71 @@ def test_release_refuses_to_invent_a_version_under_a_manual_policy(
     out = capsys.readouterr().out
     assert "Name the version" in out
     assert "PL-B1B1" in out
+
+
+def _delegable_store(tmp_path: Path) -> Path:
+    """A store holding one delegable item and three that must not be offered."""
+    items = tmp_path / "docs" / "items"
+    items.mkdir(parents=True)
+    # Config is resolved from the store's parent, not the working directory,
+    # so it belongs beside `docs/` here.
+    (items.parent / "docket.toml").write_text(
+        '[docket]\nprotected_paths = ["src/core"]\n', encoding="utf-8"
+    )
+    brief = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
+    for ident, extra in (
+        ("PL-AAAA", "verify: pytest tests/test_a.py\ntouches: tests/test_a.py\n"),
+        ("PL-BBBB", "touches: tests/test_b.py\n"),  # no verify command
+        ("PL-CCCC", "verify: pytest\ntouches: src/core/x.py\n"),  # protected
+        ("PL-DDDD", "verify: pytest\ntouches: tests/test_d.py\nclasses: safety\n"),
+    ):
+        (items / f"{ident}-x.md").write_text(
+            f"---\nid: {ident}\ntitle: Item {ident}\npriority: P1\neffort: S\n"
+            f"status: ready\n{extra}added: 2026-08-01\n---\n\n{brief}",
+            encoding="utf-8",
+        )
+    return items
+
+
+def test_delegable_lists_only_what_qualifies(tmp_path: Path, capsys: object) -> None:
+    """Three of the four items must not be offered, each for a different reason."""
+    assert main(["--items", str(_delegable_store(tmp_path)), "--no-git", "delegable"]) == 0
+    out = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert "PL-AAAA" in out
+    assert "verify: pytest tests/test_a.py" in out
+    for excluded in ("PL-BBBB", "PL-CCCC", "PL-DDDD"):
+        assert excluded not in out
+
+
+def test_delegable_says_so_when_nothing_qualifies(tmp_path: Path, capsys: object) -> None:
+    """An empty result must read as 'nothing to do', not as a broken command."""
+    items = tmp_path / "docs" / "items"
+    items.mkdir(parents=True)
+    (items / "PL-EEEE-x.md").write_text(
+        "---\nid: PL-EEEE\ntitle: Item\npriority: P1\neffort: S\nstatus: ready\n"
+        "touches: tests/x.py\nadded: 2026-08-01\n---\n\n"
+        "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n",
+        encoding="utf-8",
+    )
+    assert main(["--items", str(items), "--no-git", "delegable"]) == 0
+    assert "Nothing is delegable" in capsys.readouterr().out  # type: ignore[attr-defined]
+
+
+def test_shared_options_work_on_either_side_of_the_subcommand() -> None:
+    """The before-subcommand form was silently dropped, and dropped quietly.
+
+    A subparser's defaults are written after the top-level options are parsed,
+    so an ordinary `default=None` overwrote a value the user had supplied and
+    the tool answered about the wrong store with no sign anything was ignored.
+    """
+    before = merge_shared(build_parser().parse_args(["--items", "/tmp/x", "--no-git", "check"]))
+    after = merge_shared(build_parser().parse_args(["check", "--items", "/tmp/x", "--no-git"]))
+    assert str(before.items) == str(after.items) == "/tmp/x"
+    assert before.no_git is after.no_git is True
+
+
+def test_shared_options_still_have_defaults_when_given_nowhere() -> None:
+    args = merge_shared(build_parser().parse_args(["check"]))
+    assert args.items is None
+    assert args.today is None
+    assert args.no_git is False

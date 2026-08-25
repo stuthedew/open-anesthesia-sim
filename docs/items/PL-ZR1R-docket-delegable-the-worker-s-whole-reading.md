@@ -3,11 +3,13 @@ id: PL-ZR1R
 title: `docket delegable` - the worker's whole reading list in one command
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, session-cost
 feature: delegation
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-25
+closed: 2026-08-25
+commit: PENDING
 ---
 
 **Problem.** PL-G3TG makes `docket list` mark delegable items, but reading them
