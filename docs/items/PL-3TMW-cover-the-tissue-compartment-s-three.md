@@ -10,7 +10,7 @@ touches: tests/unit/test_tissue.py
 verify: uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100
 added: 2026-08-25
 closed: 2026-08-25
-commit: PENDING
+commit: 486c3c4
 ---
 
 **Problem.** Three guards in `core/tissue.py` never execute under the test suite. Line

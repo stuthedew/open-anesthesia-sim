@@ -10,7 +10,7 @@ touches: tests/unit/test_patient.py
 verify: uv run pytest --cov=anesthesia_sim.core.patient --cov-fail-under=100
 added: 2026-08-25
 closed: 2026-08-25
-commit: PENDING
+commit: 486c3c4
 ---
 
 **Problem.** One guard in `core/patient.py` never executes under the test suite. Line 45

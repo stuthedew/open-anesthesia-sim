@@ -10,7 +10,7 @@ touches: tests/integration/test_controller.py
 verify: uv run pytest --cov=anesthesia_sim.app.controller --cov-fail-under=100
 added: 2026-08-25
 closed: 2026-08-25
-commit: PENDING
+commit: 486c3c4
 ---
 
 **Problem.** One guard in `app/controller.py` never executes under the test

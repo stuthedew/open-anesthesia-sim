@@ -10,7 +10,7 @@ touches: tests/unit/test_blood.py, tests/unit/test_circuit.py
 verify: uv run pytest --cov=anesthesia_sim.core.blood --cov=anesthesia_sim.core.circuit --cov-fail-under=100
 added: 2026-08-25
 closed: 2026-08-25
-commit: PENDING
+commit: 486c3c4
 ---
 
 **Problem.** Two capacity guards never execute under the test suite.
