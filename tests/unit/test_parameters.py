@@ -73,6 +73,56 @@ def _valid_patient_payload() -> dict[str, object]:
     }
 
 
+def test_payload_model_rejects_empty_string() -> None:
+    payload = _valid_agent_payload()
+    payload["id"] = " "
+
+    with pytest.raises(
+        PydanticValidationError,
+        match="must be a nonempty string",
+    ):
+        parameters_module._AgentPayload.model_validate(payload)
+
+
+def test_payload_model_rejects_noninteger_schema_version() -> None:
+    payload = _valid_agent_payload()
+    payload["schema_version"] = 1.0
+
+    with pytest.raises(
+        PydanticValidationError,
+        match="schema_version must be an integer",
+    ):
+        parameters_module._AgentPayload.model_validate(payload)
+
+
+def test_payload_model_rejects_nonnumeric_positive_finite_value() -> None:
+    payload = _valid_agent_payload()
+    payload["blood_gas_partition_coefficient"] = "not a number"
+
+    with pytest.raises(
+        PydanticValidationError,
+        match="must be a number",
+    ):
+        parameters_module._AgentPayload.model_validate(payload)
+
+
+def test_payload_model_rejects_positive_fraction_above_one() -> None:
+    payload = _valid_patient_payload()
+    tissue_groups = payload["tissue_groups"]
+
+    assert isinstance(tissue_groups, dict)
+    vessel_rich = tissue_groups["vessel_rich"]
+
+    assert isinstance(vessel_rich, dict)
+    vessel_rich["perfusion_fraction"] = 1.1
+
+    with pytest.raises(
+        PydanticValidationError,
+        match="must not exceed 1",
+    ):
+        parameters_module._ReferenceAdultPayload.model_validate(payload)
+
+
 def test_loads_built_in_sevoflurane_parameters() -> None:
     agent = load_sevoflurane_parameters()
 

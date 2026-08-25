@@ -64,3 +64,5 @@ The corrected command runs the whole suite with coverage scoped to the module,
 which measures exactly what this item is responsible for.
 
 **Done when.** The `verify:` command above passes and `make check` is green.
+
+**Worked.** Nothing the brief did not specify.
