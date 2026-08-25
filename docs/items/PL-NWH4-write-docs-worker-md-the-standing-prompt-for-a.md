@@ -3,11 +3,13 @@ id: PL-NWH4
 title: Write `docs/worker.md`, the standing prompt for a delegated run
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, session-cost
 feature: delegation
-touches: docs/worker.md, CLAUDE.md, AGENTS.md
+touches: docs/worker.md, AGENTS.md
 added: 2026-08-25
+closed: 2026-08-25
+commit: PENDING
 ---
 
 **Problem.** Handing a batch of items to a cheaper model requires telling it
@@ -51,3 +53,14 @@ item, and move to the next one.** Never guess at a brief.
 **Done when.** A worker session pointed at `docs/worker.md` with no other
 context completes a batch and pushes it, and the file states the stop-rule and
 the CLAUDE.md suspension explicitly enough that a cheap model follows both.
+
+**Worked.** Built ahead of PL-D7JQ and PL-ZR1R, which it was written to expect,
+because the owner is near a usage limit and this item is the only one standing
+between them and a running worker. It degrades to the tools that exist today:
+the worker is told to run each item's `verify:` command directly and to select
+work with `docket list | grep delegable`, both of which `docket verify` and
+`docket delegable` will later shorten without invalidating the instruction.
+
+`CLAUDE.md` was dropped from `touches`: `AGENTS.md` is what a Codex worker
+reads, and it already routes to `CLAUDE.md`, so a second pointer would have
+cost a cache invalidation on every Claude session for no reach.
