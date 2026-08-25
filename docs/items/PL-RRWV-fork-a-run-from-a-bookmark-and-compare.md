@@ -1,9 +1,11 @@
 ---
 id: PL-RRWV
 title: Fork a run from a bookmark and compare strategies side by side
-status: untriaged
+status: dropped
 feature: scenario-branching
 added: 2026-08-25
+closed: 2026-08-25
+reason: aspirational rather than actionable; it is ROADMAP.md planned milestones 11 and 12, and its scope decision and measured cost context were carried into item 12
 ---
 
 **Problem.** Comparing two managements of the same case — coast on low flow

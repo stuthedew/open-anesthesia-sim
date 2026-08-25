@@ -1,8 +1,12 @@
 ---
 id: PL-DHV7
 title: Express compartment concentrations in MAC multiples as a display unit
-status: untriaged
-feature: scenario-branching
+priority: P1
+effort: M
+status: ready
+classes: safety, science
+feature: chart-readout
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md
 added: 2026-08-25
 ---
 
@@ -16,9 +20,10 @@ user sees.
 in and the unit clinicians reason in, and they are what makes agents
 comparable: 2% is 1 MAC of sevoflurane and about a third of a MAC of
 desflurane, so a percent axis silently changes meaning when the agent
-changes. It is also a hard prerequisite for PL-X9R0's MAC-denominated
-bookmarks, which cannot be specified in a unit the application does not have.
-Independently valuable - it does not need the branching work to justify it.
+changes. It is also a hard prerequisite for the MAC-denominated bookmarks of
+`ROADMAP.md` planned milestone 26, which cannot be specified in a unit the
+application does not have. Independently valuable - it does not need the
+branching work to justify it.
 
 **Where.** `app/simulation_view.py` (axis, labels, and readouts),
 `app/controller.py` (`SimulationSnapshot`), `docs/MODEL.md` (the
