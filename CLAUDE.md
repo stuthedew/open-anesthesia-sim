@@ -407,6 +407,8 @@ Recommendations should reflect the standard expected from a top-tier specialist 
 
 **Two standards, deliberately unequal.** The simulator and the documentation a reader of it needs — `src/`, `tests/`, `docs/MODEL.md`, `README.md` — are held to that specialist standard: code an expert contributor would recognize as high quality and could maintain without explanation. The workflow apparatus that exists so agent sessions can be productive — `subprojects/docket/`, `tools/`, `.claude/`, `docs/worker.md`, and this file — is held only to *working reliably and staying small*. It is scaffolding, not product; nobody evaluating this project will read it. Polishing it past sufficient is the most common way this project wastes a session. Where the two compete for a session, the simulator wins.
 
+The bar for `core/` is concrete: **it should read like the domain.** A clinician who knows uptake and distribution should recognize the physiology in the code without a translation step - names that match the literature, units carried in the identifier (`gas_volume_l`, `alveolar_ventilation_l_min`), and the equation visible rather than buried under its own guards. Where a guard, a facade, or a naming choice makes the model harder to see, the model wins. "Would a reader who knows the domain guess this?" is the test, and it settles naming and boundary questions that "high quality" leaves open.
+
 Relevant domains include, but are not limited to:
 
 - pharmacokinetic, pharmacodynamic, physiologic, and inhaled-anesthetic modeling;
