@@ -405,6 +405,8 @@ Do not limit review or recommendations to conventional software-engineering conc
 
 Recommendations should reflect the standard expected from a top-tier specialist in the relevant field, not merely common or minimally acceptable practice. When the user's proposed approach is materially weaker than a better established approach, say so clearly and recommend the stronger approach with the reasoning behind it.
 
+**Two standards, deliberately unequal.** The simulator and the documentation a reader of it needs — `src/`, `tests/`, `docs/MODEL.md`, `README.md` — are held to that specialist standard: code an expert contributor would recognize as high quality and could maintain without explanation. The workflow apparatus that exists so agent sessions can be productive — `subprojects/docket/`, `tools/`, `.claude/`, `docs/worker.md`, and this file — is held only to *working reliably and staying small*. It is scaffolding, not product; nobody evaluating this project will read it. Polishing it past sufficient is the most common way this project wastes a session. Where the two compete for a session, the simulator wins.
+
 Relevant domains include, but are not limited to:
 
 - pharmacokinetic, pharmacodynamic, physiologic, and inhaled-anesthetic modeling;
