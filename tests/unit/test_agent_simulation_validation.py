@@ -1,8 +1,6 @@
 import pytest
 
-from anesthesia_sim.core.agent_simulation_validation import (
-    AgentSimulationValidator,
-)
+from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     AnesthesiaSimulationError,
@@ -13,10 +11,7 @@ from anesthesia_sim.core.exceptions import (
 
 def test_exact_accounting_passes_validation() -> None:
     validator = AgentSimulationValidator()
-    validator.record_external_agent_transfer(
-        delivered_agent_l=1.0,
-        exhausted_agent_l=0.25,
-    )
+    validator.record_external_agent_transfer(delivered_agent_l=1.0, exhausted_agent_l=0.25)
 
     check = validator.check_agent_accounting(currently_stored_agent_l=0.75)
 
@@ -27,10 +22,7 @@ def test_exact_accounting_passes_validation() -> None:
 
 def test_missing_agent_fails_validation() -> None:
     validator = AgentSimulationValidator()
-    validator.record_external_agent_transfer(
-        delivered_agent_l=1.0,
-        exhausted_agent_l=0.25,
-    )
+    validator.record_external_agent_transfer(delivered_agent_l=1.0, exhausted_agent_l=0.25)
 
     check = validator.check_agent_accounting(currently_stored_agent_l=0.70)
 
@@ -41,10 +33,7 @@ def test_missing_agent_fails_validation() -> None:
 
 def test_unexpected_extra_agent_fails_validation() -> None:
     validator = AgentSimulationValidator()
-    validator.record_external_agent_transfer(
-        delivered_agent_l=1.0,
-        exhausted_agent_l=0.25,
-    )
+    validator.record_external_agent_transfer(delivered_agent_l=1.0, exhausted_agent_l=0.25)
 
     check = validator.check_agent_accounting(currently_stored_agent_l=0.80)
 
@@ -64,16 +53,10 @@ def test_initial_agent_is_included_in_accounting() -> None:
 
 def test_require_valid_raises_specific_project_exception() -> None:
     validator = AgentSimulationValidator()
-    validator.record_external_agent_transfer(
-        delivered_agent_l=1.0,
-        exhausted_agent_l=0.25,
-    )
+    validator.record_external_agent_transfer(delivered_agent_l=1.0, exhausted_agent_l=0.25)
     check = validator.check_agent_accounting(currently_stored_agent_l=0.70)
 
-    with pytest.raises(
-        AgentSimulationValidationError,
-        match="Agent accounting validation failed",
-    ):
+    with pytest.raises(AgentSimulationValidationError, match="Agent accounting validation failed"):
         validator.require_valid_agent_accounting(check)
 
 
@@ -87,10 +70,7 @@ def test_accounting_exception_inherits_project_hierarchy() -> None:
 
 def test_reset_clears_recorded_external_agent() -> None:
     validator = AgentSimulationValidator()
-    validator.record_external_agent_transfer(
-        delivered_agent_l=1.0,
-        exhausted_agent_l=0.25,
-    )
+    validator.record_external_agent_transfer(delivered_agent_l=1.0, exhausted_agent_l=0.25)
 
     validator.reset(initial_agent_l=0.2)
 

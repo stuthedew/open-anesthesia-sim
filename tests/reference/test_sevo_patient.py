@@ -8,18 +8,12 @@ from anesthesia_sim.core.parameters import (
     parse_agent_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.respiratory_system import (
-    RespiratorySystem,
-)
+from anesthesia_sim.core.respiratory_system import RespiratorySystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
 
-def _run_for(
-    system: RespiratorySystem,
-    duration_s: float,
-    simulation_step_s: float,
-) -> None:
+def _run_for(system: RespiratorySystem, duration_s: float, simulation_step_s: float) -> None:
     """Advance a system for an exact number of fixed steps."""
 
     step_count = round(duration_s / simulation_step_s)
@@ -41,11 +35,7 @@ def _synthetic_agent(blood_gas_partition_coefficient: float) -> AgentParameters:
         "id": "synthetic-solubility-test-agent",
         "display_name": "Synthetic solubility test agent",
         "blood_gas_partition_coefficient": blood_gas_partition_coefficient,
-        "tissue_gas_partition_coefficients": {
-            "vessel_rich": 1.1,
-            "muscle": 2.4,
-            "fat": 34.0,
-        },
+        "tissue_gas_partition_coefficients": {"vessel_rich": 1.1, "muscle": 2.4, "fat": 34.0},
         "max_delivered_concentration_percent": 8.0,
         "mac_percent": 2.0,
         "sources": [
@@ -71,10 +61,7 @@ def _build_system_with_blood_gas_coefficient(
             gas_volume_l=patient_parameters.alveolar_gas_volume_l,
             alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
         ),
-        patient=PatientCompartments.from_parameters(
-            agent=agent,
-            patient=patient_parameters,
-        ),
+        patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
     )
 
 
@@ -82,11 +69,7 @@ def test_no_delivered_agent_keeps_every_store_zero() -> None:
     system = RespiratorySystem.default()
     system.set_delivered_concentration(0.0)
 
-    _run_for(
-        system,
-        duration_s=300.0,
-        simulation_step_s=0.1,
-    )
+    _run_for(system, duration_s=300.0, simulation_step_s=0.1)
 
     validation = system.agent_simulation_validation
 
@@ -101,11 +84,7 @@ def test_zero_ventilation_prevents_patient_delivery() -> None:
     system = RespiratorySystem.default()
     system.set_alveolar_ventilation(0.0)
 
-    _run_for(
-        system,
-        duration_s=120.0,
-        simulation_step_s=0.1,
-    )
+    _run_for(system, duration_s=120.0, simulation_step_s=0.1)
 
     assert system.circuit.circuit_concentration_fraction > 0.0
     assert system.alveoli.agent_amount_l == 0.0
@@ -117,11 +96,7 @@ def test_zero_cardiac_output_prevents_patient_uptake() -> None:
     system = RespiratorySystem.default()
     system.set_cardiac_output(0.0)
 
-    _run_for(
-        system,
-        duration_s=120.0,
-        simulation_step_s=0.1,
-    )
+    _run_for(system, duration_s=120.0, simulation_step_s=0.1)
 
     assert system.alveoli.concentration_fraction > 0.0
     assert system.patient.total_agent_amount_l == 0.0
@@ -135,16 +110,8 @@ def test_higher_ventilation_increases_early_alveolar_fraction() -> None:
     lower_ventilation.set_alveolar_ventilation(2.0)
     higher_ventilation.set_alveolar_ventilation(8.0)
 
-    _run_for(
-        lower_ventilation,
-        duration_s=30.0,
-        simulation_step_s=0.1,
-    )
-    _run_for(
-        higher_ventilation,
-        duration_s=30.0,
-        simulation_step_s=0.1,
-    )
+    _run_for(lower_ventilation, duration_s=30.0, simulation_step_s=0.1)
+    _run_for(higher_ventilation, duration_s=30.0, simulation_step_s=0.1)
 
     assert (
         higher_ventilation.alveoli.concentration_fraction
@@ -156,50 +123,28 @@ def test_step_refinement_converges() -> None:
     coarse = RespiratorySystem.default()
     fine = RespiratorySystem.default()
 
-    _run_for(
-        coarse,
-        duration_s=60.0,
-        simulation_step_s=0.1,
-    )
-    _run_for(
-        fine,
-        duration_s=60.0,
-        simulation_step_s=0.05,
-    )
+    _run_for(coarse, duration_s=60.0, simulation_step_s=0.1)
+    _run_for(fine, duration_s=60.0, simulation_step_s=0.05)
 
     assert coarse.alveoli.concentration_fraction == pytest.approx(
-        fine.alveoli.concentration_fraction,
-        rel=5e-3,
-        abs=1e-8,
+        fine.alveoli.concentration_fraction, rel=5e-3, abs=1e-8
     )
     assert coarse.patient.vessel_rich.partial_pressure_fraction == pytest.approx(
-        fine.patient.vessel_rich.partial_pressure_fraction,
-        rel=5e-3,
-        abs=1e-8,
+        fine.patient.vessel_rich.partial_pressure_fraction, rel=5e-3, abs=1e-8
     )
     assert coarse.patient.mixed_venous_fraction == pytest.approx(
-        fine.patient.mixed_venous_fraction,
-        rel=5e-3,
-        abs=1e-8,
+        fine.patient.mixed_venous_fraction, rel=5e-3, abs=1e-8
     )
 
 
 def test_long_wash_in_and_washout_validate_agent_simulation() -> None:
     system = RespiratorySystem.default()
 
-    _run_for(
-        system,
-        duration_s=600.0,
-        simulation_step_s=0.1,
-    )
+    _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
     system.set_delivered_concentration(0.0)
 
-    _run_for(
-        system,
-        duration_s=600.0,
-        simulation_step_s=0.1,
-    )
+    _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
     validation = system.agent_simulation_validation
 
@@ -212,11 +157,7 @@ def test_long_wash_in_and_washout_validate_agent_simulation() -> None:
 def test_reset_clears_system_and_validation_accounting() -> None:
     system = RespiratorySystem.default()
 
-    _run_for(
-        system,
-        duration_s=60.0,
-        simulation_step_s=0.1,
-    )
+    _run_for(system, duration_s=60.0, simulation_step_s=0.1)
 
     assert system.total_stored_agent_l > 0.0
     assert system.agent_simulation_validation.delivered_agent_l > 0.0

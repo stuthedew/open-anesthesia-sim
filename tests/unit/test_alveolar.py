@@ -15,18 +15,13 @@ def test_rejects_agent_amount_above_alveolar_capacity() -> None:
 
 
 def test_time_constant_is_the_ventilatory_turnover_of_the_gas_volume() -> None:
-    alveoli = AlveolarCompartment(
-        gas_volume_l=2.5,
-        alveolar_ventilation_l_min=5.0,
-    )
+    alveoli = AlveolarCompartment(gas_volume_l=2.5, alveolar_ventilation_l_min=5.0)
 
     assert alveoli.time_constant_s == pytest.approx(30.0)
 
 
 def test_zero_ventilation_gives_an_infinite_time_constant() -> None:
-    alveoli = AlveolarCompartment(
-        alveolar_ventilation_l_min=0.0,
-    )
+    alveoli = AlveolarCompartment(alveolar_ventilation_l_min=0.0)
 
     assert alveoli.time_constant_s == inf
 
@@ -55,20 +50,14 @@ def test_rejects_blood_uptake_larger_than_available_amount() -> None:
     alveoli = AlveolarCompartment()
     alveoli.set_concentration_fraction(0.01)
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="resulting_agent_amount_l",
-    ):
+    with pytest.raises(SimulationConfigurationError, match="resulting_agent_amount_l"):
         alveoli.apply_blood_uptake(alveoli.agent_amount_l + 0.001)
 
 
 def test_rejects_nonnumeric_blood_uptake() -> None:
     alveoli = AlveolarCompartment()
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="^blood_uptake_l must be a number$",
-    ):
+    with pytest.raises(SimulationConfigurationError, match="^blood_uptake_l must be a number$"):
         alveoli.apply_blood_uptake("not a number")
 
 
@@ -76,8 +65,7 @@ def test_rejects_blood_transfer_above_alveolar_capacity() -> None:
     alveoli = AlveolarCompartment(agent_amount_l=2.4)
 
     with pytest.raises(
-        SimulationConfigurationError,
-        match="^blood transfer would exceed alveolar capacity$",
+        SimulationConfigurationError, match="^blood transfer would exceed alveolar capacity$"
     ):
         alveoli.apply_blood_uptake(-0.2)
 
@@ -94,10 +82,7 @@ def test_changing_ventilation_preserves_alveolar_agent() -> None:
 
 
 def test_reset_clears_agent_and_preserves_settings() -> None:
-    alveoli = AlveolarCompartment(
-        gas_volume_l=3.0,
-        alveolar_ventilation_l_min=5.0,
-    )
+    alveoli = AlveolarCompartment(gas_volume_l=3.0, alveolar_ventilation_l_min=5.0)
     alveoli.set_concentration_fraction(0.05)
 
     alveoli.reset()

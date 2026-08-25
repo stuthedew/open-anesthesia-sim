@@ -76,11 +76,7 @@ class Verification:
         return all(check.passed for check in self.checks)
 
     def describe(self) -> str:
-        lines = [
-            f"{self.item.identifier} {self.item.title}",
-            f"  against {self.base}",
-            "",
-        ]
+        lines = [f"{self.item.identifier} {self.item.title}", f"  against {self.base}", ""]
         lines.extend(check.describe() for check in self.checks)
         lines.append("")
         lines.append("  ACCEPT" if self.passed else "  REJECT")
@@ -277,9 +273,7 @@ def verify(root: Path, item: Item, config: Config, base: str) -> Verification:
     fields = _front_matter_changed(root, base, item)
     report.checks.append(
         Check(
-            "item front matter unchanged",
-            not fields,
-            ", ".join(fields) if fields else "unchanged",
+            "item front matter unchanged", not fields, ", ".join(fields) if fields else "unchanged"
         )
     )
 

@@ -22,24 +22,14 @@ def test_console_script_points_to_application_launcher() -> None:
     assert console_script.value == ("anesthesia_sim.app.main:main")
 
 
-def test_application_launcher_starts_flet(
-    monkeypatch: Any,
-) -> None:
+def test_application_launcher_starts_flet(monkeypatch: Any) -> None:
     launched_targets: list[Callable[..., Any]] = []
 
-    def record_launch(
-        target: Callable[..., Any],
-        *args: Any,
-        **kwargs: Any,
-    ) -> None:
+    def record_launch(target: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
         del args, kwargs
         launched_targets.append(target)
 
-    monkeypatch.setattr(
-        app_main.ft,
-        "run",
-        record_launch,
-    )
+    monkeypatch.setattr(app_main.ft, "run", record_launch)
 
     app_main.main()
 

@@ -5,15 +5,10 @@ import pytest
 from anesthesia_sim.core.circuit import BreathingCircuit
 
 
-@pytest.mark.parametrize(
-    "elapsed_s",
-    [0.0, 30.0, 60.0, 120.0, 300.0],
-)
+@pytest.mark.parametrize("elapsed_s", [0.0, 30.0, 60.0, 120.0, 300.0])
 def test_circuit_matches_analytic_wash_in(elapsed_s: float) -> None:
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
-        fresh_gas_flow_l_min=6.0,
-        delivered_concentration_fraction=0.08,
+        circuit_volume_l=6.0, fresh_gas_flow_l_min=6.0, delivered_concentration_fraction=0.08
     )
 
     if elapsed_s > 0.0:
@@ -22,9 +17,7 @@ def test_circuit_matches_analytic_wash_in(elapsed_s: float) -> None:
     expected_concentration_fraction = 0.08 * (1.0 - exp(-elapsed_s / circuit.time_constant_s))
 
     assert circuit.circuit_concentration_fraction == pytest.approx(
-        expected_concentration_fraction,
-        rel=1e-12,
-        abs=1e-15,
+        expected_concentration_fraction, rel=1e-12, abs=1e-15
     )
 
 
