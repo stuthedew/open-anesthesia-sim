@@ -3,7 +3,7 @@ id: PL-Y2GG
 title: Add a LICENSE file and a pyproject license field before the repository goes public
 priority: P2
 effort: S
-status: ready
+status: needs-decision
 classes: infra
 touches: LICENSE, pyproject.toml, README.md
 added: 2026-08-25
@@ -23,11 +23,17 @@ agreement.
 **Where.** A new `LICENSE` at the repository root, the `license` and
 `license-files` fields in `pyproject.toml`, and the statement in `README.md`.
 
-**First step.** The license choice is the project owner's, not a default to be
-picked on their behalf. The scientific-provenance obligations in `CLAUDE.md`
-argue for a permissive license with an explicit no-warranty clause given the
-educational-not-clinical disclaimer, but that is a recommendation and not a
-decision.
+**Decision needed.** Which license. This is the project owner's call and not
+a default to be picked on their behalf, which is why this item sits at
+`needs-decision` rather than `ready`. The recommendation is a permissive
+license with an explicit no-warranty clause - MIT or Apache-2.0 - because the
+educational-not-clinical disclaimer needs the warranty disclaimer to have
+legal force behind it as well as documentary force, and because a permissive
+license is what lets the cited model and its provenance be reused in teaching
+material without a further conversation. Apache-2.0 over MIT if an explicit
+patent grant is wanted; MIT if brevity matters more. A copyleft license is the
+alternative if the priority is that derived simulators stay open, at the cost
+of making reuse inside institutional teaching software harder.
 
 **Done when.** A license is chosen by the project owner, present as `LICENSE`,
 declared in `pyproject.toml`, and stated in `README.md`.

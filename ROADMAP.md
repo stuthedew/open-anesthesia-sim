@@ -138,6 +138,67 @@ agents beyond these three, metabolism, IV anesthetics, effect-site models,
 or clinical predictions or recommendations of any kind. See
 `docs/MODEL.md`'s "Known limitations" for the complete list.
 
+## The plan
+
+One timeline. Debt clearing and feature milestones are steps on the same
+plan, in the order they happen — the gates are not a background assumption
+behind the features, they are half the work.
+
+### What MVP means here
+
+**The MVP is complete when a learner can run a case, branch it at a decision
+point, and compare the two managements side by side — in the unit clinicians
+reason in, on a time base that spans a case.**
+
+That is the Graph and the Overlay of the Gas Man reference simulator, which
+is the design this project is building on. Everything after it extends a
+working teaching tool rather than working toward one. The boundary is drawn
+there because comparison is what isolates the variable under study: running
+one case teaches a curve, and running the same case two ways teaches why the
+curve moved. A simulator that cannot do the second is a demonstration, not a
+teaching tool.
+
+Two releases reach it, and both are interface releases on the existing,
+already-validated model:
+
+- **v0.3.0, the teachable case** — one case end to end, in clinical units, at
+  a speed and on a time base that make its lessons observable at all.
+- **v0.4.0, the case you can branch** — bookmarks, forking from them, and
+  side-by-side comparison of the branches.
+
+### The timeline
+
+| # | Step | What it is | Size |
+| --- | --- | --- | --- |
+| 1 | **Gate 0** | The frozen debt list, recorded under v0.3.0 below. 14 items outside the milestone's scope. | 2 M, 12 S |
+| 2 | **v0.3.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt cleared by the milestone itself. | 5 M, 6 S |
+| 3 | **Gate 1** | Frozen when v0.4.0 is scoped. Contents unknown by construction: v0.3.0's own findings land here. | — |
+| 4 | **v0.4.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
+| — | **MVP complete** | A learner can run, branch, and compare a case. | — |
+| 5 | **Gate 2** | Frozen when v0.5.0 is scoped. | — |
+| 6 | **v0.5.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
+| 7 | **Gate 3** | Frozen when v0.6.0 is scoped. | — |
+| 8 | **v0.6.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. | — |
+| 9+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. | — |
+
+Rows 4 to 8 are the intended order and are not yet scoped; each becomes real
+only when it gets its own goal, required scope, definition of done and
+out-of-scope list here, per the development rules. Row 4's internal ordering —
+forking and comparison ahead of save/load and replay — is a deliberate
+departure from "Development pathway"'s Phase 3 sequence, on the grounds that
+branching within one session is the teaching payload while persistence is a
+convenience; it is recorded here as a proposal rather than a decision, and
+Phase 3's stated order stands until v0.4.0 is scoped.
+
+### Why the gates are on this list and not behind it
+
+A gate that lives in a separate document, or in a session's memory, is
+renegotiated every time it is inconvenient. Put on the timeline it is a step
+with a size, and skipping it is visible as skipping a step. The cadence that
+generates rows 1, 3, 5 and 7 is specified under "The debt gate" below; the
+rule is that scoping a milestone freezes its gate, and the gate clears before
+that milestone's implementation begins.
+
 ## Completed: v0.1.0 - first patient sevo model
 
 ### Goal
@@ -333,6 +394,65 @@ recording half of item 8 (control-input timeline). It does not promote item
 26 (bookmarks) or item 12 (forking), but it is designed so that neither is
 blocked - see "Designed for forking" below.
 
+### Debt gate: the frozen list
+
+**Frozen 2026-08-25, the day this milestone was scoped.** Twenty open items
+are debt by "The debt gate" below — classed `defect`, `safety`, `science`,
+`refactor` or `perf`, or at `needs-decision`. Six of them are inside this
+milestone's own Required scope and are cleared by it, per "Debt inside the
+milestone's own scope". The other fourteen clear before implementation begins.
+
+**Cleared before v0.3.0 begins (14 items).**
+
+*Core correctness — both safety- or science-classed, both wanting the
+strongest model:*
+
+- PL-026 (M) Make the simulation step transactional so a halt leaves no
+  partial state
+- PL-042 (S) Bound the splitting error across the settings envelope, not one
+  point
+
+*Core boundaries — the whole `core-boundaries` feature, all `refactor`:*
+
+- PL-006 (M) Clarify what `RespiratorySystem` actually owns
+- PL-004 (S) Decide the fate of the two uncalled descriptive time constants
+- PL-007 (S) Make the payload/public-dataclass pattern self-evident in
+  `core/parameters.py`
+- PL-019 (S) Remove `BreathingCircuit`'s agent-unaware delivered-concentration
+  default
+
+*Live process machinery that does not reliably work — `defect` by the rule
+under "What counts":*
+
+- PL-G049 (S) A `verify:` command that has never been run is not a
+  specification
+- PL-674D (S) `docket release` bumps `pyproject.toml` but leaves `uv.lock`
+  stale, breaking `make check`
+- PL-0RFH (S) `docs/worker.md` buries the carve-out that lets a worker decide
+  anything at all
+- PL-R0SR (S) `docs/worker.md` should say that corrections arrive by pulling
+  the branch, never in chat
+- PL-4F6P (S) A `**Worked.**` note said "nothing the brief did not specify"
+  for a test that reached into a private class
+
+*Documentation, performance, and the one decision that is the project
+owner's:*
+
+- PL-Z4GF (S) README's current-status heading, and this file's duplicated
+  v0.2.3 table row, name the wrong release
+- PL-010 (S) Stop rebuilding render objects on every frame
+- PL-Y2GG (S, `needs-decision`) Add a LICENSE file and a `pyproject` license
+  field — blocked on the project owner choosing a license, and on nothing else
+
+**Cleared by v0.3.0 itself (6 items).** Each appears in Required scope above:
+PL-DHV7 (MAC as a displayed unit), PL-VM40 (simulated time from a step count),
+PL-F52R (the MAC-awake reference band), PL-ZRSP (the F_A/F_I trace), PL-R3KB
+(agent selection discarding a run), PL-011 (bounding the concentration
+history).
+
+Findings made while clearing this gate go to Gate 1, except `P0` and
+`safety`/`science` findings, which re-enter here.
+
 ### Required scope
 
 - **Simulated time becomes an exact function of step count.**
@@ -522,6 +642,43 @@ anything at `P0`, and anything classed `safety` or `science`. Those are not
 deferrable by this project's own standard, and a gate that let them wait would
 be inverting the reason it exists.
 
+### The cadence
+
+The gate is a recurring step on the plan, not a precondition assumed in the
+background. Every milestone runs the same four beats, and "The plan" above
+shows them on one timeline with the milestones they gate:
+
+1. **Scope** the milestone here — goal, required scope, definition of done,
+   explicit out-of-scope list. Scoping is the act that freezes the list.
+2. **Freeze and record** the debt list in that milestone's own section, as
+   item ids, on the day it was frozen.
+3. **Clear** it — every item `done`, or `dropped` with its reason — before
+   implementation of the milestone begins.
+4. **Implement** the milestone. Findings made while clearing, and while
+   implementing, go to the next gate, except `P0` and `safety`/`science`
+   findings, which re-enter this one.
+
+A milestone whose gate has not been recorded has not been scoped, whatever
+else has been written about it.
+
+### Debt inside the milestone's own scope
+
+**Debt that the milestone itself exists to clear is cleared *by* it, not
+before it.** This carve-out is necessary rather than convenient: v0.3.0 was
+scoped in part *because* six safety, science, defect and perf items were all
+symptoms of the same thing, and requiring them to be cleared before the
+milestone that clears them is a rule with no satisfying order.
+
+The test is whether the item appears in the milestone's "Required scope". If
+it does, it is milestone work and is listed in the frozen gate under a heading
+that says so; the gate is open when everything *outside* the milestone's scope
+is clear. If it does not, it is cleared first, whatever it is about.
+
+This does not weaken the `safety`/`science` re-entry rule above. Such an item
+inside the scope is still not deferrable — it just cannot be finished earlier
+than the work it is part of, and the milestone's definition of done is what
+holds it.
+
 ### Recording it
 
 Record the frozen list in the milestone's own section here, as the item ids it
@@ -539,31 +696,47 @@ The organizing goal is a mature inhalational simulator before any intravenous
 work begins: the science first, then an interface that can actually drive it,
 then reproducibility, then IV.
 
-**Phase 0 — foundation.** No new feature work until the existing queue is
-closed out. Not because features are unwelcome, but because the last stretch
-of work felt like whack-a-mole, and it is worth being precise about why: the
-queue holds almost no defects. What it holds is decisions nobody has made.
+**Phase 0 — foundation. Superseded by the standing debt gate, 2026-08-25.**
 
-At the time this was written, nine of twenty-four open items sat at
-`needs-decision` — over a third of the queue could not be picked up by anyone,
-so it never visibly shrank however much work got done. That is the thing to
-fix before adding to it, because the same ratio applied to a larger queue is
-what makes a backlog stop meaning anything.
+Phase 0 is not closed, and on its own terms it cannot be. Its closing
+conditions are reproduced below unchanged, followed by their state at the date
+above.
 
-"All bugs squashed" is not a closing condition, since absence of defects
-cannot be demonstrated. This one can be checked:
+Its original text: no new feature work until the existing queue is closed out.
+Not because features are unwelcome, but because the last stretch of work felt
+like whack-a-mole, and it is worth being precise about why: the queue holds
+almost no defects. What it holds is decisions nobody has made. At the time
+that was written, nine of twenty-four open items sat at `needs-decision` — over
+a third of the queue could not be picked up by anyone, so it never visibly
+shrank however much work got done. "All bugs squashed" is not a closing
+condition, since absence of defects cannot be demonstrated. These were:
 
-- no open item classed `safety`, `science` or `defect`;
-- no open item classed only as process work (`session-cost`, `docs`, `infra`)
-  — the workflow is either finished or explicitly deferred;
-- no item left at `needs-decision`: each is answered and made `ready`, or
-  dropped with its reason recorded;
-- every outstanding branch merged and a release cut, so the tree is not
-  carrying half-landed work into Phase 1.
+| Phase 0 closing condition | State on 2026-08-25 |
+| --- | --- |
+| no open item classed `safety`, `science` or `defect` | **Not met.** 6 safety/science and 8 defect-classed items open. |
+| no open item classed only as process work (`session-cost`, `docs`, `infra`) | **Not met.** 11 such items open. |
+| no item left at `needs-decision` | **Met**, and deliberately unmet again the same day: PL-Y2GG (the license choice) was moved *to* `needs-decision` because it holds a decision only the project owner can make, and recording that is more honest than a `ready` nobody can act on. |
+| every outstanding branch merged and a release cut | **Met** for merges — `claude/pl-64ls-promote` is gone from the remote — and v0.2.4 is cut. |
 
-Implementing a planned milestone during this phase is fine where it falls out
-of foundation work naturally. Starting one because it is more interesting than
-the queue is the thing being deferred.
+**Why superseded rather than pursued.** The first two conditions ask the queue
+to reach zero in categories that every working session refills. The queue held
+24 open items when Phase 0 was written and holds 48 now: it doubled during the
+period Phase 0 was meant to be draining it, which is not a failure of effort
+but the capture rule working as designed. A gate that requires a refilling
+queue to empty is a gate that never opens, and the honest outcomes for such a
+rule are that it gets quietly abandoned or that it blocks all work forever.
+
+"The debt gate" above is the mechanism that replaced it, and it is strictly
+better for the same purpose: it freezes a list at a moment rather than chasing
+a moving one, so it is always finite and always openable, and it recurs before
+every milestone rather than once. Everything Phase 0 was trying to buy — debt
+cleared while the code it describes is still fresh, decisions answered rather
+than accumulated — the gate buys on a cadence instead of in one push.
+
+So Phase 0 is retired as a phase. Its unmet conditions are not carried forward
+as a backlog; the items behind them are in the current frozen gate, where they
+can be worked and finished. Implementing a planned milestone is no longer held
+by Phase 0, only by its own gate.
 
 **Phase 1 — scientific maturity.** Generalize the patient's state from one
 agent to N simultaneously present substances, then items 6 and 7 (nitrous
