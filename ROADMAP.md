@@ -351,8 +351,12 @@ longer appears here. Further volatile agents beyond isoflurane and desflurane (h
 enflurane, ether, xenon; not nitrous oxide, which is covered by items 6-7
 above) remain an unscoped later idea, to be added back here as its own item
 once someone is ready to scope it.
+25. Add a playback speed multiplier, so a run can be advanced faster or slower
+    than real time without changing the simulation's own time step. Kept
+    separate from deterministic replay (item 10): replay reproduces a recorded
+    run, while this changes the rate at which any run is displayed.
 
-None of items 1-23 mix scientific-core and UI/tooling concerns within a
+None of items 1-25 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
