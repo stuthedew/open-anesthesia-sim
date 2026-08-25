@@ -8,7 +8,7 @@ breathing circuit, alveolar gas, blood, and tissue compartments.
 monitoring device.** No output should be used to guide real-world patient
 care.
 
-## Current status: v0.2.2
+## Current status: v0.2.3
 
 The simulator models volatile-agent wash-in, uptake, tissue distribution,
 mixed-venous return, and washout in a single reference adult patient:
@@ -36,6 +36,14 @@ A setting the model refuses is reported as refused and leaves the run
 alone. A failure the model cannot continue past halts the run and says so,
 rather than leaving the display reading "Running" over numbers that have
 stopped advancing; a halted run is cleared by Reset.
+
+Concentrations are displayed to 0.01 percentage points, which is the
+resolution the numerical method supports rather than the resolution the
+floating-point values carry: the shipped operator split disagrees with an
+independent solution by up to 1.2e-2 percentage points across the settings
+the interface exposes, so a finer readout would present solver noise as model
+output. A positive value too small to show reads `<0.01%`, so an empty
+compartment stays distinguishable from an unresolved one.
 
 Each agent's MAC is used only to pick a clinically sensible starting dial
 position. The simulator does not model anesthetic depth: there is no
