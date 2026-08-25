@@ -350,6 +350,14 @@ def cmd_release(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_delegable(args: argparse.Namespace) -> int:
+    """Everything a worker may take, with the command that proves each one."""
+    _, items, config = _load(args)
+    report = analyze(items, args.today or date.today(), config)
+    print(render.format_delegable(report, _flight(args), config.protected_paths))
+    return 0
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     """Prove one item's work stayed inside the commission it was given.
 
@@ -384,14 +392,41 @@ def build_parser() -> argparse.ArgumentParser:
     # subcommand, so `docket --items X check` and `docket check --items X` both
     # work. Argparse's default insists on the first, which is the one nobody
     # remembers under a deadline.
-    common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--items", type=Path, default=None, help="path to the item directory")
-    common.add_argument("--today", type=date.fromisoformat, default=None, help="reference date")
-    common.add_argument("--no-git", action="store_true", help="skip branch detection")
+    # The shared options are accepted on either side of the subcommand, and
+    # making that true takes more than attaching them twice. Argparse parses a
+    # subcommand into its own namespace and copies the result back, so a
+    # subparser's copy of `--items` lands on top of a value the user gave
+    # before the subcommand - silently, leaving the tool to answer confidently
+    # about the wrong store. The subcommand copies therefore write to their own
+    # dests, and `main` merges them, so neither position can erase the other.
+    def _shared(parser: argparse.ArgumentParser, suffix: str = "") -> None:
+        parser.add_argument(
+            "--items",
+            type=Path,
+            default=None,
+            dest="items" + suffix,
+            help="path to the item directory",
+        )
+        parser.add_argument(
+            "--today",
+            type=date.fromisoformat,
+            default=None,
+            dest="today" + suffix,
+            help="reference date",
+        )
+        parser.add_argument(
+            "--no-git",
+            action="store_true",
+            default=False,
+            dest="no_git" + suffix,
+            help="skip branch detection",
+        )
 
-    parser = argparse.ArgumentParser(
-        prog="docket", description=__doc__.splitlines()[0], parents=[common]
-    )
+    common = argparse.ArgumentParser(add_help=False)
+    _shared(common, "_sub")
+
+    parser = argparse.ArgumentParser(prog="docket", description=__doc__.splitlines()[0])
+    _shared(parser)
     sub = parser.add_subparsers(dest="command", required=True)
 
     def add(name: str, help_text: str) -> argparse.ArgumentParser:
@@ -440,6 +475,10 @@ def build_parser() -> argparse.ArgumentParser:
     release.add_argument("--dry-run", action="store_true")
     release.set_defaults(func=cmd_release)
 
+    add("delegable", "what a cheaper model may work, and what proves it").set_defaults(
+        func=cmd_delegable
+    )
+
     verify_cmd = add("verify", "prove an item's work stayed inside its commission")
     verify_cmd.add_argument("item")
     verify_cmd.add_argument("--base", default="main", help="the ref the work branched from")
@@ -449,8 +488,23 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def merge_shared(args: argparse.Namespace) -> argparse.Namespace:
+    """Fold the subcommand's copy of a shared option onto the top-level one.
+
+    Whichever position supplied a value wins; supplying it in both is not an
+    error, since they cannot disagree without the user having written the flag
+    twice on purpose.
+    """
+    for name in ("items", "today", "no_git"):
+        sub = getattr(args, name + "_sub", None)
+        if sub:
+            setattr(args, name, sub)
+        delattr(args, name + "_sub")
+    return args
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    args = merge_shared(build_parser().parse_args(argv))
     return int(args.func(args))
 
 

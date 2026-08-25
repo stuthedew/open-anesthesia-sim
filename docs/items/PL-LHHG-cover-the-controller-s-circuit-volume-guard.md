@@ -6,11 +6,12 @@ effort: S
 status: done
 classes: test, infra
 feature: core-guard-coverage
+milestone: v0.2.4
 touches: tests/integration/test_controller.py
-verify: uv run pytest --cov=anesthesia_sim.app.controller --cov-fail-under=100
 added: 2026-08-25
 closed: 2026-08-25
 commit: 486c3c4
+verify: uv run pytest --cov=anesthesia_sim.app.controller --cov-fail-under=100
 ---
 
 **Problem.** One guard in `app/controller.py` never executes under the test

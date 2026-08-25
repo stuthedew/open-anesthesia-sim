@@ -3,11 +3,14 @@ id: PL-7YZH
 title: Test the two failure paths in `simulation_view.py` that a command cannot prove
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety
 feature: core-guard-coverage
+milestone: v0.2.4
 touches: tests/unit/test_simulation_view.py
 added: 2026-08-25
+closed: 2026-08-25
+commit: 29b44d6
 ---
 
 **Problem.** Two failure paths in `app/simulation_view.py` are never
@@ -58,3 +61,19 @@ distinction the delegation tier turns on.
 **Done when.** Both paths are exercised — line 109 asserting the `RuntimeError`
 and its message, `_halt_run` asserting that a render failure leaves the
 controller stopped and does not propagate — and `make check` is green.
+
+**Closed.** Both paths are exercised. `_halt_run` has two tests - one that the
+reason records the exception *type* as well as its message, since a bare
+message loses the difference between a modelling failure and a `TypeError`
+from a refactor; and one that a render failure during a halt still leaves the
+run stopped and propagates nothing, which is the documented intent of the
+suppression. The suppression was not touched.
+
+The module-level guard is covered by reloading the module with the colour
+table one entry short, and reloading it again in a `finally` so every later
+test sees the genuine table.
+
+`simulation_view.py` now reports 11 uncovered statements, and they are exactly
+the Flet-construction paths PL-YMY7 describes - 402, 472-473, 486, 529-539,
+572, 621, 650, 724, 795. That confirms PL-YMY7's claim rather than closing it:
+whether those want a rendering harness is still open, and belongs with PL-027.

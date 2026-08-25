@@ -1,7 +1,12 @@
 ---
 id: PL-FVM5
 title: `docket verify` re-runs the project's whole check once per item, so a six-item batch takes two minutes
-status: untriaged
+status: ready
+priority: P3
+effort: S
+classes: session-cost
+feature: delegation
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py
 added: 2026-08-25
 ---
 

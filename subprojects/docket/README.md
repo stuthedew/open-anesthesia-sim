@@ -27,6 +27,7 @@ docket list                  # the queue, one line per item
 docket concurrent PL-K7QX    # what can be worked alongside it
 docket feature halted-step   # progress on one feature
 docket release v0.3.0        # verify, bump the version, write the notes
+docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
 docket check                 # validate the store; exits non-zero on errors
 ```

@@ -1052,3 +1052,87 @@ def test_every_slider_handler_refuses_without_escaping_into_flet(
     assert view._notice_text.value is not None
     assert "Setting refused" in view._notice_text.value
     assert slider.value >= 0.0
+
+
+class _RecordingController(_FakeController):
+    """A controller that records `fail()` instead of running a simulation.
+
+    `_halt_run` is the path that turns a raised exception into a stopped run
+    and a visible banner. What matters is that it stops the run and records
+    the reason, so that is what is recorded here.
+    """
+
+    def __init__(self, snapshot: SimulationSnapshot) -> None:
+        super().__init__(snapshot)
+        self.failures: list[str] = []
+
+    def fail(self, reason: str) -> None:
+        self.failures.append(reason)
+        self.is_running = False
+
+
+def test_halt_run_stops_the_session_and_records_the_exception_type() -> None:
+    """The reason carries the type as well as the message.
+
+    A bare message loses the difference between a modelling failure and a
+    `TypeError` from a refactor, and the two want different responses from
+    whoever reads the banner.
+    """
+    controller = _RecordingController(_snapshot())
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    view._halt_run(ValueError("mass balance violated"))
+
+    assert controller.failures == ["ValueError: mass balance violated"]
+    assert controller.is_running is False
+
+
+def test_halt_run_survives_a_render_failure_and_leaves_the_run_stopped() -> None:
+    """A display that cannot be updated must not prevent the run from stopping.
+
+    `_halt_run` swallows a rendering exception on purpose: the run is already
+    stopped, and a frozen display over a stopped simulation is at worst
+    uninformative, where one over a *running* simulation is actively
+    misleading. This asserts that documented behaviour - that the failure is
+    recorded, the run is stopped, and nothing propagates to the caller - so
+    that the suppression is covered by a test rather than only by a comment.
+    """
+    controller = _RecordingController(_snapshot())
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    def _explode() -> None:
+        raise RuntimeError("the page is gone")
+
+    view._refresh_and_render = _explode  # type: ignore[method-assign]
+
+    view._halt_run(ValueError("mass balance violated"))
+
+    assert controller.failures == ["ValueError: mass balance violated"]
+    assert controller.is_running is False
+
+
+def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> None:
+    """Adding an agent without its ISO 5360 colour must stop the app starting.
+
+    The guard runs at module scope, so covering it means re-executing the
+    module body with the colour table short one entry. The module is reloaded
+    again afterwards so that the genuine table is what every later test and
+    every later import sees.
+    """
+    import importlib
+
+    from anesthesia_sim.app import simulation_view as module
+    from anesthesia_sim.app import theme
+
+    original = dict(theme.AGENT_COLOR_SCHEMES)
+    theme.AGENT_COLOR_SCHEMES.pop(next(iter(original)))
+    try:
+        with pytest.raises(
+            RuntimeError,
+            match="^AGENT_COLOR_SCHEMES must define exactly the built-in volatile agents$",
+        ):
+            importlib.reload(module)
+    finally:
+        theme.AGENT_COLOR_SCHEMES.clear()
+        theme.AGENT_COLOR_SCHEMES.update(original)
+        importlib.reload(module)
