@@ -140,3 +140,18 @@ def test_status_leads_with_features_not_items(
     out = capsys.readouterr().out
 
     assert "chart-readout" in out
+
+
+def test_release_refuses_to_invent_a_version_under_a_manual_policy(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A plausible wrong version is a provenance error, not a convenience."""
+    done = READY.replace("status: ready", "status: done\ncommit: abc1234\nclosed: 2026-08-24")
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.2"\n', encoding="utf-8")
+    (tmp_path / "docket.toml").write_text('[docket]\nversion_policy = "manual"\n', encoding="utf-8")
+    store = _store(tmp_path, done)
+
+    assert _run("release", "--items", str(store)) == 1
+    out = capsys.readouterr().out
+    assert "Name the version" in out
+    assert "PL-B1B1" in out

@@ -106,6 +106,15 @@ def suggest_version(current: str, items: list[Item], minor_classes: tuple[str, .
 
 
 def read_version(pyproject: Path) -> str:
+    """The project's current version, or empty when there is none to read.
+
+    A missing or version-less file is a legitimate state - a store consulted
+    on its own, or a project that does not version - so it reports nothing
+    rather than raising. Bumping is the operation that requires a version to
+    exist, and that one still fails loudly.
+    """
+    if not pyproject.is_file():
+        return ""
     match = VERSION_RE.search(pyproject.read_text(encoding="utf-8"))
     return match.group(2) if match else ""
 

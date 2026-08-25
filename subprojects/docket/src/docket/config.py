@@ -31,6 +31,13 @@ class Config:
     #: Classes that make a release a minor version bump rather than a patch.
     minor_classes: tuple[str, ...] = ("feature",)
     version_file: str = "pyproject.toml"
+    #: How the next version is chosen. "infer" derives it from the classes of
+    #: what shipped, which suits a project where a patch is a patch. "manual"
+    #: requires it to be named, for a project whose version marks the
+    #: capability boundary a release crosses rather than counting changes -
+    #: a distinction no class label can carry, and one this tool must not
+    #: guess at, because a plausible wrong version is a provenance error.
+    version_policy: str = "infer"
     extra: dict[str, object] = field(default_factory=dict)
 
 
@@ -64,4 +71,5 @@ def load(root: Path) -> Config:
         ),
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
         version_file=str(section.get("version_file", defaults.version_file)),
+        version_policy=str(section.get("version_policy", defaults.version_policy)),
     )
