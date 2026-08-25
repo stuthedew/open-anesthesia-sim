@@ -1,9 +1,11 @@
 ---
 id: PL-PFM1
 title: Detect threshold-bookmark crossings inside the advance loop, not at frame boundaries
-status: untriaged
+status: dropped
 feature: scenario-branching
 added: 2026-08-25
+closed: 2026-08-25
+reason: aspirational rather than actionable; there is no bookmark to detect a crossing for, so it was promoted to ROADMAP.md planned milestone 26 as a required property of bookmarks
 ---
 
 **Problem.** A threshold bookmark ("stop when VRG reaches 0.8 MAC") is only

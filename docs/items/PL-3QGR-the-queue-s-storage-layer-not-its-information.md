@@ -4,6 +4,7 @@ title: The queue's storage layer, not its information model, is what blocks conc
 status: done
 classes: session-cost
 feature: docket
+milestone: v0.2.3
 added: 2026-08-24
 closed: 2026-08-24
 commit: f5ffae0
