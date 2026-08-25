@@ -23,18 +23,61 @@ by mechanically incrementing the patch number.
 | v0.1.0 | Completed | First patient sevoflurane uptake and distribution model - the "Sevo works" milestone. |
 | v0.2.0 | Completed | Isoflurane and desflurane added as additional loadable volatile agents. |
 | v0.2.1 | Completed | Validation hotfix: the vaporizer maximum is enforced in the core and rejects rather than clamps, the agent MAC cross-check fails closed, and the cited reference-adult defaults reach the running app. |
-| v0.2.2 | Completed / current baseline | Hardening and interface-provenance release on the same model: a failed step halts the run visibly instead of leaving it reading "Running", the parameter schemas reject unknown keys, agent selection carries its ISO 5360 identification color, and a dead non-conservative ventilation path is deleted. |
+| v0.2.2 | Completed | Hardening and interface-provenance release on the same model: a failed step halts the run visibly instead of leaving it reading "Running", the parameter schemas reject unknown keys, agent selection carries its ISO 5360 identification color, and a dead non-conservative ventilation path is deleted. |
+| v0.2.3 | Completed / current baseline | Hardening and verification release on the same model: displayed concentrations are rounded to the resolution the solver actually supports, the chart payload is bounded and the render cadence decoupled from the simulation's, and the coupled dynamics are gated on an independent RK4 solution rather than on mass balance alone. Six further items rebuilt the development queue and swept the documentation. |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.2.2
+## Current baseline: v0.2.3
 
-v0.2.2 is a hardening and interface-provenance release on the v0.2.0 model.
-Like the v0.2.1 hotfix before it, it changes no equation, parameter, or
+v0.2.3 is a hardening and verification release on the v0.2.0 model. Like the
+v0.2.1 and v0.2.2 releases before it, it changes no equation, parameter, or
 numerical method: `docs/MODEL.md`'s specification of the model is unchanged,
 and the v0.0.2 circuit and v0.1.0 sevoflurane reference tests still pass
-unaltered. It carries four queue items:
+unaltered. That is why it is a patch beside v0.2.1 and v0.2.2 rather than a
+new minor: it crosses no model capability boundary — no new agent, no new
+physiology. It carries nine queue items, three of which reach the running
+application:
+
+- **PL-040.** Concentrations were rendered to thousandths of a percentage
+  point, but the shipped operator split disagrees with an independent
+  solution by 1.7e-3 percentage points at default flows and 1 MAC and 1.2e-2
+  at the corner of the slider envelope, so two of the three displayed
+  decimals were solver noise presented as model output. Every modeled
+  concentration and the delivered-agent setting now read at a fixed 0.01
+  percentage points, with a positive value that would round to `0.00%` shown
+  as `<0.01%` so an empty compartment stays distinguishable from an
+  unresolved one.
+- **PL-001.** The chart was handed the entire recorded history every frame
+  while its axis only ever showed the last window, so frame cost grew with
+  run length and redraws overran the frame budget after about 90 s of
+  simulated time. The payload is now bounded and decimated to a fixed
+  per-trace budget, and stepping the model is independent of drawing it.
+  Nothing about the simulation's own time step changed.
+- **PL-023.** Mass balance could not detect a wrong rate: every internal
+  transfer is applied as an equal-and-opposite pair, so the accounting
+  residual stays at ~2e-15 L whatever the rates are — scaling the
+  circuit/alveolar exchange by 1.01 left all 345 tests green. An independent
+  RK4 oracle that re-derives the `docs/MODEL.md` equations from the parameter
+  files now runs in CI (`tests/reference/test_coupled_dynamics.py`) and
+  requires all six states to agree across the three agents at 60 s, 600 s and
+  3600 s; the same mutation fails 8 of its 22 cases. The tolerance is a bound
+  on the first-order splitting coefficient rather than a value fitted to
+  today's run.
+
+The remaining six are documentation and development-infrastructure work:
+PL-008 swept the documentation to match what the interface actually does,
+PL-033 added the reference patient's 70 kg to `docs/MODEL.md`'s provenance
+table with a statement that no equation consumes it, and PL-3QGR, PL-041,
+PL-032 and PL-034 replaced the single-file punch list with the per-item queue
+in `docs/items/`, mechanized the decidable half of the close-out
+documentation sweep, and split the queue workflow between `CLAUDE.md`, the
+skill and the tool. Full notes are in `docs/releases/v0.2.3.md`.
+
+The preceding v0.2.2 was a hardening and interface-provenance release on the
+same model, changing no equation, parameter, or numerical method either. It
+carried four queue items:
 
 - **PL-018.** A failure inside a step no longer leaves the interface reading
   "Running" over numbers that have stopped advancing. A run now has a third
@@ -253,7 +296,7 @@ record both agents' sourcing.
 
 ## Next milestone
 
-No milestone after v0.2.2 has been scoped yet. The next candidate, per
+No milestone after v0.2.3 has been scoped yet. The next candidate, per
 "Development pathway" below, is generalizing the patient's state from one
 volatile agent to a set of simultaneously present substances — the change
 that agent switching, nitrous oxide, and the second-gas effect all wait on,
@@ -388,7 +431,7 @@ the order the items are intended to be worked in. Each item is deliberately
 left unspecified (no goal, required scope, or definition of done) until it
 is actually promoted into a scoped milestone per the development rules
 above — and each item is kept to one improvement, so scoping one does not
-implicitly drag others along with it. Exact version numbers after v0.2.2
+implicitly drag others along with it. Exact version numbers after v0.2.3
 remain provisional and must be assigned when each milestone is fully
 specified.
 
