@@ -1,10 +1,12 @@
 ---
 id: PL-2R01
 title: Fail docket check when a recorded commit hash is unreachable
-status: untriaged
+status: dropped
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py
 added: 2026-08-25
+closed: 2026-08-25
+reason: duplicate of PL-68XK, which already scopes this check and carries PL-JL24's reachability constraint; PL-68XK has adopted this item's stricter stance - an error where git can answer rather than an advisory
 ---
 
 **Problem.** Closed items record a `commit:` hash. Nothing verifies the hash

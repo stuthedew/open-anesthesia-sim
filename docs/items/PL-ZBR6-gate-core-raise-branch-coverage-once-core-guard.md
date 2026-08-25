@@ -1,7 +1,10 @@
 ---
 id: PL-ZBR6
 title: Gate core/ raise-branch coverage once core-guard-coverage finishes
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra, test
 feature: dev-tooling
 touches: pyproject.toml
 added: 2026-08-25

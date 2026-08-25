@@ -1,7 +1,10 @@
 ---
 id: PL-RZPX
 title: Advise at grooming when an open item declares no touches
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra, session-cost
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py
 added: 2026-08-25

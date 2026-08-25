@@ -1,7 +1,10 @@
 ---
 id: PL-ZN0N
 title: Enable ruff RUF100 so inert noqa directives fail the build
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra
 feature: dev-tooling
 touches: pyproject.toml
 added: 2026-08-25

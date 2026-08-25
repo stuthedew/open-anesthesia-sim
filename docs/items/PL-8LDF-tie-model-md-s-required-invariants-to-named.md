@@ -1,7 +1,10 @@
 ---
 id: PL-8LDF
 title: Tie MODEL.md's required invariants to named tests and check the names resolve
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: docs, test
 feature: dev-tooling
 touches: docs/MODEL.md
 added: 2026-08-25

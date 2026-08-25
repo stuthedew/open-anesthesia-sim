@@ -31,13 +31,16 @@ work belongs.
 **Where.** `subprojects/docket/src/docket/checks.py`, using
 `subprojects/docket/src/docket/vcs.py`'s existing `_run_git` helper.
 
-**Approach.** An *advisory*, not an error, and only when git can answer.
-`vcs.py` already collapses every git failure to "nothing known" so the
-session-start digest works in a checkout without git, without a remote, or
-without network - the same must hold here, or `docket check` stops working in
-exactly the bare-checkout case it was built to survive. So: if git is
-unavailable, say nothing; if it answers and a hash does not resolve, report it
-for a person to look at.
+**Approach.** An *error* where git can answer, silent where it cannot (this
+supersedes an earlier draft here that made it advisory; PL-B043's decision
+settled that a condition decidable from the tree belongs in `docket check` as
+an invariant rather than as advice). `vcs.py` already collapses every git
+failure to "nothing known" so the session-start digest works in a checkout
+without git, without a remote, or without network - the same must hold here,
+or `docket check` stops working in exactly the bare-checkout case it was built
+to survive. So: if git is unavailable, say nothing; if it answers and a
+recorded hash is unreachable, fail. All 32 recorded hashes are reachable
+today, so turning this on costs nothing and keeps a clean condition clean.
 
 **Reachability, not mere presence** (folded in from PL-JL24). `git cat-file -e`
 succeeds for any object still in the local object database, including a commit
