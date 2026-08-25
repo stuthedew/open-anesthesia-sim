@@ -1,12 +1,10 @@
 ---
 id: PL-009
 title: Playback speed multiplier
-priority: P3
-effort: L
-status: needs-decision
-classes: feature
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py
+status: dropped
 added: 2026-08-23
+closed: 2026-08-25
+reason: aspirational rather than actionable; promoted to ROADMAP.md planned milestone 25
 ---
 
 **Problem.** No faster-than-real-time playback. Target is real time up to
