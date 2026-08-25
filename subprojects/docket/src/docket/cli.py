@@ -19,7 +19,14 @@ from .config import Config
 from .config import load as load_config
 from .model import Item
 from .plan import features, recommend
-from .release import bump_version, milestones, read_version, release_notes, suggest_version
+from .release import (
+    bump_version,
+    milestones,
+    read_version,
+    readiness,
+    release_notes,
+    stamp,
+)
 from .store import find_item, new_id, read_items, write_item
 from .vcs import branches_in_flight, in_flight_ids
 
@@ -76,7 +83,9 @@ def cmd_digest(args: argparse.Namespace) -> int:
     if not items:
         return 0
     report = analyze(items, args.today or date.today(), config)
-    rendered = render.format_digest(report, _flight(args))
+    root = find_root()
+    ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
+    rendered = render.format_digest(report, _flight(args), ready)
     if rendered:
         print(rendered)
     return 0
@@ -195,6 +204,17 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_status(args: argparse.Namespace) -> int:
+    """The project at feature altitude, plus whether a release is worth cutting."""
+    _, items, config = _load(args)
+    report = analyze(items, args.today or date.today(), config)
+    root = find_root()
+    ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
+    rendered = render.format_status(report, ready, _flight(args))
+    print(rendered if rendered else "Nothing open.")
+    return 0
+
+
 def cmd_next(args: argparse.Namespace) -> int:
     """What to work on now, and why.
 
@@ -264,38 +284,48 @@ def cmd_milestone(args: argparse.Namespace) -> int:
 
 
 def cmd_release(args: argparse.Namespace) -> int:
-    """Close a milestone: verify it is finished, bump the version, write the notes."""
-    root = find_root()
-    _, items, config = _load(args)
-    groups = milestones(items)
-    milestone = groups.get(args.name)
-    if milestone is None:
-        print(f"no milestone named '{args.name}'")
-        return 1
-    if not milestone.is_complete:
-        print(f"{milestone.name} is not finished; {len(milestone.outstanding)} item(s) still open:")
-        for item in milestone.outstanding:
-            print(f"  {item.identifier} {item.title} ({item.status})")
-        print("\nNothing was changed.")
-        return 1
+    """Cut a release from whatever is finished and has not shipped yet.
 
+    Takes no list of items, on purpose. Requiring one would mean the release
+    is only as complete as somebody's memory of what to put in it, and the
+    store already knows exactly which finished work has not gone out.
+    """
+    root = find_root()
+    directory, items, config = _load(args)
     current = read_version(root / config.version_file)
-    version = milestone.version
-    if not version or not version[0].isdigit():
-        version = suggest_version(current, milestone.done, config.minor_classes)
-    notes = release_notes(milestone, args.today or date.today())
-    if args.dry_run:
-        print(f"Would bump {current} -> {version}\n")
-        print(notes)
+    ready = readiness(items, current, config.minor_classes)
+
+    if not ready.shippable:
+        print(f"Nothing to release: no finished work since {current}.")
         return 0
 
+    version = (args.version or ready.suggested_version).lstrip("v")
+    name = f"v{version}"
+    milestone = milestones(stamp(ready.shippable, name))[name]
+    notes = release_notes(milestone, args.today or date.today())
+
+    print(f"{len(ready.shippable)} finished item(s) since {current}.")
+    if ready.completed_features:
+        print(f"Completes: {', '.join(ready.completed_features)}")
+    if ready.partial_features:
+        print(f"Partially advances: {', '.join(ready.partial_features)}")
+    print(f"{current} -> {version}\n")
+    print(notes)
+
+    if args.dry_run:
+        print("Dry run: nothing was changed.")
+        return 0
+
+    for item in stamp(ready.shippable, name):
+        original = next(i for i in items if i.identifier == item.identifier)
+        write_item(directory, item, replace=directory / original.path)
     previous = bump_version(root / config.version_file, version)
-    notes_path = root / "docs" / "releases" / f"{milestone.name}.md"
+    notes_path = root / "docs" / "releases" / f"{name}.md"
     notes_path.parent.mkdir(parents=True, exist_ok=True)
     notes_path.write_text(notes, encoding="utf-8")
     print(f"Bumped {previous} -> {version} in {config.version_file}")
-    print(f"Wrote {notes_path.relative_to(root)}")
-    print(f"Next: review, commit, and tag v{version}")
+    print(f"Wrote {notes_path.relative_to(root)} and stamped {len(ready.shippable)} item(s)")
+    print(f"Next: review, commit, and tag {name}")
     return 0
 
 
@@ -365,10 +395,12 @@ def build_parser() -> argparse.ArgumentParser:
     milestone.add_argument("name", nargs="?")
     milestone.set_defaults(func=cmd_milestone)
 
-    release = add("release", "bump the version for a finished milestone")
-    release.add_argument("name")
+    release = add("release", "cut a release from everything finished and unshipped")
+    release.add_argument("version", nargs="?", help="override the inferred version")
     release.add_argument("--dry-run", action="store_true")
     release.set_defaults(func=cmd_release)
+
+    add("status", "the project at feature altitude").set_defaults(func=cmd_status)
     return parser
 
 

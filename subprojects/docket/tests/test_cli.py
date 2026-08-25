@@ -97,23 +97,46 @@ def test_show_reports_a_missing_item_rather_than_guessing(tmp_path: Path) -> Non
     assert _run("show", "PL-Z9Z9", "--items", str(_store(tmp_path, READY))) == 1
 
 
-def test_release_refuses_an_unfinished_milestone(
+def test_release_ships_nothing_when_nothing_is_finished(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Shipping a version whose work is not done is the failure worth preventing."""
-    store = _store(tmp_path, READY.replace("status: ready", "status: ready\nmilestone: v0.3.0"))
-
-    assert _run("release", "v0.3.0", "--items", str(store)) == 1
-    assert "Nothing was changed." in capsys.readouterr().out
+    assert _run("release", "--items", str(_store(tmp_path, READY))) == 0
+    assert "Nothing to release" in capsys.readouterr().out
 
 
-def test_release_is_a_dry_run_before_it_writes(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    done = READY.replace(
-        "status: ready", "status: done\nmilestone: v0.3.0\ncommit: abc1234\nclosed: 2026-08-24"
-    )
+def test_release_needs_no_list_of_items(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """The store knows what is finished; requiring it to be named loses work."""
+    done = READY.replace("status: ready", "status: done\ncommit: abc1234\nclosed: 2026-08-24")
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.2"\n', encoding="utf-8")
     store = _store(tmp_path, done)
 
-    assert _run("release", "v0.3.0", "--dry-run", "--items", str(store)) == 0
-    assert "Would bump" in capsys.readouterr().out
+    assert _run("release", "--dry-run", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+    assert "1 finished item(s)" in out
+    assert "PL-B1B1" in out
+    assert "Dry run: nothing was changed." in out
+
+
+def test_release_infers_the_version_from_what_shipped(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A patch for fixes; a minor when new functionality went out."""
+    feature = READY.replace("classes: perf", "classes: feature").replace(
+        "status: ready", "status: done\ncommit: abc1234\nclosed: 2026-08-24"
+    )
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.2"\n', encoding="utf-8")
+
+    _run("release", "--dry-run", "--items", str(_store(tmp_path, feature)))
+
+    assert "0.2.2 -> 0.3.0" in capsys.readouterr().out
+
+
+def test_status_leads_with_features_not_items(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Nobody chooses what to do next by reading twenty item titles."""
+    grouped = READY.replace("status: ready", "status: ready\nfeature: chart-readout")
+    _run("status", "--items", str(_store(tmp_path, grouped)))
+    out = capsys.readouterr().out
+
+    assert "chart-readout" in out

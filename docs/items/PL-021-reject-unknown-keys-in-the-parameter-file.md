@@ -2,6 +2,7 @@
 id: PL-021
 title: Reject unknown keys in the parameter-file schemas
 status: done
+milestone: v0.2.2
 closed: 2026-08-24
 commit: 3465dcf
 ---
