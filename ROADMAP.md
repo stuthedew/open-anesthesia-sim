@@ -440,13 +440,14 @@ under "What counts":*
 *Documentation, performance, and the one decision that is the project
 owner's:*
 
-- PL-Z4GF (S) — **done for the README half** (commit `d40ff83`). This file's
-  own duplicated v0.2.3 table row and stale "Current baseline" heading, also
-  named in this item's original scope, were not touched by that commit and
-  are still open. A separate item, PL-SWFM, was filed for the same problem by
-  a session that had not seen this freeze; whether it belongs in this gate
-  (continuing PL-Z4GF's frozen scope) or the next one (a post-freeze finding)
-  is unresolved — flagged for the project owner rather than decided here.
+- PL-Z4GF (S) — **done for the README half** (commit `d40ff83`). The
+  remainder of its original scope — this file's own duplicated v0.2.3 table
+  row and stale "Current baseline" heading — was not touched by that commit
+  and is still open, now tracked as **PL-SWFM** rather than under PL-Z4GF's
+  own id. Per "The gate is a snapshot, not a moving target" and its presence
+  rule below (project owner, 2026-08-25): the problem was already inside
+  this frozen scope, so PL-SWFM clears here rather than at the next gate,
+  regardless of which id or session it surfaced under.
 - PL-010 (S) Stop rebuilding render objects on every frame
 - PL-Y2GG (S) — **done.** Apache-2.0, chosen by the project owner (commit
   `d40ff83`).
@@ -482,7 +483,21 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   dial, alveolar ventilation and cardiac-output change stamped with the
   simulated time it took effect, held with the state it describes, and
   marked on the chart. The recording half of planned-milestone item 8, not
-  the replay half.
+  the replay half. Recorded as `(simulated_time, control, value)` entries
+  rather than a fixed struct of named controls: nitrous oxide (planned item
+  6) adds a control this milestone cannot enumerate in advance, and a struct
+  would need a field added — and every past sample migrated or left with a
+  meaningless default — when it lands. A tuple form costs nothing today and
+  needs no such migration later.
+- **`SimulationHistorySample` keyed by substance, not by six flat named
+  compartment floats.** There is exactly one substance today, so this
+  changes representation, not behavior. It matters because item 12
+  (forking, promoted below to "Designed for forking") writes its
+  element-wise reproducibility proof directly against this record's shape:
+  reshaping it *after* that proof exists means reworking an
+  already-validated safety property instead of a plain refactor. Nitrous
+  oxide (planned item 6) needs a second substance in the same record, and
+  the MAC readout becomes a fold over it rather than a rewrite.
 - **Changing agent becomes an explicit new case** rather than a selector
   that silently discards the run and its history (queue item PL-R3KB).
 - **A MAC-awake reference band** on the chart: a cited population median for
@@ -514,7 +529,10 @@ it:
   in the number of steps taken, which is the subtlest of the three and would
   otherwise make every run irreproducible on a different computer; and
 - the control-input timeline is what lets a point *between* recorded samples
-  be reached by resimulation at all.
+  be reached by resimulation at all; and
+- the substance-keyed history record (above) is what keeps item 6 (nitrous
+  oxide) from reshaping the record item 12's reproducibility proof is written
+  against, after that proof exists.
 
 What is deliberately *not* designed for in advance: per-compartment agent
 amounts in the snapshot, a schematic view, run comparison, or a snapshot
@@ -634,17 +652,36 @@ right one; what is not legitimate is leaving it open and starting anyway.
 
 ### The gate is a snapshot, not a moving target
 
-**When a milestone is scoped, the debt list is frozen at that moment.**
-Findings captured during the clearing pass go to the *next* gate, not this one.
+**When a milestone is scoped, the debt list is frozen at that moment.** A
+finding re-enters this gate — rather than waiting for the next one — when the
+problem it describes was already *present* at that moment, whatever id it is
+filed under or however long after the freeze it happened to be noticed. It
+defers to the next gate only when the problem itself is new: introduced by
+work done while clearing this gate or implementing the milestone it protects.
 
 This is the part that makes the rule survivable rather than a deadlock. Work
 generates findings — clearing thirteen items in one session generated fourteen
 new ones, which is normal and is the capture rule doing its job. Against a
-moving gate, that is a queue which can never empty and a milestone which can
-never start; the rule would then be abandoned rather than followed, which is
-worse than not having it.
+gate that reopens for everything noticed after freezing, that is a queue which
+can never empty and a milestone which can never start; the rule would then be
+abandoned rather than followed, which is worse than not having it. Presence
+rather than discovery time is what keeps it from reopening for *that* kind of
+finding while still closing the gap where a stranded branch or a slow session
+means the same problem gets rediscovered under a new id (queue item `PL-64LS`).
 
-Two exceptions re-enter the current gate rather than waiting for the next:
+**Presence is a presumption, not an absolute rule.** Favor it: a finding that
+continues or completes an item already inside the frozen list belongs to this
+gate, recorded with what it continues — `PL-SWFM` continuing `PL-Z4GF`'s
+already-frozen scope is the case that motivated writing this down. Where a
+specific reason argues otherwise — the finding has no real connection to
+anything frozen, or pulling it in would recreate the refilling-queue problem
+the debt gate replaced Phase 0 to solve — a session may defer a
+presence-qualifying finding to the next gate anyway, or decline to pull in one
+that only superficially resembles frozen scope. Either way it must say so and
+say why: silently reinterpreting which gate a finding belongs to is the
+renegotiation freezing the list exists to prevent.
+
+Two further exceptions re-enter the current gate regardless of presence:
 anything at `P0`, and anything classed `safety` or `science`. Those are not
 deferrable by this project's own standard, and a gate that let them wait would
 be inverting the reason it exists.
@@ -661,9 +698,10 @@ shows them on one timeline with the milestones they gate:
    item ids, on the day it was frozen.
 3. **Clear** it — every item `done`, or `dropped` with its reason — before
    implementation of the milestone begins.
-4. **Implement** the milestone. Findings made while clearing, and while
-   implementing, go to the next gate, except `P0` and `safety`/`science`
-   findings, which re-enter this one.
+4. **Implement** the milestone. A finding made while clearing or implementing
+   goes to the next gate unless the problem it describes predates the freeze
+   (per "The gate is a snapshot" above) or is `P0`/`safety`/`science`, either
+   of which re-enters this one.
 
 A milestone whose gate has not been recorded has not been scoped, whatever
 else has been written about it.
