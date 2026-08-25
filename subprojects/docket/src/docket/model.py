@@ -56,6 +56,10 @@ PROCESS_CLASSES = ("session-cost", "docs", "infra")
 
 LIST_FIELDS = ("classes", "touches", "blocked-by")
 
+# Efforts a delegated item may carry. An `L` item is a milestone in disguise;
+# nothing that large has a brief precise enough to be worked without judgment.
+DELEGABLE_EFFORTS = ("S", "M")
+
 
 def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     """Split a document into its front-matter fields and its body.
@@ -114,6 +118,13 @@ class Item:
     commit: str
     reason: str
     body: str
+    #: The command that proves this item done. Defaulted empty rather than
+    #: required, so an item written before the field existed - or captured
+    #: without one - is simply not delegable, which is the safe reading.
+    verify: str = ""
+    #: The reason a qualifying item is withheld from delegation. Presence is
+    #: the switch; there is deliberately no field that grants delegability.
+    not_delegable: str = ""
     path: str = ""
     unknown_fields: tuple[str, ...] = field(default_factory=tuple)
 
@@ -149,6 +160,50 @@ class Item:
             return "open design decision"
         return None
 
+    def delegability(self, protected_paths: tuple[str, ...]) -> str | None:
+        """Why this item may *not* be handed to a cheaper model, or None if it may.
+
+        Derived, never stored, and that asymmetry is the whole safeguard. There
+        is no `delegable: yes` to set, so no session - least of all a worker
+        tidying front matter on its way past - can mark its own work eligible.
+        The only writable control is `not-delegable`, which withholds an item
+        that would otherwise qualify. Delegability can be taken away by hand
+        and never granted by hand.
+
+        A returned string is the reason, phrased to be printed. `None` means
+        every condition below is met:
+
+        - the work is startable at all (`ready`, so not blocked and not
+          awaiting a decision);
+        - `model_guidance` is silent, which excludes safety- and
+          science-classed work and open design decisions by the rule that
+          already existed rather than by a second one written here;
+        - a `verify:` command exists, because without one "done" is a
+          judgment and there is nothing for a reviewer to trust instead;
+        - `touches` is declared and wholly outside the protected paths, so the
+          diff's blast radius is known before the work starts;
+        - the effort is one a precise brief can actually cover.
+        """
+        if self.not_delegable:
+            return f"withheld: {self.not_delegable}"
+        if not protected_paths:
+            return "no protected paths configured"
+        if self.status != "ready":
+            return f"status is {self.status or 'unset'}, not ready"
+        guidance = self.model_guidance
+        if guidance is not None:
+            return guidance
+        if not self.verify:
+            return "no `verify:` command"
+        if not self.touches:
+            return "declares no `touches`"
+        protected = [path for path in self.touches if _is_protected(path, protected_paths)]
+        if protected:
+            return f"touches protected path(s) {', '.join(protected)}"
+        if self.effort not in DELEGABLE_EFFORTS:
+            return f"effort {self.effort or 'unset'} is not {' or '.join(DELEGABLE_EFFORTS)}"
+        return None
+
     def sort_key(self) -> tuple[int, int, str]:
         """Order for display: priority band, then effort, then id.
 
@@ -160,6 +215,25 @@ class Item:
             band = len(PRIORITIES) + 1
         effort = EFFORTS.index(self.effort) if self.effort in EFFORTS else len(EFFORTS)
         return (band, effort, self.identifier)
+
+
+def _is_protected(path: str, protected_paths: tuple[str, ...]) -> bool:
+    """Whether one declared path falls inside the protected set.
+
+    Compared as `/`-separated path prefixes rather than as strings, so that
+    `core/` protects `core/blood.py` while `docs/MODEL.md` does not also
+    protect a hypothetical `docs/MODEL.md.bak`. Matching by bare string prefix
+    would silently protect the wrong things and, worse, silently fail to
+    protect the right ones.
+    """
+    candidate = path.strip().strip("/")
+    for protected in protected_paths:
+        target = protected.strip().strip("/")
+        if not target:
+            continue
+        if candidate == target or candidate.startswith(target + "/"):
+            return True
+    return False
 
 
 def parse_item(text: str, path: str = "") -> Item:
@@ -187,6 +261,8 @@ def parse_item(text: str, path: str = "") -> Item:
         "closed",
         "commit",
         "reason",
+        "verify",
+        "not-delegable",
     }
     return Item(
         identifier=fields.get("id", ""),
@@ -203,6 +279,8 @@ def parse_item(text: str, path: str = "") -> Item:
         closed=_parse_date(fields.get("closed", "")),
         commit=fields.get("commit", ""),
         reason=fields.get("reason", ""),
+        verify=fields.get("verify", ""),
+        not_delegable=fields.get("not-delegable", ""),
         body=body,
         path=path,
         unknown_fields=tuple(sorted(set(fields) - known)),
@@ -231,6 +309,8 @@ def render_item(item: Item) -> str:
         ("closed", item.closed.isoformat() if item.closed else ""),
         ("commit", item.commit),
         ("reason", item.reason),
+        ("verify", item.verify),
+        ("not-delegable", item.not_delegable),
     ):
         if value:
             lines.append(f"{name}: {value}")

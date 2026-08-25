@@ -127,6 +127,18 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"{where}: marked needs-decision but states no decision to make; add a "
             "**Decision needed.** line so a later session can answer it"
         )
+    if item.verify and "\n" in item.verify:
+        report.errors.append(f"{where}: `verify` must be a single-line command")
+    if item.not_delegable and item.not_delegable.lower() in ("no", "yes", "true", "false"):
+        report.errors.append(
+            f"{where}: `not-delegable` holds the reason the item is withheld, not a "
+            "boolean; write why a cheaper model must not take it"
+        )
+    if item.verify and not item.touches and item.status in OPEN_STATUSES:
+        report.errors.append(
+            f"{where}: names a `verify` command but declares no `touches`; a check "
+            "with no declared scope cannot bound what the work may change"
+        )
     if item.status == "done" and not item.commit:
         report.errors.append(f"{where}: marked done but records no `commit`")
     if item.status == "dropped" and not item.reason:
