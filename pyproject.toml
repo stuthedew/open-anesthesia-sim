@@ -3,6 +3,8 @@ name = "anesthesia-sim"
 version = "0.2.4"
 description = "Open-source anesthesia simulation project"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     { name = "Stuart Feichtinger", email = "stuthedew@users.noreply.github.com" }
 ]

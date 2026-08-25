@@ -8,7 +8,7 @@ breathing circuit, alveolar gas, blood, and tissue compartments.
 monitoring device.** No output should be used to guide real-world patient
 care.
 
-## Current status: v0.2.3
+## Current status
 
 The simulator models volatile-agent wash-in, uptake, tissue distribution,
 mixed-venous return, and washout in a single reference adult patient:
@@ -109,3 +109,7 @@ and must pass before a change is considered complete.
   known limitations.
 - [`CLAUDE.md`](CLAUDE.md) — development and safety-critical engineering
   standards followed in this repository.
+
+## License
+
+Apache License 2.0 — see [`LICENSE`](LICENSE). Copyright Stuart Feichtinger.
