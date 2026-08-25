@@ -37,9 +37,29 @@ session-start digest works in a checkout without git, without a remote, or
 without network - the same must hold here, or `docket check` stops working in
 exactly the bare-checkout case it was built to survive. So: if git is
 unavailable, say nothing; if it answers and a hash does not resolve, report it
-for a person to look at. Do not report a hash that resolves but is unreachable
-from any branch, which is a different and much noisier question.
+for a person to look at.
+
+**Reachability, not mere presence** (folded in from PL-JL24). `git cat-file -e`
+succeeds for any object still in the local object database, including a commit
+orphaned by an amend or a reset and reachable only through the reflog. A
+presence test therefore passes locally on exactly the hashes this check exists
+to catch - it passed on the orphan that closing PL-G3TG produced. Test
+reachability from any ref (`git rev-list --all`, or equivalent) rather than
+`cat-file -e`.
+
+This supersedes an earlier line here that said not to report a hash which
+resolves but is unreachable. That caution was aimed at the *noisy* form of the
+question - `git merge-base --is-ancestor <hash> HEAD` - which flags legitimate
+work sitting on an unmerged branch. Reachability from any ref does not: a
+commit on an unmerged local branch is reachable, a true orphan is not. The
+noise came from choosing HEAD as the reference point, not from asking about
+reachability at all.
+
+**Note on the underlying trap** (from PL-JL24). Recording a hash by amending
+cannot converge - amending to write the hash changes the hash. An item's
+`commit:` has to be written in a follow-up commit, or name the merge commit.
 
 **Done when.** `docket check` reports each `done` item whose recorded commit
 does not resolve, stays silent when git cannot answer, and has tests covering
-a resolvable hash, an unresolvable one, and a repository with no git at all.
+a resolvable hash, an unresolvable one, an orphaned commit that `cat-file -e`
+would accept, and a repository with no git at all.

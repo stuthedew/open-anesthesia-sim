@@ -4,7 +4,7 @@ title: '`docket release` bumps pyproject.toml but leaves uv.lock stale, breaking
 priority: P2
 effort: S
 status: ready
-classes: infra
+classes: defect, infra
 feature: dev-tooling
 touches: Makefile, .claude/skills/docket/SKILL.md
 added: 2026-08-25

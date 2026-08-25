@@ -1,13 +1,15 @@
 ---
 id: PL-JL24
 title: `git cat-file -e` passes for orphaned commits, so a hash check that uses it can pass on a dangling hash
-status: ready
+status: dropped
 priority: P2
 effort: S
 classes: infra, session-cost
 feature: commit-provenance
 touches: subprojects/docket/src/docket/vcs.py
 added: 2026-08-25
+closed: 2026-08-25
+reason: folded into PL-68XK, which is the check this constrains; its approach now specifies reachability from any ref rather than `cat-file -e`, and carries the amend-cannot-converge note
 ---
 
 **Problem.** `git cat-file -e <hash>` returns success for any object still in
