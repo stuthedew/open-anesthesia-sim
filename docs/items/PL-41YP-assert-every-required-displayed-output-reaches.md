@@ -1,7 +1,10 @@
 ---
 id: PL-41YP
 title: Assert every required displayed output reaches the rendered view
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: test
 feature: dev-tooling
 touches: tests/
 added: 2026-08-25

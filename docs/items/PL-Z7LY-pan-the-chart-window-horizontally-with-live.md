@@ -1,7 +1,10 @@
 ---
 id: PL-Z7LY
 title: Pan the chart window horizontally, with live-follow as an explicit state
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: ux, feature
 feature: chart-readout
 touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-08-25
