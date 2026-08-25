@@ -26,13 +26,7 @@ BRIEF = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
 
 
 def _git(root: Path, *args: str) -> None:
-    subprocess.run(
-        ["git", *args],
-        cwd=root,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True)
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -77,9 +71,7 @@ def _item(**overrides: object) -> Item:
 
 def _config(**overrides: object) -> Config:
     settings: dict[str, object] = dict(
-        protected_paths=("src",),
-        gate_paths=("Makefile",),
-        check_command="true",
+        protected_paths=("src",), gate_paths=("Makefile",), check_command="true"
     )
     settings.update(overrides)
     return Config(**settings)  # type: ignore[arg-type]

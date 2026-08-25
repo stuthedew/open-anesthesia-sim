@@ -50,36 +50,23 @@ class BreathingCircuit:
     max_delivered_concentration_fraction: float = 1.0
 
     def __post_init__(self) -> None:
-        require_positive_finite(
-            "circuit_volume_l",
-            self.circuit_volume_l,
-        )
-        require_nonnegative_finite(
-            "fresh_gas_flow_l_min",
-            self.fresh_gas_flow_l_min,
-        )
+        require_positive_finite("circuit_volume_l", self.circuit_volume_l)
+        require_nonnegative_finite("fresh_gas_flow_l_min", self.fresh_gas_flow_l_min)
         require_concentration_fraction(
-            "max_delivered_concentration_fraction",
-            self.max_delivered_concentration_fraction,
+            "max_delivered_concentration_fraction", self.max_delivered_concentration_fraction
         )
         require_positive_finite(
-            "max_delivered_concentration_fraction",
-            self.max_delivered_concentration_fraction,
+            "max_delivered_concentration_fraction", self.max_delivered_concentration_fraction
         )
         require_concentration_fraction(
-            "delivered_concentration_fraction",
-            self.delivered_concentration_fraction,
+            "delivered_concentration_fraction", self.delivered_concentration_fraction
         )
         self._require_deliverable(self.delivered_concentration_fraction)
         require_concentration_fraction(
-            "circuit_concentration_fraction",
-            self.circuit_concentration_fraction,
+            "circuit_concentration_fraction", self.circuit_concentration_fraction
         )
 
-    def _require_deliverable(
-        self,
-        delivered_concentration_fraction: float,
-    ) -> None:
+    def _require_deliverable(self, delivered_concentration_fraction: float) -> None:
         """Reject a concentration the vaporizer in use cannot produce.
 
         Rejecting rather than clamping is deliberate: a silently clamped
@@ -111,71 +98,40 @@ class BreathingCircuit:
 
         return SECONDS_PER_MINUTE * self.circuit_volume_l / self.fresh_gas_flow_l_min
 
-    def set_circuit_volume(
-        self,
-        circuit_volume_l: float,
-    ) -> None:
-        require_positive_finite(
-            "circuit_volume_l",
-            circuit_volume_l,
-        )
+    def set_circuit_volume(self, circuit_volume_l: float) -> None:
+        require_positive_finite("circuit_volume_l", circuit_volume_l)
         self.circuit_volume_l = circuit_volume_l
 
-    def set_fresh_gas_flow(
-        self,
-        fresh_gas_flow_l_min: float,
-    ) -> None:
-        require_nonnegative_finite(
-            "fresh_gas_flow_l_min",
-            fresh_gas_flow_l_min,
-        )
+    def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
+        require_nonnegative_finite("fresh_gas_flow_l_min", fresh_gas_flow_l_min)
         self.fresh_gas_flow_l_min = fresh_gas_flow_l_min
 
-    def set_delivered_concentration(
-        self,
-        delivered_concentration_fraction: float,
-    ) -> None:
+    def set_delivered_concentration(self, delivered_concentration_fraction: float) -> None:
         """Set the vaporizer dial, rejecting anything it cannot deliver."""
 
         require_concentration_fraction(
-            "delivered_concentration_fraction",
-            delivered_concentration_fraction,
+            "delivered_concentration_fraction", delivered_concentration_fraction
         )
         self._require_deliverable(delivered_concentration_fraction)
         self.delivered_concentration_fraction = delivered_concentration_fraction
 
-    def set_agent_amount(
-        self,
-        agent_amount_l: float,
-    ) -> None:
+    def set_agent_amount(self, agent_amount_l: float) -> None:
         """Set circuit state using equivalent agent gas amount."""
 
-        require_nonnegative_finite(
-            "agent_amount_l",
-            agent_amount_l,
-        )
+        require_nonnegative_finite("agent_amount_l", agent_amount_l)
 
         if agent_amount_l > self.circuit_volume_l:
             raise SimulationConfigurationError("agent_amount_l exceeds circuit capacity")
 
         self.circuit_concentration_fraction = agent_amount_l / self.circuit_volume_l
 
-    def advance_fresh_gas(
-        self,
-        simulation_step_s: float,
-    ) -> FreshGasExchange:
+    def advance_fresh_gas(self, simulation_step_s: float) -> FreshGasExchange:
         """Advance exact circuit wash-in and report external exchange."""
 
-        require_positive_finite(
-            "simulation_step_s",
-            simulation_step_s,
-        )
+        require_positive_finite("simulation_step_s", simulation_step_s)
 
         if self.fresh_gas_flow_l_min == 0.0:
-            return FreshGasExchange(
-                delivered_agent_l=0.0,
-                exhausted_agent_l=0.0,
-            )
+            return FreshGasExchange(delivered_agent_l=0.0, exhausted_agent_l=0.0)
 
         initial_fraction = self.circuit_concentration_fraction
         delivered_fraction = self.delivered_concentration_fraction
@@ -198,14 +154,10 @@ class BreathingCircuit:
         self.circuit_concentration_fraction = next_fraction
 
         return FreshGasExchange(
-            delivered_agent_l=delivered_agent_l,
-            exhausted_agent_l=exhausted_agent_l,
+            delivered_agent_l=delivered_agent_l, exhausted_agent_l=exhausted_agent_l
         )
 
-    def advance(
-        self,
-        simulation_step_s: float,
-    ) -> None:
+    def advance(self, simulation_step_s: float) -> None:
         """Preserve the original v0.0.2 circuit interface."""
 
         self.advance_fresh_gas(simulation_step_s)

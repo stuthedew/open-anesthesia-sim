@@ -4,10 +4,7 @@ import pytest
 
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.core import respiratory_system
-from anesthesia_sim.core.exceptions import (
-    SimulationConfigurationError,
-    SimulationExecutionError,
-)
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
 
 
@@ -48,10 +45,7 @@ def test_explicit_delivered_concentration_above_the_agent_max_is_rejected() -> N
     """
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        SimulationController(
-            agent_id="isoflurane",
-            delivered_concentration_fraction=0.08,
-        )
+        SimulationController(agent_id="isoflurane", delivered_concentration_fraction=0.08)
 
 
 def test_setting_a_delivered_concentration_above_the_agent_max_is_rejected() -> None:
@@ -135,8 +129,7 @@ def test_explicit_patient_settings_still_override_the_data_file() -> None:
     """The constructor arguments remain explicit overrides."""
 
     snapshot = SimulationController(
-        alveolar_ventilation_l_min=3.0,
-        cardiac_output_l_min=7.0,
+        alveolar_ventilation_l_min=3.0, cardiac_output_l_min=7.0
     ).snapshot()
 
     assert snapshot.alveolar_ventilation_l_min == pytest.approx(3.0)
@@ -149,10 +142,7 @@ def test_set_agent_resets_delivered_concentration_to_the_new_agent_one_mac() -> 
     is 1 MAC of sevoflurane but only about a third of a MAC of desflurane).
     """
 
-    controller = SimulationController(
-        agent_id="sevoflurane",
-        delivered_concentration_fraction=0.08,
-    )
+    controller = SimulationController(agent_id="sevoflurane", delivered_concentration_fraction=0.08)
 
     controller.set_agent("isoflurane")
     snapshot = controller.snapshot()
@@ -273,9 +263,7 @@ def test_parameter_changes_do_not_reset_dynamic_state() -> None:
 
 def test_rejects_circuit_volume_below_stored_circuit_agent() -> None:
     controller = SimulationController(
-        circuit_volume_l=1.0,
-        fresh_gas_flow_l_min=6.0,
-        delivered_concentration_fraction=0.08,
+        circuit_volume_l=1.0, fresh_gas_flow_l_min=6.0, delivered_concentration_fraction=0.08
     )
     controller.start()
     controller.advance(0.1)
@@ -285,8 +273,7 @@ def test_rejects_circuit_volume_below_stored_circuit_agent() -> None:
     assert circuit_agent_l > 0.0
 
     with pytest.raises(
-        SimulationConfigurationError,
-        match="^circuit_volume_l is smaller than stored agent$",
+        SimulationConfigurationError, match="^circuit_volume_l is smaller than stored agent$"
     ):
         controller.set_circuit_volume(circuit_agent_l / 2.0)
 

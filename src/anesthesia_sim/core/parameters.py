@@ -196,19 +196,14 @@ class _SourcePayload(_StrictPayload):
     note: NonEmptyString
 
 
-def _validate_sources_nonempty(
-    value: list[_SourcePayload],
-) -> list[_SourcePayload]:
+def _validate_sources_nonempty(value: list[_SourcePayload]) -> list[_SourcePayload]:
     if not value:
         raise ValueError("sources must contain at least one reference")
 
     return value
 
 
-Sources = Annotated[
-    list[_SourcePayload],
-    BeforeValidator(_validate_sources_nonempty),
-]
+Sources = Annotated[list[_SourcePayload], BeforeValidator(_validate_sources_nonempty)]
 
 
 class _TissueGasPartitionCoefficientsPayload(_StrictPayload):
@@ -322,9 +317,7 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
     )
 
 
-def parse_reference_adult_parameters(
-    payload: object,
-) -> ReferenceAdultParameters:
+def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameters:
     """Validate a reference-adult payload and return immutable parameters."""
 
     try:
@@ -399,8 +392,5 @@ def load_sevoflurane_parameters() -> AgentParameters:
 def load_reference_adult_parameters() -> ReferenceAdultParameters:
     """Load and validate the built-in v0.1.0 reference adult."""
 
-    payload = _load_packaged_json(
-        "anesthesia_sim.data.patients",
-        "reference_adult.json",
-    )
+    payload = _load_packaged_json("anesthesia_sim.data.patients", "reference_adult.json")
     return parse_reference_adult_parameters(payload)

@@ -24,13 +24,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from .config import Config
-from .model import (
-    EFFORTS,
-    OPEN_STATUSES,
-    PRIORITIES,
-    STATUSES,
-    Item,
-)
+from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .store import ID_RE
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")

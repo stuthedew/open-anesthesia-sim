@@ -50,12 +50,7 @@ def _run_git(args: list[str], root: Path) -> str:
     """
     try:
         result = subprocess.run(
-            ["git", *args],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
+            ["git", *args], cwd=root, capture_output=True, text=True, timeout=10, check=False
         )
     except (OSError, subprocess.SubprocessError):
         return ""

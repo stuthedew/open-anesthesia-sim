@@ -2,9 +2,9 @@
 id: PL-G049
 title: A `verify:` command that has never been run is not a specification, and nothing currently requires running one
 status: ready
-priority: P2
+priority: P1
 effort: S
-classes: infra, session-cost
+classes: defect, infra, session-cost
 feature: delegation
 touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/checks.py
 added: 2026-08-25

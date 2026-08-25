@@ -8,10 +8,7 @@ builds it from the versioned data files.
 
 from dataclasses import dataclass
 
-from anesthesia_sim.core.exceptions import (
-    SimulationConfigurationError,
-    SimulationExecutionError,
-)
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.respiratory_system import RespiratorySystem
 from anesthesia_sim.core.simulation import SimulationState
@@ -280,10 +277,7 @@ class SimulationController:
         self._state.reset()
         self._concentration_history = [self._build_history_sample()]
 
-    def set_circuit_volume(
-        self,
-        circuit_volume_l: float,
-    ) -> None:
+    def set_circuit_volume(self, circuit_volume_l: float) -> None:
         """Change volume without creating or losing stored agent."""
 
         circuit = self._state.circuit
@@ -295,28 +289,16 @@ class SimulationController:
         circuit.set_circuit_volume(circuit_volume_l)
         circuit.set_agent_amount(stored_agent_l)
 
-    def set_fresh_gas_flow(
-        self,
-        fresh_gas_flow_l_min: float,
-    ) -> None:
+    def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
         self._state.respiratory_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
-    def set_delivered_concentration(
-        self,
-        delivered_concentration_fraction: float,
-    ) -> None:
+    def set_delivered_concentration(self, delivered_concentration_fraction: float) -> None:
         self._state.respiratory_system.set_delivered_concentration(delivered_concentration_fraction)
 
-    def set_alveolar_ventilation(
-        self,
-        alveolar_ventilation_l_min: float,
-    ) -> None:
+    def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
         self._state.respiratory_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
 
-    def set_cardiac_output(
-        self,
-        cardiac_output_l_min: float,
-    ) -> None:
+    def set_cardiac_output(self, cardiac_output_l_min: float) -> None:
         self._state.respiratory_system.set_cardiac_output(cardiac_output_l_min)
 
     def advance(self, simulation_step_s: float) -> None:
@@ -328,9 +310,7 @@ class SimulationController:
         self._state.advance(simulation_step_s)
         self._concentration_history.append(self._build_history_sample())
 
-    def _build_history_sample(
-        self,
-    ) -> SimulationHistorySample:
+    def _build_history_sample(self) -> SimulationHistorySample:
         system = self._state.respiratory_system
 
         return SimulationHistorySample(

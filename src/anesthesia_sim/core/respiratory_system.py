@@ -18,25 +18,12 @@ from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
     AgentSimulationValidator,
 )
-from anesthesia_sim.core.alveolar import (
-    AlveolarCompartment,
-)
-from anesthesia_sim.core.circuit import (
-    BreathingCircuit,
-    FreshGasExchange,
-)
-from anesthesia_sim.core.exceptions import (
-    SimulationConfigurationError,
-    SimulationNumericalError,
-)
-from anesthesia_sim.core.parameters import (
-    load_agent_parameters,
-    load_reference_adult_parameters,
-)
+from anesthesia_sim.core.alveolar import AlveolarCompartment
+from anesthesia_sim.core.circuit import BreathingCircuit, FreshGasExchange
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.validation import (
-    require_positive_finite,
-)
+from anesthesia_sim.core.validation import require_positive_finite
 
 SECONDS_PER_MINUTE = 60.0
 
@@ -97,10 +84,7 @@ class RespiratorySystem:
                 gas_volume_l=(patient_parameters.alveolar_gas_volume_l),
                 alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
             ),
-            patient=PatientCompartments.from_parameters(
-                agent=agent,
-                patient=patient_parameters,
-            ),
+            patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
         )
 
     @property
@@ -114,43 +98,26 @@ class RespiratorySystem:
         )
 
     @property
-    def agent_simulation_validation(
-        self,
-    ) -> AgentSimulationValidationResult:
+    def agent_simulation_validation(self) -> AgentSimulationValidationResult:
         """Check that all delivered agent is still accounted for."""
 
         return self.agent_simulation_validator.check_agent_accounting(
             currently_stored_agent_l=(self.total_stored_agent_l)
         )
 
-    def set_fresh_gas_flow(
-        self,
-        fresh_gas_flow_l_min: float,
-    ) -> None:
+    def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
         self.circuit.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
-    def set_delivered_concentration(
-        self,
-        delivered_concentration_fraction: float,
-    ) -> None:
+    def set_delivered_concentration(self, delivered_concentration_fraction: float) -> None:
         self.circuit.set_delivered_concentration(delivered_concentration_fraction)
 
-    def set_alveolar_ventilation(
-        self,
-        alveolar_ventilation_l_min: float,
-    ) -> None:
+    def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
         self.alveoli.set_alveolar_ventilation(alveolar_ventilation_l_min)
 
-    def set_cardiac_output(
-        self,
-        cardiac_output_l_min: float,
-    ) -> None:
+    def set_cardiac_output(self, cardiac_output_l_min: float) -> None:
         self.patient.set_cardiac_output(cardiac_output_l_min)
 
-    def advance(
-        self,
-        simulation_step_s: float,
-    ) -> RespiratoryStepResult:
+    def advance(self, simulation_step_s: float) -> RespiratoryStepResult:
         """Advance one conservative, validated simulation step.
 
         Raises:
@@ -168,10 +135,7 @@ class RespiratorySystem:
                 than continue from it.
         """
 
-        require_positive_finite(
-            "simulation_step_s",
-            simulation_step_s,
-        )
+        require_positive_finite("simulation_step_s", simulation_step_s)
 
         try:
             return self._advance_step(simulation_step_s)
@@ -187,10 +151,7 @@ class RespiratorySystem:
                 f"the simulation step of {simulation_step_s} s could not be completed: {error}"
             ) from error
 
-    def _advance_step(
-        self,
-        simulation_step_s: float,
-    ) -> RespiratoryStepResult:
+    def _advance_step(self, simulation_step_s: float) -> RespiratoryStepResult:
         """Apply one step's transfers, assuming the step size is valid."""
 
         fresh_gas_exchange = self.circuit.advance_fresh_gas(simulation_step_s)
@@ -228,10 +189,7 @@ class RespiratorySystem:
         self.patient.reset()
         self.agent_simulation_validator.reset()
 
-    def _exchange_circuit_and_alveoli(
-        self,
-        simulation_step_s: float,
-    ) -> float:
+    def _exchange_circuit_and_alveoli(self, simulation_step_s: float) -> float:
         """Exchange agent exactly between two mixed gas volumes."""
 
         ventilation_l_min = self.alveoli.alveolar_ventilation_l_min

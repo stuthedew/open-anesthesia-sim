@@ -21,14 +21,8 @@ from collections.abc import Callable
 import flet as ft
 import flet_charts as fch
 
-from anesthesia_sim.app.chart_downsampling import (
-    first_index_at_or_after,
-    select_envelope_indices,
-)
-from anesthesia_sim.app.controller import (
-    SimulationController,
-    SimulationHistorySample,
-)
+from anesthesia_sim.app.chart_downsampling import first_index_at_or_after, select_envelope_indices
+from anesthesia_sim.app.controller import SimulationController, SimulationHistorySample
 from anesthesia_sim.app.theme import (
     ACCENT,
     AGENT_COLOR_SCHEMES,
@@ -153,11 +147,7 @@ class SimulationView:
         _controller: Controller that owns the simulation and read-only history.
     """
 
-    def __init__(
-        self,
-        page: ft.Page,
-        controller: SimulationController,
-    ) -> None:
+    def __init__(self, page: ft.Page, controller: SimulationController) -> None:
         """Initialize the interface and its visual controls.
 
         Args:
@@ -170,22 +160,13 @@ class SimulationView:
         self._controller = controller
         initial_snapshot = controller.snapshot()
 
-        self._status_text = ft.Text(
-            "Paused",
-            color=MUTED,
-            weight=ft.FontWeight.BOLD,
-        )
+        self._status_text = ft.Text("Paused", color=MUTED, weight=ft.FontWeight.BOLD)
         # Why the last setting change did not take, or None if it did. Held
         # in the view rather than the controller because a refused setting
         # changes nothing about the simulation — there is no core state for
         # it to belong to.
         self._rejected_setting_notice: str | None = None
-        self._notice_text = ft.Text(
-            "",
-            color=WARNING,
-            weight=ft.FontWeight.BOLD,
-            visible=False,
-        )
+        self._notice_text = ft.Text("", color=WARNING, weight=ft.FontWeight.BOLD, visible=False)
         self._elapsed_time_text = self._build_metric_value("0.0 s")
         # Placeholders come from the formatter rather than from literals, so
         # a change to the displayed resolution cannot leave the pre-run
@@ -199,64 +180,39 @@ class SimulationView:
         self._fat_concentration_text = self._build_metric_value(empty_compartment)
 
         self._agent_accounting_status_text = ft.Text(
-            "Valid",
-            color=ACCENT,
-            size=20,
-            weight=ft.FontWeight.BOLD,
+            "Valid", color=ACCENT, size=20, weight=ft.FontWeight.BOLD
         )
-        self._agent_accounting_detail_text = ft.Text(
-            "No unaccounted agent detected.",
-            color=MUTED,
-        )
+        self._agent_accounting_detail_text = ft.Text("No unaccounted agent detected.", color=MUTED)
         self._agent_amounts_text = ft.Text(
-            ("Delivered: 0.000000 L | Exhausted: 0.000000 L | Stored: 0.000000 L"),
-            color=MUTED,
+            ("Delivered: 0.000000 L | Exhausted: 0.000000 L | Stored: 0.000000 L"), color=MUTED
         )
 
         self._fresh_gas_flow_text = ft.Text(
-            (f"{initial_snapshot.fresh_gas_flow_l_min:.1f} L/min"),
-            color=INK,
+            (f"{initial_snapshot.fresh_gas_flow_l_min:.1f} L/min"), color=INK
         )
         self._delivered_concentration_text = ft.Text(
-            self._format_percent(initial_snapshot.delivered_concentration_fraction),
-            color=INK,
+            self._format_percent(initial_snapshot.delivered_concentration_fraction), color=INK
         )
         self._alveolar_ventilation_text = ft.Text(
-            (f"{initial_snapshot.alveolar_ventilation_l_min:.1f} L/min"),
-            color=INK,
+            (f"{initial_snapshot.alveolar_ventilation_l_min:.1f} L/min"), color=INK
         )
         self._cardiac_output_text = ft.Text(
-            (f"{initial_snapshot.cardiac_output_l_min:.1f} L/min"),
-            color=INK,
+            (f"{initial_snapshot.cardiac_output_l_min:.1f} L/min"), color=INK
         )
 
-        self._circuit_series = self._build_chart_series(
-            color=CIRCUIT_COLOR,
-            stroke_width=3,
-        )
+        self._circuit_series = self._build_chart_series(color=CIRCUIT_COLOR, stroke_width=3)
         self._alveolar_series = self._build_chart_series(
-            color=ALVEOLAR_COLOR,
-            stroke_width=3,
-            dash_pattern=[10, 4],
+            color=ALVEOLAR_COLOR, stroke_width=3, dash_pattern=[10, 4]
         )
         self._mixed_venous_series = self._build_chart_series(
-            color=MIXED_VENOUS_COLOR,
-            stroke_width=2,
-            dash_pattern=[4, 3],
+            color=MIXED_VENOUS_COLOR, stroke_width=2, dash_pattern=[4, 3]
         )
-        self._vessel_rich_series = self._build_chart_series(
-            color=VESSEL_RICH_COLOR,
-            stroke_width=2,
-        )
+        self._vessel_rich_series = self._build_chart_series(color=VESSEL_RICH_COLOR, stroke_width=2)
         self._muscle_series = self._build_chart_series(
-            color=MUSCLE_COLOR,
-            stroke_width=2,
-            dash_pattern=[2, 3],
+            color=MUSCLE_COLOR, stroke_width=2, dash_pattern=[2, 3]
         )
         self._fat_series = self._build_chart_series(
-            color=FAT_COLOR,
-            stroke_width=2,
-            dash_pattern=[12, 4, 2, 4],
+            color=FAT_COLOR, stroke_width=2, dash_pattern=[12, 4, 2, 4]
         )
 
         self._concentration_chart = fch.LineChart(
@@ -272,30 +228,14 @@ class SimulationView:
             max_x=INITIAL_CHART_WINDOW_S,
             min_y=0,
             max_y=initial_snapshot.max_delivered_concentration_percent,
-            horizontal_grid_lines=fch.ChartGridLines(
-                interval=2,
-                color="#D9E2EC",
-            ),
-            vertical_grid_lines=fch.ChartGridLines(
-                interval=60,
-                color="#D9E2EC",
-            ),
+            horizontal_grid_lines=fch.ChartGridLines(interval=2, color="#D9E2EC"),
+            vertical_grid_lines=fch.ChartGridLines(interval=60, color="#D9E2EC"),
             expand=True,
         )
 
-        self._start_button = ft.Button(
-            content="Start",
-            on_click=self._handle_start,
-        )
-        self._pause_button = ft.Button(
-            content="Pause",
-            disabled=True,
-            on_click=self._handle_pause,
-        )
-        self._reset_button = ft.OutlinedButton(
-            content="Reset",
-            on_click=self._handle_reset,
-        )
+        self._start_button = ft.Button(content="Start", on_click=self._handle_start)
+        self._pause_button = ft.Button(content="Pause", disabled=True, on_click=self._handle_pause)
+        self._reset_button = ft.OutlinedButton(content="Reset", on_click=self._handle_reset)
 
         initial_agent_colors = AGENT_COLOR_SCHEMES[initial_snapshot.agent_id]
         self._agent_dropdown = ft.Dropdown(
@@ -317,8 +257,7 @@ class SimulationView:
             bgcolor=initial_agent_colors.fill,
             color=initial_agent_colors.foreground,
             text_style=ft.TextStyle(
-                color=initial_agent_colors.foreground,
-                weight=ft.FontWeight.BOLD,
+                color=initial_agent_colors.foreground, weight=ft.FontWeight.BOLD
             ),
             border_color=initial_agent_colors.foreground,
             focused_border_color=initial_agent_colors.foreground,
@@ -472,9 +411,7 @@ class SimulationView:
         self._page.run_task(self._run_simulation_timer)
         self._page.run_task(self._run_render_timer)
 
-    def _build_parameter_controls(
-        self,
-    ) -> ft.ResponsiveRow:
+    def _build_parameter_controls(self) -> ft.ResponsiveRow:
         """Build the simulation-setting controls.
 
         Returns:
@@ -486,9 +423,7 @@ class SimulationView:
         return ft.ResponsiveRow(
             controls=[
                 self._build_parameter_panel(
-                    "Fresh gas flow",
-                    self._fresh_gas_flow_slider,
-                    self._fresh_gas_flow_text,
+                    "Fresh gas flow", self._fresh_gas_flow_slider, self._fresh_gas_flow_text
                 ),
                 self._build_parameter_panel(
                     self._delivered_concentration_label,
@@ -501,18 +436,13 @@ class SimulationView:
                     self._alveolar_ventilation_text,
                 ),
                 self._build_parameter_panel(
-                    "Cardiac output",
-                    self._cardiac_output_slider,
-                    self._cardiac_output_text,
+                    "Cardiac output", self._cardiac_output_slider, self._cardiac_output_text
                 ),
             ]
         )
 
     def _build_parameter_panel(
-        self,
-        label: str | ft.Text,
-        slider: ft.Slider,
-        value_text: ft.Text,
+        self, label: str | ft.Text, slider: ft.Slider, value_text: ft.Text
     ) -> ft.Container:
         """Build one compact simulation-setting panel.
 
@@ -529,39 +459,20 @@ class SimulationView:
         label_control = (
             label
             if isinstance(label, ft.Text)
-            else ft.Text(
-                label,
-                weight=ft.FontWeight.BOLD,
-                color=INK,
-            )
+            else ft.Text(label, weight=ft.FontWeight.BOLD, color=INK)
         )
 
         return ft.Container(
             content=ft.Column(
-                controls=[
-                    label_control,
-                    ft.Row(
-                        controls=[
-                            slider,
-                            value_text,
-                        ]
-                    ),
-                ],
-                spacing=4,
+                controls=[label_control, ft.Row(controls=[slider, value_text])], spacing=4
             ),
             bgcolor=PANEL,
             border_radius=COMPACT_PANEL_RADIUS,
             padding=12,
-            col={
-                "sm": 12,
-                "md": 6,
-                "lg": 3,
-            },
+            col={"sm": 12, "md": 6, "lg": 3},
         )
 
-    def _build_concentration_metrics(
-        self,
-    ) -> ft.ResponsiveRow:
+    def _build_concentration_metrics(self) -> ft.ResponsiveRow:
         """Build the compact concentration summary grid.
 
         Returns:
@@ -572,42 +483,17 @@ class SimulationView:
         return ft.ResponsiveRow(
             columns=14,
             controls=[
-                self._build_metric_panel(
-                    "Simulated time",
-                    self._elapsed_time_text,
-                ),
-                self._build_metric_panel(
-                    "Circuit / inspired",
-                    self._circuit_concentration_text,
-                ),
-                self._build_metric_panel(
-                    "Alveolar / end-tidal",
-                    self._alveolar_concentration_text,
-                ),
-                self._build_metric_panel(
-                    "Mixed venous",
-                    self._mixed_venous_concentration_text,
-                ),
-                self._build_metric_panel(
-                    "Vessel-rich group",
-                    self._vessel_rich_concentration_text,
-                ),
-                self._build_metric_panel(
-                    "Muscle",
-                    self._muscle_concentration_text,
-                ),
-                self._build_metric_panel(
-                    "Fat",
-                    self._fat_concentration_text,
-                ),
+                self._build_metric_panel("Simulated time", self._elapsed_time_text),
+                self._build_metric_panel("Circuit / inspired", self._circuit_concentration_text),
+                self._build_metric_panel("Alveolar / end-tidal", self._alveolar_concentration_text),
+                self._build_metric_panel("Mixed venous", self._mixed_venous_concentration_text),
+                self._build_metric_panel("Vessel-rich group", self._vessel_rich_concentration_text),
+                self._build_metric_panel("Muscle", self._muscle_concentration_text),
+                self._build_metric_panel("Fat", self._fat_concentration_text),
             ],
         )
 
-    def _build_metric_panel(
-        self,
-        label: str,
-        value_text: ft.Text,
-    ) -> ft.Container:
+    def _build_metric_panel(self, label: str, value_text: ft.Text) -> ft.Container:
         """Build one compact read-only metric panel.
 
         Args:
@@ -619,24 +505,11 @@ class SimulationView:
         """
 
         return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text(
-                        label,
-                        color=MUTED,
-                    ),
-                    value_text,
-                ],
-                spacing=2,
-            ),
+            content=ft.Column(controls=[ft.Text(label, color=MUTED), value_text], spacing=2),
             bgcolor=PANEL,
             border_radius=COMPACT_PANEL_RADIUS,
             padding=COMPACT_PANEL_PADDING,
-            col={
-                "sm": 14,
-                "md": 7,
-                "lg": 2,
-            },
+            col={"sm": 14, "md": 7, "lg": 2},
         )
 
     def _build_chart_panel(self) -> ft.Container:
@@ -656,64 +529,33 @@ class SimulationView:
                         color=INK,
                     ),
                     ft.Text(
-                        ("Vertical axis: percent | Horizontal axis: simulated seconds"),
-                        color=MUTED,
+                        ("Vertical axis: percent | Horizontal axis: simulated seconds"), color=MUTED
                     ),
                     ft.Row(
                         controls=[
+                            self._build_legend_item("Circuit", CIRCUIT_COLOR, "solid"),
+                            self._build_legend_item("Alveolar", ALVEOLAR_COLOR, "long dash"),
                             self._build_legend_item(
-                                "Circuit",
-                                CIRCUIT_COLOR,
-                                "solid",
+                                "Mixed venous", MIXED_VENOUS_COLOR, "short dash"
                             ),
-                            self._build_legend_item(
-                                "Alveolar",
-                                ALVEOLAR_COLOR,
-                                "long dash",
-                            ),
-                            self._build_legend_item(
-                                "Mixed venous",
-                                MIXED_VENOUS_COLOR,
-                                "short dash",
-                            ),
-                            self._build_legend_item(
-                                "Vessel-rich",
-                                VESSEL_RICH_COLOR,
-                                "solid",
-                            ),
-                            self._build_legend_item(
-                                "Muscle",
-                                MUSCLE_COLOR,
-                                "dotted",
-                            ),
-                            self._build_legend_item(
-                                "Fat",
-                                FAT_COLOR,
-                                "dash-dot",
-                            ),
+                            self._build_legend_item("Vessel-rich", VESSEL_RICH_COLOR, "solid"),
+                            self._build_legend_item("Muscle", MUSCLE_COLOR, "dotted"),
+                            self._build_legend_item("Fat", FAT_COLOR, "dash-dot"),
                         ],
                         wrap=True,
                         spacing=16,
                         run_spacing=6,
                     ),
-                    ft.Container(
-                        height=CHART_HEIGHT,
-                        content=self._concentration_chart,
-                    ),
+                    ft.Container(height=CHART_HEIGHT, content=self._concentration_chart),
                 ]
             ),
             bgcolor=PANEL,
             border_radius=COMPACT_PANEL_RADIUS,
             padding=COMPACT_PANEL_PADDING,
-            col={
-                "sm": 12,
-                "lg": 9,
-            },
+            col={"sm": 12, "lg": 9},
         )
 
-    def _build_agent_accounting_panel(
-        self,
-    ) -> ft.Container:
+    def _build_agent_accounting_panel(self) -> ft.Container:
         """Build the agent-conservation diagnostic panel.
 
         Returns:
@@ -724,11 +566,7 @@ class SimulationView:
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text(
-                        "Agent accounting validation",
-                        weight=ft.FontWeight.BOLD,
-                        color=INK,
-                    ),
+                    ft.Text("Agent accounting validation", weight=ft.FontWeight.BOLD, color=INK),
                     self._agent_accounting_status_text,
                     self._agent_accounting_detail_text,
                     self._agent_amounts_text,
@@ -737,17 +575,12 @@ class SimulationView:
             bgcolor=PANEL,
             border_radius=COMPACT_PANEL_RADIUS,
             padding=COMPACT_PANEL_PADDING,
-            col={
-                "sm": 12,
-                "lg": 3,
-            },
+            col={"sm": 12, "lg": 3},
         )
 
     @staticmethod
     def _build_chart_series(
-        color: str,
-        stroke_width: float,
-        dash_pattern: list[int] | None = None,
+        color: str, stroke_width: float, dash_pattern: list[int] | None = None
     ) -> fch.LineChartData:
         """Build one visual series for the compartment chart.
 
@@ -762,12 +595,7 @@ class SimulationView:
         """
 
         return fch.LineChartData(
-            points=[
-                fch.LineChartDataPoint(
-                    0.0,
-                    0.0,
-                )
-            ],
+            points=[fch.LineChartDataPoint(0.0, 0.0)],
             color=color,
             stroke_width=stroke_width,
             dash_pattern=dash_pattern,
@@ -776,11 +604,7 @@ class SimulationView:
         )
 
     @staticmethod
-    def _build_legend_item(
-        label: str,
-        color: str,
-        line_style: str,
-    ) -> ft.Row:
+    def _build_legend_item(label: str, color: str, line_style: str) -> ft.Row:
         """Build one compact chart legend entry.
 
         Args:
@@ -794,15 +618,8 @@ class SimulationView:
 
         return ft.Row(
             controls=[
-                ft.Container(
-                    width=24,
-                    height=4,
-                    bgcolor=color,
-                ),
-                ft.Text(
-                    f"{label} ({line_style})",
-                    color=INK,
-                ),
+                ft.Container(width=24, height=4, bgcolor=color),
+                ft.Text(f"{label} ({line_style})", color=INK),
             ],
             spacing=6,
             tight=True,
@@ -910,21 +727,12 @@ class SimulationView:
             f"{snapshot.agent_accounting_absolute_error_l:.3e} L"
         )
 
-        chart_max_x = max(
-            INITIAL_CHART_WINDOW_S,
-            snapshot.elapsed_s + 10.0,
-        )
-        chart_min_x = max(
-            0.0,
-            chart_max_x - MAX_CHART_WINDOW_S,
-        )
+        chart_max_x = max(INITIAL_CHART_WINDOW_S, snapshot.elapsed_s + 10.0)
+        chart_min_x = max(0.0, chart_max_x - MAX_CHART_WINDOW_S)
         self._concentration_chart.max_x = chart_max_x
         self._concentration_chart.min_x = chart_min_x
 
-        self._refresh_chart_series(
-            snapshot.concentration_history,
-            chart_min_x,
-        )
+        self._refresh_chart_series(snapshot.concentration_history, chart_min_x)
 
     def _apply_agent_color_scheme(self, agent_id: str) -> None:
         """Apply the verified agent color to the header and selection control."""
@@ -938,16 +746,13 @@ class SimulationView:
         self._agent_dropdown.bgcolor = scheme.fill
         self._agent_dropdown.color = scheme.foreground
         self._agent_dropdown.text_style = ft.TextStyle(
-            color=scheme.foreground,
-            weight=ft.FontWeight.BOLD,
+            color=scheme.foreground, weight=ft.FontWeight.BOLD
         )
         self._agent_dropdown.border_color = scheme.foreground
         self._agent_dropdown.focused_border_color = scheme.foreground
 
     def _refresh_chart_series(
-        self,
-        history: tuple[SimulationHistorySample, ...],
-        window_start_s: float,
+        self, history: tuple[SimulationHistorySample, ...], window_start_s: float
     ) -> None:
         """Redraw every trace from the samples inside the visible window.
 
@@ -980,10 +785,7 @@ class SimulationView:
     @staticmethod
     def _decimated_points(
         visible: tuple[SimulationHistorySample, ...],
-        value_for: Callable[
-            [SimulationHistorySample],
-            float,
-        ],
+        value_for: Callable[[SimulationHistorySample], float],
     ) -> list[fch.LineChartDataPoint]:
         """Convert one trace's visible samples to bounded chart percentages.
 
@@ -1001,14 +803,8 @@ class SimulationView:
         values = [value_for(sample) for sample in visible]
 
         return [
-            fch.LineChartDataPoint(
-                visible[index].elapsed_s,
-                values[index] * 100.0,
-            )
-            for index in select_envelope_indices(
-                values,
-                MAX_CHART_POINTS_PER_SERIES,
-            )
+            fch.LineChartDataPoint(visible[index].elapsed_s, values[index] * 100.0)
+            for index in select_envelope_indices(values, MAX_CHART_POINTS_PER_SERIES)
         ]
 
     def _refresh_and_render(self) -> None:
@@ -1067,54 +863,36 @@ class SimulationView:
         self._notice_text.value = ""
         self._notice_text.visible = False
 
-    def _handle_start(
-        self,
-        event: ft.Event[ft.Button],
-    ) -> None:
+    def _handle_start(self, event: ft.Event[ft.Button]) -> None:
         del event
         self._apply_setting(self._controller.start)
 
-    def _handle_pause(
-        self,
-        event: ft.Event[ft.Button],
-    ) -> None:
+    def _handle_pause(self, event: ft.Event[ft.Button]) -> None:
         del event
         self._controller.pause()
         self._refresh_and_render()
 
-    def _handle_reset(
-        self,
-        event: ft.Event[ft.OutlinedButton],
-    ) -> None:
+    def _handle_reset(self, event: ft.Event[ft.OutlinedButton]) -> None:
         del event
         self._controller.reset()
         self._rejected_setting_notice = None
         self._refresh_and_render()
 
-    def _handle_agent_change(
-        self,
-        event: ft.Event[ft.Dropdown],
-    ) -> None:
+    def _handle_agent_change(self, event: ft.Event[ft.Dropdown]) -> None:
         if event.control.value is None:
             return
 
         agent_id = event.control.value
         self._apply_setting(lambda: self._controller.set_agent(agent_id))
 
-    def _handle_fresh_gas_flow_change(
-        self,
-        event: ft.Event[ft.Slider],
-    ) -> None:
+    def _handle_fresh_gas_flow_change(self, event: ft.Event[ft.Slider]) -> None:
         if event.control.value is None:
             return
 
         fresh_gas_flow_l_min = float(event.control.value)
         self._apply_setting(lambda: self._controller.set_fresh_gas_flow(fresh_gas_flow_l_min))
 
-    def _handle_delivered_concentration_change(
-        self,
-        event: ft.Event[ft.Slider],
-    ) -> None:
+    def _handle_delivered_concentration_change(self, event: ft.Event[ft.Slider]) -> None:
         if event.control.value is None:
             return
 
@@ -1123,10 +901,7 @@ class SimulationView:
             lambda: self._controller.set_delivered_concentration(delivered_concentration_fraction)
         )
 
-    def _handle_alveolar_ventilation_change(
-        self,
-        event: ft.Event[ft.Slider],
-    ) -> None:
+    def _handle_alveolar_ventilation_change(self, event: ft.Event[ft.Slider]) -> None:
         if event.control.value is None:
             return
 
@@ -1135,10 +910,7 @@ class SimulationView:
             lambda: self._controller.set_alveolar_ventilation(alveolar_ventilation_l_min)
         )
 
-    def _handle_cardiac_output_change(
-        self,
-        event: ft.Event[ft.Slider],
-    ) -> None:
+    def _handle_cardiac_output_change(self, event: ft.Event[ft.Slider]) -> None:
         if event.control.value is None:
             return
 
@@ -1220,9 +992,7 @@ class SimulationView:
                 self._halt_run(error)
 
     @staticmethod
-    def _build_metric_value(
-        initial_value: str,
-    ) -> ft.Text:
+    def _build_metric_value(initial_value: str) -> ft.Text:
         """Build a formatted dashboard metric.
 
         Args:
@@ -1233,17 +1003,10 @@ class SimulationView:
             Styled Flet text control.
         """
 
-        return ft.Text(
-            initial_value,
-            size=22,
-            weight=ft.FontWeight.BOLD,
-            color=INK,
-        )
+        return ft.Text(initial_value, size=22, weight=ft.FontWeight.BOLD, color=INK)
 
     @staticmethod
-    def _format_percent(
-        concentration_fraction: float,
-    ) -> str:
+    def _format_percent(concentration_fraction: float) -> str:
         """Convert a concentration fraction to display percent.
 
         Renders at `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, the

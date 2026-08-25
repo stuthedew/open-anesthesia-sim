@@ -300,9 +300,11 @@ reason to load the skill:
   `ROADMAP.md` milestone first, per the development rules there.
 - **Clear recorded debt before a new milestone begins.** `ROADMAP.md`'s "The
   debt gate" is the rule: open items classed `defect`, `safety`, `science`,
-  `refactor`, `perf` or as process work, and anything at `needs-decision`, are
-  cleared — `done`, or `dropped` with the reason — before milestone work
-  starts. `feature` and `planning` items are not debt. The list is frozen when
+  `refactor` or `perf`, and anything at `needs-decision`, are cleared — `done`,
+  or `dropped` with the reason — before milestone work starts. Process work is
+  debt once the mechanism is live and unreliable, not while it is still being
+  built; that case is classed `defect` like any other, so the class carries the
+  rule. `feature` and `planning` items are not debt. The list is frozen when
   the milestone is scoped, so findings made while clearing go to the next gate
   rather than extending this one; `P0` and safety- or science-classed findings
   are the exceptions and re-enter immediately. Say which gate a piece of work
@@ -403,6 +405,10 @@ Do not limit review or recommendations to conventional software-engineering conc
 
 Recommendations should reflect the standard expected from a top-tier specialist in the relevant field, not merely common or minimally acceptable practice. When the user's proposed approach is materially weaker than a better established approach, say so clearly and recommend the stronger approach with the reasoning behind it.
 
+**Two standards, deliberately unequal.** The simulator and the documentation a reader of it needs — `src/`, `tests/`, `docs/MODEL.md`, `README.md` — are held to that specialist standard: code an expert contributor would recognize as high quality and could maintain without explanation. The workflow apparatus that exists so agent sessions can be productive — `subprojects/docket/`, `tools/`, `.claude/`, `docs/worker.md`, and this file — is held only to *working reliably and staying small*. It is scaffolding, not product; nobody evaluating this project will read it. Polishing it past sufficient is the most common way this project wastes a session. Where the two compete for a session, the simulator wins.
+
+The bar for `core/` is concrete: **it should read like the domain.** A clinician who knows uptake and distribution should recognize the physiology in the code without a translation step - names that match the literature, units carried in the identifier (`gas_volume_l`, `alveolar_ventilation_l_min`), and the equation visible rather than buried under its own guards. Where a guard, a facade, or a naming choice makes the model harder to see, the model wins. "Would a reader who knows the domain guess this?" is the test, and it settles naming and boundary questions that "high quality" leaves open.
+
 Relevant domains include, but are not limited to:
 
 - pharmacokinetic, pharmacodynamic, physiologic, and inhaled-anesthetic modeling;
@@ -424,7 +430,7 @@ Apply the following principles when making recommendations:
 - Prioritize recommendations by consequence. Safety, scientific correctness, misleading output, and irreversible architectural problems outrank visual polish or minor code style.
 - Distinguish a required correctness/safety issue from a high-value recommendation and from optional polish.
 - Do not create scope creep by silently implementing out-of-milestone ideas. Recommend them and explain their value; implement them only when they fit the current milestone or the user approves the scope change.
-- Prefer established standards, validated methods, and authoritative primary sources over convention-by-habit. When a recommendation depends on current standards, guidance, libraries, or evidence, verify the current source rather than relying on memory.
+- Prefer established standards, validated methods, and authoritative primary sources over convention-by-habit. Where a recommendation depends on current standards, guidance, libraries, or evidence, consult the source rather than memory - **before** forming the recommendation, not to confirm one already given. This covers how the project is run as much as what it builds: technical-debt policy, delegation and review design, testing strategy and release process are well-studied problems with published evidence, and advice on one of them from memory is worth no more than a solubility coefficient from memory. Recommending first and researching afterwards produces advice that has to be withdrawn, which costs the owner a decision they already made and more than the search would have.
 - Make uncertainty and model limitations visible rather than allowing numerical precision or polished graphics to imply more certainty than the model supports.
 - Avoid false precision in displayed outputs. Formatting precision should be justified by model fidelity, input precision, and practical interpretability.
 - Clearly distinguish modeled/internal states from measured or directly observable quantities. Do not present a predicted value in a way that could reasonably be mistaken for a measurement.

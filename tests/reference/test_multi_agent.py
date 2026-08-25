@@ -2,21 +2,14 @@ import pytest
 
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
-from anesthesia_sim.core.parameters import (
-    load_agent_parameters,
-    load_reference_adult_parameters,
-)
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.respiratory_system import RespiratorySystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
 
-def _run_for(
-    system: RespiratorySystem,
-    duration_s: float,
-    simulation_step_s: float,
-) -> None:
+def _run_for(system: RespiratorySystem, duration_s: float, simulation_step_s: float) -> None:
     """Advance a system for an exact number of fixed steps."""
 
     step_count = round(duration_s / simulation_step_s)
@@ -41,10 +34,7 @@ def _build_system_for_agent(agent_id: str) -> RespiratorySystem:
             gas_volume_l=patient_parameters.alveolar_gas_volume_l,
             alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
         ),
-        patient=PatientCompartments.from_parameters(
-            agent=agent,
-            patient=patient_parameters,
-        ),
+        patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
     )
 
 

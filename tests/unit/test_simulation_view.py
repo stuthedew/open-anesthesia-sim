@@ -313,10 +313,7 @@ def test_refresh_view_formats_every_concentration_metric() -> None:
 
 @pytest.mark.parametrize(
     ("is_running", "expected_status", "expected_start_disabled", "expected_pause_disabled"),
-    [
-        (True, "Running", True, False),
-        (False, "Paused", False, True),
-    ],
+    [(True, "Running", True, False), (False, "Paused", False, True)],
 )
 def test_refresh_view_reflects_running_state(
     is_running: bool,
@@ -408,15 +405,10 @@ def test_agent_dropdown_options_pair_every_color_with_the_agent_name() -> None:
 
 @pytest.mark.parametrize(
     ("agent_id", "display_name"),
-    [
-        ("sevoflurane", "Sevoflurane"),
-        ("isoflurane", "Isoflurane"),
-        ("desflurane", "Desflurane"),
-    ],
+    [("sevoflurane", "Sevoflurane"), ("isoflurane", "Isoflurane"), ("desflurane", "Desflurane")],
 )
 def test_refresh_view_applies_current_agent_color_to_control_and_header(
-    agent_id: str,
-    display_name: str,
+    agent_id: str, display_name: str
 ) -> None:
     view, _ = _build_view(_snapshot(agent_id=agent_id, agent_display_name=display_name))
     scheme = AGENT_COLOR_SCHEMES[agent_id]
@@ -1025,9 +1017,7 @@ def test_a_refusal_notice_clears_once_a_setting_is_accepted() -> None:
     ],
 )
 def test_every_slider_handler_refuses_without_escaping_into_flet(
-    handler_name: str,
-    slider_name: str,
-    refused_value: float,
+    handler_name: str, slider_name: str, refused_value: float
 ) -> None:
     """No setting callback may let a core raise reach Flet's dispatcher.
 

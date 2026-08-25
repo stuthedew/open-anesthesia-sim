@@ -39,9 +39,7 @@ def _marks(item: Item, in_flight: set[str], protected: tuple[str, ...] = ()) -> 
 
 
 def format_list(
-    report: Report,
-    in_flight: set[str] | None = None,
-    protected_paths: tuple[str, ...] = (),
+    report: Report, in_flight: set[str] | None = None, protected_paths: tuple[str, ...] = ()
 ) -> str:
     """One line per open item: the queue without the briefs."""
     flight = in_flight or set()
@@ -66,11 +64,7 @@ def format_list(
     return "\n".join(lines)
 
 
-def format_delegable(
-    report: Report,
-    in_flight: set[str],
-    protected_paths: tuple[str, ...],
-) -> str:
+def format_delegable(report: Report, in_flight: set[str], protected_paths: tuple[str, ...]) -> str:
     """The worker's whole reading list: what may be worked, and what proves it.
 
     A separate answer from `next`, deliberately. `next` answers "what should
