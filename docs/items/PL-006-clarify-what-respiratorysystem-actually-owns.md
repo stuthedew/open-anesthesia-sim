@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: needs-decision
 classes: refactor
+feature: core-boundaries
 touches: src/anesthesia_sim/core/respiratory_system.py
 added: 2026-08-23
 ---

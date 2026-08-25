@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: needs-decision
 classes: infra
+feature: dev-tooling
 touches: pyproject.toml, tests/unit/test_bootstrap.py, tests/unit/test_simulation_view.py
 added: 2026-08-24
 ---

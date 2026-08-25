@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: session-cost, docs
+feature: dev-tooling
 touches: CLAUDE.md
 added: 2026-08-24
 ---

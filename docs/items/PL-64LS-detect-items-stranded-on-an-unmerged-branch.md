@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: session-cost
+feature: dev-tooling
 touches: subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/vcs.py
 added: 2026-08-24
 ---

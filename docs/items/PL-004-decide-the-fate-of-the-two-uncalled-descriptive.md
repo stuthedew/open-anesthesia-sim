@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: needs-decision
 classes: defect, refactor
+feature: core-boundaries
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/simulation.py, tests/unit/test_alveolar.py
 added: 2026-08-23
 ---
