@@ -1,25 +1,22 @@
 ---
 id: PL-JD2P
 title: Cover the module-level agent-color guard in `simulation_view.py`
-status: untriaged
+status: dropped
+reason: Duplicate of PL-7YZH, which was filed on main for the same guard and carries the better brief
 added: 2026-08-25
+closed: 2026-08-25
 ---
 
 **Problem.** `app/simulation_view.py` line 109 raises
 `RuntimeError("AGENT_COLOR_SCHEMES must define exactly the built-in volatile
 agents")` at import time, and never executes under the test suite.
 
-**Why it matters.** It is the guard that stops an agent shipping without its
-ISO 5360 identification color, or a color without its agent - the provenance
-chain PL-002 established. Untested, it can be broken silently.
+**Why it was dropped.** PL-7YZH was filed on `main` covering the same guard,
+independently and on the same day, as part of a sweep of all seventeen
+uncovered guard lines. Its brief is better: it carries the reproduce command,
+the full table, and the `_halt_run` analysis this item lacked. PL-7YZH has
+been re-cut to cover exactly the two `simulation_view.py` paths that a
+coverage command cannot prove, which is what this item was for.
 
-**Why it is not in the pilot.** It was pulled out of PL-LHHG deliberately.
-Covering a module-level raise means re-executing the module body with the
-constant patched (`importlib.reload` plus a monkeypatched dict), and a
-per-module `--cov-fail-under=100` gate is impossible on `simulation_view.py`
-while thirteen Flet-construction lines remain uncovered. Both make it a poor
-fit for a delegated worker: the technique is fiddly and the proof command
-cannot be clean. Do it in an ordinary session.
-
-**Done when.** The guard is exercised, or the reason it is left uncovered is
-recorded here.
+Recorded rather than deleted so the finding is not re-raised: the guard is
+covered by PL-7YZH, not overlooked.
