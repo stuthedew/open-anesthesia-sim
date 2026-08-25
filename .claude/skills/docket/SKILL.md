@@ -56,9 +56,20 @@ docket new --feature run-scrubbing \
   "Decide what the readouts show while scrubbed away from now"
 ```
 
-Then report the shape, not the mechanics: what the feature is, what it broke
-into, roughly how big, and what you would do first. Item ids belong in the
-reply as references, never as something they have to supply.
+Then report the approach *and* the shape, in that order:
+
+> "The scrub control needs the run kept in memory, so the first item widens
+> the history buffer and the second hangs a control off the chart axis. The
+> third is a question rather than code — what the numeric readouts should say
+> when you are scrubbed away from now, since showing live values beside a past
+> chart is exactly the stale-context error the safety standard warns about.
+>
+> Created PL-A1B2, PL-C3D4, PL-E5F6 — two small, one needing a decision."
+
+A few sentences of *how* come first, because the owner wants to understand the
+design, not merely receive it. Item ids belong in the reply as references,
+never as something they have to supply, and never as a substitute for saying
+what the work actually is.
 
 If the idea is one thing rather than several, it is one item; do not inflate
 it. If it is genuinely a milestone — its own goal, scope and definition of
