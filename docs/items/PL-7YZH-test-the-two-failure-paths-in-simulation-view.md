@@ -9,7 +9,7 @@ feature: core-guard-coverage
 touches: tests/unit/test_simulation_view.py
 added: 2026-08-25
 closed: 2026-08-25
-commit: PENDING
+commit: 29b44d6
 ---
 
 **Problem.** Two failure paths in `app/simulation_view.py` are never
