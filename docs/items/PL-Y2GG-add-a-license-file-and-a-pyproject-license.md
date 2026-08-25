@@ -3,10 +3,12 @@ id: PL-Y2GG
 title: Add a LICENSE file and a pyproject license field before the repository goes public
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: docs, infra
 touches: LICENSE, pyproject.toml, README.md
 added: 2026-08-25
+closed: 2026-08-25
+commit: d40ff83
 ---
 
 **Problem.** Add a LICENSE file and a pyproject license field before the repository goes public
