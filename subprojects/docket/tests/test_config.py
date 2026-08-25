@@ -23,3 +23,14 @@ def test_settings_override_the_defaults(tmp_path: Path) -> None:
     assert config.top_band_limit == 3
     assert config.safety_classes == ("critical",)
     assert config.process_classes == Config().process_classes
+
+
+def test_version_policy_defaults_to_inferring(tmp_path: Path) -> None:
+    assert load(tmp_path).version_policy == "infer"
+
+
+def test_a_project_can_require_the_version_to_be_named(tmp_path: Path) -> None:
+    """Some projects version by capability crossed, which no class label carries."""
+    (tmp_path / "docket.toml").write_text('[docket]\nversion_policy = "manual"\n', encoding="utf-8")
+
+    assert load(tmp_path).version_policy == "manual"
