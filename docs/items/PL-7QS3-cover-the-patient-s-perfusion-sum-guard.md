@@ -7,7 +7,7 @@ status: ready
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_patient.py
-verify: uv run pytest tests/unit/test_patient.py --cov=src/anesthesia_sim/core/patient.py --cov-fail-under=100
+verify: uv run pytest --cov=anesthesia_sim.core.patient --cov-fail-under=100
 added: 2026-08-25
 ---
 
@@ -40,5 +40,22 @@ Cover both sides of the tolerance: a sum outside it raises, and a sum just
 inside it does not. A one-sided test would pass against a guard that rejects
 everything.
 
-**Done when.** `uv run pytest tests/unit/test_patient.py --cov=src/anesthesia_sim/core/patient.py --cov-fail-under=100`
+**Correction to the `verify:` command (2026-08-25).** The command originally
+written here was wrong in two ways, both found by a worker refusing to guess
+at it rather than by anyone testing it first.
+
+`--cov=` was given a file path. `pytest-cov` reads that as a module name, finds
+nothing imported under it, and reports no data — the run then fails
+`--cov-fail-under`, so it fails loudly rather than passing falsely, but it
+proves nothing about the guards.
+
+Scoping the run to this item's own test file also demanded more than the item
+asks: lines covered by the rest of the suite show as uncovered when only one
+test file runs, so `--cov-fail-under=100` could not be reached without writing
+tests outside this item's scope.
+
+The corrected command runs the whole suite with coverage scoped to the module,
+which measures exactly what this item is responsible for.
+
+**Done when.** the `verify:` command above
 passes and `make check` is green.

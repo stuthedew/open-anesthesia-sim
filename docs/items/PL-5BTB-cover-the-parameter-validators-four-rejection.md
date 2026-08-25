@@ -7,7 +7,7 @@ status: ready
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_parameters.py
-verify: uv run pytest tests/unit/test_parameters.py --cov=src/anesthesia_sim/core/parameters.py --cov-fail-under=100
+verify: uv run pytest --cov=anesthesia_sim.core.parameters --cov-fail-under=100
 added: 2026-08-25
 ---
 
@@ -45,5 +45,22 @@ being changed. It is classed `test, infra` rather than `safety` on purpose:
 the class describes the deliverable, which is a test file, not the subject
 matter it exercises. Editing a validator would be safety work and a different
 item.
+
+**Correction to the `verify:` command (2026-08-25).** The command originally
+written here was wrong in two ways, both found by a worker refusing to guess
+at it rather than by anyone testing it first.
+
+`--cov=` was given a file path. `pytest-cov` reads that as a module name, finds
+nothing imported under it, and reports no data — the run then fails
+`--cov-fail-under`, so it fails loudly rather than passing falsely, but it
+proves nothing about the guards.
+
+Scoping the run to this item's own test file also demanded more than the item
+asks: lines covered by the rest of the suite show as uncovered when only one
+test file runs, so `--cov-fail-under=100` could not be reached without writing
+tests outside this item's scope.
+
+The corrected command runs the whole suite with coverage scoped to the module,
+which measures exactly what this item is responsible for.
 
 **Done when.** The `verify:` command above passes and `make check` is green.
