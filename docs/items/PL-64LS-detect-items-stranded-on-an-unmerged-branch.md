@@ -1,7 +1,7 @@
 ---
 id: PL-64LS
 title: Detect items stranded on an unmerged branch
-priority: P3
+priority: P2
 effort: S
 status: ready
 classes: session-cost
@@ -19,6 +19,16 @@ it had stayed in the conversation.
 **Why it matters.** The queue exists to make capture unloseable. A hole that
 only opens on abandoned branches is exactly the hole nobody notices, because
 the sessions that could notice are the ones that cannot see the item.
+
+**Promoted from P3 (2026-08-25).** The hole stopped being hypothetical twice
+in one session. Cleaning up branches after the debt-gate merges needed a manual
+investigation of every remote branch to answer "is it safe to delete this?",
+and the answer turned on content rather than on git's commit counts:
+`codex/batch-pl-qgzv-...` showed seven unmerged commits that were entirely
+obsolete, while `claude/public-private-repo-strategy-3bc16d` showed one that
+carried the only copies of PL-Y2GG and PL-Z4GF. Deleting on the commit count
+would have been wrong in both directions. Separately, `docket flight` was
+reporting PL-QGZV as in-flight on a branch whose work had long since landed.
 
 **Where.** `subprojects/docket/src/docket/store.py` (`read_items` reads the
 working tree only), `subprojects/docket/src/docket/vcs.py` (already knows how
