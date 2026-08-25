@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: docs/worker.md, docs/items/PL-5BTB-cover-the-parameter-validators-four-rejection.md
 added: 2026-08-25
 closed: 2026-08-25
+commit: 6e19632
 ---
 
 **Problem.** PL-5BTB's tests reach into `parameters_module._AgentPayload` and
