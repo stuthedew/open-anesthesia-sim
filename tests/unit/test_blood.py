@@ -5,6 +5,7 @@ import pytest
 from anesthesia_sim.core.blood import (
     VenousBloodCompartment,
 )
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 
 def _build_venous_blood(
@@ -16,6 +17,19 @@ def _build_venous_blood(
         blood_gas_partition_coefficient=0.65,
         blood_flow_l_min=blood_flow_l_min,
     )
+
+
+def test_rejects_agent_amount_above_venous_blood_capacity() -> None:
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^agent_amount_l exceeds venous blood capacity$",
+    ):
+        VenousBloodCompartment(
+            volume_l=1.0,
+            blood_gas_partition_coefficient=0.65,
+            blood_flow_l_min=5.0,
+            agent_amount_l=0.66,
+        )
 
 
 def test_capacity_uses_volume_and_partition_coefficient() -> None:
