@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, session-cost
 feature: delegation
+milestone: v0.2.4
 touches: docs/worker.md, AGENTS.md
 added: 2026-08-25
 closed: 2026-08-25

@@ -66,6 +66,43 @@ def format_list(
     return "\n".join(lines)
 
 
+def format_delegable(
+    report: Report,
+    in_flight: set[str],
+    protected_paths: tuple[str, ...],
+) -> str:
+    """The worker's whole reading list: what may be worked, and what proves it.
+
+    A separate answer from `next`, deliberately. `next` answers "what should
+    *I* do now" - it ranks, limits, and explains itself, because a session
+    picks one thing. A worker wants the opposite: everything it is allowed to
+    touch, with each item's proof command beside it, so a batch can be started
+    without opening a single file first.
+    """
+    candidates = [
+        item
+        for item in sorted(report.open_items, key=lambda i: i.sort_key())
+        if item.delegability(protected_paths) is None and item.identifier not in in_flight
+    ]
+    if not candidates:
+        return (
+            "Nothing is delegable right now.\n"
+            "An item qualifies when it is ready, is not safety- or science-classed, "
+            "names a `verify:` command,\nand declares `touches` outside the "
+            "protected paths. `docket list` shows what is open."
+        )
+
+    width = max(len(item.identifier) for item in candidates)
+    lines = [f"{len(candidates)} item(s) may be worked by a cheaper model, best-first:", ""]
+    for item in candidates:
+        lines.append(f"  {item.priority} {item.identifier:<{width}} {item.title}")
+        lines.append(f"  {'':<{width + 6}}verify: {item.verify}")
+        lines.append("")
+    lines.append("Read each item's brief before starting it, and follow docs/worker.md.")
+    lines.append("Anything not listed here is not yours to take, whatever its priority.")
+    return "\n".join(lines)
+
+
 def format_digest(report: Report, in_flight: set[str] | None = None, ready: object = None) -> str:
     """The few lines injected into session context at startup.
 

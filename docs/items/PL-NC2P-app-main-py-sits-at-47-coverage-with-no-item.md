@@ -1,7 +1,12 @@
 ---
 id: PL-NC2P
 title: `app/main.py` sits at 47% coverage with no item covering it
-status: untriaged
+status: ready
+priority: P3
+effort: S
+classes: test, infra
+feature: core-guard-coverage
+touches: tests/unit/test_bootstrap.py, src/anesthesia_sim/app/main.py
 added: 2026-08-25
 ---
 

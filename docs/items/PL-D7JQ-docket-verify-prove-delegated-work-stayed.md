@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, session-cost
 feature: delegation
+milestone: v0.2.4
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-08-25
 closed: 2026-08-25
