@@ -1,9 +1,11 @@
 ---
 id: PL-WRKL
 title: Record the control-input timeline so a run can be replayed or forked
-status: untriaged
+status: dropped
 feature: scenario-branching
 added: 2026-08-25
+closed: 2026-08-25
+reason: aspirational rather than actionable; the record's shape is decided by the scenario format it serves, so it was promoted to ROADMAP.md planned milestone 8 as a prerequisite of items 9 to 12
 ---
 
 **Problem.** `SimulationController` records concentrations

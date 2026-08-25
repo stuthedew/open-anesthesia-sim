@@ -1,9 +1,11 @@
 ---
 id: PL-JW30
 title: Keep a forked branch bit-identical to its parent up to the branch point
-status: untriaged
+status: dropped
 feature: scenario-branching
 added: 2026-08-25
+closed: 2026-08-25
+reason: aspirational rather than actionable; it constrains work that does not exist yet, so it was promoted to ROADMAP.md planned milestone 12 as a required property of forking
 ---
 
 **Problem.** If a branch is created by resimulating from a stored point while

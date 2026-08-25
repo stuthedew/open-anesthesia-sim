@@ -343,14 +343,22 @@ core would be reworked when it lands.
 **Phase 2 — an interface that can drive the machine.** Consolidate the
 display constants named in item 24 first, then item 24 itself, then items 5,
 3 and 4 (end-tidal control, override mode, direct injection), then item 8
-(scenario events), item 20 (accessibility), and item 25 (playback speed).
+(scenario events), item 20 (accessibility), item 25 (playback speed), and
+item 26 (run bookmarks).
 
 The consolidation leads because item 24 already names it as a prerequisite,
 and because every control added before it spreads the same scattered defaults
 further.
 
+Item 26 comes last of those because it depends on both: bookmarks are what
+make a playback multiplier usable, and their MAC-threshold kind waits on MAC
+becoming a displayed unit at all (PL-DHV7 in the queue). Item 8 is the one
+Phase 2 entry Phase 3 cannot start without — its control-input timeline is
+what save/load, replay and forking each restore from.
+
 **Phase 3 — reproducibility and comparison.** Items 9, 10, 11 and 12 in that
-order (save/load, deterministic replay, side-by-side comparison, forking).
+order (save/load, deterministic replay, side-by-side comparison, forking),
+on top of item 8's control-input timeline.
 
 This phase is also groundwork, which is why it precedes intravenous work
 rather than following it. Save/load and forking both force the whole
@@ -403,12 +411,59 @@ specified.
    what decides whether item 13 is an extension or a rewrite.
 7. Add concentration and second-gas effects for coadministered gases, after
    item 6.
-8. Add scenario events (timed parameter or state changes during a run).
+8. Add scenario events (timed parameter or state changes during a run),
+   built on a recorded control-input timeline: every fresh gas flow,
+   vaporizer dial, ventilation and cardiac-output change stamped with the
+   simulated time it took effect, held alongside the state it describes
+   rather than in the view. The controller today records concentrations but
+   nothing records *why* they moved, so a run's inputs are unrecoverable
+   once made. This is the prerequisite under items 9 to 12, and it is easy
+   to mistake for solved: a state snapshot lets a run be *restored*, but not
+   a point *between* snapshots reached, because that needs the same inputs
+   re-applied over the same interval — so "resimulate from the nearest prior
+   snapshot", the fallback in every snapshot-interval design, cannot be
+   implemented without it. It is also what makes a run reproducible and
+   citable; a curve without its input history is not a result anyone can
+   check. Hence the 8-to-12 ordering in "Development pathway" above is not
+   negotiable.
 9. Add scenario save/load.
 10. Add deterministic replay of a saved scenario, after item 9.
-11. Add side-by-side comparison of multiple scenario runs.
+11. Add side-by-side comparison of multiple scenario runs on a shared time
+    axis, each curve unambiguously labelled as to which run and which
+    settings produced it. Delivered with item 12, which produces the runs
+    worth comparing.
 12. Add simulation forking (branch a running simulation into an independent
-    copy).
+    copy). This is the educational payload of the group: comparing two
+    managements of the same case — coast on low flow versus hold 0.5 MAC,
+    then compare time to a wake-up threshold — isolates the variable under
+    study, where building the case twice differs by everything that was not
+    reproduced identically.
+
+    *Scope (project owner, 2026-08-25).* Flat, not a tree: one trunk run
+    with N branches taken from points on it. Sub-forks of forks are
+    deliberately out — they multiply without bound and buy little over
+    re-branching from the trunk. Branch points are expected to be bookmarks
+    (item 26); an arbitrary time is the rare case, served by resimulating
+    from the nearest prior bookmark, which needs item 8's input timeline.
+
+    *Required property.* A branch taken at time t must reproduce its
+    parent's state exactly at every recorded sample up to t — asserted
+    element-wise, not within a tolerance. Resimulating from a stored point
+    while the parent was simulated straight through can diverge *before* the
+    branch point through accumulation order for `elapsed_s`, a different
+    step size, or a different number of steps per frame; that divergence is
+    subtle, will not show up in a nominal test, and destroys the one thing
+    forking is for, since a learner reading the comparison cannot see it. If
+    exactness is unreachable, the divergence must be bounded, documented in
+    `docs/MODEL.md`, and shown to the user rather than implied to be absent.
+
+    *Measured 2026-08-25, so the storage question is designed around the
+    right cost.* The full dynamic state is six concentrations plus elapsed
+    time and the control settings — a snapshot is about the size of one
+    history sample, so snapshot density is nearly free. Resimulation is also
+    cheap: `SimulationState.advance` measured at 8.9 us per 0.1 s step, so
+    reconstructing a 3-hour run from t=0 is about 1 s and 24 hours about 8 s.
+    What is *not* cheap is the per-step concentration history itself.
 13. Add IV pharmacokinetic and effect-site models, after item 12 (simulation
     forking) is available.
 14. Add a modular hypnosis/eBIS effect model, with explicit model version and
@@ -444,18 +499,55 @@ specified.
     scientific review per `CLAUDE.md`'s safety-critical standard, not an ad
     hoc settings screen.
 
+25. Add a playback speed multiplier, so a run can be advanced faster or slower
+    than real time without changing the simulation's own time step. Kept
+    separate from deterministic replay (item 10): replay reproduces a recorded
+    run, while this changes the rate at which any run is displayed.
+26. Add run bookmarks that halt a run at a target, after item 25. There is
+    currently no way to say "run fast until something happens, then stop": a
+    learner comparing gas-management strategies has to watch the clock and
+    pause by hand, which is neither repeatable nor possible at speed.
+    Bookmarks are what make fast-forward usable, and they are the branch
+    points item 12 expects users to fork from far more often than an
+    arbitrary time, so the bookmark set is what a snapshot policy should key
+    on.
+
+    *Scope floor (project owner, 2026-08-25).* The Gas Man reference
+    simulator's bookmark set is the minimum: an absolute simulated time, and
+    a percent of MAC on every graphed compartment — circuit, alveolar,
+    vessel-rich, muscle, fat and mixed-venous alike, not the alveolar trace
+    only. Recorded from the project owner's own account of that software;
+    the vendor documentation could not be consulted from the session that
+    captured it, so treat the two kinds as the specification and the wording
+    as second-hand. The MAC kind cannot be specified in a unit the
+    application does not have, so PL-DHV7 (MAC as a displayed unit) lands
+    first.
+
+    *Required properties.* Crossings are tested on every simulation step,
+    not once per rendered frame: testing per frame overshoots by the whole
+    frame's worth of simulated time, and the faster the playback multiplier
+    the worse it gets, so the same bookmark would halt at a different
+    concentration depending on how fast the user was running and the
+    displayed halt value would not be the value asked for — a
+    presentation-correctness failure of the kind `CLAUDE.md` treats as
+    safety-critical, and one that also breaks reproducibility of any branch
+    taken from that bookmark. Crossing direction is explicit — rising,
+    falling or either — and shown wherever a bookmark is listed, since the
+    same threshold means opposite things during wash-in and washout. A
+    threshold above a compartment's asymptote is unreachable, so a bookmark
+    needs a distinct "not reached, run-time cap hit" outcome that reads
+    differently from "reached" rather than stopping silently. Bookmarks are
+    part of the saved scenario rather than session-local, so item 12 can
+    branch from them.
+
 Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
 milestone, delivered as v0.2.0 — see "Completed: v0.2.0" above — so it no
 longer appears here. Further volatile agents beyond isoflurane and desflurane (halothane,
 enflurane, ether, xenon; not nitrous oxide, which is covered by items 6-7
 above) remain an unscoped later idea, to be added back here as its own item
 once someone is ready to scope it.
-25. Add a playback speed multiplier, so a run can be advanced faster or slower
-    than real time without changing the simulation's own time step. Kept
-    separate from deterministic replay (item 10): replay reproduces a recorded
-    run, while this changes the rate at which any run is displayed.
 
-None of items 1-25 mix scientific-core and UI/tooling concerns within a
+None of items 1-26 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
