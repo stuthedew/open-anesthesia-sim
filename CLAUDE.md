@@ -60,6 +60,23 @@ is simply wide:
 - **No approach proposed.** Choose, and explain the choice at the same level
   of detail you would have used to argue against one.
 
+**End every reply with what the project owner has to do.** The reasoning
+above it is worth having — they have asked for it — but prose buries the thing
+that needs acting on, and a punchline they have to hunt for is one they will
+miss. So close with a short, scannable block of actions, decisions and things
+to consider, and nothing else:
+
+- Only what needs *them*: a decision, an approval, something to look at, a
+  choice between options. Not a summary of what was just done — that is what
+  the body of the reply was for.
+- Mark a recommendation as a recommendation, plainly, so "here are the
+  options" and "I think you should do this one" are never mixed up. Where
+  several things are suggested, say which comes first.
+- Keep it short enough to take in at a glance. If it is as long as the reply,
+  it has become a summary rather than a list of actions.
+- When there is genuinely nothing to act on, say that in one line rather than
+  inventing items to fill the block.
+
 This governs the deliverable, not the session. Ordinary judgment inside an
 approach already agreed — naming, structure, where a thing lives, how it is
 tested, whether the work continues here or moves to a fresh session — stays
