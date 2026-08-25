@@ -1,15 +1,20 @@
-"""Milestones, and the version bump that closes one.
+"""Releases: what has shipped since the last version, and what to call the next.
 
-A milestone is a named set of items and the version that ships when they are
-all done. Keeping the membership on the items themselves rather than in a
-separate manifest means assigning work to a release is a one-field edit to
-one file - no shared list to contend over, and no way for the manifest and
-the items to disagree about what is in the release.
+**A milestone records what went out, it does not plan what will.** That
+direction matters more than it looks. The obvious design is the other one -
+assign items to `v0.3.0`, then ship when they are all closed - and it fails
+in practice, because it makes shipping depend on somebody having done the
+bookkeeping in advance. Anyone who forgets is told their release is empty
+while a fortnight of finished work sits outside it.
 
-The bump itself is mechanical: check every member is closed, rewrite one
-version string, and write the notes from the items. Mechanical work that
-recurs every release belongs in code, where it is deterministic and
-testable, rather than in a checklist somebody follows by hand.
+So an item that is `done` with no `milestone` is simply unreleased, which is
+the state finished work is naturally in. Cutting a release stamps that work
+with the version it went out in. Nothing has to be decided up front, nothing
+is forgotten, and the question "is it worth cutting one?" becomes answerable
+by reading the store rather than by remembering what was promised.
+
+Planning ahead is what `feature` is for. A feature says what a group of items
+is *for*; a milestone says which release it left in.
 """
 
 from __future__ import annotations
@@ -48,6 +53,19 @@ class Milestone:
     def version(self) -> str:
         """The version string this milestone ships, without its leading `v`."""
         return self.name.lstrip("v")
+
+
+def unreleased(items: list[Item]) -> list[Item]:
+    """Finished work that has not gone out in any version yet.
+
+    This is the default state of a closed item, not a state anyone has to put
+    it into, which is the whole point: no one has to predict at capture time
+    which release something will land in.
+    """
+    return sorted(
+        (i for i in items if i.status == "done" and not i.milestone),
+        key=lambda i: (i.closed or date.min, i.identifier),
+    )
 
 
 def milestones(items: list[Item]) -> dict[str, Milestone]:
@@ -128,3 +146,58 @@ def release_notes(milestone: Milestone, today: date) -> str:
             lines.append(f"- {item.identifier} {item.title}{reference}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+@dataclass(frozen=True)
+class Readiness:
+    """Whether there is enough finished work to be worth cutting a release.
+
+    Deliberately advisory. It reports what is shippable and what the version
+    would be; it does not decide that a release should happen, because that
+    depends on things no store knows - whether a demo is on Friday, whether
+    the next item is nearly done, whether anyone wants to review it.
+    """
+
+    shippable: list[Item]
+    completed_features: list[str]
+    partial_features: list[str]
+    current_version: str
+    suggested_version: str
+
+    @property
+    def is_worth_cutting(self) -> bool:
+        """Whether to raise it unprompted.
+
+        A finished feature is worth mentioning on its own, however few items
+        it took. Otherwise it takes a few closed items before the suggestion
+        is more useful than it is noise.
+        """
+        return bool(self.completed_features) or len(self.shippable) >= 3
+
+
+def readiness(items: list[Item], current_version: str, minor_classes: tuple[str, ...]) -> Readiness:
+    """What could ship right now, and what it would be called."""
+    from .plan import features as group_features
+
+    shippable = unreleased(items)
+    shipped_ids = {item.identifier for item in shippable}
+
+    completed: list[str] = []
+    partial: list[str] = []
+    for name, feature in group_features(items).items():
+        if not any(i.identifier in shipped_ids for i in feature.items):
+            continue
+        (completed if feature.is_complete else partial).append(name)
+
+    return Readiness(
+        shippable=shippable,
+        completed_features=sorted(completed),
+        partial_features=sorted(partial),
+        current_version=current_version,
+        suggested_version=suggest_version(current_version, shippable, minor_classes),
+    )
+
+
+def stamp(items: list[Item], version: str) -> list[Item]:
+    """Record which release a batch of finished work went out in."""
+    return [item.__class__(**{**item.__dict__, "milestone": version}) for item in items]

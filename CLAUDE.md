@@ -230,10 +230,20 @@ reason to load the skill:
   a patch version bump and a regression test.
 - **Do not start an `L` item from a queue entry.** Promote it into a scoped
   `ROADMAP.md` milestone first, per the development rules there.
-- **Answer "what should we work on next?" from `docket next`, not from the
-  codebase.** It ranks the work and gives the reason, excludes what is
-  already in flight on a branch, and says which model the work warrants. Lead
-  with its answer, then add the judgment it cannot have.
+- **Answer "what should we work on next?" at feature altitude.** `bin/docket
+  status` groups the project the way a decision is actually made — what is
+  underway, what has not started, what is individually urgent. Lead with that,
+  then drop to `bin/docket next` for the specific item once a direction is
+  picked. A list of item ids is a list of homework, not an answer.
+- **Decompose ideas; never hand the decomposition back.** When the owner
+  describes something they want, working out what it breaks into, naming the
+  feature and writing the briefs is the job being delegated. Do not ask which
+  items it should become, what the feature should be called, or which items
+  belong in a release. Report the shape once there is one.
+- **Offer the release; do not wait to be asked.** The digest says when
+  finished work has accumulated. `bin/docket release` takes no arguments and
+  infers the version, so there is nothing for the owner to look up — say what
+  shipped, what it completes, what the version would be, and ask.
 - **Concurrency is ruled out, never certified.** `docket concurrent` proves
   two items will contend when their declared paths overlap. It cannot prove
   the reverse — an item with no declared overlap may still wander into a
