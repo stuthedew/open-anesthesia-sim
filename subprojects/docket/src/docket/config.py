@@ -30,6 +30,18 @@ class Config:
     untriaged_stale_days: int = 14
     #: Classes that make a release a minor version bump rather than a patch.
     minor_classes: tuple[str, ...] = ("feature",)
+    #: Paths holding the checks themselves. A delegated diff that edits one
+    #: has changed the thing measuring it, so the measurement means nothing.
+    gate_paths: tuple[str, ...] = (
+        "Makefile",
+        "pyproject.toml",
+        ".github",
+        ".claude",
+        "docket.toml",
+    )
+    #: The project's own full check, run by `docket verify` alongside the
+    #: item's command. Shelled out, so it may be whatever the project uses.
+    check_command: str = "make check"
     #: Paths a delegated item may never modify, whatever its check proves.
     #: Empty by default, and that default is fail-closed rather than
     #: permissive: with nothing declared protected, no item is delegable at
@@ -79,6 +91,8 @@ def load(root: Path) -> Config:
         ),
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
         protected_paths=_tuple(section.get("protected_paths"), defaults.protected_paths),
+        gate_paths=_tuple(section.get("gate_paths"), defaults.gate_paths),
+        check_command=str(section.get("check_command", defaults.check_command)),
         version_file=str(section.get("version_file", defaults.version_file)),
         version_policy=str(section.get("version_policy", defaults.version_policy)),
     )
