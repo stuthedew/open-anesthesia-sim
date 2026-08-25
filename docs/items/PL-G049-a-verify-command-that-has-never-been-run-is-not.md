@@ -2,7 +2,7 @@
 id: PL-G049
 title: A `verify:` command that has never been run is not a specification, and nothing currently requires running one
 status: ready
-priority: P1
+priority: P2
 effort: S
 classes: defect, infra, session-cost
 feature: delegation
