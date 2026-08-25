@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: refactor
+feature: core-boundaries
 touches: src/anesthesia_sim/core/circuit.py, tests/reference/test_multi_agent.py, tests/reference/test_sevo_patient.py, tests/unit/test_circuit.py
 added: 2026-08-24
 ---

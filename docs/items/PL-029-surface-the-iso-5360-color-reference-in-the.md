@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: ux, docs
+feature: vaporizer-controls
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py
 added: 2026-08-24
 ---

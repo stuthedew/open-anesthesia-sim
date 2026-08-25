@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: docs, ux
+feature: chart-readout
 touches: docs/MODEL.md, src/anesthesia_sim/app/simulation_view.py
 added: 2026-08-24
 ---

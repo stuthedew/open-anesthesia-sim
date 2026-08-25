@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: infra, session-cost
+feature: dev-tooling
 touches: tools/doc_check.py, .github/workflows/quality.yml
 added: 2026-08-24
 ---

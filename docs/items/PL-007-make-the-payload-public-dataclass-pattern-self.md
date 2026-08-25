@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: docs, refactor
+feature: core-boundaries
 touches: src/anesthesia_sim/core/parameters.py
 added: 2026-08-23
 ---
