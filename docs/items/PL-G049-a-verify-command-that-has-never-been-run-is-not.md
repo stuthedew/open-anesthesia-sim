@@ -38,3 +38,17 @@ after the cost had been paid.
 **Done when.** Either a mechanism prevents an unrun `verify:` command reaching
 a worker, or the commissioning step requires running it and that is written
 down where a session will read it.
+
+**Independently captured.** The worker filed the same finding as PL-0275 on its
+own branch, from the other side of the failure. That item is a bare capture
+with no brief and is superseded by this one; its branch is being left in place
+rather than deleted, so nothing is lost if anyone goes looking for it.
+
+**Second half of the same failure, and the more instructive one.** The
+corrected commands were sent to the worker in chat, with an explicit "you do
+not need to pull". But `docs/worker.md` tells a worker to run *the item's*
+`verify:` line, and the worker followed that standing written instruction over
+the ad-hoc one — which is correct of it, and is the behaviour the design
+depends on. A commission lives in the item file. Correcting one anywhere else
+produces a worker that is right to ignore the correction.
+
