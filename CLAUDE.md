@@ -298,6 +298,15 @@ reason to load the skill:
     items once the shape has settled.
 - **Do not start an `L` item from a queue entry.** Promote it into a scoped
   `ROADMAP.md` milestone first, per the development rules there.
+- **Clear recorded debt before a new milestone begins.** `ROADMAP.md`'s "The
+  debt gate" is the rule: open items classed `defect`, `safety`, `science`,
+  `refactor`, `perf` or as process work, and anything at `needs-decision`, are
+  cleared — `done`, or `dropped` with the reason — before milestone work
+  starts. `feature` and `planning` items are not debt. The list is frozen when
+  the milestone is scoped, so findings made while clearing go to the next gate
+  rather than extending this one; `P0` and safety- or science-classed findings
+  are the exceptions and re-enter immediately. Say which gate a piece of work
+  is inside when it matters.
 - **A new idea raised mid-task goes to the roadmap, not into the work.** The
   owner generates ideas faster than any queue absorbs them, and has asked to
   be kept on task when one arrives in the middle of something else. So say
