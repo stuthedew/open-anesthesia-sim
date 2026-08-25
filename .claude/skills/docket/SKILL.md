@@ -40,14 +40,32 @@ detour unless the owner says so.
 Triggered by the owner describing something they want — a feature, a problem,
 a direction. **They describe the outcome; decomposing it is yours.**
 
-Never hand the decomposition back. Asking "which items should this be?" or
-"what should we call the feature?" or "which ones go in this release?" is
-asking them to do the job they are delegating. They should be able to say
-"the chart should let you scrub back through a run" and then hear nothing
-until there is a plan to react to.
+**Design first, items second. Do not create anything on first contact.** An
+idea arrives half-formed by nature, and the first exchange is where it changes
+shape most. Items written then get rewritten, re-scoped and deleted across the
+next three replies, which fills the queue's history with churn and buries the
+one version that mattered. Worse, "I created PL-A1B2, PL-C3D4" as a first
+response reads as a decision already taken, when what the owner wanted was to
+think it through.
 
-So: work out what the idea breaks into, name the feature, write each item with
-a brief a stranger could act on, and create them in one call.
+So the first reply proposes. It creates nothing.
+
+1. **Say what you understand the request to be**, in your own words. A misread
+   surfaces here, cheaply, or it surfaces after the work is done.
+2. **Ask what genuinely needs deciding** — the questions where different
+   answers produce different software. Ask them together so they can be
+   answered in one pass, and only the ones you cannot resolve from the code or
+   from sensible defaults.
+3. **Say how you would build it.** A few sentences of approach, and where it
+   touches the existing design. This is the part the owner is here for.
+4. **Propose the breakdown** — the items you would create, by title, with a
+   size each, and which are decisions rather than code. Proposed, not created.
+
+Then stop and let them react. Expect the shape to change; that is the point of
+proposing it. Iterate in conversation, where revising costs a sentence.
+
+**Create the items once the design has settled**, in one call, and say that is
+what you did:
 
 ```bash
 docket new --feature run-scrubbing \
@@ -56,29 +74,33 @@ docket new --feature run-scrubbing \
   "Decide what the readouts show while scrubbed away from now"
 ```
 
-Then report the approach *and* the shape, in that order:
+Never hand the decomposition back. Working out what the idea breaks into,
+naming the feature and writing the briefs is the job being delegated — asking
+"which items should this be?" or "what should we call the feature?" returns it.
+Propose an answer and invite correction; do not ask an open question.
 
-> "The scrub control needs the run kept in memory, so the first item widens
-> the history buffer and the second hangs a control off the chart axis. The
-> third is a question rather than code — what the numeric readouts should say
-> when you are scrubbed away from now, since showing live values beside a past
-> chart is exactly the stale-context error the safety standard warns about.
->
-> Created PL-A1B2, PL-C3D4, PL-E5F6 — two small, one needing a decision."
+If the idea is one thing rather than several, it is one item, and it does not
+need a design round — say so and capture it. If it is genuinely a milestone —
+its own goal, scope and definition of done — say so and scope it in
+`ROADMAP.md` instead.
 
-A few sentences of *how* come first, because the owner wants to understand the
-design, not merely receive it. Item ids belong in the reply as references,
-never as something they have to supply, and never as a substitute for saying
-what the work actually is.
-
-If the idea is one thing rather than several, it is one item; do not inflate
-it. If it is genuinely a milestone — its own goal, scope and definition of
-done — say so and scope it in `ROADMAP.md` instead.
+**The exception is a session that is about to end with the thread open.** A
+design still under discussion when the session stops is lost like anything
+else, so capture what has been agreed as one untriaged item naming the open
+questions, rather than letting a good conversation evaporate.
 
 ## Mode: capture
 
-Triggered by the owner raising a passing thought, or by a finding this session
-makes that it will not fix.
+Triggered by the owner raising a passing thought they are not developing, or
+by a finding this session makes that it will not fix.
+
+**This is the opposite case to the one above, and the difference is whether a
+design conversation is happening.** A thought dropped in passing — "the
+induction curve looks wrong at low flows" — is captured immediately, because
+the owner has moved on and nothing is lost by recording it. An idea being
+worked through with you is not captured yet, because it is still changing. If
+unsure, ask yourself whether the next reply is likely to change what the item
+says: if it is, propose rather than create.
 
 ```bash
 docket new "The induction curve looks wrong at low flows"
