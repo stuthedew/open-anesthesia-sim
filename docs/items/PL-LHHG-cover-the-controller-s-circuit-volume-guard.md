@@ -53,3 +53,6 @@ The corrected command runs the whole suite with coverage scoped to the module,
 which measures exactly what this item is responsible for.
 
 **Done when.** The `verify:` command above passes and `make check` is green.
+
+**Worked.** Derived the known circuit agent amount from the public snapshot's
+volume and concentration fields.
