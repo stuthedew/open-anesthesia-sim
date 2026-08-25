@@ -9,7 +9,7 @@ feature: delegation
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-08-25
 closed: 2026-08-25
-commit: PENDING
+commit: 1ebd21f
 ---
 
 **Problem.** A passing check proves the check passed. It does not prove the
