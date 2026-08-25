@@ -248,3 +248,32 @@ def test_process_work_crowding_the_top_band_is_an_advisory() -> None:
     ]
 
     assert _has(analyze(band, TODAY).advisories, "outnumbers")
+
+
+def test_a_multiline_verify_command_is_rejected() -> None:
+    """A `verify:` that is not one command is a check nobody can reproduce."""
+    item = _item(verify="pytest\nmypy")
+    report = analyze([item], TODAY)
+    assert any("single-line command" in e for e in report.errors)
+
+
+def test_not_delegable_holding_a_boolean_is_rejected() -> None:
+    """The field holds the reason, not a flag; `not-delegable: no` reads as a grant.
+
+    Someone writing `not-delegable: no` almost certainly means "this is fine to
+    delegate", which the field cannot express and must not be read as. Rejecting
+    it outright is the only reading that cannot be silently wrong.
+    """
+    report = analyze([_item(not_delegable="no")], TODAY)
+    assert any("holds the reason" in e for e in report.errors)
+
+
+def test_a_verify_command_without_touches_is_rejected() -> None:
+    item = _item(verify="pytest tests/unit/test_x.py", touches=())
+    report = analyze([item], TODAY)
+    assert any("declares no `touches`" in e for e in report.errors)
+
+
+def test_a_verify_command_with_touches_is_accepted() -> None:
+    item = _item(verify="pytest tests/unit/test_x.py", touches=("tests/unit/test_x.py",))
+    assert analyze([item], TODAY).errors == []

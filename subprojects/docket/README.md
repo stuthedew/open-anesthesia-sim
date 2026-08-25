@@ -27,6 +27,7 @@ docket list                  # the queue, one line per item
 docket concurrent PL-K7QX    # what can be worked alongside it
 docket feature halted-step   # progress on one feature
 docket release v0.3.0        # verify, bump the version, write the notes
+docket verify PL-K7QX        # prove one item's work stayed in its commission
 docket check                 # validate the store; exits non-zero on errors
 ```
 
@@ -91,6 +92,11 @@ added: 2026-08-24
 **Done when.** The observable condition that closes it.
 ```
 
+Two optional fields govern whether the work may be handed to a cheaper model:
+`verify`, a single-line command that proves the item done, and `not-delegable`,
+holding the reason an otherwise-qualifying item is withheld. See *Delegation is
+derived, never granted* below.
+
 `status` runs `untriaged` → `ready` / `needs-decision` / `blocked` → `done` /
 `dropped`. Requirements scale with it: an untriaged capture needs only a
 title and a body, while anything past that is a commitment to do work and is
@@ -98,6 +104,61 @@ held to the standard that lets someone else pick it up cold. Closed items
 keep their files — `done` records the commit, `dropped` records the reason,
 because a finding dropped without one gets raised again by the next person
 who notices it.
+
+### Delegation is derived, never granted
+
+Work that a cheaper model can finish should go to one; work whose correctness
+rests on judgment should not. `docket` decides which is which from the item
+itself rather than from a label somebody applied.
+
+An item is delegable when all of: its `status` is `ready`; `model_guidance` is
+silent, which excludes safety- and science-classed work and open decisions by
+the rule that already governs model choice; it names a `verify` command; its
+`touches` is declared and lies wholly outside `protected_paths`; and its effort
+is `S` or `M`.
+
+There is no `delegable: yes`. The only writable control is `not-delegable`,
+which withholds an item that would otherwise qualify, so delegability can be
+taken away by hand and never granted by hand — a worker editing its own front
+matter can at worst refuse itself work. That asymmetry is the safeguard; a
+boolean flag would be a thing that could be set wrong, and set wrong in the
+permissive direction.
+
+`protected_paths` is the list a delegated item may never modify, whatever its
+check proves. A delegated item may add tests *about* those paths and may never
+edit them. The partition is absolute rather than overridable by a sufficiently
+good check, because "good enough" would be relitigated per item and the items
+where it would be relitigated are the consequential ones. It defaults to empty,
+and that default disables delegation entirely rather than permitting it
+everywhere: a project that has not said which of its files matter has not
+earned an unguarded lane.
+
+A `verify` command bounds what "done" means; it does not prove the work is
+right. It can be satisfied by the wrong route — a weakened assertion, an added
+suppression, an edit to the check itself. What makes the pair trustworthy is
+the check *plus* the declared scope, which is why an item naming a `verify`
+command and no `touches` is a validation error rather than a delegable item.
+
+### Verification is scoped, not just green
+
+`docket verify <id> --base <ref>` answers a narrower question than "do the
+tests pass": did the work that claims to close this item stay inside what the
+item declared? It runs the item's `verify` command and the project's own
+check, and it reads the diff for the ways a green build can be reached
+without doing the work — a file outside `touches`, a protected path, an edit
+to the gate itself, an added suppression, a deleted assertion, a rewritten
+front matter.
+
+The diff is scoped to the commits whose subject names the item, which is what
+one-commit-per-item buys: a batch branch carries several items' work, and each
+is judged on its own. Uncommitted changes are attributed to whatever is being
+verified rather than excused, and a base with nothing between it and `HEAD` is
+a failure rather than a vacuous pass.
+
+What it does not decide is whether the work is *right*. A new test can
+exercise the intended line and assert the wrong value, and nothing here can
+tell. The report says so on every run, because a tool that implied otherwise
+would be worse than no tool.
 
 ## What is checked, and what is left alone
 
@@ -126,6 +187,7 @@ process_classes = ["session-cost", "docs", "infra"]
 top_band_limit = 5
 untriaged_stale_days = 14
 minor_classes = ["feature"]
+protected_paths = []
 version_file = "pyproject.toml"
 ```
 

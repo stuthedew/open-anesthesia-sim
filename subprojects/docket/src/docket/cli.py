@@ -29,6 +29,7 @@ from .release import (
 )
 from .store import find_item, new_id, read_items, write_item
 from .vcs import branches_in_flight, in_flight_ids
+from .verify import verify
 
 CAPTURE_TEMPLATE = """**Problem.** {title}
 
@@ -79,7 +80,7 @@ def cmd_check(args: argparse.Namespace) -> int:
 def cmd_list(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    rendered = render.format_list(report, _flight(args))
+    rendered = render.format_list(report, _flight(args), config.protected_paths)
     if rendered:
         print(rendered)
     return 0
@@ -349,6 +350,25 @@ def cmd_release(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verify(args: argparse.Namespace) -> int:
+    """Prove one item's work stayed inside the commission it was given.
+
+    Exits non-zero when any check fails, so it can gate a worker's push as
+    well as inform a reviewer. The reviewer still reads the new code; what
+    this removes is the need to read the *whole diff* to find out whether
+    there is any new code they were not expecting.
+    """
+    _, items, config = _load(args)
+    item = find_item(items, args.item)
+    if item is None:
+        print(f"no item matching '{args.item}'")
+        return 1
+    root = args.items.parent if args.items else find_root()
+    report = verify(root, item, config, args.base)
+    print(report.describe())
+    return 0 if report.passed else 1
+
+
 def cmd_flight(args: argparse.Namespace) -> int:
     branches = branches_in_flight(find_root())
     if not branches:
@@ -419,6 +439,11 @@ def build_parser() -> argparse.ArgumentParser:
     release.add_argument("version", nargs="?", help="override the inferred version")
     release.add_argument("--dry-run", action="store_true")
     release.set_defaults(func=cmd_release)
+
+    verify_cmd = add("verify", "prove an item's work stayed inside its commission")
+    verify_cmd.add_argument("item")
+    verify_cmd.add_argument("--base", default="main", help="the ref the work branched from")
+    verify_cmd.set_defaults(func=cmd_verify)
 
     add("status", "the project at feature altitude").set_defaults(func=cmd_status)
     return parser
