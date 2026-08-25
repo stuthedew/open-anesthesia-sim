@@ -24,25 +24,43 @@ by mechanically incrementing the patch number.
 | v0.2.0 | Completed | Isoflurane and desflurane added as additional loadable volatile agents. |
 | v0.2.1 | Completed | Validation hotfix: the vaporizer maximum is enforced in the core and rejects rather than clamps, the agent MAC cross-check fails closed, and the cited reference-adult defaults reach the running app. |
 | v0.2.2 | Completed | Hardening and interface-provenance release on the same model: a failed step halts the run visibly instead of leaving it reading "Running", the parameter schemas reject unknown keys, agent selection carries its ISO 5360 identification color, and a dead non-conservative ventilation path is deleted. |
-| v0.2.3 | Completed / current baseline | Hardening and verification release on the same model: displayed concentrations are rounded to the resolution the solver actually supports, the chart payload is bounded and the render cadence decoupled from the simulation's, and the coupled dynamics are gated on an independent RK4 solution rather than on mass balance alone. Six further items rebuilt the development queue and swept the documentation. |
-
-| v0.2.3 | Completed | Phase 0 triage and release provenance. |
+| v0.2.3 | Completed | Hardening and verification release on the same model: displayed concentrations are rounded to the resolution the solver actually supports, the chart payload is bounded and the render cadence decoupled from the simulation's, and the coupled dynamics are gated on an independent RK4 solution rather than on mass balance alone. Six further items rebuilt the development queue, swept the documentation, and recorded release provenance. |
 | v0.2.4 | Completed / current baseline | Verification and delegation release on the same model: fourteen previously untested capacity and validation guards in the scientific core and the controller now have tests, `_halt_run`'s deliberate suppression is covered by a test rather than only a comment, and work whose success a command can prove can be handed to a cheaper model and verified in one step. |
 | v0.3.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.2.3
+## Current baseline: v0.2.4
 
-v0.2.3 is a hardening and verification release on the v0.2.0 model. Like the
-v0.2.1 and v0.2.2 releases before it, it changes no equation, parameter, or
+v0.2.4 is a verification and delegation release on the v0.2.0 model. Fourteen
+previously untested capacity and validation guards in the scientific core and
+the controller now have tests; `_halt_run`'s deliberate suppression is covered
+by a test rather than only a comment; and work whose success a command can
+prove can be handed to a cheaper model and verified in one step. Full notes
+are in `docs/releases/v0.2.4.md`.
+
+Like every release since v0.2.0 it changes no equation, parameter, or
 numerical method: `docs/MODEL.md`'s specification of the model is unchanged,
 and the v0.0.2 circuit and v0.1.0 sevoflurane reference tests still pass
-unaltered. That is why it is a patch beside v0.2.1 and v0.2.2 rather than a
-new minor: it crosses no model capability boundary — no new agent, no new
-physiology. It carries nine queue items, three of which reach the running
-application:
+unaltered. That is why it is a patch rather than a new minor — it crosses no
+model capability boundary, no new agent and no new physiology.
+
+**What the model currently is** is described under "The model as it stands"
+below, and does not change release to release while the patch series
+continues.
+
+### Release narrative
+
+The per-release detail below is history rather than current state, kept for
+the reasoning behind each change; the one-line item lists are in
+`docs/releases/`. Only the section heading above tracks which release is
+current, so adding a release means adding a paragraph here and editing one
+heading — not restating the baseline in three places, which is what left this
+file naming v0.2.3 as current two releases on (PL-SWFM).
+
+v0.2.3 was a hardening and verification release carrying nine queue items,
+three of which reach the running application:
 
 - **PL-040.** Concentrations were rendered to thousandths of a percentage
   point, but the shipped operator split disagrees with an independent
@@ -113,6 +131,8 @@ it; and the controller no longer keeps its own copies of the reference
 adult's cited ventilation and cardiac-output defaults, so the data file is
 what the app actually runs. The review harness that reproduces these findings
 is in `tools/review-verification/`.
+
+### The model as it stands
 
 The repository currently models patient uptake and distribution for
 sevoflurane, isoflurane, or desflurane: a constant-volume breathing circuit,

@@ -1,13 +1,14 @@
 ---
 id: PL-0RFH
 title: `docs/worker.md` buries the carve-out that lets a worker decide anything at all
-status: ready
+status: done
 priority: P2
 effort: S
 classes: defect, docs, session-cost
 feature: worker-instructions
 touches: docs/worker.md
 added: 2026-08-25
+closed: 2026-08-25
 ---
 
 **Problem.** `docs/worker.md` states the no-improvising rule at length and

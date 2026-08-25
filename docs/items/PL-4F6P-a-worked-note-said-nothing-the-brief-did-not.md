@@ -1,13 +1,14 @@
 ---
 id: PL-4F6P
 title: A `**Worked.**` note said "nothing the brief did not specify" for a test that reached into a private class
-status: ready
+status: done
 priority: P2
 effort: S
 classes: defect, docs, session-cost
 feature: worker-instructions
 touches: docs/worker.md, docs/items/PL-5BTB-cover-the-parameter-validators-four-rejection.md
 added: 2026-08-25
+closed: 2026-08-25
 ---
 
 **Problem.** PL-5BTB's tests reach into `parameters_module._AgentPayload` and
