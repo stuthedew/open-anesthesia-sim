@@ -1,6 +1,6 @@
 [project]
 name = "anesthesia-sim"
-version = "0.2.4"
+version = "0.2.5"
 description = "Open-source anesthesia simulation project"
 readme = "README.md"
 license = "Apache-2.0"
