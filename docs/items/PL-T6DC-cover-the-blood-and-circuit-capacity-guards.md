@@ -6,11 +6,12 @@ effort: S
 status: done
 classes: test, infra
 feature: core-guard-coverage
+milestone: v0.2.4
 touches: tests/unit/test_blood.py, tests/unit/test_circuit.py
-verify: uv run pytest --cov=anesthesia_sim.core.blood --cov=anesthesia_sim.core.circuit --cov-fail-under=100
 added: 2026-08-25
 closed: 2026-08-25
 commit: 486c3c4
+verify: uv run pytest --cov=anesthesia_sim.core.blood --cov=anesthesia_sim.core.circuit --cov-fail-under=100
 ---
 
 **Problem.** Two capacity guards never execute under the test suite.
