@@ -106,8 +106,8 @@ isoflurane dial position. `P1-1`'s two checks were fixed after that, by the
 exception-hierarchy and guarded-loop work, `P1-6` after that when the dead
 `advance_ventilation` method was deleted, and `P1-4` when the parameter-file
 schemas were made strict; seven of the harness's nine checks are now FIXED
-and two still reproduce. The work landed since v0.2.1 is released as
-v0.2.2.
+and two still reproduce. Those fixes shipped in v0.2.2; the current
+baseline is v0.2.3.
 
 Re-run after those fixes, `verify_physics.py` confirms all three physics
 claims and `verify_findings.py` reproduces the two checks behind the two
@@ -199,7 +199,19 @@ the `_build_derivative` / `_integrate_rk4` pair already in
 smaller job than maintaining a second copy of the oracle outside the suite.
 Parameterizing the one in the test file is PL-042's first step regardless.
 
-## Open thread: scenario branching, bookmarks, and what a snapshot is for - PL-X9R0, PL-WRKL, PL-RRWV, PL-PFM1, PL-JW30
+## Open thread: scenario branching, bookmarks, and what a snapshot is for - PL-DHV7, ROADMAP items 8, 11, 12 and 26
+
+**Where the work went, 2026-08-25.** Triaged after capture. Only PL-DHV7
+(MAC as a displayed unit) is startable against the code as it stands and
+stays in the queue. The other four items named below were promoted into
+`ROADMAP.md`'s planned milestones and dropped from the queue, each with its
+reason recorded in its file: PL-WRKL into item 8, PL-RRWV into items 11 and
+12, PL-JW30 into item 12 as a required property, PL-PFM1 into item 26 as one,
+and PL-X9R0 into item 26 itself. The measurements and reasoning below are
+what those roadmap entries were written from, and are kept here because a
+scoped milestone will need them again. The thread stays open until item 26 is
+scoped.
+
 
 Raised by the project owner 2026-08-25, as context behind an earlier
 suggestion (from a different assistant) that the simulation store periodic
@@ -257,16 +269,18 @@ any interval-snapshot scheme cannot be built, and neither can replay or
 export-with-provenance. `ROADMAP.md`'s planned-milestone order already
 encodes this - scenario events (8), save/load (9), replay (10), comparison
 (11), forking (12) - which is worth knowing before anyone reorders it.
-Recorded as PL-WRKL.
+Recorded as PL-WRKL, now `ROADMAP.md` item 8.
 
-**Two correctness traps, recorded so they are not discovered late.**
-PL-PFM1: a threshold bookmark must be tested every simulation step, not once
+**Two correctness traps, recorded so they are not discovered late,** and
+now carried as required properties of the roadmap items they constrain.
+PL-PFM1 (item 26): a threshold bookmark must be tested every simulation step, not once
 per rendered frame, or it overshoots by a speed-dependent amount and halts at
 a concentration other than the one asked for - which also makes any branch
-taken there unreproducible. PL-JW30: a branch created by resimulation while
+taken there unreproducible. PL-JW30 (item 12): a branch created by resimulation while
 its parent was simulated straight through can diverge from the parent
 *before* the branch point by floating-point rounding, which is precisely the
-divergence a strategy comparison is meant to rule out.
+divergence a strategy comparison is meant to rule out; it is a required
+property of item 12.
 
 **Bookmark set, settled 2026-08-25.** The owner names the reference
 simulator's two kinds as the floor: absolute time points, and percent of MAC
@@ -274,7 +288,7 @@ on *every* graphed compartment - circuit, alveolar, VRG, muscle, fat, venous -
 not the alveolar trace alone. The vendor documentation could not be checked
 from the capturing session (gasmanweb.com and its help mirror are both
 refused by the environment's network egress policy), so this is recorded as
-the owner's account rather than as a citation. Full detail in PL-X9R0.
+the owner's account rather than as a citation. Full detail in PL-X9R0, now `ROADMAP.md` item 26.
 
 That answers the MAC question by forcing it: MAC-per-compartment bookmarks
 cannot be built while MAC is internal-only, so making MAC a displayed unit

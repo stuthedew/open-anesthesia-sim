@@ -1,7 +1,7 @@
 ---
 id: PL-037
 title: Check the branch is current against `main` before starting an item
-priority: P1
+priority: P2
 effort: S
 status: ready
 classes: session-cost, infra
