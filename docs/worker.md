@@ -30,10 +30,14 @@ uv sync --locked --dev
 ## What you may work
 
 ```bash
-bin/docket list | grep delegable
+bin/docket list | grep ", delegable)"
 ```
 
-Only items marked `delegable`. Nothing else, whatever its priority. An item is
+Match the parenthesised mark, not the bare word: an item whose *title*
+mentions delegability would otherwise look like work you may take. (`docket
+delegable`, once PL-ZR1R lands, answers this without the grep.)
+
+Only items carrying that mark. Nothing else, whatever its priority. An item is
 marked delegable because a rule proved it safe to hand over — you may not
 promote one yourself, and there is deliberately no way to.
 
