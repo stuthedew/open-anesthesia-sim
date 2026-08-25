@@ -25,18 +25,9 @@ class AlveolarCompartment:
     agent_amount_l: float = 0.0
 
     def __post_init__(self) -> None:
-        require_positive_finite(
-            "gas_volume_l",
-            self.gas_volume_l,
-        )
-        require_nonnegative_finite(
-            "alveolar_ventilation_l_min",
-            self.alveolar_ventilation_l_min,
-        )
-        require_nonnegative_finite(
-            "agent_amount_l",
-            self.agent_amount_l,
-        )
+        require_positive_finite("gas_volume_l", self.gas_volume_l)
+        require_nonnegative_finite("alveolar_ventilation_l_min", self.alveolar_ventilation_l_min)
+        require_nonnegative_finite("agent_amount_l", self.agent_amount_l)
 
         if self.agent_amount_l > self.gas_volume_l:
             raise SimulationConfigurationError(
@@ -58,34 +49,19 @@ class AlveolarCompartment:
 
         return SECONDS_PER_MINUTE * self.gas_volume_l / self.alveolar_ventilation_l_min
 
-    def set_alveolar_ventilation(
-        self,
-        alveolar_ventilation_l_min: float,
-    ) -> None:
+    def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
         """Change ventilation without changing stored alveolar agent."""
 
-        require_nonnegative_finite(
-            "alveolar_ventilation_l_min",
-            alveolar_ventilation_l_min,
-        )
+        require_nonnegative_finite("alveolar_ventilation_l_min", alveolar_ventilation_l_min)
         self.alveolar_ventilation_l_min = alveolar_ventilation_l_min
 
-    def set_concentration_fraction(
-        self,
-        concentration_fraction: float,
-    ) -> None:
+    def set_concentration_fraction(self, concentration_fraction: float) -> None:
         """Set alveolar state from a concentration fraction."""
 
-        require_concentration_fraction(
-            "concentration_fraction",
-            concentration_fraction,
-        )
+        require_concentration_fraction("concentration_fraction", concentration_fraction)
         self.agent_amount_l = self.gas_volume_l * concentration_fraction
 
-    def apply_blood_uptake(
-        self,
-        blood_uptake_l: float,
-    ) -> None:
+    def apply_blood_uptake(self, blood_uptake_l: float) -> None:
         """Apply a signed alveolar-to-blood transfer.
 
         Positive values remove agent from alveolar gas.
@@ -95,10 +71,7 @@ class AlveolarCompartment:
         if not isinstance(blood_uptake_l, (int, float)):
             raise SimulationConfigurationError("blood_uptake_l must be a number")
 
-        require_nonnegative_finite(
-            "resulting_agent_amount_l",
-            self.agent_amount_l - blood_uptake_l,
-        )
+        require_nonnegative_finite("resulting_agent_amount_l", self.agent_amount_l - blood_uptake_l)
 
         resulting_amount_l = self.agent_amount_l - blood_uptake_l
 

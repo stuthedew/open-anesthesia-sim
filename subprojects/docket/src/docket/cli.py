@@ -19,14 +19,7 @@ from .config import Config
 from .config import load as load_config
 from .model import Item
 from .plan import features, recommend
-from .release import (
-    bump_version,
-    milestones,
-    read_version,
-    readiness,
-    release_notes,
-    stamp,
-)
+from .release import bump_version, milestones, read_version, readiness, release_notes, stamp
 from .store import find_item, new_id, read_items, write_item
 from .vcs import branches_in_flight, in_flight_ids
 from .verify import verify

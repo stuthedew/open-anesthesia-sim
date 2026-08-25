@@ -17,8 +17,7 @@ def _relative_luminance(hex_color: str) -> float:
 
 def _contrast_ratio(first: str, second: str) -> float:
     lighter, darker = sorted(
-        (_relative_luminance(first), _relative_luminance(second)),
-        reverse=True,
+        (_relative_luminance(first), _relative_luminance(second)), reverse=True
     )
     return (lighter + 0.05) / (darker + 0.05)
 
@@ -57,9 +56,7 @@ def test_agent_colors_match_iso_5360_2016_table_2() -> None:
 
 
 @pytest.mark.parametrize("scheme", AGENT_COLOR_SCHEMES.values())
-def test_every_agent_color_records_both_standard_references(
-    scheme: AgentColorScheme,
-) -> None:
+def test_every_agent_color_records_both_standard_references(scheme: AgentColorScheme) -> None:
     """Provenance must survive; an uncited fill cannot be re-verified later."""
 
     assert scheme.standard_color_name

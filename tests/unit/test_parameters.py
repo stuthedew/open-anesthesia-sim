@@ -22,11 +22,7 @@ def _valid_agent_payload() -> dict[str, object]:
         "id": "test-agent",
         "display_name": "Test Agent",
         "blood_gas_partition_coefficient": 0.5,
-        "tissue_gas_partition_coefficients": {
-            "vessel_rich": 1.0,
-            "muscle": 2.0,
-            "fat": 10.0,
-        },
+        "tissue_gas_partition_coefficients": {"vessel_rich": 1.0, "muscle": 2.0, "fat": 10.0},
         "max_delivered_concentration_percent": 8.0,
         "mac_percent": 2.0,
         "sources": [
@@ -50,18 +46,9 @@ def _valid_patient_payload() -> dict[str, object]:
         "default_alveolar_ventilation_l_min": 4.0,
         "default_cardiac_output_l_min": 5.0,
         "tissue_groups": {
-            "vessel_rich": {
-                "volume_l": 6.0,
-                "perfusion_fraction": 0.76,
-            },
-            "muscle": {
-                "volume_l": 33.0,
-                "perfusion_fraction": 0.18,
-            },
-            "fat": {
-                "volume_l": 14.5,
-                "perfusion_fraction": 0.06,
-            },
+            "vessel_rich": {"volume_l": 6.0, "perfusion_fraction": 0.76},
+            "muscle": {"volume_l": 33.0, "perfusion_fraction": 0.18},
+            "fat": {"volume_l": 14.5, "perfusion_fraction": 0.06},
         },
         "sources": [
             {
@@ -77,10 +64,7 @@ def test_payload_model_rejects_empty_string() -> None:
     payload = _valid_agent_payload()
     payload["id"] = " "
 
-    with pytest.raises(
-        PydanticValidationError,
-        match="must be a nonempty string",
-    ):
+    with pytest.raises(PydanticValidationError, match="must be a nonempty string"):
         parameters_module._AgentPayload.model_validate(payload)
 
 
@@ -88,10 +72,7 @@ def test_payload_model_rejects_noninteger_schema_version() -> None:
     payload = _valid_agent_payload()
     payload["schema_version"] = 1.0
 
-    with pytest.raises(
-        PydanticValidationError,
-        match="schema_version must be an integer",
-    ):
+    with pytest.raises(PydanticValidationError, match="schema_version must be an integer"):
         parameters_module._AgentPayload.model_validate(payload)
 
 
@@ -99,10 +80,7 @@ def test_payload_model_rejects_nonnumeric_positive_finite_value() -> None:
     payload = _valid_agent_payload()
     payload["blood_gas_partition_coefficient"] = "not a number"
 
-    with pytest.raises(
-        PydanticValidationError,
-        match="must be a number",
-    ):
+    with pytest.raises(PydanticValidationError, match="must be a number"):
         parameters_module._AgentPayload.model_validate(payload)
 
 
@@ -116,10 +94,7 @@ def test_payload_model_rejects_positive_fraction_above_one() -> None:
     assert isinstance(vessel_rich, dict)
     vessel_rich["perfusion_fraction"] = 1.1
 
-    with pytest.raises(
-        PydanticValidationError,
-        match="must not exceed 1",
-    ):
+    with pytest.raises(PydanticValidationError, match="must not exceed 1"):
         parameters_module._ReferenceAdultPayload.model_validate(payload)
 
 
@@ -200,11 +175,7 @@ def test_rejects_unknown_agent_id() -> None:
 
 
 def test_rejects_agent_file_with_mismatched_id(monkeypatch: Any) -> None:
-    monkeypatch.setitem(
-        parameters_module.AGENT_DATA_FILENAMES,
-        "sevoflurane",
-        "isoflurane.json",
-    )
+    monkeypatch.setitem(parameters_module.AGENT_DATA_FILENAMES, "sevoflurane", "isoflurane.json")
 
     with pytest.raises(SimulationConfigurationError, match="expected 'sevoflurane'"):
         load_agent_parameters("sevoflurane")
@@ -238,10 +209,7 @@ def test_rejects_nonfinite_partition_coefficient() -> None:
     payload = _valid_agent_payload()
     payload["blood_gas_partition_coefficient"] = float("nan")
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="blood_gas_partition_coefficient",
-    ):
+    with pytest.raises(SimulationConfigurationError, match="blood_gas_partition_coefficient"):
         parse_agent_parameters(payload)
 
 
@@ -249,10 +217,7 @@ def test_rejects_max_delivered_concentration_percent_over_100() -> None:
     payload = _valid_agent_payload()
     payload["max_delivered_concentration_percent"] = 150.0
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="max_delivered_concentration_percent",
-    ):
+    with pytest.raises(SimulationConfigurationError, match="max_delivered_concentration_percent"):
         parse_agent_parameters(payload)
 
 
@@ -260,10 +225,7 @@ def test_rejects_nonpositive_max_delivered_concentration_percent() -> None:
     payload = _valid_agent_payload()
     payload["max_delivered_concentration_percent"] = 0.0
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="max_delivered_concentration_percent",
-    ):
+    with pytest.raises(SimulationConfigurationError, match="max_delivered_concentration_percent"):
         parse_agent_parameters(payload)
 
 
@@ -359,10 +321,7 @@ def test_rejects_perfusion_fractions_that_do_not_sum_to_one() -> None:
     fat["perfusion_fraction"] = 0.05
     payload["tissue_groups"] = tissue_groups
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="perfusion fractions must sum to 1",
-    ):
+    with pytest.raises(SimulationConfigurationError, match="perfusion fractions must sum to 1"):
         parse_reference_adult_parameters(payload)
 
 
@@ -371,8 +330,7 @@ def test_rejects_missing_provenance() -> None:
     payload["sources"] = []
 
     with pytest.raises(
-        SimulationConfigurationError,
-        match="sources must contain at least one reference",
+        SimulationConfigurationError, match="sources must contain at least one reference"
     ):
         parse_agent_parameters(payload)
 
@@ -388,10 +346,7 @@ def test_rejects_unknown_top_level_agent_key() -> None:
     payload = _valid_agent_payload()
     payload["blood_gas_partitition_coefficient"] = 9.9
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="blood_gas_partitition_coefficient",
-    ):
+    with pytest.raises(SimulationConfigurationError, match="blood_gas_partitition_coefficient"):
         parse_agent_parameters(payload)
 
 

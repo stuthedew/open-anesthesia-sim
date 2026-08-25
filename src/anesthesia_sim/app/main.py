@@ -20,10 +20,7 @@ async def build_app(page: ft.Page) -> None:
     page.window.full_screen = True
 
     controller = SimulationController()
-    simulation_view = SimulationView(
-        page=page,
-        controller=controller,
-    )
+    simulation_view = SimulationView(page=page, controller=controller)
 
     simulation_view.mount()
     simulation_view.start_simulation_timer()

@@ -23,10 +23,7 @@ from collections.abc import Callable
 
 from _report import CONFIRMED, REGRESSED, Report, main_guard
 
-from anesthesia_sim.core.parameters import (
-    load_agent_parameters,
-    load_reference_adult_parameters,
-)
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.respiratory_system import RespiratorySystem
 
 SECONDS_PER_MINUTE = 60.0

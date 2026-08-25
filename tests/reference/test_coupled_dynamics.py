@@ -30,10 +30,7 @@ from pathlib import Path
 
 import pytest
 
-from anesthesia_sim.core.parameters import (
-    load_agent_parameters,
-    load_reference_adult_parameters,
-)
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.respiratory_system import RespiratorySystem
 
 SECONDS_PER_MINUTE = 60.0
@@ -92,23 +89,12 @@ EXACT_SOLUTION_FLOOR = 1e-12
 # Names this module is allowed to import from `anesthesia_sim`: the two
 # parameter loaders the oracle needs, and the system under test.
 ALLOWED_PACKAGE_IMPORTS = frozenset(
-    {
-        "load_agent_parameters",
-        "load_reference_adult_parameters",
-        "RespiratorySystem",
-    }
+    {"load_agent_parameters", "load_reference_adult_parameters", "RespiratorySystem"}
 )
 
 # State order for every vector in this module:
 # (F_C circuit, F_A alveolar, F_v mixed venous, F_vrg, F_mus, F_fat).
-STATE_LABELS = (
-    "circuit",
-    "alveolar",
-    "mixed venous",
-    "vessel rich",
-    "muscle",
-    "fat",
-)
+STATE_LABELS = ("circuit", "alveolar", "mixed venous", "vessel rich", "muscle", "fat")
 
 # The independent solution itself, pinned so that a later edit to the oracle
 # or to a parameter file cannot quietly move the reference the shipped core
@@ -264,11 +250,7 @@ def _build_derivative(agent_id: str) -> Derivative:
     return derivative
 
 
-def _integrate_rk4(
-    derivative: Derivative,
-    duration_s: float,
-    step_s: float,
-) -> tuple[float, ...]:
+def _integrate_rk4(derivative: Derivative, duration_s: float, step_s: float) -> tuple[float, ...]:
     """Integrate from an empty system with classical fourth-order RK."""
 
     state = [0.0] * 6
@@ -316,10 +298,7 @@ def _run_shipped(agent_id: str, duration_s: float, step_s: float) -> tuple[float
     )
 
 
-def _worst_state_error(
-    left: tuple[float, ...],
-    right: tuple[float, ...],
-) -> tuple[float, str]:
+def _worst_state_error(left: tuple[float, ...], right: tuple[float, ...]) -> tuple[float, str]:
     """Return the largest absolute difference and the state it is in."""
 
     differences = [abs(a - b) for a, b in zip(left, right, strict=True)]
@@ -330,24 +309,18 @@ def _worst_state_error(
 
 @pytest.mark.parametrize(("agent_id", "duration_s"), sorted(PINNED_REFERENCE_STATES))
 def test_independent_solution_matches_pinned_reference_states(
-    agent_id: str,
-    duration_s: float,
+    agent_id: str, duration_s: float
 ) -> None:
     """The oracle and its parameter inputs are both unchanged."""
 
     assert _reference_state(agent_id, duration_s) == pytest.approx(
-        PINNED_REFERENCE_STATES[(agent_id, duration_s)],
-        rel=1e-9,
-        abs=1e-15,
+        PINNED_REFERENCE_STATES[(agent_id, duration_s)], rel=1e-9, abs=1e-15
     )
 
 
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
 @pytest.mark.parametrize("duration_s", HORIZONS_S)
-def test_shipped_split_matches_independent_solution(
-    agent_id: str,
-    duration_s: float,
-) -> None:
+def test_shipped_split_matches_independent_solution(agent_id: str, duration_s: float) -> None:
     """Every state the interface displays is within the splitting bound.
 
     This is the check mass balance cannot make: a wrong transfer rate leaves
@@ -355,8 +328,7 @@ def test_shipped_split_matches_independent_solution(
     """
 
     error, state_label = _worst_state_error(
-        _run_shipped(agent_id, duration_s, SHIPPED_STEP_S),
-        _reference_state(agent_id, duration_s),
+        _run_shipped(agent_id, duration_s, SHIPPED_STEP_S), _reference_state(agent_id, duration_s)
     )
     bound = SPLITTING_ERROR_BOUND_PER_STEP_SECOND * SHIPPED_STEP_S
 

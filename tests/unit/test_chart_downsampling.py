@@ -8,10 +8,7 @@ curve the simulation never produced.
 
 import pytest
 
-from anesthesia_sim.app.chart_downsampling import (
-    first_index_at_or_after,
-    select_envelope_indices,
-)
+from anesthesia_sim.app.chart_downsampling import first_index_at_or_after, select_envelope_indices
 
 
 def _elapsed_s(time_s: float) -> float:

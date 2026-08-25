@@ -340,13 +340,29 @@ kept; it is paid for twice or silently dropped.
 ### What counts
 
 Debt is what the queue already records, minus new work. An open item is debt
-when it is classed `defect`, `safety`, `science`, `refactor`, `perf`, or as
-process work (`session-cost`, `docs`, `infra`), or when its status is
-`needs-decision` — an unanswered decision is debt whatever it is about.
+when it is classed `defect`, `safety`, `science`, `refactor` or `perf`, or when
+its status is `needs-decision` — an unanswered decision is debt whatever it is
+about.
 
 An item classed `feature` or `planning` is **not** debt. It is the work the
 gate exists to protect, and counting it would make the rule say "do everything
 before doing anything", which no gate can open.
+
+**Process work is debt once the mechanism is live, not before.** Building a new
+capability into the tooling is new work and does not hold a gate. A mechanism
+that `main` already depends on and that does not reliably work is debt, and is
+classed `defect` like any other defect — the class carries the rule, so there
+is nothing extra to track. The distinction is state, not layer: an unbuilt
+tooling idea costs nothing to carry, while a half-working mechanism the project
+is already running on charges interest every session, which is what debt means.
+Half-finished process machinery must not be in production use; either it is
+made to work reliably, or it is abandoned and removed.
+
+A caution the first pass through this got wrong: classing tooling breakage as
+`infra` rather than `defect` makes it indistinguishable from a capability
+nobody has built yet. `docket release` leaving `uv.lock` stale and breaking
+`make check` at every release is a defect; adding release tagging is not. If
+the class does not separate them, the gate cannot either.
 
 Clearing means `done` **or** `dropped` with the reason recorded. Deciding
 something is not worth doing is a legitimate way to clear it, and often the

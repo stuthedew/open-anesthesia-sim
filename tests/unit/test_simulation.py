@@ -42,23 +42,13 @@ def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
     assert state.patient.cardiac_output_l_min == 6.0
 
 
-@pytest.mark.parametrize(
-    "simulation_step_s",
-    [0.0, -0.1, float("nan")],
-)
-def test_rejects_invalid_simulation_step(
-    simulation_step_s: float,
-) -> None:
+@pytest.mark.parametrize("simulation_step_s", [0.0, -0.1, float("nan")])
+def test_rejects_invalid_simulation_step(simulation_step_s: float) -> None:
     with pytest.raises(SimulationConfigurationError):
         SimulationState().advance(simulation_step_s)
 
 
-@pytest.mark.parametrize(
-    "elapsed_s",
-    [-0.1, float("nan")],
-)
-def test_rejects_invalid_initial_elapsed_time(
-    elapsed_s: float,
-) -> None:
+@pytest.mark.parametrize("elapsed_s", [-0.1, float("nan")])
+def test_rejects_invalid_initial_elapsed_time(elapsed_s: float) -> None:
     with pytest.raises(SimulationConfigurationError):
         SimulationState(elapsed_s=elapsed_s)
