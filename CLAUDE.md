@@ -268,6 +268,17 @@ reason to load the skill:
     items once the shape has settled.
 - **Do not start an `L` item from a queue entry.** Promote it into a scoped
   `ROADMAP.md` milestone first, per the development rules there.
+- **A new idea raised mid-task goes to the roadmap, not into the work.** The
+  owner generates ideas faster than any queue absorbs them, and has asked to
+  be kept on task when one arrives in the middle of something else. So say
+  what it would displace, propose where it belongs — a specific phase, near a
+  specific item, with a reason — and let them place it. Do not silently file
+  it, and do not silently drop the current work to chase it. Two sentences,
+  then back to what was being done.
+
+  This is a nudge, not a gate. If they want to switch, switch: it is their
+  project and an idea that will not wait is sometimes the right thing to
+  follow. The obligation is to make the trade visible, not to enforce it.
 - **Close the loop back to the roadmap.** Intent parked there is only worth
   parking if something brings it back. When the queue thins out, or a release
   ships and the work that remains is small, say so and offer to scope the next
