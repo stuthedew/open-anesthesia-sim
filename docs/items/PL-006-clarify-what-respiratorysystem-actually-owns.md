@@ -51,6 +51,13 @@ circuit-volume conservation logic into core. Three parts:
    method that changes volume while preserving stored agent, and the
    controller calls it.
 
+4. `SimulationState` exposes `circuit`, `alveoli` and `patient` as properties
+   forwarding to the system it owns, so each of those objects has two reachable
+   paths. That is a second facade stacked on the one part 2 keeps, and it is
+   the redundant one: the setters hide composition behind an intention-revealing
+   verb, while these merely re-export attributes under shorter names. Drop them
+   and let callers reach `uptake_system.circuit`.
+
 The item originally offered dropping the setters *or* renaming, as
 alternatives. Dropping them cannot satisfy this item's own closing condition:
 the name is wrong independently of the setters, because the class still owns
