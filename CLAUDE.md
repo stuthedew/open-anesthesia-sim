@@ -174,9 +174,8 @@ them without the project virtualenv.
 
 ## The queue, and how the project owner works
 
-`docs/items/` is the queue: one file per item, read and written through the
-`docket` command (`make docket`, or `PYTHONPATH=subprojects/docket/src python3
--m docket <command>`). `ROADMAP.md` holds releases; `docs/WORKING_NOTES.md`
+`docs/items/` is the queue: one file per item, read and written through
+`bin/docket <command>`, which runs from a bare checkout with no virtualenv. `ROADMAP.md` holds releases; `docs/WORKING_NOTES.md`
 holds narrative behind open threads. The `docket` skill carries the workflows
 and `subprojects/docket/README.md` carries the item format. Invoke the skill
 rather than reconstructing either from here.

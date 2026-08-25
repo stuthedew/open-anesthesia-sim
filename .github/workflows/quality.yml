@@ -22,5 +22,5 @@ jobs:
       - run: uv run ruff check .
       - run: uv run mypy src
       - run: uv run pytest
-      - run: PYTHONPATH=subprojects/docket/src uv run python -m docket check
+      - run: bin/docket check
       - run: uv run python tools/doc_check.py check
