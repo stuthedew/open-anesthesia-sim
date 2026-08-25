@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: needs-decision
 classes: ux, feature
+feature: vaporizer-controls
 touches: docs/MODEL.md, src/anesthesia_sim/app/simulation_view.py
 added: 2026-08-24
 ---
