@@ -9,7 +9,7 @@ feature: delegation
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-25
 closed: 2026-08-25
-commit: PENDING
+commit: c7728e2
 ---
 
 **Problem.** PL-G3TG makes `docket list` mark delegable items, but reading them
