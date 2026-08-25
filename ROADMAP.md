@@ -253,12 +253,12 @@ record both agents' sourcing.
 
 ## Next milestone
 
-No milestone after v0.2.0 has been scoped yet. The next candidate, per
-"Planned milestones" below, is a modular anesthesia-machine abstraction
-with normal single-halogenated-agent interlock behavior — the safety
-baseline every later machine feature (agent switching, experimental
-overrides, direct injection, automated end-tidal control) builds on. It
-must be fully specified here (goal, required scope, definition of done,
+No milestone after v0.2.2 has been scoped yet. The next candidate, per
+"Development pathway" below, is generalizing the patient's state from one
+volatile agent to a set of simultaneously present substances — the change
+that agent switching, nitrous oxide, and the second-gas effect all wait on,
+and the one that decides how much refactoring intravenous agents cost later.
+It must be fully specified here (goal, required scope, definition of done,
 and explicit out-of-scope list) before implementation begins, per the
 development rules below.
 
@@ -278,15 +278,109 @@ development rules below.
   scoped release — or in `docs/items/` when they are a task rather
   than a release.
 
+## Development pathway
+
+The numbered list below is the catalogue; this is the order it is intended to
+be worked in, and why. Phases are groupings of intent, not scoped milestones —
+each item still has to be specified individually before implementation, per
+the development rules above.
+
+The organizing goal is a mature inhalational simulator before any intravenous
+work begins: the science first, then an interface that can actually drive it,
+then reproducibility, then IV.
+
+**Phase 0 — foundation.** No new feature work until the existing queue is
+closed out. Not because features are unwelcome, but because the last stretch
+of work felt like whack-a-mole, and it is worth being precise about why: the
+queue holds almost no defects. What it holds is decisions nobody has made.
+
+At the time this was written, nine of twenty-four open items sat at
+`needs-decision` — over a third of the queue could not be picked up by anyone,
+so it never visibly shrank however much work got done. That is the thing to
+fix before adding to it, because the same ratio applied to a larger queue is
+what makes a backlog stop meaning anything.
+
+"All bugs squashed" is not a closing condition, since absence of defects
+cannot be demonstrated. This one can be checked:
+
+- no open item classed `safety`, `science` or `defect`;
+- no open item classed only as process work (`session-cost`, `docs`, `infra`)
+  — the workflow is either finished or explicitly deferred;
+- no item left at `needs-decision`: each is answered and made `ready`, or
+  dropped with its reason recorded;
+- every outstanding branch merged and a release cut, so the tree is not
+  carrying half-landed work into Phase 1.
+
+Implementing a planned milestone during this phase is fine where it falls out
+of foundation work naturally. Starting one because it is more interesting than
+the queue is the thing being deferred.
+
+**Phase 1 — scientific maturity.** Generalize the patient's state from one
+agent to N simultaneously present substances, then items 6 and 7 (nitrous
+oxide, concentration and second-gas effects), then item 1 (machine abstraction
+with interlocks), then item 2 (agent switching with residual washout).
+
+The generalization leads because three separate items need the same thing:
+holding more than one substance at once, with per-substance kinetics. Agent
+switching needs the residual of the old agent while the new one washes in;
+nitrous oxide needs a second gas throughout; the second-gas effect needs the
+coupling between them. Doing it once, deliberately, is the difference between
+one design decision and three special cases.
+
+It also settles the intravenous question without a speculative abstraction.
+"A substance with compartmental kinetics and an effect site" is the same shape
+an intravenous agent needs, so IV becomes an extension rather than a rewrite —
+but only if the generalization is designed as substances rather than as
+"volatile agent, plus nitrous oxide as a special case". That framing is a
+requirement of this phase, not an optional nicety.
+
+Nitrous oxide sits before any interface work for two reasons: the second-gas
+effect is the phenomenon this class of simulator is most used to teach, so
+without it there is no credible inhalational simulator to build an interface
+on; and it changes the core equations, so an interface built on a single-gas
+core would be reworked when it lands.
+
+**Phase 2 — an interface that can drive the machine.** Consolidate the
+display constants named in item 24 first, then item 24 itself, then items 5,
+3 and 4 (end-tidal control, override mode, direct injection), then item 8
+(scenario events), item 20 (accessibility), and item 25 (playback speed).
+
+The consolidation leads because item 24 already names it as a prerequisite,
+and because every control added before it spreads the same scattered defaults
+further.
+
+**Phase 3 — reproducibility and comparison.** Items 9, 10, 11 and 12 in that
+order (save/load, deterministic replay, side-by-side comparison, forking).
+
+This phase is also groundwork, which is why it precedes intravenous work
+rather than following it. Save/load and forking both force the whole
+simulation state to be explicit and copyable, and that discipline is enforced
+by working features rather than by intention — a more reliable foundation for
+adding a drug subsystem than any abstraction designed in advance of one.
+
+**Phase 4 — intravenous agents.** Items 13, 14 and 15 (intravenous
+pharmacokinetics and effect site, hypnosis/eBIS, nociceptive response).
+
+**Alongside, as opportunity allows.** Items 21 and 22 (performance,
+documentation) are continuous rather than phased. Items 16 to 19
+(renal/hepatic dysfunction, cardiopulmonary bypass, ECMO, species profiles)
+and item 23 (packaging and distribution) are deliberately later: each is an
+extension of a mature model rather than a step toward one.
+
+**The known risk** is that Phase 1 front-loads the hardest work in the plan.
+Coupled-gas equations with reference cases are real scientific work and the
+most likely place to stall. That is accepted deliberately: every milestone
+built before the substance generalization is code written against the
+single-agent assumption, and would have to be revisited afterwards.
+
 ## Planned milestones
 
-This section is, in practice, the current milestone plan: with no
-milestone after v0.1.0 formally scoped yet (see "Next milestone" above),
-this ordering is what gets picked up next. Each item is still deliberately
+This section is the catalogue of intent; "Development pathway" above gives
+the order the items are intended to be worked in. Each item is deliberately
 left unspecified (no goal, required scope, or definition of done) until it
 is actually promoted into a scoped milestone per the development rules
 above — and each item is kept to one improvement, so scoping one does not
-implicitly drag others along with it. Exact version numbers after v0.1.0
+implicitly drag others along with it. Exact version numbers after v0.2.2
 remain provisional and must be assigned when each milestone is fully
 specified.
 
@@ -294,6 +388,8 @@ specified.
    single-halogenated-agent interlock behavior — the safety baseline every
    later machine feature below builds on.
 2. Add agent switching with residual washout accounting, after item 1.
+   Requires the multi-substance patient state described in "Development
+   pathway" — residual washout means holding two agents at once.
 3. Add an optional experimental-override mode that can bypass standard
    interlocks, clearly labeled as non-standard, after item 1.
 4. Add direct agent injection into the circuit, bypassing the vaporizer and
@@ -301,7 +397,10 @@ specified.
 5. Add automated end-tidal control (closed-loop titration to a target
    end-tidal concentration), after item 1.
 6. Add nitrous oxide coadministration as a second inhaled gas, only after
-   coupled-gas equations and reference cases are defined.
+   coupled-gas equations and reference cases are defined. Model the patient's
+   state as a set of substances rather than as a volatile agent with nitrous
+   oxide bolted on: the same generalization is what items 2 and 7 need, and
+   what decides whether item 13 is an extension or a rewrite.
 7. Add concentration and second-gas effects for coadministered gases, after
    item 6.
 8. Add scenario events (timed parameter or state changes during a run).
