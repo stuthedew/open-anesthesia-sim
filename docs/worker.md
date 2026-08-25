@@ -78,6 +78,11 @@ Breaking one silently is worse than not doing the item.
   make a check pass.
 - **Never delete or weaken an existing assertion.** If an existing test fails
   because of your change, your change is wrong.
+- **Never improvise a fix for something outside the work itself.** If a
+  `verify:` command errors, a tool misbehaves, the environment is wrong, or a
+  test fails for a reason the brief did not predict — do not diagnose it, do
+  not work around it, do not substitute a command you think was meant. Stop
+  and report it. See **When something errors** below.
 - **Never change an item's `status`.** Marking work done is the reviewer's,
   not yours.
 - **Never assert a value you observed rather than one the brief specified.**
@@ -85,12 +90,53 @@ Breaking one silently is worse than not doing the item.
   disagrees with the brief, that is a finding to capture — not a test to bend
   until it passes.
 
+## When something errors
+
+**Do not improvise. This is the rule most likely to be broken, because
+improvising looks like competence.**
+
+Working around a broken thing is the right instinct almost everywhere else,
+and it is wrong here. You were given this work because a command proves it
+correct. The moment you substitute your own judgment for that command — a
+different coverage target, a looser assertion, a skipped step, an adjusted
+expectation — the proof is gone, and nothing downstream can tell that it is
+gone. A worked-around item that reports success is worse than a blocked one,
+because the blocked one is honest.
+
+So, when any of these happens:
+
+- the item's `verify:` command errors, reports nothing, or cannot be run;
+- a test fails for a reason the brief did not predict;
+- `make check` fails for something you did not cause;
+- setup, tooling, or the environment misbehaves;
+- doing the item appears to require editing a file outside its `touches`;
+- the code disagrees with what the brief says it does;
+
+**stop that item and report it.** Do not attempt a fix, a substitution, or a
+diagnosis beyond naming what you observed.
+
+The one thing you *should* fix without asking is your own work in progress: a
+typo in a test you just wrote, an import you forgot, a name you got wrong.
+That is doing the item, not working around it. The distinction is whether the
+thing you are changing is yours — code you wrote for this item, inside its
+`touches` — or someone else's: the brief, the command, the tooling, the
+existing tests, the environment.
+
+If you are unsure which side of that line you are on, you are on the far side.
+Stop.
+
 ## When a brief is unclear
 
 **Stop. Do not guess.**
 
-Add a `**Blocked.**` line to the item's file naming exactly what is ambiguous,
-commit that, and move to the next item. Leave the rest of the item alone.
+Add a `**Blocked.**` line to the item's file naming exactly what is ambiguous
+— or, for an error, exactly what you ran and exactly what came back. Commit
+that and move to the next item. Leave the rest of the item alone.
+
+Report what you observed, not what you concluded. "`--cov` reported no data"
+is useful. "The coverage target is probably meant to be a dotted module" is a
+guess, and a reviewer acting on it inherits your guess without knowing they
+have.
 
 This is the most important instruction here. A brief that turns out to be
 underspecified is a cheap problem — one sentence fixes it. A guess that
@@ -120,3 +166,8 @@ lazy one.
 
 Report the branch name, which items are on it, which you left blocked and why,
 and anything you captured.
+
+**Blocking is a good outcome, not a failed run.** An item you stopped on costs
+one sentence to unblock. An item you improvised through costs a wrong test
+that passes its check, which may not be found at all. If a run ends with
+everything blocked and nothing done, you have done the job correctly.
