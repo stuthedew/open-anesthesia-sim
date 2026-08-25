@@ -1,13 +1,14 @@
 ---
 id: PL-R0SR
 title: `docs/worker.md` should say that corrections arrive by pulling the branch, never in chat
-status: ready
+status: done
 priority: P2
 effort: S
 classes: defect, docs, session-cost
 feature: worker-instructions
 touches: docs/worker.md
 added: 2026-08-25
+closed: 2026-08-25
 ---
 
 **Problem.** `docs/worker.md` tells a worker to run the item's `verify:`
