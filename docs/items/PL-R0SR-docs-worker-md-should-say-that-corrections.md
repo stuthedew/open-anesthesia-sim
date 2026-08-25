@@ -1,7 +1,12 @@
 ---
 id: PL-R0SR
 title: `docs/worker.md` should say that corrections arrive by pulling the branch, never in chat
-status: untriaged
+status: ready
+priority: P2
+effort: S
+classes: docs, session-cost
+feature: worker-instructions
+touches: docs/worker.md
 added: 2026-08-25
 ---
 

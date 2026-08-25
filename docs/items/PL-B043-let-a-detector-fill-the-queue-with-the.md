@@ -1,7 +1,11 @@
 ---
 id: PL-B043
 title: Let a detector fill the queue with the mechanical findings nobody thinks to file
-status: untriaged
+status: needs-decision
+priority: P2
+effort: M
+classes: infra, session-cost
+touches: tools/
 added: 2026-08-25
 ---
 
