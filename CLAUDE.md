@@ -253,8 +253,26 @@ reason to load the skill:
   criteria.
 - **`P0` items are hotfixes.** Before feature work, on their own branch, with
   a patch version bump and a regression test.
+- **Capture intent, and route it by how ready it is.** What the owner says
+  they want always gets recorded; where it goes depends on whether it can be
+  acted on:
+  - A **specific change** — a code tweak, a defect, a named improvement — is a
+    queue item, written now. It is already actionable, so nothing is gained by
+    deferring it.
+  - A **feature wanted but not yet ready to build** goes to `ROADMAP.md`'s
+    "Planned milestones" as one line of intent, not into the queue. It is
+    deliberately left unscoped there. Filing it as an `L` queue item instead
+    puts something in the work queue that cannot be worked, and it sits at the
+    bottom being skipped by every session that reads past it.
+  - A **feature being designed right now** gets the design round above, then
+    items once the shape has settled.
 - **Do not start an `L` item from a queue entry.** Promote it into a scoped
   `ROADMAP.md` milestone first, per the development rules there.
+- **Close the loop back to the roadmap.** Intent parked there is only worth
+  parking if something brings it back. When the queue thins out, or a release
+  ships and the work that remains is small, say so and offer to scope the next
+  planned milestone into items — that is the moment the design round is worth
+  spending on, and nobody else is going to notice it has arrived.
 - **Answer "what should we work on next?" at feature altitude.** `bin/docket
   status` groups the project the way a decision is actually made — what is
   underway, what has not started, what is individually urgent. Lead with that,
@@ -264,7 +282,17 @@ reason to load the skill:
   describes something they want, working out what it breaks into, naming the
   feature and writing the briefs is the job being delegated. Do not ask which
   items it should become, what the feature should be called, or which items
-  belong in a release. Report the shape once there is one.
+  belong in a release. Propose an answer and invite correction.
+- **Design first, items second.** A described feature gets a proposal, not a
+  receipt: what the request is understood to be, what genuinely needs
+  deciding, how it would be built, and what it would break into — items named
+  and sized but not created. Create them once, after the shape has settled.
+  An idea changes most in its first exchange, and items written before that
+  get rewritten and deleted across the next three replies, filling the queue's
+  history with churn. This does not touch the capture rule above: a thought
+  raised in passing is recorded immediately, because nothing about it is still
+  moving. The test is whether the next reply is likely to change what the item
+  would say.
 - **Offer the release; do not wait to be asked.** The digest says when
   finished work has accumulated. `bin/docket release` takes no arguments and
   infers the version, so there is nothing for the owner to look up — say what
