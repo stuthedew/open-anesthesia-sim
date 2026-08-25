@@ -50,7 +50,14 @@ def find_root(start: Path | None = None) -> Path:
 
 
 def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
-    root = find_root()
+    """Resolve the store and the settings that govern it.
+
+    Settings come from beside the store, not from wherever the command was
+    run. Pointing `--items` at another project's queue and silently applying
+    this project's policy to it would be wrong in exactly the way that is hard
+    to notice - the answers look right and are governed by the wrong rules.
+    """
+    root = args.items.parent if args.items else find_root()
     config = load_config(root)
     directory = args.items or (root / config.items_dir)
     return directory, read_items(directory), config
@@ -83,7 +90,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
     if not items:
         return 0
     report = analyze(items, args.today or date.today(), config)
-    root = find_root()
+    root = args.items.parent if args.items else find_root()
     ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
     rendered = render.format_digest(report, _flight(args), ready)
     if rendered:
@@ -208,7 +215,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     """The project at feature altitude, plus whether a release is worth cutting."""
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    root = find_root()
+    root = args.items.parent if args.items else find_root()
     ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
     rendered = render.format_status(report, ready, _flight(args))
     print(rendered if rendered else "Nothing open.")
@@ -290,14 +297,27 @@ def cmd_release(args: argparse.Namespace) -> int:
     is only as complete as somebody's memory of what to put in it, and the
     store already knows exactly which finished work has not gone out.
     """
-    root = find_root()
     directory, items, config = _load(args)
+    root = args.items.parent if args.items else find_root()
     current = read_version(root / config.version_file)
     ready = readiness(items, current, config.minor_classes)
 
     if not ready.shippable:
         print(f"Nothing to release: no finished work since {current}.")
         return 0
+
+    if args.version is None and config.version_policy == "manual":
+        print(f"{len(ready.shippable)} finished item(s) since {current}:")
+        for item in ready.shippable:
+            print(f"  {item.identifier} {item.title}")
+        if ready.completed_features:
+            print(f"Completes: {', '.join(ready.completed_features)}")
+        print(
+            f"\nThis project chooses versions by the capability boundary a release "
+            f"crosses, not by incrementing. Name the version to cut it "
+            f"(mechanical guess, for reference only: {ready.suggested_version})."
+        )
+        return 1
 
     version = (args.version or ready.suggested_version).lstrip("v")
     name = f"v{version}"

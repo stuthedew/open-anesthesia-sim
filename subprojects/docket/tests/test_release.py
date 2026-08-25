@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from docket.model import Item
 from docket.release import (
     bump_version,
@@ -136,3 +138,17 @@ def test_stamping_records_the_release_without_touching_anything_else() -> None:
     assert stamped.milestone == "v0.2.3"
     assert stamped.status == "done"
     assert stamped.commit == "abc1234"
+
+
+def test_a_missing_version_file_reads_as_no_version(tmp_path: Path) -> None:
+    """A store can be consulted on its own, away from any project."""
+    assert read_version(tmp_path / "absent.toml") == ""
+
+
+def test_bumping_a_missing_version_still_fails_loudly(tmp_path: Path) -> None:
+    """Reading tolerates absence; writing a version that is not there does not."""
+    target = tmp_path / "no-version.toml"
+    target.write_text('[project]\nname = "x"\n', encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        bump_version(target, "0.3.0")

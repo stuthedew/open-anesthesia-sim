@@ -22,3 +22,8 @@ untriaged_stale_days = 14
 minor_classes = ["feature"]
 
 version_file = "pyproject.toml"
+
+# ROADMAP.md: "The next release number is chosen for the capability boundary it
+# crosses, not by mechanically incrementing the patch number." So the version is
+# named by a person; the tool refuses to invent one.
+version_policy = "manual"
