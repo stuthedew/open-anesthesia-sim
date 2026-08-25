@@ -9,7 +9,7 @@ feature: delegation
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_config.py, subprojects/docket/README.md, docket.toml
 added: 2026-08-25
 closed: 2026-08-25
-commit: e5e8d81
+commit: f89bf05
 ---
 
 **Problem.** An item states what "done" means in prose, under **Done when.**,
