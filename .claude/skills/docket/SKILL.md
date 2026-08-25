@@ -94,6 +94,26 @@ something anyone could pick up. `ROADMAP.md` keeps such items deliberately
 unspecified — no goal, no scope, no definition of done — until someone is
 ready to scope one, which is exactly the right shape for intent.
 
+## Mode: an idea arrives mid-task
+
+Triggered by the owner raising a new feature while something else is underway.
+
+Ideas arrive faster than they can be built, and the owner has asked to be kept
+on task rather than followed down each one. Neither dropping the current work
+nor quietly filing the idea is right — the first loses the thread, the second
+loses the idea's placement to a decision they never got to make.
+
+> "That fits — I'd put it in Phase 2, next to the settings panel, since it is
+> the same consolidation problem. Parking it there unless you want it sooner;
+> we are two items from finishing the halted-step decision."
+
+Name where it would go and why, say what it would displace, and go back to
+what you were doing. Place it on the roadmap once they agree.
+
+**This is a nudge, not a gate.** If they want to switch, switch — it is their
+project, and an idea that will not wait is sometimes the one to follow. The
+obligation is to make the trade visible, not to win it.
+
 ## Mode: bring the roadmap back into the queue
 
 Triggered by the queue thinning out, by a release shipping with little left

@@ -289,6 +289,32 @@ The organizing goal is a mature inhalational simulator before any intravenous
 work begins: the science first, then an interface that can actually drive it,
 then reproducibility, then IV.
 
+**Phase 0 — foundation.** No new feature work until the existing queue is
+closed out. Not because features are unwelcome, but because the last stretch
+of work felt like whack-a-mole, and it is worth being precise about why: the
+queue holds almost no defects. What it holds is decisions nobody has made.
+
+At the time this was written, nine of twenty-four open items sat at
+`needs-decision` — over a third of the queue could not be picked up by anyone,
+so it never visibly shrank however much work got done. That is the thing to
+fix before adding to it, because the same ratio applied to a larger queue is
+what makes a backlog stop meaning anything.
+
+"All bugs squashed" is not a closing condition, since absence of defects
+cannot be demonstrated. This one can be checked:
+
+- no open item classed `safety`, `science` or `defect`;
+- no open item classed only as process work (`session-cost`, `docs`, `infra`)
+  — the workflow is either finished or explicitly deferred;
+- no item left at `needs-decision`: each is answered and made `ready`, or
+  dropped with its reason recorded;
+- every outstanding branch merged and a release cut, so the tree is not
+  carrying half-landed work into Phase 1.
+
+Implementing a planned milestone during this phase is fine where it falls out
+of foundation work naturally. Starting one because it is more interesting than
+the queue is the thing being deferred.
+
 **Phase 1 — scientific maturity.** Generalize the patient's state from one
 agent to N simultaneously present substances, then items 6 and 7 (nitrous
 oxide, concentration and second-gas effects), then item 1 (machine abstraction
