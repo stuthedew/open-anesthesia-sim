@@ -27,6 +27,7 @@ docket list                  # the queue, one line per item
 docket concurrent PL-K7QX    # what can be worked alongside it
 docket feature halted-step   # progress on one feature
 docket release v0.3.0        # verify, bump the version, write the notes
+docket verify PL-K7QX        # prove one item's work stayed in its commission
 docket check                 # validate the store; exits non-zero on errors
 ```
 
@@ -137,6 +138,27 @@ right. It can be satisfied by the wrong route — a weakened assertion, an added
 suppression, an edit to the check itself. What makes the pair trustworthy is
 the check *plus* the declared scope, which is why an item naming a `verify`
 command and no `touches` is a validation error rather than a delegable item.
+
+### Verification is scoped, not just green
+
+`docket verify <id> --base <ref>` answers a narrower question than "do the
+tests pass": did the work that claims to close this item stay inside what the
+item declared? It runs the item's `verify` command and the project's own
+check, and it reads the diff for the ways a green build can be reached
+without doing the work — a file outside `touches`, a protected path, an edit
+to the gate itself, an added suppression, a deleted assertion, a rewritten
+front matter.
+
+The diff is scoped to the commits whose subject names the item, which is what
+one-commit-per-item buys: a batch branch carries several items' work, and each
+is judged on its own. Uncommitted changes are attributed to whatever is being
+verified rather than excused, and a base with nothing between it and `HEAD` is
+a failure rather than a vacuous pass.
+
+What it does not decide is whether the work is *right*. A new test can
+exercise the intended line and assert the wrong value, and nothing here can
+tell. The report says so on every run, because a tool that implied otherwise
+would be worse than no tool.
 
 ## What is checked, and what is left alone
 
