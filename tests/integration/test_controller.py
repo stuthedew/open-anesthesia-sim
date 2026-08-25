@@ -271,6 +271,26 @@ def test_parameter_changes_do_not_reset_dynamic_state() -> None:
     assert after.delivered_concentration_fraction == 0.06
 
 
+def test_rejects_circuit_volume_below_stored_circuit_agent() -> None:
+    controller = SimulationController(
+        circuit_volume_l=1.0,
+        fresh_gas_flow_l_min=6.0,
+        delivered_concentration_fraction=0.08,
+    )
+    controller.start()
+    controller.advance(0.1)
+    snapshot = controller.snapshot()
+    circuit_agent_l = snapshot.circuit_volume_l * snapshot.circuit_concentration_fraction
+
+    assert circuit_agent_l > 0.0
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^circuit_volume_l is smaller than stored agent$",
+    ):
+        controller.set_circuit_volume(circuit_agent_l / 2.0)
+
+
 def test_a_failed_session_is_not_the_same_state_as_a_pause() -> None:
     """`is_running` alone cannot carry the difference, so the reason does.
 

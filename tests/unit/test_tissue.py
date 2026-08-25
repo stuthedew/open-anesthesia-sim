@@ -20,6 +20,49 @@ def _build_tissue(
     )
 
 
+def test_rejects_empty_tissue_name() -> None:
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^name must be a nonempty string$",
+    ):
+        TissueGroup(
+            name=" ",
+            volume_l=2.0,
+            perfusion_fraction=0.2,
+            blood_gas_partition_coefficient=0.5,
+            tissue_gas_partition_coefficient=2.0,
+        )
+
+
+def test_rejects_perfusion_fraction_above_one() -> None:
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^perfusion_fraction must not exceed 1$",
+    ):
+        TissueGroup(
+            name="test",
+            volume_l=2.0,
+            perfusion_fraction=1.1,
+            blood_gas_partition_coefficient=0.5,
+            tissue_gas_partition_coefficient=2.0,
+        )
+
+
+def test_rejects_agent_amount_above_tissue_capacity() -> None:
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^agent_amount_l exceeds the tissue capacity for a concentration fraction of 1$",
+    ):
+        TissueGroup(
+            name="test",
+            volume_l=2.0,
+            perfusion_fraction=0.2,
+            blood_gas_partition_coefficient=0.5,
+            tissue_gas_partition_coefficient=2.0,
+            agent_amount_l=4.1,
+        )
+
+
 def test_capacity_uses_volume_and_tissue_gas_coefficient() -> None:
     tissue = _build_tissue()
 
