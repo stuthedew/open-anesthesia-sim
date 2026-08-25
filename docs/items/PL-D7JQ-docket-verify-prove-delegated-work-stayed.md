@@ -45,6 +45,16 @@ brief naming the expected exception and message, by the protected partition
 bounding the blast radius, and by the reviewer reading the new test bodies —
 not by this command, and the command should not imply otherwise.
 
+**Note from PL-69J3.** Do not detect suppressions by string-matching `noqa`.
+PL-69J3 established that ten of this tree's `noqa` directives suppress nothing
+at all, because they name rules (`BLE`, `SLF`, `RUF`, the `S` family) that
+`[tool.ruff.lint] select` does not enable. A guard that flags added `noqa`
+text would therefore fire on directives ruff does not enforce, and miss a
+suppression written against a rule that *is* enabled. Key on the enabled
+ruleset — or let ruff answer it, via `--select RUF100` — rather than on the
+text. `# type: ignore`, `xfail` and `skip` are unaffected and can be matched
+directly.
+
 **Depends on.** PL-G3TG, which adds the `verify:` field this reads. Not
 `blocked-by`, since the store's blocked state is for work that cannot start;
 this is ordering within one feature.
