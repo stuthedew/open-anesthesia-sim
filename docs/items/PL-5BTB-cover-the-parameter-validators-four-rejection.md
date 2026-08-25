@@ -69,3 +69,23 @@ which measures exactly what this item is responsible for.
 **Done when.** The `verify:` command above passes and `make check` is green.
 
 **Worked.** Nothing the brief did not specify.
+
+**Correction to the `**Worked.**` note (2026-08-25, PL-4F6P).** That note is
+under-reported and is left above as written, since the record of what a run
+claimed is worth more than a tidied version of it. The tests reach into
+`parameters_module._AgentPayload` and `._ReferenceAdultPayload` — private
+classes — to exercise the four validator rejection paths. The brief did not
+specify that, so it belonged in the note.
+
+**The coupling itself is judged fine and left alone**, deliberately rather
+than by omission. The four guards are private field validators, and the public
+loader does not reach all four, so coverage of them is not obtainable through
+the public interface; testing them where they live is the honest option. The
+cost is a known one: these tests are coupled to two private names and will
+break if either is renamed. That is acceptable for a test whose whole purpose
+is to pin private validators, and a rename that breaks them is a rename that
+should be looked at.
+
+What went wrong was the reporting, not the decision — which is why PL-4F6P
+fixed how `docs/worker.md` describes the note rather than changing these
+tests.
