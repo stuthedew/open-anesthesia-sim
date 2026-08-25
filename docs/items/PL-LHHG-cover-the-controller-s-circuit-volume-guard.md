@@ -7,6 +7,7 @@ status: ready
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/integration/test_controller.py
+verify: uv run pytest tests/integration/test_controller.py --cov=src/anesthesia_sim/app/controller.py --cov-fail-under=100
 added: 2026-08-25
 ---
 
@@ -33,11 +34,5 @@ catch a sequence of user actions, so the test should exercise that sequence.
 file outside `touches`. Classed `test, infra` rather than `safety` on purpose:
 the class describes the deliverable, which is a test file, not the subject
 matter it exercises.
-
-**Verify.** `uv run pytest tests/integration/test_controller.py --cov=src/anesthesia_sim/app/controller.py --cov-fail-under=100`
-
-This is the command that proves the item done. It moves to a `verify:`
-front-matter field once PL-G3TG lands; until then the store rejects the
-field, which is the checker working as intended.
 
 **Done when.** The `verify:` command above passes and `make check` is green.

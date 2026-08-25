@@ -7,6 +7,7 @@ status: ready
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_blood.py, tests/unit/test_circuit.py
+verify: uv run pytest tests/unit/test_blood.py tests/unit/test_circuit.py --cov=src/anesthesia_sim/core/blood.py --cov=src/anesthesia_sim/core/circuit.py --cov-fail-under=100
 added: 2026-08-25
 ---
 
@@ -35,12 +36,6 @@ changed. It is classed `test, infra` rather than `safety` on purpose: the
 class describes the deliverable, which is a test file, not the subject matter
 it exercises. Editing the guard itself would be safety work and a different
 item.
-
-**Verify.** `uv run pytest tests/unit/test_blood.py tests/unit/test_circuit.py --cov=src/anesthesia_sim/core/blood.py --cov=src/anesthesia_sim/core/circuit.py --cov-fail-under=100`
-
-This is the command that proves the item done. It moves to a `verify:`
-front-matter field once PL-G3TG lands; until then the store rejects the
-field, which is the checker working as intended.
 
 **Done when.** the `verify:` command above
 passes and `make check` is green.

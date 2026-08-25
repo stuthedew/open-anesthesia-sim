@@ -27,3 +27,23 @@ version_file = "pyproject.toml"
 # crosses, not by mechanically incrementing the patch number." So the version is
 # named by a person; the tool refuses to invent one.
 version_policy = "manual"
+
+# Paths a delegated item may never modify, whatever its check proves. These are
+# the files that produce clinically meaningful output: the scientific core, the
+# validated parameter data, and the model specification. A delegated item may
+# add tests *about* them and may never edit them, so no change to a displayed
+# value can land on a diff nobody read.
+#
+# The partition is absolute rather than overridable by a strong enough check.
+# "Allowed if the check is good enough" means relitigating the question per
+# item, and the items where it would be relitigated are the ones that compute
+# drug concentrations. Deleting a dead method in `core/` is excluded by this
+# even where the check would be sound; that cost is accepted deliberately.
+#
+# Leaving this empty disables delegation entirely rather than permitting it
+# everywhere. See `Item.delegability`.
+protected_paths = [
+  "src/anesthesia_sim/core",
+  "src/anesthesia_sim/data",
+  "docs/MODEL.md",
+]

@@ -25,7 +25,7 @@ def _counts(report: Report) -> str:
     return ", ".join(f"{n} {p}" for p, n in counts.items())
 
 
-def _marks(item: Item, in_flight: set[str]) -> str:
+def _marks(item: Item, in_flight: set[str], protected: tuple[str, ...] = ()) -> str:
     marks = [m for m in (item.effort, item.status) if m]
     if item.milestone:
         marks.append(item.milestone)
@@ -33,10 +33,16 @@ def _marks(item: Item, in_flight: set[str]) -> str:
         marks.append("IN FLIGHT")
     if item.model_guidance is not None:
         marks.append(f"{item.model_guidance}, strongest model")
+    elif item.delegability(protected) is None:
+        marks.append("delegable")
     return ", ".join(marks)
 
 
-def format_list(report: Report, in_flight: set[str] | None = None) -> str:
+def format_list(
+    report: Report,
+    in_flight: set[str] | None = None,
+    protected_paths: tuple[str, ...] = (),
+) -> str:
     """One line per open item: the queue without the briefs."""
     flight = in_flight or set()
     if not report.open_items and not report.untriaged:
@@ -47,7 +53,8 @@ def format_list(report: Report, in_flight: set[str] | None = None) -> str:
     width = max((len(i.identifier) for i in ordered), default=0)
     for item in ordered:
         lines.append(
-            f"{item.priority} {item.identifier:<{width}} {item.title} ({_marks(item, flight)})"
+            f"{item.priority} {item.identifier:<{width}} {item.title} "
+            f"({_marks(item, flight, protected_paths)})"
         )
 
     if report.untriaged:

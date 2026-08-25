@@ -34,3 +34,15 @@ def test_a_project_can_require_the_version_to_be_named(tmp_path: Path) -> None:
     (tmp_path / "docket.toml").write_text('[docket]\nversion_policy = "manual"\n', encoding="utf-8")
 
     assert load(tmp_path).version_policy == "manual"
+
+
+def test_protected_paths_are_read_from_the_config(tmp_path: Path) -> None:
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nprotected_paths = ["src/core", "docs/MODEL.md"]\n', encoding="utf-8"
+    )
+    assert load(tmp_path).protected_paths == ("src/core", "docs/MODEL.md")
+
+
+def test_protected_paths_default_to_empty_which_disables_delegation(tmp_path: Path) -> None:
+    """Fail closed: a project that never configured the partition gets no lane."""
+    assert load(tmp_path).protected_paths == ()

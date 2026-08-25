@@ -3,11 +3,13 @@ id: PL-G3TG
 title: Add a `verify:` command to the item format and derive delegability from it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra, session-cost
 feature: delegation
-touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, docket.toml
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_config.py, subprojects/docket/README.md, docket.toml
 added: 2026-08-25
+closed: 2026-08-25
+commit: e5e8d81
 ---
 
 **Problem.** An item states what "done" means in prose, under **Done when.**,
@@ -32,7 +34,7 @@ format section.
 **First step.** Add two front-matter fields — `verify:`, a single-line shell
 command, and `delegable:`, which accepts only `no` — then write
 `Item.delegability` as a derived property. An item is delegable when all of:
-`status: ready`; a non-empty `verify:`; a non-empty `touches` wholly disjoint
+`status: done`; a non-empty `verify:`; a non-empty `touches` wholly disjoint
 from `config.protected_paths`; `effort` in `S`/`M`; no `model_guidance` (so
 safety- and science-classed work and open decisions are excluded by the rule
 that already exists); and no `delegable: no`.

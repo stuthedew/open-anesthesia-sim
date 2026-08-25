@@ -30,6 +30,14 @@ class Config:
     untriaged_stale_days: int = 14
     #: Classes that make a release a minor version bump rather than a patch.
     minor_classes: tuple[str, ...] = ("feature",)
+    #: Paths a delegated item may never modify, whatever its check proves.
+    #: Empty by default, and that default is fail-closed rather than
+    #: permissive: with nothing declared protected, no item is delegable at
+    #: all. A project that has not said which of its files produce
+    #: consequential output has not earned an unguarded delegation lane, and
+    #: defaulting the other way would hand one to every project that never
+    #: read this setting.
+    protected_paths: tuple[str, ...] = ()
     version_file: str = "pyproject.toml"
     #: How the next version is chosen. "infer" derives it from the classes of
     #: what shipped, which suits a project where a patch is a patch. "manual"
@@ -70,6 +78,7 @@ def load(root: Path) -> Config:
             section.get("untriaged_stale_days", defaults.untriaged_stale_days)
         ),
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
+        protected_paths=_tuple(section.get("protected_paths"), defaults.protected_paths),
         version_file=str(section.get("version_file", defaults.version_file)),
         version_policy=str(section.get("version_policy", defaults.version_policy)),
     )
