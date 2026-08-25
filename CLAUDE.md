@@ -264,7 +264,17 @@ reason to load the skill:
   describes something they want, working out what it breaks into, naming the
   feature and writing the briefs is the job being delegated. Do not ask which
   items it should become, what the feature should be called, or which items
-  belong in a release. Report the shape once there is one.
+  belong in a release. Propose an answer and invite correction.
+- **Design first, items second.** A described feature gets a proposal, not a
+  receipt: what the request is understood to be, what genuinely needs
+  deciding, how it would be built, and what it would break into — items named
+  and sized but not created. Create them once, after the shape has settled.
+  An idea changes most in its first exchange, and items written before that
+  get rewritten and deleted across the next three replies, filling the queue's
+  history with churn. This does not touch the capture rule above: a thought
+  raised in passing is recorded immediately, because nothing about it is still
+  moving. The test is whether the next reply is likely to change what the item
+  would say.
 - **Offer the release; do not wait to be asked.** The digest says when
   finished work has accumulated. `bin/docket release` takes no arguments and
   infers the version, so there is nothing for the owner to look up — say what
