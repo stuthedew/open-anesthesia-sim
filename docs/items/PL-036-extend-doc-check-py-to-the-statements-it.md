@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: needs-decision
 classes: docs, infra, session-cost
+feature: dev-tooling
 touches: docs/MODEL.md, tools/doc_check.py
 added: 2026-08-24
 ---

@@ -1,12 +1,10 @@
 ---
 id: PL-039
 title: Stop attributing band-level prose to the entry above it
-priority: P2
-effort: S
-status: ready
-classes: defect, infra
-touches: tests/unit/test_punch_list_tool.py, tools/punch_list.py
+status: dropped
 added: 2026-08-24
+closed: 2026-08-25
+reason: obsolete: the single-file parser it described was deleted with docs/PUNCH_LIST.md
 ---
 
 **Problem.** `tools/punch_list.py` ends an entry's body at the next `###` or

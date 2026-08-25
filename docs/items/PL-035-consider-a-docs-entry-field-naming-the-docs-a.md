@@ -5,7 +5,8 @@ priority: P2
 effort: S
 status: needs-decision
 classes: docs, infra, session-cost
-touches: .claude/skills/punch-list/SKILL.md, docs/PUNCH_LIST.md, tools/punch_list.py
+feature: dev-tooling
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, tools/doc_check.py
 added: 2026-08-24
 ---
 

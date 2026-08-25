@@ -5,7 +5,8 @@ priority: P1
 effort: S
 status: ready
 classes: session-cost, infra
-touches: .claude/skills/punch-list/SKILL.md, CLAUDE.md
+feature: dev-tooling
+touches: .claude/skills/docket/SKILL.md, CLAUDE.md
 added: 2026-08-24
 ---
 
