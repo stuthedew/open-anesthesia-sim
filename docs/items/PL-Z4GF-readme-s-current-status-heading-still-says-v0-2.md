@@ -3,10 +3,12 @@ id: PL-Z4GF
 title: README's Current status heading still says v0.2.3 while the shipped version is v0.2.4
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: README.md
 added: 2026-08-25
+closed: 2026-08-25
+commit: d40ff83
 ---
 
 **Problem.** README's Current status heading still says v0.2.3 while the shipped version is v0.2.4
