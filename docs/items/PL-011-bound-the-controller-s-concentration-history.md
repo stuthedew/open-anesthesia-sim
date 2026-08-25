@@ -23,5 +23,19 @@ digit MB.
 consumes all of it. If it is the record of a run (a future export or replay
 feature), it should stay complete and the fix is a documented ceiling with an
 explicit failure at the limit rather than silent trimming.
+**Owner input (2026-08-25).** Scenario run time will be capped rather than
+unlimited - 30 days as the working figure, revisable upward later. That
+settles the ceiling but not this item: at the fixed 0.1 s step, 30 days is
+25 920 000 samples, and a `SimulationHistorySample` measures 88 B as an
+object plus its floats (~256 B worst case, ~88 B if the floats are shared),
+so the cap bounds retention at roughly 2.3-6.6 GB. That is a bound in name
+only. The retention policy still has to be decided on its own terms, and the
+run-time cap should be enforced as an explicit halt with a stated reason
+rather than left implicit.
+
+**Now also feeds** the scenario-branching work (PL-WRKL, PL-RRWV): what the
+history retains determines which past points a run can be branched from
+exactly, so decide the retention policy before, not after, that design.
+
 **Done when.** Memory growth over a long run is bounded, or the retention
 policy is documented and deliberate rather than accidental.

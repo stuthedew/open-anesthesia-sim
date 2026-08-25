@@ -199,6 +199,81 @@ the `_build_derivative` / `_integrate_rk4` pair already in
 smaller job than maintaining a second copy of the oracle outside the suite.
 Parameterizing the one in the test file is PL-042's first step regardless.
 
+## Open thread: scenario branching, bookmarks, and what a snapshot is for - PL-X9R0, PL-WRKL, PL-RRWV, PL-PFM1, PL-JW30
+
+Raised by the project owner 2026-08-25, as context behind an earlier
+suggestion (from a different assistant) that the simulation store periodic
+history snapshots. Captured here because the mechanism and the goal came
+apart on inspection, and the reasoning should not have to be re-derived.
+
+**The goal.** Compare two managements of the *same* case without rebuilding
+the case. The owner's worked example: run three simulated hours, then wake
+the patient by turning the vaporizer off and coasting on low flow for fifteen
+minutes before opening the flows, and watch what the vessel-rich group does.
+Then go back to just before the coast, branch, and instead hold 0.5 MAC on
+normal flows until 3:15 before turning everything off - and compare time to
+the wake-up threshold. Same case, one variable, two curves. The wash-in
+equivalent is the same shape: branch at t=0 and compare low-flow/high-dial
+against high-flow/maintenance-dial.
+
+**How the owner expects it to be driven.** Bookmarks, in the Gas Man sense:
+set a target - an absolute simulated time, or a monitored concentration
+crossing a threshold ("VRG reaches 0.8 MAC") - run at high playback speed,
+and the run halts there. Build the case as a sequence of bookmark-to-bookmark
+fast-forwards, and branch at a bookmark. Branching from an arbitrary
+mid-interval time is the rare case, not the normal one. Sub-forks of forks
+are explicitly out of initial scope: one trunk, N branches off it.
+
+**The mechanism that was proposed, and why it does not survive contact.**
+Snapshot at fixed intervals; to reach an arbitrary point, restore the nearest
+prior snapshot and resimulate the remainder. The stated aim was to avoid
+duplicate simulation time - "storage rather than resimulation". Three
+measurements, taken 2026-08-25 against the code as it stands, put that
+trade-off somewhere other than where it was assumed to be:
+
+- *A snapshot is nearly free.* The complete dynamic state is six
+  concentrations (circuit, alveolar, mixed-venous, VRG, muscle, fat) plus
+  `elapsed_s` and the four control settings. That is about the size of one
+  `SimulationHistorySample` (88 B as an object). Snapshot density is not a
+  cost worth optimizing at this model size.
+- *Resimulation is nearly free too.* `SimulationState.advance` measures
+  8.9 us per 0.1 s step. Reconstructing a 3-hour run from t=0 costs about
+  1 s; 24 hours about 8 s. The interactive case the owner described would not
+  perceptibly benefit from a snapshot at all.
+- *The per-step history is the expensive thing.* 36 000 samples per simulated
+  hour, ~88-256 B each: single-digit MB per hour, ~2.3-6.6 GB at the 30-day
+  run-time cap the owner is considering. That is PL-011, and it is the
+  storage question that actually needs an answer.
+
+So the snapshot-interval design optimizes the cheap axis. It is not wrong,
+it is just not where the constraint is.
+
+**What the mechanism was missing.** Resimulating from a snapshot to an
+arbitrary later point requires re-applying the control inputs over that
+interval - and nothing currently records them. `SimulationController` records
+concentrations, never the fresh-gas-flow, vaporizer, ventilation, or cardiac
+output changes that produced them. Without that timeline the fallback path in
+any interval-snapshot scheme cannot be built, and neither can replay or
+export-with-provenance. `ROADMAP.md`'s planned-milestone order already
+encodes this - scenario events (8), save/load (9), replay (10), comparison
+(11), forking (12) - which is worth knowing before anyone reorders it.
+Recorded as PL-WRKL.
+
+**Two correctness traps, recorded so they are not discovered late.**
+PL-PFM1: a threshold bookmark must be tested every simulation step, not once
+per rendered frame, or it overshoots by a speed-dependent amount and halts at
+a concentration other than the one asked for - which also makes any branch
+taken there unreproducible. PL-JW30: a branch created by resimulation while
+its parent was simulated straight through can diverge from the parent
+*before* the branch point by floating-point rounding, which is precisely the
+divergence a strategy comparison is meant to rule out.
+
+**Open question for the owner**, not yet answered: whether MAC-denominated
+bookmarks ("0.8 MAC") are wanted before MAC is a first-class displayed
+quantity. `mac_percent` exists per agent in `core/parameters.py` and the
+agent data files, but MAC presentation was explicitly out of scope for
+v0.1.0.
+
 ## Aspirational: power-user custom agents (not scoped, not started)
 
 The project owner's stated future direction, raised while discussing
