@@ -5,10 +5,11 @@ priority: P1
 effort: M
 status: done
 classes: planning
+milestone: v0.2.5
 touches: ROADMAP.md
 added: 2026-08-23
-commit: 621d9a6
 closed: 2026-08-25
+commit: 621d9a6
 ---
 
 **Problem.** No milestone after v0.2.0 is scoped (v0.2.1 is a validation

@@ -1,11 +1,12 @@
 ---
 id: PL-0RFH
 title: `docs/worker.md` buries the carve-out that lets a worker decide anything at all
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, docs, session-cost
 feature: worker-instructions
+milestone: v0.2.5
 touches: docs/worker.md
 added: 2026-08-25
 closed: 2026-08-25
