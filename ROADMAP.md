@@ -219,6 +219,7 @@ capability and exists to clear the ground they are built on:
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
 | 1 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the 14 items outside that milestone's own scope, released as a minor by deliberate exception. | 2 M, 12 S |
+| — | **v0.3.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Placed here deliberately, ahead of the substance generalization that would otherwise force the vocabulary to be invented and restructured at once. Not yet scoped. | — |
 | 2 | **v0.4.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt the milestone clears itself. | 5 M, 6 S |
 | 3 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
 | 4 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
@@ -1191,6 +1192,43 @@ specified.
     kept out of the v0.4.0 scope because it is an addition rather than a
     prerequisite.
 
+29. Make `core/` read like the domain, as one deliberate pass over the whole
+    package rather than opportunistically. `CLAUDE.md` sets the bar — a
+    clinician who knows uptake and distribution should recognize the
+    physiology without a translation step — but it was written after most of
+    `core/` was, so it governs new code and has never been applied backwards.
+    The purpose is the project owner's own fluency in the code: reviewing the
+    coupled-gas equations of items 6 and 7 is the hardest scientific work on
+    this plan, and doing it against code that reads like the textbook is a
+    different task from doing it against code that does not.
+
+    *Placement (project owner, 2026-08-26).* After v0.3.0 and before v0.4.0.
+    Deliberately ahead of item 6's substance generalization rather than
+    after: that change restructures every compartment, and settling the
+    vocabulary first makes it a transformation of well-named code instead of
+    a renaming and a restructuring at once. The accepted cost is that some
+    of this is revisited when compartments become per-substance; what
+    survives is the convention, which is the part that is expensive to
+    invent twice.
+
+    *Not yet scoped, and three questions have to be answered before it is.*
+    What "reads like the domain" means concretely, beyond the one-line bar —
+    the likely spine is a mapping between `docs/MODEL.md` § "Symbols" and the
+    code's identifiers, since that table is already the project's own
+    notation. Whether equations belong *in* the code or are *cited* from it:
+    restating `docs/MODEL.md` in docstrings creates a second source of truth
+    that can drift, while a bare citation makes a five-line function
+    unreadable without a second document open, so the answer is probably
+    per-case and the citation is the part a check can verify. And how much
+    of the bar is decidable rather than judgment — unit suffixes in
+    identifiers and symbol-table coverage look checkable, in the spirit of
+    `tools/doc_check.py`, while "would a reader who knows the domain guess
+    this?" plainly is not.
+
+    No behavior, equation, parameter, or numerical method changes, so it
+    crosses no capability boundary and takes a patch version rather than a
+    minor, per "Versioning decision".
+
 Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
 milestone, delivered as v0.2.0 — see "Completed: v0.2.0" above — so it no
 longer appears here. Further volatile agents beyond isoflurane and desflurane (halothane,
@@ -1198,7 +1236,7 @@ enflurane, ether, xenon; not nitrous oxide, which is covered by items 6-7
 above) remain an unscoped later idea, to be added back here as its own item
 once someone is ready to scope it.
 
-None of items 1-26 mix scientific-core and UI/tooling concerns within a
+None of items 1-29 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
