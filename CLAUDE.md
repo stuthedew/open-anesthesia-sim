@@ -76,6 +76,19 @@ to consider, and nothing else:
   it has become a summary rather than a list of actions.
 - When there is genuinely nothing to act on, say that in one line rather than
   inventing items to fill the block.
+- **Every line must be actionable now. Nothing parked.** "Worth deciding
+  sometime", "consider at some point", "we should think about X eventually" —
+  none of these belong here. They read as items but cannot be acted on, so
+  they turn a list of actions into a list of obligations that never close,
+  and the genuinely actionable lines get skimmed past with them. When
+  something surfaces that is not yet actionable, there are exactly three
+  honest dispositions and they are all yours to pick, not the owner's:
+  decide it yourself if it is yours to decide; put it to them **now** as a
+  real decision, with a recommendation and enough context to answer in one
+  read; or record it and say you did. Filing a queue item is not a decision
+  the owner needs to make — the capture rule already says to do it and not
+  ask. Raising something in order to defer it is the one option that is not
+  available.
 - **Re-verify every carried-over item before repeating it.** An action that
   was outstanding earlier in the session may have been done since — by the
   owner, or on another branch. Repeating it from memory is the single most
