@@ -349,6 +349,22 @@ reason to load the skill:
   finished work has accumulated. `bin/docket release` takes no arguments and
   infers the version, so there is nothing for the owner to look up — say what
   shipped, what it completes, what the version would be, and ask.
+- **Never ask for a tag without pasting the commands.** `docket release`
+  stops short of tagging, so every release ends with the owner tagging by
+  hand. Asking them to "tag v0.2.5" makes them go and reconstruct three
+  commands; give the actual `git tag`/`git push` lines with the version and
+  the merge SHA already filled in. Every time, not only the first.
+- **Report gate progress after every completed item.** The owner is tracking
+  how far the current debt gate has left to run, not just whether the last
+  task landed. So close out any completed work with where the gate now
+  stands: how many of its frozen items are done, how many remain, and what
+  the remaining ones are — glossed, and grouped so the shape is visible
+  (what is blocked on the strongest model, what is cheap). Say the same for
+  the items the milestone clears itself, which are progress toward the same
+  end and are otherwise invisible. `PL-9CNQ` exists to make this computed
+  rather than transcribed; until it lands, this is done by hand and is
+  therefore worth checking against the item files rather than against the
+  last reply that stated it.
 - **Concurrency is ruled out, never certified.** `docket concurrent` proves
   two items will contend when their declared paths overlap. It cannot prove
   the reverse — an item with no declared overlap may still wander into a
