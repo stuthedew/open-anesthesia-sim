@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: session-cost, infra
-feature: dev-tooling
+feature: planning-cadence
 touches: subprojects/docket/src/docket/render.py, .claude/hooks/docket-digest.sh
 added: 2026-08-26
 ---

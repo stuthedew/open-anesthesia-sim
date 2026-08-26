@@ -60,6 +60,26 @@ MODEL = "\n".join(
     ]
 )
 
+ROADMAP = """# Roadmap
+
+## The plan
+
+### The timeline
+
+| # | Step | What it is | Size |
+| --- | --- | --- | --- |
+| 1 | **v0.3.0 \u2014 the foundation** | Gate 0. | 2 M |
+| \u2014 | **v0.3.x \u2014 a readability pass** | A patch, not a milestone. | \u2014 |
+| 2 | **v0.4.0 \u2014 the teachable case** | Scoped below. | 5 M |
+| 3 | **Gate 1** | Frozen when v0.5.0 is scoped. | \u2014 |
+| 4 | **v0.5.0 \u2014 the case you can branch** | Not yet scoped. | \u2014 |
+| \u2014 | **MVP complete** | Run, branch, compare. | \u2014 |
+
+## Planned milestones
+
+Nothing yet.
+"""
+
 README = """# Demo
 
 The simulation lives in `core/thing.py` and its parameters in
@@ -82,6 +102,7 @@ def _repo(
     architecture: str = ARCHITECTURE,
     model: str = MODEL,
     readme: str = README,
+    roadmap: str = ROADMAP,
     data: dict[str, object] | None = None,
     modules: tuple[str, ...] = ("core/thing.py",),
 ) -> Path:
@@ -107,6 +128,7 @@ def _repo(
     (root / "docs" / "ARCHITECTURE.md").write_text(architecture, encoding="utf-8")
     (root / "docs" / "MODEL.md").write_text(model, encoding="utf-8")
     (root / "README.md").write_text(readme, encoding="utf-8")
+    (root / "ROADMAP.md").write_text(roadmap, encoding="utf-8")
     return root
 
 
@@ -360,3 +382,133 @@ def test_candidates_mode_is_quiet_when_nothing_changed(
     root = _repo(tmp_path)
     assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
     assert "nothing to sweep" in capsys.readouterr().out
+
+
+# --- release train ----------------------------------------------------------
+
+
+def test_timeline_parses_every_row_of_the_fixture(tmp_path: Path) -> None:
+    steps, problems = doc_check.parse_timeline(ROADMAP)
+    assert problems == []
+    assert [step.kind for step in steps] == [
+        "milestone",
+        "patch-track",
+        "milestone",
+        "gate",
+        "milestone",
+        "marker",
+    ]
+    assert [step.version for step in steps if step.kind == "milestone"] == [
+        (0, 3, 0),
+        (0, 4, 0),
+        (0, 5, 0),
+    ]
+
+
+def test_a_gate_row_carries_no_version(tmp_path: Path) -> None:
+    """Gates deliberately have no version; reading one as a milestone would
+    invent a release that never ships."""
+    steps, _ = doc_check.parse_timeline(ROADMAP)
+    gate = next(step for step in steps if step.kind == "gate")
+    assert gate.version is None
+    assert gate.name == "1"
+
+
+def test_a_patch_track_row_is_not_read_as_a_milestone(tmp_path: Path) -> None:
+    """`v0.3.x` is a placeholder for patches, not a release to plan against."""
+    steps, _ = doc_check.parse_timeline(ROADMAP)
+    track = next(step for step in steps if step.kind == "patch-track")
+    assert track.version == (0, 3, -1)
+    assert track.ordinal is None
+
+
+def test_a_step_that_is_not_bold_is_an_error(tmp_path: Path) -> None:
+    roadmap = ROADMAP.replace("**Gate 1**", "Gate 1")
+    assert any("is not bold" in e for e in _errors(_repo(tmp_path, roadmap=roadmap)))
+
+
+def test_a_hyphen_typed_for_the_em_dash_is_an_error(tmp_path: Path) -> None:
+    """The separator is spelled out so this fails rather than passing as a
+    marker whose name happens to start with a version."""
+    roadmap = ROADMAP.replace("v0.4.0 \u2014 the teachable", "v0.4.0 - the teachable")
+    assert any("opens like a version" in e for e in _errors(_repo(tmp_path, roadmap=roadmap)))
+
+
+def test_a_truncated_version_is_an_error(tmp_path: Path) -> None:
+    roadmap = ROADMAP.replace("v0.4.0 \u2014", "v0.4 \u2014")
+    assert any("opens like a version" in e for e in _errors(_repo(tmp_path, roadmap=roadmap)))
+
+
+def test_milestones_out_of_order_are_an_error(tmp_path: Path) -> None:
+    roadmap = ROADMAP.replace("v0.5.0 \u2014 the case", "v0.2.0 \u2014 the case")
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    assert any("is not later than the milestone above it" in e for e in errors)
+
+
+def test_a_patch_track_under_the_wrong_milestone_is_an_error(tmp_path: Path) -> None:
+    roadmap = ROADMAP.replace("v0.3.x \u2014", "v0.9.x \u2014")
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    assert any("does not belong to v0.3" in e for e in errors)
+
+
+def test_step_numbers_out_of_order_are_an_error(tmp_path: Path) -> None:
+    roadmap = ROADMAP.replace("| 4 | **v0.5.0", "| 2 | **v0.5.0")
+    assert any("does not follow" in e for e in _errors(_repo(tmp_path, roadmap=roadmap)))
+
+
+def test_gates_out_of_order_are_an_error(tmp_path: Path) -> None:
+    roadmap = ROADMAP.replace("**Gate 1**", "**Gate 3**").replace(
+        "| \u2014 | **MVP complete** | Run, branch, compare. | \u2014 |",
+        "| 5 | **Gate 2** | Frozen later. | \u2014 |",
+    )
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    assert any("Gate 2 does not follow Gate 3" in e for e in errors)
+
+
+def test_an_unnumbered_marker_is_accepted(tmp_path: Path) -> None:
+    """ "MVP complete" is a boundary on the timeline, not a step, and must not
+    have to invent a version or a number to sit there."""
+    assert not any("MVP complete" in e for e in _errors(_repo(tmp_path)))
+
+
+def test_a_timeline_that_has_vanished_is_an_error(tmp_path: Path) -> None:
+    """A renamed or reformatted heading would otherwise disable the check
+    silently, which is the drift this tool exists to catch."""
+    roadmap = ROADMAP.replace("### The timeline", "### The schedule")
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    assert any("no timeline table found" in e for e in errors)
+
+
+def test_a_timeline_of_gates_alone_is_an_error(tmp_path: Path) -> None:
+    """A plan of gates with nothing to gate is not a plan, and would leave
+    `docket wave` with no version to report the project's position against."""
+    roadmap = """# Roadmap
+
+## The plan
+
+### The timeline
+
+| # | Step | What it is | Size |
+| --- | --- | --- | --- |
+| 1 | **Gate 1** | Frozen at some point. | \u2014 |
+| 2 | **Gate 2** | Frozen later. | \u2014 |
+"""
+    assert any("names no milestone version" in e for e in _errors(_repo(tmp_path, roadmap=roadmap)))
+
+
+def test_a_table_further_down_the_file_is_not_mistaken_for_the_timeline(tmp_path: Path) -> None:
+    """The search stops at the next heading, so an unrelated table below it
+    cannot smuggle rows into the plan."""
+    roadmap = (
+        ROADMAP
+        + """
+## Some other section
+
+| # | Step |
+| --- | --- |
+| 1 | not a step at all |
+"""
+    )
+    steps, problems = doc_check.parse_timeline(roadmap)
+    assert problems == []
+    assert len(steps) == 6

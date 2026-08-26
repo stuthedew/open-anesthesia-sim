@@ -174,7 +174,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-├── doc_check.py          # validates this map, MODEL.md's provenance table, and doc citations
+├── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, ROADMAP.md's release train
 └── review-verification/  # read-only harness reproducing the v0.2.0 architecture-review findings
 ```
 
@@ -192,6 +192,16 @@ stands for its whole subtree and is not expanded, and `__init__.py` is
 excluded throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
+
+It also holds `ROADMAP.md`'s release-train table to a row grammar: each step
+is a milestone carrying a version, a patch track, a numbered gate, or an
+unnumbered marker, and the versions, gates and step numbers must run in order.
+That table is the project's only statement of which milestone is current and
+which is next, so it has to be readable by a tool rather than only by a
+person — a hyphen typed for its em dash would otherwise reclassify a release
+as a marker, silently. What the rows *mean* is not checked and is not
+checkable: whether the prose beside a step is still true stays with the
+reader.
 
 ## Tests (`tests/`)
 
