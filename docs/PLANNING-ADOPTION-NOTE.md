@@ -1,0 +1,1 @@
+This temporary note is superseded by `docs/PLANNING.md`.
