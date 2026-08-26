@@ -3,8 +3,7 @@ id: PL-6G8C
 title: A docket wave command, so the current beat of the rolling-wave cadence is computed rather than recalled
 priority: P2
 effort: M
-status: blocked
-blocked-by: PL-RZ9Q
+status: ready
 classes: infra
 feature: planning-cadence
 touches: subprojects/docket, ROADMAP.md

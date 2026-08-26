@@ -284,7 +284,7 @@ notes, then commit and tag.
 
 1. Set `status: done`, record the `commit`, and set `closed`.
 2. **Sweep the docs.** `make doc-check` decides the package-map,
-   provenance-table, and dangling-citation questions outright, and
+   provenance-table, dangling-citation and release-train questions outright, and
    `python3 tools/doc_check.py candidates --base <ref>` prints the
    documentation lines mentioning anything the diff touched.
 

@@ -3,11 +3,13 @@ id: PL-RZ9Q
 title: Make ROADMAP's timeline table machine-readable and enforce the row shape in doc_check
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: planning-cadence
-touches: ROADMAP.md, tools/doc_check.py, tests/test_doc_check.py
+touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-08-26
+closed: 2026-08-26
+commit: ef18083
 ---
 
 **Problem.** `ROADMAP.md`'s timeline under "The plan" is the project's
@@ -57,3 +59,22 @@ those three are what an over-simple grammar gets wrong.
 **Context.** Design round with the project owner, 2026-08-26, adopting
 rolling-wave planning as an evolution of the existing roadmap rather than a
 new process document. Strategy chosen by the owner from three options.
+
+**Worked.** The table as written already satisfied a clean grammar, so no row
+was rewritten and no meaning changed — the work was to state the grammar and
+enforce it. `parse_timeline` reads all eleven rows of `ROADMAP.md`'s timeline
+into `TimelineStep` records; `check_timeline` reports breaches through the
+existing `Report`, so they fail `make check` alongside the other three checks.
+`_table_rows` gained a heading `level`, which is what lets a `###` table be
+read with the code the `##` provenance table already used.
+
+Two decisions worth recording. The em dash separator is spelled out in the
+grammar rather than matched loosely: a hyphen typed in its place would
+otherwise leave the row matching neither version form and falling through to
+"marker", silently reclassifying a release as a boundary. And a row that opens
+`v<digit>` but matches neither version form is a distinct error rather than a
+marker, which is what makes `v0.4` and `v0.4.0 - name` fail loudly.
+
+An absent `ROADMAP.md` is skipped; a present one with no readable timeline is
+an error, since a renamed heading would otherwise disable the check without
+saying so.
