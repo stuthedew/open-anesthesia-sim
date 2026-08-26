@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: infra
-feature: dev-tooling
+feature: planning-cadence
 touches: CLAUDE.md
 added: 2026-08-26
 ---
