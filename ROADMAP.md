@@ -16,6 +16,22 @@ The project uses milestone-based semantic versioning during early development.
 The next release number is chosen for the capability boundary it crosses, not
 by mechanically incrementing the patch number.
 
+**One deliberate exception, v0.3.0 (project owner, 2026-08-26).** That rule
+would make clearing Gate 0 a patch: it crosses no capability boundary — two
+safety fixes, four refactors, two tooling defects and a perf fix, after which
+the simulator does nothing it could not do before. It is nonetheless released
+as the minor v0.3.0, because clearing the inherited pre-MVP backlog is the
+boundary this project most needs to be able to point at, and a patch number
+would bury it.
+
+**This is an exception and not a precedent.** It applies to Gate 0 alone,
+which is unlike every gate that follows it: Gate 0 is the accumulated backlog
+from before the debt gate existed, twenty items deep, while Gate 1 onward hold
+the findings of a single milestone. Later gates ship *inside* the milestone
+they gate and take no version of their own — see "The cadence" under "The
+debt gate". Absent a further deliberate exception recorded here, the
+capability-boundary rule above governs.
+
 | Version | Status | Milestone |
 | --- | --- | --- |
 | v0.0.1 | Completed | Initial runnable prototype: deterministic simulation clock, controller/view separation, basic charting and controls, and project quality tooling. |
@@ -25,20 +41,23 @@ by mechanically incrementing the patch number.
 | v0.2.1 | Completed | Validation hotfix: the vaporizer maximum is enforced in the core and rejects rather than clamps, the agent MAC cross-check fails closed, and the cited reference-adult defaults reach the running app. |
 | v0.2.2 | Completed | Hardening and interface-provenance release on the same model: a failed step halts the run visibly instead of leaving it reading "Running", the parameter schemas reject unknown keys, agent selection carries its ISO 5360 identification color, and a dead non-conservative ventilation path is deleted. |
 | v0.2.3 | Completed | Hardening and verification release on the same model: displayed concentrations are rounded to the resolution the solver actually supports, the chart payload is bounded and the render cadence decoupled from the simulation's, and the coupled dynamics are gated on an independent RK4 solution rather than on mass balance alone. Six further items rebuilt the development queue, swept the documentation, and recorded release provenance. |
-| v0.2.4 | Completed / current baseline | Verification and delegation release on the same model: fourteen previously untested capacity and validation guards in the scientific core and the controller now have tests, `_halt_run`'s deliberate suppression is covered by a test rather than only a comment, and work whose success a command can prove can be handed to a cheaper model and verified in one step. |
-| v0.3.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
+| v0.2.4 | Completed | Verification and delegation release on the same model: fourteen previously untested capacity and validation guards in the scientific core and the controller now have tests, `_halt_run`'s deliberate suppression is covered by a test rather than only a comment, and work whose success a command can prove can be handed to a cheaper model and verified in one step. |
+| v0.2.5 | Completed / current baseline | Licensing, documentation and planning release: the project is licensed Apache-2.0, v0.3.0 through the MVP is scoped onto one timeline with its debt gates, Phase 0 is retired in favour of the standing debt gate, and `docs/worker.md` states what a delegated worker decides for itself. No source file changed. |
+| v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened to the whole settings envelope, the simulation step made transactional, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
+| v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.2.4
+## Current baseline: v0.2.5
 
-v0.2.4 is a verification and delegation release on the v0.2.0 model. Fourteen
-previously untested capacity and validation guards in the scientific core and
-the controller now have tests; `_halt_run`'s deliberate suppression is covered
-by a test rather than only a comment; and work whose success a command can
-prove can be handed to a cheaper model and verified in one step. Full notes
-are in `docs/releases/v0.2.4.md`.
+v0.2.5 is a licensing, documentation and planning release on the v0.2.0
+model, carrying seven items and changing no source file. The project is
+licensed Apache-2.0; v0.3.0 through the MVP is scoped onto one timeline with
+its debt gates ("The plan" below); Phase 0 is retired in favour of the
+standing debt gate; and `docs/worker.md` states what a delegated worker
+decides for itself before what it may not touch. Full notes are in
+`docs/releases/v0.2.5.md`.
 
 Like every release since v0.2.0 it changes no equation, parameter, or
 numerical method: `docs/MODEL.md`'s specification of the model is unchanged,
@@ -51,6 +70,12 @@ below, and does not change release to release while the patch series
 continues.
 
 ### Release narrative
+
+v0.2.4 was a verification and delegation release. Fourteen previously
+untested capacity and validation guards in the scientific core and the
+controller gained tests; `_halt_run`'s deliberate suppression became covered
+by a test rather than only a comment; and work whose success a command can
+prove became handable to a cheaper model and verifiable in one step.
 
 The per-release detail below is history rather than current state, kept for
 the reasoning behind each change; the one-line item lists are in
@@ -178,28 +203,38 @@ one case teaches a curve, and running the same case two ways teaches why the
 curve moved. A simulator that cannot do the second is a demonstration, not a
 teaching tool.
 
-Two releases reach it, and both are interface releases on the existing,
-already-validated model:
+Two *feature* releases reach it, and both are interface releases on the
+existing, already-validated model — preceded by v0.3.0, which adds no
+capability and exists to clear the ground they are built on:
 
-- **v0.3.0, the teachable case** — one case end to end, in clinical units, at
+- **v0.3.0, the foundation** — Gate 0's inherited backlog cleared. No new
+  capability; see the versioning exception under "Versioning decision".
+- **v0.4.0, the teachable case** — one case end to end, in clinical units, at
   a speed and on a time base that make its lessons observable at all.
-- **v0.4.0, the case you can branch** — bookmarks, forking from them, and
+- **v0.5.0, the case you can branch** — bookmarks, forking from them, and
   side-by-side comparison of the branches.
 
 ### The timeline
 
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
-| 1 | **Gate 0** | The frozen debt list, recorded under v0.3.0 below. 14 items outside the milestone's scope. | 2 M, 12 S |
-| 2 | **v0.3.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt cleared by the milestone itself. | 5 M, 6 S |
-| 3 | **Gate 1** | Frozen when v0.4.0 is scoped. Contents unknown by construction: v0.3.0's own findings land here. | — |
-| 4 | **v0.4.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
+| 1 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the 14 items outside that milestone's own scope, released as a minor by deliberate exception. | 2 M, 12 S |
+| 2 | **v0.4.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt the milestone clears itself. | 5 M, 6 S |
+| 3 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
+| 4 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
-| 5 | **Gate 2** | Frozen when v0.5.0 is scoped. | — |
-| 6 | **v0.5.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
-| 7 | **Gate 3** | Frozen when v0.6.0 is scoped. | — |
-| 8 | **v0.6.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. | — |
+| 5 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
+| 6 | **v0.6.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
+| 7 | **Gate 3** | Frozen when v0.7.0 is scoped; ships inside it. | — |
+| 8 | **v0.7.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. | — |
 | 9+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. | — |
+
+**Only row 1 is a release of gate work.** Gate 0 earns v0.3.0 because it
+clears the backlog inherited from before the debt gate existed; Gates 1
+onward hold one milestone's findings and ship inside the milestone they gate,
+which is why rows 3, 5 and 7 carry no version. The reasoning, and the fact
+that this is an exception rather than a pattern, is under "Versioning
+decision" above.
 
 Rows 4 to 8 are the intended order and are not yet scoped; each becomes real
 only when it gets its own goal, required scope, definition of done and
@@ -208,7 +243,7 @@ forking and comparison ahead of save/load and replay — is a deliberate
 departure from "Development pathway"'s Phase 3 sequence, on the grounds that
 branching within one session is the teaching payload while persistence is a
 convenience; it is recorded here as a proposal rather than a decision, and
-Phase 3's stated order stands until v0.4.0 is scoped.
+Phase 3's stated order stands until v0.5.0 is scoped.
 
 ### Why the gates are on this list and not behind it
 
@@ -379,7 +414,48 @@ mass-balance closure for both new agents; and `docs/MODEL.md`'s parameter
 provenance table and new "v0.2.0: isoflurane and desflurane" subsection
 record both agents' sourcing.
 
-## Next milestone: v0.3.0 - the teachable case
+## Next milestone: v0.3.0 - the foundation
+
+### Goal
+
+Clear the inherited backlog, so feature work starts from a codebase whose
+known defects are closed rather than carried. This release adds no
+capability: after it the simulator does what it did before, correctly, with
+its verification gate widened to the inputs the interface can actually reach
+and its failure path unable to leave partial state behind.
+
+Its contents are exactly Gate 0's items that fall outside the teachable
+case's own scope — the fourteen listed under "Debt gate: the frozen list" in
+the v0.4.0 section below. It has no scope of its own to specify, which is why
+this section is short: the frozen list *is* the specification, and nothing
+may be added to it (see "The gate is a snapshot, not a moving target").
+
+It is a minor rather than a patch by deliberate exception, recorded under
+"Versioning decision" above. That exception covers Gate 0 alone.
+
+### Definition of done
+
+- Every item on Gate 0's frozen list that is outside the v0.4.0 milestone's
+  Required scope is `done`, or `dropped` with its reason recorded.
+- `make check` passes: `ruff format`, `ruff check`, `mypy`, `pytest`,
+  `docket check`, and `tools/doc_check.py`.
+- No equation, parameter, or numerical method has changed, and the v0.0.2
+  circuit and v0.1.0 sevoflurane reference tests still pass unaltered. The
+  two safety items on the list tighten a verification bound and make the step
+  transactional; neither is licensed to change a modelled value, and if
+  either turns out to require one, that is a finding for the next gate and a
+  scoped item of its own, not this release's work.
+
+### Explicitly out of scope for v0.3.0
+
+- Anything in the v0.4.0 milestone's Required scope, including the six gate-0
+  items that milestone clears itself.
+- Any item captured after Gate 0 was frozen, unless it is `P0` or classed
+  `safety`/`science`, which re-enter by the rule below.
+- New capability of any kind. A release whose whole claim is "the ground is
+  now solid" cannot also be the one that moves the ground.
+
+## Milestone after next: v0.4.0 - the teachable case
 
 ### Goal
 
@@ -424,7 +500,15 @@ milestone's own scope". The other fourteen clear before implementation begins.
 The list itself stays frozen; what follows records which of the fourteen have
 cleared since, per "The cadence" below.
 
-**Cleared before v0.3.0 begins (14 items; 2 done as of 2026-08-25).**
+**Cleared before v0.4.0 begins — 14 entries, of which 5 done and 9 remaining
+as of 2026-08-26.** These fourteen are exactly what v0.3.0, the foundation
+release, ships.
+
+Count entries, not ids: the PL-Z4GF/PL-SWFM entry below holds two ids for one
+problem, so "15 item ids" and "14 gate entries" are both true and only the
+second is the gate's size. The nine remaining are PL-026, PL-042, PL-006,
+PL-004, PL-007, PL-019, PL-G049, PL-674D and PL-010 — named here so the
+number can be checked against the item files rather than trusted.
 
 *Core correctness — both safety- or science-classed, both wanting the
 strongest model:*
@@ -460,19 +544,19 @@ under "What counts":*
 *Documentation, performance, and the one decision that is the project
 owner's:*
 
-- PL-Z4GF (S) — **done for the README half** (commit `d40ff83`). The
-  remainder of its original scope — this file's own duplicated v0.2.3 table
-  row and stale "Current baseline" heading — was not touched by that commit
-  and is still open, now tracked as **PL-SWFM** rather than under PL-Z4GF's
-  own id. Per "The gate is a snapshot, not a moving target" and its presence
-  rule below (project owner, 2026-08-25): the problem was already inside
-  this frozen scope, so PL-SWFM clears here rather than at the next gate,
+- PL-Z4GF **and PL-SWFM** (S) — **both done** (commits `d40ff83`, `6e19632`).
+  One entry holding two ids: PL-Z4GF closed the README half of its original
+  scope, and the remainder — this file's own duplicated v0.2.3 table row and
+  stale "Current baseline" heading — surfaced later under the separate id
+  PL-SWFM. Per "The gate is a snapshot, not a moving target" and its presence
+  rule below (project owner, 2026-08-25), that problem was already inside
+  this frozen scope, so it cleared here rather than at the next gate,
   regardless of which id or session it surfaced under.
 - PL-010 (S) Stop rebuilding render objects on every frame
 - PL-Y2GG (S) — **done.** Apache-2.0, chosen by the project owner (commit
   `d40ff83`).
 
-**Cleared by v0.3.0 itself (6 items).** Each appears in Required scope above:
+**Cleared by v0.4.0 itself (6 items).** Each appears in Required scope above:
 PL-DHV7 (MAC as a displayed unit), PL-VM40 (simulated time from a step count),
 PL-F52R (the MAC-awake reference band), PL-ZRSP (the F_A/F_I trace), PL-R3KB
 (agent selection discarding a run), PL-011 (bounding the concentration
@@ -563,7 +647,7 @@ runs or merely adds a field.
 
 ### Definition of done
 
-v0.3.0 is complete only when:
+v0.4.0 is complete only when:
 
 - two runs given identical inputs produce element-wise identical recorded
   history at every playback multiplier, asserted by test, and identical
@@ -591,7 +675,7 @@ v0.3.0 is complete only when:
 - Ruff formatting and linting, strict mypy, pytest, and GitHub Actions all
   pass.
 
-### Explicitly out of scope for v0.3.0
+### Explicitly out of scope for v0.4.0
 
 - Nitrous oxide, coadministered gases, and the concentration and second-gas
   effects (items 6-7). This milestone is deliberately taken ahead of them;
@@ -726,10 +810,23 @@ shows them on one timeline with the milestones they gate:
 A milestone whose gate has not been recorded has not been scoped, whatever
 else has been written about it.
 
+**A gate does not get a version.** Cleared gate work ships inside the
+milestone it gates: it lands between that milestone's predecessor and its own
+release, so the milestone's release notes carry it, and no interim release is
+cut partway through clearing. `docket release` will offer one as soon as a
+few gate items are finished — decline it, or the gate work scatters across
+patch releases and the milestone ships carrying only its feature work.
+
+Gate 0 is the single exception, released as v0.3.0 for the reason recorded
+under "Versioning decision". It is exempt because it holds the backlog
+inherited from before this mechanism existed; every later gate holds one
+milestone's findings and is ordinary maintenance, which is not a thing to
+version.
+
 ### Debt inside the milestone's own scope
 
 **Debt that the milestone itself exists to clear is cleared *by* it, not
-before it.** This carve-out is necessary rather than convenient: v0.3.0 was
+before it.** This carve-out is necessary rather than convenient: v0.4.0 was
 scoped in part *because* six safety, science, defect and perf items were all
 symptoms of the same thing, and requiring them to be cleared before the
 milestone that clears them is a rule with no satisfying order.
@@ -842,7 +939,7 @@ multi-gas display looks like. The rework this accepts is bounded and known:
 the view consumes an immutable `SimulationSnapshot`, so the time base,
 playback, event marks and axis handling are substance-agnostic, and the MAC
 readout - which becomes a MAC sum when a second substance lands - is the piece
-that changes. v0.3.0 is that work; Phase 1 follows it unchanged.
+that changes. v0.4.0 is that work; Phase 1 follows it unchanged.
 
 **Phase 2 — an interface that can drive the machine.** Consolidate the
 display constants named in item 24 first, then item 24 itself, then items 5,
@@ -1028,8 +1125,8 @@ specified.
     than real time without changing the simulation's own time step. Kept
     separate from deterministic replay (item 10): replay reproduces a recorded
     run, while this changes the rate at which any run is displayed.
-    *Promoted into the scoped v0.3.0 milestone - see "Next milestone:
-    v0.3.0 - the teachable case" above.*
+    *Promoted into the scoped v0.4.0 milestone - see "Milestone after next:
+    v0.4.0 - the teachable case" above.*
 26. Add run bookmarks that halt a run at a target, after item 25. There is
     currently no way to say "run fast until something happens, then stop": a
     learner comparing gas-management strategies has to watch the clock and
@@ -1091,7 +1188,7 @@ specified.
     The economic argument for low fresh gas flow is a standard teaching point
     and currently the one lesson in this class of simulator that the
     application has the numbers for and does not draw. Depends on nothing;
-    kept out of the v0.3.0 scope because it is an addition rather than a
+    kept out of the v0.4.0 scope because it is an addition rather than a
     prerequisite.
 
 Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
