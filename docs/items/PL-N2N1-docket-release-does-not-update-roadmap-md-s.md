@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect, infra
-feature: dev-tooling
+feature: planning-cadence
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/README.md
 added: 2026-08-26
 ---

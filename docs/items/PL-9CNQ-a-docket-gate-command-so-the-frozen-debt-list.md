@@ -1,11 +1,11 @@
 ---
 id: PL-9CNQ
 title: A `docket gate` command, so the frozen debt list is computed rather than transcribed
-priority: P3
+priority: P2
 effort: S
 status: ready
 classes: infra, session-cost
-feature: dev-tooling
+feature: planning-cadence
 touches: subprojects/docket
 added: 2026-08-25
 ---
