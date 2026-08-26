@@ -3,10 +3,12 @@ id: PL-042
 title: Bound the splitting error across the settings envelope, not one point
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, science
 touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-08-24
+closed: 2026-08-26
+commit: 1180158
 ---
 
 **Problem.** `tests/reference/test_coupled_dynamics.py` bounds the
@@ -32,3 +34,25 @@ before choosing the new bound — the bound follows the measurement.
 interface can produce, and `docs/MODEL.md` states the domain it covers.
 **Context.** `docs/WORKING_NOTES.md`, "Splitting error outside the gate's
 operating point".
+
+**Worked.** The bound follows the measurement, as the brief required, but two
+things the brief did not specify were decided here.
+
+*The gate now takes the maximum over the trajectory rather than comparing
+endpoints.* The envelope's worst disagreement is at about 85 s, which no
+endpoint at 60, 600 or 3600 s samples, so the old structure could not have
+caught it whatever bound it carried. This costs 0.6 s of suite time because
+the RK4 integration was already the expense.
+
+*The margin is 1.24x rather than the 2x the previous bound used.* Both things
+a wider margin buys are covered elsewhere - parameter revision fails the
+pinned reference states first, and envelope variation no longer needs
+absorbing - and a narrow margin is what keeps the gate consistent with the
+displayed-precision claim it now cross-references.
+
+Also added `test_envelope_limits_match_the_interface` and put `simulation_view`
+on ALLOWED_PACKAGE_IMPORTS for it: restating the slider maxima recreates the
+silent-decay risk this item exists to fix. The independence rule is unaffected
+- what it forbids is importing a solver, and the oracle still uses the
+parameter loaders alone.
+
