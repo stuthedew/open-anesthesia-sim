@@ -76,6 +76,18 @@ to consider, and nothing else:
   it has become a summary rather than a list of actions.
 - When there is genuinely nothing to act on, say that in one line rather than
   inventing items to fill the block.
+- **Re-verify every carried-over item before repeating it.** An action that
+  was outstanding earlier in the session may have been done since — by the
+  owner, or on another branch. Repeating it from memory is the single most
+  likely way this block goes wrong, and it costs the owner either a lookup or
+  the same work twice. Whether something is merged, tagged, closed or still
+  open is a fact to check, not a memory to recall: `git fetch --tags`, a
+  glance at `git log origin/main`, `bin/docket show <id>`, or the PR's state
+  — one command each, against the remote rather than the local checkout.
+  Do this for anything asserted about repository state anywhere in a reply,
+  not only in this block; the block is merely where a stale claim is acted on.
+  Say what the check showed when it changes the answer, rather than quietly
+  dropping the item.
 
 This governs the deliverable, not the session. Ordinary judgment inside an
 approach already agreed — naming, structure, where a thing lives, how it is
