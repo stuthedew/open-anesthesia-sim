@@ -81,7 +81,7 @@ make check       # ruff format --check, ruff check, mypy (strict), pytest,
 make fix         # ruff format, ruff check --fix
 make test        # pytest only
 make docket      # validate docs/items/ and list anything untriaged
-make doc-check   # validate the package map, provenance table, and doc citations
+make doc-check   # validate the package map, provenance table, citations, release train
 ```
 
 The last two are stdlib-only scripts in `tools/`, so they run in a bare
