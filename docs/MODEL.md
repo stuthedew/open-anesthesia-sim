@@ -872,25 +872,75 @@ parameter files and nothing else from the package under test; a comparison
 against code derived from the implementation is a tautology, not a
 verification, so the test enforces that restriction on its own imports.
 
-The comparison covers every shipped agent at horizons of 60 s, 600 s, and
-3600 s, and its tolerance is a bound on the first-order splitting
-coefficient rather than a value fitted to a particular run:
+The comparison covers every shipped agent, and its tolerance is a bound on
+the first-order splitting coefficient rather than a value fitted to a
+particular run:
 
 $$
 \max_i \left| F_i^{\mathrm{shipped}} - F_i^{\mathrm{reference}} \right|
 \leq
 C_{\max}\,\Delta t,
 \qquad
-C_{\max} = 5\times10^{-4}\ \mathrm{s^{-1}}
+C_{\max} = 1.5\times10^{-3}\ \mathrm{s^{-1}}
 $$
 
-The worst coefficient measured across those agents and horizons is
-\(2.5\times10^{-4}\ \mathrm{s^{-1}}\) (isoflurane at 600 s), so the gate
-allows a factor of two. A companion test confirms that halving \(\Delta t\)
-halves the error, which is what makes a bound established at one step size a
-bound on the coefficient itself. The reference states are pinned in the test
-file: a change to the oracle or to a parameter file must be re-derived and
-reviewed rather than silently adopted.
+**The domain the bound covers.** The gate runs at two operating points, and
+the second is what makes \(C_{\max}\) a bound on the split rather than on one
+configuration:
+
+- the *reference point* — 5% delivered, 4 L/min fresh gas, and the reference
+  adult's default alveolar ventilation and cardiac output — compared at
+  horizons of 60 s, 600 s and 3600 s. This is the point the pinned reference
+  states below belong to.
+- the *envelope corner* — each agent's own
+  `max_delivered_concentration_percent` with fresh gas, alveolar ventilation
+  and cardiac output all at the interface's slider maxima (10, 12 and
+  10 L/min). Here the maximum is taken over the whole trajectory rather than
+  at an endpoint, because the worst disagreement falls at about 85 s, in the
+  wash-in transient, which no endpoint at 60 s, 600 s or 3600 s samples.
+
+The corner is the envelope maximum by measurement rather than by assumption.
+Sweeping each axis separately: fresh gas flow and alveolar ventilation raise
+the coefficient monotonically to their slider maxima; cardiac output has an
+interior *minimum* near 5 L/min and rises toward both ends, the upper end
+being the larger; and the governing equations are linear in the delivered
+fraction, so each agent's worst dial is its vaporizer maximum. That
+monotonicity is measured, not proved, so a change to the governing equations
+could move the maximum off the corner and the sweep is worth re-running
+rather than trusted.
+
+| Operating point | Worst coefficient |
+| --- | --- |
+| Reference point, worst of the three agents | \(3.1\times10^{-4}\ \mathrm{s^{-1}}\) |
+| Envelope corner, sevoflurane | \(7.0\times10^{-4}\ \mathrm{s^{-1}}\) |
+| Envelope corner, isoflurane | \(7.4\times10^{-4}\ \mathrm{s^{-1}}\) |
+| Envelope corner, desflurane | \(1.21\times10^{-3}\ \mathrm{s^{-1}}\) |
+
+The gate allows a factor of 1.24 over the worst of these. That margin is
+deliberately narrower than the factor of two an earlier revision used, and
+the reason is that the two things a wider margin would buy are already
+covered elsewhere: a parameter revision fails the pinned reference states
+first, which forces the re-derivation and review it should have; and
+envelope variation no longer needs absorbing now that the bound follows a
+measurement across the envelope. That second gap is what made the previous
+bound wrong — set at \(5\times10^{-4}\ \mathrm{s^{-1}}\) from the reference
+point alone, it was exceeded by a factor of about 2.4 at settings three
+sliders could reach, and never failed because nothing ran there.
+
+Keeping the margin narrow also keeps the gate consistent with "Displayed
+precision" below: at the shipped 0.1 s step this bound is \(1.5\times10^{-4}\)
+in fraction, or 0.015 percentage points, against a displayed resolution of
+0.01. A much wider gate would let that section's claim — that the last
+displayed digit is uncertain by about one count at the corner of the
+envelope — quietly become false while still passing.
+
+A companion test confirms that halving \(\Delta t\) halves the error, which
+is what makes a bound established at one step size a bound on the
+coefficient itself. The reference states are pinned in the test file: a
+change to the oracle or to a parameter file must be re-derived and reviewed
+rather than silently adopted. The slider maxima above are restated in the
+test file and checked against the interface's own constants, so widening a
+slider cannot silently shrink the domain this gate covers.
 
 ### Mass-balance test
 
@@ -1131,6 +1181,14 @@ own slider limits for fresh gas, alveolar ventilation, and cardiac output,
 and the maximum dial is each agent's `max_delivered_concentration_percent`. The
 worst case in each row is an alveolar or mixed-venous value during the
 wash-in transient, which is where the split is under the most strain.
+
+The last row is the same measurement the release gate in
+"Independent-solution test" bounds, expressed in percentage points instead of
+as a coefficient: \(1.21\times10^{-3}\ \mathrm{s^{-1}}\) at the shipped 0.1 s
+step. **The two are coupled and must be revised together** — the resolution
+chosen here rests on that measured error, and the gate is set only 1.24 times
+above it precisely so that a change large enough to invalidate this section
+fails the gate rather than passing it silently.
 
 **Why 0.01 percentage points follows.** At that resolution the last
 displayed digit is uncertain by roughly a fifth of a count in ordinary use,
