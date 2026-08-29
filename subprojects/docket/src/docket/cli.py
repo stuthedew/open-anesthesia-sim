@@ -20,6 +20,7 @@ from .config import load as load_config
 from .model import Item
 from .plan import features, recommend
 from .release import bump_version, milestones, read_version, readiness, release_notes, stamp
+from .roadmap import wave
 from .store import find_item, new_id, read_items, write_item
 from .vcs import branches_in_flight, in_flight_ids
 from .verify import verify
@@ -370,6 +371,37 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 0 if report.passed else 1
 
 
+def cmd_wave(args: argparse.Namespace) -> int:
+    """Which beat of the planning cadence is due, computed from the plan itself.
+
+    The queue nags every session; the roadmap nags never, so "what next" gets
+    answered from whatever ranks highest in the store - a question above that
+    ranking's altitude. This answers the other one, and answers it the only way
+    that survives a session with no memory: by reading the files.
+
+    Exits non-zero when it cannot compute an answer - no roadmap, no timeline,
+    or a gate naming an item the store does not hold - because a beat the tool
+    is unsure of is worth less than an obvious failure to produce one.
+    """
+    _, items, config = _load(args)
+    root = args.items.parent if args.items else find_root()
+    roadmap = root / config.roadmap_file
+    if not roadmap.is_file():
+        print(f"no {config.roadmap_file} to read: there is no plan to report a position on")
+        return 1
+
+    plan = wave(
+        roadmap.read_text(encoding="utf-8"),
+        read_version(root / config.version_file),
+        frozenset(item.identifier for item in items if not item.is_open),
+        frozenset(item.identifier for item in items),
+    )
+    print(render.format_wave(plan))
+    if plan.step is None or plan.problems or (plan.gate is not None and plan.gate.unknown_ids):
+        return 1
+    return 0
+
+
 def cmd_flight(args: argparse.Namespace) -> int:
     branches = branches_in_flight(find_root())
     if not branches:
@@ -478,6 +510,7 @@ def build_parser() -> argparse.ArgumentParser:
     verify_cmd.set_defaults(func=cmd_verify)
 
     add("status", "the project at feature altitude").set_defaults(func=cmd_status)
+    add("wave", "which beat of the planning cadence is due").set_defaults(func=cmd_wave)
     return parser
 
 

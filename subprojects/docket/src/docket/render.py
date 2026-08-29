@@ -14,6 +14,7 @@ from __future__ import annotations
 from .checks import Report
 from .concurrency import undeclared
 from .model import PRIORITIES, Item
+from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
 
 
 def _plural(count: int, singular: str, plural: str) -> str:
@@ -266,3 +267,62 @@ def format_status(report: Report, ready: object = None, in_flight: set[str] | No
         )
         lines.append(f"  Next version would be {ready.suggested_version}.")  # type: ignore[attr-defined]
     return "\n".join(lines)
+
+
+def format_wave(plan: Wave) -> str:
+    """Where the project stands on the cadence, and nothing about whether it should.
+
+    Five lines at most, because this is read at the top of a session beside
+    the digest, not studied. Each one states a fact with the file it came from
+    behind it; none of them says whether the plan is still the right plan.
+    """
+    lines = [f"Version   {plan.version or 'unknown'}"]
+
+    if plan.step is None:
+        lines.append("Step      the timeline names no step after this version")
+    else:
+        position = (
+            f"step {plan.step.ordinal} of {plan.total_steps}"
+            if plan.step.ordinal is not None
+            else f"between numbered steps ({STEP_SEPARATOR} on the timeline)"
+        )
+        lines.append(f"Step      {position}: {plan.step.label}")
+    if plan.next_step is not None:
+        lines.append(f"Next      {plan.next_step.label}")
+
+    gate = plan.gate
+    if gate is not None:
+        entries = _plural(len(gate.entries), "entry", "entries")
+        ids = _plural(len(gate.ids), "id", "ids")
+        lines.append(f'Gate      recorded under "{gate.milestone.title}" ({entries}, {ids})')
+        lines.append(f"          {len(gate.cleared)} cleared, {len(gate.outstanding)} open")
+        if gate.outstanding:
+            open_ids = [identifier for entry in gate.outstanding for identifier in entry.ids]
+            lines.append(f"          {', '.join(open_ids)}")
+        if gate.unknown_ids:
+            lines.append(
+                f"          not in the store, so not countable: {', '.join(gate.unknown_ids)}"
+            )
+
+    lines.append(f"Beat      {_beat_line(plan)}")
+    if plan.problems:
+        lines.append("")
+        lines.append("The timeline table does not parse cleanly, so the step above may be wrong:")
+        lines.extend(f"  {problem}" for problem in plan.problems)
+    return "\n".join(lines)
+
+
+def _beat_line(plan: Wave) -> str:
+    """The beat, said as an instruction, with the count that makes it checkable."""
+    if plan.beat == CLEAR and plan.gate is not None:
+        remaining = _plural(len(plan.gate.outstanding), "entry", "entries")
+        return f"clear the gate - {remaining} of {len(plan.gate.entries)} still open"
+    if plan.beat == RELEASE:
+        return f"release {plan.subject} - its gate is clear"
+    if plan.beat == IMPLEMENT:
+        return f"implement {plan.subject} - its gate is clear"
+    if plan.beat == FREEZE:
+        return f"freeze and record {plan.subject}'s debt list in its section"
+    if plan.subject:
+        return f"scope {plan.subject} here, which freezes its gate"
+    return "scope the next milestone; the timeline names none after this version"
