@@ -203,6 +203,11 @@ as a marker, silently. What the rows *mean* is not checked and is not
 checkable: whether the prose beside a step is still true stays with the
 reader.
 
+The grammar itself lives in `subprojects/docket/src/docket/roadmap.py` and is
+imported here. `docket wave` reads the same table to report which beat of the
+planning cadence is due, and a second copy of the rules would drift from the
+first silently — in the one document that says which milestone is current.
+
 ## Tests (`tests/`)
 
 - **`tests/unit/`** — one module's behavior in isolation (a compartment, a

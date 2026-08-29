@@ -223,3 +223,79 @@ def test_shared_options_still_have_defaults_when_given_nowhere() -> None:
     assert args.items is None
     assert args.today is None
     assert args.no_git is False
+
+
+WAVE_ROADMAP = """# Roadmap
+
+## The plan
+
+### The timeline
+
+| # | Step | What it is | Size |
+| --- | --- | --- | --- |
+| 1 | **v0.3.0 — the foundation** | Gate 0's frozen list. | 2 M |
+| 2 | **v0.4.0 — the teachable case** | Scoped below. | 5 M |
+
+## Milestone after next: v0.4.0 - the teachable case
+
+### Goal
+
+Make the model teachable.
+
+### Debt gate: the frozen list
+
+**Frozen 2026-08-25.**
+
+- PL-B1B1 (S) The one entry on this gate
+
+### Required scope
+
+A displayed clinical unit.
+
+### Definition of done
+
+The learner can run one case.
+
+### Explicitly out of scope for v0.4.0
+
+Forking.
+"""
+
+
+def _wave_project(tmp_path: Path, *documents: str) -> Path:
+    store = _store(tmp_path, *documents)
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.5"\n', encoding="utf-8")
+    (tmp_path / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+    return store
+
+
+def test_wave_reports_the_beat_from_the_plan_and_the_store(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = _wave_project(tmp_path, READY)
+    assert _run("wave", "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert "Version   0.2.5" in out
+    assert "step 1 of 2: v0.3.0 — the foundation" in out
+    assert "1 entry, 1 id" in out
+    assert "0 cleared, 1 open" in out
+    assert "clear the gate" in out
+
+
+def test_wave_says_there_is_no_plan_rather_than_reporting_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A project with no roadmap has no position to report, and saying so is
+    the honest answer; printing a beat anyway would be inventing one."""
+    store = _store(tmp_path, READY)
+    assert _run("wave", "--items", str(store)) == 1
+    assert "no ROADMAP.md to read" in capsys.readouterr().out
+
+
+def test_wave_exits_nonzero_when_the_gate_names_an_item_that_is_not_there(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = _wave_project(tmp_path)
+    assert _run("wave", "--items", str(store)) == 1
+    assert "not in the store" in capsys.readouterr().out

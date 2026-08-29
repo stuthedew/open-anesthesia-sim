@@ -23,6 +23,7 @@ from shared state. There is no lock, because there is nothing to lock.
 ```bash
 docket new "The induction curve looks wrong" "Colour-blind palette check"
 docket next --effort S       # what to work on, and why
+docket wave                  # which beat of the plan's cadence is due
 docket list                  # the queue, one line per item
 docket concurrent PL-K7QX    # what can be worked alongside it
 docket feature halted-step   # progress on one feature
@@ -57,6 +58,20 @@ contend. *Absence* of declared overlap proves only that nobody foresaw a
 collision — the work may still wander into a shared file. So the command
 rules pairs out and never certifies a pair as safe, and items declaring no
 paths at all are reported as unanalysable rather than assumed harmless.
+
+### The plan reports its own position
+
+A queue answers "which item next". It cannot answer "what is the project
+*doing* next", because that is settled by the roadmap and the roadmap is
+prose. `docket wave` reads the parts of it that are not — the release train,
+the milestone sections, and the debt list each one records when it is scoped —
+and reports the version, the step, the gate's size and how much of it is
+closed, and which beat of the cadence that leaves due.
+
+It computes; it decides nothing. Whether the prose beside a timeline row is
+still true, whether a gate should open early, whether a scoped milestone is
+scoped *well*: none of that is on the page in a form a parser can read, so
+none of it is attempted.
 
 ### Releases are mechanical
 
@@ -190,6 +205,7 @@ untriaged_stale_days = 14
 minor_classes = ["feature"]
 protected_paths = []
 version_file = "pyproject.toml"
+roadmap_file = "ROADMAP.md"
 ```
 
 ## Requirements
