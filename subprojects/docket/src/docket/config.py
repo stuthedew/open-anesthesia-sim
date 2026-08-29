@@ -51,6 +51,9 @@ class Config:
     #: read this setting.
     protected_paths: tuple[str, ...] = ()
     version_file: str = "pyproject.toml"
+    #: The plan `docket wave` reads: the release train, the milestone
+    #: sections, and the debt list each one records when it is scoped.
+    roadmap_file: str = "ROADMAP.md"
     #: How the next version is chosen. "infer" derives it from the classes of
     #: what shipped, which suits a project where a patch is a patch. "manual"
     #: requires it to be named, for a project whose version marks the
@@ -94,5 +97,6 @@ def load(root: Path) -> Config:
         gate_paths=_tuple(section.get("gate_paths"), defaults.gate_paths),
         check_command=str(section.get("check_command", defaults.check_command)),
         version_file=str(section.get("version_file", defaults.version_file)),
+        roadmap_file=str(section.get("roadmap_file", defaults.roadmap_file)),
         version_policy=str(section.get("version_policy", defaults.version_policy)),
     )

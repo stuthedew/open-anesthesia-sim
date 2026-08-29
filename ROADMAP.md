@@ -498,18 +498,21 @@ are debt by "The debt gate" below — classed `defect`, `safety`, `science`,
 `refactor` or `perf`, or at `needs-decision`. Six of them are inside this
 milestone's own Required scope and are cleared by it, per "Debt inside the
 milestone's own scope". The other fourteen clear before implementation begins.
-The list itself stays frozen; what follows records which of the fourteen have
-cleared since, per "The cadence" below.
+The list itself stays frozen; an entry records its own outcome as it closes,
+per "The cadence" below.
 
-**Cleared before v0.4.0 begins — 14 entries, of which 5 done and 9 remaining
-as of 2026-08-26.** These fourteen are exactly what v0.3.0, the foundation
-release, ships.
+**Cleared before v0.4.0 begins — 14 entries, 15 item ids.** These fourteen
+are exactly what v0.3.0, the foundation release, ships.
 
 Count entries, not ids: the PL-Z4GF/PL-SWFM entry below holds two ids for one
-problem, so "15 item ids" and "14 gate entries" are both true and only the
-second is the gate's size. The nine remaining are PL-026, PL-042, PL-006,
-PL-004, PL-007, PL-019, PL-G049, PL-674D and PL-010 — named here so the
-number can be checked against the item files rather than trusted.
+problem, so both numbers above are true and only the first is the gate's size.
+
+How many of them are closed is **not recorded here**, because a count written
+into a document is a count that goes stale the next time an item closes — this
+paragraph said "5 done and 9 remaining as of 2026-08-26" while one of the nine
+it named had already been closed. `bin/docket wave` reads the entries below
+against `docs/items/` and reports the split, so the answer is computed from the
+same files that would be used to check it.
 
 *Core correctness — both safety- or science-classed, both wanting the
 strongest model:*
@@ -810,6 +813,12 @@ shows them on one timeline with the milestones they gate:
 
 A milestone whose gate has not been recorded has not been scoped, whatever
 else has been written about it.
+
+Which beat is due is computed rather than recalled: `bin/docket wave` reads
+the version, the timeline above, the milestone sections and the frozen list
+each one records, and reports the step and the beat that leaves. It reports
+only what those files decide — not whether a gate should open early, and not
+whether what is written beside a step is still true.
 
 **A gate does not get a version.** Cleared gate work ships inside the
 milestone it gates: it lands between that milestone's predecessor and its own
