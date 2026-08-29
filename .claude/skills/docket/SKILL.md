@@ -170,9 +170,24 @@ Commit the new item on its own so it survives an abandoned branch.
 Triggered by "what should we work on next", "I have some time", "what's left".
 
 ```bash
+docket wave            # which beat of the plan is due - read this first
 docket status          # features first - lead with this
 docket next            # the specific next item, with its reason
 ```
+
+**Start above the queue.** `docket wave` says where the project stands on the
+roadmap's cadence: the version, the step of the release train, the frozen debt
+gate and how much of it is closed, and whether that leaves a gate to clear, a
+release to cut, a milestone to implement or the next one to scope. The queue
+cannot answer that, so a session that opens with `docket status` is answering
+a narrower question than the one it was asked. Where the beat and the top of
+the queue disagree, say so rather than following the queue: the beat is what
+the plan says, and only the project owner rolls the wave forward.
+
+`docket wave` computes and decides nothing. It will not tell you whether a
+gate should open early, whether the prose beside a step is still true, or
+whether a scoped milestone is scoped well. Those are the reply's judgment to
+add, and they are why it prints the counts rather than a verdict.
 
 **Answer at feature altitude first.** "We could finish chart-readout — two
 items left, both small — or start vaporizer-controls, which is four. Outside

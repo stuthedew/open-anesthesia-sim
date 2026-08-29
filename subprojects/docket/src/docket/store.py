@@ -36,7 +36,12 @@ ID_PREFIX = "PL-"
 # Both are accepted forever: the old ones are cited from `ROADMAP.md`, from
 # commit messages, and from each other, and renumbering them to tidy the
 # scheme would break every one of those references to no benefit.
-ID_RE = re.compile(rf"^{ID_PREFIX}(?:\d{{3}}|[{ID_ALPHABET}]{{{ID_LENGTH}}})$")
+#
+# The pattern is exported unanchored as well, because an id has to be
+# recognised inside prose too - `roadmap.py` reads them out of the debt list
+# a milestone records - and two spellings of the same grammar would drift.
+ID_PATTERN = rf"{ID_PREFIX}(?:[{ID_ALPHABET}]{{{ID_LENGTH}}}|\d{{3}})(?![{ID_ALPHABET}])"
+ID_RE = re.compile(rf"^{ID_PATTERN}$")
 SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 

@@ -38,7 +38,10 @@ Two modes:
                 short list instead of grepping five documents by hand.
 
 Standard library only, and no import of the application package, so this
-runs in a bare checkout exactly as it runs in CI.
+runs in a bare checkout exactly as it runs in CI. The one exception is
+`docket.roadmap`, which owns the release-train grammar this tool checks - also
+standard library only, and imported by path rather than by installation for
+the same reason.
 """
 
 from __future__ import annotations
@@ -47,9 +50,31 @@ import argparse
 import json
 import re
 import subprocess
+import sys
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
+
+# `ROADMAP.md`'s release-train grammar lives in `docket`, which reasons about
+# project state for a living and reads the same table to report which beat of
+# the planning cadence is due. A second copy here would drift from it silently,
+# and the drift would be in the one document that says which milestone is
+# current. Both are standard-library only and both must run in a bare checkout,
+# so the import costs nothing but the path.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "subprojects" / "docket" / "src"))
+
+try:
+    from docket.roadmap import (  # noqa: E402  - import follows the path insertion above
+        HEADING_RE,
+        TIMELINE_HEADING,
+        parse_timeline,
+        table_rows,
+    )
+except ImportError as error:  # pragma: no cover - a checkout missing the subproject
+    raise SystemExit(
+        "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
+        f"grammar, and could not import it: {error}"
+    ) from error
 
 # Documentation whose claims this tool holds to the tree. `CLAUDE.md` and the
 # docket skill are included because they cite paths as heavily as the docs
@@ -76,7 +101,6 @@ MODEL = Path("docs/MODEL.md")
 # on this table, and a parser guessing at free prose would be guessing at the
 # plan.
 ROADMAP = Path("ROADMAP.md")
-TIMELINE_HEADING = "The timeline"
 
 PACKAGE_ROOT = PurePosixPath("src/anesthesia_sim")
 
@@ -123,33 +147,10 @@ NON_PARAMETER_KEYS = frozenset({"schema_version", "sources"})
 FENCE_RE = re.compile(r"^```")
 TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
 TREE_ENTRY_RE = re.compile(r"^(?P<indent>(?:(?:│   )|(?:    ))*)(?:├──|└──) (?P<name>\S+)")
-HEADING_RE = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
 CODE_SPAN_RE = re.compile(r"`([^`\n]+)`")
 LINK_RE = re.compile(r"\[[^\]\n]*\]\((?P<target>[^)\s]+)\)")
-TABLE_ROW_RE = re.compile(r"^\|(?P<cells>.+)\|\s*$")
 NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 
-# The release train's row grammar. A step is bold, and is one of four things:
-# a milestone carrying a concrete version, a patch track carrying a `x`
-# placeholder, a numbered gate, or an unnumbered marker such as "MVP complete".
-# The separator is the em dash the table is written with; spelling it out here
-# is what makes a hyphen typed in its place a failure rather than a silent
-# reclassification of the row as a marker.
-STEP_SEPARATOR = "\u2014"
-
-BOLD_RE = re.compile(r"^\*\*(?P<label>.+)\*\*$")
-MILESTONE_RE = re.compile(
-    rf"^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+) {STEP_SEPARATOR} (?P<name>\S.*)$"
-)
-PATCH_TRACK_RE = re.compile(
-    rf"^v(?P<major>\d+)\.(?P<minor>\d+)\.x {STEP_SEPARATOR} (?P<name>\S.*)$"
-)
-GATE_RE = re.compile(r"^Gate (?P<number>\d+)$")
-ORDINAL_RE = re.compile(r"^(?P<number>\d+)\+?$")
-# A step that opens like a version but matches neither version form. Caught
-# separately so a typo (`v0.4` , `v0.4.0 - name`) fails loudly instead of
-# passing as a marker with an odd name.
-VERSIONISH_RE = re.compile(r"^v\d")
 BRACE_RE = re.compile(r"\{([^{}]*)\}")
 
 # A quoted phrase is read as a section citation only in the two forms this
@@ -187,23 +188,6 @@ class TreeMap:
     @property
     def entries(self) -> frozenset[PurePosixPath]:
         return self.files | self.covered_dirs
-
-
-@dataclass(frozen=True)
-class TimelineStep:
-    """One row of `ROADMAP.md`'s release train, as the grammar reads it."""
-
-    line: int
-    # The `#` column. `None` for a row written `\u2014`, which marks something
-    # that sits on the timeline without being a step of its own: the patch
-    # track under a milestone, and the "MVP complete" boundary.
-    ordinal: int | None
-    kind: str  # "milestone" | "patch-track" | "gate" | "marker"
-    label: str  # the step cell, without its bold markers
-    # Milestone rows only. A patch track carries no patch number by
-    # construction, and a gate deliberately has no version at all.
-    version: tuple[int, int, int] | None
-    name: str  # the prose after the version or gate number
 
 
 def _line_of(text: str, offset: int) -> int:
@@ -352,42 +336,6 @@ def check_package_maps(root: Path, report: Report) -> None:
             report.errors.append(f"{where}: does not list {candidate}")
 
 
-def _table_rows(text: str, heading: str, level: int = 2) -> Iterator[tuple[int, list[str]]]:
-    """Yield the rows of the first markdown table under `heading`.
-
-    `level` is the heading's depth, so a table under a `###` subsection can be
-    read as readily as one under a `##` section. Any heading at or above that
-    depth ends the search, which is what stops a table further down the file
-    being mistaken for this one.
-    """
-    lines = text.splitlines()
-    in_section = False
-    started = False
-    for index, line in enumerate(lines, start=1):
-        heading_match = HEADING_RE.match(line)
-        if heading_match is not None and len(heading_match.group("hashes")) <= level:
-            if started:
-                return
-            in_section = (
-                len(heading_match.group("hashes")) == level
-                and heading_match.group("title").strip() == heading
-            )
-            continue
-        if not in_section:
-            continue
-        match = TABLE_ROW_RE.match(line)
-        if match is None:
-            if started:
-                return
-            continue
-        cells = [cell.strip() for cell in match.group("cells").split("|")]
-        if all(set(cell) <= set("-: ") and cell for cell in cells):
-            started = True
-            continue
-        if started:
-            yield index, cells
-
-
 def _leaf_numbers(node: object, prefix: str = "") -> Iterator[tuple[str, float]]:
     """Yield every numeric leaf of a data file as `dotted.key`, value."""
     if isinstance(node, dict):
@@ -427,7 +375,7 @@ def check_provenance(root: Path, report: Report) -> None:
         return
 
     documented: dict[tuple[str, str], int] = {}
-    rows = list(_table_rows(path.read_text(encoding="utf-8"), "Parameter provenance"))
+    rows = list(table_rows(path.read_text(encoding="utf-8"), "Parameter provenance"))
     if not rows:
         report.errors.append(
             f"{MODEL}: no provenance table found under 'Parameter provenance'; either the "
@@ -495,120 +443,6 @@ def check_provenance(root: Path, report: Report) -> None:
                     f"{MODEL}: no provenance row for {relative} {key_path} = {value:g}; "
                     "every constant a clinician could read belongs in the table"
                 )
-
-
-def parse_timeline(text: str) -> tuple[list[TimelineStep], list[str]]:
-    """Read the release train from `ROADMAP.md`, with any grammar breaches.
-
-    Returns the steps in the order the table lists them, and the problems that
-    stop a row being read. Callers wanting the plan use the steps; the check
-    below reports the problems. What a row *means* - whether the prose beside
-    it is still true, whether the milestone is scoped well - is judgment, and
-    is deliberately not attempted here.
-    """
-    steps: list[TimelineStep] = []
-    problems: list[str] = []
-
-    for line, cells in _table_rows(text, TIMELINE_HEADING, level=3):
-        if len(cells) < 2:
-            problems.append(f"line {line}: timeline row has no step column")
-            continue
-        ordinal_cell, step_cell = cells[0], cells[1]
-
-        bold = BOLD_RE.match(step_cell)
-        if bold is None:
-            problems.append(f"line {line}: timeline step {step_cell!r} is not bold")
-            continue
-        label = bold.group("label")
-
-        ordinal: int | None = None
-        if ordinal_cell != STEP_SEPARATOR:
-            ordinal_match = ORDINAL_RE.match(ordinal_cell)
-            if ordinal_match is None:
-                problems.append(
-                    f"line {line}: timeline number {ordinal_cell!r} is neither a number,"
-                    f" a number with '+', nor {STEP_SEPARATOR!r}"
-                )
-                continue
-            ordinal = int(ordinal_match.group("number"))
-
-        milestone = MILESTONE_RE.match(label)
-        patch_track = PATCH_TRACK_RE.match(label)
-        gate = GATE_RE.match(label)
-        if milestone is not None:
-            version = (
-                int(milestone.group("major")),
-                int(milestone.group("minor")),
-                int(milestone.group("patch")),
-            )
-            kind, name = "milestone", milestone.group("name")
-        elif patch_track is not None:
-            version = (int(patch_track.group("major")), int(patch_track.group("minor")), -1)
-            kind, name = "patch-track", patch_track.group("name")
-        elif gate is not None:
-            version, kind, name = None, "gate", gate.group("number")
-        elif VERSIONISH_RE.match(label):
-            problems.append(
-                f"line {line}: timeline step {label!r} opens like a version but matches"
-                f" neither 'vX.Y.Z {STEP_SEPARATOR} name' nor 'vX.Y.x {STEP_SEPARATOR} name'"
-            )
-            continue
-        else:
-            version, kind, name = None, "marker", label
-
-        steps.append(
-            TimelineStep(
-                line=line, ordinal=ordinal, kind=kind, label=label, version=version, name=name
-            )
-        )
-
-    problems.extend(_timeline_order(steps))
-    return steps, problems
-
-
-def _timeline_order(steps: Sequence[TimelineStep]) -> Iterator[str]:
-    """Report rows that read correctly but sit in the wrong place."""
-    previous_ordinal: int | None = None
-    previous_version: tuple[int, int, int] | None = None
-    previous_gate: int | None = None
-    latest_milestone: tuple[int, int] | None = None
-
-    for step in steps:
-        if step.ordinal is not None:
-            if previous_ordinal is not None and step.ordinal <= previous_ordinal:
-                yield (
-                    f"line {step.line}: timeline number {step.ordinal} does not follow"
-                    f" {previous_ordinal}"
-                )
-            previous_ordinal = step.ordinal
-
-        if step.kind == "milestone" and step.version is not None:
-            if previous_version is not None and step.version <= previous_version:
-                yield (
-                    f"line {step.line}: milestone {step.label!r} is not later than the"
-                    f" milestone above it"
-                )
-            previous_version = step.version
-            latest_milestone = step.version[:2]
-
-        if step.kind == "patch-track" and step.version is not None:
-            series = step.version[:2]
-            if latest_milestone is None or series != latest_milestone:
-                above = (
-                    "no milestone"
-                    if latest_milestone is None
-                    else f"v{latest_milestone[0]}.{latest_milestone[1]}"
-                )
-                yield (
-                    f"line {step.line}: patch track {step.label!r} does not belong to"
-                    f" {above}, the milestone above it"
-                )
-
-        if step.kind == "gate":
-            number = int(step.name)
-            if previous_gate is not None and number <= previous_gate:
-                yield f"line {step.line}: Gate {number} does not follow Gate {previous_gate}"
-            previous_gate = number
 
 
 def check_timeline(root: Path, report: Report) -> None:
