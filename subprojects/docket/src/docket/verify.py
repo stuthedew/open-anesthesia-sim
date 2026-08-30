@@ -26,6 +26,7 @@ project, and that separation is what keeps a bare checkout able to use it.
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -70,6 +71,11 @@ class Verification:
     item: Item
     base: str
     checks: list[Check] = field(default_factory=list)
+    #: Whether the per-item checks stopped before they had all run. An item
+    #: with no command, or with nothing between its base and `HEAD`, has
+    #: nothing further to look at, and the project-wide check says nothing
+    #: about it either way.
+    stopped_early: bool = False
 
     @property
     def passed(self) -> bool:
@@ -190,14 +196,24 @@ def _front_matter_changed(root: Path, base: str, item: Item) -> tuple[str, ...]:
     return tuple(sorted(k for k in set(old) | set(new) if old.get(k) != new.get(k)))
 
 
-def verify(root: Path, item: Item, config: Config, base: str) -> Verification:
-    """Run every check against one item's branch."""
+def verify_item(root: Path, item: Item, config: Config, base: str) -> Verification:
+    """Run the checks that are about this item, and no others.
+
+    Split from `verify` for the one reason that matters when several items are
+    reviewed together: everything here is genuinely per-item - the item's own
+    command, its declared scope, its commits - while the project's own check
+    proves a property of the tree and proves it identically however many items
+    are being looked at. Running it once per item made a six-item batch take
+    over two minutes, five of those runs re-proving a proved thing, and a
+    reviewer who waits that long stops running the command at all.
+    """
     report = Verification(item=item, base=base)
     commits = item_commits(root, base, item.identifier)
     paths = changed_paths(root, base, commits)
 
     if not item.verify:
         report.checks.append(Check("has a `verify:` command", False, "none recorded"))
+        report.stopped_early = True
         return report
 
     # An empty diff is not verified work. Every path check below would pass on
@@ -213,6 +229,7 @@ def verify(root: Path, item: Item, config: Config, base: str) -> Verification:
                 + (f", and no commit naming {item.identifier}" if not commits else ""),
             )
         )
+        report.stopped_early = True
         return report
 
     # The item's own file is always in scope: a worker is asked to append a
@@ -286,14 +303,47 @@ def verify(root: Path, item: Item, config: Config, base: str) -> Verification:
             () if status == 0 else tuple(output.strip().splitlines()[-4:]),
         )
     )
-
-    status, output = _run([config.check_command], root, shell=True)
-    report.checks.append(
-        Check(
-            "the project's own checks pass",
-            status == 0,
-            config.check_command,
-            () if status == 0 else tuple(output.strip().splitlines()[-4:]),
-        )
-    )
     return report
+
+
+def project_check(root: Path, config: Config) -> Check:
+    """Run the project's own full check once, whoever is asking.
+
+    Shared evidence rather than per-item evidence: it says the tree is sound,
+    which is a property of the tree. Every report a batch produces carries the
+    same result because it is the same result.
+    """
+    status, output = _run([config.check_command], root, shell=True)
+    return Check(
+        "the project's own checks pass",
+        status == 0,
+        config.check_command,
+        () if status == 0 else tuple(output.strip().splitlines()[-4:]),
+    )
+
+
+def verify(root: Path, item: Item, config: Config, base: str) -> Verification:
+    """Run every check against one item's branch, project-wide check included."""
+    report = verify_item(root, item, config, base)
+    if not report.stopped_early:
+        report.checks.append(project_check(root, config))
+    return report
+
+
+def verify_batch(
+    root: Path, items: Sequence[Item], config: Config, base: str
+) -> list[Verification]:
+    """Verify several items, running the project's own check exactly once.
+
+    The item's own command still runs per item, because that is what makes
+    each one individually acceptable or rejectable - a batch that could only
+    be taken or refused whole would hand the reviewer back the all-or-nothing
+    choice that one-commit-per-item exists to remove.
+    """
+    reports = [verify_item(root, item, config, base) for item in items]
+    outstanding = [report for report in reports if not report.stopped_early]
+    if outstanding:
+        shared = project_check(root, config)
+        for report in outstanding:
+            report.checks.append(shared)
+    return reports

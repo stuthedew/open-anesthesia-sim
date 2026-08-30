@@ -181,6 +181,14 @@ without doing the work — a file outside `touches`, a protected path, an edit
 to the gate itself, an added suppression, a deleted assertion, a rewritten
 front matter.
 
+Several ids may be given at once — `docket verify PL-K7QX PL-B2B2 --base main`
+— because that is the shape delegated work comes back in: one branch, one
+commit per item. Each item's own command still runs per item, since that is
+what makes one acceptable and the next rejectable, while the project's own
+check runs once for the batch. It proves a property of the tree, and proving
+the same property six times turns a two-second command into a two-minute one,
+which is how a reviewer learns to skip it.
+
 The diff is scoped to the commits whose subject names the item, which is what
 one-commit-per-item buys: a batch branch carries several items' work, and each
 is judged on its own. Uncommitted changes are attributed to whatever is being

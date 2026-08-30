@@ -23,7 +23,7 @@ from .release import bump_version, milestones, read_version, readiness, release_
 from .roadmap import wave
 from .store import find_item, new_id, read_items, write_item
 from .vcs import branches_in_flight, in_flight_ids
-from .verify import verify
+from .verify import verify_batch
 
 CAPTURE_TEMPLATE = """**Problem.** {title}
 
@@ -353,22 +353,34 @@ def cmd_delegable(args: argparse.Namespace) -> int:
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
-    """Prove one item's work stayed inside the commission it was given.
+    """Prove each item's work stayed inside the commission it was given.
 
     Exits non-zero when any check fails, so it can gate a worker's push as
     well as inform a reviewer. The reviewer still reads the new code; what
     this removes is the need to read the *whole diff* to find out whether
     there is any new code they were not expecting.
+
+    Several ids may be given, because that is how delegated work comes back:
+    one branch, one commit per item. Each item's own command still runs, so
+    four can be accepted and the fifth rejected, but the project's own check
+    runs once for the batch - it proves a property of the tree, and proving it
+    six times over is the difference between a command a reviewer runs and one
+    they learn to skip.
     """
     _, items, config = _load(args)
-    item = find_item(items, args.item)
-    if item is None:
-        print(f"no item matching '{args.item}'")
-        return 1
+    wanted = []
+    for identifier in args.item:
+        item = find_item(items, identifier)
+        if item is None:
+            print(f"no item matching '{identifier}'")
+            return 1
+        wanted.append(item)
     root = args.items.parent if args.items else find_root()
-    report = verify(root, item, config, args.base)
-    print(report.describe())
-    return 0 if report.passed else 1
+    reports = verify_batch(root, wanted, config, args.base)
+    print("\n\n".join(report.describe() for report in reports))
+    if len(reports) > 1:
+        print(f"\n{config.check_command} ran once for the batch; it proves the tree, not an item.")
+    return 0 if all(report.passed for report in reports) else 1
 
 
 def cmd_wave(args: argparse.Namespace) -> int:
@@ -505,7 +517,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     verify_cmd = add("verify", "prove an item's work stayed inside its commission")
-    verify_cmd.add_argument("item")
+    verify_cmd.add_argument("item", nargs="+", help="one or more item ids, verified as a batch")
     verify_cmd.add_argument("--base", default="main", help="the ref the work branched from")
     verify_cmd.set_defaults(func=cmd_verify)
 
