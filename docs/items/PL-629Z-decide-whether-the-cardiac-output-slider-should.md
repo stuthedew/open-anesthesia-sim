@@ -1,8 +1,16 @@
 ---
 id: PL-629Z
 title: Decide whether the cardiac-output slider should reach zero
-status: untriaged
+priority: P1
+effort: S
+status: done
+classes: safety, docs
+feature: numerical-domain
+touches: docs/MODEL.md, src/anesthesia_sim/app/simulation_view.py, tests/reference/test_coupled_dynamics.py
 added: 2026-08-30
+closed: 2026-08-30
+commit: a0b3ab1
+verify: uv run pytest tests/reference/test_coupled_dynamics.py -k envelope_limits
 ---
 
 **Problem.** `simulation_view`'s cardiac-output slider has `min=0`, so a user
@@ -45,3 +53,34 @@ cardiac output is a supported input and why, or that it is refused and where.
 If it is refused, the splitting-error domain is re-swept without it, the
 bound reset from that measurement, and `docs/MODEL.md`'s coefficient table
 and "Displayed precision" section revised together with it.
+
+---
+
+**Decided 2026-08-30: zero cardiac output is a supported input.** Recorded in
+`docs/MODEL.md` § "Supported input ranges", with the reasons — the equations
+stay well posed and "Required tests" already specifies the behavior; zero is
+the endpoint of a continuous axis and a floor above it would be an arbitrary
+boundary inside the valid domain; and the low end of the axis is where the
+teaching is. That last one is the operative reason and it is measured, not
+asserted: reducing cardiac output accelerates alveolar wash-in, and in this
+model \(F_A/F_I\) at five minutes for sevoflurane at 1 MAC is 0.41 at
+10 L/min, 0.49 at 5, 0.58 at 2.5, 0.70 at 1, and 0.86 at zero. Zero is that
+demonstration's clearest case.
+
+The same section records what the setting does *not* claim — it is a
+statement about agent transport, not a model of circulatory arrest,
+cardiopulmonary bypass, or ECMO, all three of which "Known limitations"
+already excludes.
+
+**The bound stands unchanged.** This item's second concern — that
+`SPLITTING_ERROR_BOUND_PER_STEP_SECOND` was set 22% above a number produced
+by a setting nobody would defend — is answered by the decision rather than by
+a re-measurement: the setting is defended, so 2.29e-3 s^-1 is a coefficient
+inside the supported domain and the bound over it is the right one.
+
+**One enforcement gap closed with it.** `test_envelope_limits_match_the_interface`
+checked only the slider maxima, so flooring cardiac output above zero would
+have removed the bound's own worst case from the reachable domain without
+failing anything — PL-042's defect at the other end of the axis. The four
+floors are now named constants in `app/simulation_view.py` (separately, so
+each stays an independent decision) and all seven limits are checked.
