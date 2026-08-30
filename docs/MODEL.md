@@ -1328,6 +1328,21 @@ digit was uncertain by two to twenty-three counts and the digit before it by
 up to two, so two of the three displayed decimals carried no information
 about the model.
 
+**The resolution is a property of the display alone.** Everything upstream of
+the formatter carries full binary64: the compartment states, every
+integration step, the mixed-venous and tissue transfers, and every
+`SimulationHistorySample` the chart is drawn from. Nothing in `core/` rounds,
+the snapshot fields the interface reads are raw fractions, and a slider's
+value reaches the model unquantized — the rounding happens exactly once, in
+the readout. So the two decimals below are a statement about what is worth
+*showing*, never about what the model computes or stores, and the quantity
+that actually limits the model is the splitting error above, which is a fifth
+of the last displayed digit in ordinary use.
+`test_the_model_keeps_precision_the_display_throws_away` holds this: two runs
+whose delivered concentration differs four orders of magnitude below the
+display resolution must reach states that differ, and must still read
+identically on the display.
+
 **Re-affirmed 2026-08-30 against the widened measurement** (PL-74TX). The
 figures above are larger than the ones PL-040 chose two decimals on, because
 the solver error has since been re-measured over trajectories rather than
