@@ -325,6 +325,28 @@ reason to load the skill:
   `feature`; a release is a `milestone`. `docket next` already prefers work
   that finishes something underway, within its priority band. Do not override
   that toward novelty.
+- **Workflow work comes before product work until the workflow is settled.**
+  Standing decision, 2026-08-30. The owner's half of this project is ideas,
+  features and direction; the session's half is keeping the work organized and
+  on track. Friction in that second half is paid on every future session, so
+  until it is gone, an item that removes friction from the loop or stops new
+  debt being introduced outranks one that adds capability - whatever the
+  priority bands say.
+
+  This cannot be read off the queue, and the priority field cannot carry it:
+  `docket check` pins `safety`- and `science`-classed items to P1, so the top
+  band is product work by construction and no arrangement of process items
+  gets ahead of it. Do not resolve that by promoting process work into P1 -
+  P1 means "a clinician could be misled", and it stops meaning that the moment
+  it also means "the release script is annoying". Read this rule instead of
+  inferring the order from `docket next`, and say which side of it a proposed
+  piece of work sits on. The exception is work needed to exercise the workflow
+  itself: a product item taken as a test case for a workflow change is
+  workflow work.
+
+  Retire this bullet when the workflow release ships - it is a phase, not a
+  permanent policy, and leaving it here after it is true would misdirect every
+  session that reads it.
 - **Name the work after the item.** On starting one, rename the session to
   lead with its id, and put that id at the front of every commit subject and
   pull request title. Name the branch too where the session creates it
