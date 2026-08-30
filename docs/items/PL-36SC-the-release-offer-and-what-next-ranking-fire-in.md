@@ -1,11 +1,12 @@
 ---
 id: PL-36SC
 title: The release offer and 'what next' ranking fire in topic-specific discussions, where they read as noise
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect
 feature: worker-instructions
+milestone: v0.2.7
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-08-30
 closed: 2026-08-30

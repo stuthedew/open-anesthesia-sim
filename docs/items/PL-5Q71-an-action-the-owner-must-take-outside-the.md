@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: worker-instructions
+milestone: v0.2.7
 touches: CLAUDE.md
 added: 2026-08-30
 closed: 2026-08-30

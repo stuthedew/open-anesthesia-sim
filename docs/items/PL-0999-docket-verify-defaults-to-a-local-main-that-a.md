@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: dev-tooling
+milestone: v0.2.7
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_verify.py
 added: 2026-08-30
 closed: 2026-08-30
