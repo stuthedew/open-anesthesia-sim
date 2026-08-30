@@ -19,6 +19,7 @@ should look, and never fail a build.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date
@@ -28,6 +29,11 @@ from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .store import ID_RE
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
+
+# A pull request number, as GitHub allocates them: a bare positive integer.
+# Written without the `#` so that the field holds the number and nothing else,
+# and so a typo like `pr: #71 (docket)` is refused rather than half-parsed.
+PR_RE = re.compile(r"^[1-9][0-9]*$")
 
 
 @dataclass
@@ -154,6 +160,11 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         )
     if item.status == "done" and not item.commit:
         report.errors.append(f"{where}: marked done but records no `commit`")
+    if item.pr and not PR_RE.match(item.pr):
+        report.errors.append(
+            f"{where}: `pr` is '{item.pr}'; it holds a pull request number and "
+            "nothing else, written without the `#`"
+        )
     if item.status == "dropped" and not item.reason:
         report.errors.append(
             f"{where}: marked dropped but records no `reason`; an item closed without "
@@ -176,6 +187,40 @@ def _verify_required(item: Item, config: Config) -> bool:
     if config.verify_required_from is None:
         return False
     return item.added is not None and item.added >= config.verify_required_from
+
+
+def _check_provenance(report: Report, merged_prs: frozenset[int] | None) -> None:
+    """Hold every recorded pull request to one the default branch has actually seen.
+
+    Two things stop this from being a plain set membership test, and both are
+    about refusing to answer rather than answering wrongly.
+
+    The first is `merged_prs` being `None`, which `vcs.merged_pull_requests`
+    returns whenever git cannot be trusted to have the whole default branch -
+    most often a shallow clone, which is the normal shape of an agent
+    session's container. Reporting from a truncated history would mark the
+    oldest and best-established provenance in the store as broken.
+
+    The second is the high-water mark. An item is closed on the branch that
+    carries it, so its pull request has not merged at the moment `check` first
+    sees the number. Numbers above the highest one on the default branch are
+    therefore not-yet-merged rather than wrong, and are passed over. What is
+    left is the case worth failing on: a number in the range the default
+    branch covers that no commit there names, which is a typo or an invention
+    and is provenance that leads nowhere.
+    """
+    if not merged_prs:
+        return
+    high_water = max(merged_prs)
+    for item in report.items:
+        if not item.pr or not PR_RE.match(item.pr):
+            continue
+        number = int(item.pr)
+        if number <= high_water and number not in merged_prs:
+            report.errors.append(
+                f"{_where(item)}: records pull request #{number}, which no commit on "
+                "the default branch names; the work it points at cannot be found"
+            )
 
 
 def _check_references(report: Report) -> None:
@@ -271,12 +316,25 @@ def _top_band(report: Report) -> list[Item]:
     return []
 
 
-def analyze(items: list[Item], today: date, config: Config | None = None) -> Report:
-    """Validate and groom in one pass."""
+def analyze(
+    items: list[Item],
+    today: date,
+    config: Config | None = None,
+    merged_prs: frozenset[int] | None = None,
+) -> Report:
+    """Validate and groom in one pass.
+
+    `merged_prs` is the one input that cannot be read from the store, so it is
+    passed in rather than fetched here: this module stays pure and testable,
+    and the caller decides whether asking git is worth it. Omitting it - which
+    every caller but `check` does - skips the provenance check rather than
+    failing it.
+    """
     settings = config or Config()
     report = Report(items=list(items))
     for item in report.items:
         _check_item(item, report, settings)
     _check_references(report)
+    _check_provenance(report, merged_prs)
     _groom(report, today, settings)
     return report

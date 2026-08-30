@@ -10,6 +10,10 @@ tell whether that is true.
 So it is derived, never stored. A branch that is gone means work that is not
 in flight, which is exactly right: branches are deleted when their pull
 request merges.
+
+The same holds for finished work: which pull requests have reached the
+default branch is a fact the repository holds, so an item's recorded pull
+request can be checked against it rather than trusted.
 """
 
 from __future__ import annotations
@@ -159,3 +163,41 @@ def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
 
 def in_flight_ids(root: Path, *, runner: Runner | None = None) -> set[str]:
     return {branch.item_id for branch in branches_in_flight(root, runner=runner)}
+
+
+# A pull request number as it reaches the default branch. GitHub writes one of
+# two subjects depending on how the merge was made: `Merge pull request #71
+# from owner/branch` for a merge commit, and `Title (#71)` for a squash. Both
+# are matched, because a repository that switches from one to the other keeps
+# the history it already has.
+PR_SUBJECT_RE = re.compile(r"^Merge pull request #(\d+)\b|\(#(\d+)\)\s*$")
+
+
+def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> frozenset[int] | None:
+    """Every pull request number named by a commit on the default branch.
+
+    `None` means the question could not be answered, and it is the reason this
+    function exists rather than a bare `git log` at the call site. A shallow
+    clone answers `git log` confidently and wrongly: the commits it is missing
+    are exactly the old ones, so provenance recorded years ago reads as
+    provenance that never landed. The container an agent session runs in is
+    normally shallow, so that is the common case rather than the exotic one.
+
+    So the only state that permits an answer is a repository that says outright
+    it is not shallow. Anything else - a truncated clone, no git, no
+    repository, a git too old to have `--is-shallow-repository` - collapses to
+    `None`, and the caller reports nothing rather than reporting every item as
+    broken.
+    """
+    run = runner or _run_git
+    if run(["rev-parse", "--is-shallow-repository"], root).strip() != "false":
+        return None
+    subjects = run(["log", "--format=%s", default_base(root, runner=run)], root)
+    if not subjects.strip():
+        return None
+    found: set[int] = set()
+    for subject in subjects.splitlines():
+        match = PR_SUBJECT_RE.search(subject.strip())
+        if match is not None:
+            found.add(int(match.group(1) or match.group(2)))
+    return frozenset(found)

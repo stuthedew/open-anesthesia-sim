@@ -334,3 +334,37 @@ def test_a_project_that_has_not_adopted_the_rule_hears_nothing_about_it() -> Non
 
     assert report.errors == []
     assert report.advisories == []
+
+
+def test_a_pull_request_number_is_recorded_bare() -> None:
+    errors = _errors(_item(status="done", commit="abc1234", closed=TODAY, pr="#71"))
+
+    assert any("`pr` is '#71'" in e for e in errors)
+
+
+def test_a_recorded_pull_request_the_default_branch_does_not_name_is_an_error() -> None:
+    item = _item(status="done", commit="abc1234", closed=TODAY, pr="12")
+    report = analyze([item], TODAY, merged_prs=frozenset({11, 13}))
+
+    assert any("records pull request #12" in e for e in report.errors)
+
+
+def test_a_pull_request_that_has_merged_is_accepted() -> None:
+    item = _item(status="done", commit="abc1234", closed=TODAY, pr="12")
+
+    assert analyze([item], TODAY, merged_prs=frozenset({11, 12, 13})).errors == []
+
+
+def test_a_pull_request_not_yet_merged_is_not_yet_wrong() -> None:
+    """An item is closed on the branch that carries it, before its own merge."""
+    item = _item(status="done", commit="abc1234", closed=TODAY, pr="87")
+
+    assert analyze([item], TODAY, merged_prs=frozenset({85, 86})).errors == []
+
+
+def test_provenance_is_not_checked_when_git_cannot_be_trusted() -> None:
+    """A shallow clone is missing exactly the oldest, best-established work."""
+    item = _item(status="done", commit="abc1234", closed=TODAY, pr="12")
+
+    assert analyze([item], TODAY, merged_prs=None).errors == []
+    assert analyze([item], TODAY).errors == []
