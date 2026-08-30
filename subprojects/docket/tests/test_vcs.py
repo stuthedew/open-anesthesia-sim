@@ -8,7 +8,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from docket.vcs import behind_remote, branches_in_flight, default_base, in_flight_ids, tags
+from docket.vcs import (
+    behind_remote,
+    branches_in_flight,
+    default_base,
+    in_flight_ids,
+    merged_pull_requests,
+    tags,
+)
 
 ROOT = Path("/nowhere")
 
@@ -115,3 +122,43 @@ def test_a_remote_base_is_not_judged_against_a_remote_of_its_own() -> None:
 
 def test_a_base_with_no_counterpart_on_the_remote_is_not_judged() -> None:
     assert behind_remote(ROOT, "topic", runner=_refs({})) is None
+
+
+def _pr_runner(shallow: str, subjects: list[str]):
+    def run(args: list[str], root: Path) -> str:
+        if args[:2] == ["rev-parse", "--is-shallow-repository"]:
+            return shallow + "\n"
+        if args[0] == "rev-parse":
+            return "origin/main\n"
+        if args[0] == "log":
+            return "\n".join(subjects)
+        return ""
+
+    return run
+
+
+def test_both_merge_subject_forms_name_their_pull_request() -> None:
+    subjects = [
+        "Merge pull request #86 from stuthedew/claude/scope-gate-freeze",
+        "PL-ZQ9C: record the pull request (#87)",
+        "Release v0.2.7",
+    ]
+
+    assert merged_pull_requests(ROOT, runner=_pr_runner("false", subjects)) == frozenset({86, 87})
+
+
+def test_a_shallow_clone_refuses_to_answer() -> None:
+    """Its missing commits are the oldest ones, so it would answer wrongly."""
+    subjects = ["Merge pull request #86 from stuthedew/claude/scope-gate-freeze"]
+
+    assert merged_pull_requests(ROOT, runner=_pr_runner("true", subjects)) is None
+
+
+def test_no_git_refuses_to_answer() -> None:
+    assert merged_pull_requests(ROOT, runner=lambda args, root: "") is None
+
+
+def test_a_hash_that_merely_looks_like_a_number_is_not_a_pull_request() -> None:
+    subjects = ["Fix the thing #71 mentioned", "Merge branch 'main' into topic"]
+
+    assert merged_pull_requests(ROOT, runner=_pr_runner("false", subjects)) == frozenset()

@@ -30,7 +30,7 @@ from .release import (
 )
 from .roadmap import Wave, wave
 from .store import find_item, new_id, read_items, write_item
-from .vcs import branches_in_flight, default_base, in_flight_ids, tags
+from .vcs import branches_in_flight, default_base, in_flight_ids, merged_pull_requests, tags
 from .verify import verify_batch
 
 CAPTURE_TEMPLATE = """**Problem.** {title}
@@ -73,8 +73,14 @@ def _flight(args: argparse.Namespace) -> set[str]:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
-    _, items, config = _load(args)
-    report = analyze(items, args.today or date.today(), config)
+    root, items, config = _load(args)
+    # The only command that asks git anything, because it is the only one whose
+    # answer depends on what has merged. `None` comes back from a checkout too
+    # shallow to be trusted, and the provenance check is skipped rather than
+    # run against a truncated history.
+    report = analyze(
+        items, args.today or date.today(), config, merged_prs=merged_pull_requests(root)
+    )
     print(render.format_check(report))
     return 1 if report.errors else 0
 

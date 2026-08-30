@@ -189,9 +189,49 @@ work rather than before.
 `dropped`. Requirements scale with it: an untriaged capture needs only a
 title and a body, while anything past that is a commitment to do work and is
 held to the standard that lets someone else pick it up cold. Closed items
-keep their files — `done` records the commit, `dropped` records the reason,
-because a finding dropped without one gets raised again by the next person
-who notices it.
+keep their files — `done` records where the work landed, `dropped` records the
+reason, because a finding dropped without one gets raised again by the next
+person who notices it.
+
+### Provenance survives the merge strategy
+
+A closed item's whole traceability is the pointer from it to the work: it is
+how a reader gets from "the interface rounds to two decimals" to the reasoning
+that chose two. Two fields carry it, and they fail in different ways.
+
+`commit` names the branch commit. It is exact, and it stops being resolvable
+the moment a project squash-merges: the squash puts a *new* commit on the
+default branch and deleting the head branch makes the one the item names
+unreachable. It also cannot be recorded by amending the commit it names,
+because amending changes the hash — so it is written after the fact, which is
+how a hash that resolves nowhere gets in.
+
+`pr` names the pull request, as a bare number written without the `#`. The
+number is allocated before the merge, so it can be recorded in the same commit
+as the closure rather than after it; it is unaffected by rebasing, squashing
+or amending; and GitHub writes it into the subject of whatever reaches the
+default branch — `Merge pull request #71 from owner/branch` for a merge commit,
+`Title (#71)` for a squash — so the link back is free either way.
+
+So `check` holds a recorded pull request to one the default branch has
+actually seen, and two cases are deliberately passed over rather than
+reported:
+
+- **A number above the highest one on the default branch.** An item is closed
+  on the branch that carries it, so at the moment `check` first reads the
+  number, that pull request has not merged. Numbers past the high-water mark
+  are not-yet-merged rather than wrong.
+- **Anything at all, in a shallow clone.** `git log` in a truncated history
+  answers confidently and wrongly, and the commits it is missing are the
+  oldest ones — so the best-established provenance in the store is what would
+  be reported as broken. `vcs.merged_pull_requests` returns `None` for a
+  checkout that does not say outright it is complete, and the check is skipped
+  rather than run against a partial history. This matters more than it looks:
+  the container an agent session runs in is normally shallow.
+
+What is left is the case worth failing on — a number inside the range the
+default branch covers that no commit there names, which is a typo or an
+invention.
 
 ### Delegation is derived, never granted
 
@@ -269,8 +309,8 @@ would be worse than no tool.
 
 Everything mechanically decidable is decided by code: a duplicate id, a
 blocker that is not an item, a missing brief section, a safety-classed item
-sitting in a band it is not allowed to sit in, a `done` item with no commit
-recorded. These are errors and they exit non-zero.
+sitting in a band it is not allowed to sit in, a `done` item recording a pull
+request the default branch has never seen. These are errors and they exit non-zero.
 
 Everything requiring judgment is left alone. The tool will tell you the top
 band has grown past what anyone can choose between at a glance, or that most
