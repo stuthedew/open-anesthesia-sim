@@ -413,17 +413,22 @@ reason to load the skill:
   hand. Asking them to "tag v0.2.5" makes them go and reconstruct three
   commands; give the actual `git tag`/`git push` lines with the version and
   the merge SHA already filled in. Every time, not only the first.
-- **Report gate progress after every completed item.** The owner is tracking
-  how far the current debt gate has left to run, not just whether the last
-  task landed. So close out any completed work with where the gate now
-  stands: how many of its frozen items are done, how many remain, and what
-  the remaining ones are — glossed, and grouped so the shape is visible
-  (what is blocked on the strongest model, what is cheap). Say the same for
-  the items the milestone clears itself, which are progress toward the same
-  end and are otherwise invisible. `PL-9CNQ` exists to make this computed
-  rather than transcribed; until it lands, this is done by hand and is
-  therefore worth checking against the item files rather than against the
-  last reply that stated it.
+- **Report gate progress when the item just closed is one the gate contains.**
+  The owner is tracking how far the current debt gate has left to run, not
+  just whether the last task landed. So close such an item out with where the
+  gate now stands: how many of its frozen entries are done, how many remain,
+  and what the remaining ones are — glossed, and grouped so the shape is
+  visible (what is blocked on the strongest model, what is cheap). Say the
+  same for the entries the milestone clears itself, which are progress toward
+  the same end and are otherwise invisible.
+
+  Membership is the trigger, and it is decidable rather than a matter of
+  judgment: `bin/docket wave` prints the gate's open entries by id, and
+  `bin/docket gate` recomputes the split. So closing an item the gate does not
+  contain — a tooling fix, a docs pass, anything captured after the freeze —
+  ends without a gate report at all. The entries that remain are all simulator
+  work, and listing them at the end of a process session is the third channel
+  by which product work arrives in a discussion that was not about it.
 - **Concurrency is ruled out, never certified.** `docket concurrent` proves
   two items will contend when their declared paths overlap. It cannot prove
   the reverse — an item with no declared overlap may still wander into a
