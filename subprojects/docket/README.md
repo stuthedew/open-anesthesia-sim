@@ -108,10 +108,26 @@ added: 2026-08-24
 **Done when.** The observable condition that closes it.
 ```
 
-Two optional fields govern whether the work may be handed to a cheaper model:
+Two further fields govern whether the work may be handed to a cheaper model:
 `verify`, a single-line command that proves the item done, and `not-delegable`,
 holding the reason an otherwise-qualifying item is withheld. See *Delegation is
 derived, never granted* below.
+
+An item at `ready` must carry one of them: the command that would prove it
+done, or a recorded reason why no command can. The gate sits at `ready` rather
+than at capture deliberately — demanding a command at the moment an idea occurs
+is the same tax as demanding a priority, and `ready` is the first point at
+which the question is answerable at all. `verify_required_from` is the date a
+project adopts the rule; items captured before it are counted in one grooming
+advisory rather than turned into an error each, so adopting the rule does not
+mean rewriting the whole store on the same day. Leaving that setting unset
+leaves the requirement off, which is right for a project that does not delegate
+and therefore has nothing riding on the field.
+
+Write the command only after running it. Every one of the six that existed in
+the project this grew in was wrong and none had been executed — a check nobody
+ran is a specification nobody tested, and it fails after a worker has done the
+work rather than before.
 
 `status` runs `untriaged` → `ready` / `needs-decision` / `blocked` → `done` /
 `dropped`. Requirements scale with it: an untriaged capture needs only a
@@ -202,6 +218,7 @@ safety_classes = ["safety", "science"]
 process_classes = ["session-cost", "docs", "infra"]
 top_band_limit = 5
 untriaged_stale_days = 14
+verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
 minor_classes = ["feature"]
 protected_paths = []
 version_file = "pyproject.toml"
