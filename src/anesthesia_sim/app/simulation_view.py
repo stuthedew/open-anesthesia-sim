@@ -81,6 +81,19 @@ MAX_CARDIAC_OUTPUT_L_MIN = 10.0
 # capability), sourced from SimulationSnapshot.max_delivered_concentration_percent
 # rather than a fixed constant here.
 
+# Every control reaches zero, and each is named separately rather than sharing
+# one constant because each is a separate decision that could change on its
+# own: flooring cardiac output above zero would not imply flooring ventilation.
+# `docs/MODEL.md` § "Supported input ranges" records why zero is supported on
+# all four, and the splitting-error bound in § "Independent-solution test" is
+# measured on a trajectory that reaches zero cardiac output — so moving one of
+# these floors narrows the domain that bound was measured over.
+# `test_envelope_limits_match_the_interface` is what makes moving one fail.
+MIN_FRESH_GAS_FLOW_L_MIN = 0.0
+MIN_ALVEOLAR_VENTILATION_L_MIN = 0.0
+MIN_CARDIAC_OUTPUT_L_MIN = 0.0
+MIN_DELIVERED_CONCENTRATION_PERCENT = 0.0
+
 CIRCUIT_COLOR = PRIMARY
 ALVEOLAR_COLOR = ACCENT
 MIXED_VENOUS_COLOR = "#7C3AED"
@@ -287,7 +300,7 @@ class SimulationView:
         )
 
         self._fresh_gas_flow_slider = ft.Slider(
-            min=0,
+            min=MIN_FRESH_GAS_FLOW_L_MIN,
             max=MAX_FRESH_GAS_FLOW_L_MIN,
             value=initial_snapshot.fresh_gas_flow_l_min,
             label="{value} L/min",
@@ -297,7 +310,7 @@ class SimulationView:
             on_change=self._handle_fresh_gas_flow_change,
         )
         self._delivered_concentration_slider = ft.Slider(
-            min=0,
+            min=MIN_DELIVERED_CONCENTRATION_PERCENT,
             max=initial_snapshot.max_delivered_concentration_percent,
             value=(initial_snapshot.delivered_concentration_fraction * 100.0),
             label="{value}%",
@@ -313,7 +326,7 @@ class SimulationView:
             on_change=(self._handle_delivered_concentration_change),
         )
         self._alveolar_ventilation_slider = ft.Slider(
-            min=0,
+            min=MIN_ALVEOLAR_VENTILATION_L_MIN,
             max=MAX_ALVEOLAR_VENTILATION_L_MIN,
             value=(initial_snapshot.alveolar_ventilation_l_min),
             label="{value} L/min",
@@ -323,7 +336,7 @@ class SimulationView:
             on_change=(self._handle_alveolar_ventilation_change),
         )
         self._cardiac_output_slider = ft.Slider(
-            min=0,
+            min=MIN_CARDIAC_OUTPUT_L_MIN,
             max=MAX_CARDIAC_OUTPUT_L_MIN,
             value=initial_snapshot.cardiac_output_l_min,
             label="{value} L/min",

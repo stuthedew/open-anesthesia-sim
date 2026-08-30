@@ -55,12 +55,22 @@ CIRCUIT_VOLUME_L = 6.0
 # The interface's own slider limits, restated here rather than imported for
 # the same reason as SHIPPED_STEP_S below — this reference test does not
 # depend on the application layer. `test_envelope_limits_match_the_interface`
-# is what keeps the restatement true: without it, raising a slider would
+# is what keeps the restatement true: without it, moving a slider limit would
 # silently shrink the domain this gate covers, which is the defect PL-042
 # exists to fix.
+#
+# The floors matter as much as the maxima and are checked with them. The worst
+# trajectory this gate drives reaches zero cardiac output, so flooring that
+# slider above zero would take the bound's own worst case out of the reachable
+# domain without failing anything. `docs/MODEL.md` § "Supported input ranges"
+# records that zero is supported on all four controls, deliberately (PL-629Z).
 MAX_FRESH_GAS_FLOW_L_MIN = 10.0
 MAX_ALVEOLAR_VENTILATION_L_MIN = 12.0
 MAX_CARDIAC_OUTPUT_L_MIN = 10.0
+MIN_FRESH_GAS_FLOW_L_MIN = 0.0
+MIN_ALVEOLAR_VENTILATION_L_MIN = 0.0
+MIN_CARDIAC_OUTPUT_L_MIN = 0.0
+MIN_DELIVERED_CONCENTRATION_PERCENT = 0.0
 
 
 @dataclass(frozen=True)
@@ -156,7 +166,10 @@ def _ventilator_start(agent_id: str) -> tuple[Phase, ...]:
         Phase(
             300.0,
             OperatingPoint(
-                _max_dial(agent_id), MAX_FRESH_GAS_FLOW_L_MIN, 0.0, MAX_CARDIAC_OUTPUT_L_MIN
+                _max_dial(agent_id),
+                MAX_FRESH_GAS_FLOW_L_MIN,
+                MIN_ALVEOLAR_VENTILATION_L_MIN,
+                MAX_CARDIAC_OUTPUT_L_MIN,
             ),
         ),
         Phase(
@@ -183,11 +196,17 @@ def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
     where it sits, so all six transients run at once and the split is under the
     most strain it can be put under.
 
-    Cardiac output of zero is not a physiological setting, and the gate does
-    not rest on it alone: `_ventilator_start` above reaches 1.52e-3 s^-1 by an
-    ordinary manoeuvre, two thirds of this scenario's 2.29e-3 s^-1. It is here
-    because the slider goes to zero, and a gate narrower than the reachable
-    domain is a verification claim broader than its evidence.
+    Zero cardiac output is a supported input, decided and recorded rather than
+    inherited: `docs/MODEL.md` § "Supported input ranges" gives the reasons,
+    of which the operative one is that reducing cardiac output accelerates
+    alveolar wash-in and zero is that lesson's clearest case. So this
+    trajectory is inside the domain the gate must cover, not an edge case
+    tolerated at its boundary.
+
+    The gate does not rest on it alone even so: `_ventilator_start` above
+    reaches 1.52e-3 s^-1 without it, two thirds of this scenario's 2.29e-3
+    s^-1, so a later decision to floor the slider would leave a gate that
+    still means something while the bound was re-measured.
 
     Ten minutes of loading is enough to saturate: extending it to twenty
     changes the measured coefficient by 4e-5 relative.
@@ -197,13 +216,16 @@ def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
         Phase(
             600.0,
             OperatingPoint(
-                _max_dial(agent_id), MAX_FRESH_GAS_FLOW_L_MIN, MAX_ALVEOLAR_VENTILATION_L_MIN, 0.0
+                _max_dial(agent_id),
+                MAX_FRESH_GAS_FLOW_L_MIN,
+                MAX_ALVEOLAR_VENTILATION_L_MIN,
+                MIN_CARDIAC_OUTPUT_L_MIN,
             ),
         ),
         Phase(
             300.0,
             OperatingPoint(
-                0.0,
+                MIN_DELIVERED_CONCENTRATION_PERCENT / 100.0,
                 MAX_FRESH_GAS_FLOW_L_MIN,
                 MAX_ALVEOLAR_VENTILATION_L_MIN,
                 MAX_CARDIAC_OUTPUT_L_MIN,
@@ -779,23 +801,40 @@ def test_lockstep_oracle_step_matches_the_pinned_one() -> None:
 
 
 def test_envelope_limits_match_the_interface() -> None:
-    """The restated slider maxima are still the interface's own.
+    """The restated slider limits are still the interface's own, both ends.
 
-    Without this, raising a slider would silently shrink the domain the gate
-    covers and nothing would fail — which is exactly how the bound came to be
-    narrower than the reachable settings in the first place.
+    Without this, moving a slider limit would silently shrink the domain the
+    gate covers and nothing would fail — which is exactly how the bound came
+    to be narrower than the reachable settings in the first place.
+
+    The floors are checked alongside the maxima because the worst trajectory
+    the gate drives reaches zero cardiac output: flooring that slider above
+    zero would remove the bound's own worst case from the reachable domain,
+    which is the same defect at the other end of the axis.
     """
 
     from anesthesia_sim.app import simulation_view
 
-    assert (MAX_FRESH_GAS_FLOW_L_MIN, MAX_ALVEOLAR_VENTILATION_L_MIN, MAX_CARDIAC_OUTPUT_L_MIN) == (
+    assert (
+        MAX_FRESH_GAS_FLOW_L_MIN,
+        MAX_ALVEOLAR_VENTILATION_L_MIN,
+        MAX_CARDIAC_OUTPUT_L_MIN,
+        MIN_FRESH_GAS_FLOW_L_MIN,
+        MIN_ALVEOLAR_VENTILATION_L_MIN,
+        MIN_CARDIAC_OUTPUT_L_MIN,
+        MIN_DELIVERED_CONCENTRATION_PERCENT,
+    ) == (
         simulation_view.MAX_FRESH_GAS_FLOW_L_MIN,
         simulation_view.MAX_ALVEOLAR_VENTILATION_L_MIN,
         simulation_view.MAX_CARDIAC_OUTPUT_L_MIN,
+        simulation_view.MIN_FRESH_GAS_FLOW_L_MIN,
+        simulation_view.MIN_ALVEOLAR_VENTILATION_L_MIN,
+        simulation_view.MIN_CARDIAC_OUTPUT_L_MIN,
+        simulation_view.MIN_DELIVERED_CONCENTRATION_PERCENT,
     ), (
-        "the interface's slider limits have changed; re-run the envelope "
-        "sweep, update these constants and the bound, and re-derive the "
-        "measured figures in docs/MODEL.md"
+        "the interface's slider limits have changed; re-run the envelope and "
+        "trajectory sweeps, update these constants and the bound, and "
+        "re-derive the measured figures in docs/MODEL.md"
     )
 
 
