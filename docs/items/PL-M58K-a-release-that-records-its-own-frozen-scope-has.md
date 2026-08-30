@@ -1,18 +1,15 @@
 ---
 id: PL-M58K
 title: A release that records its own frozen scope has to call it a debt gate, which it is not
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs, infra
+feature: planning-cadence
 touches: subprojects/docket/src/docket/roadmap.py, ROADMAP.md
 added: 2026-08-30
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py -q && bin/docket wave
 ---
-
-**Problem.** A release that records its own frozen scope has to call it a debt gate, which it is not
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `GATE_SUBSECTION = "debt gate"` in
 `subprojects/docket/src/docket/roadmap.py` is the only machine-readable hook by
