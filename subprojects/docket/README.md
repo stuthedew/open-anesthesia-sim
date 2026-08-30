@@ -100,6 +100,13 @@ the milestone sections, and the debt list each one records when it is scoped —
 and reports the version, the step, the gate's size and how much of it is
 closed, and which beat of the cadence that leaves due.
 
+The beat and the step also ride in `docket digest`, as one line. A command
+nobody runs unprompted does not change where "what next" gets answered from,
+and the queue nags every session while a roadmap nags none. One line is the
+whole budget: the digest is resent on every turn of a session, and a plan
+that cannot be read at a glance is one more thing to scroll past. An
+unreadable roadmap produces no line at all rather than a guessed step.
+
 It computes; it decides nothing. Whether the prose beside a timeline row is
 still true, whether a gate should open early, whether a scoped milestone is
 scoped *well*: none of that is on the page in a form a parser can read, so

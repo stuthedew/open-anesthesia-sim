@@ -100,13 +100,24 @@ def format_delegable(report: Report, in_flight: set[str], protected_paths: tuple
     return "\n".join(lines)
 
 
-def format_digest(report: Report, in_flight: set[str] | None = None, ready: object = None) -> str:
+def format_digest(
+    report: Report,
+    in_flight: set[str] | None = None,
+    ready: object = None,
+    plan: Wave | None = None,
+) -> str:
     """The few lines injected into session context at startup.
 
     The release line is here rather than left for someone to ask about,
     because nobody asks. Finished work sits unshipped until a person happens
     to wonder, and the store already knows when there is enough of it to be
-    worth raising.
+    worth raising. The plan line is here for the same reason and a sharper
+    one: the queue nags every session and the roadmap nags never, so "what
+    next" gets answered from whatever ranks highest in the store - a question
+    one level below the altitude that should decide it.
+
+    Every line is resent on every turn of the session, so the plan gets one:
+    the beat and the step, and `docket wave` for the rest.
     """
     flight = in_flight or set()
     if not report.items:
@@ -151,7 +162,20 @@ def format_digest(report: Report, in_flight: set[str] | None = None, ready: obje
             f"{ready.current_version}{completes}. Offer {ready.suggested_version} "  # type: ignore[attr-defined]
             "before taking new work."
         )
-    lines.append("`bin/docket status` shows the project by feature; `list` shows every item.")
+    if plan is not None and plan.step is not None:
+        position = (
+            f"step {plan.step.ordinal} of {plan.total_steps}"
+            if plan.step.ordinal is not None
+            else "between numbered steps"
+        )
+        unparsed = " Timeline does not parse cleanly - check `wave`." if plan.problems else ""
+        lines.append(
+            f"Plan: {plan.version or 'unknown'}, {position} ({plan.step.label}). "
+            f"Beat: {_beat_line(plan)}.{unparsed}"
+        )
+    lines.append(
+        "`bin/docket status` shows the project by feature; `list` every item; `wave` the plan."
+    )
     return "\n".join(lines)
 
 
