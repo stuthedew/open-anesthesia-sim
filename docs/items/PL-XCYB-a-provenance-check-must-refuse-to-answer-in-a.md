@@ -3,11 +3,13 @@ id: PL-XCYB
 title: A provenance check must refuse to answer in a shallow checkout, not answer wrongly
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: public-history
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md, docs/items
 added: 2026-08-30
+closed: 2026-08-30
+pr: 90
 verify: uv run pytest subprojects/docket/tests/test_vcs.py subprojects/docket/tests/test_checks.py -q
 ---
 
@@ -63,3 +65,14 @@ completes.
 **Done when.** `docket check` run in a shallow checkout reports that it cannot
 verify recorded provenance, rather than reporting it invalid; a test covers the
 shallow case explicitly; and the behaviour in a full clone is unchanged.
+
+
+**Closed 2026-08-30**, retroactively: the work landed in pull request 90
+(`1561b2a`) alongside PL-ZQ9C, which it was deliberately paired with, and the
+`status` was never moved off `ready`. Verified against the "Done when" above
+rather than assumed - `_check_provenance` records a declined history as a check
+that did not run and judges no item, `test_a_shallow_clone_declines_and_says_why`
+covers the shallow case explicitly, the full-clone path is unchanged, and this
+item's own `verify:` command passes (65 tests). The gap that let a finished item
+sit open is PL-3CBS (docket has no way to notice that an open item's work
+already landed on main).

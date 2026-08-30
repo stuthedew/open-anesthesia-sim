@@ -3,11 +3,13 @@ id: PL-ZQ9C
 title: Record an item's pull request, so provenance survives squash-merge
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: public-history
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests, .claude/skills/docket/SKILL.md, subprojects/docket/README.md, ROADMAP.md, docs/items
 added: 2026-08-30
+closed: 2026-08-30
+pr: 90
 verify: uv run pytest subprojects/docket/tests -k pull_request && bin/docket check
 not-delegable: the brief leaves the migration open between backfilling `pr:` from the merge subjects and carrying both fields, and either pass rewrites the provenance of every closed item
 ---
@@ -59,3 +61,17 @@ two need doing together, which is probably cheaper.
 reports an item whose recorded pull request has no matching commit on main,
 the existing recorded hashes still validate, and `subprojects/docket/README.md`
 documents the field.
+
+
+**Closed 2026-08-30**, retroactively: the work landed in pull request 90
+(`55eedb6`) and the `status` was never moved off `ready`. Verified against the
+"Done when" above rather than assumed - `Item.pr` exists and `docket check`
+refuses a `done` item without it, `_check_provenance` holds every recorded
+number to one the default branch has seen (passing over numbers above its
+high-water mark, since an item is closed on the branch that carries it),
+`commit` stays legal and is still checked for shape, and
+`subprojects/docket/README.md` documents the field. This is the rule that
+stopped PL-STNV being closed in the session that finished it, which is the
+requirement working as designed. The gap that let this finished item sit open
+is PL-3CBS (docket has no way to notice that an open item's work already landed
+on main).
