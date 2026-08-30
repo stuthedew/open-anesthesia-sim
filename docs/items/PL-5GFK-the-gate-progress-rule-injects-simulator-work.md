@@ -41,15 +41,22 @@ fix is a scope line, not a deletion — the same shape `PL-36SC` used.
 could be a tool answer rather than an instruction) or "the session is about
 the milestone". The first is cheaper and cannot be forgotten.
 
-**Decided at triage (2026-08-30).** The trigger is membership: the rule fires
-when the item just closed is one the gate contains, and is silent otherwise.
-That is the cheaper of the two and the one that cannot be forgotten, and it
-needs no tool change — `bin/docket gate` and `docket wave` already print the
-frozen entries by id, so the test is answerable at the moment the rule fires.
-The edit is therefore a scope line on the existing bullet, in the same shape
-`PL-36SC` used, rather than a new command. Overturn this in favour of "the
-session is about the milestone" only if membership proves too narrow in
-practice — it would readmit the judgment the scoping was meant to remove.
+**Decided at triage, confirmed by the project owner (2026-08-30).** The
+trigger is membership: the rule fires when the item just closed is one the
+gate contains, and is silent otherwise. That is the cheaper of the two and
+the one that cannot be forgotten, and it needs no tool change — `bin/docket
+wave` prints the gate's open entries by id and `bin/docket gate` recomputes
+the split, so the test is answerable at the moment the rule fires. The edit
+is therefore a scope line on the existing bullet, in the same shape `PL-36SC`
+used, rather than a new command.
+
+**Also corrected in the same bullet.** It closed with "`PL-9CNQ` exists to
+make this computed rather than transcribed; until it lands, this is done by
+hand". `PL-9CNQ` (a `docket gate` command, so the frozen debt list is computed
+rather than transcribed) landed in `0eaa17f` and shipped in v0.2.6, so the
+sentence instructed every session to transcribe by hand a list the tool now
+prints. Replaced with the two commands, which is also what makes the
+membership test above decidable.
 
 **Done when.** Closing a process item that the gate does not contain does not
 produce a report on the gate, and the rule still fires when a gate item
