@@ -72,6 +72,29 @@ MIN_ALVEOLAR_VENTILATION_L_MIN = 0.0
 MIN_CARDIAC_OUTPUT_L_MIN = 0.0
 MIN_DELIVERED_CONCENTRATION_PERCENT = 0.0
 
+# The resolution every concentration is displayed at, restated for the same
+# reason as the slider limits and checked against the interface in the same
+# test. `docs/MODEL.md` § "Displayed precision" is where the choice is argued.
+CONCENTRATION_DISPLAY_DECIMALS = 2
+
+# How far apart two compartments may be while the split still inverts which of
+# them is displayed as higher. The ordinal reading the interface invites — the
+# circuit leads the alveoli lead the tissues — is only misleading if an
+# inversion happens between two readouts a reader would see as separated, so
+# this bounds the gap at which one can occur rather than forbidding inversions
+# outright.
+#
+# The worst measured is 1.73 counts, on the worst reachable trajectory alone;
+# at ordinary settings, at the reference point, at the envelope corner and
+# across a ventilator start there is no inversion at any gap. Three counts
+# allows 1.7 times the measurement — and is far tighter than the arithmetic
+# alone would give: two readings each displaced by up to
+# SPLITTING_ERROR_BOUND_PER_STEP_SECOND * SHIPPED_STEP_S in opposite
+# directions, plus half a count of rounding each, could invert a gap of about
+# 6.6 counts. A degradation large enough to matter fails this well before it
+# reaches what the error bound alone permits.
+MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = 3.0
+
 
 @dataclass(frozen=True)
 class OperatingPoint:
@@ -234,6 +257,35 @@ def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
     )
 
 
+def _ordinary_use(agent_id: str) -> tuple[Phase, ...]:
+    """The settings a run starts at, held: 1 MAC and the reference adult's own flows.
+
+    The gate's other trajectories are chosen for where the split is worst.
+    This one is chosen for where a reader actually is, so that a claim about
+    what the interface displays is not established only at its extremes.
+    """
+
+    patient = load_reference_adult_parameters()
+
+    return (
+        Phase(
+            ENVELOPE_HORIZON_S,
+            OperatingPoint(
+                load_agent_parameters(agent_id).mac_percent / 100.0,
+                FRESH_GAS_FLOW_L_MIN,
+                patient.default_alveolar_ventilation_l_min,
+                patient.default_cardiac_output_l_min,
+            ),
+        ),
+    )
+
+
+def _envelope_corner_held(agent_id: str) -> tuple[Phase, ...]:
+    """The envelope corner, held for the whole run."""
+
+    return (Phase(ENVELOPE_HORIZON_S, _envelope_corner(agent_id)),)
+
+
 def _held_default_settings(agent_id: str) -> tuple[Phase, ...]:
     """The reference point, held for the whole run: a trajectory that never turns."""
 
@@ -262,6 +314,15 @@ def _held_default_settings(agent_id: str) -> tuple[Phase, ...]:
 SETTING_CHANGE_SCENARIOS = (
     ("ventilator start", _ventilator_start),
     ("unperfused load then dial off", _unperfused_load_then_dial_off),
+)
+
+# Every trajectory this module drives, for the checks that must hold on all of
+# them rather than only where the split is worst.
+ALL_GATE_TRAJECTORIES = (
+    ("ordinary use", _ordinary_use),
+    ("reference point, held", _held_default_settings),
+    ("envelope corner, held", _envelope_corner_held),
+    *SETTING_CHANGE_SCENARIOS,
 )
 
 
@@ -801,7 +862,7 @@ def test_lockstep_oracle_step_matches_the_pinned_one() -> None:
 
 
 def test_envelope_limits_match_the_interface() -> None:
-    """The restated slider limits are still the interface's own, both ends.
+    """The restated interface limits are still the interface's own.
 
     Without this, moving a slider limit would silently shrink the domain the
     gate covers and nothing would fail — which is exactly how the bound came
@@ -810,7 +871,11 @@ def test_envelope_limits_match_the_interface() -> None:
     The floors are checked alongside the maxima because the worst trajectory
     the gate drives reaches zero cardiac output: flooring that slider above
     zero would remove the bound's own worst case from the reachable domain,
-    which is the same defect at the other end of the axis.
+    which is the same defect at the other end of the axis. The displayed
+    resolution is checked with them because
+    `test_displayed_ordering_reverses_only_at_a_crossing` measures a property
+    of the rounded values, and adding a decimal would change what it proves
+    without changing anything it reads.
     """
 
     from anesthesia_sim.app import simulation_view
@@ -823,6 +888,7 @@ def test_envelope_limits_match_the_interface() -> None:
         MIN_ALVEOLAR_VENTILATION_L_MIN,
         MIN_CARDIAC_OUTPUT_L_MIN,
         MIN_DELIVERED_CONCENTRATION_PERCENT,
+        CONCENTRATION_DISPLAY_DECIMALS,
     ) == (
         simulation_view.MAX_FRESH_GAS_FLOW_L_MIN,
         simulation_view.MAX_ALVEOLAR_VENTILATION_L_MIN,
@@ -831,10 +897,109 @@ def test_envelope_limits_match_the_interface() -> None:
         simulation_view.MIN_ALVEOLAR_VENTILATION_L_MIN,
         simulation_view.MIN_CARDIAC_OUTPUT_L_MIN,
         simulation_view.MIN_DELIVERED_CONCENTRATION_PERCENT,
+        simulation_view.CONCENTRATION_DISPLAY_DECIMALS,
     ), (
         "the interface's slider limits have changed; re-run the envelope and "
         "trajectory sweeps, update these constants and the bound, and "
         "re-derive the measured figures in docs/MODEL.md"
+    )
+
+
+def _displayed_percent(fraction: float) -> float:
+    """The value the interface shows for a fraction, at its own resolution."""
+
+    return round(fraction * 100.0, CONCENTRATION_DISPLAY_DECIMALS)
+
+
+def _display_ordering(displayed: tuple[float, ...], left: int, right: int) -> int:
+    """Which of two readouts a reader sees as higher: 1, -1, or 0 for equal."""
+
+    return (displayed[left] > displayed[right]) - (displayed[left] < displayed[right])
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+@pytest.mark.parametrize(
+    ("trajectory_name", "build_phases"),
+    ALL_GATE_TRAJECTORIES,
+    ids=[name for name, _ in ALL_GATE_TRAJECTORIES],
+)
+def test_displayed_ordering_reverses_only_at_a_crossing(
+    agent_id: str, trajectory_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
+) -> None:
+    """The split cannot invert a gradient a reader would see as a gradient.
+
+    The bound above is on the absolute error in one readout, which is not the
+    same claim as this one. The six readouts sit in one row to be read
+    *ordinally* — the circuit leads the alveoli lead the tissues — and an
+    ordinal reading is corrupted only if the error flips which of two
+    compartments is displayed as higher. Because the error's sign is opposite
+    at the two ends of the transfer chain, a difference carries the sum of two
+    displacements rather than their cancellation, so this does not follow from
+    the absolute bound and is measured separately.
+
+    An inversion while two compartments are crossing is not a defect: their
+    true gap is then below what the display resolves, and the ordering is
+    genuinely ambiguous. An inversion at a gap a reader would call a gradient
+    is, and that is what this forbids.
+
+    `docs/MODEL.md` § "Displayed precision" cites this test as the reason the
+    interface marks nothing about comparing two compartments.
+    """
+
+    system = _empty_shipped_system(agent_id)
+    reference = [0.0] * 6
+    oracle_step_s = _oracle_step_for(SHIPPED_STEP_S)
+    resolution_percent = 10.0**-CONCENTRATION_DISPLAY_DECIMALS
+    widest_inverted_gap_percent = 0.0
+    worst: tuple[float, str, str] | None = None
+    step_index = 0
+
+    for phase in build_phases(agent_id):
+        _apply_operating_point(system, phase.point)
+        derivative = _build_derivative(agent_id, phase.point)
+
+        for _ in range(round(phase.duration_s / SHIPPED_STEP_S)):
+            system.advance(SHIPPED_STEP_S)
+
+            for _ in range(round(SHIPPED_STEP_S / oracle_step_s)):
+                reference = _rk4_step(derivative, reference, oracle_step_s)
+
+            step_index += 1
+            shipped_displayed = tuple(_displayed_percent(v) for v in _shipped_states(system))
+            reference_displayed = tuple(_displayed_percent(v) for v in reference)
+
+            for left in range(len(STATE_LABELS)):
+                for right in range(left + 1, len(STATE_LABELS)):
+                    shipped_order = _display_ordering(shipped_displayed, left, right)
+                    reference_order = _display_ordering(reference_displayed, left, right)
+
+                    # A tie on one side and an order on the other is the
+                    # display resolving a gap the other side rounds away, not
+                    # a reader being told the wrong compartment is higher.
+                    if shipped_order != -reference_order or shipped_order == 0:
+                        continue
+
+                    gap_percent = abs(reference[left] - reference[right]) * 100.0
+
+                    if gap_percent > widest_inverted_gap_percent:
+                        widest_inverted_gap_percent = gap_percent
+                        worst = (
+                            step_index * SHIPPED_STEP_S,
+                            STATE_LABELS[left],
+                            STATE_LABELS[right],
+                        )
+
+    widest_in_counts = widest_inverted_gap_percent / resolution_percent
+
+    assert widest_in_counts <= MAX_INVERTED_GAP_IN_DISPLAY_COUNTS, (
+        f"{agent_id} on the '{trajectory_name}' trajectory displays "
+        f"{worst[1] if worst else '?'} and {worst[2] if worst else '?'} in the "
+        f"wrong order at {worst[0] if worst else 0.0:.1f} s while their true "
+        f"gap is {widest_in_counts:.2f} counts of the last displayed digit, "
+        f"above the {MAX_INVERTED_GAP_IN_DISPLAY_COUNTS:.1f} allowed. The "
+        f"split is inverting a gradient rather than resolving a crossing; "
+        f"docs/MODEL.md's 'Displayed precision' cites this test as the reason "
+        f"the interface marks nothing about comparing two compartments."
     )
 
 
