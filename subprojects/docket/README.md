@@ -81,6 +81,23 @@ writes the notes from the items themselves, and stops short of tagging.
 Generated notes cannot claim something the items do not, and nothing shipped
 goes unmentioned because whoever wrote them forgot it.
 
+**What a release deliberately does not write is the roadmap.** A project that
+keeps a version table in a hand-maintained plan will find it left behind by
+every release — twice here, the second time one release after the first was
+repaired. The fix is a check that refuses, not a command that writes: the
+milestone column is editorial, so a generated row would either be thin or
+would overwrite something considered, while a refusal costs one hand-written
+row per release and cannot corrupt the file. `roadmap.parse_version_table` and
+`roadmap.baseline_heading` read the grammar; the project's own checker asks
+the three questions that follow from it — one row per released version,
+exactly one marked current, and a "Current baseline:" heading naming that same
+version, which is the version the version file holds.
+
+Tags are deliberately outside that check. A shallow or tag-less clone is a
+normal checkout, and a documentation check that fails on how somebody fetched
+the repository is a check that gets switched off. `docket release` enforces
+the tag instead, at the one moment tags are certainly to hand.
+
 ## The item format
 
 One file per item, markdown with a small front-matter block. Front matter is
