@@ -10,6 +10,7 @@ touches: ROADMAP.md, CLAUDE.md
 added: 2026-08-30
 closed: 2026-08-30
 commit: 5b89b97
+pr: 88
 verify: python3 tools/doc_check.py check && bin/docket wave
 ---
 

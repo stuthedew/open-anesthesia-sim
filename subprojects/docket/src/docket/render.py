@@ -340,18 +340,27 @@ def _gate_lines(items: list[Item]) -> list[str]:
 
 def format_check(report: Report) -> str:
     """The full report: everything wrong, and everything worth a second look."""
-    lines = [
+    headline = (
         f"docket: {len(report.open_items)} open ({_counts(report)}), "
         f"{len(report.untriaged)} untriaged, "
         f"{_plural(len(report.errors), 'error', 'errors')}, "
         f"{_plural(len(report.advisories), 'advisory', 'advisories')}"
-    ]
+    )
+    # On the headline rather than only further down, because the headline is
+    # what a reader takes away: "0 errors" from a run where a check never ran
+    # says the store is sound when nobody looked.
+    if report.declined:
+        headline += f", {len(report.declined)} not checked"
+    lines = [headline]
     if report.errors:
         lines += ["", "Errors (the store is wrong; fix before committing):"]
         lines += [f"  {message}" for message in report.errors]
     if report.advisories:
         lines += ["", "Grooming advisories (judgment needed; nothing is failing):"]
         lines += [f"  {message}" for message in report.advisories]
+    if report.declined:
+        lines += ["", "Not checked (this checkout cannot answer; nothing is claimed):"]
+        lines += [f"  {message}" for message in report.declined]
 
     silent = undeclared(report.open_items)
     if silent:
@@ -361,7 +370,7 @@ def format_check(report: Report) -> str:
             "concurrency cannot be reasoned about for them:",
             f"  {', '.join(i.identifier for i in silent)}",
         ]
-    if not report.errors and not report.advisories:
+    if not report.errors and not report.advisories and not report.declined:
         lines.append("No errors, nothing due for grooming.")
     return "\n".join(lines)
 

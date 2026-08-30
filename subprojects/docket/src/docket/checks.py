@@ -27,6 +27,7 @@ from datetime import date
 from .config import Config
 from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .store import ID_RE
+from .vcs import PullRequestHistory
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
 
@@ -38,11 +39,19 @@ PR_RE = re.compile(r"^[1-9][0-9]*$")
 
 @dataclass
 class Report:
-    """Findings, split by whether a machine or a person has to resolve them."""
+    """Findings, split by whether a machine or a person has to resolve them.
+
+    `declined` is neither: it is the checks that could not run here. A check
+    that stays silent when it cannot answer is right to stay silent about the
+    *items*, and wrong to let the run look complete - "no errors" and "not
+    checked" are different results, and a reader who cannot tell them apart
+    has been told the store is sound when nobody looked.
+    """
 
     items: list[Item] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     advisories: list[str] = field(default_factory=list)
+    declined: list[str] = field(default_factory=list)
 
     @property
     def open_items(self) -> list[Item]:
@@ -196,34 +205,42 @@ def _verify_required(item: Item, config: Config) -> bool:
     return item.added is not None and item.added >= config.verify_required_from
 
 
-def _check_provenance(report: Report, merged_prs: frozenset[int] | None) -> None:
+def _check_provenance(report: Report, history: PullRequestHistory | None) -> None:
     """Hold every recorded pull request to one the default branch has actually seen.
 
-    Two things stop this from being a plain set membership test, and both are
-    about refusing to answer rather than answering wrongly.
+    Three things stop this from being a plain set membership test, and all
+    three are about refusing to answer rather than answering wrongly.
 
-    The first is `merged_prs` being `None`, which `vcs.merged_pull_requests`
-    returns whenever git cannot be trusted to have the whole default branch -
-    most often a shallow clone, which is the normal shape of an agent
-    session's container. Reporting from a truncated history would mark the
-    oldest and best-established provenance in the store as broken.
+    A `history` that declined - most often a shallow clone, which is the normal
+    shape of an agent session's container - is recorded as a check that did not
+    run, and no item is judged. Reporting from a truncated history would mark
+    the oldest and best-established provenance in the store as broken, and
+    doing it silently would let that run read as a pass.
 
-    The second is the high-water mark. An item is closed on the branch that
-    carries it, so its pull request has not merged at the moment `check` first
-    sees the number. Numbers above the highest one on the default branch are
+    A `history` of `None` is a caller that did not ask, which every command but
+    `check` is: no git read, and nothing to report about one.
+
+    Last, the high-water mark. An item is closed on the branch that carries it,
+    so its pull request has not merged at the moment `check` first sees the
+    number. Numbers above the highest one on the default branch are
     therefore not-yet-merged rather than wrong, and are passed over. What is
     left is the case worth failing on: a number in the range the default
     branch covers that no commit there names, which is a typo or an invention
     and is provenance that leads nowhere.
     """
-    if not merged_prs:
+    if history is None:
         return
-    high_water = max(merged_prs)
+    if not history.known:
+        report.declined.append(f"recorded pull requests: {history.declined}")
+        return
+    if not history.numbers:
+        return
+    high_water = max(history.numbers)
     for item in report.items:
         if not item.pr or not PR_RE.match(item.pr):
             continue
         number = int(item.pr)
-        if number <= high_water and number not in merged_prs:
+        if number <= high_water and number not in history.numbers:
             report.errors.append(
                 f"{_where(item)}: records pull request #{number}, which no commit on "
                 "the default branch names; the work it points at cannot be found"
@@ -327,11 +344,11 @@ def analyze(
     items: list[Item],
     today: date,
     config: Config | None = None,
-    merged_prs: frozenset[int] | None = None,
+    history: PullRequestHistory | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
-    `merged_prs` is the one input that cannot be read from the store, so it is
+    `history` is the one input that cannot be read from the store, so it is
     passed in rather than fetched here: this module stays pure and testable,
     and the caller decides whether asking git is worth it. Omitting it - which
     every caller but `check` does - skips the provenance check rather than
@@ -342,6 +359,6 @@ def analyze(
     for item in report.items:
         _check_item(item, report, settings)
     _check_references(report)
-    _check_provenance(report, merged_prs)
+    _check_provenance(report, history)
     _groom(report, today, settings)
     return report

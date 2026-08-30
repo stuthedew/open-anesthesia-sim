@@ -78,9 +78,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     # answer depends on what has merged. `None` comes back from a checkout too
     # shallow to be trusted, and the provenance check is skipped rather than
     # run against a truncated history.
-    report = analyze(
-        items, args.today or date.today(), config, merged_prs=merged_pull_requests(root)
-    )
+    report = analyze(items, args.today or date.today(), config, history=merged_pull_requests(root))
     print(render.format_check(report))
     return 1 if report.errors else 0
 

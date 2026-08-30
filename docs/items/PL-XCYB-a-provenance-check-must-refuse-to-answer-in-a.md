@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect, infra
 feature: public-history
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md, docs/items
 added: 2026-08-30
 verify: uv run pytest subprojects/docket/tests/test_vcs.py subprojects/docket/tests/test_checks.py -q
 ---
