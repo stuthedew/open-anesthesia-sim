@@ -76,6 +76,17 @@ def test_digest_is_silent_on_an_empty_store(
     assert capsys.readouterr().out == ""
 
 
+def test_digest_still_reports_the_queue_when_there_is_no_roadmap(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A SessionStart hook degrades rather than failing: no plan, still a digest."""
+    _run("digest", "--items", str(_store(tmp_path, READY)))
+    out = capsys.readouterr().out
+
+    assert "Docket:" in out
+    assert "Plan:" not in out
+
+
 def test_next_explains_why(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _run("next", "--items", str(_store(tmp_path, READY)))
     out = capsys.readouterr().out

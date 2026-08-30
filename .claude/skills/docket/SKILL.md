@@ -120,8 +120,9 @@ Triggered by the queue thinning out, by a release shipping with little left
 behind it, or by the owner asking what is next when nothing pressing is open.
 
 **Offer this; do not wait for it.** Intent parked on the roadmap is only worth
-parking if something brings it back, and the roadmap does not announce itself
-the way the digest does.
+parking if something brings it back. The digest's plan line says which beat is
+due — it does not say that a planned milestone is worth scoping now, which is
+the judgment this mode exists for.
 
 > "v0.2.4 is out and what is left is four small items. The next planned
 > milestone is the anesthesia-machine abstraction — the interlock baseline
