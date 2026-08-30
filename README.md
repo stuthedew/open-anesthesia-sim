@@ -56,9 +56,15 @@ equations, units, parameter provenance, and known limitations, and
 
 ## Requirements
 
-- Python 3.14 (see `.python-version`)
-- [uv](https://docs.astral.sh/uv/) for dependency management and running
-  commands
+- Python 3.14 — `.python-version` names the exact patch release, and
+  `uv sync` installs it
+- [uv](https://docs.astral.sh/uv/) 0.12.5 or newer for dependency management
+  and running commands. `required-version` in `pyproject.toml` is the floor,
+  so an older build stops with `Required uv version ">=0.12.5" does not match
+  the running version` rather than quietly resolving `.python-version` against
+  an interpreter list that predates the pin. `uv self update` is the fix;
+  where that is rate-limited, `python3 -m pip install --user --upgrade uv`
+  installs the same binary from PyPI.
 
 ## Setup
 
