@@ -3,11 +3,13 @@ id: PL-51T3
 title: Scope v0.2.8 - the workflow works - and freeze its gate
 priority: P2
 effort: M
-status: ready
+status: done
 classes: planning
 feature: planning-cadence
 touches: ROADMAP.md
 added: 2026-08-30
+closed: 2026-08-30
+commit: 6643ccd
 verify: python3 tools/doc_check.py check && bin/docket wave
 ---
 
