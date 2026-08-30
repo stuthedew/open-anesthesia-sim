@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 added: 2026-08-25
 closed: 2026-08-25
 commit: c7728e2
+pr: 41
 ---
 
 **Problem.** The shared options are attached to the top-level parser *and* to

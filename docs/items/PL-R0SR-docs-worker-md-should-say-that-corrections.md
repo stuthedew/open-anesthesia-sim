@@ -11,6 +11,7 @@ touches: docs/worker.md
 added: 2026-08-25
 closed: 2026-08-25
 commit: 6e19632
+pr: 52
 ---
 
 **Problem.** `docs/worker.md` tells a worker to run the item's `verify:`

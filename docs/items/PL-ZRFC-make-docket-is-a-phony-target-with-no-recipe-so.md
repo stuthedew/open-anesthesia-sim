@@ -11,6 +11,7 @@ touches: Makefile, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-08-30
 closed: 2026-08-30
 commit: 62ba91a
+pr: 74
 verify: uv run pytest tests/unit/test_doc_check.py -k "target or makefile"
 ---
 

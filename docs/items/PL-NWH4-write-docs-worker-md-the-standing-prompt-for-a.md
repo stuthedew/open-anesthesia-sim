@@ -11,6 +11,7 @@ touches: docs/worker.md, AGENTS.md
 added: 2026-08-25
 closed: 2026-08-25
 commit: e17e7c0
+pr: 40
 ---
 
 **Problem.** Handing a batch of items to a cheaper model requires telling it

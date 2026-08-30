@@ -189,9 +189,77 @@ work rather than before.
 `dropped`. Requirements scale with it: an untriaged capture needs only a
 title and a body, while anything past that is a commitment to do work and is
 held to the standard that lets someone else pick it up cold. Closed items
-keep their files — `done` records the commit, `dropped` records the reason,
-because a finding dropped without one gets raised again by the next person
-who notices it.
+keep their files — `done` records where the work landed, `dropped` records the
+reason, because a finding dropped without one gets raised again by the next
+person who notices it.
+
+### Provenance survives the merge strategy
+
+A closed item's whole traceability is the pointer from it to the work: it is
+how a reader gets from "the interface rounds to two decimals" to the reasoning
+that chose two. Two fields carry it, and they fail in different ways.
+
+`commit` names the branch commit. It is exact, and it stops being resolvable
+the moment a project squash-merges: the squash puts a *new* commit on the
+default branch and deleting the head branch makes the one the item names
+unreachable. It also cannot be recorded by amending the commit it names,
+because amending changes the hash — so it is written after the fact, which is
+how a hash that resolves nowhere gets in.
+
+`pr` names the pull request, as a bare number written without the `#`. The
+number is allocated before the merge, so it can be recorded in the same commit
+as the closure rather than after it; it is unaffected by rebasing, squashing
+or amending; and GitHub writes it into the subject of whatever reaches the
+default branch — `Merge pull request #71 from owner/branch` for a merge commit,
+`Title (#71)` for a squash — so the link back is free either way.
+
+So `check` holds a recorded pull request to one the default branch has
+actually seen, and two cases are deliberately passed over rather than
+reported:
+
+- **A number above the highest one on the default branch.** An item is closed
+  on the branch that carries it, so at the moment `check` first reads the
+  number, that pull request has not merged. Numbers past the high-water mark
+  are not-yet-merged rather than wrong.
+- **Anything at all, in a shallow clone.** `git log` in a truncated history
+  answers confidently and wrongly, and the commits it is missing are the
+  oldest ones — so the best-established provenance in the store is what would
+  be reported as broken. This matters more than it looks: the container an
+  agent session runs in is normally shallow.
+
+A shallow checkout is a worse condition than a bare one, and the difference
+shapes how it is reported. In a bare checkout git cannot answer and every read
+in `vcs.py` already collapses to silence. In a shallow one git answers, so
+`merged_pull_requests` returns a `PullRequestHistory` that carries *why* it
+declined instead of a set that cannot be distinguished from "this project uses
+no pull requests". `check` then prints a third section beside the errors and
+the advisories:
+
+```
+docket: 71 open (…), 0 errors, 1 advisory, 1 not checked
+
+Not checked (this checkout cannot answer; nothing is claimed):
+  recorded pull requests: the checkout is a shallow clone, so the commits it
+  is missing are the oldest ones and the longest-settled provenance would
+  read as broken
+```
+
+The count is on the headline because the headline is what a reader takes
+away, and "0 errors" from a run where a check never ran says the store is
+sound when nobody looked. Deepening the checkout is deliberately *not* the
+fix: `check` runs from a bare tree with no network, and fetching here would
+trade that away to answer a question the caller can simply skip.
+
+What is left is the case worth failing on — a number inside the range the
+default branch covers that no commit there names, which is a typo or an
+invention.
+
+So `done` requires `pr`, and `commit` is optional beside it. The requirement
+carries no cutover date, because there is nothing to cut over from: the store
+this grew in had every one of its 66 closed items backfilled in a single pass,
+each number derived from the commit on the default branch that first contained
+the recorded hash. A dated exemption is a leak that has to be remembered
+forever; a backfill is one commit.
 
 ### Delegation is derived, never granted
 
@@ -269,8 +337,8 @@ would be worse than no tool.
 
 Everything mechanically decidable is decided by code: a duplicate id, a
 blocker that is not an item, a missing brief section, a safety-classed item
-sitting in a band it is not allowed to sit in, a `done` item with no commit
-recorded. These are errors and they exit non-zero.
+sitting in a band it is not allowed to sit in, a `done` item recording a pull
+request the default branch has never seen. These are errors and they exit non-zero.
 
 Everything requiring judgment is left alone. The tool will tell you the top
 band has grown past what anyone can choose between at a glance, or that most

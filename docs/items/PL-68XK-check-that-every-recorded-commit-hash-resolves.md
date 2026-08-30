@@ -1,6 +1,6 @@
 ---
 id: PL-68XK
-title: Check that every recorded commit hash resolves in the repository
+title: Check that a recorded commit hash resolves, now that it is the optional half of provenance
 priority: P2
 effort: S
 status: ready
@@ -10,43 +10,55 @@ touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/
 added: 2026-08-25
 ---
 
-**Read PL-ZQ9C first.** PL-ZQ9C (record an item's pull request, so provenance
-survives squash-merge) replaces the `commit:` field this check validates,
-because PL-S4M2 switches main to squash-merge and the recorded branch hash
-will no longer reach main. Building this check against `commit:` first means
-building it twice. The two are probably cheapest done together.
+**PL-ZQ9C has landed; this brief is written against what it left.** PL-ZQ9C
+(record an item's pull request, so provenance survives squash-merge) made `pr`
+the field a `done` item must carry and left `commit` optional beside it, and
+PL-XCYB (a provenance check must refuse to answer in a shallow checkout, not
+answer wrongly) built the machinery both checks need. So this item is no
+longer "validate the field that makes a closure traceable" - `docket check`
+already holds every recorded `pr` to a pull request the default branch names.
+It is now the narrower job named in the title: a `commit` that is *present*
+should still resolve, because a hash that leads nowhere reads as provenance
+whether or not the item also carries a number.
 
-**Problem.** `docket check` requires a `done` item to record a `commit`, but
-never checks that the hash names a commit that exists. Cutting v0.2.3 found
-two that do not: PL-001 recorded `3749588` and PL-008 recorded `2484611`,
-neither resolvable by `git rev-parse`. Both were carried in from the
-single-file punch list, written against a history that was later rewritten,
-and both survived the provenance repair in `547d9ac` because that pass
-corrected which *release* an item shipped in without checking the hashes
-themselves. The real commits are `94fa01d` and `de5cd97`; they were recovered
-by hand from commit subjects and a "Closes PL-008" line, and are now recorded.
+**Problem.** `commit` is optional and unvalidated. 66 items carry one, and one
+of them was wrong: PL-003 recorded `621d9a6`, which resolves in no clone at
+all. PL-ZQ9C's backfill caught it only because deriving a pull request from
+the hash forced the hash to be resolved, and repaired it to `e475823` from the
+history of the item's own file. Nothing would have caught it otherwise, and
+nothing would catch the next one. Two earlier instances - PL-001's `3749588`
+and PL-008's `2484611` - were found by hand when v0.2.3 was cut; all three
+were carried in from the single-file punch list, written against a history
+that was later rewritten.
 
-**Why it matters.** A `done` item's commit is the whole of its traceability -
-it is how a reader gets from "the interface rounds to two decimals" to the
-reasoning that chose two. An unresolvable hash fails silently and reads as
-provenance, which is worse than an empty field, and it propagates: the
-generated release notes cite the same hash, so a broken reference ships. This
-is decidable by reading the repository, which is where `CLAUDE.md` says the
-work belongs.
+**Why it matters.** A hash that resolves nowhere fails silently and reads as
+provenance, which is worse than an empty field. It is decidable by reading the
+repository, which is where `CLAUDE.md` says the work belongs. The consequence
+is smaller than it was before PL-ZQ9C - `pr` now carries the traceability, and
+the generated release notes cite the pull request in preference to the hash -
+so this is no longer the only thing standing between a reader and the
+reasoning behind a closed item. It is a stale field that lies.
 
-**Where.** `subprojects/docket/src/docket/checks.py`, using
-`subprojects/docket/src/docket/vcs.py`'s existing `_run_git` helper.
+**Where.** `subprojects/docket/src/docket/checks.py`, alongside
+`_check_provenance`, using `subprojects/docket/src/docket/vcs.py`.
 
-**Approach.** An *error* where git can answer, silent where it cannot (this
+**Approach.** Follow the shape `_check_provenance` already has rather than
+inventing a second one. It takes what git knows as an argument
+(`PullRequestHistory`) rather than shelling out, so `analyze` stays pure and
+`check` is the only command that pays for the read; the same applies here.
+
+An *error* where git can answer, and a recorded refusal where it cannot (this
 supersedes an earlier draft here that made it advisory; PL-B043's decision
 settled that a condition decidable from the tree belongs in `docket check` as
-an invariant rather than as advice). `vcs.py` already collapses every git
-failure to "nothing known" so the session-start digest works in a checkout
-without git, without a remote, or without network - the same must hold here,
-or `docket check` stops working in exactly the bare-checkout case it was built
-to survive. So: if git is unavailable, say nothing; if it answers and a
-recorded hash is unreachable, fail. All 32 recorded hashes are reachable
-today, so turning this on costs nothing and keeps a clean condition clean.
+an invariant rather than as advice).
+
+**A shallow checkout must decline, not fail** (this is why PL-XCYB paired with
+PL-ZQ9C rather than with this item). Every hash recorded before the graft
+point fails `git rev-parse --verify` in a shallow clone: eight of forty
+sampled did, all of them real commits. Reuse `Report.declined` and the "Not
+checked" section PL-XCYB added, so this check reports that it could not run
+rather than reporting sound provenance as broken - and so the two provenance
+checks decline for the same reason in the same words.
 
 **Reachability, not mere presence** (folded in from PL-JL24). `git cat-file -e`
 succeeds for any object still in the local object database, including a commit
@@ -64,11 +76,16 @@ commit on an unmerged local branch is reachable, a true orphan is not. The
 noise came from choosing HEAD as the reference point, not from asking about
 reachability at all.
 
-**Note on the underlying trap** (from PL-JL24). Recording a hash by amending
-cannot converge - amending to write the hash changes the hash. An item's
-`commit:` has to be written in a follow-up commit, or name the merge commit.
+**The amend trap is no longer load-bearing** (from PL-JL24). Recording a hash
+by amending cannot converge, because amending to write the hash changes the
+hash - which is why `commit` was always written after the fact, and how a
+wrong one gets in. PL-ZQ9C's `pr` is not subject to it: the number is
+allocated before the merge, so it is written in the same commit as the
+closure. Keep the note as the reason `commit` stays optional rather than being
+tightened.
 
-**Done when.** `docket check` reports each `done` item whose recorded commit
-does not resolve, stays silent when git cannot answer, and has tests covering
-a resolvable hash, an unresolvable one, an orphaned commit that `cat-file -e`
-would accept, and a repository with no git at all.
+**Done when.** `docket check` reports each item whose recorded `commit` does
+not resolve or is unreachable, declines with a reason in a shallow checkout
+rather than failing, says nothing when git cannot answer at all, and has tests
+covering a reachable hash, an unresolvable one, an orphaned commit that
+`cat-file -e` would accept, a shallow checkout, and a repository with no git.

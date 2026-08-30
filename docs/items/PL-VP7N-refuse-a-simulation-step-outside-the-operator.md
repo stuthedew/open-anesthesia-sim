@@ -11,6 +11,7 @@ touches: src/anesthesia_sim/core/respiratory_system.py, src/anesthesia_sim/core/
 added: 2026-08-30
 closed: 2026-08-30
 commit: 82813bf
+pr: 71
 verify: uv run pytest -k maximum_simulation_step
 ---
 

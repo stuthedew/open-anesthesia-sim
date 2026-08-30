@@ -11,6 +11,7 @@ touches: docs/MODEL.md, src/anesthesia_sim/app/simulation_view.py, tests/referen
 added: 2026-08-30
 closed: 2026-08-30
 commit: a0b3ab1
+pr: 68
 verify: uv run pytest tests/reference/test_coupled_dynamics.py -k envelope_limits
 ---
 

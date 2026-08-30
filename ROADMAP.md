@@ -603,12 +603,18 @@ run in. Shipping PL-ZQ9C without it would close an entry known to be
 half-fixed, which is the outcome the rule above exists to prevent, so the two
 are worked together and closed together.
 
-PL-68XK (check that every recorded commit hash resolves) is a different case
-and is *not* admitted by this rule: it predates the freeze and was excluded
-from the approved list deliberately. It is nonetheless entangled with PL-ZQ9C -
-it validates the `commit:` field PL-ZQ9C replaces, so building it first means
-building it twice, as its own brief says. The standing instruction is therefore
-to refresh its brief to target the new field, not to work it here.
+PL-68XK (check that a recorded commit hash resolves) is a different case and is
+*not* admitted by this rule: it predates the freeze and was excluded from the
+approved list deliberately. It was nonetheless entangled with PL-ZQ9C, so its
+brief has been refreshed rather than worked - and what the refresh had to say
+changed once PL-ZQ9C landed. `commit:` was not replaced: `pr:` sits beside it
+and `commit:` became optional, so PL-68XK is no longer "validate the field that
+makes a closure traceable" - `docket check` already holds every recorded `pr`
+to a pull request the default branch names. It is now the narrower job of
+holding a `commit` that is *present* to one that resolves, because a hash
+leading nowhere reads as provenance whether or not a number sits beside it.
+Its brief carries that scope, and the shallow-checkout discipline PL-XCYB
+built, so whoever picks it up does not build either half twice.
 
 ### Definition of done
 

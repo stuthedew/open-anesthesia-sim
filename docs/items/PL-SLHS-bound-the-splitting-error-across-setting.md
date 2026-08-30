@@ -11,6 +11,7 @@ touches: tests/reference/test_coupled_dynamics.py, docs/MODEL.md
 added: 2026-08-30
 closed: 2026-08-30
 commit: a0ac750
+pr: 67
 verify: uv run pytest tests/reference/test_coupled_dynamics.py -k bounded_across_setting_changes
 ---
 

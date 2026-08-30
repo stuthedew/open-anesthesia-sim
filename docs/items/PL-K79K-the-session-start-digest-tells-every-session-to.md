@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/
 added: 2026-08-30
 closed: 2026-08-30
 commit: 54bdb5b
+pr: 64
 verify: uv run pytest subprojects/docket/tests -k triage
 ---
 

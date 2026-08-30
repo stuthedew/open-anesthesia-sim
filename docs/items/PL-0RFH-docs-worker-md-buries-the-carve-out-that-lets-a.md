@@ -11,6 +11,7 @@ touches: docs/worker.md
 added: 2026-08-25
 closed: 2026-08-25
 commit: 6e19632
+pr: 52
 ---
 
 **Problem.** `docs/worker.md` states the no-improvising rule at length and

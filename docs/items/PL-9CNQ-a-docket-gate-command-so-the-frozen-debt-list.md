@@ -11,6 +11,7 @@ touches: subprojects/docket, docket.toml, .claude/skills/docket/SKILL.md
 added: 2026-08-25
 closed: 2026-08-30
 commit: 0eaa17f
+pr: 64
 verify: uv run pytest subprojects/docket/tests -k "gate or effort"
 ---
 

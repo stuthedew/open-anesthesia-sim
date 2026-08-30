@@ -10,6 +10,7 @@ touches: CLAUDE.md
 added: 2026-08-30
 closed: 2026-08-30
 commit: 8a97540
+pr: 89
 verify: grep -q 'open a pull request only when asked' CLAUDE.md
 ---
 

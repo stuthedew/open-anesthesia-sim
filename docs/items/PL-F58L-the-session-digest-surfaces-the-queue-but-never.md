@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/
 added: 2026-08-26
 closed: 2026-08-30
 commit: c6956b1
+pr: 74
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py -k digest
 ---
 

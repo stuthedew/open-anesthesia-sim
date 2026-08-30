@@ -11,6 +11,7 @@ touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/checks.py
 added: 2026-08-25
 closed: 2026-08-30
 commit: 4f4c8f4
+pr: 64
 verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_config.py -k verify
 ---
 
