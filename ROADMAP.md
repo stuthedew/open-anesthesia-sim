@@ -202,8 +202,9 @@ clamped in the controller; the agent-file check that 1 MAC is deliverable
 runs after every field is populated, so field declaration order cannot defeat
 it; and the controller no longer keeps its own copies of the reference
 adult's cited ventilation and cardiac-output defaults, so the data file is
-what the app actually runs. The review harness that reproduces these findings
-is in `tools/review-verification/`.
+what the app actually runs. The harness that reproduced these findings was
+retired by PL-STNV once every check it carried had become a closed item, a
+reference test, or an open queue entry; it survives in git history alone.
 
 ### The model as it stands
 
