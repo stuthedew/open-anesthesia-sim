@@ -11,6 +11,9 @@ use an em dash, and the milestone whose whole content is a gate carries no
 
 from __future__ import annotations
 
+from docket.checks import Report
+from docket.model import parse_item
+from docket.render import format_digest
 from docket.roadmap import (
     CLEAR,
     FREEZE,
@@ -317,3 +320,56 @@ def test_the_baseline_heading_is_read_by_its_version() -> None:
 
 def test_a_file_with_no_baseline_heading_names_none() -> None:
     assert baseline_heading(ROADMAP) is None
+
+
+# --- the digest line --------------------------------------------------------
+
+DIGEST_ITEM = """---
+id: PL-001
+title: An item
+priority: P2
+effort: S
+status: ready
+classes: perf
+touches: a.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def _digest(plan: object = None) -> str:
+    return format_digest(Report(items=[parse_item(DIGEST_ITEM)]), set(), None, plan)
+
+
+def test_the_digest_carries_the_beat_so_a_session_need_not_ask() -> None:
+    """PL-F58L: the queue nagged every session and the roadmap nagged none."""
+    plan = _wave("0.2.5", frozenset({"PL-001"}))
+    stated = [line for line in _digest(plan).splitlines() if line.startswith("Plan:")]
+
+    assert len(stated) == 1
+    assert "clear the gate" in stated[0]
+    assert "step 1 of" in stated[0]
+
+
+def test_the_digest_says_nothing_about_a_plan_it_was_not_given() -> None:
+    assert not any(line.startswith("Plan:") for line in _digest().splitlines())
+
+
+def test_the_plan_costs_the_digest_exactly_one_line() -> None:
+    """The digest is resent on every turn of the session, so its length is a cost."""
+    plan = _wave("0.2.5", frozenset({"PL-001"}))
+
+    assert len(_digest(plan).splitlines()) == len(_digest().splitlines()) + 1
+
+
+def test_a_timeline_that_does_not_parse_says_so_rather_than_stating_a_step() -> None:
+    """A step read off a broken table is a plausible wrong answer, not an answer."""
+    hyphenated = ROADMAP.replace("v0.3.0 —", "v0.3.0 -")
+    plan = _wave("0.2.5", frozenset({"PL-001"}), roadmap=hyphenated)
+    stated = next(line for line in _digest(plan).splitlines() if line.startswith("Plan:"))
+
+    assert "does not parse cleanly" in stated

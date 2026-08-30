@@ -1,8 +1,16 @@
 ---
 id: PL-ZRFC
 title: '`make docket` is a phony target with no recipe, so it silently succeeds without validating the store'
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
+feature: dev-tooling
+touches: Makefile, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-08-30
+closed: 2026-08-30
+commit: 62ba91a
+verify: uv run pytest tests/unit/test_doc_check.py -k "target or makefile"
 ---
 
 **Problem.** `Makefile` line 1 lists `docket` in `.PHONY`, and the target that

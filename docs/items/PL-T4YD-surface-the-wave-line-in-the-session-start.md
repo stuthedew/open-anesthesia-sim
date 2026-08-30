@@ -2,11 +2,11 @@
 id: PL-T4YD
 title: Surface the wave line in the session-start digest, so the roadmap nags as the queue does
 status: dropped
-closed: 2026-08-30
-reason: duplicate of PL-F58L, which states the same problem with a fuller brief and a recommended narrow fix; its one distinct point (the digest's length is a standing per-turn cost) has been folded into that item
 feature: planning-cadence
 touches: .claude/hooks/docket-digest.sh, subprojects/docket
 added: 2026-08-29
+closed: 2026-08-30
+reason: duplicate of PL-F58L, which states the same problem with a fuller brief and a recommended narrow fix, and which has since shipped the line; this item's one distinct point - the digest's length is a standing per-turn cost, so the budget is one line rather than wave's five - is folded into PL-F58L and recorded in subprojects/docket/README.md
 ---
 
 **Problem.** `docket wave` computes which beat of the cadence is due, but

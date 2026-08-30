@@ -28,9 +28,9 @@ from .release import (
     release_notes,
     stamp,
 )
-from .roadmap import wave
+from .roadmap import Wave, wave
 from .store import find_item, new_id, read_items, write_item
-from .vcs import branches_in_flight, in_flight_ids, tags
+from .vcs import branches_in_flight, default_base, in_flight_ids, tags
 from .verify import verify_batch
 
 CAPTURE_TEMPLATE = """**Problem.** {title}
@@ -88,6 +88,29 @@ def cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _plan(root: Path, items: Sequence[Item], config: Config) -> Wave | None:
+    """Where the project stands on its own timeline, or `None` if that is unclear.
+
+    The digest is emitted by a `SessionStart` hook, so this declines rather
+    than raises: a project with no roadmap, or one whose roadmap has been
+    edited into a shape the parser cannot read, still gets its queue. What it
+    must not do is guess at a step, so an unreadable plan produces no plan
+    line at all and `docket wave` is left to say what is wrong with it.
+    """
+    roadmap = root / config.roadmap_file
+    if not roadmap.is_file():
+        return None
+    try:
+        return wave(
+            roadmap.read_text(encoding="utf-8"),
+            read_version(root / config.version_file),
+            frozenset(item.identifier for item in items if not item.is_open),
+            frozenset(item.identifier for item in items),
+        )
+    except (OSError, ValueError, KeyError):
+        return None
+
+
 def cmd_digest(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
     if not items:
@@ -95,7 +118,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
     report = analyze(items, args.today or date.today(), config)
     root = args.items.parent if args.items else find_root()
     ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
-    rendered = render.format_digest(report, _flight(args), ready)
+    rendered = render.format_digest(report, _flight(args), ready, _plan(root, items, config))
     if rendered:
         print(rendered)
     return 0
@@ -446,7 +469,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
             return 1
         wanted.append(item)
     root = args.items.parent if args.items else find_root()
-    reports = verify_batch(root, wanted, config, args.base)
+    base = args.base or default_base(root)
+    reports = verify_batch(root, wanted, config, base)
     print("\n\n".join(report.describe() for report in reports))
     if len(reports) > 1:
         print(f"\n{config.check_command} ran once for the batch; it proves the tree, not an item.")
@@ -597,7 +621,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     verify_cmd = add("verify", "prove an item's work stayed inside its commission")
     verify_cmd.add_argument("item", nargs="+", help="one or more item ids, verified as a batch")
-    verify_cmd.add_argument("--base", default="main", help="the ref the work branched from")
+    verify_cmd.add_argument(
+        "--base",
+        default=None,
+        help="the ref the work branched from (default: origin/main where it resolves)",
+    )
     verify_cmd.set_defaults(func=cmd_verify)
 
     add("status", "the project at feature altitude").set_defaults(func=cmd_status)
