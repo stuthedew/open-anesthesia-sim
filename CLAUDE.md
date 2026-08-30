@@ -338,9 +338,12 @@ reason to load the skill:
   band is product work by construction and no arrangement of process items
   gets ahead of it. Do not resolve that by promoting process work into P1 -
   P1 means "a clinician could be misled", and it stops meaning that the moment
-  it also means "the release script is annoying". Read this rule instead of
-  inferring the order from `docket next`, and say which side of it a proposed
-  piece of work sits on. The exception is work needed to exercise the workflow
+  it also means "the release script is annoying". `docket next` now ranks what
+  the roadmap's current step names above what it does not, which is what makes
+  the gate lead the list while v0.2.8 is the step - but it reads ids in
+  milestone sections, not this decision, so an item neither section names is
+  placed by neither. Read this rule for those, and say which side of it a
+  proposed piece of work sits on. The exception is work needed to exercise the workflow
   itself: a product item taken as a test case for a workflow change is
   workflow work.
 
