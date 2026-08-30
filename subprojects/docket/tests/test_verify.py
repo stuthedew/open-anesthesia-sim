@@ -314,3 +314,44 @@ def test_an_item_with_nothing_to_verify_does_not_hold_up_the_batch(tmp_path: Pat
     assert [report.passed for report in reports] == [False, True]
     assert reports[0].stopped_early
     assert _runs(root) == 1
+
+
+def test_a_base_behind_its_remote_is_said_so_on_the_report(tmp_path: Path) -> None:
+    """The PL-0999 failure: a fresh clone's local `main` lags what it forked from.
+
+    Verified against that `main`, work which never left its scope is reported
+    as reaching every file merged in the meantime - a refusal that reads as
+    the item's fault and is not.
+    """
+    root = _repo(tmp_path)
+    _git(root, "branch", "-M", "main")
+    _git(root, "checkout", "-q", "-b", "other")
+    _work(root, "another session's merged commit", "docs/items/PL-OTHR-thing.md", "x\n")
+    _git(root, "update-ref", "refs/remotes/origin/main", "other")
+    _git(root, "checkout", "-q", "main")
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2\n",
+    )
+
+    report = verify(root, _item(), _config(), "main")
+
+    assert "behind origin/main" in report.base_note
+    assert "behind origin/main" in report.describe()
+
+
+def test_a_base_current_with_its_remote_says_nothing(tmp_path: Path) -> None:
+    """A note on every report would become decoration and stop being read."""
+    root = _repo(tmp_path)
+    _git(root, "branch", "-M", "main")
+    _git(root, "update-ref", "refs/remotes/origin/main", "main")
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2\n",
+    )
+
+    assert verify(root, _item(), _config(), "main").base_note == ""
