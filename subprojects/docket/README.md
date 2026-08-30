@@ -64,6 +64,30 @@ because a shipped feature is worth more than equal progress spread across
 several. Work already in flight on a branch is excluded rather than ranked
 low.
 
+### What a milestone names, and what it does not
+
+Each suggestion says where the roadmap places it, read from one fact and no
+others: an item id printed in a milestone's own section. An id named in the
+milestone the current beat is about is work the step includes; an id named
+only in a later milestone's section is marked with that milestone (`scoped to
+v0.4.0, not this step`); an id named in no section at all is neither, and
+carries no mark. That silence is deliberate — most of a queue is placed
+nowhere, and reading it as exclusion would be a verdict rather than a fact.
+
+Out-of-scope work is marked, never hidden, for the same reason. Whether an
+item is *really* out of scope is a judgment about the prose around its id, and
+the command reads ids rather than sentences.
+
+Three things follow, and they are limitations in the same way the concurrency
+answer below is:
+
+- A milestone that excludes something in prose alone excludes it invisibly
+  here. No id, no marking.
+- An id named in a later section for *any* reason reads as that milestone's
+  scope — including a sentence deferring the item *out* of it.
+- A released milestone's section places nothing. Its narrative records where a
+  problem was raised, not what is current work.
+
 ### Concurrency is computed, and honestly qualified
 
 Each item declares the paths it expects to touch. `docket concurrent` reads

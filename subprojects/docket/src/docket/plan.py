@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .model import EFFORTS, PRIORITIES, Item
+from .roadmap import IN_SCOPE, OUT_OF_SCOPE, UNPLACED, Scope
 
 
 @dataclass(frozen=True)
@@ -130,11 +131,17 @@ class Recommendation:
 
     item: Item
     reason: str
+    #: What the plan says about this item, when a roadmap was read: empty for
+    #: work it places in the current step or nowhere at all, and the milestone
+    #: naming it otherwise.
+    scoped_to: str = ""
 
     def describe(self) -> str:
         marks = [m for m in (self.item.effort, self.item.status) if m]
         if self.item.model_guidance:
             marks.append(f"{self.item.model_guidance} - use your strongest model")
+        if self.scoped_to:
+            marks.append(f"scoped to {self.scoped_to}, not this step")
         head = f"{self.item.priority} {self.item.identifier} {self.item.title}"
         return f"{head} ({', '.join(marks)})\n    {self.reason}"
 
@@ -145,6 +152,7 @@ def recommend(
     *,
     effort: str | None = None,
     limit: int = 3,
+    scope: Scope | None = None,
 ) -> list[Recommendation]:
     """Rank the work worth starting now.
 
@@ -153,6 +161,12 @@ def recommend(
     highest-priority item that is ready to start. Items already in flight on a
     branch are excluded outright rather than ranked low - recommending work
     somebody is doing is worse than recommending nothing.
+
+    A `scope` changes what each suggestion *says*, not where it sits. An item
+    the roadmap's current step does not reach is marked with the milestone
+    that names it and offered anyway, because "is this really out of scope?"
+    is a judgment and hiding the item would be a verdict this cannot support -
+    where saying which milestone names its id is a fact it can.
     """
     flight = in_flight or set()
     startable = [
@@ -170,6 +184,9 @@ def recommend(
         if feature.is_underway
         for item in feature.open_items
     }
+
+    def placement(item: Item) -> str:
+        return scope.placement(item.identifier) if scope is not None else UNPLACED
 
     def rank(item: Item) -> tuple[int, int, int, str]:
         """Band first, then whether it finishes something already started.
@@ -195,7 +212,18 @@ def recommend(
             )
         else:
             reason = f"Highest-priority work that is ready to start ({item.priority})."
-        ranked.append(Recommendation(item, reason))
+
+        where = placement(item)
+        scoped_to = ""
+        if scope is not None and where == IN_SCOPE:
+            reason = f"In scope for {scope.anchor}, the step the project is on. {reason}"
+        elif scope is not None and where == OUT_OF_SCOPE:
+            scoped_to = scope.milestone(item.identifier)
+            reason = (
+                f"{reason} Outside what {scope.anchor} names: this id appears in "
+                f"{scoped_to}'s section, which the current step has not reached."
+            )
+        ranked.append(Recommendation(item, reason, scoped_to))
 
     return ranked[:limit]
 

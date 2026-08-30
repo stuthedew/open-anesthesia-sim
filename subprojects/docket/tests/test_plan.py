@@ -11,6 +11,7 @@ from datetime import date
 
 from docket.model import Item
 from docket.plan import effort_total, features, gate, recommend
+from docket.roadmap import Scope
 
 
 def _item(
@@ -125,6 +126,49 @@ def test_a_recommendation_says_which_model_the_work_warrants() -> None:
 
 def test_nothing_startable_yields_no_recommendations() -> None:
     assert recommend([]) == []
+
+
+# --- what the plan says about an item ---------------------------------------
+
+STEP = "v0.2.8 — the workflow works"
+
+
+def _scope(*, current: tuple[str, ...] = (), later: dict[str, str] | None = None) -> Scope:
+    return Scope(anchor=STEP, current=frozenset(current), later=later or {})
+
+
+def test_next_marks_a_suggestion_scoped_to_a_milestone_this_step_has_not_reached() -> None:
+    """The fact the ranking is missing, stated on the line rather than acted on."""
+    scope = _scope(later={"PL-1111": "v0.4.0"})
+
+    (pick,) = recommend([_item("PL-1111")], scope=scope, limit=1)
+
+    assert pick.scoped_to == "v0.4.0"
+    assert "scoped to v0.4.0, not this step" in pick.describe()
+    assert "the current step has not reached" in pick.reason
+
+
+def test_next_does_not_mark_work_the_current_step_scopes() -> None:
+    (pick,) = recommend([_item("PL-1111")], scope=_scope(current=("PL-1111",)), limit=1)
+
+    assert pick.scoped_to == ""
+    assert f"In scope for {STEP}" in pick.reason
+
+
+def test_next_leaves_an_item_unmarked_when_no_milestone_section_scopes_it() -> None:
+    """Most of the queue is named nowhere, and silence is not a verdict."""
+    (pick,) = recommend([_item("PL-1111")], scope=_scope(current=("PL-2222",)), limit=1)
+
+    assert pick.scoped_to == ""
+    assert "scoped to" not in pick.describe()
+
+
+def test_a_ranking_given_no_plan_reads_as_it_did_before_there_was_one() -> None:
+    """No roadmap, an unreadable one, or a plan with no milestone to anchor on."""
+    items = [_item("PL-1111", priority="P1"), _item("PL-2222", priority="P3")]
+
+    assert [p.item.identifier for p in recommend(items)] == ["PL-1111", "PL-2222"]
+    assert recommend(items, scope=_scope())[0].reason == recommend(items)[0].reason
 
 
 DEBT_CLASSES = ("defect", "safety", "science", "refactor", "perf")
