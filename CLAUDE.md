@@ -379,6 +379,12 @@ reason to load the skill:
   from gone. The exception is capture — a queue item, a finding, anything
   recorded so it survives — which commits and pushes immediately, because
   losing an idea is the worse failure of the two.
+- **Pair a finding with the item it completes.** When work turns up something a
+  frozen or in-progress item needs in order to be properly finished, the two
+  are worked together - one branch, closed together - not filed as sequential
+  items. A freeze closes new behavior and features, not the completeness of a
+  fix; `ROADMAP.md`'s "The gate is a snapshot, not a moving target" carries the
+  rule and the reasoning.
 - **`P0` items are hotfixes.** Before feature work, on their own branch, with
   a patch version bump and a regression test.
 - **Capture intent, and route it by how ready it is.** What the owner says
