@@ -1,10 +1,15 @@
 ---
 id: PL-R5GN
 title: Adopt the nine instruction-writing rules, scoped for an agent that can read and edit files itself
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: docs
 feature: worker-instructions
 touches: .claude/rules, CLAUDE.md
 added: 2026-08-30
+closed: 2026-08-30
+commit: 487d7d5
 ---
 
 **Problem.** The project owner supplied nine rules for multi-step instructions
@@ -84,3 +89,22 @@ repository and has a stated route to user scope, rules 4 and 5 are scoped for
 an agent with filesystem access, the chunking/batching resolution is written
 down, and `PL-HZC2`'s narrower ordering rule is folded in rather than
 duplicated.
+
+**Resolved by the project owner (2026-08-30).** Rule 4 reads "establish a
+file's current state by reading it; asking the reader to paste it is a last
+resort, for when it cannot be read" — his wording, keeping the paste as a
+fallback rather than dropping it. Rule 5 is scoped by who executes, as
+proposed. The rules are **general guidance rather than a project convention**,
+which settles the framing: the file names no project, and says in its own
+opening that the canonical copy is the user-scope one and the checked-in copy
+exists only because user scope does not reach a web session.
+
+His numbering is preserved 1-9 rather than regrouped, so that "rule 5" refers
+to the same thing in every later conversation — which is rule 7 applied to the
+document itself.
+
+`PL-HZC2`'s closing-block rule was **not** folded away. Once the rules are
+general rather than project-specific, the closing action block is a project
+artifact and its ordering rule belongs in `CLAUDE.md`; it now names the general
+rule it applies, in one clause, so the two read as principle and instance
+rather than as competitors.
