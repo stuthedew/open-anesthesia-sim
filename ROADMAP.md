@@ -45,7 +45,7 @@ capability-boundary rule above governs.
 | v0.2.5 | Completed | Licensing, documentation and planning release: the project is licensed Apache-2.0, v0.3.0 through the MVP is scoped onto one timeline with its debt gates, Phase 0 is retired in favour of the standing debt gate, and `docs/worker.md` states what a delegated worker decides for itself. No source file changed. |
 | v0.2.6 | Completed | Delegation and release-tooling release on the same model: work whose success a command can prove now has to name that command and have run it, `docket` computes the debt gate and the cadence beat instead of a session transcribing them, and the release path itself stopped breaking `make check` and leaving this table behind. The one scientific item widened the splitting-error bound to the whole settings envelope. No equation, parameter, or numerical method changed. |
 | v0.2.7 | Completed / current baseline | Session-discipline and applicability-domain release on the same model: the simulation step now refuses inputs outside the operator split's stated applicability domain and the splitting-error bound is measured across setting changes rather than one held operating point, while ten process items closed the three channels by which product work leaked into discussions that were not about it, gave multi-step instructions a written standard, and cleared three live tooling defects. No equation or parameter changed, and the numerical method is unchanged - it is now guarded at the domain it was always specified for. |
-| v0.2.8 | Planned / scoped | The workflow works: seventeen entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the type-check and lint gates, and the instructions a session reads before it does anything. No simulator change, and no equation, parameter, numerical method or displayed value changes. |
+| v0.2.8 | Planned / scoped | The workflow works: eighteen entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the type-check and lint gates, and the instructions a session reads before it does anything. No simulator change, and no equation, parameter, numerical method or displayed value changes. |
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
@@ -267,7 +267,7 @@ adds no capability and exists to clear the ground they are built on:
 
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
-| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of 17 entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 15 S |
+| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of 18 entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 16 S |
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the 20 entries outside that milestone's own scope, released as a minor by deliberate exception. | 3 M, 17 S |
 | — | **v0.3.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Placed here deliberately, ahead of the substance generalization that would otherwise force the vocabulary to be invented and restructured at once. Not yet scoped. | — |
 | 3 | **v0.4.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt the milestone clears itself. | 5 M, 6 S |
@@ -287,7 +287,7 @@ before the debt gate existed, which is the exception recorded under
 "Versioning decision" above, and an exception rather than a pattern. Row 1
 is not a gate at all — v0.2.8's frozen list is its own scope, recorded under
 a gate heading because that subsection is what `bin/docket wave` reads, and
-eleven of its seventeen entries are new workflow capability rather than debt.
+eleven of its eighteen entries are new workflow capability rather than debt.
 Gates 1 onward hold one milestone's findings and ship inside the milestone
 they gate, which is why rows 4, 6 and 8 carry no version.
 
@@ -496,12 +496,13 @@ minor-version exception is not extended to it and is not needed.
 
 ### Debt gate: the frozen list
 
-**Frozen 2026-08-30, the day this release was scoped.** The seventeen entries
-below are its whole content. The list stays frozen: nothing is added to it,
-and an entry records its own outcome as it closes, per "The cadence" below.
+**Frozen 2026-08-30, the day this release was scoped.** The eighteen entries
+below are its whole content. What the freeze does and does not close is set
+out beneath the list; an entry records its own outcome as it closes, per
+"The cadence" below.
 
-**It is a frozen scope, not a fourth gate in the cadence.** Six of its entries
-are debt by "What counts" below — five classed `defect`, one at
+**It is a frozen scope, not a fourth gate in the cadence.** Seven of its
+entries are debt by "What counts" below — six classed `defect`, one at
 `needs-decision` — and the other eleven are new workflow capability, which
 that section says explicitly is *not* debt and does not hold a gate. The list
 is recorded under a heading named "Debt gate" because that subsection is what
@@ -553,6 +554,11 @@ reports the split.
   why the deliberate suppressions exist
 - PL-STNV (S) Retire the review-verification harness and capture its last live
   finding
+- PL-XCYB (S) A provenance check must refuse to answer in a shallow checkout,
+  not answer wrongly. Added after the freeze because it completes PL-ZQ9C
+  above: that item's check asserts a `(#N)` subject on a commit reachable from
+  main, and a web session's checkout is shallow, so the check as specified
+  reports sound provenance as broken. See the rule beneath this list.
 
 **Two items on the approved list are not entries.** `PL-J3ZK` (restore the tag
 provenance) and `PL-20ZR` (the workflow-before-features ordering is
@@ -560,7 +566,7 @@ re-explained every session) were on the list the project owner approved and
 closed before it was written here. Recording a closed item as a frozen entry
 would make this release report a size it never had to clear.
 
-**Five of the seventeen are marked `not-delegable`,** which is high for a
+**Five of the eighteen are marked `not-delegable`,** which is high for a
 release this size and is worth knowing before the work is planned: PL-J786 and
 PL-S4M2 change GitHub repository configuration that no session in this project
 can reach; PL-8HJ2 can only be proved by cutting a release; PL-ZQ9C leaves a
@@ -568,14 +574,41 @@ migration choice open that rewrites the provenance of every closed item; and
 PL-H7XN's test is that no rule was lost, which is a reading of the file rather
 than a command.
 
-**Nothing is added to this list.** A finding made while clearing it is captured
-in the queue like any other and triaged there. It re-enters Gate 0 only under
-the presence rule in "The gate is a snapshot, not a moving target" — that is,
-only if it is product debt that was already present on 2026-08-25. The
-`safety`/`science` re-entry rule sends nothing to *this* list: a finding in
-those classes is about the simulator, which this release does not touch, so it
-belongs to Gate 0 where the product debt is. A `P0` is a hotfix on its own
-branch under `CLAUDE.md` and joins no list.
+**What the freeze closes, and what it does not** (project owner, 2026-08-30).
+The list is closed to new *scope*: new behavior, new capability, another
+workflow idea raised while this release runs. It is not closed to what an entry
+already on it needs in order to actually be done. A finding made after the
+freeze that addresses something a frozen entry is fixing belongs here, recorded
+with what it completes. Freezing exists to fix a specific set of problems, so
+shipping an entry known to be half-fixed would keep the list's length at the
+cost of its purpose.
+
+This is "The gate is a snapshot, not a moving target" read correctly rather
+than a new rule: that section already says a finding which continues or
+completes an item inside the frozen list belongs to the same list. This
+paragraph said the opposite when the section was first written, and was wrong.
+
+A finding that is neither new scope nor the completion of an entry is captured
+in the queue and triaged there. A `safety`- or `science`-classed finding goes
+to Gate 0 rather than here — it is about the simulator, which this release does
+not touch. A `P0` is a hotfix on its own branch under `CLAUDE.md` and joins no
+list.
+
+**One entry has been added under this rule so far: PL-XCYB, above,** and it is
+paired with PL-ZQ9C rather than queued behind it. It was found while handing
+PL-ZQ9C to a session, by checking whether that item's proposed migration was
+feasible, and it makes the difference between a provenance check that is right
+and one that fails loudly against correct data in the environment most sessions
+run in. Shipping PL-ZQ9C without it would close an entry known to be
+half-fixed, which is the outcome the rule above exists to prevent, so the two
+are worked together and closed together.
+
+PL-68XK (check that every recorded commit hash resolves) is a different case
+and is *not* admitted by this rule: it predates the freeze and was excluded
+from the approved list deliberately. It is nonetheless entangled with PL-ZQ9C -
+it validates the `commit:` field PL-ZQ9C replaces, so building it first means
+building it twice, as its own brief says. The standing instruction is therefore
+to refresh its brief to target the new field, not to work it here.
 
 ### Definition of done
 
@@ -604,7 +637,7 @@ branch under `CLAUDE.md` and joins no list.
   `src/anesthesia_sim/app/`, and the scientific content of `docs/MODEL.md`. A
   release whose whole claim is that the loop is now reliable cannot also be
   the one that moves the model.
-- Workflow capability beyond the seventeen entries. The queue holds more
+- Workflow capability beyond the eighteen entries. The queue holds more
   process items than this release ships, and they wait for the next one — the
   list is frozen for the same reason a gate's is, and a release that absorbs
   every workflow idea raised while it runs never ships.
@@ -1042,6 +1075,20 @@ something is not worth doing is a legitimate way to clear it, and often the
 right one; what is not legitimate is leaving it open and starting anyway.
 
 ### The gate is a snapshot, not a moving target
+
+**What a freeze closes is new scope, not the completeness of a fix** (project
+owner, 2026-08-30). A frozen list exists to fix a specific set of problems;
+refusing the finding that one of its entries needs in order to actually be
+fixed preserves the list's length at the cost of its purpose. The rule below is
+how that is applied, and it is deliberately not symmetric: new work is kept
+out, and what an entry needs is let in.
+
+**And it is worked with the entry it completes, not after it** (project owner,
+2026-08-30). Admitting a finding to the list and then working it as a separate
+piece of work later reintroduces exactly what admitting it prevented: the first
+entry ships half-fixed while the thing that finishes it waits in the queue. So
+pair them - one branch, one review, closed together - and the issue is fully
+addressed before anything else starts.
 
 **When a milestone is scoped, the debt list is frozen at that moment.** A
 finding re-enters this gate — rather than waiting for the next one — when the

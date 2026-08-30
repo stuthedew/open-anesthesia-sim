@@ -53,6 +53,13 @@ check that declined.
 fetch the network on a path that today runs from a bare tree, which is the
 property `vcs.py` was written to preserve.
 
+**In v0.2.8's frozen list.** Added after the freeze under the rule the project
+owner stated on 2026-08-30: a freeze closes new scope, not the completeness of
+a fix. This is not new scope - it is what `PL-ZQ9C` (record an item's pull
+request, so provenance survives squash-merge) needs in order to ship a check
+that is right. Recorded in `ROADMAP.md` beneath that list, with what it
+completes.
+
 **Done when.** `docket check` run in a shallow checkout reports that it cannot
 verify recorded provenance, rather than reporting it invalid; a test covers the
 shallow case explicitly; and the behaviour in a full clone is unchanged.
