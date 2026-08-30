@@ -1113,7 +1113,8 @@ reached on a trajectory that holds cardiac output at zero. Narrowing a range
 would take that worst case out of the reachable domain, and widening one
 would admit trajectories never measured; either way the bound must be
 re-measured. `test_envelope_limits_match_the_interface` restates all seven
-limits and fails if the interface moves one, so neither can happen silently.
+limits — and the displayed resolution alongside them — and fails if the
+interface moves any of them, so neither can happen silently.
 
 ## Reset behavior
 
@@ -1327,14 +1328,50 @@ digit was uncertain by two to twenty-three counts and the digit before it by
 up to two, so two of the three displayed decimals carried no information
 about the model.
 
-**What the last digit does not cover.** The error is a systematic sequencing
-bias rather than noise, and its sign is opposite at the two ends of the
-transfer chain (see "Independent-solution test"). A *difference* between two
-of the six readouts therefore carries the sum of two displacements, up to 1.8
-times the error in either reading alone, worst measured at 0.030 percentage
-points. A reader comparing two compartments should treat the
-last digit of that comparison as carrying no information, even though the
-last digit of each reading on its own is meaningful.
+**Re-affirmed 2026-08-30 against the widened measurement** (PL-74TX). The
+figures above are larger than the ones PL-040 chose two decimals on, because
+the solver error has since been re-measured over trajectories rather than
+over held operating points: about two counts at the extreme where the earlier
+measurement gave one. The decision stands, and the alternative is what
+settles it. A one-decimal readout would be uncertain by a fifth of a count at
+the extreme — but at 0.1 percentage points the fat fraction reads `0.0%` for
+an entire hour and muscle for its first three to fifteen minutes, which is
+the failure this section rejects two paragraphs below. Two decimals remains
+the coarsest resolution that keeps every compartment legible and the finest
+the numerics support; the widened measurement moved where inside that window
+the answer sits, not which side of it.
+
+**What the last digit does not cover, and what it still does.** The error is
+a systematic sequencing bias rather than noise, and its sign is opposite at
+the two ends of the transfer chain (see "Independent-solution test"). A
+*difference* between two of the six readouts therefore carries the sum of two
+displacements, up to 1.8 times the error in either reading alone, worst
+measured at 0.030 percentage points. **The numeric gap between two readouts
+is accordingly the least certain thing on the display**, and its last digit
+should be read as carrying no information.
+
+The comparison the interface actually invites survives this, and that is a
+measurement rather than an assurance. The six readouts are placed in one row
+to be read *ordinally* — the circuit leads the alveoli lead the tissues — and
+an ordinal reading is corrupted only if the error can invert which of two
+compartments is displayed as higher. Across every trajectory in
+"Independent-solution test", all three agents, comparing every pair of the
+six readouts at every step: the shipped and reference solutions never
+disagree about the displayed ordering at ordinary settings, at the reference
+point, at the envelope corner, or across a ventilator start. They disagree
+only on the worst reachable trajectory, for 0.2 s of a 900 s run with
+sevoflurane and 1.7 s with desflurane, and only where the two compartments
+are within 1.73 counts of the last displayed digit of each other — that is,
+only while they are crossing, which is where the ordering is genuinely
+ambiguous and not where a real gradient would be misread.
+
+That is why the interface marks nothing here. A reader who compares the
+readouts the way the row is designed to be compared cannot be misled by the
+splitting error; a reader who subtracts two of them is doing arithmetic the
+interface does not perform, and the paragraph above is the disclosure for it.
+`test_displayed_ordering_reverses_only_at_a_crossing` holds this claim: it
+fails if the error ever inverts a displayed ordering between two compartments
+that are further apart than that.
 
 **Why the resolution is uniform rather than per-compartment.** The six
 readouts sit in one row and are read comparatively — the reason for showing
@@ -1431,7 +1468,11 @@ readouts, not the traces, are where a value is read.
 
 `app/simulation_view.py` holds the resolution as a single constant with the
 formatter derived from it, and `tests/unit/test_simulation_view.py` pins
-both. A change to either is a change to this section.
+both. `tests/reference/test_coupled_dynamics.py` restates the same constant
+and checks it against the interface, because the ordering claim above is a
+property of the rounded values and adding a decimal would change what that
+claim proves without changing anything it reads. A change to the resolution
+is a change to this section.
 
 ## Assumptions
 
