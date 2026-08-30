@@ -345,11 +345,18 @@ describes predates the freeze, or is `P0`, `safety` or `science`.
 
 ## Mode: ship a release
 
-**Offer this; do not wait to be asked.** The session-start digest says when
-there is enough finished work to be worth raising, and the release itself
-takes no arguments — the store already knows what has shipped and what has
-not. There is nothing for the owner to look up, so asking them to is pure
-friction.
+**Offer this; do not wait to be asked — when the session is about what to do
+next.** The session-start digest says when there is enough finished work to be
+worth raising, and the release itself takes no arguments: the store already
+knows what has shipped and what has not, so there is nothing for the owner to
+look up and asking them to is pure friction.
+
+But the digest says it in *every* session, including the ones where it is
+beside the point. Offer it when the owner is choosing what to work on or has
+just finished something. Not in a design round, a question about one
+mechanism, or a review of one change — there it is noise appended to a reply
+that was about something else, and it quietly converts ideation into
+implementation, which the two modes above say not to do.
 
 Raise it the way a colleague would: what got done, what it completes, what the
 version would be, and a question.
