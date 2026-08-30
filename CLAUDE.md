@@ -72,8 +72,11 @@ to consider, and nothing else:
 - Mark a recommendation as a recommendation, plainly, so "here are the
   options" and "I think you should do this one" are never mixed up.
 - **Order the block the way it will be done, and let the order carry it.**
-  Where the items have a sequence — one unblocks another, one has to land
-  before the next makes sense — the first line is the first thing to do.
+  This is `.claude/rules/instruction-writing.md`'s chronological-order rule
+  applied to the closing block; that file governs multi-step output generally,
+  and this bullet covers only the block itself. Where the items have a sequence
+  — one unblocks another, one has to land before the next makes sense — the
+  first line is the first thing to do.
   Never annotate a later line with "do this one first": a numbered list
   states an order whether or not one was meant, so an ordering note that
   disagrees with the numbering makes the reader stop and work out which to
