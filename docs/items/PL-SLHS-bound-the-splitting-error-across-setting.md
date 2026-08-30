@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, science
 feature: numerical-domain
+milestone: v0.2.7
 touches: tests/reference/test_coupled_dynamics.py, docs/MODEL.md
 added: 2026-08-30
 closed: 2026-08-30

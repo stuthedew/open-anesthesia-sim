@@ -1,11 +1,12 @@
 ---
 id: PL-FY68
 title: A session pushes its branch before the discussion has settled, leaving stale remote branches
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect
 feature: worker-instructions
+milestone: v0.2.7
 touches: CLAUDE.md, docs/worker.md
 added: 2026-08-30
 closed: 2026-08-30
