@@ -3,7 +3,10 @@ id: PL-7838
 title: Record the compounding-friction re-entry rule's own first miss, so the pattern is recognizable
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-08-30
+pr: 91
+commit: 4cb9af5
 classes: session-cost, docs
 feature: planning-cadence
 touches: CLAUDE.md, ROADMAP.md
