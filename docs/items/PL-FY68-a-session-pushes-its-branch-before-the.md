@@ -1,10 +1,15 @@
 ---
 id: PL-FY68
 title: A session pushes its branch before the discussion has settled, leaving stale remote branches
-status: untriaged
+status: done
+priority: P2
+effort: S
+classes: defect
 feature: worker-instructions
 touches: CLAUDE.md, docs/worker.md
 added: 2026-08-30
+closed: 2026-08-30
+commit: 3078bdb
 ---
 
 **Problem.** Nothing tells a session when to push. A session that opens as a
