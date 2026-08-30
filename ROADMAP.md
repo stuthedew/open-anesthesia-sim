@@ -48,20 +48,19 @@ capability-boundary rule above governs.
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
-**Tags.** v0.0.1, v0.0.2, v0.2.3, v0.2.4, v0.2.5 and v0.2.6 carry annotated tags.
+**Tags.** v0.0.1, v0.0.2, v0.2.1, v0.2.2, v0.2.3, v0.2.4, v0.2.5, v0.2.6 and
+v0.2.7 carry annotated tags.
 `bin/docket release` now refuses to cut a release while the version it is
 releasing from is untagged, so the practice cannot lapse again (PL-J3ZK).
 
-**Four versions are untagged, in two different situations.** v0.2.1
-(`bc5f823`) and v0.2.2 (`3099980`) are settled and only await the two
-commands, which PL-J3ZK records. v0.1.0 and v0.2.0 are an open decision in the
-same item: it recorded them as untaggable because `main` had three unrelated
-roots and `git merge-base 796bf4f 97cc66a` returned nothing, but that was
-measured in a shallow checkout, where boundary commits report as parentless.
-In the full history there is one root, and `97cc66a` (v0.1.0) is an ancestor
-of `796bf4f` (v0.2.0), which is an ancestor of `bc5f823` — so tagging them
-would work after all. Nothing is lost by deciding later: all four commits are
-ordinary ancestors of `main` and can be tagged at any time.
+**Two versions are untagged.** v0.1.0 (`97cc66a`) and v0.2.0 (`796bf4f`) are
+an open decision in PL-J3ZK: it recorded them as untaggable because `main` had
+three unrelated roots and `git merge-base 796bf4f 97cc66a` returned nothing,
+but that was measured in a shallow checkout, where boundary commits report as
+parentless. In the full history there is one root, and `97cc66a` (v0.1.0) is
+an ancestor of `796bf4f` (v0.2.0), which is an ancestor of `bc5f823` — so
+tagging them would work after all. Nothing is lost by deciding later: both
+commits are ordinary ancestors of `main` and can be tagged at any time.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
