@@ -1065,6 +1065,56 @@ Changing ventilation does not alter existing circuit or alveolar stores.
 
 Changing delivered concentration does not alter existing circuit concentration.
 
+### Supported input ranges
+
+Each control is supported over the closed interval the interface's slider
+spans, endpoints included:
+
+| Control | Range |
+| --- | --- |
+| Fresh gas flow | 0 to 10 L/min |
+| Delivered concentration | 0 to the agent's `max_delivered_concentration_percent` |
+| Alveolar ventilation | 0 to 12 L/min |
+| Cardiac output | 0 to 10 L/min |
+
+**Zero is a supported input on all four, deliberately** (PL-629Z). Three
+reasons, and the third is the one that decides it:
+
+- The governing equations stay well posed. A zero flow removes a transfer
+  term rather than dividing by one: at \(Q=0\) the tissue and venous
+  derivatives are zero and the alveolar equation loses its uptake term, and
+  "Required tests" above already specifies that behavior in the
+  zero-ventilation, zero-cardiac-output, and zero-tissue-flow tests.
+- Zero is the endpoint of a continuous axis. Flooring a slider just above it
+  would place an arbitrary boundary inside the model's own valid domain, and
+  a reader would have no way to tell that boundary from a modeling limit.
+- The low end of each flow axis is where the teaching is, and zero is its
+  limit. Reducing cardiac output *accelerates* alveolar wash-in, because less
+  agent is carried away from the lungs per unit time — one of the central
+  results in uptake and distribution, and one this model reproduces. With
+  sevoflurane at 1 MAC and the reference adult's other defaults, \(F_A/F_I\)
+  at five minutes is 0.41 at 10 L/min, 0.49 at 5 L/min, 0.58 at 2.5 L/min,
+  0.70 at 1 L/min, and 0.86 at zero. Refusing the last of those would
+  truncate the demonstration one step before its clearest case. The same
+  argument holds for alveolar ventilation at zero, which is apnoea.
+
+**What zero cardiac output does not claim.** It is a statement about agent
+transport and nothing else: uptake stops, so alveolar gas approaches inspired
+and the tissue stores hold whatever they already had. It is not a model of
+circulatory arrest, cardiopulmonary bypass, or ECMO — "Known limitations"
+excludes all three — and nothing about the patient's condition follows from
+it. A run at \(Q=0\) answers "where does the agent go when perfusion stops",
+not "what is happening to this patient".
+
+**These ranges define the verification domain.** "Independent-solution test"
+above bounds the operator split's error over the trajectories these ranges
+can produce, and its worst case — \(2.29\times10^{-3}\ \mathrm{s^{-1}}\) — is
+reached on a trajectory that holds cardiac output at zero. Narrowing a range
+would take that worst case out of the reachable domain, and widening one
+would admit trajectories never measured; either way the bound must be
+re-measured. `test_envelope_limits_match_the_interface` restates all seven
+limits and fails if the interface moves one, so neither can happen silently.
+
 ## Reset behavior
 
 Reset must:
