@@ -63,8 +63,8 @@ equations, units, parameter provenance, and known limitations, and
   so an older build stops with `Required uv version ">=0.12.5" does not match
   the running version` rather than quietly resolving `.python-version` against
   an interpreter list that predates the pin. `uv self update` is the fix;
-  where that is rate-limited, `pip install --upgrade uv` installs the same
-  binary from PyPI.
+  where that is rate-limited, `python3 -m pip install --user --upgrade uv`
+  installs the same binary from PyPI.
 
 ## Setup
 

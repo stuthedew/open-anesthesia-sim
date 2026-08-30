@@ -15,8 +15,10 @@ not-delegable: the fix is a setting in the Claude Code environment, outside this
 
 The remedy that message names does not work here either: `uv self update`
 reads the GitHub releases API unauthenticated and fails with `GitHub API rate
-limit exceeded`. What does work is `pip install --upgrade uv`, since PyPI is
-reachable through the session proxy.
+limit exceeded`. What does work is `python3 -m pip install --user --upgrade
+uv`, verified in this container: PyPI is reachable through the session proxy,
+and `--user` writes the console script to `/root/.local/bin/uv`, which is both
+where the stale binary lives and first on `PATH`.
 
 The floor is not the underlying problem, only what makes it visible. uv 0.8.17
 predates every final 3.14 release, so it cannot fetch the pinned interpreter at
@@ -32,10 +34,12 @@ belongs in the environment rather than in each session.
 Code environment this project uses. `README.md`'s Requirements section is the
 in-repo half and is already correct.
 
-**Approach.** Add `pip install --upgrade uv` (or Astral's install script) to
-the environment's setup commands so the container starts with a compliant uv,
-then confirm a fresh session runs `make check` with no manual step. Nothing in
-this repository can do it; the item exists so the finding is not lost.
+**Approach.** Put `python3 -m pip install --user --upgrade uv` in the
+environment's Setup script field so the container starts with a compliant uv,
+then confirm a fresh session runs `make check` with no manual step. Astral's
+install script is the alternative, but it downloads from GitHub releases,
+which is what rate-limits `uv self update` here. Nothing in this repository
+can make the change; the item exists so the finding is not lost.
 
 **Done when.** A fresh web session runs `make check` successfully without
 installing anything by hand.
