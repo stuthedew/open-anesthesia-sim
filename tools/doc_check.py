@@ -173,6 +173,17 @@ CITATION_RE = re.compile(
 )
 DIRECTION_RE = re.compile(r"^[ ]*(?:above|below)\b", re.IGNORECASE)
 
+# A Makefile target is a line-initial name followed by a colon. `:=` is an
+# assignment, and `.PHONY` and its kin start with a dot, so neither matches.
+MAKE_TARGET_RE = re.compile(r"^(?P<name>[A-Za-z][\w.-]*)\s*:(?!=)")
+# `.PHONY` names targets without defining them. A name listed here and given no
+# recipe is the silent failure this check exists for: `make` accepts it and
+# exits 0. A name in neither place fails loudly, which needs no tool.
+PHONY_RE = re.compile(r"^\.PHONY\s*:(?P<names>.*)$")
+# `make docket`, as the documentation writes it. Read only inside code spans
+# and fenced blocks: prose says "make sure" and means nothing of the kind.
+MAKE_MENTION_RE = re.compile(r"\bmake\s+(?P<name>[a-z][\w.-]*)")
+
 
 @dataclass
 class Report:
@@ -646,6 +657,80 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                 )
 
 
+def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
+    """Every target a Makefile names, and the subset that carries a recipe.
+
+    The two differ exactly where this check earns its place. A name listed in
+    `.PHONY` but never given a recipe is still a target as far as `make` is
+    concerned: it accepts the argument, prints "Nothing to be done", and exits
+    0. Documentation that tells a session to run it is therefore naming a
+    check that reports success without running, which is worse than one that
+    errors - an erroring command gets investigated, a passing one gets
+    believed.
+    """
+    declared: set[str] = set()
+    with_recipe: set[str] = set()
+    current: str | None = None
+    for line in text.splitlines():
+        if line.startswith("\t"):
+            if current is not None:
+                with_recipe.add(current)
+            continue
+        phony = PHONY_RE.match(line)
+        if phony is not None:
+            declared.update(phony.group("names").split())
+            current = None
+            continue
+        match = MAKE_TARGET_RE.match(line)
+        if match is not None:
+            current = match.group("name")
+            declared.add(current)
+        elif line.strip():
+            current = None
+    return frozenset(declared), frozenset(with_recipe)
+
+
+def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
+    """Every `make <target>` written as code, with the line it sits on."""
+    for match in CODE_SPAN_RE.finditer(text):
+        for mention in MAKE_MENTION_RE.finditer(match.group(1)):
+            yield mention.group("name"), _line_of(text, match.start())
+    for start, body in _fenced_blocks(text):
+        for offset, line in enumerate(body):
+            for mention in MAKE_MENTION_RE.finditer(line):
+                yield mention.group("name"), start + offset + 1
+
+
+def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -> None:
+    """Hold every documented `make` command to a target that actually runs.
+
+    `make docket` was named by three documents for two releases while the
+    recipe sat under the pre-rename target name, so the store validation those
+    documents promised had not run once. The failure is silent by
+    construction, which is what makes it worth a check rather than a reader's
+    attention.
+    """
+    makefile = root / "Makefile"
+    if not makefile.is_file():
+        return
+    declared, with_recipe = make_targets(makefile.read_text(encoding="utf-8"))
+    for path, text in sorted(documents.items()):
+        reported: set[tuple[str, int]] = set()
+        for name, line in _make_mentions(text):
+            if name in with_recipe or (name, line) in reported:
+                continue
+            reported.add((name, line))
+            if name in declared:
+                report.errors.append(
+                    f"{path}:{line} names `make {name}`, which is declared but carries "
+                    "no recipe, so it exits 0 without running"
+                )
+            else:
+                report.errors.append(
+                    f"{path}:{line} names `make {name}`, which the Makefile does not define"
+                )
+
+
 def analyze(root: Path) -> Report:
     """Run every mechanical documentation check over a checkout."""
     report = Report()
@@ -658,6 +743,7 @@ def analyze(root: Path) -> Report:
     check_citations(root, documents, report)
     check_timeline(root, report)
     check_baseline(root, report)
+    check_make_targets(root, documents, report)
     return report
 
 
@@ -681,8 +767,8 @@ def format_check(report: Report) -> str:
         lines.extend(f"  {message}" for message in report.advisories)
     if not report.errors and not report.advisories:
         lines.append(
-            "Package map, provenance table, citations, release train and current "
-            "baseline all resolve."
+            "Package map, provenance table, citations, release train, current "
+            "baseline and documented make targets all resolve."
         )
     return "\n".join(lines)
 

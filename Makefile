@@ -18,7 +18,10 @@ fix:
 test:
 	uv run pytest
 
-punch-list:
+# Named for the store it validates. `make check` runs `bin/docket check` too;
+# this target exists so a session can validate the store on its own, after
+# editing an item and before committing it.
+docket:
 	bin/docket check
 
 doc-check:

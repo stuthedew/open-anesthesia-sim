@@ -607,3 +607,57 @@ def test_a_version_table_that_has_vanished_is_an_error(tmp_path: Path) -> None:
 def test_a_repository_with_no_version_file_is_left_alone(tmp_path: Path) -> None:
     """The checker runs in projects that do not version; it is not their business."""
     assert _errors(_repo(tmp_path, roadmap=VERSIONED_ROADMAP)) == []
+
+
+# --- make targets -----------------------------------------------------------
+
+MAKEFILE = """.PHONY: check docket
+
+check:
+\tpytest
+
+docket:
+\tbin/docket check
+"""
+
+
+def _with_make(tmp_path: Path, *, makefile: str = MAKEFILE, mentions: str = "") -> Path:
+    """A repository whose README names make commands the Makefile must honour."""
+    root = _repo(tmp_path, readme=README + mentions)
+    (root / "Makefile").write_text(makefile, encoding="utf-8")
+    return root
+
+
+def test_a_documented_target_that_runs_is_quiet(tmp_path: Path) -> None:
+    assert _errors(_with_make(tmp_path, mentions="\nRun `make docket` before committing.\n")) == []
+
+
+def test_a_documented_target_with_no_recipe_is_an_error(tmp_path: Path) -> None:
+    """The PL-ZRFC failure: declared `.PHONY`, never given a recipe, exits 0."""
+    makefile = MAKEFILE.replace(
+        "docket:\n\tbin/docket check\n", "punch-list:\n\tbin/docket check\n"
+    )
+    errors = _errors(_with_make(tmp_path, makefile=makefile, mentions="\n`make docket` first.\n"))
+
+    assert any("make docket" in message and "no recipe" in message for message in errors)
+
+
+def test_a_documented_target_the_makefile_never_names_is_an_error(tmp_path: Path) -> None:
+    errors = _errors(_with_make(tmp_path, mentions="\nRun `make lint` first.\n"))
+
+    assert any("make lint" in message and "does not define" in message for message in errors)
+
+
+def test_a_target_named_in_a_fenced_block_is_read(tmp_path: Path) -> None:
+    errors = _errors(_with_make(tmp_path, mentions="\n```bash\nmake lint\n```\n"))
+
+    assert any("make lint" in message for message in errors)
+
+
+def test_prose_that_says_make_sure_names_no_target(tmp_path: Path) -> None:
+    """Only code is read: English uses the word for something else entirely."""
+    assert _errors(_with_make(tmp_path, mentions="\nPlease make sure the tests pass.\n")) == []
+
+
+def test_a_repository_with_no_makefile_is_left_alone(tmp_path: Path) -> None:
+    assert _errors(_repo(tmp_path, readme=README + "\nRun `make lint`.\n")) == []

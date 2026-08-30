@@ -30,6 +30,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import vcs
 from .config import Config
 from .model import Item, parse_front_matter
 
@@ -70,6 +71,11 @@ class Verification:
 
     item: Item
     base: str
+    #: What is wrong with the base itself, when something is. A scope check is
+    #: only as good as the ref it subtracts, and a stale one produces a report
+    #: that is wrong in the direction of looking alarming - other branches'
+    #: files, named as this item's overreach.
+    base_note: str = ""
     checks: list[Check] = field(default_factory=list)
     #: Whether the per-item checks stopped before they had all run. An item
     #: with no command, or with nothing between its base and `HEAD`, has
@@ -82,7 +88,10 @@ class Verification:
         return all(check.passed for check in self.checks)
 
     def describe(self) -> str:
-        lines = [f"{self.item.identifier} {self.item.title}", f"  against {self.base}", ""]
+        lines = [f"{self.item.identifier} {self.item.title}", f"  against {self.base}"]
+        if self.base_note:
+            lines.append(f"  {self.base_note}")
+        lines.append("")
         lines.extend(check.describe() for check in self.checks)
         lines.append("")
         lines.append("  ACCEPT" if self.passed else "  REJECT")
@@ -196,7 +205,24 @@ def _front_matter_changed(root: Path, base: str, item: Item) -> tuple[str, ...]:
     return tuple(sorted(k for k in set(old) | set(new) if old.get(k) != new.get(k)))
 
 
-def verify_item(root: Path, item: Item, config: Config, base: str) -> Verification:
+def base_warning(root: Path, base: str) -> str:
+    """What to say when the ref being compared against is not what it looks like.
+
+    Empty when the base is current, which is the common case and says nothing.
+    """
+    behind = vcs.behind_remote(root, base)
+    if not behind:
+        return ""
+    return (
+        f"WARNING: {base} is {behind} commit(s) behind origin/{base}, so paths "
+        "reported outside `touches` may be other branches' merged work rather "
+        f"than this item's. Re-run with --base origin/{base}."
+    )
+
+
+def verify_item(
+    root: Path, item: Item, config: Config, base: str, base_note: str = ""
+) -> Verification:
     """Run the checks that are about this item, and no others.
 
     Split from `verify` for the one reason that matters when several items are
@@ -207,7 +233,7 @@ def verify_item(root: Path, item: Item, config: Config, base: str) -> Verificati
     over two minutes, five of those runs re-proving a proved thing, and a
     reviewer who waits that long stops running the command at all.
     """
-    report = Verification(item=item, base=base)
+    report = Verification(item=item, base=base, base_note=base_note)
     commits = item_commits(root, base, item.identifier)
     paths = changed_paths(root, base, commits)
 
@@ -324,7 +350,7 @@ def project_check(root: Path, config: Config) -> Check:
 
 def verify(root: Path, item: Item, config: Config, base: str) -> Verification:
     """Run every check against one item's branch, project-wide check included."""
-    report = verify_item(root, item, config, base)
+    report = verify_item(root, item, config, base, base_warning(root, base))
     if not report.stopped_early:
         report.checks.append(project_check(root, config))
     return report
@@ -340,7 +366,8 @@ def verify_batch(
     be taken or refused whole would hand the reviewer back the all-or-nothing
     choice that one-commit-per-item exists to remove.
     """
-    reports = [verify_item(root, item, config, base) for item in items]
+    note = base_warning(root, base)
+    reports = [verify_item(root, item, config, base, note) for item in items]
     outstanding = [report for report in reports if not report.stopped_early]
     if outstanding:
         shared = project_check(root, config)

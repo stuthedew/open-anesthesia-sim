@@ -100,6 +100,13 @@ the milestone sections, and the debt list each one records when it is scoped —
 and reports the version, the step, the gate's size and how much of it is
 closed, and which beat of the cadence that leaves due.
 
+The beat and the step also ride in `docket digest`, as one line. A command
+nobody runs unprompted does not change where "what next" gets answered from,
+and the queue nags every session while a roadmap nags none. One line is the
+whole budget: the digest is resent on every turn of a session, and a plan
+that cannot be read at a glance is one more thing to scroll past. An
+unreadable roadmap produces no line at all rather than a guessed step.
+
 It computes; it decides nothing. Whether the prose beside a timeline row is
 still true, whether a gate should open early, whether a scoped milestone is
 scoped *well*: none of that is on the page in a form a parser can read, so
@@ -222,21 +229,30 @@ command and no `touches` is a validation error rather than a delegable item.
 
 ### Verification is scoped, not just green
 
-`docket verify <id> --base <ref>` answers a narrower question than "do the
-tests pass": did the work that claims to close this item stay inside what the
-item declared? It runs the item's `verify` command and the project's own
+`docket verify <id>` answers a narrower question than "do the tests pass":
+did the work that claims to close this item stay inside what the item
+declared? It runs the item's `verify` command and the project's own
 check, and it reads the diff for the ways a green build can be reached
 without doing the work — a file outside `touches`, a protected path, an edit
 to the gate itself, an added suppression, a deleted assertion, a rewritten
 front matter.
 
-Several ids may be given at once — `docket verify PL-K7QX PL-B2B2 --base main`
-— because that is the shape delegated work comes back in: one branch, one
+Several ids may be given at once — `docket verify PL-K7QX PL-B2B2` — because
+that is the shape delegated work comes back in: one branch, one
 commit per item. Each item's own command still runs per item, since that is
 what makes one acceptable and the next rejectable, while the project's own
 check runs once for the batch. It proves a property of the tree, and proving
 the same property six times turns a two-second command into a two-minute one,
 which is how a reviewer learns to skip it.
+
+The base defaults to the first of `origin/main`, `origin/master`, `main` or
+`master` that resolves, and the remote refs come first deliberately. A session
+that starts from a fresh clone holds a local `main` frozen at whatever it was
+cloned at, so a diff taken against it reports every file merged in the
+meantime as this branch's own work: one real run named 20 paths outside the
+item's commission where the true answer was 4. `--base <ref>` overrides it,
+and a base behind its own remote is said so at the top of the report rather
+than left to be read as clean.
 
 The diff is scoped to the commits whose subject names the item, which is what
 one-commit-per-item buys: a batch branch carries several items' work, and each

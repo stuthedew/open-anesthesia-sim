@@ -1,10 +1,14 @@
 ---
 id: PL-10MX
 title: Advance a caller over a duration by taking supported steps
-status: untriaged
-added: 2026-08-30
+priority: P2
+effort: S
+status: ready
 classes: feature
+feature: numerical-domain
 touches: src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/core/respiratory_system.py, docs/MODEL.md
+added: 2026-08-30
+verify: uv run pytest -k advance_over
 ---
 
 **Problem.** After PL-VP7N a caller that wants 30 s of simulated time gets a

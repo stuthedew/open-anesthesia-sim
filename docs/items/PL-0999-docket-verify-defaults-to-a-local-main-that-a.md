@@ -1,10 +1,16 @@
 ---
 id: PL-0999
 title: docket verify defaults to a local main that a fresh checkout leaves stale
-status: untriaged
-added: 2026-08-30
+priority: P2
+effort: S
+status: done
 classes: defect
-touches: subprojects/docket/src
+feature: dev-tooling
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_verify.py
+added: 2026-08-30
+closed: 2026-08-30
+commit: 8c72f1b
+verify: uv run pytest subprojects/docket/tests -k base
 ---
 
 **Problem.** `docket verify` compares the branch against `main` by default —
