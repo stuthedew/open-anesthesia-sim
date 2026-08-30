@@ -1,11 +1,14 @@
 ---
 id: PL-GVC0
 title: The item id prefix is hard-coded as `PL-`, the one thing in docket that is not configurable
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/vcs.py, docket.toml
 added: 2026-08-30
-classes: infra
+verify: uv run pytest subprojects/docket/tests -k custom_prefix
 ---
 
 **Problem.** `store.ID_PREFIX = "PL-"` and the branch-name regex in

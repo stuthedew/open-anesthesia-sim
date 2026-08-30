@@ -1,10 +1,15 @@
 ---
 id: PL-XH1D
 title: State how the project is developed, and what each attribution trailer means
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: docs
 feature: public-history
 touches: README.md, CONTRIBUTING.md
 added: 2026-08-30
+verify: python3 tools/doc_check.py check
+not-delegable: the wording states publicly what the project owner did and did not write, and he approves it before the item closes; doc_check proves only that the citations resolve
 ---
 
 **Problem.** The repository says nothing about how it is built. 168 of its 201

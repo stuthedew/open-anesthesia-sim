@@ -1,8 +1,12 @@
 ---
 id: PL-S4M2
 title: Switch main to squash-merge and gate every merge on a green check
-status: untriaged
+priority: P2
+effort: S
+status: blocked
+classes: infra, defect
 feature: public-history
+blocked-by: PL-ZQ9C
 added: 2026-08-30
 not-delegable: the three settings live in GitHub repository configuration, not in the tree, and no MCP tool in this session exposes branch protection. A session can confirm the result on a test PR but cannot make the change.
 ---
