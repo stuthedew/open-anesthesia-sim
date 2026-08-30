@@ -3,11 +3,13 @@ id: PL-QDN7
 title: A freeze closes new scope, not the completeness of a fix, and the finishing item is paired
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, infra
 feature: planning-cadence
 touches: ROADMAP.md, CLAUDE.md
 added: 2026-08-30
+closed: 2026-08-30
+commit: 5b89b97
 verify: python3 tools/doc_check.py check && bin/docket wave
 ---
 
