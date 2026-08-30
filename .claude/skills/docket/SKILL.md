@@ -189,6 +189,18 @@ gate should open early, whether the prose beside a step is still true, or
 whether a scoped milestone is scoped well. Those are the reply's judgment to
 add, and they are why it prints the counts rather than a verdict.
 
+**Open with where the release stands — two or three sentences, before any
+item.** `docket wave` prints the facts; state them as prose, because a row of
+counts is not an answer to "where are we". Name the release being built and
+what it is for, what is left of it, and what closing it unblocks. For example:
+"v0.3.0 is the foundation release — no new capability, just Gate 0's inherited
+backlog. Eight of its twenty entries are open: four core-correctness items
+wanting the strongest model, and the four `core-boundaries` refactors. Closing
+it opens v0.4.0, the teachable case."
+
+That is the paragraph the owner is actually asking for, and it costs one
+`wave` call. Gloss every id, per `CLAUDE.md`. Then drop to the queue.
+
 **Answer at feature altitude first.** "We could finish chart-readout — two
 items left, both small — or start vaporizer-controls, which is four. Outside
 those, PL-026 is safety-tagged and wants doing regardless." Nobody chooses

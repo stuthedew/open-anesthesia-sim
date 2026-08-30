@@ -1,7 +1,9 @@
 ---
 id: PL-T4YD
 title: Surface the wave line in the session-start digest, so the roadmap nags as the queue does
-status: untriaged
+status: dropped
+closed: 2026-08-30
+reason: duplicate of PL-F58L, which states the same problem with a fuller brief and a recommended narrow fix; its one distinct point (the digest's length is a standing per-turn cost) has been folded into that item
 feature: planning-cadence
 touches: .claude/hooks/docket-digest.sh, subprojects/docket
 added: 2026-08-29
