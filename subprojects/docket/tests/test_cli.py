@@ -371,3 +371,82 @@ def test_a_project_that_has_never_tagged_is_not_refused(tmp_path: Path) -> None:
     root = _release_repo(tmp_path)
 
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+
+
+UNTRIAGED = """---
+id: PL-U1U1
+title: An idea nobody has weighed yet
+status: untriaged
+added: 2026-08-20
+---
+
+**Problem.** The induction curve looks wrong at low flows.
+"""
+
+
+def _triage(tmp_path: Path, *documents: str, config: str = "") -> str:
+    store = _store(tmp_path, *documents)
+    if config:
+        (tmp_path / "docket.toml").write_text(config, encoding="utf-8")
+    assert _run("triage", "--items", str(store)) == 0
+    return store.name
+
+
+def test_triage_prints_the_body_and_what_is_still_unset(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A title alone cannot be triaged by someone who was not there."""
+    _triage(tmp_path, UNTRIAGED, READY)
+    output = capsys.readouterr().out
+
+    assert "PL-U1U1" in output
+    assert "induction curve looks wrong" in output
+    assert "priority*" in output and "effort*" in output
+    assert "**Why it matters.**" in output  # the brief sections still missing
+
+
+def test_triage_states_the_rules_the_answers_must_satisfy(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The point is the rules being present, not a session recalling them."""
+    _triage(
+        tmp_path,
+        UNTRIAGED,
+        READY,
+        config='[docket]\nprotected_paths = ["src/core"]\nverify_required_from = 2026-08-01\n',
+    )
+    output = capsys.readouterr().out
+
+    assert "force P0 or P1" in output
+    assert "the top band is P1, holding 1 of the 5" in output
+    assert "src/core" in output
+    assert "`verify:` command" in output
+
+
+def test_triage_leaves_a_project_that_declares_no_protected_paths_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _triage(tmp_path, UNTRIAGED)
+
+    assert "non-delegable" not in capsys.readouterr().out
+
+
+def test_triage_decides_nothing_and_writes_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Priority, effort, classes and feature are judgment and stay with the session."""
+    store = _store(tmp_path, UNTRIAGED)
+    before = (store / "item-0.md").read_text()
+
+    assert _run("triage", "--items", str(store)) == 0
+
+    assert (store / "item-0.md").read_text() == before
+    assert "priority: " not in capsys.readouterr().out
+
+
+def test_triage_says_so_when_nothing_is_waiting(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _triage(tmp_path, READY)
+
+    assert "Nothing is untriaged." in capsys.readouterr().out
