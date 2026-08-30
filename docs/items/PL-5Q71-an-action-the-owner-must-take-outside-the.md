@@ -11,6 +11,7 @@ touches: CLAUDE.md
 added: 2026-08-30
 closed: 2026-08-30
 commit: e1ccbd4
+pr: 76
 verify: python3 tools/doc_check.py check
 not-delegable: the change rewrites a rule in CLAUDE.md that every session then follows, and whether a set of steps is genuinely followable is a judgment no check decides
 ---

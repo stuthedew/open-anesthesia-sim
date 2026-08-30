@@ -10,6 +10,7 @@ touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-08-24
 closed: 2026-08-26
 commit: 1180158
+pr: 57
 ---
 
 **Problem.** `tests/reference/test_coupled_dynamics.py` bounds the

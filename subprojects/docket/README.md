@@ -233,6 +233,13 @@ What is left is the case worth failing on — a number inside the range the
 default branch covers that no commit there names, which is a typo or an
 invention.
 
+So `done` requires `pr`, and `commit` is optional beside it. The requirement
+carries no cutover date, because there is nothing to cut over from: the store
+this grew in had every one of its 66 closed items backfilled in a single pass,
+each number derived from the commit on the default branch that first contained
+the recorded hash. A dated exemption is a leak that has to be remembered
+forever; a backfill is one commit.
+
 ### Delegation is derived, never granted
 
 Work that a cheaper model can finish should go to one; work whose correctness

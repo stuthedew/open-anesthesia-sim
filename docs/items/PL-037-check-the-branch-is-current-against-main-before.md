@@ -11,6 +11,7 @@ touches: .claude/hooks/docket-digest.sh
 added: 2026-08-24
 closed: 2026-08-30
 commit: d89df5e
+pr: 64
 verify: bash -n .claude/hooks/docket-digest.sh && .claude/hooks/docket-digest.sh | grep -q "^Branch: "
 ---
 

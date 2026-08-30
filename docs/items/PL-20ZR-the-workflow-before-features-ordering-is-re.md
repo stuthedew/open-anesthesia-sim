@@ -7,6 +7,7 @@ status: done
 closed: 2026-08-30
 classes: session-cost, infra
 commit: 889bd3e
+pr: 81
 feature: planning-cadence
 touches: ROADMAP.md, CLAUDE.md, subprojects/docket/src/docket/plan.py
 added: 2026-08-30

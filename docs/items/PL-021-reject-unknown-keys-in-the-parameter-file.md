@@ -5,6 +5,7 @@ status: done
 milestone: v0.2.2
 closed: 2026-08-24
 commit: 3465dcf
+pr: 13
 ---
 
 **Problem.** Reject unknown keys in the parameter-file schemas

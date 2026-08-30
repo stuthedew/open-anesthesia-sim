@@ -158,8 +158,15 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"{where}: names a `verify` command but declares no `touches`; a check "
             "with no declared scope cannot bound what the work may change"
         )
-    if item.status == "done" and not item.commit:
-        report.errors.append(f"{where}: marked done but records no `commit`")
+    # `pr` rather than `commit`, because the pull request number is the half of
+    # an item's provenance that survives however the work reaches the default
+    # branch. `commit` stays legal and is still checked for shape where it
+    # appears; it is simply no longer what makes a closure traceable.
+    if item.status == "done" and not item.pr:
+        report.errors.append(
+            f"{where}: marked done but records no `pr`; without it there is no way "
+            "back from the closure to the work that made it"
+        )
     if item.pr and not PR_RE.match(item.pr):
         report.errors.append(
             f"{where}: `pr` is '{item.pr}'; it holds a pull request number and "

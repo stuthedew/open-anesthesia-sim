@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/ren
 added: 2026-08-25
 closed: 2026-08-25
 commit: c7728e2
+pr: 41
 ---
 
 **Problem.** PL-G3TG makes `docket list` mark delegable items, but reading them

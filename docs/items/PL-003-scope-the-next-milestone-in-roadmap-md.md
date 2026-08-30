@@ -9,7 +9,8 @@ milestone: v0.2.5
 touches: ROADMAP.md
 added: 2026-08-23
 closed: 2026-08-25
-commit: 621d9a6
+commit: e475823
+pr: 48
 ---
 
 **Problem.** No milestone after v0.2.0 is scoped (v0.2.1 is a validation

@@ -149,11 +149,19 @@ def test_safety_work_may_not_sit_in_a_low_band() -> None:
     assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
 
 
-def test_a_done_item_records_its_commit_and_date() -> None:
+def test_a_done_item_records_its_pull_request_and_date() -> None:
+    """The pull request rather than the commit: a squash discards the commit."""
     messages = _errors(_item(status="done", priority="", effort="", added=None))
 
-    assert _has(messages, "records no `commit`")
+    assert _has(messages, "records no `pr`")
     assert _has(messages, "records no `closed` date")
+
+
+def test_a_done_item_needs_no_commit() -> None:
+    """It is kept where it is to hand, but it is not what makes a closure traceable."""
+    closed = _item(status="done", pr="48", closed=TODAY, added=None, priority="", effort="")
+
+    assert _errors(closed) == []
 
 
 def test_a_dropped_item_records_why() -> None:
@@ -167,7 +175,7 @@ def test_a_dropped_item_records_why() -> None:
 def test_a_closed_item_needs_no_added_date() -> None:
     """Items closed before this format existed cannot acquire one."""
     closed = _item(
-        status="done", commit="abc1234", closed=TODAY, added=None, priority="", effort=""
+        status="done", commit="abc1234", pr="48", closed=TODAY, added=None, priority="", effort=""
     )
 
     assert _errors(closed) == []

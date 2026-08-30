@@ -11,6 +11,7 @@ touches: Makefile, .claude/skills/docket/SKILL.md
 added: 2026-08-25
 closed: 2026-08-30
 commit: e9fc842
+pr: 64
 not-delegable: proving this means cutting a release, so no check can run beforehand
 ---
 
