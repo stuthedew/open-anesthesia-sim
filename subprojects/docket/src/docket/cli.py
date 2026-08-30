@@ -30,7 +30,7 @@ from .release import (
 )
 from .roadmap import wave
 from .store import find_item, new_id, read_items, write_item
-from .vcs import branches_in_flight, in_flight_ids, tags
+from .vcs import branches_in_flight, default_base, in_flight_ids, tags
 from .verify import verify_batch
 
 CAPTURE_TEMPLATE = """**Problem.** {title}
@@ -446,7 +446,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
             return 1
         wanted.append(item)
     root = args.items.parent if args.items else find_root()
-    reports = verify_batch(root, wanted, config, args.base)
+    base = args.base or default_base(root)
+    reports = verify_batch(root, wanted, config, base)
     print("\n\n".join(report.describe() for report in reports))
     if len(reports) > 1:
         print(f"\n{config.check_command} ran once for the batch; it proves the tree, not an item.")
@@ -597,7 +598,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     verify_cmd = add("verify", "prove an item's work stayed inside its commission")
     verify_cmd.add_argument("item", nargs="+", help="one or more item ids, verified as a batch")
-    verify_cmd.add_argument("--base", default="main", help="the ref the work branched from")
+    verify_cmd.add_argument(
+        "--base",
+        default=None,
+        help="the ref the work branched from (default: origin/main where it resolves)",
+    )
     verify_cmd.set_defaults(func=cmd_verify)
 
     add("status", "the project at feature altitude").set_defaults(func=cmd_status)

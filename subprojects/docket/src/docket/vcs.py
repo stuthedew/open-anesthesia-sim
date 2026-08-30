@@ -98,6 +98,49 @@ def branches_in_flight(
     return sorted(found.values(), key=lambda b: b.item_id)
 
 
+def default_base(root: Path, *, runner: Runner | None = None) -> str:
+    """The ref a branch should be compared against, preferring the remote's.
+
+    `main` names the *local* branch, which in a fresh clone - the normal state
+    for an agent session, which starts from one - can sit many commits behind
+    what everyone else has pushed. A diff taken against it reports every file
+    that landed in between as this branch's own work: verifying PL-VP7N that
+    way named 20 paths outside the item's commission where the true answer was
+    4, the other 16 being item files other sessions had merged. So the remote
+    ref is preferred wherever it resolves, because that is what the branch
+    actually forked from.
+
+    Falls back to `main` when nothing resolves, which is a repository this
+    tool cannot answer about either way; `verify` then reports finding no
+    change rather than reporting a clean scope.
+    """
+    run = runner or _run_git
+    for candidate in DEFAULT_BRANCHES:
+        if run(["rev-parse", "--verify", "--quiet", candidate], root).strip():
+            return candidate
+    return "main"
+
+
+def behind_remote(root: Path, base: str, *, runner: Runner | None = None) -> int | None:
+    """How many commits `base` trails its own remote-tracking branch.
+
+    `None` when the question does not arise - `base` is already a remote ref,
+    has no counterpart on `origin`, or the count cannot be read - and `0` when
+    it is current. The distinction is worth keeping after `default_base` moved
+    the default to the remote ref, because `--base main` can still be passed
+    by hand, and a stale answer that looks clean is the failure being guarded
+    against rather than the flag that produced it.
+    """
+    run = runner or _run_git
+    if "/" in base:
+        return None
+    remote = f"origin/{base}"
+    if not run(["rev-parse", "--verify", "--quiet", remote], root).strip():
+        return None
+    counts = run(["rev-list", "--count", f"{base}..{remote}"], root).strip()
+    return int(counts) if counts.isdigit() else None
+
+
 def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
     """Every tag name the repository holds.
 

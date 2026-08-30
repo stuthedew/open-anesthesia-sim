@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from docket.vcs import branches_in_flight, in_flight_ids, tags
+from docket.vcs import behind_remote, branches_in_flight, default_base, in_flight_ids, tags
 
 ROOT = Path("/nowhere")
 
@@ -66,3 +66,52 @@ def test_tags_are_read_from_the_repository() -> None:
 
 def test_no_git_means_no_tags_rather_than_an_error() -> None:
     assert tags(ROOT, runner=lambda args, root: "") == frozenset()
+
+
+def _refs(known: dict[str, str]):
+    """A git that resolves exactly the refs given, and counts what they say."""
+
+    def run(args: list[str], root: Path) -> str:
+        if args[:2] == ["rev-parse", "--verify"]:
+            return known.get(args[-1], "")
+        if args[:2] == ["rev-list", "--count"]:
+            return known.get(args[-1], "")
+        return ""
+
+    return run
+
+
+def test_the_default_base_prefers_the_ref_the_branch_forked_from() -> None:
+    """A local `main` in a fresh clone is not what the branch diverged from."""
+    runner = _refs({"origin/main": "abc123", "main": "def456"})
+
+    assert default_base(ROOT, runner=runner) == "origin/main"
+
+
+def test_the_default_base_falls_back_to_a_local_branch() -> None:
+    assert default_base(ROOT, runner=_refs({"main": "def456"})) == "main"
+
+
+def test_a_repository_resolving_no_default_branch_still_answers() -> None:
+    """Nothing to compare against is reported by verify as no change, not as clean."""
+    assert default_base(ROOT, runner=_refs({})) == "main"
+
+
+def test_a_local_base_behind_its_remote_is_counted() -> None:
+    runner = _refs({"origin/main": "abc123", "main..origin/main": "7"})
+
+    assert behind_remote(ROOT, "main", runner=runner) == 7
+
+
+def test_a_base_current_with_its_remote_counts_zero() -> None:
+    runner = _refs({"origin/main": "abc123", "main..origin/main": "0"})
+
+    assert behind_remote(ROOT, "main", runner=runner) == 0
+
+
+def test_a_remote_base_is_not_judged_against_a_remote_of_its_own() -> None:
+    assert behind_remote(ROOT, "origin/main", runner=_refs({"origin/origin/main": "x"})) is None
+
+
+def test_a_base_with_no_counterpart_on_the_remote_is_not_judged() -> None:
+    assert behind_remote(ROOT, "topic", runner=_refs({})) is None
