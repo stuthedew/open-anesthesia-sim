@@ -316,14 +316,28 @@ version would be, and a question.
 > makes a natural v0.2.4. Want me to cut it?"
 
 ```bash
-docket status               # includes what is releasable
-docket release --dry-run    # the notes and the bump, without writing
-docket release              # infers the version; --version to override
+docket status                    # includes what is releasable
+bin/docket release --dry-run     # the notes and the bump, without writing
+make release VERSION=0.3.0       # cut it
 ```
 
-The version is inferred: a minor bump when `feature`-classed work went out, a
-patch otherwise. A major bump is never inferred, because breaking a published
-interface is a decision rather than a fact about labels — raise that one.
+**Cut it with `make release`, never `bin/docket release` on its own.** The
+tool writes the new version into `pyproject.toml` and stops, but `uv.lock`
+records the project's own version too, so the next `make check` fails on `uv
+sync --locked` with the tree half-updated and the reason unrelated to the
+release. That happened on both releases the command has existed for. `make
+release` runs `bin/docket release`, then `uv lock`, then `make check`, which
+is the whole sequence.
+
+This project names its version rather than incrementing it, so `VERSION=` is
+required; `bin/docket release --dry-run` prints the mechanical guess for
+reference.
+
+`docket.toml` sets `version_policy = "manual"` here, so the version is named
+rather than inferred — `ROADMAP.md`'s "Versioning decision" is why: the number
+marks the capability boundary a release crosses, which no class label carries.
+The dry run still prints the mechanical guess, as a reference point and not an
+answer.
 
 `release` stops before tagging on purpose: review the bump and the generated
 notes, then commit and tag.
