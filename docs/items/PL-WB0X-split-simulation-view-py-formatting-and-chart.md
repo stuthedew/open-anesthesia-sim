@@ -66,6 +66,37 @@ that the existing domain-readability bar is stronger and more decidable — but
 this module is the one place where the project genuinely does violate
 single-responsibility, by its own standard rather than by an imported one.
 
+**Sequencing — why stage 1 is urgent and stage 3 is not yet.** Both remaining
+pre-MVP releases are interface releases on an unchanged model, so essentially
+all the work between here and MVP lands in this file. Each stage has a specific
+piece of that work it should precede:
+
+1. `app/formatting.py` **before PL-DHV7** (express compartment concentrations
+   in MAC multiples as a display unit). PL-DHV7 rewrites every formatter and
+   adds a second unit to `docs/MODEL.md`'s "Displayed precision" derivation. It
+   is `safety`/`science`-classed. Doing it against a Flet-free module with its
+   own tests is materially safer than doing it against a private static method
+   on a 1082-line view class, and the extraction is `S`.
+2. `app/chart_series.py` **before v0.4.0's chart work** — PL-CC23 (scale the
+   vertical axis to the run), PL-SSBP (a case-length time base), PL-ZRSP (the
+   F_A/F_I trace) and PL-F52R (the MAC-awake band) all touch series assembly,
+   and would otherwise each touch it in its current location.
+3. The `SimulationView` decomposition proper **before v0.5.0**. That milestone
+   is bookmarks, forking and *side-by-side comparison of two branches*, which
+   requires two runs rendered at once. A single class holding one run's widgets
+   and one controller reference is the shape that actually fails there — not
+   merely an inconvenient one. This is the stage the size argument alone does
+   not justify and the comparison requirement does.
+
+**Where it belongs on the plan.** Not Gate 0: it is `refactor`-classed and was
+captured after the freeze, so "Explicitly out of scope for v0.3.0" keeps it
+out, and v0.3.0's whole claim is that it adds no capability and clears only the
+frozen list. The natural home is a `v0.3.x` patch step beside "`core/` reads
+like the domain" — same kind of step, one layer up: structure and readability,
+no behavior change. A sibling row rather than an extension of that one, since
+item 29 is about `core/`'s domain vocabulary and merging an app-layer
+restructure into it would give one step two unrelated definitions of done.
+
 **Done when.** The pure formatters live in a Flet-free module with their own
 tests, `docs/MODEL.md`'s "Displayed precision" section cites that module, the
 chart-series shaping sits beside `chart_downsampling.py`, `simulation_view.py`
