@@ -12,12 +12,17 @@ requires-python = ">=3.14,<3.15"
 dependencies = [
     "flet-charts>=0.86,<1.0",
     "flet[all]>=0.86,<1.0",
-    # Exact pin, not a floor: pydantic>=2.12.4 crashes on this project's
-    # pinned Python 3.14.0rc2 build (TypeError in typing._eval_type via
-    # pydantic's compat shim; see pydantic/pydantic#12501, closed "not
-    # planned" upstream). Do not relax this without re-testing against
-    # whatever Python 3.14 build is in use at the time.
-    "pydantic==2.12.0",
+    # A floor, not an exact pin. pydantic 2.12.4 began passing
+    # `prefer_fwd_module=` to `typing._eval_type`, a keyword CPython added
+    # between 3.14.0rc2 and 3.14.0 final, so on the release candidate this
+    # project used to run it raised `TypeError: _eval_type() got an
+    # unexpected keyword argument 'prefer_fwd_module'` while evaluating the
+    # deferred annotations in core/parameters.py (pydantic/pydantic#12501,
+    # closed "not planned" upstream because the rc was never a supported
+    # target). `.python-version` now names a final release, where 2.12.4 and
+    # 2.13.5 both parse every shipped agent and patient file; the floor keeps
+    # the broken pairing unreachable rather than pinning around it.
+    "pydantic>=2.12.4,<3.0",
 ]
 
 [project.scripts]
@@ -34,6 +39,15 @@ dev = [
     "pytest-cov>=7.1.0",
     "ruff>=0.16.4",
 ]
+
+# uv resolves `.python-version` against the interpreter list baked into the
+# binary at build time, so an older uv silently maps a bare `3.14` onto the
+# newest 3.14 it happens to know - which is how this project ran on
+# 3.14.0rc2. The floor matches the build backend above, so one number
+# describes the whole toolchain, and `astral-sh/setup-uv` reads it to choose
+# the uv that CI installs.
+[tool.uv]
+required-version = ">=0.12.5"
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "subprojects/docket/tests"]
