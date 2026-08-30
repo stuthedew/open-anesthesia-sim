@@ -1,10 +1,12 @@
 ---
 id: PL-JZKV
 title: Adopt the four human-factors principles for multi-step output, and place them where web sessions actually read them
-status: untriaged
+status: dropped
 feature: worker-instructions
 touches: .claude/rules, CLAUDE.md
 added: 2026-08-30
+closed: 2026-08-30
+reason: duplicate of PL-R5GN, which records the same request in the nine-rule wording the project owner sent to the other session; its distinct analysis - the chunking/batching conflict and its resolution, PL-HZC2 folding into rule 1, and dropping the role preamble - is folded into PL-R5GN rather than lost
 ---
 
 **Problem.** The project owner supplied four human-factors principles for
