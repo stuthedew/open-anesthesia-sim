@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import date
 
 from docket.checks import analyze
+from docket.config import Config
 from docket.model import Item
 
 TODAY = date(2026, 8, 24)
@@ -277,3 +278,59 @@ def test_a_verify_command_without_touches_is_rejected() -> None:
 def test_a_verify_command_with_touches_is_accepted() -> None:
     item = _item(verify="pytest tests/unit/test_x.py", touches=("tests/unit/test_x.py",))
     assert analyze([item], TODAY).errors == []
+
+
+CUTOVER = Config(verify_required_from=date(2026, 8, 1))
+
+
+def test_a_ready_item_must_name_the_command_that_proves_it_done() -> None:
+    """The gate is at `ready`, where the item has become a commitment to work."""
+    report = analyze([_item(added=date(2026, 8, 2))], TODAY, CUTOVER)
+
+    assert _has(report.errors, "names no `verify:` command")
+
+
+def test_a_ready_item_may_record_why_no_command_can_prove_it_instead() -> None:
+    """Some work is only provable by doing it; saying so is a specification."""
+    item = _item(added=date(2026, 8, 2), not_delegable="proving it means cutting a release")
+
+    assert analyze([item], TODAY, CUTOVER).errors == []
+
+
+def test_a_verify_command_satisfies_the_requirement() -> None:
+    item = _item(added=date(2026, 8, 2), verify="uv run pytest")
+
+    assert analyze([item], TODAY, CUTOVER).errors == []
+
+
+def test_capture_is_never_asked_for_a_verify_command() -> None:
+    """Demanding one at capture is how ideas stop being written down."""
+    item = _item(status="untriaged", priority="", effort="", added=date(2026, 8, 2))
+
+    assert not _has(analyze([item], TODAY, CUTOVER).errors, "verify")
+
+
+def test_an_item_still_being_decided_is_not_asked_for_one() -> None:
+    """What would prove it done is not answerable while the decision is open."""
+    item = _item(
+        status="needs-decision",
+        added=date(2026, 8, 2),
+        body=BRIEF + "\n**Decision needed.** which way\n",
+    )
+
+    assert not _has(analyze([item], TODAY, CUTOVER).errors, "verify")
+
+
+def test_items_captured_before_the_cutover_are_advised_rather_than_failed() -> None:
+    """47 errors on the day the rule lands is a checker nobody runs again."""
+    report = analyze([_item(added=date(2026, 7, 31))], TODAY, CUTOVER)
+
+    assert report.errors == []
+    assert _has(report.advisories, "predate the `verify:` requirement")
+
+
+def test_a_project_that_has_not_adopted_the_rule_hears_nothing_about_it() -> None:
+    report = analyze([_item(added=date(2026, 8, 2))], TODAY)
+
+    assert report.errors == []
+    assert report.advisories == []

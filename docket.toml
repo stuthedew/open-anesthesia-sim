@@ -18,6 +18,15 @@ top_band_limit = 5
 # Past this, an untriaged capture has become a second queue nobody reads.
 untriaged_stale_days = 14
 
+# The date this project adopted the rule that a `ready` item names the command
+# that proves it done (PL-G049). Items captured on or after it must carry
+# `verify:`, or record in `not-delegable:` why no command can prove them; the
+# 47 captured before it are reported as one grooming advisory instead of 47
+# errors, so the rule starts working immediately without making `docket check`
+# useless on the day it lands. Moving this date earlier is how the backlog is
+# closed out - it is a burn-down, not a permanent exemption.
+verify_required_from = 2026-08-30
+
 # Classes that make a release a minor version bump rather than a patch.
 minor_classes = ["feature"]
 

@@ -268,6 +268,39 @@ work already there.
 An item that should not be done becomes `status: dropped` with a `reason`.
 Never delete the file: the reason is what stops the finding being re-raised.
 
+### The `verify:` command, and running it before writing it down
+
+Triaging an item to `ready` means naming the command that proves it done.
+`docket check` requires one at that status, because a `ready` item is a
+commitment to do work and "what would prove this?" is the first thing that
+becomes answerable.
+
+**Run the command before you write it into the item.** All six commands that
+ever existed here were wrong in the same two ways and none had been executed:
+`--cov=` was given a file path where `pytest-cov` expects a dotted module, and
+the run was scoped to one test file, which makes lines covered by the rest of
+the suite read as uncovered and puts `--cov-fail-under=100` out of reach. An
+unrun command fails after a worker has done the work, which costs a round trip
+and the owner's attention.
+
+Copy one of these shapes rather than inventing one:
+
+| The item is | The command |
+| --- | --- |
+| Covering a module's untested paths | `uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100` |
+| A string, label, or single behavior | `uv run pytest tests/unit/test_simulation_view.py -k halted` |
+| Documentation only | `python3 tools/doc_check.py check` |
+
+The first is the one that goes wrong. `--cov=` takes the **dotted module**
+(`anesthesia_sim.core.tissue`), never the path, and the run is the **whole
+suite** — no test file argument — because coverage of a module is the union of
+everything that exercises it.
+
+Some work has no command that can run beforehand: proving a release-time fix
+means cutting a release. Record that in `not-delegable:` rather than inventing
+a command to satisfy the checker. An item saying why it cannot be proven is
+better specified than one carrying a command nobody ran.
+
 ## Mode: ship a release
 
 **Offer this; do not wait to be asked.** The session-start digest says when

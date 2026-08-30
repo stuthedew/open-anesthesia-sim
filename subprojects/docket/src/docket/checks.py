@@ -108,6 +108,25 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         if missing:
             report.errors.append(f"{where}: brief is missing {', '.join(missing)}")
 
+    # The `verify:` gate sits at `ready` rather than at capture, and the
+    # placement is the whole of the rule. Demanding a command at the moment an
+    # idea occurs is the same tax as demanding a priority, and the block above
+    # exists to refuse it. `ready` is where the item has stopped being an idea
+    # and become a commitment to do work, which is the first point at which
+    # "what would prove this done" is answerable at all.
+    #
+    # `not-delegable` satisfies the requirement in place of a command, because
+    # some work genuinely has no check that can run beforehand - proving a
+    # release-time fix means cutting a release - and an item saying so is
+    # better specified than one carrying a command invented to satisfy a
+    # checker. What is refused is silence.
+    if item.status == "ready" and _verify_required(item, config):
+        if not item.verify and not item.not_delegable:
+            report.errors.append(
+                f"{where}: is ready but names no `verify:` command; give the command "
+                "that would prove it done, or record in `not-delegable` why no command can"
+            )
+
     safety = tuple(c for c in item.classes if c in config.safety_classes)
     if safety and item.priority in ("P2", "P3"):
         report.errors.append(
@@ -144,6 +163,21 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         report.errors.append(f"{where}: marked {item.status} but records no `closed` date")
 
 
+def _verify_required(item: Item, config: Config) -> bool:
+    """Whether the `verify:` rule applies to this item at all.
+
+    Anchored to the item's capture date rather than to the moment it reached
+    `ready`, because capture is the only date the file records. That leaks: an
+    item captured before the cutover and triaged after it escapes the rule.
+    The leak is bounded and shrinking - it can only cover items already in the
+    store when the rule was adopted - and the alternative, a second date field
+    written by hand at triage, is a field that can be wrong.
+    """
+    if config.verify_required_from is None:
+        return False
+    return item.added is not None and item.added >= config.verify_required_from
+
+
 def _check_references(report: Report) -> None:
     """Hold every cross-reference to an item that exists."""
     known = {item.identifier for item in report.items if item.identifier}
@@ -177,6 +211,24 @@ def _groom(report: Report, today: date, config: Config) -> None:
         report.advisories.append(
             f"{len(stale)} untriaged item(s) captured more than {config.untriaged_stale_days} days "
             f"ago ({', '.join(i.identifier for i in stale)}); triage or drop them"
+        )
+
+    # Only worth saying where the rule is in force: a project that has not
+    # adopted it is not carrying a backlog against it.
+    unspecified = [
+        item
+        for item in report.open_items
+        if config.verify_required_from is not None
+        and item.status == "ready"
+        and not item.verify
+        and not item.not_delegable
+        and not _verify_required(item, config)
+    ]
+    if unspecified:
+        report.advisories.append(
+            f"{len(unspecified)} ready item(s) predate the `verify:` requirement "
+            f"({config.verify_required_from}) and name no command that would prove them "
+            "done; each one is work no reviewer can accept without reading the diff"
         )
 
     resolved = {i.identifier for i in report.items if i.status in ("done", "dropped")}
