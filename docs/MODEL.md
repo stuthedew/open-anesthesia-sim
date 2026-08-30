@@ -565,6 +565,25 @@ at every step size still refines consistently. A fourth-order Runge–Kutta
 method would remove the splitting error but was not required to pass the
 documented tolerances at `SIMULATION_STEP_S = 0.1`.
 
+**The exact alternative, and why it is not taken.** Because every setting is
+held constant across a step, the six-state system is linear and time-invariant
+*within* that step, so a single matrix exponential of the system matrix solves
+it exactly — with no splitting error at any step size. Measured against the
+same from-scratch RK4 oracle at 5% delivered, over horizons of 60 s and
+3600 s, the exponential's worst disagreement across all six states is
+\(1.3\times10^{-16}\) to \(4.8\times10^{-14}\), against
+\(5.2\times10^{-6}\) to \(1.7\times10^{-5}\) for the shipped split.
+**The split is kept nonetheless** (project owner, 2026-08-30). Its error is
+not unknown but bounded — by the two release gates above across the settings
+envelope, and quantified in percentage points under "Displayed precision"
+below, which sets the displayed resolution from it. What an exact step would
+buy is therefore the removal of the applicability-domain bound under
+"Supported simulation step" below, not the correction of a wrong value, and
+that is worth taking up when a larger step is actually wanted — the
+playback-speed multiplier is the case — rather than as standalone work. The
+measurements are carried in queue item PL-6GS0; they were produced by the
+v0.2.0 architecture review's verification harness, retired under PL-STNV.
+
 #### Supported simulation step
 
 The split has an applicability domain, and stepping outside it fails rather

@@ -74,3 +74,20 @@ it, or defer it explicitly to a named milestone, and `docs/MODEL.md`
 § "Selected method (as implemented)" records which — so the next reader finds
 the answer rather than re-deriving the question. If adopted, this item is
 replaced by scoped implementation items; it is not itself the implementation.
+
+**Decided 2026-08-30: deferred, and the deferral is recorded.** The project
+owner took the recommendation above - keep the operator split, and revisit the
+exponential when a larger step is actually wanted rather than as standalone
+work, the playback-speed multiplier being the case that would want it.
+
+`docs/MODEL.md` § "Selected method (as implemented)" now carries "The exact
+alternative, and why it is not taken": the linearity argument, the measured
+comparison, the decision and its date, and the pointer back to this item for
+the per-agent table. That is what this item's "Done when" asked for - the next
+reader finds the answer rather than re-deriving the question - so the item is
+closed rather than left open as a standing question.
+
+It is deferred rather than declined. Reopen it, or supersede it with scoped
+implementation items, if the playback multiplier is scoped in a form that wants
+steps larger than `MAXIMUM_SIMULATION_STEP_S`; nothing else should reopen it,
+because nothing else is wrong.
