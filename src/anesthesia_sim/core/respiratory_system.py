@@ -27,6 +27,54 @@ from anesthesia_sim.core.validation import require_positive_finite
 
 SECONDS_PER_MINUTE = 60.0
 
+# The largest simulation step the shipped operator split is supported over.
+# Above it `advance()` refuses the step instead of returning a number, which
+# is what docs/MODEL.md's "Selected method (as implemented)" requires of a
+# step outside the split's applicability domain.
+#
+# This is deliberately *not* the step at which the split breaks down. That is
+# two orders of magnitude away and agent-dependent by a factor of four - on
+# the worst reachable trajectory the capacity guard `advance()` reports as
+# `SimulationNumericalError` first fires at 12 s for isoflurane, 25 s for
+# sevoflurane and 50 s for desflurane - so it bounds nothing a reader could
+# rely on. What this value bounds is the error:
+# the split is first order, so its disagreement with the true simultaneous
+# solution is C*dt with C at most 2.29e-3 s^-1 over the reachable input
+# domain (docs/MODEL.md, "Independent-solution test"), and every claim
+# docs/MODEL.md's "Displayed precision" makes about the last displayed digit -
+# a fifth of a count in ordinary use, one count at the envelope corner, about
+# two counts on the worst trajectory the sliders can reach - is that error
+# measured at exactly this step. Doubling the step doubles all three, and each
+# claim then reads false. So this is the largest step at which what the
+# interface shows is still what the model can support, and the interface runs
+# at it: `app.simulation_view.SIMULATION_STEP_S`.
+#
+# Raising it is a safety-critical change to every displayed value, not a
+# convenience: re-measure the coefficient, re-derive the displayed resolution
+# with it, and revise both sections together.
+MAXIMUM_SIMULATION_STEP_S = 0.1
+
+
+def require_supported_simulation_step(simulation_step_s: float) -> None:
+    """Require a step the operator split has a measured error bound for.
+
+    The guard belongs to the coupled system rather than to a compartment. A
+    compartment advanced alone is an exact exponential with no splitting
+    error at any step, and `tests/unit/test_circuit.py` steps a bare circuit
+    60 s precisely to show that; it is composing those exact solutions in
+    sequence that costs first-order accuracy, and only the composition has a
+    step size it can be outside of.
+    """
+
+    require_positive_finite("simulation_step_s", simulation_step_s)
+
+    if simulation_step_s > MAXIMUM_SIMULATION_STEP_S:
+        raise SimulationConfigurationError(
+            f"simulation_step_s of {simulation_step_s} s is outside the "
+            f"operator split's applicability domain, which ends at "
+            f"{MAXIMUM_SIMULATION_STEP_S} s"
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class RespiratoryStepResult:
@@ -122,7 +170,8 @@ class RespiratorySystem:
 
         Raises:
             SimulationConfigurationError: `simulation_step_s` is not a
-                positive finite number. Checked before anything is
+                positive finite number, or is larger than
+                `MAXIMUM_SIMULATION_STEP_S`. Checked before anything is
                 changed, so the system is untouched and the caller can
                 retry with a valid step.
             SimulationNumericalError: the step began but could not be
@@ -135,7 +184,7 @@ class RespiratorySystem:
                 than continue from it.
         """
 
-        require_positive_finite("simulation_step_s", simulation_step_s)
+        require_supported_simulation_step(simulation_step_s)
 
         try:
             return self._advance_step(simulation_step_s)

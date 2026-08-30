@@ -336,6 +336,14 @@ ENVELOPE_HORIZON_S = 600.0
 # The step the interface runs at (`app.simulation_view.SIMULATION_STEP_S`),
 # restated rather than imported so that this reference test stays
 # independent of the application layer.
+#
+# `test_envelope_limits_match_the_interface` checks the restatement, for the
+# same reason it checks the slider limits: every measured figure in
+# docs/MODEL.md - the splitting coefficient, the displayed resolution it
+# justifies, and the applicability domain `MAXIMUM_SIMULATION_STEP_S`
+# declares - is that error at this step, so a shipped step that moved while
+# this one did not would leave all of them quietly describing a run nobody
+# takes. Until PL-VP7N the step was restated here without that check.
 SHIPPED_STEP_S = 0.1
 
 # The oracle's own step. RK4 is fourth order and this system is smooth and
@@ -875,7 +883,9 @@ def test_envelope_limits_match_the_interface() -> None:
     resolution is checked with them because
     `test_displayed_ordering_reverses_only_at_a_crossing` measures a property
     of the rounded values, and adding a decimal would change what it proves
-    without changing anything it reads.
+    without changing anything it reads. The shipped step is checked with
+    them because everything this module measures is a coefficient multiplied
+    by it.
     """
 
     from anesthesia_sim.app import simulation_view
@@ -889,6 +899,7 @@ def test_envelope_limits_match_the_interface() -> None:
         MIN_CARDIAC_OUTPUT_L_MIN,
         MIN_DELIVERED_CONCENTRATION_PERCENT,
         CONCENTRATION_DISPLAY_DECIMALS,
+        SHIPPED_STEP_S,
     ) == (
         simulation_view.MAX_FRESH_GAS_FLOW_L_MIN,
         simulation_view.MAX_ALVEOLAR_VENTILATION_L_MIN,
@@ -898,10 +909,11 @@ def test_envelope_limits_match_the_interface() -> None:
         simulation_view.MIN_CARDIAC_OUTPUT_L_MIN,
         simulation_view.MIN_DELIVERED_CONCENTRATION_PERCENT,
         simulation_view.CONCENTRATION_DISPLAY_DECIMALS,
+        simulation_view.SIMULATION_STEP_S,
     ), (
-        "the interface's slider limits have changed; re-run the envelope and "
-        "trajectory sweeps, update these constants and the bound, and "
-        "re-derive the measured figures in docs/MODEL.md"
+        "the interface's slider limits or simulation step have changed; "
+        "re-run the envelope and trajectory sweeps, update these constants "
+        "and the bound, and re-derive the measured figures in docs/MODEL.md"
     )
 
 
