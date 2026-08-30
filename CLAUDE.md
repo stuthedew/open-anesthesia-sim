@@ -89,6 +89,15 @@ to consider, and nothing else:
   the owner needs to make — the capture rule already says to do it and not
   ask. Raising something in order to defer it is the one option that is not
   available.
+- **Only what this discussion raised.** The block closes the reply that was
+  actually given, not the project. A release offer, a next-item ranking, or a
+  reminder about unrelated open work belongs to a session answering "what
+  should we work on next" — appended to a design round, a question about one
+  mechanism, or a review of one change, it is noise the owner reads past, and
+  it drags the genuinely actionable lines past with it. Two things are always
+  in scope: the next step of the discussion itself, and an existing item that
+  would fix or unblock what the discussion found — name that one, glossed, and
+  say which comes first.
 - **Re-verify every carried-over item before repeating it.** An action that
   was outstanding earlier in the session may have been done since — by the
   owner, or on another branch. Repeating it from memory is the single most
@@ -280,6 +289,17 @@ reason to load the skill:
   the whole procedure: no id to allocate, no band to choose, nothing that can
   conflict with another branch. Do not ask whether to record it. Say in your
   reply that you did.
+- **A behavior change takes effect in the session that asks for it.** When the
+  owner asks for a change to how sessions work — these instructions,
+  `docs/worker.md`, the `docket` skill — record it like any other finding and
+  then *make the edit before the session ends*. An item on its own changes
+  nothing: it sits in the queue, untriaged and therefore invisible to `docket
+  next`, while every session in the meantime keeps doing the thing that was
+  just corrected. The capture is the record; the edit is the change. Do both,
+  and say in your reply that you did both. This is the one case where editing
+  this file mid-session is right despite the cache cost noted above — a rule
+  that takes effect three sessions late has already cost more than the cache
+  would have.
 - **Prefer finishing a feature to advancing several.** Related items share a
   `feature`; a release is a `milestone`. `docket next` already prefers work
   that finishes something underway, within its priority band. Do not override
@@ -306,6 +326,16 @@ reason to load the skill:
 - **Decide where an item's work happens, and act on it.** Continue here or
   open a fresh session — choose and proceed, do not ask. The skill has the
   criteria.
+- **Commit as you go; ask before the first push.** A web session's branch is
+  created by the harness before the session starts, so what a session controls
+  is not whether the branch exists but whether it reaches the remote — and a
+  branch pushed during a discussion that never lands is clutter a concurrent
+  session has to reason about. So commit locally as work accumulates, and hold
+  the push until the shape has settled, then ask. Committing is never deferred:
+  the container is ephemeral, and an uncommitted thought is one interruption
+  from gone. The exception is capture — a queue item, a finding, anything
+  recorded so it survives — which commits and pushes immediately, because
+  losing an idea is the worse failure of the two.
 - **`P0` items are hotfixes.** Before feature work, on their own branch, with
   a patch version bump and a regression test.
 - **Capture intent, and route it by how ready it is.** What the owner says
@@ -370,8 +400,12 @@ reason to load the skill:
   raised in passing is recorded immediately, because nothing about it is still
   moving. The test is whether the next reply is likely to change what the item
   would say.
-- **Offer the release; do not wait to be asked.** The digest says when
-  finished work has accumulated. `bin/docket release` takes no arguments and
+- **Offer the release; do not wait to be asked — in a session answering "what
+  next".** The digest says when finished work has accumulated, and it says so
+  in every session, including the ones where it is beside the point. Offer it
+  when the owner is choosing what to do next or has just finished something;
+  not in the middle of a design round or a question about one mechanism, where
+  it is both noise and a silent conversion of ideation into implementation. `bin/docket release` takes no arguments and
   infers the version, so there is nothing for the owner to look up — say what
   shipped, what it completes, what the version would be, and ask.
 - **Never ask for a tag without pasting the commands.** `docket release`
