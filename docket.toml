@@ -12,6 +12,13 @@ safety_classes = ["safety", "science"]
 # Work on how the project is built rather than on the product it builds.
 process_classes = ["session-cost", "docs", "infra"]
 
+# ROADMAP.md, "The debt gate" - "What counts": an open item is debt when it
+# carries one of these classes, or when its status is needs-decision. `feature`
+# and `planning` work is not debt; counting it would make the rule say "do
+# everything before doing anything", which no gate can open. `bin/docket gate`
+# reads this.
+debt_classes = ["defect", "safety", "science", "refactor", "perf"]
+
 # Past this, the top band stops answering "what next?" at a glance.
 top_band_limit = 5
 

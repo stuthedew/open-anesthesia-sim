@@ -25,6 +25,11 @@ class Config:
     safety_classes: tuple[str, ...] = ("safety", "science")
     #: Classes describing work on the process rather than on the product.
     process_classes: tuple[str, ...] = ("session-cost", "docs", "infra")
+    #: Classes that make an open item recorded debt. Work already recognized
+    #: as owed, as against work not yet begun: a project clearing debt before
+    #: starting a milestone needs to know which is which, and the class labels
+    #: are where it is written down.
+    debt_classes: tuple[str, ...] = ("defect", "safety", "science", "refactor", "perf")
     #: Past this, the top band is too large to choose from at a glance.
     top_band_limit: int = 5
     #: Past this, an untriaged capture has become a second queue nobody reads.
@@ -118,6 +123,7 @@ def load(root: Path) -> Config:
         items_dir=str(section.get("items_dir", defaults.items_dir)),
         safety_classes=_tuple(section.get("safety_classes"), defaults.safety_classes),
         process_classes=_tuple(section.get("process_classes"), defaults.process_classes),
+        debt_classes=_tuple(section.get("debt_classes"), defaults.debt_classes),
         top_band_limit=int(section.get("top_band_limit", defaults.top_band_limit)),
         untriaged_stale_days=int(
             section.get("untriaged_stale_days", defaults.untriaged_stale_days)

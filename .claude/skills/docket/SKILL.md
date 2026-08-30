@@ -311,6 +311,26 @@ means cutting a release. Record that in `not-delegable:` rather than inventing
 a command to satisfy the checker. An item saying why it cannot be proven is
 better specified than one carrying a command nobody ran.
 
+## Mode: freeze a milestone's debt gate
+
+Triggered by scoping a milestone — scoping is the act that freezes the list.
+
+```bash
+bin/docket gate --feature teachable-case
+```
+
+That is the whole pass: the open debt, split into what the milestone clears
+itself (the items carrying its feature) and what clears before it begins, with
+effort totals for each. Recording Gate 0 by hand meant reading 48 items and
+applying the rule to each; do not repeat that.
+
+The command computes and decides nothing. Whether an item is *really* debt,
+whether the gate should open, and what goes into `ROADMAP.md` are yours —
+transcribe the two lists into the milestone's own section with the date they
+were frozen, per `ROADMAP.md`'s "Recording it". The list is frozen at that
+moment; a finding made afterwards goes to the next gate unless the problem it
+describes predates the freeze, or is `P0`, `safety` or `science`.
+
 ## Mode: ship a release
 
 **Offer this; do not wait to be asked.** The session-start digest says when

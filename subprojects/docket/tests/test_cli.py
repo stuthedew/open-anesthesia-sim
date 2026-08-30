@@ -450,3 +450,49 @@ def test_triage_says_so_when_nothing_is_waiting(
     _triage(tmp_path, READY)
 
     assert "Nothing is untriaged." in capsys.readouterr().out
+
+
+DEBT = """---
+id: PL-E1E1
+title: A defect in the milestone's own scope
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: teachable-case
+touches: a.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def test_gate_splits_the_debt_the_milestone_clears_from_the_debt_before_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Recording Gate 0 by hand was a full pass over 48 items; this is that pass."""
+    store = _store(tmp_path, READY, DEBT)
+
+    assert _run("gate", "--feature", "teachable-case", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    before, _, after = output.partition("Cleared by the milestone itself")
+    assert "PL-B1B1" in before and "PL-E1E1" not in before
+    assert "PL-E1E1" in after
+    assert "1 M" in after
+
+
+def test_gate_writes_nothing_and_reaches_no_verdict(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Freezing the list stays a deliberate act; the command removes the typing."""
+    store = _store(tmp_path, READY, DEBT)
+    before = {path.name: path.read_text() for path in store.glob("*.md")}
+
+    assert _run("gate", "--feature", "teachable-case", "--items", str(store)) == 0
+
+    assert {path.name: path.read_text() for path in store.glob("*.md")} == before
+    assert "not decided here" in capsys.readouterr().out
