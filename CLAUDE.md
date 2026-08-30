@@ -369,16 +369,17 @@ reason to load the skill:
 - **Decide where an item's work happens, and act on it.** Continue here or
   open a fresh session — choose and proceed, do not ask. The skill has the
   criteria.
-- **Commit as you go; ask before the first push.** A web session's branch is
-  created by the harness before the session starts, so what a session controls
-  is not whether the branch exists but whether it reaches the remote — and a
-  branch pushed during a discussion that never lands is clutter a concurrent
-  session has to reason about. So commit locally as work accumulates, and hold
-  the push until the shape has settled, then ask. Committing is never deferred:
-  the container is ephemeral, and an uncommitted thought is one interruption
-  from gone. The exception is capture — a queue item, a finding, anything
-  recorded so it survives — which commits and pushes immediately, because
-  losing an idea is the worse failure of the two.
+- **Commit and push as you go; open a pull request only when asked** (project
+  owner, 2026-08-30). Neither is deferred: the container is ephemeral, so an
+  uncommitted thought is one interruption from gone, and an unpushed commit
+  dies with the container. This replaces an earlier rule that held the push
+  until the owner approved it. That rule was guarding against stale *branches*
+  cluttering what a concurrent session has to reason about — but a web
+  session's branch is named by the harness before the session starts, so
+  pushing to it creates no branch that was not already going to exist.
+  What still waits is the **pull request**: that is the act that asks for
+  someone's attention and proposes something be merged, so it is the owner's
+  to invite. Push the branch, say it is pushed, and offer the pull request.
 - **Pair a finding with the item it completes.** When work turns up something a
   frozen or in-progress item needs in order to be properly finished, the two
   are worked together - one branch, closed together - not filed as sequential
