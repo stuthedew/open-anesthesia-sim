@@ -10,6 +10,7 @@ touches: ROADMAP.md
 added: 2026-08-25
 closed: 2026-08-25
 commit: 6e19632
+pr: 52
 ---
 
 **Problem.** ROADMAP.md's version table lists v0.2.3 twice and marks two rows 'current baseline'; the prose section still reads 'Current baseline: v0.2.3' after v0.2.4 shipped

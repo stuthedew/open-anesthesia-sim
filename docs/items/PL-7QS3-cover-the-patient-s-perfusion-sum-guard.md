@@ -11,6 +11,7 @@ touches: tests/unit/test_patient.py
 added: 2026-08-25
 closed: 2026-08-25
 commit: 486c3c4
+pr: 40
 verify: uv run pytest --cov=anesthesia_sim.core.patient --cov-fail-under=100
 ---
 

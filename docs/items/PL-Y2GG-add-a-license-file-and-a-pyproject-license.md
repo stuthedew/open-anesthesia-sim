@@ -10,6 +10,7 @@ touches: LICENSE, pyproject.toml, README.md
 added: 2026-08-25
 closed: 2026-08-25
 commit: d40ff83
+pr: 47
 ---
 
 **Problem.** Add a LICENSE file and a pyproject license field before the repository goes public

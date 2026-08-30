@@ -11,6 +11,7 @@ touches: CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-08-30
 closed: 2026-08-30
 commit: 3078bdb
+pr: 73
 ---
 
 **Problem.** `CLAUDE.md`'s "Offer the release; do not wait to be asked" and the

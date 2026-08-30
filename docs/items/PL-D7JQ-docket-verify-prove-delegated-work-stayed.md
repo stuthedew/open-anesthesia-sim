@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/
 added: 2026-08-25
 closed: 2026-08-25
 commit: 1ebd21f
+pr: 40
 ---
 
 **Problem.** A passing check proves the check passed. It does not prove the

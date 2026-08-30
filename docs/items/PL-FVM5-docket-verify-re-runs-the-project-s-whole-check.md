@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/
 added: 2026-08-25
 closed: 2026-08-30
 commit: c25c91b
+pr: 64
 verify: uv run pytest subprojects/docket/tests/test_verify.py -k batch
 ---
 

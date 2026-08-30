@@ -10,6 +10,7 @@ touches: ROADMAP.md
 added: 2026-08-30
 closed: 2026-08-30
 commit: 6643ccd
+pr: 86
 verify: python3 tools/doc_check.py check && bin/docket wave
 ---
 

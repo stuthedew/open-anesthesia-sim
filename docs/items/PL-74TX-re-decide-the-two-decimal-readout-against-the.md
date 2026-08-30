@@ -11,6 +11,7 @@ touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-08-30
 closed: 2026-08-30
 commit: f252aa4
+pr: 69
 verify: uv run pytest tests/reference/test_coupled_dynamics.py -k reverses_only_at_a_crossing
 ---
 

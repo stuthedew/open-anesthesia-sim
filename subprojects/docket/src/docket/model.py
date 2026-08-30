@@ -118,6 +118,13 @@ class Item:
     commit: str
     reason: str
     body: str
+    #: The pull request that carried the work, as a bare number. Recorded
+    #: beside `commit` rather than instead of it, because the two answer
+    #: different questions: `commit` names the branch commit, which a
+    #: squash-merge discards, while the number is known before the merge and
+    #: outlives it. Defaulted empty like the fields below, so an item written
+    #: before the field existed still parses.
+    pr: str = ""
     #: The command that proves this item done. Defaulted empty rather than
     #: required, so an item written before the field existed - or captured
     #: without one - is simply not delegable, which is the safe reading.
@@ -260,6 +267,7 @@ def parse_item(text: str, path: str = "") -> Item:
         "added",
         "closed",
         "commit",
+        "pr",
         "reason",
         "verify",
         "not-delegable",
@@ -278,6 +286,7 @@ def parse_item(text: str, path: str = "") -> Item:
         added=_parse_date(fields.get("added", "")),
         closed=_parse_date(fields.get("closed", "")),
         commit=fields.get("commit", ""),
+        pr=fields.get("pr", ""),
         reason=fields.get("reason", ""),
         verify=fields.get("verify", ""),
         not_delegable=fields.get("not-delegable", ""),
@@ -308,6 +317,7 @@ def render_item(item: Item) -> str:
         ("added", item.added.isoformat() if item.added else ""),
         ("closed", item.closed.isoformat() if item.closed else ""),
         ("commit", item.commit),
+        ("pr", item.pr),
         ("reason", item.reason),
         ("verify", item.verify),
         ("not-delegable", item.not_delegable),

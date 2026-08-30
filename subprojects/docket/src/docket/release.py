@@ -171,7 +171,12 @@ def release_notes(milestone: Milestone, today: date) -> str:
         lines.append(f"### {name}")
         lines.append("")
         for item in by_class[name]:
-            reference = f" — `{item.commit}`" if item.commit else ""
+            # The pull request in preference to the commit: it is what a reader
+            # can still follow after a squash-merge discards the branch, and a
+            # bare `#48` renders as a link where these notes are read.
+            reference = (
+                f" — #{item.pr}" if item.pr else (f" — `{item.commit}`" if item.commit else "")
+            )
             lines.append(f"- {item.identifier} {item.title}{reference}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"

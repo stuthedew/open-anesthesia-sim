@@ -5,6 +5,7 @@ status: done
 milestone: v0.2.3
 closed: 2026-08-24
 commit: de5cd97
+pr: 3
 ---
 
 **Problem.** Documentation refresh pass

@@ -8,6 +8,7 @@ milestone: v0.2.3
 added: 2026-08-24
 closed: 2026-08-24
 commit: f5ffae0
+pr: 27
 ---
 
 **Problem.** `docs/PUNCH_LIST.md` was simultaneously the data store, the

@@ -407,7 +407,11 @@ reconstruct three commands at the moment they are trying to do something else.
 
 ## Mode: close out an item
 
-1. Set `status: done`, record the `commit`, and set `closed`.
+1. Set `status: done`, record the `pr` — the pull request number, bare, no
+   `#` — and set `closed`. Record the `commit` too where it is to hand; it is
+   optional, because a squash-merge discards the branch commit while the pull
+   request number outlives it. The number is known before the merge, so it
+   goes in the same commit as the closure rather than in a later amend.
 2. **Sweep the docs.** `make doc-check` decides the package-map,
    provenance-table, dangling-citation and release-train questions outright, and
    `python3 tools/doc_check.py candidates --base <ref>` prints the

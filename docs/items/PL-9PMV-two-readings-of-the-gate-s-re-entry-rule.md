@@ -11,6 +11,7 @@ touches: ROADMAP.md
 added: 2026-08-30
 closed: 2026-08-30
 commit: 47b1077
+pr: 72
 ---
 
 **Problem.** `ROADMAP.md` states the gate's re-entry rule twice, and the two

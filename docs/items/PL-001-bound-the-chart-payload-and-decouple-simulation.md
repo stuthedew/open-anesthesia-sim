@@ -5,6 +5,7 @@ status: done
 milestone: v0.2.3
 closed: 2026-08-24
 commit: 94fa01d
+pr: 3
 ---
 
 **Problem.** Bound the chart payload and decouple simulation from render cadence

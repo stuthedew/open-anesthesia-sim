@@ -27,6 +27,7 @@ def _item(
     status: str = "done",
     milestone: str = "v0.3.0",
     classes: tuple[str, ...] = ("defect",),
+    pr: str | None = None,
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -42,6 +43,7 @@ def _item(
         added=date(2026, 8, 1),
         closed=TODAY if status == "done" else None,
         commit="abc1234" if status == "done" else "",
+        pr=pr if pr is not None else ("48" if status == "done" else ""),
         reason="",
         body="**Problem.** x\n**Why it matters.** y\n**Done when.** z\n",
     )
@@ -94,7 +96,7 @@ def test_release_notes_are_generated_from_the_items() -> None:
 
     assert "## v0.3.0 - 2026-08-24" in notes
     assert "PL-1111" in notes and "PL-2222" in notes
-    assert "`abc1234`" in notes
+    assert "#48" in notes
 
 
 def test_finished_work_is_unreleased_until_a_version_stamps_it() -> None:
@@ -170,3 +172,16 @@ def test_a_tag_written_without_its_v_still_counts() -> None:
 def test_a_project_that_has_never_tagged_is_not_taught_to() -> None:
     """Emptiness says the project does not tag, not that every release is missing one."""
     assert not is_untagged("0.2.5", frozenset())
+
+
+def test_notes_cite_the_pull_request_in_preference_to_the_commit() -> None:
+    """A squash-merge discards the branch commit; the number outlives it."""
+    milestone = milestones([_item("PL-1111")])["v0.3.0"]
+
+    assert " — #48" in release_notes(milestone, TODAY)
+
+
+def test_notes_fall_back_to_the_commit_for_an_item_closed_before_the_field() -> None:
+    milestone = milestones([_item("PL-1111", pr="")])["v0.3.0"]
+
+    assert " — `abc1234`" in release_notes(milestone, TODAY)
