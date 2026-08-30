@@ -34,7 +34,27 @@ check whether one fraction of MAC covers all three or whether each needs its own
 value. The band follows the sources; do not draw it before they exist. Depends on
 PL-DHV7 for the unit.
 
+**Required property - which trace the band is read against.** The band must be
+read against the *vessel-rich* trace, or against both alveolar and vessel-rich
+with the difference between them stated. Measured on a 3-hour 1 MAC sevoflurane
+case with the vaporizer turned off at 10 L/min: alveolar crosses 0.33 MAC at
+3.01 min and vessel-rich at 6.72 min - 2.2x earlier.
+
+The model has no effect-site compartment and defines F_a === F_A, so the
+alveolar trace is the fastest curve on the chart and the furthest from where
+responsiveness actually returns. A single band drawn across a six-trace chart
+is read against whichever trace the eye reaches first, and that systematically
+teaches an early wake-up - the opposite of the lesson the milestone exists to
+deliver, and the direction with clinical consequence if it were carried across.
+
+This is a distinct hazard from the one the Safety notes already guard. That
+guard - never a per-patient time prediction - protects against over-reading the
+number. This protects against reading a correct number against the wrong
+compartment, which no amount of labelling the band as a population value
+addresses.
+
 **Done when.** Each agent's MAC-awake value is in its data file with a cited
 primary source, `docs/MODEL.md` records the provenance and states what the band does
-and does not assert, and the chart draws it as a labelled population band with no
-per-patient time prediction anywhere in the interface.
+and does not assert, the chart draws it as a labelled population band with no
+per-patient time prediction anywhere in the interface, and the interface makes
+clear which trace the band is to be read against.

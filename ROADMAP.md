@@ -516,8 +516,8 @@ milestone's own scope". The other fourteen clear before implementation begins.
 The list itself stays frozen; an entry records its own outcome as it closes,
 per "The cadence" below.
 
-**Cleared before v0.4.0 begins — 16 entries, 17 item ids** (14 and 15 at the
-freeze; two were added later, per the note beneath this list). These are
+**Cleared before v0.4.0 begins — 19 entries, 20 item ids** (14 and 15 at the
+freeze; five were added later, per the two notes beneath this list). These are
 exactly what v0.3.0, the foundation release, ships.
 
 Count entries, not ids: the PL-Z4GF/PL-SWFM entry below holds two ids for one
@@ -537,6 +537,12 @@ strongest model:*
   partial state
 - PL-042 (S) Bound the splitting error across the settings envelope, not one
   point
+- PL-VP7N (M) Refuse a simulation step outside the operator split's
+  applicability domain. Added after the freeze; see below.
+- PL-SLHS (S) Bound the splitting error across setting changes, not one held
+  operating point. Added after the freeze; see below.
+- PL-9Y42 (S) Validate wash-in against a published human measurement. Added
+  after the freeze; see below.
 
 *Core boundaries — the whole `core-boundaries` feature, all `refactor`:*
 
@@ -583,6 +589,32 @@ freeze by date, and `defect` by "What counts" above: a live mechanism `main`
 depends on that does not work.
 
 Neither extends what the gate has left to run: both are closed.
+
+**Three entries added 2026-08-30 from an outside review of the repository,
+which recorded nothing of its own.** All three re-enter this gate rather than
+deferring to Gate 1, on both of the grounds "The gate is a snapshot, not a
+moving target" allows, and they are the only findings of that review that do:
+
+- *By the presence rule.* Each describes a problem present in the tree before
+  2026-08-25. `core/` has never had an upper bound on the simulation step; the
+  splitting-error gate has held one operating point constant since it was
+  written; and nothing in the repository has ever been compared to a published
+  human measurement.
+- *By the safety/science exception.* PL-VP7N is `safety`, PL-SLHS is
+  `safety`/`science`, PL-9Y42 is `science` — the classes this milestone's
+  out-of-scope list names as re-entering regardless of when they were captured.
+
+Unlike the two entries above, these three do extend what the gate has left to
+run, by three items. That is the rule working as intended rather than a gate
+being widened: each is a statement `docs/MODEL.md` already makes that the
+implementation does not keep, and v0.3.0's whole claim is that the ground is
+solid. Shipping that release with a `must fail` that does not fail, a release
+bound a shipped trajectory exceeds, and no validation against a human
+measurement would make the claim untrue on the day it was made.
+
+The eleven other findings from the same review are in the queue and clear at
+Gate 1: they are either post-freeze in substance, or classed outside the
+exception.
 
 *Documentation, performance, and the one decision that is the project
 owner's:*
