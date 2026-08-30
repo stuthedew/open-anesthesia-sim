@@ -3,7 +3,10 @@ id: PL-0RS6
 title: docket next will still lead with out-of-scope work after PL-1TPM, because marking does not reorder
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-08-30
+pr: 92
+commit: dc7de31
 classes: defect, infra
 verify: uv run pytest subprojects/docket/tests/test_plan.py -k in_scope
 feature: planning-cadence
