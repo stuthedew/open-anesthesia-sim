@@ -209,11 +209,15 @@ what to do next by reading twenty item titles, and a list of ids is a list of
 homework. Drop to specific items once a direction is picked, or when
 something individually urgent outranks the grouping.
 
-`docket next` gives the ranking and the reason, already honoring `P0` first, then work
-that finishes a feature already underway, then priority — and it excludes
-what is in flight on a branch. Lead the reply with its answer. Add judgment
-the tool cannot have: whether the item is still real, and how it fits what
-the owner said they were trying to do.
+`docket next` gives the ranking and the reason, already honoring `P0` first,
+then what the roadmap's current step names, then work that finishes a feature
+already underway, then priority — and it excludes what is in flight on a
+branch. A suggestion the step has not reached stays in the list, marked with
+the milestone that names it, because hiding it would be a verdict the tool
+cannot support. Lead the reply with its answer. Add judgment the tool cannot
+have: whether the item is still real, whether the marking is right about a
+milestone whose prose it cannot read, and how it fits what the owner said
+they were trying to do.
 
 `docket next` states which model the work warrants. That is not a suggestion
 to weigh: safety- or science-classed work, and any item whose next step is an
