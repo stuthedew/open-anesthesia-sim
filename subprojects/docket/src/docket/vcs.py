@@ -173,31 +173,61 @@ def in_flight_ids(root: Path, *, runner: Runner | None = None) -> set[str]:
 PR_SUBJECT_RE = re.compile(r"^Merge pull request #(\d+)\b|\(#(\d+)\)\s*$")
 
 
-def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> frozenset[int] | None:
+@dataclass(frozen=True)
+class PullRequestHistory:
+    """Which pull requests the default branch names, or why that is not known.
+
+    `declined` is the whole reason this is a type rather than a set. A caller
+    handed an empty set cannot tell "this project does not use pull requests"
+    from "this checkout cannot see them", and the two demand opposite
+    behaviour: the first is a clean answer, the second must be reported as a
+    check that did not run. Collapsing them is the failure this guards.
+    """
+
+    numbers: frozenset[int] = frozenset()
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullRequestHistory:
     """Every pull request number named by a commit on the default branch.
 
-    `None` means the question could not be answered, and it is the reason this
-    function exists rather than a bare `git log` at the call site. A shallow
-    clone answers `git log` confidently and wrongly: the commits it is missing
-    are exactly the old ones, so provenance recorded years ago reads as
-    provenance that never landed. The container an agent session runs in is
-    normally shallow, so that is the common case rather than the exotic one.
+    A shallow clone is a worse condition than a bare one, and the difference is
+    why this declines rather than returning what it found. In a bare checkout
+    git cannot answer and every read here already collapses to silence; in a
+    shallow clone git answers confidently and wrongly. The commits it is
+    missing are exactly the oldest, so the provenance that has been settled
+    longest is what would be reported as never having landed - and the
+    container an agent session runs in is normally shallow, so that is the
+    common case rather than the exotic one.
 
     So the only state that permits an answer is a repository that says outright
-    it is not shallow. Anything else - a truncated clone, no git, no
-    repository, a git too old to have `--is-shallow-repository` - collapses to
-    `None`, and the caller reports nothing rather than reporting every item as
-    broken.
+    it is not shallow. Truncation, no git, no repository, or a git too old to
+    have `--is-shallow-repository` all decline, each with the reason, so the
+    caller can report a check that did not run instead of one that passed.
+
+    Deliberately no fetch. `docket check` runs from a bare tree with no
+    network, and deepening the history here would trade that away to answer a
+    question the caller is perfectly able to skip.
     """
     run = runner or _run_git
-    if run(["rev-parse", "--is-shallow-repository"], root).strip() != "false":
-        return None
+    shallow = run(["rev-parse", "--is-shallow-repository"], root).strip()
+    if shallow == "true":
+        return PullRequestHistory(
+            declined="the checkout is a shallow clone, so the commits it is missing are "
+            "the oldest ones and the longest-settled provenance would read as broken"
+        )
+    if shallow != "false":
+        return PullRequestHistory(declined="git cannot say whether this checkout is complete")
     subjects = run(["log", "--format=%s", default_base(root, runner=run)], root)
     if not subjects.strip():
-        return None
+        return PullRequestHistory(declined="no default branch this checkout can read")
     found: set[int] = set()
     for subject in subjects.splitlines():
         match = PR_SUBJECT_RE.search(subject.strip())
         if match is not None:
             found.add(int(match.group(1) or match.group(2)))
-    return frozenset(found)
+    return PullRequestHistory(numbers=frozenset(found))

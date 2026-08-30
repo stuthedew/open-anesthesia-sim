@@ -224,10 +224,31 @@ reported:
 - **Anything at all, in a shallow clone.** `git log` in a truncated history
   answers confidently and wrongly, and the commits it is missing are the
   oldest ones — so the best-established provenance in the store is what would
-  be reported as broken. `vcs.merged_pull_requests` returns `None` for a
-  checkout that does not say outright it is complete, and the check is skipped
-  rather than run against a partial history. This matters more than it looks:
-  the container an agent session runs in is normally shallow.
+  be reported as broken. This matters more than it looks: the container an
+  agent session runs in is normally shallow.
+
+A shallow checkout is a worse condition than a bare one, and the difference
+shapes how it is reported. In a bare checkout git cannot answer and every read
+in `vcs.py` already collapses to silence. In a shallow one git answers, so
+`merged_pull_requests` returns a `PullRequestHistory` that carries *why* it
+declined instead of a set that cannot be distinguished from "this project uses
+no pull requests". `check` then prints a third section beside the errors and
+the advisories:
+
+```
+docket: 71 open (…), 0 errors, 1 advisory, 1 not checked
+
+Not checked (this checkout cannot answer; nothing is claimed):
+  recorded pull requests: the checkout is a shallow clone, so the commits it
+  is missing are the oldest ones and the longest-settled provenance would
+  read as broken
+```
+
+The count is on the headline because the headline is what a reader takes
+away, and "0 errors" from a run where a check never ran says the store is
+sound when nobody looked. Deepening the checkout is deliberately *not* the
+fix: `check` runs from a bare tree with no network, and fetching here would
+trade that away to answer a question the caller can simply skip.
 
 What is left is the case worth failing on — a number inside the range the
 default branch covers that no commit there names, which is a typo or an

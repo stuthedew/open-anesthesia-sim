@@ -127,7 +127,7 @@ def test_a_base_with_no_counterpart_on_the_remote_is_not_judged() -> None:
 def _pr_runner(shallow: str, subjects: list[str]):
     def run(args: list[str], root: Path) -> str:
         if args[:2] == ["rev-parse", "--is-shallow-repository"]:
-            return shallow + "\n"
+            return shallow + "\n" if shallow else ""
         if args[0] == "rev-parse":
             return "origin/main\n"
         if args[0] == "log":
@@ -137,28 +137,57 @@ def _pr_runner(shallow: str, subjects: list[str]):
     return run
 
 
+SUBJECTS = [
+    "Merge pull request #86 from stuthedew/claude/scope-gate-freeze",
+    "PL-ZQ9C: record the pull request (#87)",
+    "Release v0.2.7",
+]
+
+
 def test_both_merge_subject_forms_name_their_pull_request() -> None:
-    subjects = [
-        "Merge pull request #86 from stuthedew/claude/scope-gate-freeze",
-        "PL-ZQ9C: record the pull request (#87)",
-        "Release v0.2.7",
-    ]
+    history = merged_pull_requests(ROOT, runner=_pr_runner("false", SUBJECTS))
 
-    assert merged_pull_requests(ROOT, runner=_pr_runner("false", subjects)) == frozenset({86, 87})
+    assert history.known
+    assert history.numbers == frozenset({86, 87})
 
 
-def test_a_shallow_clone_refuses_to_answer() -> None:
-    """Its missing commits are the oldest ones, so it would answer wrongly."""
-    subjects = ["Merge pull request #86 from stuthedew/claude/scope-gate-freeze"]
+def test_a_shallow_clone_declines_and_says_why() -> None:
+    """Its missing commits are the oldest, so it would report settled work as broken."""
+    history = merged_pull_requests(ROOT, runner=_pr_runner("true", SUBJECTS))
 
-    assert merged_pull_requests(ROOT, runner=_pr_runner("true", subjects)) is None
+    assert not history.known
+    assert "shallow" in history.declined
+    assert history.numbers == frozenset()
 
 
-def test_no_git_refuses_to_answer() -> None:
-    assert merged_pull_requests(ROOT, runner=lambda args, root: "") is None
+def test_a_shallow_clone_is_not_deepened_to_get_an_answer() -> None:
+    """`docket check` runs from a bare tree with no network; it must stay that way."""
+    asked: list[list[str]] = []
+
+    def run(args: list[str], root: Path) -> str:
+        asked.append(args)
+        return "true\n" if args[:2] == ["rev-parse", "--is-shallow-repository"] else ""
+
+    merged_pull_requests(ROOT, runner=run)
+
+    assert not any(args[0] in ("fetch", "clone", "remote") for args in asked)
+
+
+def test_a_git_that_cannot_say_whether_the_checkout_is_complete_declines() -> None:
+    history = merged_pull_requests(ROOT, runner=lambda args, root: "")
+
+    assert not history.known
+    assert "complete" in history.declined
+
+
+def test_a_checkout_with_no_readable_default_branch_declines() -> None:
+    history = merged_pull_requests(ROOT, runner=_pr_runner("false", []))
+
+    assert not history.known
 
 
 def test_a_hash_that_merely_looks_like_a_number_is_not_a_pull_request() -> None:
     subjects = ["Fix the thing #71 mentioned", "Merge branch 'main' into topic"]
+    history = merged_pull_requests(ROOT, runner=_pr_runner("false", subjects))
 
-    assert merged_pull_requests(ROOT, runner=_pr_runner("false", subjects)) == frozenset()
+    assert history.known and history.numbers == frozenset()

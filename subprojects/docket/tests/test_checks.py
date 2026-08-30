@@ -12,6 +12,7 @@ from datetime import date
 from docket.checks import analyze
 from docket.config import Config
 from docket.model import Item
+from docket.vcs import PullRequestHistory
 
 TODAY = date(2026, 8, 24)
 BRIEF = "**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
@@ -345,34 +346,49 @@ def test_a_project_that_has_not_adopted_the_rule_hears_nothing_about_it() -> Non
 
 
 def test_a_pull_request_number_is_recorded_bare() -> None:
-    errors = _errors(_item(status="done", commit="abc1234", closed=TODAY, pr="#71"))
+    errors = _errors(_item(status="done", pr="#71", closed=TODAY))
 
     assert any("`pr` is '#71'" in e for e in errors)
 
 
+def _history(*numbers: int) -> PullRequestHistory:
+    return PullRequestHistory(numbers=frozenset(numbers))
+
+
 def test_a_recorded_pull_request_the_default_branch_does_not_name_is_an_error() -> None:
-    item = _item(status="done", commit="abc1234", closed=TODAY, pr="12")
-    report = analyze([item], TODAY, merged_prs=frozenset({11, 13}))
+    item = _item(status="done", pr="12", closed=TODAY)
+    report = analyze([item], TODAY, history=_history(11, 13))
 
     assert any("records pull request #12" in e for e in report.errors)
 
 
 def test_a_pull_request_that_has_merged_is_accepted() -> None:
-    item = _item(status="done", commit="abc1234", closed=TODAY, pr="12")
+    item = _item(status="done", pr="12", closed=TODAY)
+    report = analyze([item], TODAY, history=_history(11, 12, 13))
 
-    assert analyze([item], TODAY, merged_prs=frozenset({11, 12, 13})).errors == []
+    assert report.errors == [] and report.declined == []
 
 
 def test_a_pull_request_not_yet_merged_is_not_yet_wrong() -> None:
     """An item is closed on the branch that carries it, before its own merge."""
-    item = _item(status="done", commit="abc1234", closed=TODAY, pr="87")
+    item = _item(status="done", pr="87", closed=TODAY)
 
-    assert analyze([item], TODAY, merged_prs=frozenset({85, 86})).errors == []
+    assert analyze([item], TODAY, history=_history(85, 86)).errors == []
 
 
-def test_provenance_is_not_checked_when_git_cannot_be_trusted() -> None:
+def test_a_checkout_that_cannot_answer_declines_rather_than_failing() -> None:
     """A shallow clone is missing exactly the oldest, best-established work."""
-    item = _item(status="done", commit="abc1234", closed=TODAY, pr="12")
+    item = _item(status="done", pr="12", closed=TODAY)
+    declined = PullRequestHistory(declined="the checkout is a shallow clone")
 
-    assert analyze([item], TODAY, merged_prs=None).errors == []
-    assert analyze([item], TODAY).errors == []
+    report = analyze([item], TODAY, history=declined)
+
+    assert report.errors == []
+    assert report.declined == ["recorded pull requests: the checkout is a shallow clone"]
+
+
+def test_a_caller_that_did_not_ask_is_told_nothing_either_way() -> None:
+    """Only `check` pays for the git read; the rest must not report on one."""
+    report = analyze([_item(status="done", pr="12", closed=TODAY)], TODAY)
+
+    assert report.errors == [] and report.declined == []
