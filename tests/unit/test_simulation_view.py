@@ -33,8 +33,12 @@ from anesthesia_sim.app.simulation_view import (
     SimulationView,
 )
 from anesthesia_sim.app.theme import ACCENT, AGENT_COLOR_SCHEMES, MUTED, WARNING
+from anesthesia_sim.core.alveolar import AlveolarCompartment
+from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import SimulationNumericalError
-from anesthesia_sim.core.respiratory_system import RespiratorySystem
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.patient import PatientCompartments
+from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S, RespiratorySystem
 
 
 class _FakePage:
@@ -132,6 +136,26 @@ def _build_view(snapshot: SimulationSnapshot) -> tuple[SimulationView, _FakePage
     page = _FakePage()
     view = SimulationView(page=page, controller=_FakeController(snapshot))
     return view, page
+
+
+def test_the_shipped_step_is_within_the_maximum_simulation_step() -> None:
+    """The interface may not run the model outside its supported domain.
+
+    `SIMULATION_STEP_S` is this module's cadence and
+    `MAXIMUM_SIMULATION_STEP_S` is `core/`'s applicability domain; they are
+    separate decisions that happen to coincide today, and this is what stops
+    them from parting company unnoticed. Before PL-VP7N the only statement
+    of the supported step lived here in the presentation layer and bound
+    nothing, so any other caller of `core/` - a headless run, a notebook, a
+    test - could step as coarsely as it liked and be given a number.
+
+    The relation is `<=` rather than equality on purpose: a numerical method
+    that supported a coarser step would not make a coarser step a good
+    render cadence, so the interface must be free to run finer than the
+    limit without this test having to be rewritten.
+    """
+
+    assert SIMULATION_STEP_S <= MAXIMUM_SIMULATION_STEP_S
 
 
 def test_format_percent_uses_the_documented_display_resolution() -> None:
@@ -482,7 +506,7 @@ def test_start_pause_reset_handlers_drive_the_real_controller() -> None:
     assert view._pause_button.disabled is False
     assert page.update_calls == 1
 
-    controller.advance(1.0)
+    _advance_to(controller, elapsed_s=1.0)
     view._handle_pause(ft.Event(name="click", control=view._pause_button))
 
     assert controller.is_running is False
@@ -807,16 +831,42 @@ def _real_step_failure() -> SimulationNumericalError:
     tied to what `core/` does: if the core stopped raising a
     `SimulationNumericalError` here, this helper fails rather than letting
     the interface tests pass against a fiction.
+
+    The step taken is a supported one. Since PL-VP7N a step outside the
+    operator split's applicability domain is refused as a *configuration*
+    error, which is a different thing entirely and is not what these tests
+    are about: the interface has to halt a run whose numbers went bad
+    mid-step, not one whose argument was rejected before it began. So the
+    breakdown is reached the way a future parameter set could reach it -
+    a compartment whose capacity one supported step overdraws - rather
+    than by asking for a step nothing would grant.
+    `tests/unit/test_respiratory_system_failure.py` carries the same
+    construction and the reasoning behind its numbers.
     """
 
-    system = RespiratorySystem.for_agent("sevoflurane")
+    agent = load_agent_parameters("isoflurane")
+    patient_parameters = load_reference_adult_parameters()
+    system = RespiratorySystem(
+        circuit=BreathingCircuit(
+            delivered_concentration_fraction=(agent.mac_percent / 100.0),
+            max_delivered_concentration_fraction=(
+                agent.max_delivered_concentration_percent / 100.0
+            ),
+        ),
+        alveoli=AlveolarCompartment(
+            gas_volume_l=0.005,
+            alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
+        ),
+        patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
+    )
+    system.set_cardiac_output(10.0)
 
     try:
-        system.advance(60.0)
+        system.advance(MAXIMUM_SIMULATION_STEP_S)
     except SimulationNumericalError as error:
         return error
 
-    raise AssertionError("expected the coupled step to break down at a 60 s step")
+    raise AssertionError("expected the coupled step to break down on these compartments")
 
 
 class _StepFailingController(SimulationController):
