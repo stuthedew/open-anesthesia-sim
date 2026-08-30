@@ -3,11 +3,13 @@ id: PL-K79K
 title: The session-start digest tells every session to run `bin/docket triage`, which does not exist
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-08-30
+closed: 2026-08-30
+commit: 54bdb5b
 verify: uv run pytest subprojects/docket/tests -k triage
 ---
 

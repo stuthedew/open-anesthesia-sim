@@ -3,11 +3,13 @@ id: PL-037
 title: Check the branch is current against `main` before starting an item
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost, infra
 feature: dev-tooling
 touches: .claude/hooks/docket-digest.sh
 added: 2026-08-24
+closed: 2026-08-30
+commit: d89df5e
 verify: bash -n .claude/hooks/docket-digest.sh && .claude/hooks/docket-digest.sh | grep -q "^Branch: "
 ---
 
