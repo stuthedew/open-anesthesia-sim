@@ -7,7 +7,7 @@ status: ready
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py -k self_gating
 classes: infra, session-cost
 feature: planning-cadence
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py, ROADMAP.md
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-08-30
 ---
 
@@ -127,3 +127,14 @@ stands; recording a gate is the supported way to say a release comes first.
 **Done when.** A milestone whose gate is its own content reports the release
 beat rather than the implement beat when that gate clears, and a test names the
 self-gating case so the distinction from Gate 0's exception is written down.
+
+**`touches` corrected 2026-08-30.** `ROADMAP.md` was dropped from the list. It
+was declared under the original scope, which proposed that a milestone section
+name the gate it ships; that scope is withdrawn. Every mention of `ROADMAP.md`
+that remains in this item is a citation of what the file argues, not a file
+this work edits - the change is `shipping_the_gate` in `roadmap.py` and a test
+beside it. The stale entry mattered: it made `docket concurrent` report a
+collision with `PL-51T3` (scope v0.2.8 and freeze its gate), which does edit
+`ROADMAP.md`, and would have serialized two items that do not touch each other.
+An instance of `PL-8JY7` (a declared `touches` path is never checked against
+the tree, so it goes stale).
