@@ -1,10 +1,15 @@
 ---
 id: PL-ZQ9C
 title: Record an item's pull request, so provenance survives squash-merge
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: infra
 feature: public-history
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/item.py, subprojects/docket/README.md, docs/items
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py, subprojects/docket/README.md, docs/items
 added: 2026-08-30
+verify: uv run pytest subprojects/docket/tests -k pull_request && bin/docket check
+not-delegable: the brief leaves the migration open between backfilling `pr:` from the merge subjects and carrying both fields, and either pass rewrites the provenance of every closed item
 ---
 
 **Problem.** A `done` item records `commit:`, the branch commit that carried

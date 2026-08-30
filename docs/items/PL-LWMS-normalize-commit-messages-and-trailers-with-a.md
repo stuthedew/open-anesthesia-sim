@@ -1,10 +1,15 @@
 ---
 id: PL-LWMS
 title: Normalize commit messages and trailers with a commit-msg hook
-status: untriaged
+priority: P3
+effort: M
+status: blocked
+classes: infra
 feature: public-history
 touches: tools, Makefile, .github/workflows/quality.yml, .mailmap
+blocked-by: PL-XH1D, PL-S4M2
 added: 2026-08-30
+verify: uv run pytest tests/unit -k commit_msg
 ---
 
 **Problem.** Commit-message shape is set by whichever harness wrote the commit,
