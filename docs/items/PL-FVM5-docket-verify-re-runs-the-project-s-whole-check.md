@@ -6,8 +6,9 @@ priority: P3
 effort: S
 classes: session-cost
 feature: delegation
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md
 added: 2026-08-25
+verify: uv run pytest subprojects/docket/tests/test_verify.py -k batch
 ---
 
 **Problem.** `docket verify` runs `config.check_command` (`make check` here)
@@ -34,3 +35,14 @@ rejectable.
 
 **Done when.** Verifying a batch runs the project-wide check once, and a
 single-item verify still runs it.
+
+**Built as the first option, not the flag.** `verify` splits into
+`verify_item` (the item's own command, its declared scope, its commits — all
+genuinely per item) and `project_check` (the tree's own check, which proves
+the same thing however many items are asked about). `docket verify` now takes
+several ids rather than one, so the batch case needs no flag to reach and the
+single-item case is unchanged: one id still runs the project check.
+
+An item that stops early — no `verify:` command, or nothing between its base
+and `HEAD` — does not reach the shared check, because the check says nothing
+about it either way.
