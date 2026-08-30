@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 closed: 2026-08-30
-commit: bcbbb20
+commit: 47b1077
 classes: defect, docs
 feature: planning-cadence
 touches: ROADMAP.md
