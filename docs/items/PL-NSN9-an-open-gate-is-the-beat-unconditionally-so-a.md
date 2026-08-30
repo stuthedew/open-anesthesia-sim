@@ -1,9 +1,10 @@
 ---
 id: PL-NSN9
-title: An open gate is the beat unconditionally, so a release inserted ahead of it cannot become the beat
-priority: P2
-effort: M
-status: needs-decision
+title: A milestone that gates itself reports 'implement' when its gate clears, not 'release'
+priority: P3
+effort: S
+status: ready
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py -k self_gating
 classes: infra, session-cost
 feature: planning-cadence
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py, ROADMAP.md
@@ -92,3 +93,37 @@ differ in whether the gate's unconditional precedence is given up to get there.
 in different releases; `test_an_open_gate_is_the_beat_whatever_else_is_written`
 is either still passing or deliberately replaced with a test that states the
 new rule and says why; and what the gate binds is unchanged.
+
+---
+
+**Rescoped 2026-08-30. The premise was wrong, and the decision is withdrawn.**
+
+A release inserted ahead of an open gate *can* take the beat: it only has to
+record a gate of its own. `wave()` picks `recorded[0]` from the unreleased
+milestone sections sorted by version, so a v0.2.8 section carrying a
+`### Debt gate` subsection becomes the nearest gate and the beat follows it.
+Verified across the whole lifecycle against a patched `ROADMAP.md`: 17 of 17
+open, then 11 of 17 after six close, then the gate clear, then - once v0.2.8
+is released - the beat handing back to Gate 0 at "8 entries of 20 still open"
+with the step returning to v0.3.0. No code change, and nothing about Gate 0's
+binding on v0.4.0 changes.
+
+So neither route in the withdrawn decision is needed, and the gate's
+unconditional precedence is kept exactly as `ROADMAP.md` argues it should be.
+
+**What is actually left, and it is small.** In that last-but-one state the beat
+reads `implement v0.2.8 - its gate is clear`, when the act due is to cut the
+release. `shipping_the_gate` tests `step.version < gate.milestone.version`,
+which is false when a milestone gates itself, so the RELEASE branch is missed
+and IMPLEMENT is taken. It is right for Gate 0, whose work ships as a
+different version, and wrong only for a milestone whose own gate is its
+content. It surfaces once per self-gating release, at the end.
+
+**Also still true, and deliberately not fixed here.** A release inserted ahead
+of a gate *without* recording a gate of its own still cannot take the beat.
+That is the documented behaviour and the reason `ROADMAP.md` gives for it
+stands; recording a gate is the supported way to say a release comes first.
+
+**Done when.** A milestone whose gate is its own content reports the release
+beat rather than the implement beat when that gate clears, and a test names the
+self-gating case so the distinction from Gate 0's exception is written down.
