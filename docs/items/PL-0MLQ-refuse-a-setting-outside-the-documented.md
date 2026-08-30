@@ -1,10 +1,14 @@
 ---
 id: PL-0MLQ
 title: Refuse a setting outside the documented supported input range
-status: untriaged
-added: 2026-08-30
+priority: P1
+effort: M
+status: ready
 classes: safety
+feature: numerical-domain
 touches: src/anesthesia_sim/core/respiratory_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, docs/MODEL.md
+added: 2026-08-30
+verify: uv run pytest -k supported_input_range
 ---
 
 **Problem.** `docs/MODEL.md` § "Supported input ranges" declares a closed
