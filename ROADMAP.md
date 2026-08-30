@@ -45,6 +45,7 @@ capability-boundary rule above governs.
 | v0.2.5 | Completed | Licensing, documentation and planning release: the project is licensed Apache-2.0, v0.3.0 through the MVP is scoped onto one timeline with its debt gates, Phase 0 is retired in favour of the standing debt gate, and `docs/worker.md` states what a delegated worker decides for itself. No source file changed. |
 | v0.2.6 | Completed | Delegation and release-tooling release on the same model: work whose success a command can prove now has to name that command and have run it, `docket` computes the debt gate and the cadence beat instead of a session transcribing them, and the release path itself stopped breaking `make check` and leaving this table behind. The one scientific item widened the splitting-error bound to the whole settings envelope. No equation, parameter, or numerical method changed. |
 | v0.2.7 | Completed / current baseline | Session-discipline and applicability-domain release on the same model: the simulation step now refuses inputs outside the operator split's stated applicability domain and the splitting-error bound is measured across setting changes rather than one held operating point, while ten process items closed the three channels by which product work leaked into discussions that were not about it, gave multi-step instructions a written standard, and cleared three live tooling defects. No equation or parameter changed, and the numerical method is unchanged - it is now guarded at the domain it was always specified for. |
+| v0.2.8 | Planned / scoped | The workflow works: seventeen entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the type-check and lint gates, and the instructions a session reads before it does anything. No simulator change, and no equation, parameter, numerical method or displayed value changes. |
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
@@ -251,8 +252,9 @@ curve moved. A simulator that cannot do the second is a demonstration, not a
 teaching tool.
 
 Two *feature* releases reach it, and both are interface releases on the
-existing, already-validated model — preceded by v0.3.0, which adds no
-capability and exists to clear the ground they are built on:
+existing, already-validated model — preceded by the v0.2.8 patch, which
+makes the loop they will be built through reliable, and by v0.3.0, which
+adds no capability and exists to clear the ground they are built on:
 
 - **v0.3.0, the foundation** — Gate 0's inherited backlog cleared. No new
   capability; see the versioning exception under "Versioning decision".
@@ -265,28 +267,33 @@ capability and exists to clear the ground they are built on:
 
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
-| 1 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the 14 items outside that milestone's own scope, released as a minor by deliberate exception. | 2 M, 12 S |
+| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of 17 entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 15 S |
+| 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the 20 entries outside that milestone's own scope, released as a minor by deliberate exception. | 3 M, 17 S |
 | — | **v0.3.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Placed here deliberately, ahead of the substance generalization that would otherwise force the vocabulary to be invented and restructured at once. Not yet scoped. | — |
-| 2 | **v0.4.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt the milestone clears itself. | 5 M, 6 S |
-| 3 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
-| 4 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
+| 3 | **v0.4.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt the milestone clears itself. | 5 M, 6 S |
+| 4 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
+| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
-| 5 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
-| 6 | **v0.6.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
-| 7 | **Gate 3** | Frozen when v0.7.0 is scoped; ships inside it. | — |
-| 8 | **v0.7.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. | — |
-| 9+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. | — |
+| 6 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
+| 7 | **v0.6.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
+| 8 | **Gate 3** | Frozen when v0.7.0 is scoped; ships inside it. | — |
+| 9 | **v0.7.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. | — |
+| 10+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. | — |
 
-**Only row 1 is a release of gate work.** Gate 0 earns v0.3.0 because it
-clears the backlog inherited from before the debt gate existed; Gates 1
-onward hold one milestone's findings and ship inside the milestone they gate,
-which is why rows 3, 5 and 7 carry no version. The reasoning, and the fact
-that this is an exception rather than a pattern, is under "Versioning
-decision" above.
+**Rows 1 and 2 are the only releases whose whole content is a frozen list,
+and they are not the same kind of thing.** Row 2 is Gate 0's release: that
+gate earns a version of its own because it clears the backlog inherited from
+before the debt gate existed, which is the exception recorded under
+"Versioning decision" above, and an exception rather than a pattern. Row 1
+is not a gate at all — v0.2.8's frozen list is its own scope, recorded under
+a gate heading because that subsection is what `bin/docket wave` reads, and
+eleven of its seventeen entries are new workflow capability rather than debt.
+Gates 1 onward hold one milestone's findings and ship inside the milestone
+they gate, which is why rows 4, 6 and 8 carry no version.
 
-Rows 4 to 8 are the intended order and are not yet scoped; each becomes real
+Rows 5 to 9 are the intended order and are not yet scoped; each becomes real
 only when it gets its own goal, required scope, definition of done and
-out-of-scope list here, per the development rules. Row 4's internal ordering —
+out-of-scope list here, per the development rules. Row 5's internal ordering —
 forking and comparison ahead of save/load and replay — is a deliberate
 departure from "Development pathway"'s Phase 3 sequence, on the grounds that
 branching within one session is the teaching payload while persistence is a
@@ -298,7 +305,7 @@ Phase 3's stated order stands until v0.5.0 is scoped.
 A gate that lives in a separate document, or in a session's memory, is
 renegotiated every time it is inconvenient. Put on the timeline it is a step
 with a size, and skipping it is visible as skipping a step. The cadence that
-generates rows 1, 3, 5 and 7 is specified under "The debt gate" below; the
+generates rows 2, 4, 6 and 8 is specified under "The debt gate" below; the
 rule is that scoping a milestone freezes its gate, and the gate clears before
 that milestone's implementation begins.
 
@@ -461,6 +468,146 @@ thin wrapper over it, so no existing call site changed behavior);
 mass-balance closure for both new agents; and `docs/MODEL.md`'s parameter
 provenance table and new "v0.2.0: isoflurane and desflurane" subsection
 record both agents' sourcing.
+
+## Next release: v0.2.8 - the workflow works
+
+### Goal
+
+Make the development loop reliable before two long milestones are run through
+it. Everything in this release is machinery the project already depends on:
+the merge path, the release script, the queue's ranking, the session-start
+digest, the type-check and lint gates, and the instructions a session reads
+before it does anything else. None of it touches the simulator.
+
+It comes first because of `CLAUDE.md`'s standing decision of 2026-08-30 —
+workflow work outranks product work until the workflow is settled — and that
+decision exists because friction in the loop is paid again in every future
+session, while a deferred feature is paid for once. v0.3.0 clears twenty
+entries of inherited product debt and v0.4.0 builds the first teachable case
+on top of it. Both are long runs through the same loop, and running them
+through a merge path that does not wait for CI, a release script that stops
+halfway, and a `docket next` that ranks work the current milestone excludes
+costs more than fixing those does.
+
+It is a patch by the ordinary rule under "Versioning decision" above: it
+crosses no capability boundary, adds nothing to the simulator, and changes no
+equation, parameter, numerical method, unit or displayed value. Gate 0's
+minor-version exception is not extended to it and is not needed.
+
+### Debt gate: the frozen list
+
+**Frozen 2026-08-30, the day this release was scoped.** The seventeen entries
+below are its whole content. The list stays frozen: nothing is added to it,
+and an entry records its own outcome as it closes, per "The cadence" below.
+
+**It is a frozen scope, not a fourth gate in the cadence.** Six of its entries
+are debt by "What counts" below — five classed `defect`, one at
+`needs-decision` — and the other eleven are new workflow capability, which
+that section says explicitly is *not* debt and does not hold a gate. The list
+is recorded under a heading named "Debt gate" because that subsection is what
+`bin/docket wave` reads: a release records a gate to say that it comes ahead
+of one already open, and the beat then follows it rather than contradicting it
+(queue item `PL-NSN9`, a self-gating milestone reporting the wrong beat). The
+numbered gates are unaffected — Gate 0 is still recorded under v0.4.0 below,
+still binds v0.4.0, and becomes the nearest gate again the moment this release
+ships.
+
+How many entries are closed is **not recorded here**, for the reason given in
+the v0.4.0 section: a count written into a document goes stale the next time an
+item closes. `bin/docket wave` reads these entries against `docs/items/` and
+reports the split.
+
+*The loop is visibly broken without these — nine entries:*
+
+- PL-J786 (S) Require a green `checks` run before any merge into main
+- PL-64LS (S) Detect items stranded on an unmerged branch
+- PL-8HJ2 (S) `make release` stops mid-way on the ROADMAP table it does not
+  write, so every release ends in a red test
+- PL-M5FK (S) This file's tag statements go stale on every release, and no
+  check reads them
+- PL-1TPM (S) `docket next` ranks work the current milestone excludes, with no
+  sign that it does
+- PL-019F (S) The "what should we work on next" rule answers one level below
+  the roadmap step that should decide it
+- PL-5YK8 (S) The `verify:` advisory nags about grandfathered items, so it can
+  never reach zero
+- PL-H7XN (M) `CLAUDE.md` runs far past its documented 200-line target, which
+  reduces adherence to all of it
+- PL-NSN9 (S) A milestone that gates itself reports `implement` when its gate
+  clears, where `release` is due
+
+*Stops new debt being introduced — eight entries:*
+
+- PL-ZQ9C (M) Record an item's pull request, so provenance survives
+  squash-merge
+- PL-S4M2 (S) Switch main to squash-merge, so each item lands as one commit.
+  Blocked by PL-ZQ9C above and ordered after it deliberately: squash-merge
+  discards the branch history that today is the only record of which pull
+  request closed an item, so the provenance has to be recorded before it is
+  discarded, not after.
+- PL-F5HB (S) The project runs a Python 3.14 release candidate, not 3.14 final
+- PL-020 (S) Bring tests and `tools/` under the type-check gate
+- PL-W5LG (S) Hold CI config to the same path checks as the documentation
+- PL-ZN0N (S) Enable ruff RUF100 so inert `noqa` directives fail the build
+- PL-69J3 (S) Clear the inert `noqa` directives RUF100 will catch, and record
+  why the deliberate suppressions exist
+- PL-STNV (S) Retire the review-verification harness and capture its last live
+  finding
+
+**Two items on the approved list are not entries.** `PL-J3ZK` (restore the tag
+provenance) and `PL-20ZR` (the workflow-before-features ordering is
+re-explained every session) were on the list the project owner approved and
+closed before it was written here. Recording a closed item as a frozen entry
+would make this release report a size it never had to clear.
+
+**Five of the seventeen are marked `not-delegable`,** which is high for a
+release this size and is worth knowing before the work is planned: PL-J786 and
+PL-S4M2 change GitHub repository configuration that no session in this project
+can reach; PL-8HJ2 can only be proved by cutting a release; PL-ZQ9C leaves a
+migration choice open that rewrites the provenance of every closed item; and
+PL-H7XN's test is that no rule was lost, which is a reading of the file rather
+than a command.
+
+**Nothing is added to this list.** A finding made while clearing it is captured
+in the queue like any other and triaged there. It re-enters Gate 0 only under
+the presence rule in "The gate is a snapshot, not a moving target" — that is,
+only if it is product debt that was already present on 2026-08-25. The
+`safety`/`science` re-entry rule sends nothing to *this* list: a finding in
+those classes is about the simulator, which this release does not touch, so it
+belongs to Gate 0 where the product debt is. A `P0` is a hotfix on its own
+branch under `CLAUDE.md` and joins no list.
+
+### Definition of done
+
+- Every entry on the frozen list above is `done`, or `dropped` with its reason
+  recorded. `bin/docket wave` reports the split against `docs/items/`.
+- `make check` passes: `ruff format`, `ruff check`, `mypy`, `pytest`,
+  `docket check`, and `tools/doc_check.py`.
+- The two entries that change repository configuration rather than the tree —
+  PL-J786 (a green `checks` run required before merge) and PL-S4M2
+  (squash-merge) — are confirmed in effect on a real pull request, not merely
+  described as done. Neither can be verified by a command in this repository,
+  which is why both are marked `not-delegable`.
+- No equation, parameter, numerical method, unit or displayed value has
+  changed, and the v0.0.2 circuit and v0.1.0 sevoflurane reference tests pass
+  unaltered. Three entries reach into `src/` and `tests/` and are bounded to
+  what their briefs describe: PL-020 may add type annotations, PL-ZN0N and
+  PL-69J3 may add, remove or annotate `noqa` directives. If any of them turns
+  out to require a change to a modelled value, that is a finding for Gate 0
+  and a scoped item of its own, not this release's work.
+
+### Explicitly out of scope for v0.2.8
+
+- Anything on Gate 0's frozen list, recorded under v0.4.0 below. That gate is
+  untouched by this release and clearing it is still what v0.3.0 ships.
+- Any simulator change at all: `src/anesthesia_sim/core/`,
+  `src/anesthesia_sim/app/`, and the scientific content of `docs/MODEL.md`. A
+  release whose whole claim is that the loop is now reliable cannot also be
+  the one that moves the model.
+- Workflow capability beyond the seventeen entries. The queue holds more
+  process items than this release ships, and they wait for the next one — the
+  list is frozen for the same reason a gate's is, and a release that absorbs
+  every workflow idea raised while it runs never ships.
 
 ## Next milestone: v0.3.0 - the foundation
 
