@@ -8,10 +8,11 @@ added: 2026-08-30
 **Problem.** `Makefile` line 1 lists `docket` in `.PHONY`, and the target that
 actually runs `bin/docket check` is called `punch-list` — the rename never
 reached it. `make docket` therefore prints "make: Nothing to be done for
-'docket'" and **exits 0**. Both `CLAUDE.md` ("`make docket` after editing the
-store — it gates `make check` and CI, and its errors mean an item is about to
-be silently wrong") and the docket skill ("`make docket` is the same
-validation, wired into `make check`") tell sessions to run it.
+'docket'" and **exits 0**. Three documents tell people to run it: `CLAUDE.md` ("`make docket` after
+editing the store — it gates `make check` and CI, and its errors mean an item
+is about to be silently wrong"), the docket skill ("`make docket` is the same
+validation, wired into `make check`"), and `README.md`'s list of make targets
+("validate `docs/items/` and list anything untriaged").
 
 **Why it matters.** A check that reports success without running is worse than
 one that errors: an erroring command gets investigated, a passing one gets
