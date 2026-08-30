@@ -6,8 +6,9 @@ effort: S
 status: ready
 classes: session-cost, infra
 feature: dev-tooling
-touches: .claude/skills/docket/SKILL.md, CLAUDE.md
+touches: .claude/hooks/docket-digest.sh
 added: 2026-08-24
+verify: bash -n .claude/hooks/docket-digest.sh && .claude/hooks/docket-digest.sh | grep -q "^Branch: "
 ---
 
 **Problem.** Nothing in `CLAUDE.md` or the punch-list skill tells a session
@@ -30,3 +31,34 @@ rather than merging into it.
 **Done when.** The handoff a recommendation produces names the check, so a
 fresh session runs it before its first edit rather than discovering the
 problem at push time.
+
+**Mechanism changed, 2026-08-30: a check that fires, not a rule to remember.**
+The brief above puts the rule in `CLAUDE.md` and the skill. That is the weaker
+half of the same idea, and this item is itself the evidence: the rule it asks
+for is one more paragraph in documents a session may or may not have loaded at
+the moment it matters, and it fires at exactly the moment nobody is thinking
+about branches — the start, before any work has made the branch interesting.
+A session that would remember to run the check is a session that would not
+have needed it.
+
+So the three commands the **First step** names became the content of a check
+that runs whether or not anybody remembers it. `.claude/hooks/docket-digest.sh`
+already runs every session as a SessionStart hook, so the delivery existed:
+it now fetches `origin/main`, reads `git rev-list --left-right --count
+origin/main...HEAD`, and prints one line — or three, with the exact commands,
+when the branch is behind with nothing of its own, which is what a merged pull
+request looks like from the branch's side.
+
+Deliberately in the hook rather than in `docket`: the fetch is a network call
+and `docket` is standard-library-only, offline, and deterministic for a given
+store. A digest that reached the network would make every command that shares
+its code path slower and less predictable.
+
+Nothing was added to `CLAUDE.md` or the skill. A rule saying "run the check"
+beside a check that has already run is a second thing to keep true, and this
+project's own standard prefers the mechanism to the reminder.
+
+**Stale citation corrected.** The **Where** above cites
+`.claude/skills/punch-list/SKILL.md`, which no longer exists; the file is now
+`.claude/skills/docket/SKILL.md`. Left in the original paragraph as written,
+recorded here — neither file is touched by this item any more.
