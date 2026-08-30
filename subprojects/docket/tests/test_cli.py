@@ -295,6 +295,26 @@ def test_wave_reports_the_beat_from_the_plan_and_the_store(
     assert "clear the gate" in out
 
 
+def test_next_leads_with_what_the_current_step_names(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """End to end: `next` reads the plan, not only the queue.
+
+    The gate entry is `P3` here and the item the roadmap names nowhere is
+    `P1`, so a ranking that only sorted by band would lead with the second.
+    """
+    store = _wave_project(
+        tmp_path,
+        READY.replace("priority: P1", "priority: P3"),
+        READY.replace("PL-B1B1", "PL-C2C2").replace("A ready item", "Work no milestone names"),
+    )
+    assert _run("next", "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert out.index("PL-B1B1") < out.index("PL-C2C2")
+    assert "In scope for v0.4.0 — the teachable case" in out
+
+
 def test_wave_says_there_is_no_plan_rather_than_reporting_one(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

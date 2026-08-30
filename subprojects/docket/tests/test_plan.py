@@ -128,7 +128,7 @@ def test_nothing_startable_yields_no_recommendations() -> None:
     assert recommend([]) == []
 
 
-# --- what the plan says about an item ---------------------------------------
+# --- what the plan says about an item, and what that does to the order ------
 
 STEP = "v0.2.8 — the workflow works"
 
@@ -161,6 +161,52 @@ def test_next_leaves_an_item_unmarked_when_no_milestone_section_scopes_it() -> N
 
     assert pick.scoped_to == ""
     assert "scoped to" not in pick.describe()
+
+
+def test_in_scope_work_outranks_out_of_scope_work_across_bands_not_within_one() -> None:
+    """Absolute, because the band cannot express the phase.
+
+    `docket check` pins `safety` and `science` items to P1, so the top band is
+    product work by construction: a preference that only broke ties inside a
+    band would never fire in the case this exists for.
+    """
+    items = [_item("PL-1111", priority="P1"), _item("PL-2222", priority="P3")]
+    scope = _scope(current=("PL-2222",), later={"PL-1111": "v0.4.0"})
+
+    assert [p.item.identifier for p in recommend(items, scope=scope)] == ["PL-2222", "PL-1111"]
+
+
+def test_work_no_section_names_ranks_between_in_scope_and_out_of_scope_work() -> None:
+    items = [
+        _item("PL-1111", priority="P1"),
+        _item("PL-2222", priority="P3"),
+        _item("PL-3333", priority="P1"),
+    ]
+    scope = _scope(current=("PL-2222",), later={"PL-1111": "v0.4.0"})
+
+    picks = [p.item.identifier for p in recommend(items, scope=scope)]
+
+    assert picks == ["PL-2222", "PL-3333", "PL-1111"]
+
+
+def test_out_of_scope_work_is_still_offered_when_no_in_scope_work_is_ready() -> None:
+    """Marking is a fact the tool can support; hiding would be a verdict it cannot."""
+    scope = _scope(current=("PL-9999",), later={"PL-1111": "v0.4.0", "PL-2222": "v0.4.0"})
+
+    picks = recommend([_item("PL-1111"), _item("PL-2222")], scope=scope)
+
+    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-2222"]
+    assert all(p.scoped_to == "v0.4.0" for p in picks)
+
+
+def test_p0_outranks_in_scope_work_because_a_hotfix_outranks_the_phase() -> None:
+    items = [_item("PL-1111", priority="P3"), _item("PL-2222", priority="P0")]
+    scope = _scope(current=("PL-1111",), later={"PL-2222": "v0.4.0"})
+
+    picks = recommend(items, scope=scope)
+
+    assert picks[0].item.identifier == "PL-2222"
+    assert "P0" in picks[0].reason and picks[0].scoped_to == "v0.4.0"
 
 
 def test_a_ranking_given_no_plan_reads_as_it_did_before_there_was_one() -> None:
