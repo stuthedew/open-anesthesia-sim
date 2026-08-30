@@ -24,7 +24,7 @@ by hand.
 from __future__ import annotations
 
 import ast
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
@@ -80,6 +80,20 @@ class OperatingPoint:
     cardiac_output_l_min: float
 
 
+@dataclass(frozen=True)
+class Phase:
+    """One leg of a trajectory: settings held for a fixed duration.
+
+    A run of the application is a sequence of these — the settings hold
+    until someone moves a slider — so a gate driven by a phase list covers
+    what the application actually produces, where one held `OperatingPoint`
+    covers only the runs in which nothing is ever changed.
+    """
+
+    duration_s: float
+    point: OperatingPoint
+
+
 def _default_operating_point() -> OperatingPoint:
     """The point the pinned reference states were computed at."""
 
@@ -91,6 +105,12 @@ def _default_operating_point() -> OperatingPoint:
         alveolar_ventilation_l_min=patient.default_alveolar_ventilation_l_min,
         cardiac_output_l_min=patient.default_cardiac_output_l_min,
     )
+
+
+def _max_dial(agent_id: str) -> float:
+    """The agent's own vaporizer maximum, as a fraction."""
+
+    return load_agent_parameters(agent_id).max_delivered_concentration_percent / 100.0
 
 
 def _envelope_corner(agent_id: str) -> OperatingPoint:
@@ -110,12 +130,117 @@ def _envelope_corner(agent_id: str) -> OperatingPoint:
     """
 
     return OperatingPoint(
-        delivered_fraction=load_agent_parameters(agent_id).max_delivered_concentration_percent
-        / 100.0,
+        delivered_fraction=_max_dial(agent_id),
         fresh_gas_flow_l_min=MAX_FRESH_GAS_FLOW_L_MIN,
         alveolar_ventilation_l_min=MAX_ALVEOLAR_VENTILATION_L_MIN,
         cardiac_output_l_min=MAX_CARDIAC_OUTPUT_L_MIN,
     )
+
+
+def _ventilator_start(agent_id: str) -> tuple[Phase, ...]:
+    """Prime the circuit with the ventilator off, then start ventilating.
+
+    A manoeuvre the interface offers and a user performs: the vaporizer is
+    open and fresh gas is running while alveolar ventilation is still zero,
+    so the circuit fills to the dial setting against lungs that cannot take
+    any of it. Starting ventilation then presents the largest circuit-to-
+    alveolar gradient the machine can produce, at the largest ventilation it
+    can produce.
+
+    Five minutes is far longer than the circuit needs: at 10 L/min into 6 L
+    its time constant is 36 s, so the first phase ends saturated and the
+    scenario does not depend on exactly how long it ran.
+    """
+
+    return (
+        Phase(
+            300.0,
+            OperatingPoint(
+                _max_dial(agent_id), MAX_FRESH_GAS_FLOW_L_MIN, 0.0, MAX_CARDIAC_OUTPUT_L_MIN
+            ),
+        ),
+        Phase(
+            300.0,
+            OperatingPoint(
+                _max_dial(agent_id),
+                MAX_FRESH_GAS_FLOW_L_MIN,
+                MAX_ALVEOLAR_VENTILATION_L_MIN,
+                MAX_CARDIAC_OUTPUT_L_MIN,
+            ),
+        ),
+    )
+
+
+def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
+    """Fill circuit and lungs with no circulation, then restore it and dial off.
+
+    This is the worst trajectory the four sliders can produce, and it is worst
+    for a reason that is structural rather than clinical: holding cardiac
+    output at zero lets circuit and alveoli saturate at the dial setting while
+    every blood and tissue compartment stays empty, which is the furthest apart
+    the six states can be driven. Turning perfusion on and the vaporizer off in
+    the same move then makes every compartment's equilibrium the opposite of
+    where it sits, so all six transients run at once and the split is under the
+    most strain it can be put under.
+
+    Cardiac output of zero is not a physiological setting, and the gate does
+    not rest on it alone: `_ventilator_start` above reaches 1.52e-3 s^-1 by an
+    ordinary manoeuvre, two thirds of this scenario's 2.29e-3 s^-1. It is here
+    because the slider goes to zero, and a gate narrower than the reachable
+    domain is a verification claim broader than its evidence.
+
+    Ten minutes of loading is enough to saturate: extending it to twenty
+    changes the measured coefficient by 4e-5 relative.
+    """
+
+    return (
+        Phase(
+            600.0,
+            OperatingPoint(
+                _max_dial(agent_id), MAX_FRESH_GAS_FLOW_L_MIN, MAX_ALVEOLAR_VENTILATION_L_MIN, 0.0
+            ),
+        ),
+        Phase(
+            300.0,
+            OperatingPoint(
+                0.0,
+                MAX_FRESH_GAS_FLOW_L_MIN,
+                MAX_ALVEOLAR_VENTILATION_L_MIN,
+                MAX_CARDIAC_OUTPUT_L_MIN,
+            ),
+        ),
+    )
+
+
+def _held_default_settings(agent_id: str) -> tuple[Phase, ...]:
+    """The reference point, held for the whole run: a trajectory that never turns."""
+
+    del agent_id  # the reference point is the same for every agent
+
+    return (Phase(ENVELOPE_HORIZON_S, _default_operating_point()),)
+
+
+# The trajectories the gate drives, found by sweeping the corners of both
+# phases' settings and then each axis separately around the winner. What the
+# sweep showed, and why these two are the ones kept:
+#
+#   - The worst is always the first transition after the loading phase
+#     saturates. Repeating the cycle three or six times does not raise the
+#     peak at all, and shortening the phases lowers it, so the coefficient is
+#     bounded rather than accumulating over a run.
+#   - Inserting a third phase between the two never beat the pair; the best
+#     middle phases were the ones that simply held the loading corner longer.
+#   - Every axis is monotone toward the corner used, except cardiac output in
+#     the loading phase, which is worst at zero — the opposite end from the
+#     constant-setting corner, where it is worst at the maximum.
+#
+# Monotonicity is measured, not proved, so a change to the governing
+# equations could move the maximum off these trajectories and the sweep is
+# worth re-running rather than trusting.
+SETTING_CHANGE_SCENARIOS = (
+    ("ventilator start", _ventilator_start),
+    ("unperfused load then dial off", _unperfused_load_then_dial_off),
+)
 
 
 # Long enough to contain the worst disagreement anywhere in the envelope: at
@@ -143,9 +268,19 @@ ORACLE_STEP_S = 0.05
 # composition as a first-order (Lie/Godunov) split, so its error scales as
 # C·Δt, and the gate bounds C.
 #
-# The measured worst over the whole settings envelope is 1.21e-3 s^-1
-# (desflurane, an 18% dial with all three flow sliders at maximum, mixed
-# venous at about 85 s). This bound allows 1.24 times that.
+# The measured worst over the whole reachable domain is 2.29e-3 s^-1
+# (desflurane, in the alveolar fraction about 13 s after a setting change;
+# see `_unperfused_load_then_dial_off`). This bound allows 1.22 times that.
+#
+# The domain is *trajectories*, not operating points, and that is what the
+# previous bound got wrong. Held settings measure the split only where it
+# never turns; the four sliders turn, and turning one is what puts the split
+# under strain, because a setting change leaves the state far from the
+# equilibrium of the settings now in force. Driving the same envelope corner
+# through a setting change is 1.9 times worse than holding it — 2.29e-3
+# against 1.21e-3 — and an ordinary ventilator start at the corner already
+# reaches 1.52e-3, above the 1.5e-3 this bound replaces. That gate never
+# failed only because no run it drove ever changed a setting.
 #
 # The margin is deliberately narrow, and narrower than the factor of two an
 # earlier revision of this bound used, because the two things a wider margin
@@ -155,25 +290,24 @@ ORACLE_STEP_S = 0.05
 #     or patient parameter moves the reference solution and fails
 #     `test_independent_solution_matches_pinned_reference_states`, which
 #     already forces the re-derivation and review a revision should have.
-#   - Envelope variation does not need headroom either, now that the bound
-#     follows a measurement over the envelope rather than over one operating
-#     point. That gap is what made the previous bound wrong: set from one
-#     point at 2.5e-4, it was exceeded by a factor of about 2.4 at settings
-#     three sliders could reach, and never failed because nothing ran there.
+#   - Domain variation does not need headroom either, now that the bound
+#     follows a measurement over the settings envelope *and* over setting
+#     changes rather than over one held operating point.
 #
 # What the margin does cover is float and platform variation, and a
 # composition change that stays first order. Keeping it narrow also keeps the
 # gate honest about displayed precision: at the shipped 0.1 s step this bound
-# is 1.5e-4 in fraction, i.e. 0.015 percentage points, against a displayed
+# is 2.8e-4 in fraction, i.e. 0.028 percentage points, against a displayed
 # resolution of 0.01. `docs/MODEL.md` § "Displayed precision" states that the
-# last displayed digit is uncertain by about one count at the corner of the
-# envelope; a much wider gate would let that claim quietly become false while
+# last displayed digit is uncertain by about two counts at the worst reachable
+# trajectory; a wider gate would let that claim quietly become false while
 # still passing.
 #
 # `test_shipped_split_error_is_first_order_in_step` is what keeps the bound
-# meaningful: it confirms the error really does scale as C·Δt, so bounding C
-# at one step size bounds it at every supported step size.
-SPLITTING_ERROR_BOUND_PER_STEP_SECOND = 1.5e-3
+# meaningful: it confirms the error really does scale as C·Δt — across a
+# setting change as well as at held settings — so bounding C at one step size
+# bounds it at every supported step size.
+SPLITTING_ERROR_BOUND_PER_STEP_SECOND = 2.8e-3
 
 # Below this the split would no longer be first order because it would no
 # longer be a split — see `test_shipped_split_error_is_first_order_in_step`.
@@ -389,15 +523,34 @@ def _reference_state(agent_id: str, duration_s: float, point: OperatingPoint) ->
     return _integrate_rk4(_build_derivative(agent_id, point), duration_s, ORACLE_STEP_S)
 
 
-def _shipped_system(agent_id: str, point: OperatingPoint) -> RespiratorySystem:
-    """The implementation under test, configured at one operating point."""
+def _empty_shipped_system(agent_id: str) -> RespiratorySystem:
+    """The implementation under test, empty and at its own defaults."""
 
     system = RespiratorySystem.for_agent(agent_id)
     system.circuit.set_circuit_volume(CIRCUIT_VOLUME_L)
+
+    return system
+
+
+def _apply_operating_point(system: RespiratorySystem, point: OperatingPoint) -> None:
+    """Move every slider to `point`, leaving compartment contents untouched.
+
+    This is what the interface does when a slider moves mid-run, and it is
+    the only thing that happens at a phase boundary: the settings change,
+    the state does not.
+    """
+
     system.set_fresh_gas_flow(point.fresh_gas_flow_l_min)
     system.set_alveolar_ventilation(point.alveolar_ventilation_l_min)
     system.set_cardiac_output(point.cardiac_output_l_min)
     system.set_delivered_concentration(point.delivered_fraction)
+
+
+def _shipped_system(agent_id: str, point: OperatingPoint) -> RespiratorySystem:
+    """The implementation under test, configured at one operating point."""
+
+    system = _empty_shipped_system(agent_id)
+    _apply_operating_point(system, point)
 
     return system
 
@@ -430,44 +583,70 @@ def _run_shipped(
     return _shipped_states(system)
 
 
-def _worst_coefficient_over_run(
-    agent_id: str, duration_s: float, point: OperatingPoint
+def _oracle_step_for(shipped_step_s: float) -> float:
+    """Half the step under test.
+
+    Halving keeps the two solvers off a shared step size — agreement then
+    cannot be an artifact of them taking the same stride — while leaving the
+    oracle's own truncation error ten orders of magnitude below the splitting
+    error being measured. At the shipped 0.1 s step this is `ORACLE_STEP_S`,
+    so a trajectory driven here and a pinned reference state above are
+    integrated identically.
+    """
+
+    return shipped_step_s / 2.0
+
+
+def _worst_coefficient_over_phases(
+    agent_id: str, phases: Sequence[Phase], shipped_step_s: float = SHIPPED_STEP_S
 ) -> tuple[float, float, str]:
     """Return the largest splitting coefficient anywhere in the trajectory.
 
-    Sampling endpoints is not enough here: the worst disagreement in the
-    envelope occurs at about 85 s, in the wash-in transient, which no
-    endpoint at 60 s, 600 s or 3600 s looks at. Stepping the two solutions in
-    lockstep and taking the maximum costs nothing extra — the RK4 integration
-    is the expense and it happens either way — and bounds the coefficient
-    over the whole run rather than at three instants.
+    Both solutions are driven through the same phase list, and both apply a
+    phase's settings at the same instant: the shipped system by the setters
+    the interface calls, the oracle by rebuilding its derivative. What is
+    compared is therefore the split alone, not two different piecewise
+    schedules.
+
+    Sampling endpoints is not enough here, and neither is one held setting.
+    The worst disagreement is always inside a transient — at held settings it
+    is the wash-in one, at about 85 s; across a setting change it is the one
+    the change itself starts, about 13 s later. Stepping the two solutions in
+    lockstep and taking the maximum costs nothing extra, since the RK4
+    integration is the expense and it happens either way.
 
     Returns (coefficient, simulated time of the worst, state label).
     """
 
-    system = _shipped_system(agent_id, point)
-    derivative = _build_derivative(agent_id, point)
+    system = _empty_shipped_system(agent_id)
     reference = [0.0] * 6
-    oracle_steps_per_shipped_step = round(SHIPPED_STEP_S / ORACLE_STEP_S)
+    oracle_step_s = _oracle_step_for(shipped_step_s)
+    oracle_steps_per_shipped_step = round(shipped_step_s / oracle_step_s)
 
     worst_error = 0.0
     worst_time_s = 0.0
     worst_label = STATE_LABELS[0]
+    step_index = 0
 
-    for index in range(round(duration_s / SHIPPED_STEP_S)):
-        system.advance(SHIPPED_STEP_S)
+    for phase in phases:
+        _apply_operating_point(system, phase.point)
+        derivative = _build_derivative(agent_id, phase.point)
 
-        for _ in range(oracle_steps_per_shipped_step):
-            reference = _rk4_step(derivative, reference, ORACLE_STEP_S)
+        for _ in range(round(phase.duration_s / shipped_step_s)):
+            system.advance(shipped_step_s)
 
-        error, label = _worst_state_error(_shipped_states(system), tuple(reference))
+            for _ in range(oracle_steps_per_shipped_step):
+                reference = _rk4_step(derivative, reference, oracle_step_s)
 
-        if error > worst_error:
-            worst_error = error
-            worst_time_s = (index + 1) * SHIPPED_STEP_S
-            worst_label = label
+            step_index += 1
+            error, label = _worst_state_error(_shipped_states(system), tuple(reference))
 
-    return worst_error / SHIPPED_STEP_S, worst_time_s, worst_label
+            if error > worst_error:
+                worst_error = error
+                worst_time_s = step_index * shipped_step_s
+                worst_label = label
+
+    return worst_error / shipped_step_s, worst_time_s, worst_label
 
 
 def _worst_state_error(left: tuple[float, ...], right: tuple[float, ...]) -> tuple[float, str]:
@@ -532,8 +711,8 @@ def test_shipped_split_is_bounded_across_the_settings_envelope(agent_id: str) ->
     endpoint, because the worst disagreement is in the wash-in transient.
     """
 
-    coefficient, at_s, state_label = _worst_coefficient_over_run(
-        agent_id, ENVELOPE_HORIZON_S, _envelope_corner(agent_id)
+    coefficient, at_s, state_label = _worst_coefficient_over_phases(
+        agent_id, (Phase(ENVELOPE_HORIZON_S, _envelope_corner(agent_id)),)
     )
 
     assert coefficient <= SPLITTING_ERROR_BOUND_PER_STEP_SECOND, (
@@ -545,6 +724,58 @@ def test_shipped_split_is_bounded_across_the_settings_envelope(agent_id: str) ->
         f"'Displayed precision' sections both quote the measured value and "
         f"must be re-derived with it."
     )
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+@pytest.mark.parametrize(
+    ("scenario_name", "build_phases"),
+    SETTING_CHANGE_SCENARIOS,
+    ids=[name for name, _ in SETTING_CHANGE_SCENARIOS],
+)
+def test_shipped_split_is_bounded_across_setting_changes(
+    agent_id: str, scenario_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
+) -> None:
+    """The bound holds on trajectories that turn, not only on held settings.
+
+    The two gates above each hold one `OperatingPoint` for a whole run, so
+    between them they cover only the runs in which nobody ever moves a
+    slider. That is not what the application produces: the settings are four
+    sliders, and moving one is precisely when the split is under strain,
+    because the state is then far from the equilibrium of the settings now in
+    force. Measured across a setting change the coefficient is 1.9 times its
+    held-setting worst, which is more than the margin the previous bound
+    carried — the gate could not see the case it was built to catch.
+
+    This is the settings-envelope check one dimension over: the envelope
+    widened *where* the run sits, this widens *what the run does*.
+    """
+
+    coefficient, at_s, state_label = _worst_coefficient_over_phases(
+        agent_id, build_phases(agent_id)
+    )
+
+    assert coefficient <= SPLITTING_ERROR_BOUND_PER_STEP_SECOND, (
+        f"{agent_id} on the '{scenario_name}' trajectory reaches a splitting "
+        f"coefficient of {coefficient:.3e} s^-1 in the {state_label} fraction "
+        f"at {at_s:.1f} s, above the bound of "
+        f"{SPLITTING_ERROR_BOUND_PER_STEP_SECOND:.3e} s^-1. If this is a "
+        f"deliberate change, docs/MODEL.md's 'Independent-solution test' and "
+        f"'Displayed precision' sections both quote the measured value and "
+        f"must be re-derived with it."
+    )
+
+
+def test_lockstep_oracle_step_matches_the_pinned_one() -> None:
+    """A trajectory and a pinned reference state are integrated identically.
+
+    `_oracle_step_for` halves whatever step is under test, which at the
+    shipped step is `ORACLE_STEP_S` — the step every pinned reference state
+    was computed at. Letting the two drift apart would move what the gates
+    below measure while leaving the pinned states untouched, so the
+    coincidence is checked rather than described.
+    """
+
+    assert _oracle_step_for(SHIPPED_STEP_S) == ORACLE_STEP_S
 
 
 def test_envelope_limits_match_the_interface() -> None:
@@ -569,19 +800,33 @@ def test_envelope_limits_match_the_interface() -> None:
 
 
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
-def test_shipped_split_error_is_first_order_in_step(agent_id: str) -> None:
+@pytest.mark.parametrize(
+    ("trajectory_name", "build_phases"),
+    (("held settings", _held_default_settings), *SETTING_CHANGE_SCENARIOS),
+    ids=["held settings", *(name for name, _ in SETTING_CHANGE_SCENARIOS)],
+)
+def test_shipped_split_error_is_first_order_in_step(
+    agent_id: str, trajectory_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
+) -> None:
     """Halving the step halves the error, as a first-order split requires.
 
-    Without this, the bound in the test above would constrain the error at
-    one step size only. With it, the bound is a statement about the
-    coefficient C in C·Δt, and therefore about every supported step size.
+    Without this, the bounds above would constrain the error at one step size
+    only. With it, each bound is a statement about the coefficient C in C·Δt,
+    and therefore about every supported step size.
+
+    A setting change is a discontinuity in the coefficients of the governing
+    equations, which is the one thing that could plausibly cost the split its
+    order — so the trajectories that turn are checked here as well as at held
+    settings, and the coefficient measured across a change is flat to four
+    figures from 0.025 s up to 1.6 s.
     """
 
-    duration_s = 600.0
-    point = _default_operating_point()
-    reference = _reference_state(agent_id, duration_s, point)
+    phases = build_phases(agent_id)
+    # The driver reports C = error / Δt; the claim under test is about the
+    # error itself, so multiply the step back in rather than restating the
+    # ratio in terms of C.
     errors = [
-        _worst_state_error(_run_shipped(agent_id, duration_s, step_s, point), reference)[0]
+        _worst_coefficient_over_phases(agent_id, phases, step_s)[0] * step_s
         for step_s in (0.1, 0.05, 0.025)
     ]
 
@@ -594,7 +839,8 @@ def test_shipped_split_error_is_first_order_in_step(agent_id: str) -> None:
     ratios = [errors[index] / errors[index + 1] for index in range(len(errors) - 1)]
 
     assert all(1.9 < ratio < 2.1 for ratio in ratios), (
-        f"{agent_id} splitting error does not halve with the step: errors "
+        f"{agent_id} splitting error on the '{trajectory_name}' trajectory "
+        "does not halve with the step: errors "
         + ", ".join(f"{error:.3e}" for error in errors)
         + " give ratios "
         + ", ".join(f"{ratio:.3f}" for ratio in ratios)

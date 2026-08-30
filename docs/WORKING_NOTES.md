@@ -148,57 +148,6 @@ which is the intended signal that the review write-up is stale for that
 item - not a build failure. The scripts live outside `src/` and `tests/`
 deliberately and are not part of the test suite.
 
-## Open thread: splitting error outside the gate's operating point - PL-042
-
-Found while deciding the interface's displayed precision, which needed a
-number for how far the shipped operator split can be from the truth before
-it could choose how many decimals to show.
-
-`tests/reference/test_coupled_dynamics.py` runs its oracle at one operating
-point: 5% delivered, 4 L/min fresh gas, and the reference adult's default
-alveolar ventilation and cardiac output. That is a deliberate choice — the
-governing equations are linear in the delivered fraction, and the test says
-so — but linearity in the *dial* does not extend to the flows, which enter
-the split's error nonlinearly through the sub-exchange rates.
-
-Re-running the same oracle construction parameterized over every slider the
-interface exposes gives the worst disagreement in any of the six displayed
-states over an hour of simulated time:
-
-| Operating point | Worst error |
-| --- | --- |
-| Default flows, dial at 1 MAC | 1.7e-3 percentage points |
-| Default flows, dial at the agent's maximum | 5.0e-3 percentage points |
-| Maximum flows, dial at the agent's maximum | 1.2e-2 percentage points |
-
-The last row is desflurane at an 18% dial with 10 L/min fresh gas, 12 L/min
-alveolar ventilation, and 10 L/min cardiac output; the worst state is mixed
-venous at about 90 s, during the wash-in transient. As a first-order
-coefficient that is roughly 1.2e-3 s^-1 against the documented C_max of
-5e-4 s^-1 — the gate's bound is exceeded by a factor of about 2.4 in a
-configuration the sliders can reach, and the gate does not fail because it
-never runs there.
-
-Two things follow, and they were deliberately separated:
-
-- The precision decision needed the *magnitude*, and 1.2e-2 percentage
-  points is disclosed in `docs/MODEL.md` § "Displayed precision" as the
-  reason the second displayed decimal is the uncertain digit rather than a
-  certain one. No displayed value is wrong; the display simply must not
-  claim more than that.
-- PL-042 needs the *gate*, which is a change to a release gate and to a
-  documented bound, and is not something to fold into a formatting change.
-  The bound must follow a fresh measurement over the corners rather than
-  being set to today's worst number plus a margin, because the corner that
-  matters may not be one of the ones measured here — only three flow values
-  per axis were swept.
-
-The exploratory sweep itself was not kept: it is a parameterized rewrite of
-the `_build_derivative` / `_integrate_rk4` pair already in
-`tests/reference/test_coupled_dynamics.py`, and reconstructing it is a
-smaller job than maintaining a second copy of the oracle outside the suite.
-Parameterizing the one in the test file is PL-042's first step regardless.
-
 ## Open thread: scenario branching, bookmarks, and what a snapshot is for - PL-DHV7, ROADMAP items 8, 11, 12 and 26
 
 **Where the work went, 2026-08-25.** Triaged after capture. Only PL-DHV7

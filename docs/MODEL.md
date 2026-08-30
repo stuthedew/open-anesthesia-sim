@@ -881,58 +881,126 @@ $$
 \leq
 C_{\max}\,\Delta t,
 \qquad
-C_{\max} = 1.5\times10^{-3}\ \mathrm{s^{-1}}
+C_{\max} = 2.8\times10^{-3}\ \mathrm{s^{-1}}
 $$
 
-**The domain the bound covers.** The gate runs at two operating points, and
-the second is what makes \(C_{\max}\) a bound on the split rather than on one
-configuration:
+**The domain the bound covers.** The domain is *trajectories*, not operating
+points. A run of the application is a sequence of settings held until someone
+moves a slider, and moving one is when the split is under the most strain:
+the state is then far from the equilibrium of the settings now in force. A
+gate that holds one operating point for every run measures the split only
+where it never turns, which is the smaller half of what the interface
+produces.
+
+The gate therefore drives four kinds of run:
 
 - the *reference point* — 5% delivered, 4 L/min fresh gas, and the reference
-  adult's default alveolar ventilation and cardiac output — compared at
-  horizons of 60 s, 600 s and 3600 s. This is the point the pinned reference
-  states below belong to.
+  adult's default alveolar ventilation and cardiac output — held, and
+  compared at horizons of 60 s, 600 s and 3600 s. This is the point the
+  pinned reference states below belong to.
 - the *envelope corner* — each agent's own
   `max_delivered_concentration_percent` with fresh gas, alveolar ventilation
   and cardiac output all at the interface's slider maxima (10, 12 and
-  10 L/min). Here the maximum is taken over the whole trajectory rather than
-  at an endpoint, because the worst disagreement falls at about 85 s, in the
-  wash-in transient, which no endpoint at 60 s, 600 s or 3600 s samples.
+  10 L/min) — held for 600 s.
+- a *ventilator start*: the same corner but with alveolar ventilation at zero
+  for the first 300 s, so the circuit saturates at the dial setting against
+  lungs that can take none of it, and then ventilation to its maximum. This
+  is an ordinary manoeuvre, and it alone exceeds the previous bound.
+- an *unperfused load, then dial off*: the corner with cardiac output at zero
+  for 600 s, so circuit and alveoli saturate while every blood and tissue
+  compartment stays empty, and then perfusion to its maximum with the
+  vaporizer closed. This is the worst trajectory the four sliders can reach.
 
-The corner is the envelope maximum by measurement rather than by assumption.
-Sweeping each axis separately: fresh gas flow and alveolar ventilation raise
-the coefficient monotonically to their slider maxima; cardiac output has an
-interior *minimum* near 5 L/min and rises toward both ends, the upper end
-being the larger; and the governing equations are linear in the delivered
-fraction, so each agent's worst dial is its vaporizer maximum. That
-monotonicity is measured, not proved, so a change to the governing equations
-could move the maximum off the corner and the sweep is worth re-running
-rather than trusted.
+In every case the maximum is taken over the whole trajectory rather than at
+an endpoint, because the worst disagreement is always inside a transient — at
+held settings the wash-in one, at about 85 s; across a setting change the one
+the change itself starts, about 13 s later.
 
-| Operating point | Worst coefficient |
+Both the corner and the worst trajectory are maxima by measurement rather
+than by assumption. Across held settings, sweeping each axis separately:
+fresh gas flow and alveolar ventilation raise the coefficient monotonically
+to their slider maxima; cardiac output has an interior *minimum* near 5 L/min
+and rises toward both ends, the upper end being the larger; and the governing
+equations are linear in the delivered fraction, so each agent's worst dial is
+its vaporizer maximum. Across trajectories, sweeping the corners of both
+phases and then each axis around the winner: the worst is always the first
+transition after the loading phase saturates, and repeating the cycle three
+or six times does not raise the peak at all, so the coefficient is bounded
+rather than accumulating over a run; a third phase inserted between the two
+never beat the pair; and every axis is monotone toward the corner used except
+cardiac output during loading, which is worst at *zero* — the opposite end
+from the held-settings corner. That monotonicity is measured, not proved, so
+a change to the governing equations could move the maximum off these
+trajectories, and the sweep is worth re-running rather than trusted.
+
+| Run | Worst coefficient |
 | --- | --- |
 | Reference point, worst of the three agents | \(3.1\times10^{-4}\ \mathrm{s^{-1}}\) |
 | Envelope corner, sevoflurane | \(7.0\times10^{-4}\ \mathrm{s^{-1}}\) |
 | Envelope corner, isoflurane | \(7.4\times10^{-4}\ \mathrm{s^{-1}}\) |
 | Envelope corner, desflurane | \(1.21\times10^{-3}\ \mathrm{s^{-1}}\) |
+| Ventilator start, sevoflurane | \(1.03\times10^{-3}\ \mathrm{s^{-1}}\) |
+| Ventilator start, isoflurane | \(1.11\times10^{-3}\ \mathrm{s^{-1}}\) |
+| Ventilator start, desflurane | \(1.52\times10^{-3}\ \mathrm{s^{-1}}\) |
+| Unperfused load then dial off, sevoflurane | \(1.34\times10^{-3}\ \mathrm{s^{-1}}\) |
+| Unperfused load then dial off, isoflurane | \(1.40\times10^{-3}\ \mathrm{s^{-1}}\) |
+| Unperfused load then dial off, desflurane | \(2.29\times10^{-3}\ \mathrm{s^{-1}}\) |
 
-The gate allows a factor of 1.24 over the worst of these. That margin is
-deliberately narrower than the factor of two an earlier revision used, and
-the reason is that the two things a wider margin would buy are already
-covered elsewhere: a parameter revision fails the pinned reference states
-first, which forces the re-derivation and review it should have; and
-envelope variation no longer needs absorbing now that the bound follows a
-measurement across the envelope. That second gap is what made the previous
-bound wrong — set at \(5\times10^{-4}\ \mathrm{s^{-1}}\) from the reference
-point alone, it was exceeded by a factor of about 2.4 at settings three
-sliders could reach, and never failed because nothing ran there.
+**\(C_{\max} = 2.29\times10^{-3}\ \mathrm{s^{-1}}\) is the worst measured
+coefficient over the whole reachable domain**, and is the figure any later
+work on step size should start from rather than re-deriving. The gate allows
+a factor of 1.22 over it. That margin is deliberately narrower than the
+factor of two an earlier revision used, and the reason is that the two things
+a wider margin would buy are already covered elsewhere: a parameter revision
+fails the pinned reference states first, which forces the re-derivation and
+review it should have; and domain variation no longer needs absorbing now
+that the bound follows a measurement across the settings envelope *and*
+across setting changes.
+
+Domain variation is exactly what made each previous bound wrong, twice over,
+one dimension at a time. Set at \(5\times10^{-4}\ \mathrm{s^{-1}}\) from the
+reference point alone, it was exceeded by a factor of about 2.4 at settings
+three sliders could reach. Reset at \(1.5\times10^{-3}\ \mathrm{s^{-1}}\)
+from the envelope but still measured only on runs that hold one operating
+point, it was exceeded by a ventilator start at that same corner — a
+manoeuvre a user performs — and again by a factor of 1.5 at the worst
+reachable trajectory. Neither gate ever failed, because nothing it drove
+ever went where the error was.
 
 Keeping the margin narrow also keeps the gate consistent with "Displayed
-precision" below: at the shipped 0.1 s step this bound is \(1.5\times10^{-4}\)
-in fraction, or 0.015 percentage points, against a displayed resolution of
+precision" below: at the shipped 0.1 s step this bound is \(2.8\times10^{-4}\)
+in fraction, or 0.028 percentage points, against a displayed resolution of
 0.01. A much wider gate would let that section's claim — that the last
-displayed digit is uncertain by about one count at the corner of the
-envelope — quietly become false while still passing.
+displayed digit is uncertain by about two counts at the worst reachable
+trajectory — quietly become false while still passing.
+
+**The error is a systematic sequencing bias, not noise, and it does not
+cancel between compartments.** The shipped step applies its transfers in
+order — fresh gas into the circuit, circuit to alveoli, alveoli to blood and
+tissues — and each compartment is therefore driven across the interval by an
+upstream value the same step has *already* moved. The measured consequence is
+a bias whose sign depends on a compartment's position in that chain, and the
+signs are opposite at the two ends. Through a 600 s wash-in at the envelope
+corner, for all three agents, the circuit reads *below* the reference at
+every sampled step while mixed venous, vessel rich, muscle and fat all read
+*above* it at every sampled step; the alveolar fraction sits between the two
+mechanisms and follows the blood-uptake term, below the reference for 95% or
+more of the run. Reversing the trajectory reverses the bias where the
+trajectory itself reverses: dialling to zero after that wash-in puts the
+circuit above the reference for 97–99% of the washout and mixed venous and
+vessel rich below it for 90–97%, while muscle and fat stay above throughout
+because they are still filling. The pattern is reproducible, not random.
+
+For a reader this is the difference between an error that cancels in a
+comparison and one that does not, and it does not cancel. The six readouts
+are placed in one row to be read comparatively — the circuit leads the
+alveoli lead the tissues — and a difference between two of them carries the
+*sum* of two displacements of opposite sign. Measured across the trajectories
+above, the error in a displayed difference runs up to 1.8 times the error in
+either reading it is taken from, and its worst value is 0.030 percentage
+points — alveolar minus mixed venous, on the worst trajectory — against 0.023
+for the worst single reading. A gradient between two compartments is
+therefore the least accurate thing this interface displays, not the most.
 
 A companion test confirms that halving \(\Delta t\) halves the error, which
 is what makes a bound established at one step size a bound on the
@@ -1166,39 +1234,57 @@ operator split (see "Selected method (as implemented)"), and its
 disagreement with the independent solution is what sets the floor. Measured
 against a from-scratch RK4 integration of the governing equations — the same
 oracle construction as `tests/reference/test_coupled_dynamics.py`, extended
-across the settings the interface actually exposes — the worst disagreement
-in any of the six displayed states, over an hour of simulated time, is:
+across the settings the interface exposes and across the setting *changes* it
+allows — the worst disagreement in any of the six displayed states is:
 
-| Operating point | Worst error over 3600 s |
+| Run | Worst error |
 | --- | --- |
 | Default flows, dial at 1 MAC | 1.7×10⁻³ percentage points |
+| Default flows, dial at 1 MAC, ventilator started mid-run | 2.2×10⁻³ percentage points |
 | Default flows, dial at the agent's maximum | 5.0×10⁻³ percentage points |
 | Maximum flows, dial at the agent's maximum | 1.2×10⁻² percentage points |
+| Maximum flows and dial, ventilator started mid-run | 1.5×10⁻² percentage points |
+| The worst reachable trajectory | 2.3×10⁻² percentage points |
 
 Default flows are 4 L/min fresh gas with the reference adult's default
 alveolar ventilation and cardiac output; maximum flows are the interface's
 own slider limits for fresh gas, alveolar ventilation, and cardiac output,
-and the maximum dial is each agent's `max_delivered_concentration_percent`. The
-worst case in each row is an alveolar or mixed-venous value during the
-wash-in transient, which is where the split is under the most strain.
+and the maximum dial is each agent's `max_delivered_concentration_percent`.
+The held rows run for 3600 s, the setting-change rows for 600 s; extending
+either changes nothing, because the worst case in every row is an alveolar or
+mixed-venous value inside a transient rather than at an endpoint. The last
+row is the *unperfused load, then dial off* trajectory of
+"Independent-solution test", which is the worst the four sliders can reach.
 
 The last row is the same measurement the release gate in
 "Independent-solution test" bounds, expressed in percentage points instead of
-as a coefficient: \(1.21\times10^{-3}\ \mathrm{s^{-1}}\) at the shipped 0.1 s
+as a coefficient: \(2.29\times10^{-3}\ \mathrm{s^{-1}}\) at the shipped 0.1 s
 step. **The two are coupled and must be revised together** — the resolution
-chosen here rests on that measured error, and the gate is set only 1.24 times
+chosen here rests on that measured error, and the gate is set only 1.22 times
 above it precisely so that a change large enough to invalidate this section
 fails the gate rather than passing it silently.
 
 **Why 0.01 percentage points follows.** At that resolution the last
-displayed digit is uncertain by roughly a fifth of a count in ordinary use,
-half a count at a maximum dial setting, and about one count at the extreme
-corner of the settings envelope. That is the conventional and honest
-relationship between an instrument's last digit and its error: the final
-digit is the uncertain one. At the previous 0.001 percentage points the last
-digit was uncertain by two to twelve counts and the digit before it by up to
-one, so two of the three displayed decimals carried no information about the
-model.
+displayed digit is uncertain by roughly a fifth of a count in ordinary use —
+whether or not a setting is changed during the run — half a count at a
+maximum dial setting, one count at the extreme corner of the settings
+envelope, and about two counts on the worst trajectory the sliders can reach,
+which requires holding cardiac output at zero. That is the conventional and
+honest relationship between an instrument's last digit and its error: the
+final digit is the uncertain one, and it is most uncertain where the settings
+are least physiological. At the previous 0.001 percentage points the last
+digit was uncertain by two to twenty-three counts and the digit before it by
+up to two, so two of the three displayed decimals carried no information
+about the model.
+
+**What the last digit does not cover.** The error is a systematic sequencing
+bias rather than noise, and its sign is opposite at the two ends of the
+transfer chain (see "Independent-solution test"). A *difference* between two
+of the six readouts therefore carries the sum of two displacements, up to 1.8
+times the error in either reading alone, worst measured at 0.030 percentage
+points. A reader comparing two compartments should treat the
+last digit of that comparison as carrying no information, even though the
+last digit of each reading on its own is meaningful.
 
 **Why the resolution is uniform rather than per-compartment.** The six
 readouts sit in one row and are read comparatively — the reason for showing
@@ -1206,8 +1292,13 @@ them together is that a reader can see the circuit lead the alveoli lead the
 tissues. Different decimal counts across those tiles would put different
 magnitudes at the same glyph position, so a value scanned rather than read
 would be misjudged by a factor of ten. The solver's error is also bounded in
-*absolute* percentage points and is of the same order in every compartment,
-so a single absolute resolution is the direct expression of it.
+*absolute* percentage points, and across the runs measured above it stays
+within a factor of four across the four fast compartments — 0.006 to 0.023
+percentage points in circuit, alveolar, mixed venous and vessel rich — while
+muscle is an order of magnitude smaller and fat two to three. A single
+absolute resolution is therefore the direct expression of it, set by the
+compartments where the error is largest and conservative in the two where it
+is not.
 
 **Why not a significant-figures rule.** A significant-figures rule gives the
 smallest values the most decimal places, and the small values are exactly
