@@ -1,13 +1,15 @@
 ---
 id: PL-G049
 title: A `verify:` command that has never been run is not a specification, and nothing currently requires running one
-status: ready
+status: done
 priority: P2
 effort: S
 classes: defect, infra, session-cost
 feature: delegation
 touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests, docket.toml
 added: 2026-08-25
+closed: 2026-08-30
+commit: 4f4c8f4
 verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_config.py -k verify
 ---
 

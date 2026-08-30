@@ -3,11 +3,13 @@ id: PL-674D
 title: '`docket release` bumps pyproject.toml but leaves uv.lock stale, breaking make check'
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: Makefile, .claude/skills/docket/SKILL.md
 added: 2026-08-25
+closed: 2026-08-30
+commit: e9fc842
 not-delegable: proving this means cutting a release, so no check can run beforehand
 ---
 

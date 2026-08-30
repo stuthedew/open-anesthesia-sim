@@ -3,11 +3,13 @@ id: PL-N2N1
 title: docket release does not update ROADMAP.md's version table or baseline heading, which has now drifted twice
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: planning-cadence
 touches: tools/doc_check.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/README.md, tests/unit/test_doc_check.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-08-26
+closed: 2026-08-30
+commit: ebefcc2
 verify: uv run pytest tests/unit/test_doc_check.py subprojects/docket/tests/test_roadmap.py -k "baseline or version_table"
 ---
 

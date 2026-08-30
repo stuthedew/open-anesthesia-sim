@@ -3,11 +3,13 @@ id: PL-9CNQ
 title: A `docket gate` command, so the frozen debt list is computed rather than transcribed
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, session-cost
 feature: planning-cadence
 touches: subprojects/docket, docket.toml, .claude/skills/docket/SKILL.md
 added: 2026-08-25
+closed: 2026-08-30
+commit: 0eaa17f
 verify: uv run pytest subprojects/docket/tests -k "gate or effort"
 ---
 
