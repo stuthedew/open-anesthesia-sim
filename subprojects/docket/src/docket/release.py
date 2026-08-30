@@ -105,6 +105,26 @@ def suggest_version(current: str, items: list[Item], minor_classes: tuple[str, .
     return f"{major}.{minor}.{patch + 1}"
 
 
+def is_untagged(version: str, existing: frozenset[str]) -> bool:
+    """Whether an already-shipped version has no tag, in a project that tags.
+
+    A release cut without a tag leaves a permanent gap: `git describe
+    --contains` resolves nothing for any commit in its span, so the question
+    "which release did this change go out in" stops having an answer, and it
+    cannot be repaired later with any confidence once the history has moved
+    on. Refusing the *next* release is what turns that from a thing somebody
+    remembers into a thing that cannot silently lapse.
+
+    A project with no tags at all is not held to this. Its emptiness says the
+    project does not tag releases, and adopting the practice is its decision,
+    not this tool's.
+    """
+    if not version or not existing:
+        return False
+    name = version.lstrip("v")
+    return f"v{name}" not in existing and name not in existing
+
+
 def read_version(pyproject: Path) -> str:
     """The project's current version, or empty when there is none to read.
 

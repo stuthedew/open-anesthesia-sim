@@ -10,6 +10,7 @@ import pytest
 from docket.model import Item
 from docket.release import (
     bump_version,
+    is_untagged,
     milestones,
     read_version,
     release_notes,
@@ -152,3 +153,20 @@ def test_bumping_a_missing_version_still_fails_loudly(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError):
         bump_version(target, "0.3.0")
+
+
+def test_a_shipped_version_with_no_tag_is_reported() -> None:
+    assert is_untagged("0.2.5", frozenset({"v0.2.3", "v0.2.4"}))
+
+
+def test_a_tagged_version_is_not() -> None:
+    assert not is_untagged("0.2.5", frozenset({"v0.2.5"}))
+
+
+def test_a_tag_written_without_its_v_still_counts() -> None:
+    assert not is_untagged("0.2.5", frozenset({"0.2.5"}))
+
+
+def test_a_project_that_has_never_tagged_is_not_taught_to() -> None:
+    """Emptiness says the project does not tag, not that every release is missing one."""
+    assert not is_untagged("0.2.5", frozenset())

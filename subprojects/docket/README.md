@@ -25,8 +25,10 @@ docket new "The induction curve looks wrong" "Colour-blind palette check"
 docket next --effort S       # what to work on, and why
 docket wave                  # which beat of the plan's cadence is due
 docket list                  # the queue, one line per item
+docket triage                # what is untriaged, and the rules the answers must satisfy
 docket concurrent PL-K7QX    # what can be worked alongside it
 docket feature halted-step   # progress on one feature
+docket gate --feature x      # the open debt a milestone has to clear
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
@@ -39,6 +41,20 @@ docket check                 # validate the store; exits non-zero on errors
 band — those are triage, and demanding them at the moment an idea occurs is
 how ideas stop being written down. Several titles in one call, because
 interruptions rarely carry exactly one thought.
+
+### Triage is a worklist, not a verdict
+
+`docket triage` prints every untriaged item with its body, the fields still
+unset, the brief sections still missing, and the rules the answers have to
+satisfy — which classes force the top band, how full that band already is,
+which paths make an item undelegable, what a `ready` item must carry. Those
+are read from the settings and the checker, so they cannot drift from what
+`docket check` will say a moment later.
+
+What an item is worth, how big it is and what it belongs with are not computed
+and never will be. Triage is the judgment; what the command removes is having
+to recall the rules from memory and find out afterwards whether the recall was
+right.
 
 ### Choosing is answered, not browsed
 
@@ -58,6 +74,22 @@ contend. *Absence* of declared overlap proves only that nobody foresaw a
 collision — the work may still wander into a shared file. So the command
 rules pairs out and never certifies a pair as safe, and items declaring no
 paths at all are reported as unanalysable rather than assumed harmless.
+
+### A debt gate is computed, not transcribed
+
+A project that clears recorded debt before starting a milestone has to produce
+the list of what is owed, and doing that by hand means reading every open
+item's classes and status, applying the rule, and splitting the result by
+whether the milestone clears the item itself. `docket gate --feature <name>`
+does that pass: open debt on one side, the items carrying that feature on the
+other, with effort totals for each.
+
+Debt is an open item classed `defect`, `safety`, `science`, `refactor` or
+`perf` — `debt_classes`, configurable — or one at `needs-decision`, since a
+decision left open stops being one anybody can make. It writes nothing and
+reaches no verdict: whether an item is really debt and whether the gate should
+open are judgments, and freezing the list stays the deliberate act it is meant
+to be.
 
 ### The plan reports its own position
 
@@ -80,6 +112,23 @@ ship one whose work is unfinished, then bumps the single version string,
 writes the notes from the items themselves, and stops short of tagging.
 Generated notes cannot claim something the items do not, and nothing shipped
 goes unmentioned because whoever wrote them forgot it.
+
+**What a release deliberately does not write is the roadmap.** A project that
+keeps a version table in a hand-maintained plan will find it left behind by
+every release — twice here, the second time one release after the first was
+repaired. The fix is a check that refuses, not a command that writes: the
+milestone column is editorial, so a generated row would either be thin or
+would overwrite something considered, while a refusal costs one hand-written
+row per release and cannot corrupt the file. `roadmap.parse_version_table` and
+`roadmap.baseline_heading` read the grammar; the project's own checker asks
+the three questions that follow from it — one row per released version,
+exactly one marked current, and a "Current baseline:" heading naming that same
+version, which is the version the version file holds.
+
+Tags are deliberately outside that check. A shallow or tag-less clone is a
+normal checkout, and a documentation check that fails on how somebody fetched
+the repository is a check that gets switched off. `docket release` enforces
+the tag instead, at the one moment tags are certainly to hand.
 
 ## The item format
 
@@ -108,10 +157,26 @@ added: 2026-08-24
 **Done when.** The observable condition that closes it.
 ```
 
-Two optional fields govern whether the work may be handed to a cheaper model:
+Two further fields govern whether the work may be handed to a cheaper model:
 `verify`, a single-line command that proves the item done, and `not-delegable`,
 holding the reason an otherwise-qualifying item is withheld. See *Delegation is
 derived, never granted* below.
+
+An item at `ready` must carry one of them: the command that would prove it
+done, or a recorded reason why no command can. The gate sits at `ready` rather
+than at capture deliberately — demanding a command at the moment an idea occurs
+is the same tax as demanding a priority, and `ready` is the first point at
+which the question is answerable at all. `verify_required_from` is the date a
+project adopts the rule; items captured before it are counted in one grooming
+advisory rather than turned into an error each, so adopting the rule does not
+mean rewriting the whole store on the same day. Leaving that setting unset
+leaves the requirement off, which is right for a project that does not delegate
+and therefore has nothing riding on the field.
+
+Write the command only after running it. Every one of the six that existed in
+the project this grew in was wrong and none had been executed — a check nobody
+ran is a specification nobody tested, and it fails after a worker has done the
+work rather than before.
 
 `status` runs `untriaged` → `ready` / `needs-decision` / `blocked` → `done` /
 `dropped`. Requirements scale with it: an untriaged capture needs only a
@@ -165,6 +230,14 @@ without doing the work — a file outside `touches`, a protected path, an edit
 to the gate itself, an added suppression, a deleted assertion, a rewritten
 front matter.
 
+Several ids may be given at once — `docket verify PL-K7QX PL-B2B2 --base main`
+— because that is the shape delegated work comes back in: one branch, one
+commit per item. Each item's own command still runs per item, since that is
+what makes one acceptable and the next rejectable, while the project's own
+check runs once for the batch. It proves a property of the tree, and proving
+the same property six times turns a two-second command into a two-minute one,
+which is how a reviewer learns to skip it.
+
 The diff is scoped to the commits whose subject names the item, which is what
 one-commit-per-item buys: a batch branch carries several items' work, and each
 is judged on its own. Uncommitted changes are attributed to whatever is being
@@ -200,8 +273,10 @@ the defaults, add `docket.toml` at the project root:
 items_dir = "docs/items"
 safety_classes = ["safety", "science"]
 process_classes = ["session-cost", "docs", "infra"]
+debt_classes = ["defect", "safety", "science", "refactor", "perf"]
 top_band_limit = 5
 untriaged_stale_days = 14
+verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
 minor_classes = ["feature"]
 protected_paths = []
 version_file = "pyproject.toml"

@@ -3,11 +3,12 @@ id: PL-J3ZK
 title: Tag releases so a commit can be mapped to the version it shipped in
 priority: P2
 effort: S
-status: ready
+status: needs-decision
 classes: infra, session-cost
 feature: dev-tooling
-touches: subprojects/docket/src/docket/release.py, .claude/skills/docket/SKILL.md
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/SKILL.md, ROADMAP.md, subprojects/docket/tests
 added: 2026-08-25
+verify: uv run pytest subprojects/docket/tests -k tag
 ---
 
 **Problem.** `v0.0.1`, `v0.0.2` and `v0.2.3` are tagged; `v0.1.0`, `v0.2.0`,
@@ -95,3 +96,77 @@ deliberately untagged, with the unrelated-roots reason.
 **Context.** Found while inverting the milestone model so that a release
 records what shipped rather than planning what will. The backfill is recorded
 in the commit that introduced it.
+
+**Pass three, 2026-08-30: pass two was measured in a shallow checkout, and its
+central claim is false.** The mechanism half is built and the two recommended
+tags are placed; what changed is the reason the other two were ruled out.
+
+`git clone --depth` marks boundary commits as parentless, so a shallow
+checkout reports them as roots and `git merge-base` returns nothing across the
+boundary. That is what pass two was reading. After `git fetch --unshallow` in
+the same repository:
+
+- `git rev-list --max-parents=0 --all` returns **one** root, `0ba1ab5`.
+- Each of the three commits pass two named as a root has a parent:
+  `80c7aab`←`b64d768`, `674c8ae`←`ca85e21`, `16939cf`←`7daa5b6`.
+- `git merge-base 796bf4f 97cc66a` returns `97cc66a` — v0.1.0's work is an
+  ancestor of v0.2.0's, not unrelated to it.
+- `97cc66a` → `796bf4f` → `bc5f823` → `3099980` → `v0.2.3` is a straight
+  ancestry chain, each confirmed with `git merge-base --is-ancestor`.
+
+So tagging v0.1.0 and v0.2.0 *would* answer version questions, and the
+paragraph above headed "the history has three unrelated roots" is an artifact
+of how the repository was fetched rather than a property of the history. It is
+left in place rather than deleted, because a superseded analysis that is not
+recorded gets re-derived — and because this is the second time the same
+question has been answered wrongly with confidence.
+
+**Decision needed.** Whether to tag v0.1.0 and v0.2.0 retrospectively now that
+the objection to doing so has dissolved. The remaining question is only which
+commit v0.1.0 belongs on: `875ba08` ("Build v0.1.0 sevo patient simulation")
+or `97cc66a` ("Close v0.1.0 doc/test gaps"), the latter being the last commit
+of that release's work and the one the release-commit-by-subject convention
+points at. v0.2.0 is unambiguous at `796bf4f`.
+
+```bash
+git tag -a v0.1.0 97cc66a -m "v0.1.0"
+git tag -a v0.2.0 796bf4f -m "v0.2.0"
+git push origin v0.1.0 v0.2.0
+```
+
+Nothing is lost by deciding later: both are ordinary ancestors of `main` and
+can be tagged at any time. That is the opposite of the situation for a release
+cut *from now on*, which is why the refusal below was built rather than left
+to memory.
+
+**Blocked on the owner: this environment cannot push tags.** `git push origin
+v0.2.1 v0.2.2` returns HTTP 403 while a branch push from the same session
+succeeds, so the credentials are scoped to `refs/heads/claude/*`. The two tags
+were created locally and verified — `git describe --contains 655e429` resolves
+to `v0.2.1~1` — but a local tag in an ephemeral container is not a tag. These
+two commands place them, and they are the whole of the retrospective half that
+is not a decision:
+
+```bash
+git fetch --unshallow          # bc5f823 is beyond a shallow clone's boundary
+git tag -a v0.2.1 bc5f823 -m "v0.2.1"
+git tag -a v0.2.2 3099980 -m "v0.2.2"
+git push origin v0.2.1 v0.2.2
+```
+
+**Done, 2026-08-30.**
+
+- The two tags above are decided and their commits confirmed; only the push
+  remains, and it is the owner's to run.
+- `docket release` refuses to cut while the version it is releasing *from*
+  carries no tag, and prints the three commands to place it rather than the
+  instruction to. A project holding no tags at all is exempt: emptiness there
+  says the project does not tag releases, and adopting the practice is its
+  decision rather than this tool's. `--dry-run` warns and continues, since
+  withholding the notes would not make the tag appear.
+- `docket release`'s closing line now prints the `git tag`/`git push` pair
+  with the version filled in, and the skill's release mode says never to ask
+  for a tag without them.
+- `ROADMAP.md`'s versioning section records which versions are tagged, which
+  two await the commands above, and why the other two are an open decision —
+  the corrected reason, not the superseded one.

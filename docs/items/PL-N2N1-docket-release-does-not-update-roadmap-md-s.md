@@ -3,11 +3,14 @@ id: PL-N2N1
 title: docket release does not update ROADMAP.md's version table or baseline heading, which has now drifted twice
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: planning-cadence
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/README.md
+touches: tools/doc_check.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/README.md, tests/unit/test_doc_check.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-08-26
+closed: 2026-08-30
+commit: ebefcc2
+verify: uv run pytest tests/unit/test_doc_check.py subprojects/docket/tests/test_roadmap.py -k "baseline or version_table"
 ---
 
 **Problem.** `docket release` bumps `pyproject.toml` and writes
@@ -61,3 +64,29 @@ column.
 current version than `pyproject.toml`, either because the command maintains
 those fields or because a check fails until a person does — with the choice
 and its reasoning recorded in `subprojects/docket/README.md`.
+
+**Decided: the check, not the write.** As recommended above. `tools/doc_check.py`
+now runs `check_baseline`, which errors when the version table holds a second
+row for a released version, when the rows marked "current baseline" are not
+exactly one, when that row disagrees with `pyproject.toml`, or when the
+"Current baseline:" heading names a different version than the row. The
+grammar — `parse_version_table` and `baseline_heading` — lives in
+`docket.roadmap` beside the timeline's, because `doc_check` already imports
+that module for the release train and a second copy would drift silently in
+the one document that says which release is current.
+
+The reasoning is recorded in `subprojects/docket/README.md` under "Releases
+are mechanical", as this item asked.
+
+**Tags are deliberately not compared here**, though the narrow decidable
+version above lists them. A shallow or tag-less clone is a normal checkout —
+this session's own was shallow — and a documentation check that fails on how
+somebody fetched the repository is a check that gets switched off. `docket
+release` enforces the tag instead (PL-J3ZK), at the one moment tags are
+certainly to hand.
+
+**A third instance of this class is live and is not this item's.**
+`docs/MODEL.md:6`, `docs/MODEL.md:1317` and `docs/WORKING_NOTES.md:110` all
+still name v0.2.3 as the current baseline. Captured separately rather than
+folded in here: this item is about the version table, and those three are
+prose in two other documents.

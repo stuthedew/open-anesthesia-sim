@@ -98,5 +98,21 @@ def branches_in_flight(
     return sorted(found.values(), key=lambda b: b.item_id)
 
 
+def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
+    """Every tag name the repository holds.
+
+    Empty for a checkout with no tags, no git, or no repository at all - the
+    same collapse every other read here makes. What that emptiness *means* is
+    decided by the caller: `release.is_untagged` reads it as "this project does
+    not tag" rather than as "every release is untagged", because a tool that
+    started refusing releases in a project that never tagged would be teaching
+    a practice rather than holding one.
+    """
+    run = runner or _run_git
+    return frozenset(
+        line.strip() for line in run(["tag", "--list"], root).splitlines() if line.strip()
+    )
+
+
 def in_flight_ids(root: Path, *, runner: Runner | None = None) -> set[str]:
     return {branch.item_id for branch in branches_in_flight(root, runner=runner)}

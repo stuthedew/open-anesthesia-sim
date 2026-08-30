@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from docket.vcs import branches_in_flight, in_flight_ids
+from docket.vcs import branches_in_flight, in_flight_ids, tags
 
 ROOT = Path("/nowhere")
 
@@ -56,3 +56,13 @@ def test_a_random_suffix_is_not_read_as_an_id() -> None:
 
 def test_no_git_means_no_claims_about_branches() -> None:
     assert branches_in_flight(ROOT, runner=lambda args, root: "") == []
+
+
+def test_tags_are_read_from_the_repository() -> None:
+    assert tags(ROOT, runner=lambda args, root: "v0.1.0\nv0.2.0\n") == frozenset(
+        {"v0.1.0", "v0.2.0"}
+    )
+
+
+def test_no_git_means_no_tags_rather_than_an_error() -> None:
+    assert tags(ROOT, runner=lambda args, root: "") == frozenset()
