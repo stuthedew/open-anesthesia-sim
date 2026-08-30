@@ -10,6 +10,12 @@ touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/
 added: 2026-08-25
 ---
 
+**Read PL-ZQ9C first.** PL-ZQ9C (record an item's pull request, so provenance
+survives squash-merge) replaces the `commit:` field this check validates,
+because PL-S4M2 switches main to squash-merge and the recorded branch hash
+will no longer reach main. Building this check against `commit:` first means
+building it twice. The two are probably cheapest done together.
+
 **Problem.** `docket check` requires a `done` item to record a `commit`, but
 never checks that the hash names a commit that exists. Cutting v0.2.3 found
 two that do not: PL-001 recorded `3749588` and PL-008 recorded `2484611`,
