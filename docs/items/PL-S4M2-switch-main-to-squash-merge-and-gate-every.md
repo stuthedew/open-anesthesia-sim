@@ -3,7 +3,7 @@ id: PL-S4M2
 title: Switch main to squash-merge, so each item lands as one commit
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: infra
 feature: public-history
 blocked-by: PL-ZQ9C
@@ -66,3 +66,10 @@ both worth more than they looked.
 **Done when.** Main accepts only squash merges, deletes the head branch on
 merge, and composes squash subjects from the pull request title — each
 confirmed on a throwaway pull request.
+
+**Unblocked 2026-08-30.** PL-ZQ9C (record an item's pull request, so provenance
+survives squash-merge) closed, so the provenance this item would otherwise
+break is already carried by the `pr` field rather than by `commit`. The
+`blocked-by` line is kept as the record of what it waited on. Still not
+delegable: the two settings live in GitHub repository configuration, not in the
+tree.
