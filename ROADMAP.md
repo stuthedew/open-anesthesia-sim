@@ -42,11 +42,12 @@ capability-boundary rule above governs.
 | v0.2.2 | Completed | Hardening and interface-provenance release on the same model: a failed step halts the run visibly instead of leaving it reading "Running", the parameter schemas reject unknown keys, agent selection carries its ISO 5360 identification color, and a dead non-conservative ventilation path is deleted. |
 | v0.2.3 | Completed | Hardening and verification release on the same model: displayed concentrations are rounded to the resolution the solver actually supports, the chart payload is bounded and the render cadence decoupled from the simulation's, and the coupled dynamics are gated on an independent RK4 solution rather than on mass balance alone. Six further items rebuilt the development queue, swept the documentation, and recorded release provenance. |
 | v0.2.4 | Completed | Verification and delegation release on the same model: fourteen previously untested capacity and validation guards in the scientific core and the controller now have tests, `_halt_run`'s deliberate suppression is covered by a test rather than only a comment, and work whose success a command can prove can be handed to a cheaper model and verified in one step. |
-| v0.2.5 | Completed / current baseline | Licensing, documentation and planning release: the project is licensed Apache-2.0, v0.3.0 through the MVP is scoped onto one timeline with its debt gates, Phase 0 is retired in favour of the standing debt gate, and `docs/worker.md` states what a delegated worker decides for itself. No source file changed. |
+| v0.2.5 | Completed | Licensing, documentation and planning release: the project is licensed Apache-2.0, v0.3.0 through the MVP is scoped onto one timeline with its debt gates, Phase 0 is retired in favour of the standing debt gate, and `docs/worker.md` states what a delegated worker decides for itself. No source file changed. |
+| v0.2.6 | Completed / current baseline | Delegation and release-tooling release on the same model: work whose success a command can prove now has to name that command and have run it, `docket` computes the debt gate and the cadence beat instead of a session transcribing them, and the release path itself stopped breaking `make check` and leaving this table behind. The one scientific item widened the splitting-error bound to the whole settings envelope. No equation, parameter, or numerical method changed. |
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened to the whole settings envelope, the simulation step made transactional, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
-**Tags.** v0.0.1, v0.0.2, v0.2.3, v0.2.4 and v0.2.5 carry annotated tags.
+**Tags.** v0.0.1, v0.0.2, v0.2.3, v0.2.4, v0.2.5 and v0.2.6 carry annotated tags.
 `bin/docket release` now refuses to cut a release while the version it is
 releasing from is untagged, so the practice cannot lapse again (PL-J3ZK).
 
@@ -64,15 +65,19 @@ ordinary ancestors of `main` and can be tagged at any time.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.2.5
+## Current baseline: v0.2.6
 
-v0.2.5 is a licensing, documentation and planning release on the v0.2.0
-model, carrying seven items and changing no source file. The project is
-licensed Apache-2.0; v0.3.0 through the MVP is scoped onto one timeline with
-its debt gates ("The plan" below); Phase 0 is retired in favour of the
-standing debt gate; and `docs/worker.md` states what a delegated worker
-decides for itself before what it may not touch. Full notes are in
-`docs/releases/v0.2.5.md`.
+v0.2.6 is a delegation and release-tooling release on the v0.2.0 model,
+carrying ten items. Work whose success a command can prove must now name that
+command, and the command must have been run before it was written down
+(PL-G049). `docket` computes what a session used to transcribe: the frozen
+debt gate (PL-9CNQ), the beat of the rolling-wave cadence (PL-6G8C), and the
+untriaged worklist with the rules each answer must satisfy (PL-K79K). The
+release path itself stopped breaking `make check` by leaving `uv.lock` behind
+(PL-674D) and stopped leaving this file's version table and baseline heading
+to drift (PL-N2N1). The one scientific item widened the splitting-error bound
+from a single operating point to the whole settings envelope (PL-042). Full
+notes are in `docs/releases/v0.2.6.md`.
 
 Like every release since v0.2.0 it changes no equation, parameter, or
 numerical method: `docs/MODEL.md`'s specification of the model is unchanged,
@@ -85,6 +90,13 @@ below, and does not change release to release while the patch series
 continues.
 
 ### Release narrative
+
+v0.2.5 was a licensing, documentation and planning release carrying seven
+items and changing no source file. The project became licensed Apache-2.0;
+v0.3.0 through the MVP was scoped onto one timeline with its debt gates ("The
+plan" below); Phase 0 was retired in favour of the standing debt gate; and
+`docs/worker.md` came to state what a delegated worker decides for itself
+before what it may not touch.
 
 v0.2.4 was a verification and delegation release. Fourteen previously
 untested capacity and validation guards in the scientific core and the

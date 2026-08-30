@@ -20,7 +20,25 @@ process_classes = ["session-cost", "docs", "infra"]
 debt_classes = ["defect", "safety", "science", "refactor", "perf"]
 
 # Past this, the top band stops answering "what next?" at a glance.
-top_band_limit = 5
+#
+# Raised from the package default of 5 on 2026-08-30, deliberately and not as
+# a way of silencing the advisory. `checks.py` refuses to seat a `safety`- or
+# `science`-classed item below P1, and every P1 item this project has ever held
+# carries one of those classes. So the band's size here is a measure of how
+# much safety work is open, which is what the debt gate already tracks - not a
+# measure of anyone having over-prioritized, which is what the advisory was
+# built to catch. At 5 it fired continuously and meant nothing.
+#
+# 12 rather than 10: nine are open today and four of them arrived in a single
+# session, so a limit set one above the current count would fire again within
+# days and teach the same lesson - that the advisory is noise. Twelve leaves
+# real headroom while still meaning something if it is reached.
+#
+# Do not "tidy" this back to the default. Exempting safety-classed items from
+# the count was considered and rejected: it would silence the advisory
+# permanently here, and a band that grows to twenty safety items is a genuine
+# problem a session should be told about.
+top_band_limit = 12
 
 # Past this, an untriaged capture has become a second queue nobody reads.
 untriaged_stale_days = 14
