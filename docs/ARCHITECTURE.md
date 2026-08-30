@@ -174,22 +174,16 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-├── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, ROADMAP.md's release train and current baseline
-└── review-verification/  # read-only harness reproducing the v0.2.0 architecture-review findings
+└── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, ROADMAP.md's release train and current baseline
 ```
-
-`tools/review-verification/` is evidence, not tests: each script re-runs a
-reviewed claim against the current tree and reports whether it still
-reproduces. See its own `README.md` for what each check means and why it
-exits `1` on a healthy tree.
 
 `tools/doc_check.py` holds this document to the code. The package-map trees
 above are checked against the tree on disk in both directions, so a module
 added here without a line in the map, or a line left behind after a deletion,
 fails `make check`. That is why the trees list every module individually: a
-directory drawn with no children beneath it (`tools/review-verification/`)
-stands for its whole subtree and is not expanded, and `__init__.py` is
-excluded throughout. The same tool checks `docs/MODEL.md`'s provenance table against
+directory drawn with no children beneath it stands for its whole subtree and
+is not expanded — no tree draws one today — and `__init__.py` is excluded
+throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
 

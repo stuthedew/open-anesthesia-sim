@@ -95,65 +95,58 @@ learner who does not notice a 120x setting will misread the time axis
 entirely. Being an `L`, it needs scoping into a `ROADMAP.md` milestone
 before implementation.
 
-## Open thread: the architecture review harness - PL-024
+## Open thread: what the v0.2.0 architecture review left behind - PL-024, PL-6GS0
 
-An independent architecture review of the v0.2.0 baseline (commit
-`3251ebf`) produced an executable harness under `tools/review-verification/`
-rather than a prose write-up alone: every numeric claim it makes is
-reproduced by a script, so a later reader can re-run the claim instead of
-trusting the text.
+An independent architecture review of the v0.2.0 baseline (commit `3251ebf`)
+reported 21 findings and shipped an executable harness under `tools/` rather
+than a prose write-up alone, so that every numeric claim could be re-run
+instead of trusted. Eight findings had a crisp programmatic reproduction; the
+rest were design, presentation and documentation judgements a script cannot
+adjudicate.
 
-The harness is on the development line (`655e429`, the cherry-pick of
-`0ccfa44` from `claude/repo-architecture-review-3h39kh`); that branch has
-since been deleted, so the harness is the whole record. The three
-safety-critical findings it carried were fixed in v0.2.1 (`bc5f823`) and
-their checks now report FIXED: `P1-2`, `P1-3`, and `P1-5`. Both scripts now
-run at 5% delivered rather than 8%, since 8% is no longer a deliverable
-isoflurane dial position. `P1-1`'s two checks were fixed after that, by the
-exception-hierarchy and guarded-loop work, `P1-6` after that when the dead
-`advance_ventilation` method was deleted, and `P1-4` when the parameter-file
-schemas were made strict; seven of the harness's nine checks are now FIXED
-and two still reproduce. Those fixes shipped in v0.2.2; the current
-baseline is v0.2.3.
+**The harness is retired** (PL-STNV, 2026-08-30). Seven of its eight defect
+checks reported FIXED and each is a closed item: `P1-1` PL-018, `P1-2` PL-015,
+`P1-3` PL-017, `P1-4` PL-021, `P1-5` PL-016, `P1-6` PL-022. The eighth, `P2-1`,
+had two halves and both are closed - the step-size half by PL-VP7N's
+applicability-domain guard, which now refuses the coarse step the check itself
+used and so stops it running at all, and the mass-balance half by PL-023's
+independent RK4 oracle. Its three physics checks were CONFIRMED and two of
+them are now release gates in `tests/reference/test_coupled_dynamics.py`. What
+was left was a second verification path for checks the reference suite already
+makes, plus a script reporting a defect nobody could act on because it was
+never in the queue - which is worse than no harness, because it looks like
+tracking. Recover it with `git log --diff-filter=D -- tools/review-verification`
+if a claim ever needs re-running.
 
-Re-run after those fixes, `verify_physics.py` confirms all three physics
-claims and `verify_findings.py` reproduces the two checks behind the two
-remaining findings. The physics side
-matters independently of the defects: it re-derives the
-`docs/MODEL.md` equations from the parameter files with a from-scratch RK4
-that imports no solver from `core/`, so agreement is genuine verification
-rather than a tautology. It also shows a single matrix exponential is exact
-(~1e-15) where the shipped pairwise split is not (~2e-5), which is the
-evidence behind the review's central architectural recommendation. The
-review's own note was that the remedy for the splitting error is not to
-adopt `expm` outright but to promote the RK4 oracle into `tests/reference/`
-with pinned vectors. That promotion has landed as
-`tests/reference/test_coupled_dynamics.py`, so the coupled model is now
-checked against an independent solution on every CI run; the oracle here
-stays as the exploratory version, and is still where the `expm` comparison
-lives.
+That mass balance cannot detect a wrong *rate* is not a defect and will not
+be re-found: it is a standing property of equal-and-opposite accounting,
+recorded in `docs/MODEL.md` § "Selected method (as implemented)" and gated by
+the independent-solution test beside it.
 
-Every finding that still reproduces is tracked. In the harness's own
-numbering (`P1-1`, `P1-4` and `P1-6` are closed; see the punch list's
-completed section):
+**PL-024 - the venous pool's grip on the first minute.** The one check that
+still reproduced at retirement, and a documentation and presentation gap
+rather than a defect: 1.0 L is the Gas Man reference value and is cited twice
+in `reference_adult.json`, so the number is right and its meaning is unstated.
+Its mixing time constant is 60 - V/Q̇ = 12 s at the reference 1.0 L and
+5 L/min, which dominates the displayed mixed-venous value early in wash-in.
+Measured against a near-instant 0.01 L pool, sevoflurane at 5% delivered:
 
-`P2-1` is closed but will keep reporting REPRODUCED, and that is not a
-regression. Its check measures whether mass balance alone can detect a wrong
-rate, and mass balance still cannot: the fix was to add a second, independent
-gate beside it, not to make the accounting validator into something it is
-not. Read that check as a standing statement about what conservation buys,
-not as an open defect.
+```text
+t=  30 s   pooled 0.00013   near-instant 0.00030    -55.5%
+t=  60 s   pooled 0.00100   near-instant 0.00152    -34.5%
+t= 120 s   pooled 0.00482   near-instant 0.00582    -17.2%
+```
 
-- `P2-4` - PL-024, the venous pool's 12 s mixing time constant shaping the
-  first minute of the displayed mixed-venous trace. Judged a documentation
-  and presentation gap rather than a defect: 1.0 L is the Gas Man reference
-  value and is cited twice in `reference_adult.json`, so the number is
-  right and its meaning is unstated.
-
-Fixing a finding flips its check to FIXED and makes the harness exit `1`,
-which is the intended signal that the review write-up is stale for that
-item - not a build failure. The scripts live outside `src/` and `tests/`
-deliberately and are not part of the test suite.
+**PL-6GS0 - the exact-step question.** The review's central architectural
+recommendation was that the coupled system is linear and time-invariant within
+a step, so one matrix exponential is exact where the pairwise split is
+\(O(\Delta t)\). The review itself deferred it in favour of promoting the RK4
+oracle into CI, which landed as `tests/reference/test_coupled_dynamics.py`. The
+deferral was never revisited, and the measured comparison it rests on is
+carried in the item rather than here, since the harness that produced it is
+gone. It bears on the playback-speed thread above: an exact step would make a
+larger step a fidelity-free choice, which is exactly what that thread assumes
+it is not.
 
 ## Open thread: scenario branching, bookmarks, and what a snapshot is for - PL-DHV7, ROADMAP items 8, 11, 12 and 26
 
