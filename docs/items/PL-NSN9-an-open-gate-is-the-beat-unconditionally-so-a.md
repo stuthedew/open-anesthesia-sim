@@ -1,7 +1,10 @@
 ---
 id: PL-NSN9
 title: An open gate is the beat unconditionally, so a release inserted ahead of it cannot become the beat
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: infra, session-cost
 feature: planning-cadence
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py, ROADMAP.md
 added: 2026-08-30
@@ -38,16 +41,36 @@ it would satisfy, so the existing `shipping_the_gate` test cannot separate the
 two. The fact lives only in the timeline's prose ("Gate 0's frozen debt list,
 recorded under v0.4.0 below").
 
-**Approach.** Make the relationship explicit rather than inferred: have the
-milestone section that ships a gate name it, and have `parse_milestones` read
-it, so `wave()` can ask "is the current step the gate's release?" instead of
-guessing from version order. Then the beat is the gate only from that step
-onward; a release ahead of it takes the beat, and the gate still clears before
-the milestone it gates, which is the cadence's actual rule.
+**This is a decision, not a defect.** The behaviour is deliberate and named:
+`test_an_open_gate_is_the_beat_whatever_else_is_written` calls itself "the
+acceptance case". `ROADMAP.md`'s "Why the gates are on this list and not behind
+it" gives the reason - "a gate that lives in a separate document, or in a
+session's memory, is renegotiated every time it is inconvenient" - and an
+unconditional beat is what makes that true. Anything here trades some of that
+non-negotiability away, so it needs the owner's decision rather than a fix.
 
-**Do not weaken the gate.** The rule that a gate clears before the milestone it
-gates is the point of the mechanism and must survive this unchanged. What
-changes is only which *step* the gate is attached to, not whether it binds.
+**The case for changing it anyway.** `ROADMAP.md`'s own rule is narrower than
+the code: "the gate clears before that milestone's implementation begins" - it
+binds v0.4.0, not everything that precedes it. Gate 0 ships as v0.3.0 by the
+recorded exception, so a release inserted at v0.2.8 reorders releases without
+touching what the gate binds: it still clears in v0.3.0, still before v0.4.0.
+On that reading `wave()` over-applies the rule rather than enforcing it.
+
+**Approach, if changed.** Make the relationship explicit rather than inferred:
+have the milestone section that ships a gate name it, and have
+`parse_milestones` read it, so `wave()` can ask "is the current step the gate's
+release?" instead of guessing from version order. The beat is then the gate
+from that step onward, and a release ahead of it takes the beat.
+
+**The cheaper alternative, if not.** Leave the cadence alone and change only
+what the digest renders: say the beat as the obligation it is ("clear the gate
+- blocks v0.4.0") rather than as the instruction for right now. The step line
+then carries the current work and the two stop contradicting each other, with
+no change to what binds. This keeps the gate exactly as non-negotiable as it is
+today and is much the smaller change.
+
+**Whichever is chosen, do not weaken what the gate binds.** The rule that a
+gate clears before the milestone it gates must survive unchanged.
 
 **Related.** `PL-20ZR` (the workflow-before-features ordering is re-explained
 every session) is blocked on this: it is the mechanism that would carry the
@@ -55,8 +78,17 @@ ordering. `PL-1TPM` (`docket next` ranks work the current milestone excludes)
 and `PL-019F` (the "what next" rule answers one level below the roadmap step
 that should decide it) are the same seam seen from the queue side.
 
-**Done when.** A milestone section can name the gate it ships; `wave()` makes
-the gate the beat only from that step onward; a release inserted ahead of it
-becomes the beat with the gate still recorded and still binding; and tests
-cover the inserted-release case, the gate-release case, and the case after the
-gate's release has shipped.
+**Decision needed.** Move the beat so an inserted release outranks an open
+gate, or leave the cadence alone and change only how the digest says the
+beat. The first makes the digest's step and beat agree by changing what the
+beat means; the second by changing how it reads, giving up none of the
+gate's non-negotiability. Recommendation: the second, unless the owner wants
+the beat to be the single place a phase is declared.
+
+**First step.** Answer the decision above. Both end with the digest's first two lines agreeing; they
+differ in whether the gate's unconditional precedence is given up to get there.
+
+**Done when.** The session-start digest's step and beat lines cannot name work
+in different releases; `test_an_open_gate_is_the_beat_whatever_else_is_written`
+is either still passing or deliberately replaced with a test that states the
+new rule and says why; and what the gate binds is unchanged.
