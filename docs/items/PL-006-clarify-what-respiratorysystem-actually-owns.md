@@ -65,6 +65,28 @@ the patient's fat compartment either way. And the real boundary defect runs
 the other direction — simulation logic has leaked out into the controller,
 which is part 3.
 
+**Measured — what part 3's setter does today.** An outside review of the
+repository reproduced this against the running code, recorded here as evidence
+for part 3 rather than filed as a separate item. A sevoflurane system stepped
+60 s holds 0.048288200 L of agent in the circuit. Calling
+`BreathingCircuit.set_circuit_volume(3.0)` drops that to 0.024144100 L —
+24.1 mL of equivalent agent gas destroyed by a setter — and the next
+`advance(0.1)` raises `AgentSimulationValidationError`, blaming the numerics for
+a setter's defect.
+
+That violates two of `docs/MODEL.md`'s required invariants directly: `:735`
+("no compartment creates agent spontaneously") and `:738` ("changing a setting
+does not reset stored state"). Every sibling setter that conserves says so in
+its docstring; this one documents nothing, so the non-conservation is invisible
+at the call site.
+
+`app/controller.py:280-290` compensates, so the shipped application is safe —
+and that is itself the point part 3 makes. Mass-conservation logic lives in the
+app layer while `core/` exposes the unconserving primitive publicly, so the
+invariant holds only for callers who know to go the long way round. Moving the
+conservation into `set_circuit_volume` is what makes the public primitive the
+safe one.
+
 **Done when.** The naming and the delegation boundary agree with each other,
 the circuit-volume conservation lives in core, call sites and the four
 documentation files are updated, and the reference tests pass unchanged in
