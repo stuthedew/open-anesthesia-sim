@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: planning-cadence
+milestone: v0.2.6
 touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-08-26
 closed: 2026-08-26
