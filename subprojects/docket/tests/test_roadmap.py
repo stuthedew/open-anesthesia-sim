@@ -18,9 +18,13 @@ from docket.roadmap import (
     CLEAR,
     FREEZE,
     IMPLEMENT,
+    IN_SCOPE,
+    OUT_OF_SCOPE,
     RELEASE,
     SCOPE,
+    UNPLACED,
     baseline_heading,
+    milestone_scope,
     parse_milestones,
     parse_timeline,
     parse_version_table,
@@ -50,7 +54,7 @@ Shipped.
 
 ### Required scope
 
-Done.
+Done (queue item PL-PQRS).
 
 ### Definition of done
 
@@ -255,6 +259,62 @@ def test_a_timeline_the_version_has_run_off_the_end_of_reports_no_step() -> None
     plan = _wave("9.9.9", frozenset(GATE_IDS), roadmap=ended)
     assert plan.step is None
     assert plan.beat == SCOPE and plan.subject == ""
+
+
+# --- what a milestone section says about an item ----------------------------
+
+
+def _section(version: tuple[int, int, int]):
+    return {section.version: section for section in parse_milestones(ROADMAP)}[version]
+
+
+def test_a_section_names_the_ids_it_covers_wherever_they_sit_in_the_prose() -> None:
+    """Scope is read differently from the gate list above it, and has to be.
+
+    A gate entry is one bullet per problem, so it is read by the bullet's head.
+    A milestone names the items it covers in whatever grammar the sentence
+    wanted - mid-bullet as "(queue item PL-MNPQ)", or in the paragraph saying
+    which ones it clears itself - and reading only bullet heads misses both.
+    """
+    assert set(_section((0, 4, 0)).item_ids) == {
+        "PL-001",
+        "PL-BCDF",
+        "PL-GHJK",
+        "PL-KLMN",
+        "PL-MNPQ",
+    }
+    assert _section((0, 3, 0)).item_ids == ()
+
+
+def test_the_scope_places_an_id_by_the_milestone_whose_section_names_it() -> None:
+    scope = milestone_scope(parse_milestones(ROADMAP), _section((0, 3, 0)))
+
+    assert scope.placement("PL-MNPQ") == OUT_OF_SCOPE
+    assert scope.milestone("PL-MNPQ") == "v0.4.0"
+    assert scope.placement("PL-ZZZZ") == UNPLACED
+
+
+def test_a_released_milestones_section_places_nothing() -> None:
+    """Its narrative records where a problem was raised, not what is current."""
+    scope = milestone_scope(parse_milestones(ROADMAP), _section((0, 4, 0)))
+
+    assert scope.placement("PL-PQRS") == UNPLACED
+    assert scope.placement("PL-MNPQ") == IN_SCOPE
+
+
+def test_the_wave_carries_the_scope_of_the_milestone_the_beat_is_about() -> None:
+    plan = _wave("0.2.5")
+
+    assert plan.beat == CLEAR
+    assert plan.scope.anchor == "v0.4.0 — the teachable case"
+    assert plan.scope.placement("PL-001") == IN_SCOPE
+
+
+def test_a_plan_with_no_milestone_to_anchor_on_places_nothing() -> None:
+    scope = milestone_scope(parse_milestones(ROADMAP), None)
+
+    assert scope.anchor == ""
+    assert scope.placement("PL-001") == UNPLACED
 
 
 # --- what the answer refuses to do ------------------------------------------

@@ -58,11 +58,41 @@ right.
 
 ### Choosing is answered, not browsed
 
-`docket next` ranks the work and says why it picked it. `P0` first, then —
-*within* a priority band — work that finishes a feature already underway,
-because a shipped feature is worth more than equal progress spread across
-several. Work already in flight on a branch is excluded rather than ranked
-low.
+`docket next` ranks the work and says why it picked it. `P0` first, then what
+the roadmap's current step includes, then — *within* a priority band — work
+that finishes a feature already underway, because a shipped feature is worth
+more than equal progress spread across several. Work already in flight on a
+branch is excluded rather than ranked low.
+
+The step's scope is preferred *absolutely* rather than as a tie-breaker inside
+a band, because the priority field cannot express the phase: `docket check`
+pins `safety` and `science` items to `P1`, so the top band is product work by
+construction and a tie-breaker there would never fire in the case the rule
+exists for. `P0` sits above it: a hotfix outranks the phase.
+
+### What a milestone names, and what it does not
+
+The scope above is read from one fact and no others: an item id printed in a
+milestone's own section of the roadmap. An id named in the milestone the
+current beat is about is work the step includes; an id named only in a later
+milestone's section is marked with that milestone (`scoped to v0.4.0, not this
+step`) and ranked below it; an id named in no section at all is neither: it
+carries no mark, and sits between the two in the ranking. That silence is deliberate — most of a queue is placed
+nowhere, and reading it as exclusion would be a verdict rather than a fact.
+
+Out-of-scope work is marked, never hidden, for the same reason. Whether an
+item is *really* out of scope is a judgment about the prose around its id, and
+the command reads ids rather than sentences.
+
+Three things follow, and they are limitations in the same way the concurrency
+answer below is:
+
+- A milestone that excludes something in prose alone excludes it invisibly
+  here. No id, no marking.
+- An id named in a later section for *any* reason reads as that milestone's
+  scope — including a sentence deferring the item *out* of it.
+- A released milestone's section places nothing. Its narrative records where a
+  problem was raised, not what is current work.
 
 ### Concurrency is computed, and honestly qualified
 
