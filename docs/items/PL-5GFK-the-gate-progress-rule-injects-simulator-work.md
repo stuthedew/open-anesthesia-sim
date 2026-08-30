@@ -1,11 +1,15 @@
 ---
 id: PL-5GFK
 title: The gate-progress rule injects simulator work into every process-work session, which PL-36SC did not reach
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: worker-instructions
 touches: CLAUDE.md
 added: 2026-08-30
-classes: defect
+verify: python3 tools/doc_check.py check
+not-delegable: the change rewrites a rule in CLAUDE.md that every session then follows; whether the scoped rule fires in the right sessions is a judgment about instruction prose, which no check decides
 ---
 
 **Problem.** `CLAUDE.md`'s "Report gate progress after every completed item"
@@ -36,6 +40,16 @@ fix is a scope line, not a deletion — the same shape `PL-36SC` used.
 *in* the gate" (decidable — `docket gate` already computes membership, so this
 could be a tool answer rather than an instruction) or "the session is about
 the milestone". The first is cheaper and cannot be forgotten.
+
+**Decided at triage (2026-08-30).** The trigger is membership: the rule fires
+when the item just closed is one the gate contains, and is silent otherwise.
+That is the cheaper of the two and the one that cannot be forgotten, and it
+needs no tool change — `bin/docket gate` and `docket wave` already print the
+frozen entries by id, so the test is answerable at the moment the rule fires.
+The edit is therefore a scope line on the existing bullet, in the same shape
+`PL-36SC` used, rather than a new command. Overturn this in favour of "the
+session is about the milestone" only if membership proves too narrow in
+practice — it would readmit the judgment the scoping was meant to remove.
 
 **Done when.** Closing a process item that the gate does not contain does not
 produce a report on the gate, and the rule still fires when a gate item
