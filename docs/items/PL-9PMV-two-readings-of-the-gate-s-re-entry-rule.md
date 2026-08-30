@@ -4,12 +4,13 @@ title: Two readings of the gate's re-entry rule disagree, and a real finding now
 priority: P2
 effort: S
 status: done
-closed: 2026-08-30
-commit: 47b1077
 classes: defect, docs
 feature: planning-cadence
+milestone: v0.2.7
 touches: ROADMAP.md
 added: 2026-08-30
+closed: 2026-08-30
+commit: 47b1077
 ---
 
 **Problem.** `ROADMAP.md` states the gate's re-entry rule twice, and the two

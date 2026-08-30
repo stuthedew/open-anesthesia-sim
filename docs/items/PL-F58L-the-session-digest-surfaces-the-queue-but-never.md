@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost, infra
 feature: planning-cadence
+milestone: v0.2.7
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-26
 closed: 2026-08-30
