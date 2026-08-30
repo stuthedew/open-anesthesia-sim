@@ -38,19 +38,22 @@ files in the tree change.
 **private**, and GitHub enforces neither rulesets nor classic branch
 protection on private repositories under GitHub Free — rulesets need Pro or
 above, and on a Free plan the rules can be created but are not enforced.
-Three ways out, and they are not equally good:
+Two ways out:
 
   - **GitHub Pro.** Cheapest and immediate. Rulesets become enforceable on
     this repository with no other change.
-  - **Make the repository public.** Rulesets are free on public repositories,
-    and the project is Apache-2.0 licensed with a `public-history` feature
-    whose whole premise — `PL-XH1D` (state how the project is developed) is
-    "read by anyone evaluating whether to trust the simulator" — assumes an
-    audience. This is probably the intended end state, but it is a decision
-    about when to publish, not a settings change, and it should not be made
-    in order to get a CI gate.
   - **Nothing, and keep merging on discipline.** Records the risk honestly
     rather than pretending a rule exists.
+
+**Publishing the repository is not one of them (project owner, 2026-08-30).**
+Rulesets are free on public repositories, and `public-history`'s premise —
+`PL-XH1D` (state how the project is developed) is "read by anyone evaluating
+whether to trust the simulator" — assumes an audience, so it reads like the
+cheap route. It is not available. When this project is published is the
+owner's decision to make personally, and it will not be taken in order to
+obtain a CI gate. Do not re-raise it here or in any sibling item: a settings
+problem is not a reason to publish a repository, and offering it as one puts
+an irreversible disclosure decision behind a routine convenience.
 
 **Do not require an approving review.** GitHub forbids a pull request's author
 from approving it, as a platform rule no setting overrides, and every pull
