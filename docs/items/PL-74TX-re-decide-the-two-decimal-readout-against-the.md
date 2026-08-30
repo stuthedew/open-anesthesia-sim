@@ -1,8 +1,16 @@
 ---
 id: PL-74TX
 title: Re-decide the two-decimal readout against the widened splitting-error measurement
-status: untriaged
+priority: P1
+effort: S
+status: done
+classes: safety, docs
+feature: numerical-domain
+touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-08-30
+closed: 2026-08-30
+commit: f252aa4
+verify: uv run pytest tests/reference/test_coupled_dynamics.py -k reverses_only_at_a_crossing
 ---
 
 **Problem.** PL-040 chose a 0.01 percentage-point readout on the strength of
@@ -37,3 +45,45 @@ measurement with the reasoning recorded, or the resolution changes and
 `docs/MODEL.md` is revised with it; and the interface either conveys that a
 gradient between two compartments is less certain than either reading, or
 `docs/MODEL.md` records why it need not.
+
+---
+
+**Decided 2026-08-30: the readout stays at two decimal places.** Recorded in
+`docs/MODEL.md` § "Displayed precision" as a re-affirmation against the
+widened measurement rather than a restatement of PL-040, and the alternative
+is what settles it: a one-decimal readout would be uncertain by a fifth of a
+count even at the extreme, but at 0.1 percentage points the fat fraction
+reads `0.0%` for an entire hour and muscle for its first three to fifteen
+minutes — the failure that section already rejects. The widened measurement
+moved where inside that window the answer sits, not which side of it. No code
+changed; `CONCENTRATION_DISPLAY_DECIMALS` was already 2.
+
+**The compartment-difference half is resolved by measurement, not by
+marking.** The question was whether the interface must convey that a gradient
+between two compartments is less certain than either reading. It need not,
+and the reason is that the comparison the row invites is *ordinal* — the
+circuit leads the alveoli lead the tissues — and an ordinal reading is
+corrupted only if the error inverts which of two compartments is displayed as
+higher.
+
+Measured across every trajectory the gate drives, all three agents, every
+pair of the six readouts at every step: no inversion at all at ordinary
+settings, at the reference point, at the envelope corner, or across a
+ventilator start. Inversions occur only on the worst reachable trajectory —
+0.2 s of a 900 s run for sevoflurane, 1.7 s for desflurane — and only where
+the two compartments are within 1.73 counts of the last displayed digit of
+each other, which is to say only while they are crossing and the ordering is
+genuinely ambiguous.
+
+`test_displayed_ordering_reverses_only_at_a_crossing` holds that claim rather
+than leaving it to the reply that made it: it fails if the split ever inverts
+a displayed ordering between two compartments further apart than three
+counts. That is 1.7x the measurement and far tighter than the arithmetic
+alone would allow — two readings displaced in opposite directions by the full
+error bound, plus rounding, could invert a gap of about 6.6 counts — so a
+degradation that mattered would fail this well before it reached what the
+bound permits.
+
+The numeric *difference* between two readouts remains the least certain thing
+on the display, and § "Displayed precision" says so plainly. What changed is
+that the claim is now bounded where it matters instead of only disclosed.
