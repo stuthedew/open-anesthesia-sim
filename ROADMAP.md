@@ -1113,6 +1113,23 @@ rather than discovery time is what keeps it from reopening for *that* kind of
 finding while still closing the gap where a stranded branch or a slow session
 means the same problem gets rediscovered under a new id (queue item `PL-64LS`).
 
+**Friction that compounds is the clearest presence case** (project owner,
+2026-08-30). A finding whose cost is paid again by every remaining entry - a
+tool that answers the wrong question, a check that cries wolf, a command that
+ends red on success - was almost always present at the freeze and merely
+invisible until the gate's own work started paying it. Deferring one is a
+decision to pay it once per remaining entry, so it re-enters, and it is worked
+early rather than merely admitted.
+
+The test is arithmetic, not enthusiasm: name what each remaining entry pays and
+multiply by how many remain. `PL-0RS6` qualified at eighteen entries times a
+twelve-command detour apiece, which is a large fraction of the saving the
+release exists to deliver. Work that is merely valuable, cleaner or more
+interesting - rewriting a working tool in another language, adopting a nicer
+abstraction - makes no remaining entry cheaper, so it fails the test and waits
+for the roadmap however appealing it is. If the per-entry saving cannot be
+named, the finding does not qualify.
+
 **Presence is a presumption, not an absolute rule.** Favor it: a finding that
 continues or completes an item already inside the frozen list belongs to this
 gate, recorded with what it continues — `PL-SWFM` continuing `PL-Z4GF`'s

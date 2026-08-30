@@ -414,6 +414,26 @@ reason to load the skill:
   rather than extending this one; `P0` and safety- or science-classed findings
   are the exceptions and re-enter immediately. Say which gate a piece of work
   is inside when it matters.
+- **Friction that compounds is recommended the moment it is found, not filed.**
+  Some process findings are paid again by every remaining piece of work: a tool
+  that answers the wrong question, a check that cries wolf, a command that ends
+  red on success. Their cost is the per-item cost times the items left, so
+  deferring one is a decision to pay it N more times. Say so in the reply that
+  finds it - with the arithmetic, and a recommendation to do it first. Recording
+  it and moving on is not enough: the owner cannot act on what only reached the
+  queue, and by the time they notice, the N has been paid.
+
+  A freeze is not a reason to defer it. `ROADMAP.md`'s "The gate is a snapshot"
+  re-enters a finding whose *problem* was present when the list was frozen,
+  whatever date it was filed under, and compounding friction is nearly always
+  such a problem - it was there all along and only became visible once the
+  gate's own work began paying it.
+
+  The test is arithmetic, not enthusiasm. Name the per-item saving and multiply
+  by the items remaining. Work that is merely valuable, cleaner or more
+  interesting - rewriting a working tool in another language, say - makes no
+  remaining item cheaper and waits for the roadmap, however appealing. If the
+  per-item saving cannot be named, it does not qualify.
 - **A new idea raised mid-task goes to the roadmap, not into the work.** The
   owner generates ideas faster than any queue absorbs them, and has asked to
   be kept on task when one arrives in the middle of something else. So say
