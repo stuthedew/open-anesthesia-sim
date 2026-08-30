@@ -12,9 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
+      # No `python-version:` input on purpose. It sets UV_PYTHON, which
+      # overrides `.python-version`, so CI would resolve its own interpreter
+      # instead of the pinned one. The interpreter is named once, in
+      # `.python-version`, and `uv sync` installs it. uv's own version comes
+      # from `required-version` in pyproject.toml, which this action reads.
       - uses: astral-sh/setup-uv@v9.0.0
         with:
-          python-version: "3.14"
           enable-cache: true
 
       - run: uv sync --locked --dev

@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect, infra
 feature: dev-tooling
-touches: pyproject.toml, .python-version, uv.lock
+touches: pyproject.toml, .python-version, uv.lock, .github/workflows/quality.yml, README.md
 added: 2026-08-30
 verify: uv run python -c "import sys; assert sys.version_info.releaselevel == 'final', sys.version"
 ---
