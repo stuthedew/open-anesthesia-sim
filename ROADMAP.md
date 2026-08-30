@@ -528,8 +528,8 @@ milestone's own scope". The other fourteen clear before implementation begins.
 The list itself stays frozen; an entry records its own outcome as it closes,
 per "The cadence" below.
 
-**Cleared before v0.4.0 begins — 19 entries, 20 item ids** (14 and 15 at the
-freeze; five were added later, per the two notes beneath this list). These are
+**Cleared before v0.4.0 begins — 20 entries, 21 item ids** (14 and 15 at the
+freeze; six were added later, per the two notes beneath this list). These are
 exactly what v0.3.0, the foundation release, ships.
 
 Count entries, not ids: the PL-Z4GF/PL-SWFM entry below holds two ids for one
@@ -542,7 +542,7 @@ it named had already been closed. `bin/docket wave` reads the entries below
 against `docs/items/` and reports the split, so the answer is computed from the
 same files that would be used to check it.
 
-*Core correctness — both safety- or science-classed, both wanting the
+*Core correctness — all safety- or science-classed, all wanting the
 strongest model:*
 
 - PL-026 (M) Make the simulation step transactional so a halt leaves no
@@ -555,6 +555,12 @@ strongest model:*
   operating point. Added after the freeze; see below.
 - PL-9Y42 (S) Validate wash-in against a published human measurement. Added
   after the freeze; see below.
+
+*Presentation safety — `safety`-classed, and the one entry whose defect is not
+in `core/`:*
+
+- PL-NV9W (S) Label the alveolar readout end-tidal-equivalent, as
+  `docs/MODEL.md` requires. Added after the freeze; see below.
 
 *Core boundaries — the whole `core-boundaries` feature, all `refactor`:*
 
@@ -602,29 +608,40 @@ depends on that does not work.
 
 Neither extends what the gate has left to run: both are closed.
 
-**Three entries added 2026-08-30 from an outside review of the repository,
-which recorded nothing of its own.** All three re-enter this gate rather than
+**Four entries added 2026-08-30 from an outside review of the repository,
+which recorded nothing of its own.** All four re-enter this gate rather than
 deferring to Gate 1, on both of the grounds "The gate is a snapshot, not a
 moving target" allows, and they are the only findings of that review that do:
 
 - *By the presence rule.* Each describes a problem present in the tree before
   2026-08-25. `core/` has never had an upper bound on the simulation step; the
   splitting-error gate has held one operating point constant since it was
-  written; and nothing in the repository has ever been compared to a published
-  human measurement.
+  written; nothing in the repository has ever been compared to a published
+  human measurement; and the unhedged `"Alveolar / end-tidal"` label has been
+  in the interface since `74bec83` on 2026-08-23, two days before the freeze.
 - *By the safety/science exception.* PL-VP7N is `safety`, PL-SLHS is
-  `safety`/`science`, PL-9Y42 is `science` — the classes this milestone's
-  out-of-scope list names as re-entering regardless of when they were captured.
+  `safety`/`science`, PL-9Y42 is `science`, PL-NV9W is `safety` — the classes
+  this milestone's out-of-scope list names as re-entering regardless of when
+  they were captured.
 
-Unlike the two entries above, these three do extend what the gate has left to
-run, by three items. That is the rule working as intended rather than a gate
+PL-NV9W was added three entries later than the others, and the delay is worth
+recording because it shows where the rule is easy to miss. The review proposed
+it at `P2`, which would have left it outside the exception; `docket check`
+refuses to seat a `safety`-classed item below `P1`, so triaging it honestly
+raised it — and *that* is what brought it inside this rule. The consequence was
+followed through once the project owner confirmed the priority. A finding's
+gate membership can therefore change as a side effect of classing it correctly,
+which is a thing to check at triage rather than only at capture.
+
+Unlike the two entries above, these four do extend what the gate has left to
+run, by four items. That is the rule working as intended rather than a gate
 being widened: each is a statement `docs/MODEL.md` already makes that the
 implementation does not keep, and v0.3.0's whole claim is that the ground is
 solid. Shipping that release with a `must fail` that does not fail, a release
 bound a shipped trajectory exceeds, and no validation against a human
 measurement would make the claim untrue on the day it was made.
 
-The eleven other findings from the same review are in the queue and clear at
+The ten other findings from the same review are in the queue and clear at
 Gate 1: they are either post-freeze in substance, or classed outside the
 exception.
 
