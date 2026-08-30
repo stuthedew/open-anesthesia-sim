@@ -25,6 +25,7 @@ docket new "The induction curve looks wrong" "Colour-blind palette check"
 docket next --effort S       # what to work on, and why
 docket wave                  # which beat of the plan's cadence is due
 docket list                  # the queue, one line per item
+docket triage                # what is untriaged, and the rules the answers must satisfy
 docket concurrent PL-K7QX    # what can be worked alongside it
 docket feature halted-step   # progress on one feature
 docket release v0.3.0        # verify, bump the version, write the notes
@@ -39,6 +40,20 @@ docket check                 # validate the store; exits non-zero on errors
 band — those are triage, and demanding them at the moment an idea occurs is
 how ideas stop being written down. Several titles in one call, because
 interruptions rarely carry exactly one thought.
+
+### Triage is a worklist, not a verdict
+
+`docket triage` prints every untriaged item with its body, the fields still
+unset, the brief sections still missing, and the rules the answers have to
+satisfy — which classes force the top band, how full that band already is,
+which paths make an item undelegable, what a `ready` item must carry. Those
+are read from the settings and the checker, so they cannot drift from what
+`docket check` will say a moment later.
+
+What an item is worth, how big it is and what it belongs with are not computed
+and never will be. Triage is the judgment; what the command removes is having
+to recall the rules from memory and find out afterwards whether the recall was
+right.
 
 ### Choosing is answered, not browsed
 

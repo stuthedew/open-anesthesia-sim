@@ -101,6 +101,19 @@ def cmd_digest(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_triage(args: argparse.Namespace) -> int:
+    """Everything untriaged, with what is unset on it and what the rules require.
+
+    Prints; decides nothing. The digest already tells every session that items
+    are waiting - what it could not do is put the rules in front of the
+    session at the moment it applies them.
+    """
+    _, items, config = _load(args)
+    report = analyze(items, args.today or date.today(), config)
+    print(render.format_triage(report, config))
+    return 0
+
+
 def cmd_new(args: argparse.Namespace) -> int:
     """Capture one or more ideas, with as little ceremony as it is possible to have.
 
@@ -513,6 +526,9 @@ def build_parser() -> argparse.ArgumentParser:
     add("list", "one line per open item").set_defaults(func=cmd_list)
     add("digest", "the session-start summary").set_defaults(func=cmd_digest)
     add("flight", "branches carrying item work").set_defaults(func=cmd_flight)
+    add("triage", "what is untriaged, and the rules the answers must satisfy").set_defaults(
+        func=cmd_triage
+    )
 
     new = add("new", "capture one or more ideas")
     new.add_argument("title", nargs="+")

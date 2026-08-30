@@ -11,8 +11,9 @@ here and the one that compounds.
 
 from __future__ import annotations
 
-from .checks import Report
+from .checks import REQUIRED_BRIEF, Report
 from .concurrency import undeclared
+from .config import Config
 from .model import PRIORITIES, Item
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
 
@@ -151,6 +152,106 @@ def format_digest(report: Report, in_flight: set[str] | None = None, ready: obje
         )
     lines.append("`bin/docket status` shows the project by feature; `list` shows every item.")
     return "\n".join(lines)
+
+
+def format_triage(report: Report, config: Config) -> str:
+    """Every untriaged item, what is unset on it, and the rules that bind the answer.
+
+    A worklist and a constraint sheet, deliberately not a recommendation. What
+    an item is worth, how big it is, and what it belongs with are judgments,
+    and a tool that guessed at them would produce something that looks
+    authoritative and is not. What *is* mechanical is which fields are still
+    empty and which rules `docket check` will apply the moment the status
+    changes - and that is exactly what a session otherwise reloads a 300-line
+    skill to recall, and then finds out afterwards whether it recalled
+    correctly.
+
+    The constraints are read from the settings and the checker rather than
+    restated here, so they cannot drift from what the checker will actually
+    say.
+    """
+    if not report.untriaged:
+        return "Nothing is untriaged."
+
+    lines = [f"{_plural(len(report.untriaged), 'item is', 'items are')} untriaged.", ""]
+    for item in sorted(report.untriaged, key=lambda i: i.sort_key()):
+        lines.append(f"{item.identifier}  {item.title}")
+        lines.append(f"  unset: {_unset(item)}")
+        missing = [
+            marker for marker in (*REQUIRED_BRIEF, "**Done when.**") if marker not in item.body
+        ]
+        if missing:
+            lines.append(f"  brief still missing: {', '.join(missing)}")
+        declared = _declared(item)
+        if declared:
+            lines.append(f"  declared: {declared}")
+        lines.append("")
+        lines.extend(
+            f"    {line}" if line.strip() else "" for line in item.body.strip().splitlines()
+        )
+        lines.append("")
+
+    lines.append("The rules these answers have to satisfy:")
+    lines.extend(f"  - {rule}" for rule in _triage_rules(report, config))
+    lines.append("")
+    lines.append("What each item is worth, how big it is and what it belongs with are not")
+    lines.append("computed here. This prints the rules; applying them is yours.")
+    return "\n".join(lines)
+
+
+def _unset(item: Item) -> str:
+    """The fields triage exists to fill, marking the ones the checker requires."""
+    fields = [
+        ("priority", item.priority, True),
+        ("effort", item.effort, True),
+        ("classes", ", ".join(item.classes), False),
+        ("touches", ", ".join(item.touches), False),
+        ("feature", item.feature, False),
+    ]
+    names = [f"{name}*" if required else name for name, value, required in fields if not value]
+    return (", ".join(names) + "   (* required by `docket check`)") if names else "nothing"
+
+
+def _declared(item: Item) -> str:
+    parts = []
+    if item.classes:
+        parts.append(f"classes {', '.join(item.classes)}")
+    if item.touches:
+        parts.append(f"touches {', '.join(item.touches)}")
+    if item.feature:
+        parts.append(f"feature {item.feature}")
+    return "; ".join(parts)
+
+
+def _triage_rules(report: Report, config: Config) -> list[str]:
+    """The constraints, stated with the counts that make each one checkable."""
+    counts = report.counts
+    top = next((p for p in PRIORITIES if counts.get(p)), PRIORITIES[0])
+    rules = [
+        f"{'/'.join(config.safety_classes)} classes force P0 or P1; `docket check` "
+        "rejects them at P2 or P3.",
+        f"the top band is {top}, holding {counts.get(top, 0)} of the "
+        f"{config.top_band_limit} a session can choose between at a glance.",
+        f"process work ({', '.join(config.process_classes)}) does not enter the top "
+        "band ahead of the product work already in it - an item counts as process "
+        "work only when every one of its classes is in that set.",
+    ]
+    if config.protected_paths:
+        rules.append(
+            f"`touches` naming {', '.join(config.protected_paths)} makes the item "
+            "non-delegable whatever proves it, so a cheaper model can never take it."
+        )
+    if config.verify_required_from is not None:
+        rules.append(
+            "an item set to `ready` must name a `verify:` command, or record in "
+            "`not-delegable` why no command can prove it. Run the command before "
+            "writing it down."
+        )
+    rules.append(
+        "a status past `untriaged` needs the full brief: "
+        f"{', '.join((*REQUIRED_BRIEF, '**Done when.**'))}."
+    )
+    return rules
 
 
 def format_check(report: Report) -> str:
