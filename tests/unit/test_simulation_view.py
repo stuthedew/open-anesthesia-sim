@@ -1126,3 +1126,49 @@ def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> 
         theme.AGENT_COLOR_SCHEMES.clear()
         theme.AGENT_COLOR_SCHEMES.update(original)
         importlib.reload(module)
+
+
+def test_the_model_keeps_precision_the_display_throws_away() -> None:
+    """The 0.01% resolution is a property of the display alone.
+
+    `docs/MODEL.md` § "Displayed precision" argues at length for two decimal
+    places, and a reader could reasonably take that for a statement about the
+    model. It is not: every compartment state, every integration step, and
+    every history sample carries full binary64 throughout, and the rounding
+    happens once, in the formatter. What limits the model is the splitting
+    error, which is smaller than the last displayed digit in ordinary use.
+
+    Two runs whose only difference is four orders of magnitude below the
+    display resolution must therefore reach different states. If anything in
+    the pipeline quantized to what the display shows — a tidied `round()` in
+    `core/`, a rounded snapshot field — the two would be identical here and
+    this fails, which is the regression the assertion exists to catch.
+    """
+
+    below_resolution = 1e-8  # a fraction, i.e. 1e-6 percentage points
+
+    def run_at(delivered_concentration_fraction: float) -> tuple[float, str]:
+        controller = SimulationController()
+        controller.set_delivered_concentration(delivered_concentration_fraction)
+        controller.start()
+        _advance_to(controller, 120.0)
+        snapshot = controller.snapshot()
+
+        return snapshot.alveolar_concentration_fraction, SimulationView._format_percent(
+            snapshot.alveolar_concentration_fraction
+        )
+
+    baseline_fraction, baseline_displayed = run_at(0.02)
+    perturbed_fraction, perturbed_displayed = run_at(0.02 + below_resolution)
+
+    assert baseline_fraction != perturbed_fraction, (
+        "a change four orders of magnitude below the display resolution left "
+        "the alveolar state bit-identical; something in the model or the "
+        "snapshot is rounding to what the display shows"
+    )
+    assert 0.0 < abs(perturbed_fraction - baseline_fraction) < 1e-6
+    assert baseline_displayed == perturbed_displayed, (
+        "the two runs should be indistinguishable on the display and distinct "
+        "in the model; if they differ on the display this test is no longer "
+        "measuring what it claims"
+    )
