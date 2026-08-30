@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost, infra
 feature: dev-tooling
+milestone: v0.2.6
 touches: .claude/hooks/docket-digest.sh
 added: 2026-08-24
 closed: 2026-08-30

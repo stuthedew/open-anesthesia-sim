@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.2.6
 touches: Makefile, .claude/skills/docket/SKILL.md
 added: 2026-08-25
 closed: 2026-08-30

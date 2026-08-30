@@ -5,6 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: safety, science
+milestone: v0.2.6
 touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-08-24
 closed: 2026-08-26
