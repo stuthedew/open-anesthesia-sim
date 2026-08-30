@@ -16,9 +16,10 @@ the parameter loaders and nothing else from `anesthesia_sim`. Re-deriving an
 equation from the specification is evidence; calling the implementation
 under test and comparing it against itself is not.
 
-Promoted from `tools/review-verification/verify_physics.py` (PL-023), where
-the same oracle was written for the v0.2.0 architecture review but ran only
-by hand.
+Promoted from the v0.2.0 architecture review's verification harness (PL-023),
+where the same oracle was written but ran only by hand. That harness was
+retired by PL-STNV once every check it carried had become a closed item, a
+reference test, or an open queue entry; it survives in git history alone.
 """
 
 from __future__ import annotations

@@ -6,12 +6,12 @@ effort: S
 status: ready
 classes: infra
 feature: dev-tooling
-touches: pyproject.toml, src/anesthesia_sim/app/simulation_view.py, subprojects/docket/src/docket/vcs.py, tools/doc_check.py, tools/review-verification/verify_findings.py
+touches: pyproject.toml, src/anesthesia_sim/app/simulation_view.py, subprojects/docket/src/docket/vcs.py, tools/doc_check.py
 added: 2026-08-25
 ---
 
-**Problem.** The tree carries ten `noqa` directives that suppress nothing, and
-two deliberate lint exceptions that carry no reason. Reproduce with:
+**Problem.** The tree carries eight `noqa` directives that suppress nothing,
+and a set of deliberate lint exceptions that carry no reason. Reproduce with:
 
 ```
 uv run ruff check --select RUF100 --output-format concise
@@ -21,14 +21,23 @@ uv run ruff check --select S603,S607,S311 --output-format concise
 The cause of the first is uniform and is not what "stale suppression" usually
 means. `[tool.ruff.lint] select = ["E", "F", "I", "UP", "B"]`, so `BLE`,
 `SLF`, `RUF` and the `S` (bandit) family are not enabled at all. Every one of
-the ten directives names a rule the project does not run - `BLE001` at
-`app/simulation_view.py:1162`, `:1194`, `:1219` and at
-`tools/review-verification/verify_findings.py:83`, `:278`; `SLF001` at
-`tests/unit/test_parameters.py:426` and `verify_findings.py:248`; `E402` at
-`subprojects/docket/tools/migrate_from_punch_list.py:22-23`; `F401` at
-`subprojects/docket/tests/test_release.py:110`. They are not suppressions of
+the eight directives names a rule the project does not run - `BLE001` at
+`app/simulation_view.py:958`, `:990`, `:1015`; `SLF001` at
+`tests/unit/test_parameters.py:431`; `E402` at
+`subprojects/docket/tools/migrate_from_punch_list.py:22-23` and at
+`tools/doc_check.py:73`; `F401` at
+`subprojects/docket/tests/test_release.py:113`. They are not suppressions of
 problems since fixed; they were written against rules that were never turned
 on.
+
+**Re-measured 2026-08-30.** The list above is that run, and the count fell
+from ten to eight for two offsetting reasons: PL-STNV retired
+`tools/review-verification/`, taking three of the original sites (`BLE001` at
+`verify_findings.py:83` and `:278`, `SLF001` at `:248`) with it, and one new
+inert `E402` has since appeared at `tools/doc_check.py:73`. The line numbers
+in the second half below were not refreshed and have drifted further - the two
+`ruff` commands above are the source of truth for both halves, and the second
+now reports 22 sites across more files than it names.
 
 The second command finds the converse: deliberate exceptions with no marker,
 because the rule that would demand one is not enabled. `docket/vcs.py:52-53`
