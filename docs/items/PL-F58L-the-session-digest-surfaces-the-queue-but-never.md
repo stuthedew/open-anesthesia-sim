@@ -3,11 +3,14 @@ id: PL-F58L
 title: The session digest surfaces the queue but never the roadmap, so timeline placement has no alarm clock
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost, infra
 feature: planning-cadence
-touches: subprojects/docket/src/docket/render.py, .claude/hooks/docket-digest.sh
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-26
+closed: 2026-08-30
+commit: c6956b1
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py -k digest
 ---
 
 **Problem.** The `SessionStart` hook runs `docket digest`, which reads

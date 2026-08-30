@@ -1,8 +1,14 @@
 ---
 id: PL-C1KK
 title: docs/MODEL.md and docs/WORKING_NOTES.md still name v0.2.3 as the current baseline, two releases on
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
+feature: model-spec-accuracy
+touches: docs/MODEL.md, docs/WORKING_NOTES.md
 added: 2026-08-30
+not-delegable: docs/MODEL.md is a protected path, and whether prose names the right baseline is not decidable by a check - doc_check reads ROADMAP.md's baseline heading only, and extending it to free prose would be guessing at the judgment half
 ---
 
 **Problem.** Three lines still call v0.2.3 the current released baseline, with
