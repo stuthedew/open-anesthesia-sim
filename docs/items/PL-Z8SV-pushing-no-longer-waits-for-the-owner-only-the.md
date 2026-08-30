@@ -3,11 +3,13 @@ id: PL-Z8SV
 title: Pushing no longer waits for the owner - only the pull request does
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, infra
 feature: planning-cadence
 touches: CLAUDE.md
 added: 2026-08-30
+closed: 2026-08-30
+commit: 8a97540
 verify: grep -q 'open a pull request only when asked' CLAUDE.md
 ---
 
