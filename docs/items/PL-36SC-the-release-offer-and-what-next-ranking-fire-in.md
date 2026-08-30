@@ -1,10 +1,15 @@
 ---
 id: PL-36SC
 title: The release offer and 'what next' ranking fire in topic-specific discussions, where they read as noise
-status: untriaged
+status: done
+priority: P2
+effort: S
+classes: defect
 feature: worker-instructions
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-08-30
+closed: 2026-08-30
+commit: 3078bdb
 ---
 
 **Problem.** `CLAUDE.md`'s "Offer the release; do not wait to be asked" and the
