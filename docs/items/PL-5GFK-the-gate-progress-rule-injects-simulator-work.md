@@ -3,11 +3,13 @@ id: PL-5GFK
 title: The gate-progress rule injects simulator work into every process-work session, which PL-36SC did not reach
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: worker-instructions
 touches: CLAUDE.md
 added: 2026-08-30
+closed: 2026-08-30
+commit: 948ca35
 verify: python3 tools/doc_check.py check
 not-delegable: the change rewrites a rule in CLAUDE.md that every session then follows; whether the scoped rule fires in the right sessions is a judgment about instruction prose, which no check decides
 ---
