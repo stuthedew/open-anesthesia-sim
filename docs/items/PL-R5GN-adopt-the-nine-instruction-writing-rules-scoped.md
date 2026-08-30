@@ -11,6 +11,7 @@ touches: .claude/rules, CLAUDE.md
 added: 2026-08-30
 closed: 2026-08-30
 commit: 487d7d5
+pr: 76
 ---
 
 **Problem.** The project owner supplied nine rules for multi-step instructions

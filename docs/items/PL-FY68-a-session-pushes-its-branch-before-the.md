@@ -11,6 +11,7 @@ touches: CLAUDE.md, docs/worker.md
 added: 2026-08-30
 closed: 2026-08-30
 commit: 3078bdb
+pr: 73
 ---
 
 **Problem.** Nothing tells a session when to push. A session that opens as a

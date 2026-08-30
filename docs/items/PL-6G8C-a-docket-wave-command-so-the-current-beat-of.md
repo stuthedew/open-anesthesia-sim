@@ -11,6 +11,7 @@ touches: subprojects/docket, ROADMAP.md
 added: 2026-08-26
 closed: 2026-08-29
 commit: bff11d0
+pr: 63
 ---
 
 **Problem.** `ROADMAP.md` specifies a four-beat cadence per milestone — scope,

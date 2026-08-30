@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/ver
 added: 2026-08-30
 closed: 2026-08-30
 commit: 8c72f1b
+pr: 74
 verify: uv run pytest subprojects/docket/tests -k base
 ---
 

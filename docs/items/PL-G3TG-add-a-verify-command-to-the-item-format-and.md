@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/c
 added: 2026-08-25
 closed: 2026-08-25
 commit: f89bf05
+pr: 40
 ---
 
 **Problem.** An item states what "done" means in prose, under **Done when.**,

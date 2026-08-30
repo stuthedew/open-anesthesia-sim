@@ -5,6 +5,7 @@ status: done
 milestone: v0.2.3
 closed: 2026-08-24
 commit: ebcf990
+pr: 18
 ---
 
 **Problem.** Record the reference patient's weight in the provenance table
