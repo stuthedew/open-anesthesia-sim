@@ -40,8 +40,18 @@ model recorded under its own key rather than fused into the name, and a
 forbidden-pattern check for the session-report sections above.
 
 Out of scope, deliberately: whether the rationale in the body is any good, and
-whether a `Co-authored-by` claim is accurate. Those are the project owner's at
-review time, which the PL-S4M2 approval gate now makes a real step.
+whether a `Co-authored-by` claim is accurate. Those are the project owner's to
+judge when he reads the diff.
+
+**The hook alone cannot reach what lands on main.** Under PL-S4M2's squash
+merge, the commit on main is composed by GitHub server-side from the pull
+request title and description; no local hook runs on it, and the branch commits
+the hook did check are discarded. So the hook shapes the input and enforces
+nothing about the output. The rules therefore need a second enforcement point:
+a job on the `pull_request` event checking the title and description, since
+those become the squash commit's subject and body. The local hook stays - it is
+what keeps branch commits worth reading, and a single-commit pull request still
+seeds its default message from them - but it is not where this is enforced.
 
 **Must not fabricate a review.** The hook must never insert `Reviewed-by:`. A
 trailer asserting review by default is false by default; it is added at merge,
@@ -51,7 +61,8 @@ when the review has actually happened.
 attribution trailer means) for the permitted trailer combinations - the hook
 enforces that document's rule, so the rule has to be written first.
 
-**Done when.** A commit violating any checked rule is refused locally and in
+**Done when.** A local commit violating any checked rule is refused by the
+hook, a pull request whose title or description violates the same rules fails
 CI, the existing history is not rewritten, `.mailmap` collapses the owner to
-one identity, and the hook has tests covering each rule and a well-formed
+one identity, and both checks have tests covering each rule and a well-formed
 message that passes.

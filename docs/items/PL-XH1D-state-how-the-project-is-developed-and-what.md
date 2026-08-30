@@ -50,6 +50,11 @@ Then document the trailers, which record only what is checkable:
     the commit body the way `1565094` already does ("put to the project owner
     and answered"). Untraceable involvement is not claimed.
   - `Reviewed-by:` added at merge, because that is when the review happens.
+    Say plainly that this one is a self-attestation rather than a checkable
+    fact: GitHub forbids a pull request's author from approving it, and every
+    pull request here is opened by the owner, so no approval exists to verify
+    it against. It is the same standing as `Signed-off-by:` in kernel history,
+    which is honest and conventional - but the document should not imply more.
 
 **State the limit.** Much of the owner's input happens in sessions that are not
 in the repository. Say so in one line, and say what its durable trace is - the
