@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 closed: 2026-08-30
-commit: 84f8ff6
+commit: 6c6a8af
 classes: infra, session-cost
 feature: dev-tooling
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/SKILL.md, ROADMAP.md, subprojects/docket/tests
