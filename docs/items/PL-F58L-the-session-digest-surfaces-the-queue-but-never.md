@@ -50,6 +50,15 @@ the next timeline step, plus the gate's remaining count once `PL-9CNQ` lands.
 That is enough to make a session ask the right question without the tool
 claiming to know the answer.
 
+**The trade to decide, folded in from PL-T4YD (dropped as a duplicate,
+2026-08-30).** The digest is resent on every turn of the session, so its length
+is a standing cost. `docket wave` prints five to seven lines today; a digest
+line would want to be one or two — the beat and the step, with the gate's
+split, and nothing else. Whether that fits, and whether it displaces anything
+currently in the digest, is part of this item's decision. Note that `wave` and
+`gate` both exist now, so the prerequisite this item recorded (`PL-9CNQ`) has
+landed and the narrow version it recommends is buildable today.
+
 **Done when.** A session is told at start where the project sits on
 `ROADMAP.md`'s timeline and what the next step is, or the limitation is
 recorded in `subprojects/docket/README.md` as accepted with its reason.
