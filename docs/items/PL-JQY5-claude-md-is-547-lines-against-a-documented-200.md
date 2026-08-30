@@ -1,10 +1,12 @@
 ---
 id: PL-JQY5
 title: CLAUDE.md is 547 lines against a documented 200-line adherence target
-status: untriaged
+status: dropped
 feature: worker-instructions
 touches: CLAUDE.md, .claude/rules
 added: 2026-08-30
+closed: 2026-08-30
+reason: duplicate of PL-H7XN, captured minutes earlier by a concurrent session on this branch and better stated; nothing in this one that PL-H7XN does not carry
 ---
 
 **Problem.** `CLAUDE.md` is 547 lines. Claude Code's memory documentation

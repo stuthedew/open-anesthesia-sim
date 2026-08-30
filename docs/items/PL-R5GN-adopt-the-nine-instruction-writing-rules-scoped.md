@@ -50,7 +50,37 @@ the same priority as `.claude/CLAUDE.md`, one topic per file, and `CLAUDE.md`
 is already at 547 lines against a documented 200-line adherence target
 (`PL-JQY5`).
 
-**Done when.** The nine rules live in one checked-in file that loads in this
-repository and is reachable from user scope, rules 4 and 5 are scoped for an
-agent with filesystem access, and the narrower `CLAUDE.md` rules they
-generalize cross-reference them rather than restating them.
+**Folded in from `PL-JZKV`.** A concurrent session received the same request
+worded as four human-factors principles — chronological linearity, zero context
+assumption, cognitive chunking, visual salience — and reached the same
+placement answer independently. Three points from its analysis that this item
+did not have:
+
+  - **The chunking/batching conflict, and its resolution.** Rule 5 pulls
+    against `CLAUDE.md`'s "batch related questions, and related edits, into one
+    turn". Resolve by who executes, and write the resolution down rather than
+    leaving it implicit: **chunk what the owner executes; batch what the
+    session does.** Steps handed to a person are limited to a few at a time;
+    tool calls and questions the session issues are still batched into one
+    turn.
+  - **Rule 1 subsumes `PL-HZC2`.** `PL-HZC2` (the closing action block
+    annotates order instead of carrying it) scoped ordering to the closing
+    block; rules 1 and 2 cover all multi-step output. The narrow rule should
+    fold into the general one rather than sit beside it — two rules on
+    ordering is the conflict case the documentation warns about.
+  - **Drop any role preamble.** `CLAUDE.md` is delivered as a user message
+    after the system prompt, so a second persona statement competes with the
+    voice already there and buys nothing.
+
+**Symlink or copy, for the user-scope half.** `PL-JZKV` argued against a
+symlink from the home directory into this checkout, on the grounds that it
+makes personal configuration depend on one repository existing — and a broken
+symlink fails silently, which is worse than drift. Two copies, with the
+checked-in one canonical, is the safer default; the content is stable enough
+that drift is a small risk.
+
+**Done when.** The rules live in one checked-in file that loads in this
+repository and has a stated route to user scope, rules 4 and 5 are scoped for
+an agent with filesystem access, the chunking/batching resolution is written
+down, and `PL-HZC2`'s narrower ordering rule is folded in rather than
+duplicated.
