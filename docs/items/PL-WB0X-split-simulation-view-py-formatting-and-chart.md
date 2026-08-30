@@ -88,10 +88,14 @@ piece of that work it should precede:
    merely an inconvenient one. This is the stage the size argument alone does
    not justify and the comparison requirement does.
 
-**Where it belongs on the plan.** Not Gate 0: it is `refactor`-classed and was
-captured after the freeze, so "Explicitly out of scope for v0.3.0" keeps it
-out, and v0.3.0's whole claim is that it adds no capability and clears only the
-frozen list. The natural home is a `v0.3.x` patch step beside "`core/` reads
+**Where it belongs on the plan.** Not Gate 0 — but not for the reason first
+recorded here. The problem predates the 2026-08-25 freeze, so `ROADMAP.md`'s
+presence presumption admits it, and class alone does not exclude it. It is
+deferred to Gate 1 under the discretion that section grants, with the reason
+stated there and here: an `M` restructure of the interface layer, unconnected
+to anything on the frozen list, against a release whose claim is that it adds
+no capability and clears only inherited debt. Pulling it in would be the
+refilling-queue failure the gate exists to avoid. The natural home is a `v0.3.x` patch step beside "`core/` reads
 like the domain" — same kind of step, one layer up: structure and readability,
 no behavior change. A sibling row rather than an extension of that one, since
 item 29 is about `core/`'s domain vocabulary and merging an app-layer

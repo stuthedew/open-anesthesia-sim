@@ -3,7 +3,9 @@ id: PL-9PMV
 title: Two readings of the gate's re-entry rule disagree, and a real finding now sits between them
 priority: P2
 effort: S
-status: needs-decision
+status: done
+closed: 2026-08-30
+commit: bcbbb20
 classes: defect, docs
 feature: planning-cadence
 touches: ROADMAP.md
@@ -50,13 +52,32 @@ list" that invoke both.
 **Decision needed.** Which reading governs a post-freeze capture whose problem
 predates the freeze but whose class is outside `P0`/`safety`/`science`?
 
-The recommendation is a third form that keeps what each is for: presence is
-*necessary* for re-entry, and `P0`/`safety`/`science` is *sufficient*; anything
-else that is merely present re-enters only when it is closed in the same batch
-that adds it — which is what actually happened with PL-N2N1 and PL-K79K, and
-which cannot grow the gate's remaining work by construction. That makes the
-precedent and the stopping condition the same rule, and it decides PL-WB0X:
-out, because it is `M` and would not close in the batch that added it.
+**Decided (project owner, 2026-08-30), and the answer was smaller than the
+question.** Reading the whole of "The gate is a snapshot, not a moving target"
+rather than its first paragraph shows the project already has one coherent
+rule, stated correctly in two places and wrongly in a third:
+
+- *"The gate is a snapshot"* — presence is a **presumption**, favoured but not
+  absolute; a session may defer a presence-qualifying finding where a specific
+  reason argues otherwise, provided it says so and says why. `P0` and
+  `safety`/`science` re-enter regardless of presence.
+- *"The cadence", step 4* — presence **or** `P0`/`safety`/`science` re-enters.
+  Agrees.
+- *"Explicitly out of scope for v0.3.0"* — named only the
+  `P0`/`safety`/`science` half and omitted presence entirely. **This was the
+  defect**: one bullet narrower than the rule it summarised.
+
+So no third form was needed, and the "closes in the same batch that adds it"
+clause proposed above was withdrawn before implementation. It would have
+replaced a judgment the document already provides for — and provides for
+better, since a mechanical batch test would exclude an urgent pre-existing
+defect merely for being `M`, while the stated-reason discretion handles the
+same case without a size proxy.
+
+PL-WB0X's placement follows from the repaired rule rather than from a class
+label: the presumption admits it, and it is deferred to Gate 1 under the
+discretion the rule grants, with the reason recorded both in `ROADMAP.md`'s
+gate notes and in PL-WB0X's own brief.
 
 **Found.** While placing PL-WB0X on the plan (2026-08-30), immediately after
 adding PL-NV9W to the frozen list — which is the same rule applied where both

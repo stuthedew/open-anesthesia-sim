@@ -478,8 +478,13 @@ It is a minor rather than a patch by deliberate exception, recorded under
 
 - Anything in the v0.4.0 milestone's Required scope, including the six gate-0
   items that milestone clears itself.
-- Any item captured after Gate 0 was frozen, unless it is `P0` or classed
-  `safety`/`science`, which re-enter by the rule below.
+- Any item captured after Gate 0 was frozen whose problem did not already
+  exist at the freeze. A finding that *was* present re-enters by the
+  presumption in "The gate is a snapshot, not a moving target", as does
+  anything at `P0` or classed `safety`/`science` regardless of presence. This
+  bullet previously named only the `P0`/`safety`/`science` half, which made it
+  narrower than "The gate is a snapshot" and than step 4 of "The cadence";
+  those two agreed with each other and this one did not (queue item PL-9PMV).
 - New capability of any kind. A release whose whole claim is "the ground is
   now solid" cannot also be the one that moves the ground.
 
@@ -644,6 +649,17 @@ measurement would make the claim untrue on the day it was made.
 The ten other findings from the same review are in the queue and clear at
 Gate 1: they are either post-freeze in substance, or classed outside the
 exception.
+
+**One presence-qualifying finding deliberately deferred to Gate 1.** PL-WB0X
+(split `simulation_view.py`) describes a module that has been oversized since
+long before the freeze, so the presumption admits it. It is deferred anyway,
+which "The gate is a snapshot" permits provided the reason is stated: it is an
+`M` restructure of the interface layer with no connection to anything on the
+frozen list, and v0.3.0's claim is that it adds no capability and clears only
+inherited debt. Pulling in unrelated pre-existing debt because it is old is
+the refilling-queue problem the gate replaced Phase 0 to solve. Its own brief
+records where it does belong — a `v0.3.x` patch step, staged against the
+interface work that follows.
 
 *Documentation, performance, and the one decision that is the project
 owner's:*
