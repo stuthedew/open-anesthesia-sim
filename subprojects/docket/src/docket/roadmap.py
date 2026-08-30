@@ -28,7 +28,7 @@ of "the rows under this heading" is a second thing to keep true.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 
 from .release import SEMVER_RE
@@ -317,6 +317,16 @@ GATE_SUBSECTION = "debt gate"
 # another item, not a second thing the entry is waiting on.
 LEADING_ID_RE = re.compile(rf"^[*_\s]*(?:and[*_\s]+)?[*_\s]*(?P<id>{ID_PATTERN})")
 
+# An id named anywhere in a milestone's section, wherever it sits in the
+# sentence. The gate list above is read by the head of its bullets, because
+# what it records is one entry per problem; scope is read this way instead,
+# because a milestone names the items it covers in whatever grammar the prose
+# wanted - "(queue item PL-DHV7)" mid-bullet, or a closing paragraph listing
+# the six the milestone clears itself. Reading only bullet heads would miss
+# both. What this cannot do is read the sentence around the id, which is why
+# the marking built on it says where an id appears and never why.
+SECTION_ID_RE = re.compile(ID_PATTERN)
+
 
 @dataclass(frozen=True)
 class GateEntry:
@@ -344,6 +354,10 @@ class MilestoneSection:
     gate_heading: str
     gate_line: int
     gate_entries: tuple[GateEntry, ...]
+    #: Every item id named anywhere in the section, in the order they appear.
+    #: What the milestone covers, as far as ids make it decidable - the prose
+    #: around each one is left unread, so this says "named here" and no more.
+    item_ids: tuple[str, ...]
 
     @property
     def label(self) -> str:
@@ -378,6 +392,15 @@ def _leading_ids(text: str) -> tuple[str, ...]:
             return tuple(ids)
         ids.append(match.group("id"))
         rest = rest[match.end() :]
+
+
+def _section_ids(lines: Sequence[str], start: int, end: int) -> tuple[str, ...]:
+    """Every item id named between a section's heading and the next one."""
+    seen: dict[str, None] = {}
+    for line in lines[start:end]:
+        for match in SECTION_ID_RE.finditer(line):
+            seen.setdefault(match.group(0), None)
+    return tuple(seen)
 
 
 def _gate_entries(lines: Sequence[str], start: int) -> tuple[GateEntry, ...]:
@@ -430,7 +453,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
     subsections: list[str] = []
     gate: tuple[int, str] | None = None
 
-    def flush() -> None:
+    def flush(end: int) -> None:
         if version is None:
             return
         heading_line, heading_title = gate or (0, "")
@@ -444,6 +467,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 gate_heading=heading_title,
                 gate_line=heading_line,
                 gate_entries=_gate_entries(lines, heading_line) if gate else (),
+                item_ids=_section_ids(lines, line_number, end),
             )
         )
 
@@ -454,7 +478,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
         depth = len(heading.group("hashes"))
         heading_title = heading.group("title").strip()
         if depth <= 2:
-            flush()
+            flush(index - 1)
             match = SECTION_VERSION_RE.search(heading_title) if depth == 2 else None
             if match is None:
                 version = None
@@ -471,7 +495,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
             subsections.append(heading_title)
             if heading_title.lower().startswith(GATE_SUBSECTION):
                 gate = (index, heading_title)
-    flush()
+    flush(len(lines))
 
     return sorted(found, key=lambda section: section.version)
 
@@ -510,6 +534,78 @@ class GateStatus:
         return not self.outstanding and not self.unknown_ids
 
 
+# What a milestone section says about an id, as three answers rather than two.
+IN_SCOPE = "in-scope"
+UNPLACED = "unplaced"
+OUT_OF_SCOPE = "out-of-scope"
+
+
+@dataclass(frozen=True)
+class Scope:
+    """Where the plan places an item, relative to the beat now due.
+
+    Three answers, and the middle one is why there are three. An id named in
+    the milestone the current beat is about is work this step includes. An id
+    named only in a *later* milestone's section is work this step has not
+    reached. An id named in no section at all is neither: the roadmap places
+    most of the queue nowhere, and reading that silence as exclusion would be
+    a verdict rather than a fact.
+
+    A section *earlier* than the anchor places nothing either. A released
+    milestone's narrative names the items it discussed, which records where a
+    problem was raised rather than what is current work - `PL-026` sits in
+    v0.2.7's release narrative and on v0.4.0's frozen gate list, and only the
+    second of those says anything about what to do now.
+
+    Named ids are the whole of the evidence. A milestone that excludes
+    something in prose alone excludes it invisibly here, and an id named in a
+    later section for any reason at all - including one saying the item is
+    *deferred out* of that milestone - reads as that milestone's scope. Both
+    limitations are recorded in the README beside the concurrency one.
+    """
+
+    #: The milestone the current beat is about, labelled as the roadmap does.
+    #: Empty when there is no such milestone, which leaves every id unplaced.
+    anchor: str
+    #: Ids named in that milestone's own section.
+    current: frozenset[str]
+    #: Ids named only in a later milestone, mapped to the earliest such one.
+    later: Mapping[str, str]
+
+    def placement(self, identifier: str) -> str:
+        if identifier in self.current:
+            return IN_SCOPE
+        if identifier in self.later:
+            return OUT_OF_SCOPE
+        return UNPLACED
+
+    def milestone(self, identifier: str) -> str:
+        """The later milestone naming this id, as `v0.4.0`, or `""`."""
+        return self.later.get(identifier, "")
+
+
+def milestone_scope(sections: Sequence[MilestoneSection], anchor: MilestoneSection | None) -> Scope:
+    """Read each milestone section for the ids it names, against the anchor.
+
+    `sections` is expected in version order, so the *earliest* later milestone
+    naming an id is the one reported: an item named in both v0.3.0 and v0.4.0
+    is v0.3.0's, and saying so is what stops the marking overstating how far
+    off the work is.
+    """
+    if anchor is None:
+        return Scope(anchor="", current=frozenset(), later={})
+    current = frozenset(anchor.item_ids)
+    later: dict[str, str] = {}
+    for section in sections:
+        if section.version <= anchor.version:
+            continue
+        label = "v{}.{}.{}".format(*section.version)
+        for identifier in section.item_ids:
+            if identifier not in current:
+                later.setdefault(identifier, label)
+    return Scope(anchor=anchor.label, current=current, later=later)
+
+
 @dataclass(frozen=True)
 class Wave:
     """The project's position on the rolling-wave cadence, and nothing more.
@@ -531,6 +627,8 @@ class Wave:
     gate: GateStatus | None
     #: The milestone the beat is about, when the roadmap has a section for it.
     milestone: MilestoneSection | None
+    #: Which items that milestone names, and which a later one names instead.
+    scope: Scope
     beat: str
     #: What the beat is to be done to, named as the roadmap names it.
     subject: str
@@ -679,6 +777,7 @@ def wave(roadmap: str, version: str, closed_ids: frozenset[str], known_ids: froz
         total_steps=total,
         gate=gate,
         milestone=milestone,
+        scope=milestone_scope(sections, milestone),
         beat=beat,
         subject=subject,
         problems=tuple(problems),

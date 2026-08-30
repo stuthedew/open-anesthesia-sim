@@ -269,14 +269,28 @@ def cmd_next(args: argparse.Namespace) -> int:
     """What to work on now, and why.
 
     Answers the question the queue exists to answer, so that "let\'s work on
-    something" needs no reading. Preference goes to work that finishes a
-    feature already underway, because a shipped feature is worth more than
-    equal progress spread across several.
+    something" needs no reading. Preference goes to what the roadmap\'s current
+    step includes, then to work that finishes a feature already underway,
+    because a shipped feature is worth more than equal progress spread across
+    several.
+
+    The plan is read for the same reason `wave` reads it: without it, the
+    command whose name promises the answer ranks strictly by band and leads
+    with work the current step excludes. An unreadable or absent roadmap leaves
+    `_plan` returning `None`, and the ranking falls back to what it was.
     """
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
+    root = args.items.parent if args.items else find_root()
+    plan = _plan(root, items, config)
     flight = _flight(args)
-    picks = recommend(items, flight, effort=args.effort, limit=args.limit)
+    picks = recommend(
+        items,
+        flight,
+        effort=args.effort,
+        limit=args.limit,
+        scope=plan.scope if plan is not None else None,
+    )
     if not picks:
         print("Nothing is ready to start.")
         if report.untriaged:

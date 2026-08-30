@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .model import EFFORTS, PRIORITIES, Item
+from .roadmap import IN_SCOPE, OUT_OF_SCOPE, UNPLACED, Scope
 
 
 @dataclass(frozen=True)
@@ -124,17 +125,33 @@ def features(items: list[Item]) -> dict[str, Feature]:
     }
 
 
+#: Where the plan places an item, as a sort position. In-scope work is
+#: preferred over out-of-scope work absolutely rather than inside a band,
+#: because the priority field cannot express the phase: `docket check` pins
+#: `safety` and `science` items to `P1`, so the top band is product work by
+#: construction and a tie-breaker inside a band would never fire in the case
+#: this exists for. Work the roadmap places nowhere sits between the two - it
+#: is not what the step is for, and nothing says it is excluded either.
+PLACEMENT_ORDER = {IN_SCOPE: 0, UNPLACED: 1, OUT_OF_SCOPE: 2}
+
+
 @dataclass(frozen=True)
 class Recommendation:
     """One suggested next piece of work, and why it is being suggested."""
 
     item: Item
     reason: str
+    #: What the plan says about this item, when a roadmap was read: empty for
+    #: work it places in the current step or nowhere at all, and the milestone
+    #: naming it otherwise.
+    scoped_to: str = ""
 
     def describe(self) -> str:
         marks = [m for m in (self.item.effort, self.item.status) if m]
         if self.item.model_guidance:
             marks.append(f"{self.item.model_guidance} - use your strongest model")
+        if self.scoped_to:
+            marks.append(f"scoped to {self.scoped_to}, not this step")
         head = f"{self.item.priority} {self.item.identifier} {self.item.title}"
         return f"{head} ({', '.join(marks)})\n    {self.reason}"
 
@@ -145,14 +162,23 @@ def recommend(
     *,
     effort: str | None = None,
     limit: int = 3,
+    scope: Scope | None = None,
 ) -> list[Recommendation]:
     """Rank the work worth starting now.
 
     Order of precedence, highest first: anything at `P0`, because that is what
-    `P0` means; then work that finishes a feature already underway; then the
+    `P0` means; then what the roadmap's current step includes, when a `scope`
+    is supplied; then work that finishes a feature already underway; then the
     highest-priority item that is ready to start. Items already in flight on a
     branch are excluded outright rather than ranked low - recommending work
     somebody is doing is worse than recommending nothing.
+
+    A `P0` outranks the phase, unchanged: a hotfix is not deferred because the
+    milestone is about something else. Everything below it is reordered by
+    placement rather than filtered by it. Out-of-scope work stays in the list,
+    carrying the milestone that names it, because "is this really out of
+    scope?" is a judgment and hiding the item would be a verdict this cannot
+    support - where saying which milestone names its id is a fact it can.
     """
     flight = in_flight or set()
     startable = [
@@ -171,16 +197,29 @@ def recommend(
         for item in feature.open_items
     }
 
-    def rank(item: Item) -> tuple[int, int, int, str]:
-        """Band first, then whether it finishes something already started.
+    def placement(item: Item) -> str:
+        return scope.placement(item.identifier) if scope is not None else UNPLACED
 
-        The feature preference is a tie-breaker inside a band, never across
-        bands. Finishing work matters, but not more than the priority does: a
-        P1 defect does not wait because a P3 feature is half built.
+    def rank(item: Item) -> tuple[int, int, int, int, int, str]:
+        """Hotfix, then the plan, then band, then whether it finishes something.
+
+        `P0` is lifted out of the band comparison so that the phase cannot
+        reorder a hotfix; below it, what the current step includes comes ahead
+        of what it does not, because the band cannot express the phase. The
+        feature preference stays a tie-breaker inside a band, never across
+        bands: a P1 defect does not wait because a P3 feature is half built.
         """
+        hotfix = 0 if item.priority == "P0" else 1
         band = PRIORITIES.index(item.priority) if item.priority in PRIORITIES else len(PRIORITIES)
         finishes = 0 if item.identifier in underway else 1
-        return (band, finishes, item.sort_key()[1], item.identifier)
+        return (
+            hotfix,
+            PLACEMENT_ORDER[placement(item)],
+            band,
+            finishes,
+            item.sort_key()[1],
+            item.identifier,
+        )
 
     ranked: list[Recommendation] = []
     for item in sorted(startable, key=rank):
@@ -195,7 +234,18 @@ def recommend(
             )
         else:
             reason = f"Highest-priority work that is ready to start ({item.priority})."
-        ranked.append(Recommendation(item, reason))
+
+        where = placement(item)
+        scoped_to = ""
+        if scope is not None and where == IN_SCOPE:
+            reason = f"In scope for {scope.anchor}, the step the project is on. {reason}"
+        elif scope is not None and where == OUT_OF_SCOPE:
+            scoped_to = scope.milestone(item.identifier)
+            reason = (
+                f"{reason} Outside what {scope.anchor} names: this id appears in "
+                f"{scoped_to}'s section, which the current step has not reached."
+            )
+        ranked.append(Recommendation(item, reason, scoped_to))
 
     return ranked[:limit]
 
