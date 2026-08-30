@@ -1,7 +1,11 @@
 ---
 id: PL-0RS6
 title: docket next will still lead with out-of-scope work after PL-1TPM, because marking does not reorder
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+verify: uv run pytest subprojects/docket/tests/test_plan.py -k in_scope
 feature: planning-cadence
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
 added: 2026-08-30
@@ -33,12 +37,15 @@ suppressing, since everything stays visible and the marking still carries the
 fact, and strictly more useful than marking alone, since the first line stops
 disagreeing with the beat.
 
-**Worth deciding.** Whether the preference is absolute (all in-scope work above
-all out-of-scope work) or a tie-breaker inside a band, the way the
-feature-underway preference already works. The band-first precedent argues for
-the tie-breaker; the fact that the current phase is deliberately *not* the top
-band argues for absolute. `PL-20ZR`'s finding is the relevant one: the priority
-field cannot express the phase, so a tie-breaker inside a band cannot either.
+**Decided: absolute, not a tie-breaker.** The choice is between putting all
+in-scope work above all out-of-scope work, and preferring in-scope work only
+within a band, the way the feature-underway preference already works. The
+band-first precedent argues for the tie-breaker, but `PL-20ZR` settles it: the
+priority field cannot express the phase, because `docket check` pins
+`safety`/`science` items to P1 and the top band is therefore product work by
+construction. A tie-breaker inside a band inherits exactly that limitation and
+would change nothing in the case this item exists for. `P0` stays above
+everything, unchanged - a hotfix outranks the phase.
 
 **Done when.** `docket next`'s first suggestion is work the current step
 includes whenever such work is ready, out-of-scope items remain visible and
