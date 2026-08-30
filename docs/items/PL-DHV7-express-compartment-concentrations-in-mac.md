@@ -42,6 +42,14 @@ same claim. Decide the label wording and the units of the axis together, and
 do not carry a MAC readout on a compartment where the convention has not been
 stated in `docs/MODEL.md`.
 
+**Do this after PL-WB0X stage 1** (split `simulation_view.py`; extract
+`app/formatting.py`). This item rewrites every formatter and adds a second unit
+to `docs/MODEL.md`'s "Displayed precision" derivation. Those formatters are
+currently private static methods on a 1082-line Flet view class, so the change
+is hard to test in isolation and hard to cite from the specification. Extracting
+them first is an `S` item and makes this one safer; see PL-WB0X's Sequencing
+section.
+
 **Done when.** A user can read every graphed compartment in MAC multiples,
 the agent's `mac_percent` and its provenance are traceable from the display,
 and `docs/MODEL.md` states what a MAC multiple on a non-alveolar compartment

@@ -190,6 +190,18 @@ gate should open early, whether the prose beside a step is still true, or
 whether a scoped milestone is scoped well. Those are the reply's judgment to
 add, and they are why it prints the counts rather than a verdict.
 
+**Open with where the release stands — two or three sentences, before any
+item.** `docket wave` prints the facts; state them as prose, because a row of
+counts is not an answer to "where are we". Name the release being built and
+what it is for, what is left of it, and what closing it unblocks. For example:
+"v0.3.0 is the foundation release — no new capability, just Gate 0's inherited
+backlog. Eight of its twenty entries are open: four core-correctness items
+wanting the strongest model, and the four `core-boundaries` refactors. Closing
+it opens v0.4.0, the teachable case."
+
+That is the paragraph the owner is actually asking for, and it costs one
+`wave` call. Gloss every id, per `CLAUDE.md`. Then drop to the queue.
+
 **Answer at feature altitude first.** "We could finish chart-readout — two
 items left, both small — or start vaporizer-controls, which is four. Outside
 those, PL-026 is safety-tagged and wants doing regardless." Nobody chooses
@@ -334,11 +346,18 @@ describes predates the freeze, or is `P0`, `safety` or `science`.
 
 ## Mode: ship a release
 
-**Offer this; do not wait to be asked.** The session-start digest says when
-there is enough finished work to be worth raising, and the release itself
-takes no arguments — the store already knows what has shipped and what has
-not. There is nothing for the owner to look up, so asking them to is pure
-friction.
+**Offer this; do not wait to be asked — when the session is about what to do
+next.** The session-start digest says when there is enough finished work to be
+worth raising, and the release itself takes no arguments: the store already
+knows what has shipped and what has not, so there is nothing for the owner to
+look up and asking them to is pure friction.
+
+But the digest says it in *every* session, including the ones where it is
+beside the point. Offer it when the owner is choosing what to work on or has
+just finished something. Not in a design round, a question about one
+mechanism, or a review of one change — there it is noise appended to a reply
+that was about something else, and it quietly converts ideation into
+implementation, which the two modes above say not to do.
 
 Raise it the way a colleague would: what got done, what it completes, what the
 version would be, and a question.
