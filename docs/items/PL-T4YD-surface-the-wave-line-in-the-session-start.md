@@ -6,7 +6,7 @@ feature: planning-cadence
 touches: .claude/hooks/docket-digest.sh, subprojects/docket
 added: 2026-08-29
 closed: 2026-08-30
-reason: merged into PL-F58L, which asked for the same line from the digest's side and has shipped it; this item's contribution was the budget - one line, not wave's five - and that constraint is recorded in PL-F58L and in subprojects/docket/README.md
+reason: duplicate of PL-F58L, which states the same problem with a fuller brief and a recommended narrow fix, and which has since shipped the line; this item's one distinct point - the digest's length is a standing per-turn cost, so the budget is one line rather than wave's five - is folded into PL-F58L and recorded in subprojects/docket/README.md
 ---
 
 **Problem.** `docket wave` computes which beat of the cadence is due, but
