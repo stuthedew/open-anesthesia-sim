@@ -70,8 +70,26 @@ to consider, and nothing else:
   choice between options. Not a summary of what was just done — that is what
   the body of the reply was for.
 - Mark a recommendation as a recommendation, plainly, so "here are the
-  options" and "I think you should do this one" are never mixed up. Where
-  several things are suggested, say which comes first.
+  options" and "I think you should do this one" are never mixed up.
+- **Order the block the way it will be done, and let the order carry it.**
+  Where the items have a sequence — one unblocks another, one has to land
+  before the next makes sense — the first line is the first thing to do.
+  Never annotate a later line with "do this one first": a numbered list
+  states an order whether or not one was meant, so an ordering note that
+  disagrees with the numbering makes the reader stop and work out which to
+  believe, which is exactly the friction the block exists to remove. Where
+  the items are genuinely independent, order them by consequence and say in
+  one clause that they can be done in any order.
+- **An action outside the repository carries its exact steps, not its
+  intent.** Anything the owner has to do somewhere this session cannot reach
+  — a repository or account setting, a tag, a plan change, a third-party
+  console — is written as the steps themselves: where to click or what to
+  run, the values to enter, and what the result should look like when it has
+  worked. "Turn on the required-check ruleset" is a task handed back; the
+  menu path, the fields, and the exact check name are the answer. Verify the
+  steps against current documentation before writing them, and where that
+  cannot be reached, say so and give the API or CLI equivalent alongside, so
+  a stale label in one is caught by the other.
 - Keep it short enough to take in at a glance. If it is as long as the reply,
   it has become a summary rather than a list of actions.
 - When there is genuinely nothing to act on, say that in one line rather than
@@ -412,7 +430,9 @@ reason to load the skill:
   stops short of tagging, so every release ends with the owner tagging by
   hand. Asking them to "tag v0.2.5" makes them go and reconstruct three
   commands; give the actual `git tag`/`git push` lines with the version and
-  the merge SHA already filled in. Every time, not only the first.
+  the merge SHA already filled in. Every time, not only the first. This is the
+  named instance of the general rule above — an action outside the repository
+  carries its exact steps — kept because it is the one that recurs most.
 - **Report gate progress when the item just closed is one the gate contains.**
   The owner is tracking how far the current debt gate has left to run, not
   just whether the last task landed. So close such an item out with where the
