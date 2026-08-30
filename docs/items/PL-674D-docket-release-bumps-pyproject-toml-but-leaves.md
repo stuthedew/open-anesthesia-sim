@@ -8,6 +8,7 @@ classes: defect, infra
 feature: dev-tooling
 touches: Makefile, .claude/skills/docket/SKILL.md
 added: 2026-08-25
+not-delegable: proving this means cutting a release, so no check can run beforehand
 ---
 
 **Problem.** `docket release` writes the new version into `pyproject.toml` and
@@ -71,9 +72,22 @@ lockfile cannot help, because `make check` runs `sync` first, so `uv sync
 
 **No `verify:` command.** Proving this fixed means cutting a release, so there
 is nothing a check can run beforehand; it is confirmed at the next release.
-That leaves the item non-delegable by derivation, which is the honest status
-rather than an oversight.
+That is now recorded in `not-delegable:` rather than only in this paragraph,
+which is what PL-G049's requirement asks of an item that genuinely has no
+command — this was the case that forced that rule to have an exit at all.
 
 **Done when.** Cutting a release through the documented entry point leaves
 `make check` passing with no manual step, and the skill's release mode names
 that entry point.
+
+**Built.** `make release` runs `bin/docket release $(VERSION)`, then `uv
+lock`, then `make check`; the skill's release mode names it and says
+explicitly not to call `bin/docket release` on its own. `VERSION` is required
+because `docket.toml` sets `version_policy = "manual"`, so the target
+inherits the project's own rule that a version is named rather than
+incremented, and a release cut without one stops at the tool's refusal rather
+than partway through the sequence.
+
+Confirmed as far as it can be before a release: `make -n release
+VERSION=0.3.0` expands to the three commands in that order. The rest is
+confirmed at the next release, which is what `not-delegable` above records.
