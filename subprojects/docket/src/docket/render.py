@@ -15,6 +15,7 @@ from .checks import REQUIRED_BRIEF, Report
 from .concurrency import undeclared
 from .config import Config
 from .model import PRIORITIES, Item
+from .plan import Gate, effort_total
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
 
 
@@ -252,6 +253,65 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
         f"{', '.join((*REQUIRED_BRIEF, '**Done when.**'))}."
     )
     return rules
+
+
+def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
+    """The debt owed before a milestone, as the two lists a gate record holds.
+
+    Recording Gate 0 by hand meant reading every open item's classes and
+    status, applying the rule, splitting the result by scope and typing the
+    ids into the plan - a full pass over 48 items, repeated before every
+    milestone. All of that is in the front matter, and none of it needs
+    judgment. What still does is whether each item is really debt and whether
+    the gate should open, which is why this prints two lists and no verdict.
+    """
+    if not gate.items:
+        subject = f" carrying `{gate.feature}`" if gate.feature else ""
+        return f"No open debt{subject}. Nothing to clear."
+
+    lines = [
+        f"{_plural(len(gate.items), 'open debt item', 'open debt items')}"
+        + (f", against the `{gate.feature}` milestone." if gate.feature else ".")
+    ]
+
+    lines.append("")
+    lines.append(
+        f"Cleared before it begins - {len(gate.outside)} ({effort_total(gate.outside)}):"
+        if gate.feature
+        else f"Open debt - {len(gate.outside)} ({effort_total(gate.outside)}):"
+    )
+    lines.extend(_gate_lines(gate.outside))
+
+    if gate.feature:
+        lines.append("")
+        lines.append(
+            f"Cleared by the milestone itself - {len(gate.inside)} ({effort_total(gate.inside)}):"
+        )
+        lines.extend(_gate_lines(gate.inside))
+        if not gate.inside:
+            lines.append("  nothing carries that feature")
+
+    lines.append("")
+    lines.append(f"Debt is an open item classed {', '.join(debt_classes)}, or at needs-decision.")
+    lines.append("Whether each of these is really debt, whether the gate should open, and")
+    lines.append("what goes into the plan are not decided here. Recording it is a deliberate act.")
+    return "\n".join(lines)
+
+
+def _gate_lines(items: list[Item]) -> list[str]:
+    if not items:
+        return ["  nothing"]
+    width = max(len(item.identifier) for item in items)
+    lines = []
+    for item in items:
+        marks = ", ".join(item.classes) or "no classes"
+        if item.status != "ready":
+            marks = f"{item.status}, {marks}"
+        lines.append(
+            f"  {item.priority} {item.effort or '-'} {item.identifier:<{width}} "
+            f"{item.title} ({marks})"
+        )
+    return lines
 
 
 def format_check(report: Report) -> str:

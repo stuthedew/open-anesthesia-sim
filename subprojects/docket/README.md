@@ -28,6 +28,7 @@ docket list                  # the queue, one line per item
 docket triage                # what is untriaged, and the rules the answers must satisfy
 docket concurrent PL-K7QX    # what can be worked alongside it
 docket feature halted-step   # progress on one feature
+docket gate --feature x      # the open debt a milestone has to clear
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
@@ -73,6 +74,22 @@ contend. *Absence* of declared overlap proves only that nobody foresaw a
 collision — the work may still wander into a shared file. So the command
 rules pairs out and never certifies a pair as safe, and items declaring no
 paths at all are reported as unanalysable rather than assumed harmless.
+
+### A debt gate is computed, not transcribed
+
+A project that clears recorded debt before starting a milestone has to produce
+the list of what is owed, and doing that by hand means reading every open
+item's classes and status, applying the rule, and splitting the result by
+whether the milestone clears the item itself. `docket gate --feature <name>`
+does that pass: open debt on one side, the items carrying that feature on the
+other, with effort totals for each.
+
+Debt is an open item classed `defect`, `safety`, `science`, `refactor` or
+`perf` — `debt_classes`, configurable — or one at `needs-decision`, since a
+decision left open stops being one anybody can make. It writes nothing and
+reaches no verdict: whether an item is really debt and whether the gate should
+open are judgments, and freezing the list stays the deliberate act it is meant
+to be.
 
 ### The plan reports its own position
 
@@ -256,6 +273,7 @@ the defaults, add `docket.toml` at the project root:
 items_dir = "docs/items"
 safety_classes = ["safety", "science"]
 process_classes = ["session-cost", "docs", "infra"]
+debt_classes = ["defect", "safety", "science", "refactor", "perf"]
 top_band_limit = 5
 untriaged_stale_days = 14
 verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off

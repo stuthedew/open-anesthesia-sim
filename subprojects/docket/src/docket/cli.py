@@ -18,7 +18,7 @@ from .concurrency import conflicts_for, parallel_batch
 from .config import Config
 from .config import load as load_config
 from .model import Item
-from .plan import features, recommend
+from .plan import features, gate, recommend
 from .release import (
     bump_version,
     is_untagged,
@@ -264,6 +264,23 @@ def cmd_next(args: argparse.Namespace) -> int:
         print(
             f"{len(report.advisories)} grooming advisory(ies) pending; `docket check` to see them."
         )
+    return 0
+
+
+def cmd_gate(args: argparse.Namespace) -> int:
+    """The debt a milestone has to clear, computed from the store.
+
+    `ROADMAP.md` records the frozen list by hand, and doing that means reading
+    every open item's classes and status and splitting the result by scope.
+    That is decidable, so it is decided here; freezing the list stays the
+    deliberate act it is meant to be, and this command writes nothing.
+    """
+    _, items, config = _load(args)
+    print(
+        render.format_gate(
+            gate(items, args.feature or "", config.debt_classes), config.debt_classes
+        )
+    )
     return 0
 
 
@@ -545,6 +562,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     nxt.add_argument("--limit", type=int, default=3)
     nxt.set_defaults(func=cmd_next)
+
+    gate_cmd = add("gate", "the open debt a milestone has to clear")
+    gate_cmd.add_argument(
+        "--feature", default=None, help="the milestone's feature; its items clear with it"
+    )
+    gate_cmd.set_defaults(func=cmd_gate)
 
     feature = add("feature", "progress by feature")
     feature.add_argument("name", nargs="?")
