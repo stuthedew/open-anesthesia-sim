@@ -3,11 +3,13 @@ id: PL-STNV
 title: Retire the review-verification harness and capture its last live finding
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tools/review-verification, tests/reference/test_coupled_dynamics.py, docs/WORKING_NOTES.md
 added: 2026-08-30
+closed: 2026-08-30
+pr: 94
 verify: test ! -e tools/review-verification && python3 tools/doc_check.py check
 ---
 
@@ -50,9 +52,7 @@ verification path for checks the reference suite already makes.
 `tests/` or an open queue item, `tools/review-verification/` is deleted, and no
 document cites a path inside it.
 
-**Work complete 2026-08-30**, closure pending a pull request number - `docket
-check` refuses a `done` item without one, and the pull request is the project
-owner's to invite. Both scripts were run against the tree before
+**Resolved 2026-08-30.** Both scripts were run against the tree before
 deleting anything, and the live picture had moved since this item was written.
 
 All six `P1` defect checks report `FIXED`, each against a closed item. `P2-1`
