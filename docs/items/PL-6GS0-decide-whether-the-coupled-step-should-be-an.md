@@ -3,11 +3,13 @@ id: PL-6GS0
 title: Decide whether the coupled step should be an exact matrix exponential rather than an operator split
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: planning
 feature: numerical-domain
 touches: docs/MODEL.md, ROADMAP.md, src/anesthesia_sim/core/respiratory_system.py
 added: 2026-08-30
+closed: 2026-08-30
+pr: 94
 not-delegable: the next step is a decision about the numerical method, not code; no command can prove a decision, and the implementation it might authorize would edit `core/` and `docs/MODEL.md`, both protected paths.
 ---
 
@@ -30,10 +32,10 @@ is available today:
   because the split degrades with step size; an exact step does not, so the
   guard PL-VP7N added (refuse a simulation step outside the operator split's
   applicability domain) would be enforcing a bound that no longer binds.
-- It changes the answer to the playback-speed multiplier thread in
-  `docs/WORKING_NOTES.md`, which is currently steps-per-tick precisely because
-  a larger step is a model-fidelity question. Against an exact solver it is
-  not one.
+- It removes the *fidelity* half of the playback-speed multiplier answer in
+  `docs/WORKING_NOTES.md`, which is steps-per-tick partly because a larger step
+  is a model-fidelity question. Against an exact solver it is not one — though
+  see the decision below: that is not the whole of why the step is fixed.
 
 **Where.** The evidence is the measured comparison below, taken 2026-08-24 by
 the retired review harness and carried here so that retiring it loses nothing.
@@ -77,8 +79,17 @@ replaced by scoped implementation items; it is not itself the implementation.
 
 **Decided 2026-08-30: deferred, and the deferral is recorded.** The project
 owner took the recommendation above - keep the operator split, and revisit the
-exponential when a larger step is actually wanted rather than as standalone
-work, the playback-speed multiplier being the case that would want it.
+exponential only if some future requirement genuinely wants a larger step.
+
+**The playback multiplier is not that requirement**, which was checked while
+closing this rather than assumed. `ROADMAP.md`'s v0.4.0 scope already settles
+it: the multiplier is steps per tick with the step fixed at 0.1 s, and it is
+fixed there for determinism - removing the step-size divergence and the
+machine-speed dependence that would make a run irreproducible on another
+computer - not only for accuracy. An exact solver would remove the fidelity
+reason and leave both determinism reasons standing, so v0.4.0's design would
+not change. The deferral is therefore firmer than it looked when this item was
+written: nothing currently planned wants a larger step.
 
 `docs/MODEL.md` § "Selected method (as implemented)" now carries "The exact
 alternative, and why it is not taken": the linearity argument, the measured
@@ -88,6 +99,7 @@ reader finds the answer rather than re-deriving the question - so the item is
 closed rather than left open as a standing question.
 
 It is deferred rather than declined. Reopen it, or supersede it with scoped
-implementation items, if the playback multiplier is scoped in a form that wants
-steps larger than `MAXIMUM_SIMULATION_STEP_S`; nothing else should reopen it,
+implementation items, if a requirement appears that genuinely wants steps
+larger than `MAXIMUM_SIMULATION_STEP_S` - a simulated horizon long enough for
+the step count itself to be the cost, say. Nothing else should reopen it,
 because nothing else is wrong.

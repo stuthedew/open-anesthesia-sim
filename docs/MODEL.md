@@ -578,9 +578,13 @@ not unknown but bounded — by the two release gates above across the settings
 envelope, and quantified in percentage points under "Displayed precision"
 below, which sets the displayed resolution from it. What an exact step would
 buy is therefore the removal of the applicability-domain bound under
-"Supported simulation step" below, not the correction of a wrong value, and
-that is worth taking up when a larger step is actually wanted — the
-playback-speed multiplier is the case — rather than as standalone work. The
+"Supported simulation step" below, not the correction of a wrong value — and
+no planned work wants that. `ROADMAP.md` scopes v0.4.0's playback multiplier
+as steps per tick with the step fixed at 0.1 s, and fixes it there for
+*determinism* — removing the step-size divergence and the machine-speed
+dependence that make a run irreproducible on another computer — rather than
+for accuracy, so an exact solver would not change that design either. Revisit
+only if some future requirement genuinely wants a larger step. The
 measurements are carried in queue item PL-6GS0; they were produced by the
 v0.2.0 architecture review's verification harness, retired under PL-STNV.
 
