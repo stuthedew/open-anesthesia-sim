@@ -36,6 +36,17 @@ from anesthesia_sim.app_metadata import APP_DISPLAY_NAME, APP_VERSION
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 
+# The step each simulation tick advances by. What range of steps is *supported*
+# is `core/`'s to declare and no longer this module's: the operator split's
+# applicability domain is `core.respiratory_system.MAXIMUM_SIMULATION_STEP_S`,
+# and a step above it is refused there rather than displayed here. This is a
+# cadence choice inside that domain, and it sits at the domain's ceiling
+# deliberately - docs/MODEL.md § "Displayed precision" derives the two-decimal
+# readout from the split's error at exactly this step, so a coarser step would
+# make that derivation false while a finer one would cost frames without
+# moving a displayed digit.
+# `test_the_shipped_step_is_within_the_maximum_simulation_step` holds the
+# relationship, so a cadence and a limit cannot drift apart unnoticed.
 SIMULATION_STEP_S = 0.1
 # Render cadence, deliberately independent of the simulation step. The two
 # were previously the same 10 Hz tick, which made every redraw a gate on the

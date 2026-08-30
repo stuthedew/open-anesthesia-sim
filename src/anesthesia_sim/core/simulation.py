@@ -8,8 +8,12 @@ from dataclasses import dataclass, field
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.respiratory_system import RespiratoryStepResult, RespiratorySystem
-from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
+from anesthesia_sim.core.respiratory_system import (
+    RespiratoryStepResult,
+    RespiratorySystem,
+    require_supported_simulation_step,
+)
+from anesthesia_sim.core.validation import require_nonnegative_finite
 
 
 @dataclass(slots=True)
@@ -35,9 +39,16 @@ class SimulationState:
         return self.respiratory_system.patient
 
     def advance(self, simulation_step_s: float) -> RespiratoryStepResult:
-        """Advance the complete system and time as one operation."""
+        """Advance the complete system and time as one operation.
 
-        require_positive_finite("simulation_step_s", simulation_step_s)
+        The step is checked here as well as in `RespiratorySystem.advance()`,
+        rather than left to it, so that this class states its own contract:
+        a step outside the operator split's applicability domain is refused
+        before elapsed time moves, and a caller that catches
+        `SimulationConfigurationError` still holds a run it can trust.
+        """
+
+        require_supported_simulation_step(simulation_step_s)
 
         result = self.respiratory_system.advance(simulation_step_s)
         self.elapsed_s += simulation_step_s

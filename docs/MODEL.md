@@ -521,11 +521,19 @@ The implementation must:
 6. advance explicit simulation time; and
 7. calculate the post-step mass-balance residual.
 
-The initial supported simulation step is:
+Two constants describe the step, and they are different kinds of statement:
 
 ```text
-SIMULATION_STEP_S = 0.1
+MAXIMUM_SIMULATION_STEP_S = 0.1   # core/respiratory_system.py
+SIMULATION_STEP_S         = 0.1   # app/simulation_view.py
 ```
+
+`MAXIMUM_SIMULATION_STEP_S` is the model's supported domain, closed at its
+endpoint: any positive step at or below it is supported, and both
+`RespiratorySystem.advance()` and `SimulationState.advance()` refuse a larger
+one. `SIMULATION_STEP_S` is the interface's own tick cadence, which sits at
+that ceiling deliberately. "Supported simulation step" below derives the
+bound and says why the two coincide.
 
 ### Selected method (as implemented)
 
@@ -557,19 +565,88 @@ at every step size still refines consistently. A fourth-order Runge–Kutta
 method would remove the splitting error but was not required to pass the
 documented tolerances at `SIMULATION_STEP_S = 0.1`.
 
-The split has an applicability domain, and stepping outside it must fail
-rather than produce a number. At a large enough \(\Delta t\) the
+#### Supported simulation step
+
+The split has an applicability domain, and stepping outside it fails rather
+than producing a number. `MAXIMUM_SIMULATION_STEP_S` is that domain's upper
+bound, and a step above it is refused as a `SimulationConfigurationError`
+before anything is calculated — nothing is miscalculated, the argument is
+simply not one the model has an error bound for, and a caller can retry
+inside the domain with the run it already has intact.
+
+**The bound is not the breakdown.** "Applicability domain" hides several
+different questions, and their answers are two orders of magnitude apart.
+Measured on the worst trajectory the four sliders can reach (the *unperfused
+load, then dial off* run of "Independent-solution test" below), across all
+three agents:
+
+| Criterion | Largest step it allows |
+| --- | --- |
+| Every claim "Displayed precision" makes about the last displayed digit stays true | **0.1 s** |
+| The error stays within *one* count of the last displayed digit | 0.044 s |
+| The first-order coefficient \(C\) is still flat to about 1% | 0.6 s (isoflurane) to 2.5 s (the other two) |
+| The compartment capacity guard fires | 12 s (isoflurane), 25 s (sevoflurane), 50 s (desflurane) |
+
+Only the first is a bound worth carrying, and the other three are each
+unusable for a different reason.
+
+The **capacity guard** is what the implementation relied on before this
+domain check existed, and it is not a domain check at all: it fires when the
 sequential composition drives an amount negative — step 5 tries to remove
-more agent from alveolar gas than step 2 left in it — and the compartment
-guard rejects the result. `RespiratorySystem.advance()` reports that as
+more agent from alveolar gas than step 2 left in it — which is a statement
+about capacity, not accuracy. It is agent-dependent by a factor of four — the
+figures above are grid-resolved, the coarsest step accepted below each being
+10, 20 and 30 s — and it says nothing whatever about the range below it. A
+600 s sevoflurane wash-in at default settings runs to completion at a 30 s
+step and lands 0.205 percentage points from the same run at 0.1 s, twenty
+times the resolution the interface displays, so the readout is wrong in its
+*first* decimal while presenting itself as a settled value.
+
+A **flat coefficient** is not reassurance either. \(C\) is flat because the
+error is first order, and the error is \(C\,\Delta t\): at a 5 s step
+\(C\) is within 2% of its value at 0.1 s while the alveolar error is 1.12
+percentage points, 112 counts of the last displayed digit. \(C\) also
+*falls* for desflurane beyond about 20 s — \(1.91\times10^{-3}\
+\mathrm{s^{-1}}\) at a 30 s step against \(2.29\times10^{-3}\) at 0.1 s —
+so a flat or falling coefficient does not even indicate that the step is
+still inside the regime the coefficient was measured in.
+
+**One count** of the last displayed digit is the intuitive criterion and is
+stricter than anything this model claims. "Displayed precision" states the
+last digit as uncertain by about *two* counts on this trajectory — that is
+what a last digit being the uncertain one means — so a one-count rule would
+make the shipped 0.1 s step illegal against a claim the project does not
+make.
+
+**So the bound inverts "Displayed precision".** The split is first order, so
+its error is \(C\,\Delta t\) with \(C \leq 2.29\times10^{-3}\
+\mathrm{s^{-1}}\) over the reachable input domain, and every figure in that
+section — a fifth of a count of the last digit in ordinary use, half a count
+at a maximum dial setting, one count at the envelope corner, about two counts
+on the worst reachable trajectory — is that error at exactly
+\(\Delta t = 0.1\ \mathrm{s}\). Doubling the step doubles all four, and
+each of them then reads false. `MAXIMUM_SIMULATION_STEP_S` is therefore the
+largest step at which what the interface shows is still what the model
+supports, and **the supported step and the shipped step are the same
+number**. There is no headroom for a deliberately coarser run, which is the
+intended outcome and not an oversight: a coarser run's numbers would not
+survive being displayed, and preferring an obvious failure to a
+plausible-looking number is the required behavior here. Raising the bound is
+a safety-critical change to every displayed value — re-measure the
+coefficient, re-derive the displayed resolution with it, and revise both
+sections together.
+
+**The capacity guard remains, and reports something else.** Where a supported
+step still drives an amount negative, `RespiratorySystem.advance()` reports
 `SimulationNumericalError`: the step is abandoned, simulation time does not
 advance, and the caller must stop the run rather than read the partially
-applied state as a result. Preferring an obvious failure to a
-plausible-looking number is the required behavior here, not a defensive
-extra. The step at which this first occurs depends on the agent and the
-current state; at the shipped `SIMULATION_STEP_S = 0.1` it does not occur,
-and the step-refinement gate is what keeps the shipped step well inside the
-domain.
+applied state as a result. No supported step reaches that on the reference
+adult with any shipped agent, so the guard is now cover for a parameter set
+that could — a smaller alveolar gas volume, a far more soluble agent — rather
+than for a caller stepping too coarsely. The two failures are deliberately
+distinct: `SimulationConfigurationError` says the setting was refused and the
+run is still trustworthy, `SimulationNumericalError` says a run in progress
+is not.
 
 The implementation must not depend on:
 
@@ -739,6 +816,7 @@ The implementation must preserve the following invariants:
 - Pause prevents simulation-time advancement;
 - Reset clears dynamic state while preserving settings;
 - a delivered concentration above the agent's vaporizer maximum is rejected, not clamped;
+- a simulation step above `MAXIMUM_SIMULATION_STEP_S` is refused, not simulated;
 - zero fresh gas flow prevents new external delivery;
 - zero ventilation prevents circuit-to-patient ventilatory exchange;
 - zero cardiac output prevents pulmonary and tissue perfusion;
@@ -861,7 +939,27 @@ dt = 0.05 s
 dt = 0.025 s
 ```
 
-The release comparison tolerance must be documented before tagging.
+All three are inside the supported domain: the first is
+`MAXIMUM_SIMULATION_STEP_S` itself, and refinement only moves inward from
+there.
+
+The gate compares *successive* halvings — 0.1 against 0.05, then 0.05
+against 0.025 — rather than each step against the finest, and additionally
+requires that the second gap be smaller than the first. Two step sizes can
+only show that a pair of runs agree; three show that refining the step moves
+the solution toward a limit rather than merely somewhere else nearby.
+
+The release comparison tolerance is 5e-3 relative or 1e-8 absolute, either
+satisfying, on the alveolar, vessel-rich and mixed-venous fractions after
+60 s of the default sevoflurane wash-in. Comparing 0.1 s straight to 0.025 s
+would exceed it in mixed venous alone — that compartment has barely begun to
+fill at 60 s, so a difference of 1.4e-6 in fraction, a seventh of a count of
+the last displayed digit, is 0.55% of it.
+
+This gate is self-consistency across the supported steps, not correctness: a
+wrong transfer rate applied consistently at every step size refines
+consistently and passes here. "Independent-solution test" below is what asks
+whether the composition converges to the right answer at all.
 
 ### Independent-solution test
 
@@ -1113,8 +1211,17 @@ reached on a trajectory that holds cardiac output at zero. Narrowing a range
 would take that worst case out of the reachable domain, and widening one
 would admit trajectories never measured; either way the bound must be
 re-measured. `test_envelope_limits_match_the_interface` restates all seven
-limits — and the displayed resolution alongside them — and fails if the
-interface moves any of them, so neither can happen silently.
+limits — and the displayed resolution and the shipped simulation step
+alongside them — and fails if the interface moves any of them, so none of it
+can happen silently.
+
+**The simulation step is bounded too, and separately.** It is not a control a
+user sets, but it is an input to every `advance()` call, and what a caller
+may pass is bounded by `MAXIMUM_SIMULATION_STEP_S` rather than by these
+ranges; "Supported simulation step" above derives it. The two bounds are
+coupled in one direction: the coefficient the step bound inverts is measured
+over the trajectories *these* ranges produce, so widening a range means
+re-deriving both.
 
 ## Reset behavior
 

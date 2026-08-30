@@ -12,6 +12,19 @@ from anesthesia_sim.core.respiratory_system import RespiratorySystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
+# The steps docs/MODEL.md § "Step-refinement test" specifies, coarsest first.
+# All three are inside the operator split's applicability domain: the first is
+# `MAXIMUM_SIMULATION_STEP_S` itself, and refinement only moves inward.
+STEP_REFINEMENT_STEPS_S = (0.1, 0.05, 0.025)
+STEP_REFINEMENT_HORIZON_S = 60.0
+
+# The release comparison tolerance docs/MODEL.md § "Step-refinement test"
+# requires be documented before tagging. Unchanged from the two-step version
+# of this gate: at 60 s the coarsest and finest steps differ by about 4e-4
+# relative in the alveolar fraction, an order of magnitude inside this.
+STEP_REFINEMENT_RELATIVE_TOLERANCE = 5e-3
+STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
+
 
 def _run_for(system: RespiratorySystem, duration_s: float, simulation_step_s: float) -> None:
     """Advance a system for an exact number of fixed steps."""
@@ -119,22 +132,66 @@ def test_higher_ventilation_increases_early_alveolar_fraction() -> None:
     )
 
 
+def _states_after_one_minute(simulation_step_s: float) -> dict[str, float]:
+    """The three compared states after 60 s at one step size."""
+
+    system = RespiratorySystem.default()
+    _run_for(system, duration_s=STEP_REFINEMENT_HORIZON_S, simulation_step_s=simulation_step_s)
+
+    return {
+        "alveolar": system.alveoli.concentration_fraction,
+        "vessel rich": system.patient.vessel_rich.partial_pressure_fraction,
+        "mixed venous": system.patient.mixed_venous_fraction,
+    }
+
+
 def test_step_refinement_converges() -> None:
-    coarse = RespiratorySystem.default()
-    fine = RespiratorySystem.default()
+    """The three steps docs/MODEL.md specifies, not the two this compared.
 
-    _run_for(coarse, duration_s=60.0, simulation_step_s=0.1)
-    _run_for(fine, duration_s=60.0, simulation_step_s=0.05)
+    Two steps can only show that a pair of runs agree. Three show the thing
+    the section is named for: that refining the step moves the solution
+    *toward* a limit rather than merely somewhere else nearby, which two
+    points cannot distinguish from coincidence.
 
-    assert coarse.alveoli.concentration_fraction == pytest.approx(
-        fine.alveoli.concentration_fraction, rel=5e-3, abs=1e-8
-    )
-    assert coarse.patient.vessel_rich.partial_pressure_fraction == pytest.approx(
-        fine.patient.vessel_rich.partial_pressure_fraction, rel=5e-3, abs=1e-8
-    )
-    assert coarse.patient.mixed_venous_fraction == pytest.approx(
-        fine.patient.mixed_venous_fraction, rel=5e-3, abs=1e-8
-    )
+    Each comparison is between successive halvings rather than against the
+    finest step, which is the ordinary grid-refinement idiom and is also
+    what leaves the documented tolerance meaning exactly what it did when
+    this gate compared two steps. Comparing 0.1 s straight to 0.025 s is a
+    longer lever and does exceed the relative tolerance, in mixed venous
+    alone: at 60 s that compartment is only starting to fill, so 1.4e-6 in
+    fraction - a seventh of a count of the last displayed digit - is 0.55%
+    of it. Loosening a release tolerance to accommodate that would be a
+    change to what the gate certifies, and this item did not measure one.
+
+    This is not the reference gate. `tests/reference/test_coupled_dynamics.py`
+    asks whether the shipped composition converges to the *right* answer, by
+    comparing it against an independent integration; a wrong transfer rate
+    applied consistently at every step size still refines consistently and
+    would pass here. What this gate holds is self-consistency across the
+    supported steps, which is what makes an error bound measured at one of
+    them mean anything at the others.
+    """
+
+    by_step_s = {step_s: _states_after_one_minute(step_s) for step_s in STEP_REFINEMENT_STEPS_S}
+    successive = list(zip(STEP_REFINEMENT_STEPS_S, STEP_REFINEMENT_STEPS_S[1:], strict=False))
+
+    for coarse_step_s, fine_step_s in successive:
+        for label, value in by_step_s[coarse_step_s].items():
+            assert value == pytest.approx(
+                by_step_s[fine_step_s][label],
+                rel=STEP_REFINEMENT_RELATIVE_TOLERANCE,
+                abs=STEP_REFINEMENT_ABSOLUTE_TOLERANCE,
+            ), f"{label} at {coarse_step_s} s disagrees with the {fine_step_s} s solution"
+
+    for label in by_step_s[STEP_REFINEMENT_STEPS_S[-1]]:
+        gaps = [
+            abs(by_step_s[coarse_step_s][label] - by_step_s[fine_step_s][label])
+            for coarse_step_s, fine_step_s in successive
+        ]
+
+        assert gaps[0] > gaps[1] > 0.0, (
+            f"{label} does not settle as the step is refined: successive halvings move it by {gaps}"
+        )
 
 
 def test_long_wash_in_and_washout_validate_agent_simulation() -> None:
