@@ -80,13 +80,20 @@ frame currently costs ~17 ms of which ~15 ms is chart-point construction, so
 PL-010 (point reuse, measured 20x cheaper) is the headroom to spend if a
 high multiplier makes the render rate the constraint again.
 
+Half of this is now decided rather than open. PL-VP7N put the operator
+split's applicability domain in the core as `MAXIMUM_SIMULATION_STEP_S`, and
+a step above it is refused, so the multiplier cannot be a larger step even
+if someone wanted it to be: it is steps per tick, and that is enforced
+rather than merely written down. What "a larger step is a model-fidelity
+question" was pointing at has an answer - `docs/MODEL.md` § "Supported
+simulation step" - and the answer is that the supported step and the shipped
+step are the same number.
+
 Still undecided, and the reason this stays `needs-decision` rather than
 `ready`: how the multiplier is exposed without creating a hidden mode - a
 learner who does not notice a 120x setting will misread the time axis
-entirely - and how it interacts with the fixed `SIMULATION_STEP_S = 0.1`.
-Stepping is exact-closed-form per step, so a larger step is a model-fidelity
-question, not just a performance one. Being an `L`, it needs scoping into a
-`ROADMAP.md` milestone before implementation.
+entirely. Being an `L`, it needs scoping into a `ROADMAP.md` milestone
+before implementation.
 
 ## Open thread: the architecture review harness - PL-024
 

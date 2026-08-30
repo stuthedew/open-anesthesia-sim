@@ -3,11 +3,13 @@ id: PL-VP7N
 title: Refuse a simulation step outside the operator split's applicability domain
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety
 feature: numerical-domain
 touches: src/anesthesia_sim/core/respiratory_system.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/reference/test_coupled_dynamics.py, tests/reference/test_sevo_patient.py, tests/integration/test_controller.py, tests/unit/test_simulation.py, tests/unit/test_simulation_view.py
 added: 2026-08-30
+closed: 2026-08-30
+commit: 82813bf
 verify: uv run pytest -k maximum_simulation_step
 ---
 
@@ -147,3 +149,74 @@ that would differ materially from the one described.
 trajectory it fires at 15 s for isoflurane. The point the brief was making —
 that the guard is a capacity check rather than a domain check and says
 nothing about the range below it — is unaffected and still correct.
+
+---
+
+**Resolved 2026-08-30.** The derivation question was put to the project
+owner with a recommendation, per the update above, and answered: the bound
+inverts `docs/MODEL.md` § "Displayed precision", giving
+`MAXIMUM_SIMULATION_STEP_S = 0.1 s`. The supported step and the shipped step
+are therefore the same number, with no headroom for a coarser headless run.
+PL-10MX (advance a caller over a duration by taking supported steps) is what
+serves that caller instead of refusing it, and was captured here.
+
+**Three corrections to the update section, from re-measuring it.** The
+oracle used was rebuilt at a fixed 0.005 s step rather than at half the step
+under test, because halving is useless at multi-second steps; it reproduces
+every pinned reference state to 5.5e-15.
+
+- The update frames the display criterion as *one* count of the last
+  displayed digit, which gives 0.044 s and lands below the shipped step.
+  That is not the claim `docs/MODEL.md` makes. "Displayed precision" states
+  a tiered uncertainty — a fifth of a count in ordinary use, half at a
+  maximum dial, one at the envelope corner, about two on the worst
+  reachable trajectory — and all four hold at 0.1 s (measured: 0.167, 1.207
+  and 2.29 counts for the three that were checked). Inverting the section
+  as written lands *exactly* at 0.1 s, not "at or just below" it. A
+  one-count rule would also outlaw an ordinary ventilator start, which
+  allows only 0.066 s under it.
+- "First-order scaling still holds (C flat to ~1%)" allows 0.6 s for
+  isoflurane and about 2.5 s for the other two, not ~5 s.
+- The capacity guard first fires at 12 s (isoflurane), 25 s (sevoflurane)
+  and 50 s (desflurane) on the worst trajectory, not 15/30/50. The
+  update's point — agent-dependent by more than a factor of three — is
+  strengthened rather than weakened: it is a factor of four.
+
+**Two call sites the brief did not list** also advanced the coupled system
+outside the domain: `tests/unit/test_simulation_view.py`'s 1 s step, and
+`tests/unit/test_respiratory_system_failure.py`'s 60 s breakdown step. The
+second needed rethinking rather than rescaling — no supported step can break
+the split on the reference adult once the guard is in place, so the
+numerical-error path is now reached through a compartment whose capacity one
+supported step overdraws, which is what a future parameter set could produce.
+
+**One deliberate departure from the decided approach.** The brief has `app/`
+import the constant rather than declare its own. It declares
+`SIMULATION_STEP_S = 0.1` instead, with
+`test_the_shipped_step_is_within_the_maximum_simulation_step` asserting it is
+`<=` the core bound. Aliasing a render cadence to a validity limit would mean
+a future numerical method supporting a 5 s step silently made the interface
+render at 5 s. The complaint the brief was making is still answered: the
+bound lives in exactly one place, and every restatement of the step is now
+checked — the reference suite's against the interface's by equality, the
+interface's against core's by `<=`.
+
+**Four paths outside the declared `touches`**, all deliberate:
+`tests/unit/test_respiratory_system_failure.py` (a call site the brief did
+not list, above), `docs/WORKING_NOTES.md` (the doc sweep — the PL-009
+playback thread listed "how it interacts with the fixed `SIMULATION_STEP_S`"
+as open, and half of that is now decided), and the two captured item files.
+
+**Captured, not fixed here.**
+
+- PL-0MLQ (refuse a setting outside the documented supported input range) —
+  `core/` accepts a cardiac output of 1000 L/min and a fresh gas flow of
+  500 L/min, though `docs/MODEL.md` § "Supported input ranges" declares
+  closed intervals for all four controls and calls them the verification
+  domain. This item's defect, one axis over.
+- PL-10MX (advance a caller over a duration by taking supported steps) — the
+  supported route for a caller who wants 30 s of simulated time, now that
+  asking for it in one step is correctly refused.
+- PL-0999 (`docket verify` defaults to a local `main` that a fresh checkout
+  leaves stale) — found closing this item out: the default base reported 20
+  paths outside the commission where `--base origin/main` reports 4.

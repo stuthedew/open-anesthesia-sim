@@ -6,6 +6,19 @@ from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.core import respiratory_system
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
+from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S
+
+
+def _advance_for(controller: SimulationController, duration_s: float) -> None:
+    """Advance a running controller to `duration_s` at the largest supported step.
+
+    Simulated time comes from taking supported steps rather than from asking
+    for one large one: `MAXIMUM_SIMULATION_STEP_S` is where the operator
+    split's applicability domain ends, and a step past it is refused.
+    """
+
+    for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
+        controller.advance(MAXIMUM_SIMULATION_STEP_S)
 
 
 def test_default_controller_starts_with_sevoflurane() -> None:
@@ -175,7 +188,7 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
         cardiac_output_l_min=6.0,
     )
     controller.start()
-    controller.advance(30.0)
+    _advance_for(controller, duration_s=30.0)
 
     assert controller.snapshot().stored_agent_l > 0.0
 
@@ -245,7 +258,7 @@ def test_reset_pauses_and_clears_concentration_history() -> None:
 def test_parameter_changes_do_not_reset_dynamic_state() -> None:
     controller = SimulationController()
     controller.start()
-    controller.advance(10.0)
+    _advance_for(controller, duration_s=10.0)
     before = controller.snapshot()
 
     controller.set_circuit_volume(5.0)
