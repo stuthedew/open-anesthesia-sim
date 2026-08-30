@@ -201,9 +201,10 @@ class TreeMap:
     line: int
     files: frozenset[PurePosixPath]
     # Directories drawn without any children beneath them. Such an entry
-    # stands for its whole subtree (`tools/review-verification/` is mapped as
-    # one unit and documented by its own README), so files under it are
-    # covered without being listed.
+    # stands for its whole subtree — a unit documented by its own README
+    # rather than module by module — so files under it are covered without
+    # being listed. No tree draws one today; the mechanism is kept because a
+    # subtree with its own documentation is the case it exists for.
     covered_dirs: frozenset[PurePosixPath]
 
     @property
