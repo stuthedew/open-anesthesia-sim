@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -299,3 +300,74 @@ def test_wave_exits_nonzero_when_the_gate_names_an_item_that_is_not_there(
     store = _wave_project(tmp_path)
     assert _run("wave", "--items", str(store)) == 1
     assert "not in the store" in capsys.readouterr().out
+
+
+DONE = """---
+id: PL-D1D1
+title: A finished item
+priority: P2
+effort: S
+status: done
+classes: perf
+touches: a.py
+added: 2026-08-01
+closed: 2026-08-20
+commit: abc1234
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def _release_repo(tmp_path: Path, *tag_names: str) -> Path:
+    """A repository with one unreleased item, a version, and the tags given."""
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "done.md").write_text(DONE, encoding="utf-8")
+    (root / "pyproject.toml").write_text('[project]\nversion = "0.2.5"\n', encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
+    for tag in tag_names:
+        subprocess.run(["git", "tag", tag], cwd=root, check=True, capture_output=True)
+    return root
+
+
+def test_a_release_is_refused_while_the_previous_one_is_untagged(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Cutting on top of an untagged release extends a gap nothing can close later."""
+    root = _release_repo(tmp_path, "v0.2.3")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
+    assert "v0.2.5 shipped and carries no tag" in capsys.readouterr().out
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
+
+
+def test_a_release_proceeds_once_the_previous_one_is_tagged(tmp_path: Path) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    assert 'version = "0.2.6"' in (root / "pyproject.toml").read_text()
+
+
+def test_a_dry_run_warns_about_the_missing_tag_and_still_shows_the_notes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Withholding the preview would not make the tag appear."""
+    root = _release_repo(tmp_path, "v0.2.3")
+
+    assert main(["release", "0.2.6", "--dry-run", "--items", str(root / "items")]) == 0
+    output = capsys.readouterr().out
+    assert "carries no tag" in output
+    assert "PL-D1D1" in output
+
+
+def test_a_project_that_has_never_tagged_is_not_refused(tmp_path: Path) -> None:
+    root = _release_repo(tmp_path)
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
