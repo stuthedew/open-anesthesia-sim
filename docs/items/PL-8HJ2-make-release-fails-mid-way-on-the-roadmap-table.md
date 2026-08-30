@@ -1,10 +1,14 @@
 ---
 id: PL-8HJ2
-title: make release fails mid-way on the ROADMAP table it does not write, so every release ends in a red test
-status: untriaged
-feature: dev-tooling
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, Makefile
+title: make release stops mid-way on the ROADMAP table it does not write, so every release ends in a red test
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: release-roadmap-seam
+touches: subprojects/docket/src/docket/release.py, Makefile, subprojects/docket/tests/test_release.py, ROADMAP.md
 added: 2026-08-30
+not-delegable: proving this means cutting a release, so no check can run beforehand - the same reason PL-674D carried
 ---
 
 **Problem.** Cutting v0.2.7 ran `make release VERSION=0.2.7`, which bumped
@@ -34,18 +38,32 @@ version table and baseline heading to drift". That is true in the sense that
 drift is now *caught*; it is not prevented, and the sentence reads as though it
 were.
 
-**Where.** `subprojects/docket/src/docket/release.py`, `roadmap.py`, and the
-`release` target in `Makefile`.
+**Where.** `subprojects/docket/src/docket/release.py` and the `release` target
+in `Makefile`, with tests in `subprojects/docket/tests/test_release.py`.
 
-**Worth deciding.** Whether the table row and baseline section are generated
-or merely prompted for. Generating them means composing release prose, which
-is judgment and is exactly what `CLAUDE.md` says not to script — the v0.2.7
-row and baseline paragraph took real thought about what the release was *for*.
-Prompting means `make release` stops cleanly after the mechanical half with
-"now write the ROADMAP.md row and baseline section, then re-run `make check`",
-which keeps the judgment where it belongs and makes the command honest about
-where it ends. The second is probably right, and is much the cheaper.
+**Decided 2026-08-30: prompt, do not generate.** The open question was whether
+`make release` should write the version-table row and baseline section itself.
+It should not. Composing them means writing release prose - the v0.2.7 row and
+baseline paragraph took real thought about what the release was *for* - and
+that is precisely the judgment half `CLAUDE.md` says not to script. So
+`make release` stops cleanly after the mechanical half and says what is left
+to do by hand, which keeps the judgment where it belongs and makes the command
+honest about where it ends. It is also much the cheaper of the two.
 
-**Done when.** `make release VERSION=x.y.z` either completes green or stops
-with an instruction rather than a test failure, and `ROADMAP.md`'s claim about
-what `PL-N2N1` prevents matches what it does.
+Scope is narrowed accordingly: `roadmap.py` is dropped from `touches`, since
+nothing generates the row.
+
+**The other half of the seam.** `PL-M5FK` (`ROADMAP.md`'s tag statements go
+stale on every release and no check reads them) carries the same decision from
+the other side: the release path touches `ROADMAP.md` in three places - the
+version-table row, the baseline section, and the tag statements - and writes
+none of them, so `doc_check` grows the checks that catch the omission rather
+than `make release` growing the prose. Do the two together; they share the
+`release-roadmap-seam` feature.
+
+**Done when.** `make release VERSION=x.y.z` stops with an exit status and a
+message naming the `ROADMAP.md` edits still owed and the re-run of
+`make check`, rather than dropping into a test failure with the tree
+half-updated; and `ROADMAP.md`'s claim that `PL-N2N1` "stopped leaving this
+file's version table and baseline heading to drift" is reworded to say that
+the drift is caught rather than prevented.

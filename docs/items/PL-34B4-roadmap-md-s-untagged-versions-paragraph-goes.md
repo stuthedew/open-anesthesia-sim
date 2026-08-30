@@ -1,10 +1,12 @@
 ---
 id: PL-34B4
 title: ROADMAP.md's untagged-versions paragraph goes stale too, and PL-M5FK's check excludes it
-status: untriaged
-feature: dev-tooling
+status: dropped
+feature: release-roadmap-seam
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-08-30
+closed: 2026-08-30
+reason: folded into PL-M5FK, which now covers both the tag list and this paragraph. They are one check over two adjacent sentences, so a second item would have been done the moment the first landed. The redrawn decidable/judgment boundary this item argued for is recorded in PL-M5FK's "Where the decidable half stops".
 ---
 
 **Problem.** `PL-M5FK` was filed against `ROADMAP.md`'s tag *list* and
