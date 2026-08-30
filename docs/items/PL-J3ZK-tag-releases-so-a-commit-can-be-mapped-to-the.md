@@ -3,7 +3,9 @@ id: PL-J3ZK
 title: Tag releases so a commit can be mapped to the version it shipped in
 priority: P2
 effort: S
-status: needs-decision
+status: done
+closed: 2026-08-30
+commit: 6c6a8af
 classes: infra, session-cost
 feature: dev-tooling
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/SKILL.md, ROADMAP.md, subprojects/docket/tests
@@ -154,10 +156,22 @@ git tag -a v0.2.2 3099980 -m "v0.2.2"
 git push origin v0.2.1 v0.2.2
 ```
 
-**Done, 2026-08-30.**
+**Closed, 2026-08-30. Every version is tagged.**
 
-- The two tags above are decided and their commits confirmed; only the push
-  remains, and it is the owner's to run.
+The owner placed the last four tags: v0.2.1 (`bc5f823`), v0.2.2 (`3099980`),
+then v0.1.0 (`97cc66a`) and v0.2.0 (`796bf4f`). All eleven released versions
+now carry annotated tags, which closes both halves of this item - the practice
+going forward and the retrospective gap behind it.
+
+The open decision is resolved rather than deferred: v0.1.0 and v0.2.0 were
+recorded here as untaggable on a shallow-checkout measurement, and in the full
+history `97cc66a` is an ancestor of `796bf4f`, so the tags went where the
+release commits are. `git describe --contains` was then checked across all 214
+commits on `main`: it resolves for every one except the nine unreleased
+commits after v0.2.7, which is the expected boundary rather than a gap.
+
+- The two tags above are decided and their commits confirmed; both are now
+  pushed.
 - `docket release` refuses to cut while the version it is releasing *from*
   carries no tag, and prints the three commands to place it rather than the
   instruction to. A project holding no tags at all is exempt: emptiness there

@@ -1,7 +1,12 @@
 ---
 id: PL-20ZR
 title: The 'workflow before features' ordering is re-explained every session because nothing records it
-status: untriaged
+priority: P2
+effort: S
+status: done
+closed: 2026-08-30
+classes: session-cost, infra
+commit: 889bd3e
 feature: planning-cadence
 touches: ROADMAP.md, CLAUDE.md, subprojects/docket/src/docket/plan.py
 added: 2026-08-30
@@ -46,3 +51,13 @@ Decide whether that is worth building or whether the skill rule suffices.
 **Done when.** A session starting cold proposes workflow work without being
 told to, and the ordering is stated somewhere a reader can find the reasoning
 rather than only its effect.
+
+**Closed, 2026-08-30.** `CLAUDE.md` carries the rule under "The queue, and how
+the project owner works": workflow work outranks product work until the
+workflow is settled, with the reasoning, the reason the priority field cannot
+carry it, and its own retirement condition. `CLAUDE.md` loads at launch, so a
+session starting cold reads it before it reads the queue - which is this
+item's stated "done when".
+
+The beat, which would carry the same ordering at no per-session cost, is
+`PL-NSN9`'s to settle and is deliberately not held open here.
