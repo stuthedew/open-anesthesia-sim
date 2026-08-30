@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: planning-cadence
+milestone: v0.2.6
 touches: subprojects/docket, ROADMAP.md
 added: 2026-08-26
 closed: 2026-08-29
