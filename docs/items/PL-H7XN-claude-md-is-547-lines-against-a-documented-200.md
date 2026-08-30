@@ -1,7 +1,11 @@
 ---
 id: PL-H7XN
 title: CLAUDE.md is 547 lines against a documented 200-line target, which reduces adherence to all of it
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: session-cost, infra
+not-delegable: the test is that no rule was lost and the safety-critical standard still loads in every session, which is a reading of the file rather than a command. A line count would pass on a file with rules deleted, which is this item's stated failure mode.
 feature: worker-instructions
 touches: CLAUDE.md, .claude/rules
 added: 2026-08-30
