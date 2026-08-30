@@ -33,9 +33,9 @@ grossest case and says nothing about the range between.
 
 **Why it matters.** The supported step is currently declared in the
 presentation layer, `SIMULATION_STEP_S = 0.1` at `app/simulation_view.py:39`,
-and restated a second time at `tests/reference/test_coupled_dynamics.py:131`
+and restated a second time at `tests/reference/test_coupled_dynamics.py:339`
 *without* the cross-check that `test_envelope_limits_match_the_interface`
-(`:550`) gives the slider limits. So the one number that bounds the split's
+(`:864`) gives the slider limits. So the one number that bounds the split's
 validity is held in two places that cannot disagree loudly, and in neither of
 them is it enforced. Any caller of `core/` — a future headless runner, a
 notebook, a test — gets a number instead of a refusal. `CLAUDE.md`'s standard
@@ -93,3 +93,57 @@ recorded in `docs/MODEL.md`, both `RespiratorySystem.advance` and
 two together, the five call sites above run inside the domain, the bare-circuit
 tests pass unaltered, and the step-refinement test compares the three steps
 `docs/MODEL.md` specifies.
+
+---
+
+**Updated 2026-08-30, after PL-SLHS landed.** That item (bound the splitting
+error across setting changes) re-measured the coefficient this one's constant
+must be derived from, and turned up a distinction the brief above does not
+draw. Line citations refreshed at the same time; the two in "Why it matters"
+had moved.
+
+**The coefficient is measured and recorded.** \(C_{\max} =
+2.29\times10^{-3}\ \mathrm{s^{-1}}\), in bold in `docs/MODEL.md`
+§ "Independent-solution test". Do not re-derive it. `docs/MODEL.md`
+§ "Supported input ranges" now also defines the reachable input domain, which
+is the other half of "applicability domain" and was undocumented when this
+item was written.
+
+**Three different questions hide under "applicability domain", and they give
+answers three orders of magnitude apart.** Measured on the worst reachable
+trajectory (`_unperfused_load_then_dial_off`), all three agents:
+
+| Criterion | Largest step it allows |
+| --- | --- |
+| Error stays within one count of the last displayed digit | **0.044 s** |
+| First-order scaling still holds (C flat to ~1%) | ~5 s |
+| The existing capacity guard fires | 15 s (iso), 30 s (sevo), 50 s (des) |
+
+The first is below the shipped 0.1 s step. The second is useless as a safety
+bound: C is flat there, but C·Δt is not — at 5 s the alveolar error is 1.12
+percentage points, 112 counts of the last displayed digit. And C *falls* at
+30 s for desflurane, to below its 0.1 s value, so a flat or falling
+coefficient is not reassurance that the step is sound. The third is
+agent-dependent by more than a factor of three, which is this item's own
+complaint about it stated quantitatively.
+
+**So the derivation is the decision, and it has a consequence worth raising
+before building.** Inverting `docs/MODEL.md` § "Displayed precision" — the
+largest step at which its claim about the last displayed digit stays true —
+is the self-consistent choice, and at the worst trajectory it lands at or
+just below the 0.1 s the interface ships. That leaves the supported step
+equal to the shipped step, with no headroom for a coarser headless run.
+Deriving it from ordinary use instead (C = 1.67e-4 s^-1 at 1 MAC and default
+flows) gives 0.6 s, but then the constant no longer bounds the worst case it
+is named for.
+
+Neither is obviously right, and the choice changes what the constant means
+rather than only its value. Put it to the project owner with a
+recommendation before implementing, per `CLAUDE.md`'s rule on deliverables
+that would differ materially from the one described.
+
+**One thing the brief above gets slightly wrong.** It says
+`SimulationNumericalError` "first fires at dt=60 s". On the worst reachable
+trajectory it fires at 15 s for isoflurane. The point the brief was making —
+that the guard is a capacity check rather than a domain check and says
+nothing about the range below it — is unaffected and still correct.
