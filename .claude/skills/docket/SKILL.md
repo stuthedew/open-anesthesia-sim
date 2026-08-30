@@ -340,7 +340,20 @@ The dry run still prints the mechanical guess, as a reference point and not an
 answer.
 
 `release` stops before tagging on purpose: review the bump and the generated
-notes, then commit and tag.
+notes, then commit and tag. It **refuses to cut a release while the previous
+one is untagged**, because a release cut without a tag leaves a permanent gap
+— `git describe --contains` resolves nothing across its span — and the gap
+cannot be repaired with confidence once the history has moved on.
+
+**Never ask the owner to "tag vX.Y.Z". Paste the commands, filled in:**
+
+```bash
+git tag -a v0.3.0 <merge commit> -m "v0.3.0"
+git push origin v0.3.0
+```
+
+Every time, not only the first. Asking for a tag without them makes the owner
+reconstruct three commands at the moment they are trying to do something else.
 
 ## Mode: close out an item
 

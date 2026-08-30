@@ -19,10 +19,18 @@ from .config import Config
 from .config import load as load_config
 from .model import Item
 from .plan import features, recommend
-from .release import bump_version, milestones, read_version, readiness, release_notes, stamp
+from .release import (
+    bump_version,
+    is_untagged,
+    milestones,
+    read_version,
+    readiness,
+    release_notes,
+    stamp,
+)
 from .roadmap import wave
 from .store import find_item, new_id, read_items, write_item
-from .vcs import branches_in_flight, in_flight_ids
+from .vcs import branches_in_flight, in_flight_ids, tags
 from .verify import verify_batch
 
 CAPTURE_TEMPLATE = """**Problem.** {title}
@@ -301,6 +309,16 @@ def cmd_release(args: argparse.Namespace) -> int:
         print(f"Nothing to release: no finished work since {current}.")
         return 0
 
+    # Cutting a release on top of an untagged one extends a gap that cannot be
+    # closed afterwards, so the refusal belongs here rather than in a reminder.
+    # A dry run is allowed through with a warning: it exists to review the
+    # notes and the bump, and withholding those would not make the tag appear.
+    if not getattr(args, "no_git", False) and is_untagged(current, tags(root)):
+        print(_untagged_warning(current))
+        if not args.dry_run:
+            return 1
+        print()
+
     if args.version is None and config.version_policy == "manual":
         print(f"{len(ready.shippable)} finished item(s) since {current}:")
         for item in ready.shippable:
@@ -340,8 +358,30 @@ def cmd_release(args: argparse.Namespace) -> int:
     notes_path.write_text(notes, encoding="utf-8")
     print(f"Bumped {previous} -> {version} in {config.version_file}")
     print(f"Wrote {notes_path.relative_to(root)} and stamped {len(ready.shippable)} item(s)")
-    print(f"Next: review, commit, and tag {name}")
+    print("Next: review, commit, then tag the merge:")
+    print(f'  git tag -a {name} <merge commit> -m "{name}"')
+    print(f"  git push origin {name}")
     return 0
+
+
+def _untagged_warning(version: str) -> str:
+    """Say which tag is missing and give the commands, not the instruction.
+
+    Asking someone to "tag v0.2.5" makes them go and reconstruct three
+    commands at the moment they are trying to do something else.
+    """
+    name = f"v{version.lstrip('v')}"
+    return "\n".join(
+        [
+            f"{name} shipped and carries no tag, so no commit in its span can be",
+            "mapped to the release it went out in. That gap cannot be closed later",
+            "with any confidence. Tag it first:",
+            "",
+            f'  git log --oneline --grep="Release {name}"   # find the commit',
+            f'  git tag -a {name} <commit> -m "{name}"',
+            f"  git push origin {name}",
+        ]
+    )
 
 
 def cmd_delegable(args: argparse.Namespace) -> int:
