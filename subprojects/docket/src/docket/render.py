@@ -11,9 +11,11 @@ here and the one that compounds.
 
 from __future__ import annotations
 
-from .checks import Report
+from .checks import REQUIRED_BRIEF, Report
 from .concurrency import undeclared
+from .config import Config
 from .model import PRIORITIES, Item
+from .plan import Gate, effort_total
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
 
 
@@ -151,6 +153,165 @@ def format_digest(report: Report, in_flight: set[str] | None = None, ready: obje
         )
     lines.append("`bin/docket status` shows the project by feature; `list` shows every item.")
     return "\n".join(lines)
+
+
+def format_triage(report: Report, config: Config) -> str:
+    """Every untriaged item, what is unset on it, and the rules that bind the answer.
+
+    A worklist and a constraint sheet, deliberately not a recommendation. What
+    an item is worth, how big it is, and what it belongs with are judgments,
+    and a tool that guessed at them would produce something that looks
+    authoritative and is not. What *is* mechanical is which fields are still
+    empty and which rules `docket check` will apply the moment the status
+    changes - and that is exactly what a session otherwise reloads a 300-line
+    skill to recall, and then finds out afterwards whether it recalled
+    correctly.
+
+    The constraints are read from the settings and the checker rather than
+    restated here, so they cannot drift from what the checker will actually
+    say.
+    """
+    if not report.untriaged:
+        return "Nothing is untriaged."
+
+    lines = [f"{_plural(len(report.untriaged), 'item is', 'items are')} untriaged.", ""]
+    for item in sorted(report.untriaged, key=lambda i: i.sort_key()):
+        lines.append(f"{item.identifier}  {item.title}")
+        lines.append(f"  unset: {_unset(item)}")
+        missing = [
+            marker for marker in (*REQUIRED_BRIEF, "**Done when.**") if marker not in item.body
+        ]
+        if missing:
+            lines.append(f"  brief still missing: {', '.join(missing)}")
+        declared = _declared(item)
+        if declared:
+            lines.append(f"  declared: {declared}")
+        lines.append("")
+        lines.extend(
+            f"    {line}" if line.strip() else "" for line in item.body.strip().splitlines()
+        )
+        lines.append("")
+
+    lines.append("The rules these answers have to satisfy:")
+    lines.extend(f"  - {rule}" for rule in _triage_rules(report, config))
+    lines.append("")
+    lines.append("What each item is worth, how big it is and what it belongs with are not")
+    lines.append("computed here. This prints the rules; applying them is yours.")
+    return "\n".join(lines)
+
+
+def _unset(item: Item) -> str:
+    """The fields triage exists to fill, marking the ones the checker requires."""
+    fields = [
+        ("priority", item.priority, True),
+        ("effort", item.effort, True),
+        ("classes", ", ".join(item.classes), False),
+        ("touches", ", ".join(item.touches), False),
+        ("feature", item.feature, False),
+    ]
+    names = [f"{name}*" if required else name for name, value, required in fields if not value]
+    return (", ".join(names) + "   (* required by `docket check`)") if names else "nothing"
+
+
+def _declared(item: Item) -> str:
+    parts = []
+    if item.classes:
+        parts.append(f"classes {', '.join(item.classes)}")
+    if item.touches:
+        parts.append(f"touches {', '.join(item.touches)}")
+    if item.feature:
+        parts.append(f"feature {item.feature}")
+    return "; ".join(parts)
+
+
+def _triage_rules(report: Report, config: Config) -> list[str]:
+    """The constraints, stated with the counts that make each one checkable."""
+    counts = report.counts
+    top = next((p for p in PRIORITIES if counts.get(p)), PRIORITIES[0])
+    rules = [
+        f"{'/'.join(config.safety_classes)} classes force P0 or P1; `docket check` "
+        "rejects them at P2 or P3.",
+        f"the top band is {top}, holding {counts.get(top, 0)} of the "
+        f"{config.top_band_limit} a session can choose between at a glance.",
+        f"process work ({', '.join(config.process_classes)}) does not enter the top "
+        "band ahead of the product work already in it - an item counts as process "
+        "work only when every one of its classes is in that set.",
+    ]
+    if config.protected_paths:
+        rules.append(
+            f"`touches` naming {', '.join(config.protected_paths)} makes the item "
+            "non-delegable whatever proves it, so a cheaper model can never take it."
+        )
+    if config.verify_required_from is not None:
+        rules.append(
+            "an item set to `ready` must name a `verify:` command, or record in "
+            "`not-delegable` why no command can prove it. Run the command before "
+            "writing it down."
+        )
+    rules.append(
+        "a status past `untriaged` needs the full brief: "
+        f"{', '.join((*REQUIRED_BRIEF, '**Done when.**'))}."
+    )
+    return rules
+
+
+def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
+    """The debt owed before a milestone, as the two lists a gate record holds.
+
+    Recording Gate 0 by hand meant reading every open item's classes and
+    status, applying the rule, splitting the result by scope and typing the
+    ids into the plan - a full pass over 48 items, repeated before every
+    milestone. All of that is in the front matter, and none of it needs
+    judgment. What still does is whether each item is really debt and whether
+    the gate should open, which is why this prints two lists and no verdict.
+    """
+    if not gate.items:
+        subject = f" carrying `{gate.feature}`" if gate.feature else ""
+        return f"No open debt{subject}. Nothing to clear."
+
+    lines = [
+        f"{_plural(len(gate.items), 'open debt item', 'open debt items')}"
+        + (f", against the `{gate.feature}` milestone." if gate.feature else ".")
+    ]
+
+    lines.append("")
+    lines.append(
+        f"Cleared before it begins - {len(gate.outside)} ({effort_total(gate.outside)}):"
+        if gate.feature
+        else f"Open debt - {len(gate.outside)} ({effort_total(gate.outside)}):"
+    )
+    lines.extend(_gate_lines(gate.outside))
+
+    if gate.feature:
+        lines.append("")
+        lines.append(
+            f"Cleared by the milestone itself - {len(gate.inside)} ({effort_total(gate.inside)}):"
+        )
+        lines.extend(_gate_lines(gate.inside))
+        if not gate.inside:
+            lines.append("  nothing carries that feature")
+
+    lines.append("")
+    lines.append(f"Debt is an open item classed {', '.join(debt_classes)}, or at needs-decision.")
+    lines.append("Whether each of these is really debt, whether the gate should open, and")
+    lines.append("what goes into the plan are not decided here. Recording it is a deliberate act.")
+    return "\n".join(lines)
+
+
+def _gate_lines(items: list[Item]) -> list[str]:
+    if not items:
+        return ["  nothing"]
+    width = max(len(item.identifier) for item in items)
+    lines = []
+    for item in items:
+        marks = ", ".join(item.classes) or "no classes"
+        if item.status != "ready":
+            marks = f"{item.status}, {marks}"
+        lines.append(
+            f"  {item.priority} {item.effort or '-'} {item.identifier:<{width}} "
+            f"{item.title} ({marks})"
+        )
+    return lines
 
 
 def format_check(report: Report) -> str:

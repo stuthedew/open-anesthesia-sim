@@ -22,6 +22,12 @@ they are checked here and never left to a session to remember:
   grammar, and the milestones, gates and step numbers run in order. The table
   is the project's only statement of which milestone is current and which is
   next, so it has to stay readable by a tool and not only by a person.
+- **Current baseline.** `ROADMAP.md`'s version table names each released
+  version once, marks exactly one of them the current baseline, and its
+  "Current baseline:" heading names that same version - which is the version
+  `pyproject.toml` holds. Cutting a release bumps the version file and leaves
+  this file naming the previous one until somebody notices, which has now
+  happened twice.
 
 What is left to judgment - whether a statement is still *true*, whether a
 `must` in `docs/MODEL.md` still matches the code, whether a milestone's
@@ -65,9 +71,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "subprojects" / 
 
 try:
     from docket.roadmap import (  # noqa: E402  - import follows the path insertion above
+        BASELINE_MARK,
         HEADING_RE,
         TIMELINE_HEADING,
+        VERSION_TABLE_HEADING,
+        baseline_heading,
         parse_timeline,
+        parse_version_table,
         table_rows,
     )
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
@@ -464,6 +474,75 @@ def check_timeline(root: Path, report: Report) -> None:
         report.errors.append(f"{ROADMAP}: the timeline names no milestone version")
 
 
+def check_baseline(root: Path, report: Report) -> None:
+    """Hold the three statements of the current version to each other.
+
+    `ROADMAP.md` calls itself the authoritative version and milestone map, and
+    every release note, gate record and milestone claim is anchored to it. It
+    says which version is current in two places - one row of the version table
+    and the heading below it - and `pyproject.toml` says it in a third. A
+    release bumps the third and leaves the other two behind, which has now
+    happened twice, the second time one release after the first was repaired.
+
+    This refuses rather than writes. The milestone column is editorial prose,
+    and a generated row would either be thin or would overwrite something
+    considered; refusing costs the owner one hand-written row per release and
+    cannot corrupt the file. Tags are deliberately not compared: a shallow or
+    tag-less clone is a normal checkout, and a check that fails on how someone
+    fetched the repository is a check that gets switched off. `docket release`
+    is where the tag is enforced, at the moment tags are actually to hand.
+    """
+    roadmap = root / ROADMAP
+    version_file = root / "pyproject.toml"
+    if not roadmap.is_file() or not version_file.is_file():
+        return
+    text = roadmap.read_text(encoding="utf-8")
+
+    rows = parse_version_table(text)
+    if not rows:
+        report.errors.append(f'{ROADMAP}: no version table found under "{VERSION_TABLE_HEADING}"')
+        return
+
+    seen: dict[str, int] = {}
+    for row in rows:
+        if row.version in seen:
+            report.errors.append(
+                f"{ROADMAP}:{row.line}: v{row.version} already has a row at line "
+                f"{seen[row.version]}; one row per released version"
+            )
+        seen.setdefault(row.version, row.line)
+
+    marked = [row for row in rows if row.is_baseline]
+    if len(marked) != 1:
+        where = ", ".join(f"line {row.line}" for row in marked) or "no row"
+        report.errors.append(
+            f'{ROADMAP}: {len(marked)} rows are marked "{BASELINE_MARK}" ({where}); '
+            "exactly one release is current"
+        )
+        return
+
+    declared = _project_version(version_file)
+    if declared and marked[0].version != declared:
+        report.errors.append(
+            f"{ROADMAP}:{marked[0].line}: the current baseline row is v{marked[0].version}, "
+            f"but pyproject.toml holds {declared}"
+        )
+
+    heading = baseline_heading(text)
+    if heading is None:
+        report.errors.append(f'{ROADMAP}: no "Current baseline: vX.Y.Z" heading')
+    elif heading[1] != marked[0].version:
+        report.errors.append(
+            f"{ROADMAP}:{heading[0]}: the baseline heading names v{heading[1]}, but the "
+            f"table marks v{marked[0].version} current"
+        )
+
+
+def _project_version(pyproject: Path) -> str:
+    match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(encoding="utf-8"), re.M)
+    return match.group(1) if match else ""
+
+
 def _is_path_citation(token: str) -> bool:
     if not token or not re.fullmatch(r"[\w./*{},-]+", token):
         return False
@@ -578,6 +657,7 @@ def analyze(root: Path) -> Report:
     check_provenance(root, report)
     check_citations(root, documents, report)
     check_timeline(root, report)
+    check_baseline(root, report)
     return report
 
 
@@ -600,7 +680,10 @@ def format_check(report: Report) -> str:
         lines.append("Advisories (judgment needed):")
         lines.extend(f"  {message}" for message in report.advisories)
     if not report.errors and not report.advisories:
-        lines.append("Package map, provenance table, citations and release train all resolve.")
+        lines.append(
+            "Package map, provenance table, citations, release train and current "
+            "baseline all resolve."
+        )
     return "\n".join(lines)
 
 

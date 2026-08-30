@@ -174,7 +174,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-├── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, ROADMAP.md's release train
+├── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, ROADMAP.md's release train and current baseline
 └── review-verification/  # read-only harness reproducing the v0.2.0 architecture-review findings
 ```
 
@@ -207,6 +207,16 @@ The grammar itself lives in `subprojects/docket/src/docket/roadmap.py` and is
 imported here. `docket wave` reads the same table to report which beat of the
 planning cadence is due, and a second copy of the rules would drift from the
 first silently — in the one document that says which milestone is current.
+
+The same module reads `ROADMAP.md`'s *version* table, and `doc_check` holds
+the three statements of the current version to each other: one row per
+released version, exactly one marked the current baseline, a "Current
+baseline:" heading naming that same version, and that version matching
+`pyproject.toml`. A release bumps the version file and leaves the plan naming
+its predecessor, which happened on two consecutive releases. Tags are
+deliberately not compared — a shallow clone is a normal checkout, and a check
+that fails on how somebody fetched the repository gets switched off. `docket
+release` enforces the tag instead, when tags are certainly to hand.
 
 ## Tests (`tests/`)
 

@@ -77,6 +77,59 @@ def table_rows(text: str, heading: str, level: int = 2) -> Iterator[tuple[int, l
             yield index, cells
 
 
+# --- the version table ------------------------------------------------------
+
+# Which version the project is *on* is stated in three places that must agree:
+# the version file, one row of this table, and the prose heading below it. The
+# grammar of the row is read here for the same reason the timeline's is - two
+# copies of it would drift, and the drift would be in the one document that
+# says which release is current.
+VERSION_TABLE_HEADING = "Versioning decision"
+BASELINE_MARK = "current baseline"
+BASELINE_HEADING_RE = re.compile(r"^Current baseline:\s*v?(?P<version>\d+\.\d+\.\d+)\b")
+
+
+@dataclass(frozen=True)
+class VersionRow:
+    """One row of the version table: a release, and what is claimed about it."""
+
+    line: int
+    version: str
+    status: str
+
+    @property
+    def is_baseline(self) -> bool:
+        return BASELINE_MARK in self.status.casefold()
+
+
+def parse_version_table(text: str) -> list[VersionRow]:
+    """Read the version table, skipping rows whose first cell is not a version.
+
+    A row that does not open with a version is not a release row - the table
+    is written by hand and may carry one - so it is passed over rather than
+    reported. What the table must get right is the releases it *does* name,
+    and that is what the checker asks about.
+    """
+    rows: list[VersionRow] = []
+    for line, cells in table_rows(text, VERSION_TABLE_HEADING):
+        if len(cells) < 2 or SEMVER_RE.match(cells[0]) is None:
+            continue
+        rows.append(VersionRow(line=line, version=cells[0].lstrip("v"), status=cells[1]))
+    return rows
+
+
+def baseline_heading(text: str) -> tuple[int, str] | None:
+    """The version named by the `## Current baseline: vX.Y.Z` heading, if any."""
+    for index, line in enumerate(text.splitlines(), start=1):
+        heading = HEADING_RE.match(line)
+        if heading is None:
+            continue
+        match = BASELINE_HEADING_RE.match(heading.group("title").strip())
+        if match is not None:
+            return index, match.group("version")
+    return None
+
+
 # --- the release train ------------------------------------------------------
 
 TIMELINE_HEADING = "The timeline"

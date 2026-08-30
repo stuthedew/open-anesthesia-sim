@@ -46,6 +46,21 @@ capability-boundary rule above governs.
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened to the whole settings envelope, the simulation step made transactional, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
+**Tags.** v0.0.1, v0.0.2, v0.2.3, v0.2.4 and v0.2.5 carry annotated tags.
+`bin/docket release` now refuses to cut a release while the version it is
+releasing from is untagged, so the practice cannot lapse again (PL-J3ZK).
+
+**Four versions are untagged, in two different situations.** v0.2.1
+(`bc5f823`) and v0.2.2 (`3099980`) are settled and only await the two
+commands, which PL-J3ZK records. v0.1.0 and v0.2.0 are an open decision in the
+same item: it recorded them as untaggable because `main` had three unrelated
+roots and `git merge-base 796bf4f 97cc66a` returned nothing, but that was
+measured in a shallow checkout, where boundary commits report as parentless.
+In the full history there is one root, and `97cc66a` (v0.1.0) is an ancestor
+of `796bf4f` (v0.2.0), which is an ancestor of `bc5f823` — so tagging them
+would work after all. Nothing is lost by deciding later: all four commits are
+ordinary ancestors of `main` and can be tagged at any time.
+
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
@@ -501,8 +516,9 @@ milestone's own scope". The other fourteen clear before implementation begins.
 The list itself stays frozen; an entry records its own outcome as it closes,
 per "The cadence" below.
 
-**Cleared before v0.4.0 begins — 14 entries, 15 item ids.** These fourteen
-are exactly what v0.3.0, the foundation release, ships.
+**Cleared before v0.4.0 begins — 16 entries, 17 item ids** (14 and 15 at the
+freeze; two were added later, per the note beneath this list). These are
+exactly what v0.3.0, the foundation release, ships.
 
 Count entries, not ids: the PL-Z4GF/PL-SWFM entry below holds two ids for one
 problem, so both numbers above are true and only the first is the gate's size.
@@ -544,6 +560,29 @@ under "What counts":*
   the branch, never in chat
 - PL-4F6P (S) A `**Worked.**` note said "nothing the brief did not specify"
   for a test that reached into a private class
+- PL-N2N1 (S) — **done** (commit `ebefcc2`). `docket release` does not update
+  this file's version table or baseline heading. Added after the freeze; see
+  below.
+- PL-K79K (S) — **done** (commit `54bdb5b`). The session-start digest told
+  every session to run `bin/docket triage`, which did not exist. Added after
+  the freeze; see below.
+
+**Two entries added 2026-08-30 under the presence rule, both cleared in the
+same batch that added them.** Per "The gate is a snapshot, not a moving
+target", a finding re-enters this gate when the problem it describes was
+already present at the freeze, whatever id it is filed under or however long
+after the freeze it was noticed.
+
+The first continues the PL-Z4GF/PL-SWFM entry's scope: the same document
+drifting for the same reason, this time its mechanism half rather than one
+more instance of it. That entry is the case the presence rule was written for.
+
+The second advertised a command that does not exist, and had done so since
+`6f1b5b1` on 2026-08-24 — the day before this list was frozen. Present at the
+freeze by date, and `defect` by "What counts" above: a live mechanism `main`
+depends on that does not work.
+
+Neither extends what the gate has left to run: both are closed.
 
 *Documentation, performance, and the one decision that is the project
 owner's:*

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import tomllib
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 CONFIG_NAME = "docket.toml"
@@ -24,10 +25,26 @@ class Config:
     safety_classes: tuple[str, ...] = ("safety", "science")
     #: Classes describing work on the process rather than on the product.
     process_classes: tuple[str, ...] = ("session-cost", "docs", "infra")
+    #: Classes that make an open item recorded debt. Work already recognized
+    #: as owed, as against work not yet begun: a project clearing debt before
+    #: starting a milestone needs to know which is which, and the class labels
+    #: are where it is written down.
+    debt_classes: tuple[str, ...] = ("defect", "safety", "science", "refactor", "perf")
     #: Past this, the top band is too large to choose from at a glance.
     top_band_limit: int = 5
     #: Past this, an untriaged capture has become a second queue nobody reads.
     untriaged_stale_days: int = 14
+    #: The date the `verify:` requirement started applying. An item that
+    #: reaches `ready` must name the command that proves it done, but a store
+    #: written before the rule existed holds items that predate it, and
+    #: turning every one of them into an error at once makes the checker
+    #: useless from its first run rather than making the queue better. So the
+    #: requirement is anchored to a date a project records here: items
+    #: captured on or after it are held to the rule, and the ones before it
+    #: are counted in a single grooming advisory instead. `None` leaves the
+    #: requirement off entirely, which is the right default for a project that
+    #: does not delegate work and therefore has nothing riding on the field.
+    verify_required_from: date | None = None
     #: Classes that make a release a minor version bump rather than a patch.
     minor_classes: tuple[str, ...] = ("feature",)
     #: Paths holding the checks themselves. A delegated diff that edits one
@@ -64,6 +81,24 @@ class Config:
     extra: dict[str, object] = field(default_factory=dict)
 
 
+def _date(value: object, fallback: date | None) -> date | None:
+    """Read a date written either as a TOML date literal or as a quoted string.
+
+    Both spellings are accepted because both are natural to write and the
+    difference between them is invisible in the file. A value that is neither
+    is rejected by failing to parse rather than by falling back to the
+    default: a cutover date silently ignored would leave the requirement off
+    in a project that believed it had turned it on.
+    """
+    if value is None:
+        return fallback
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        return date.fromisoformat(value)
+    raise ValueError(f"verify_required_from: {value!r} is not a date")
+
+
 def _tuple(value: object, fallback: tuple[str, ...]) -> tuple[str, ...]:
     if isinstance(value, list) and all(isinstance(v, str) for v in value):
         return tuple(str(v) for v in value)
@@ -88,9 +123,13 @@ def load(root: Path) -> Config:
         items_dir=str(section.get("items_dir", defaults.items_dir)),
         safety_classes=_tuple(section.get("safety_classes"), defaults.safety_classes),
         process_classes=_tuple(section.get("process_classes"), defaults.process_classes),
+        debt_classes=_tuple(section.get("debt_classes"), defaults.debt_classes),
         top_band_limit=int(section.get("top_band_limit", defaults.top_band_limit)),
         untriaged_stale_days=int(
             section.get("untriaged_stale_days", defaults.untriaged_stale_days)
+        ),
+        verify_required_from=_date(
+            section.get("verify_required_from"), defaults.verify_required_from
         ),
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
         protected_paths=_tuple(section.get("protected_paths"), defaults.protected_paths),

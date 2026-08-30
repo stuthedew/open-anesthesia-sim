@@ -17,8 +17,10 @@ from docket.roadmap import (
     IMPLEMENT,
     RELEASE,
     SCOPE,
+    baseline_heading,
     parse_milestones,
     parse_timeline,
+    parse_version_table,
     wave,
 )
 
@@ -277,3 +279,41 @@ def test_an_unreadable_version_still_reports_the_top_of_the_timeline() -> None:
     plan = _wave("")
     assert plan.step is not None and plan.step.ordinal == 1
     assert plan.beat == CLEAR
+
+
+VERSION_TABLE = """# Roadmap
+
+## Versioning decision
+
+Prose about how versions are chosen.
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.2.4 | Completed | The one before. |
+| v0.2.5 | Completed / current baseline | The current one. |
+| later | To be decided | Not a version at all. |
+
+## Current baseline: v0.2.5
+
+What it is.
+"""
+
+
+def test_the_version_table_reads_its_release_rows() -> None:
+    rows = parse_version_table(VERSION_TABLE)
+
+    assert [row.version for row in rows] == ["0.2.4", "0.2.5"]
+    assert [row.is_baseline for row in rows] == [False, True]
+
+
+def test_a_row_that_names_no_version_is_passed_over_not_reported() -> None:
+    """The table is written by hand; what it must get right is the releases."""
+    assert all(row.version != "later" for row in parse_version_table(VERSION_TABLE))
+
+
+def test_the_baseline_heading_is_read_by_its_version() -> None:
+    assert baseline_heading(VERSION_TABLE) == (13, "0.2.5")
+
+
+def test_a_file_with_no_baseline_heading_names_none() -> None:
+    assert baseline_heading(ROADMAP) is None

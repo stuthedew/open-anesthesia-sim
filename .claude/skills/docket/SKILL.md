@@ -258,7 +258,17 @@ is missing — that is what makes the next concurrency answer correct.
 
 Triggered by the digest reporting untriaged items, or by a grooming pass.
 
-Read each untriaged item and fill in what capture deliberately skipped:
+```bash
+bin/docket triage
+```
+
+That prints each untriaged item's body, the fields still unset, the brief
+sections still missing, and the rules the answers must satisfy — read from
+`docket.toml` and the checker, so they are what `docket check` will hold you
+to rather than what this file remembers. Do not read the store for this, and
+do not re-derive the rules from here.
+
+Fill in what capture deliberately skipped:
 `priority`, `effort`, `classes`, `touches`, and `feature` when it belongs
 with related work. Safety-critical work starts at `P0` or `P1`; the checker
 enforces that. Process work — work on how the project is built rather than on
@@ -267,6 +277,59 @@ work already there.
 
 An item that should not be done becomes `status: dropped` with a `reason`.
 Never delete the file: the reason is what stops the finding being re-raised.
+
+### The `verify:` command, and running it before writing it down
+
+Triaging an item to `ready` means naming the command that proves it done.
+`docket check` requires one at that status, because a `ready` item is a
+commitment to do work and "what would prove this?" is the first thing that
+becomes answerable.
+
+**Run the command before you write it into the item.** All six commands that
+ever existed here were wrong in the same two ways and none had been executed:
+`--cov=` was given a file path where `pytest-cov` expects a dotted module, and
+the run was scoped to one test file, which makes lines covered by the rest of
+the suite read as uncovered and puts `--cov-fail-under=100` out of reach. An
+unrun command fails after a worker has done the work, which costs a round trip
+and the owner's attention.
+
+Copy one of these shapes rather than inventing one:
+
+| The item is | The command |
+| --- | --- |
+| Covering a module's untested paths | `uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100` |
+| A string, label, or single behavior | `uv run pytest tests/unit/test_simulation_view.py -k halted` |
+| Documentation only | `python3 tools/doc_check.py check` |
+
+The first is the one that goes wrong. `--cov=` takes the **dotted module**
+(`anesthesia_sim.core.tissue`), never the path, and the run is the **whole
+suite** — no test file argument — because coverage of a module is the union of
+everything that exercises it.
+
+Some work has no command that can run beforehand: proving a release-time fix
+means cutting a release. Record that in `not-delegable:` rather than inventing
+a command to satisfy the checker. An item saying why it cannot be proven is
+better specified than one carrying a command nobody ran.
+
+## Mode: freeze a milestone's debt gate
+
+Triggered by scoping a milestone — scoping is the act that freezes the list.
+
+```bash
+bin/docket gate --feature teachable-case
+```
+
+That is the whole pass: the open debt, split into what the milestone clears
+itself (the items carrying its feature) and what clears before it begins, with
+effort totals for each. Recording Gate 0 by hand meant reading 48 items and
+applying the rule to each; do not repeat that.
+
+The command computes and decides nothing. Whether an item is *really* debt,
+whether the gate should open, and what goes into `ROADMAP.md` are yours —
+transcribe the two lists into the milestone's own section with the date they
+were frozen, per `ROADMAP.md`'s "Recording it". The list is frozen at that
+moment; a finding made afterwards goes to the next gate unless the problem it
+describes predates the freeze, or is `P0`, `safety` or `science`.
 
 ## Mode: ship a release
 
@@ -283,17 +346,44 @@ version would be, and a question.
 > makes a natural v0.2.4. Want me to cut it?"
 
 ```bash
-docket status               # includes what is releasable
-docket release --dry-run    # the notes and the bump, without writing
-docket release              # infers the version; --version to override
+docket status                    # includes what is releasable
+bin/docket release --dry-run     # the notes and the bump, without writing
+make release VERSION=0.3.0       # cut it
 ```
 
-The version is inferred: a minor bump when `feature`-classed work went out, a
-patch otherwise. A major bump is never inferred, because breaking a published
-interface is a decision rather than a fact about labels — raise that one.
+**Cut it with `make release`, never `bin/docket release` on its own.** The
+tool writes the new version into `pyproject.toml` and stops, but `uv.lock`
+records the project's own version too, so the next `make check` fails on `uv
+sync --locked` with the tree half-updated and the reason unrelated to the
+release. That happened on both releases the command has existed for. `make
+release` runs `bin/docket release`, then `uv lock`, then `make check`, which
+is the whole sequence.
+
+This project names its version rather than incrementing it, so `VERSION=` is
+required; `bin/docket release --dry-run` prints the mechanical guess for
+reference.
+
+`docket.toml` sets `version_policy = "manual"` here, so the version is named
+rather than inferred — `ROADMAP.md`'s "Versioning decision" is why: the number
+marks the capability boundary a release crosses, which no class label carries.
+The dry run still prints the mechanical guess, as a reference point and not an
+answer.
 
 `release` stops before tagging on purpose: review the bump and the generated
-notes, then commit and tag.
+notes, then commit and tag. It **refuses to cut a release while the previous
+one is untagged**, because a release cut without a tag leaves a permanent gap
+— `git describe --contains` resolves nothing across its span — and the gap
+cannot be repaired with confidence once the history has moved on.
+
+**Never ask the owner to "tag vX.Y.Z". Paste the commands, filled in:**
+
+```bash
+git tag -a v0.3.0 <merge commit> -m "v0.3.0"
+git push origin v0.3.0
+```
+
+Every time, not only the first. Asking for a tag without them makes the owner
+reconstruct three commands at the moment they are trying to do something else.
 
 ## Mode: close out an item
 

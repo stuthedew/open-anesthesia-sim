@@ -18,12 +18,20 @@ from .concurrency import conflicts_for, parallel_batch
 from .config import Config
 from .config import load as load_config
 from .model import Item
-from .plan import features, recommend
-from .release import bump_version, milestones, read_version, readiness, release_notes, stamp
+from .plan import features, gate, recommend
+from .release import (
+    bump_version,
+    is_untagged,
+    milestones,
+    read_version,
+    readiness,
+    release_notes,
+    stamp,
+)
 from .roadmap import wave
 from .store import find_item, new_id, read_items, write_item
-from .vcs import branches_in_flight, in_flight_ids
-from .verify import verify
+from .vcs import branches_in_flight, in_flight_ids, tags
+from .verify import verify_batch
 
 CAPTURE_TEMPLATE = """**Problem.** {title}
 
@@ -90,6 +98,19 @@ def cmd_digest(args: argparse.Namespace) -> int:
     rendered = render.format_digest(report, _flight(args), ready)
     if rendered:
         print(rendered)
+    return 0
+
+
+def cmd_triage(args: argparse.Namespace) -> int:
+    """Everything untriaged, with what is unset on it and what the rules require.
+
+    Prints; decides nothing. The digest already tells every session that items
+    are waiting - what it could not do is put the rules in front of the
+    session at the moment it applies them.
+    """
+    _, items, config = _load(args)
+    report = analyze(items, args.today or date.today(), config)
+    print(render.format_triage(report, config))
     return 0
 
 
@@ -246,6 +267,23 @@ def cmd_next(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_gate(args: argparse.Namespace) -> int:
+    """The debt a milestone has to clear, computed from the store.
+
+    `ROADMAP.md` records the frozen list by hand, and doing that means reading
+    every open item's classes and status and splitting the result by scope.
+    That is decidable, so it is decided here; freezing the list stays the
+    deliberate act it is meant to be, and this command writes nothing.
+    """
+    _, items, config = _load(args)
+    print(
+        render.format_gate(
+            gate(items, args.feature or "", config.debt_classes), config.debt_classes
+        )
+    )
+    return 0
+
+
 def cmd_feature(args: argparse.Namespace) -> int:
     """Progress by feature, so a half-finished one is visible as such."""
     _, items, _ = _load(args)
@@ -301,6 +339,16 @@ def cmd_release(args: argparse.Namespace) -> int:
         print(f"Nothing to release: no finished work since {current}.")
         return 0
 
+    # Cutting a release on top of an untagged one extends a gap that cannot be
+    # closed afterwards, so the refusal belongs here rather than in a reminder.
+    # A dry run is allowed through with a warning: it exists to review the
+    # notes and the bump, and withholding those would not make the tag appear.
+    if not getattr(args, "no_git", False) and is_untagged(current, tags(root)):
+        print(_untagged_warning(current))
+        if not args.dry_run:
+            return 1
+        print()
+
     if args.version is None and config.version_policy == "manual":
         print(f"{len(ready.shippable)} finished item(s) since {current}:")
         for item in ready.shippable:
@@ -340,8 +388,30 @@ def cmd_release(args: argparse.Namespace) -> int:
     notes_path.write_text(notes, encoding="utf-8")
     print(f"Bumped {previous} -> {version} in {config.version_file}")
     print(f"Wrote {notes_path.relative_to(root)} and stamped {len(ready.shippable)} item(s)")
-    print(f"Next: review, commit, and tag {name}")
+    print("Next: review, commit, then tag the merge:")
+    print(f'  git tag -a {name} <merge commit> -m "{name}"')
+    print(f"  git push origin {name}")
     return 0
+
+
+def _untagged_warning(version: str) -> str:
+    """Say which tag is missing and give the commands, not the instruction.
+
+    Asking someone to "tag v0.2.5" makes them go and reconstruct three
+    commands at the moment they are trying to do something else.
+    """
+    name = f"v{version.lstrip('v')}"
+    return "\n".join(
+        [
+            f"{name} shipped and carries no tag, so no commit in its span can be",
+            "mapped to the release it went out in. That gap cannot be closed later",
+            "with any confidence. Tag it first:",
+            "",
+            f'  git log --oneline --grep="Release {name}"   # find the commit',
+            f'  git tag -a {name} <commit> -m "{name}"',
+            f"  git push origin {name}",
+        ]
+    )
 
 
 def cmd_delegable(args: argparse.Namespace) -> int:
@@ -353,22 +423,34 @@ def cmd_delegable(args: argparse.Namespace) -> int:
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
-    """Prove one item's work stayed inside the commission it was given.
+    """Prove each item's work stayed inside the commission it was given.
 
     Exits non-zero when any check fails, so it can gate a worker's push as
     well as inform a reviewer. The reviewer still reads the new code; what
     this removes is the need to read the *whole diff* to find out whether
     there is any new code they were not expecting.
+
+    Several ids may be given, because that is how delegated work comes back:
+    one branch, one commit per item. Each item's own command still runs, so
+    four can be accepted and the fifth rejected, but the project's own check
+    runs once for the batch - it proves a property of the tree, and proving it
+    six times over is the difference between a command a reviewer runs and one
+    they learn to skip.
     """
     _, items, config = _load(args)
-    item = find_item(items, args.item)
-    if item is None:
-        print(f"no item matching '{args.item}'")
-        return 1
+    wanted = []
+    for identifier in args.item:
+        item = find_item(items, identifier)
+        if item is None:
+            print(f"no item matching '{identifier}'")
+            return 1
+        wanted.append(item)
     root = args.items.parent if args.items else find_root()
-    report = verify(root, item, config, args.base)
-    print(report.describe())
-    return 0 if report.passed else 1
+    reports = verify_batch(root, wanted, config, args.base)
+    print("\n\n".join(report.describe() for report in reports))
+    if len(reports) > 1:
+        print(f"\n{config.check_command} ran once for the batch; it proves the tree, not an item.")
+    return 0 if all(report.passed for report in reports) else 1
 
 
 def cmd_wave(args: argparse.Namespace) -> int:
@@ -461,6 +543,9 @@ def build_parser() -> argparse.ArgumentParser:
     add("list", "one line per open item").set_defaults(func=cmd_list)
     add("digest", "the session-start summary").set_defaults(func=cmd_digest)
     add("flight", "branches carrying item work").set_defaults(func=cmd_flight)
+    add("triage", "what is untriaged, and the rules the answers must satisfy").set_defaults(
+        func=cmd_triage
+    )
 
     new = add("new", "capture one or more ideas")
     new.add_argument("title", nargs="+")
@@ -477,6 +562,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     nxt.add_argument("--limit", type=int, default=3)
     nxt.set_defaults(func=cmd_next)
+
+    gate_cmd = add("gate", "the open debt a milestone has to clear")
+    gate_cmd.add_argument(
+        "--feature", default=None, help="the milestone's feature; its items clear with it"
+    )
+    gate_cmd.set_defaults(func=cmd_gate)
 
     feature = add("feature", "progress by feature")
     feature.add_argument("name", nargs="?")
@@ -505,7 +596,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     verify_cmd = add("verify", "prove an item's work stayed inside its commission")
-    verify_cmd.add_argument("item")
+    verify_cmd.add_argument("item", nargs="+", help="one or more item ids, verified as a batch")
     verify_cmd.add_argument("--base", default="main", help="the ref the work branched from")
     verify_cmd.set_defaults(func=cmd_verify)
 

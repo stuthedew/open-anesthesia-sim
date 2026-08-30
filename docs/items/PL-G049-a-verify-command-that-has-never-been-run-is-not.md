@@ -1,13 +1,16 @@
 ---
 id: PL-G049
 title: A `verify:` command that has never been run is not a specification, and nothing currently requires running one
-status: ready
+status: done
 priority: P2
 effort: S
 classes: defect, infra, session-cost
 feature: delegation
-touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/checks.py
+touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests, docket.toml
 added: 2026-08-25
+closed: 2026-08-30
+commit: 4f4c8f4
+verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_config.py -k verify
 ---
 
 **Problem.** All six guard-coverage items shipped with a `verify:` command
@@ -43,6 +46,31 @@ after the cost had been paid.
 **Done when.** Either a mechanism prevents an unrun `verify:` command reaching
 a worker, or the commissioning step requires running it and that is written
 down where a session will read it.
+
+**Decided (project owner, 2026-08-30), and built.** Both halves, because the
+decision above asked the wrong question: nothing can safely execute a command
+out of an item file, so the mechanism cannot test the command — it can only
+insist one exists, and the commissioning step has to do the running.
+
+- `docket check` now **requires** a `verify:` command at `status: ready`, and
+  never at capture. `ready` is where the item has become a commitment to do
+  work and where "what would prove this?" first has an answer;
+  `checks.py`'s untriaged block is what keeps capture free.
+- An item may record in `not-delegable:` why no command can prove it instead.
+  `PL-674D` is the case that forced this: proving a release-time fix means
+  cutting a release, so the honest state is "no command can", and a rule
+  without this exit would have made an item carrying an invented command
+  better-formed than one telling the truth.
+- The requirement is anchored to `verify_required_from` in `docket.toml`
+  (2026-08-30). All 47 ready items predate it; turning them into 47 errors on
+  the day the rule lands makes `docket check` useless from its first run, so
+  they are reported as one grooming advisory instead. Moving the date earlier
+  is how that backlog is burned down.
+- The skill's triage mode now carries three canonical recipe shapes — the
+  coverage gate (whole suite, dotted module), a targeted test, and the
+  docs-only check — with the instruction to run the command before writing it
+  into the item. The second half of this item's problem was that an author
+  invented a command; a shape to copy is what stops that.
 
 **Independently captured.** The worker filed the same finding as PL-0275 on its
 own branch, from the other side of the failure. That item is a bare capture

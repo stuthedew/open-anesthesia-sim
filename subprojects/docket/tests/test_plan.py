@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date
 
 from docket.model import Item
-from docket.plan import features, recommend
+from docket.plan import effort_total, features, gate, recommend
 
 
 def _item(
@@ -125,3 +125,88 @@ def test_a_recommendation_says_which_model_the_work_warrants() -> None:
 
 def test_nothing_startable_yields_no_recommendations() -> None:
     assert recommend([]) == []
+
+
+DEBT_CLASSES = ("defect", "safety", "science", "refactor", "perf")
+
+
+def _debt_item(identifier: str, **overrides: object) -> Item:
+    base: dict[str, object] = dict(
+        identifier=identifier,
+        title=identifier,
+        priority="P2",
+        effort="S",
+        status="ready",
+        classes=("defect",),
+        touches=(),
+        blocked_by=(),
+        feature="",
+        milestone="",
+        added=date(2026, 8, 1),
+        closed=None,
+        commit="",
+        reason="",
+        body="",
+    )
+    base.update(overrides)
+    return Item(**base)  # type: ignore[arg-type]
+
+
+def test_the_gate_splits_debt_by_whether_the_milestone_clears_it() -> None:
+    """Debt inside the milestone's own scope is cleared by it, not before it."""
+    items = [
+        _debt_item("PL-0001", feature="teachable-case"),
+        _debt_item("PL-0002"),
+        _debt_item("PL-0003", classes=("feature",)),
+    ]
+
+    computed = gate(items, "teachable-case", DEBT_CLASSES)
+
+    assert [i.identifier for i in computed.inside] == ["PL-0001"]
+    assert [i.identifier for i in computed.outside] == ["PL-0002"]
+
+
+def test_feature_and_planning_work_is_not_debt() -> None:
+    """Counting it would make the rule say 'do everything before doing anything'."""
+    items = [
+        _debt_item("PL-0001", classes=("feature",)),
+        _debt_item("PL-0002", classes=("planning",)),
+    ]
+
+    assert gate(items, "", DEBT_CLASSES).items == []
+
+
+def test_an_unanswered_decision_is_debt_whatever_it_is_about() -> None:
+    """A decision left open stops being one anybody can make."""
+    item = _debt_item("PL-0001", classes=("feature",), status="needs-decision")
+
+    assert gate([item], "", DEBT_CLASSES).items == [item]
+
+
+def test_closed_work_is_not_debt() -> None:
+    items = [
+        _debt_item("PL-0001", status="done", commit="abc1234", closed=date(2026, 8, 2)),
+        _debt_item("PL-0002", status="dropped", reason="no", closed=date(2026, 8, 2)),
+    ]
+
+    assert gate(items, "", DEBT_CLASSES).items == []
+
+
+def test_the_effort_total_reads_largest_first_and_names_what_is_unsized() -> None:
+    items = [
+        _debt_item("PL-0001", effort="M"),
+        _debt_item("PL-0002"),
+        _debt_item("PL-0003", effort=""),
+    ]
+
+    assert effort_total(items) == "1 M, 1 S, 1 unsized"
+
+
+def test_the_gate_is_stable_for_a_given_store() -> None:
+    """A list that reorders between runs cannot be compared with the recorded one."""
+    items = [_debt_item("PL-0003"), _debt_item("PL-0001", priority="P1"), _debt_item("PL-0002")]
+
+    first = [i.identifier for i in gate(items, "", DEBT_CLASSES).items]
+
+    assert first == [i.identifier for i in gate(list(reversed(items)), "", DEBT_CLASSES).items]
+    assert first == ["PL-0001", "PL-0002", "PL-0003"]

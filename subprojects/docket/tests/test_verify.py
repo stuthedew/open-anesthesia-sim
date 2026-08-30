@@ -18,7 +18,7 @@ from pathlib import Path
 
 from docket.config import Config
 from docket.model import Item
-from docket.verify import changed_paths, item_commits, verify
+from docket.verify import changed_paths, item_commits, verify, verify_batch
 
 KEPT = "def test_a() -> None:\n    assert 1 == 1\n"
 
@@ -231,3 +231,86 @@ def test_a_base_with_nothing_between_it_and_head_is_not_a_pass(tmp_path: Path) -
     report = verify(root, _item(), _config(), "HEAD")
     assert not report.passed
     assert any("something to verify" in c.name for c in report.checks)
+
+
+def _runs(root: Path) -> int:
+    """How many times the project-wide check has been run in this repository."""
+    log = root / "runs.txt"
+    return len(log.read_text().splitlines()) if log.is_file() else 0
+
+
+def test_a_batch_runs_the_project_wide_check_once(tmp_path: Path) -> None:
+    """Five re-proofs of a proved thing is how a reviewer learns to skip the command."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    _work(
+        root, "PL-B2B2 add another", "tests/other.py", "def test_c() -> None:\n    assert 3 == 3\n"
+    )
+    config = _config(check_command="echo ran >> runs.txt")
+    items = [
+        _item(),
+        _item(identifier="PL-B2B2", path="PL-B2B2-do-the-other.md", touches=("tests/other.py",)),
+    ]
+
+    reports = verify_batch(root, items, config, "HEAD~2")
+
+    assert [report.passed for report in reports] == [True, True]
+    assert _runs(root) == 1
+    assert all(any("project's own checks" in c.name for c in r.checks) for r in reports)
+
+
+def test_a_single_item_still_runs_the_project_wide_check(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(), _config(check_command="echo ran >> runs.txt"), "HEAD~1")
+
+    assert report.passed
+    assert _runs(root) == 1
+
+
+def test_each_item_in_a_batch_keeps_its_own_command(tmp_path: Path) -> None:
+    """Four can be accepted and the fifth rejected, which is the point of the split."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    _work(
+        root, "PL-B2B2 add another", "tests/other.py", "def test_c() -> None:\n    assert 3 == 3\n"
+    )
+    items = [_item(), _item(identifier="PL-B2B2", path="PL-B2B2-do-the-other.md", verify="false")]
+
+    reports = verify_batch(root, items, _config(), "HEAD~2")
+
+    assert [report.passed for report in reports] == [True, False]
+
+
+def test_an_item_with_nothing_to_verify_does_not_hold_up_the_batch(tmp_path: Path) -> None:
+    """Its report stops before the shared check, which says nothing about it."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    items = [_item(identifier="PL-B2B2", path="PL-B2B2.md", verify=""), _item()]
+
+    reports = verify_batch(root, items, _config(check_command="echo ran >> runs.txt"), "HEAD~1")
+
+    assert [report.passed for report in reports] == [False, True]
+    assert reports[0].stopped_early
+    assert _runs(root) == 1

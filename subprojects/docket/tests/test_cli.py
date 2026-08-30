@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -299,3 +300,199 @@ def test_wave_exits_nonzero_when_the_gate_names_an_item_that_is_not_there(
     store = _wave_project(tmp_path)
     assert _run("wave", "--items", str(store)) == 1
     assert "not in the store" in capsys.readouterr().out
+
+
+DONE = """---
+id: PL-D1D1
+title: A finished item
+priority: P2
+effort: S
+status: done
+classes: perf
+touches: a.py
+added: 2026-08-01
+closed: 2026-08-20
+commit: abc1234
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def _release_repo(tmp_path: Path, *tag_names: str) -> Path:
+    """A repository with one unreleased item, a version, and the tags given."""
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "done.md").write_text(DONE, encoding="utf-8")
+    (root / "pyproject.toml").write_text('[project]\nversion = "0.2.5"\n', encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
+    for tag in tag_names:
+        subprocess.run(["git", "tag", tag], cwd=root, check=True, capture_output=True)
+    return root
+
+
+def test_a_release_is_refused_while_the_previous_one_is_untagged(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Cutting on top of an untagged release extends a gap nothing can close later."""
+    root = _release_repo(tmp_path, "v0.2.3")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
+    assert "v0.2.5 shipped and carries no tag" in capsys.readouterr().out
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
+
+
+def test_a_release_proceeds_once_the_previous_one_is_tagged(tmp_path: Path) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    assert 'version = "0.2.6"' in (root / "pyproject.toml").read_text()
+
+
+def test_a_dry_run_warns_about_the_missing_tag_and_still_shows_the_notes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Withholding the preview would not make the tag appear."""
+    root = _release_repo(tmp_path, "v0.2.3")
+
+    assert main(["release", "0.2.6", "--dry-run", "--items", str(root / "items")]) == 0
+    output = capsys.readouterr().out
+    assert "carries no tag" in output
+    assert "PL-D1D1" in output
+
+
+def test_a_project_that_has_never_tagged_is_not_refused(tmp_path: Path) -> None:
+    root = _release_repo(tmp_path)
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+
+
+UNTRIAGED = """---
+id: PL-U1U1
+title: An idea nobody has weighed yet
+status: untriaged
+added: 2026-08-20
+---
+
+**Problem.** The induction curve looks wrong at low flows.
+"""
+
+
+def _triage(tmp_path: Path, *documents: str, config: str = "") -> str:
+    store = _store(tmp_path, *documents)
+    if config:
+        (tmp_path / "docket.toml").write_text(config, encoding="utf-8")
+    assert _run("triage", "--items", str(store)) == 0
+    return store.name
+
+
+def test_triage_prints_the_body_and_what_is_still_unset(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A title alone cannot be triaged by someone who was not there."""
+    _triage(tmp_path, UNTRIAGED, READY)
+    output = capsys.readouterr().out
+
+    assert "PL-U1U1" in output
+    assert "induction curve looks wrong" in output
+    assert "priority*" in output and "effort*" in output
+    assert "**Why it matters.**" in output  # the brief sections still missing
+
+
+def test_triage_states_the_rules_the_answers_must_satisfy(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The point is the rules being present, not a session recalling them."""
+    _triage(
+        tmp_path,
+        UNTRIAGED,
+        READY,
+        config='[docket]\nprotected_paths = ["src/core"]\nverify_required_from = 2026-08-01\n',
+    )
+    output = capsys.readouterr().out
+
+    assert "force P0 or P1" in output
+    assert "the top band is P1, holding 1 of the 5" in output
+    assert "src/core" in output
+    assert "`verify:` command" in output
+
+
+def test_triage_leaves_a_project_that_declares_no_protected_paths_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _triage(tmp_path, UNTRIAGED)
+
+    assert "non-delegable" not in capsys.readouterr().out
+
+
+def test_triage_decides_nothing_and_writes_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Priority, effort, classes and feature are judgment and stay with the session."""
+    store = _store(tmp_path, UNTRIAGED)
+    before = (store / "item-0.md").read_text()
+
+    assert _run("triage", "--items", str(store)) == 0
+
+    assert (store / "item-0.md").read_text() == before
+    assert "priority: " not in capsys.readouterr().out
+
+
+def test_triage_says_so_when_nothing_is_waiting(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _triage(tmp_path, READY)
+
+    assert "Nothing is untriaged." in capsys.readouterr().out
+
+
+DEBT = """---
+id: PL-E1E1
+title: A defect in the milestone's own scope
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: teachable-case
+touches: a.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def test_gate_splits_the_debt_the_milestone_clears_from_the_debt_before_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Recording Gate 0 by hand was a full pass over 48 items; this is that pass."""
+    store = _store(tmp_path, READY, DEBT)
+
+    assert _run("gate", "--feature", "teachable-case", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    before, _, after = output.partition("Cleared by the milestone itself")
+    assert "PL-B1B1" in before and "PL-E1E1" not in before
+    assert "PL-E1E1" in after
+    assert "1 M" in after
+
+
+def test_gate_writes_nothing_and_reaches_no_verdict(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Freezing the list stays a deliberate act; the command removes the typing."""
+    store = _store(tmp_path, READY, DEBT)
+    before = {path.name: path.read_text() for path in store.glob("*.md")}
+
+    assert _run("gate", "--feature", "teachable-case", "--items", str(store)) == 0
+
+    assert {path.name: path.read_text() for path in store.glob("*.md")} == before
+    assert "not decided here" in capsys.readouterr().out

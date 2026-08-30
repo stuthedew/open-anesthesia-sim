@@ -80,6 +80,24 @@ ROADMAP = """# Roadmap
 Nothing yet.
 """
 
+VERSION_SECTION = """## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.2.4 | Completed | The one before. |
+| v0.2.5 | Completed / current baseline | The current one. |
+| v0.3.0 | Planned / scoped | Not out yet. |
+
+## Current baseline: v0.2.5
+
+What it is.
+
+"""
+
+VERSIONED_ROADMAP = ROADMAP.replace(
+    "## Planned milestones", VERSION_SECTION + "## Planned milestones"
+)
+
 README = """# Demo
 
 The simulation lives in `core/thing.py` and its parameters in
@@ -134,6 +152,15 @@ def _repo(
 
 def _errors(root: Path) -> list[str]:
     return doc_check.analyze(root).errors
+
+
+def _versioned(tmp_path: Path, roadmap: str = VERSIONED_ROADMAP, version: str = "0.2.5") -> Path:
+    """A repository that states its version in all three places the check reads."""
+    root = _repo(tmp_path, roadmap=roadmap)
+    (root / "pyproject.toml").write_text(
+        f'[project]\nname = "demo"\nversion = "{version}"\n', encoding="utf-8"
+    )
+    return root
 
 
 def test_clean_repository_reports_nothing(tmp_path: Path) -> None:
@@ -512,3 +539,71 @@ def test_a_table_further_down_the_file_is_not_mistaken_for_the_timeline(tmp_path
     steps, problems = doc_check.parse_timeline(roadmap)
     assert problems == []
     assert len(steps) == 6
+
+
+def test_a_roadmap_agreeing_with_the_version_file_is_quiet(tmp_path: Path) -> None:
+    assert _errors(_versioned(tmp_path)) == []
+
+
+def test_a_release_that_bumped_only_the_version_file_is_an_error(tmp_path: Path) -> None:
+    """The drift itself: v0.2.6 shipped and the roadmap still names v0.2.5 current."""
+    errors = _errors(_versioned(tmp_path, version="0.2.6"))
+
+    assert any("pyproject.toml holds 0.2.6" in message for message in errors)
+
+
+def test_a_second_row_for_the_same_version_is_an_error(tmp_path: Path) -> None:
+    """The table reached two v0.2.3 rows once; nothing noticed."""
+    roadmap = VERSIONED_ROADMAP.replace(
+        "| v0.3.0 | Planned / scoped | Not out yet. |",
+        "| v0.2.4 | Completed | The one before, again. |",
+    )
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any("already has a row" in message for message in errors)
+
+
+def test_two_rows_marked_current_baseline_is_an_error(tmp_path: Path) -> None:
+    roadmap = VERSIONED_ROADMAP.replace(
+        "| v0.2.4 | Completed | The one before. |",
+        "| v0.2.4 | Completed / current baseline | The one before. |",
+    )
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any("marked" in message and "current" in message for message in errors)
+
+
+def test_no_row_marked_current_baseline_is_an_error(tmp_path: Path) -> None:
+    roadmap = VERSIONED_ROADMAP.replace(" / current baseline", "")
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any("0 rows are marked" in message for message in errors)
+
+
+def test_a_baseline_heading_naming_another_version_is_an_error(tmp_path: Path) -> None:
+    """A heading and a table row disagreeing is how the file read for two releases."""
+    roadmap = VERSIONED_ROADMAP.replace(
+        "## Current baseline: v0.2.5", "## Current baseline: v0.2.4"
+    )
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any("baseline heading names v0.2.4" in message for message in errors)
+
+
+def test_a_missing_baseline_heading_is_an_error(tmp_path: Path) -> None:
+    roadmap = VERSIONED_ROADMAP.replace("## Current baseline: v0.2.5", "## Where we are")
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any("Current baseline" in message and "heading" in message for message in errors)
+
+
+def test_a_version_table_that_has_vanished_is_an_error(tmp_path: Path) -> None:
+    roadmap = VERSIONED_ROADMAP.replace("## Versioning decision", "## How we number things")
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any("no version table found" in message for message in errors)
+
+
+def test_a_repository_with_no_version_file_is_left_alone(tmp_path: Path) -> None:
+    """The checker runs in projects that do not version; it is not their business."""
+    assert _errors(_repo(tmp_path, roadmap=VERSIONED_ROADMAP)) == []
