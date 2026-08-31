@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from importlib.metadata import distribution
+from importlib.resources import files
 from typing import Any
 
 import anesthesia_sim
@@ -8,6 +9,19 @@ import anesthesia_sim.app.main as app_main
 
 def test_import() -> None:
     assert anesthesia_sim is not None
+
+
+def test_package_ships_a_py_typed_marker() -> None:
+    """PEP 561: without this file nothing outside the package sees its types.
+
+    The annotations in `src/` are only visible to a type checker running over
+    other code - `tools/`, a test, an installed consumer - if the package
+    declares itself typed. The marker is an empty file, so nothing else in the
+    suite would notice its removal; this asserts it through the package's own
+    resource loader, which reads it where an importer would rather than where
+    the repository happens to keep it.
+    """
+    assert files("anesthesia_sim").joinpath("py.typed").is_file()
 
 
 def test_console_script_points_to_application_launcher() -> None:

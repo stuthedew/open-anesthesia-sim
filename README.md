@@ -93,6 +93,10 @@ make doc-check   # validate the package map, provenance table, citations,
                  # release train, current-baseline version, and release tags
 ```
 
+`mypy` runs in strict mode over `src/`, `tools/` and
+`subprojects/docket/src/`. Those paths are named once, in `[tool.mypy] files`
+in `pyproject.toml`, which also records why `tests/` sits outside the gate.
+
 The last two are stdlib-only scripts in `tools/`, so they run in a bare
 checkout. `tools/doc_check.py` also has a `candidates` mode that prints the
 documentation lines mentioning anything a diff changed, for the sweep a

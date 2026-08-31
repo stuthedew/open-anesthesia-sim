@@ -24,7 +24,9 @@ jobs:
       - run: uv sync --locked --dev
       - run: uv run ruff format --check .
       - run: uv run ruff check .
-      - run: uv run mypy src
+      # No paths: `[tool.mypy] files` in pyproject.toml names what the gate
+      # covers, and says why `tests/` is not in it.
+      - run: uv run mypy
       - run: uv run pytest
       - run: bin/docket check
       - run: uv run python tools/doc_check.py check
