@@ -98,6 +98,31 @@ this project's history: 79 subjects contained an id, 64 led with one, and every
 one of the difference was bookkeeping rather than implementation. A subject may
 lead with two ids, because one branch may carry two items, and then both count.
 
+**A branch is finished when its content has landed, not when its commits
+have.** The squash trap `stranded` describes above reaches this read from the
+other side: a squash keeps the branch's content and none of its commits, so
+`git branch --merged` calls the branch unmerged for as long as its ref exists
+— and a checkout that has not pruned holds that ref indefinitely, reporting
+every id at the front of one of its subjects as work somebody is still doing.
+The same rule answers it. Each blob a candidate ref adds to the tree it forked
+from is looked for in the default branch's history, and a ref whose every blob
+has been there carries nothing that has not landed, however its commits got
+there — squashed, rebased or cherry-picked.
+
+**The history, not the tip.** Comparing that content against the default
+branch as it stands now would un-land the branch the moment anyone edited a
+file it had touched, which here is routine: the triage pass that follows a
+capture rewrites the very file the capturing branch added, so the branch would
+be back in the report one merge later. Asking whether the blob was ever on the
+default branch does not decay.
+
+A ref that adds no blob this checkout can read — no commits yet, only
+deletions, or a fork point beyond a truncated clone's horizon — stays in the
+report. Silence is not evidence of landing, and the two errors are not worth
+the same: naming a merged branch is noise the reader can see through, while
+dropping a live one hands its item to a second session, which is the collision
+the whole read exists to prevent.
+
 **The age is reported, not thresholded.** "Has an unmerged branch" and "is being
 worked right now" are different claims and no timeout separates them: a branch
 touched an hour ago is a live session, and the same branch three weeks later is

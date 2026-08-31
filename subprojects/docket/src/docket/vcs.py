@@ -169,6 +169,56 @@ def _unmerged_commits(
     return last, ids
 
 
+def _work_already_on_base(ref: str, fork_point: str, base: str, root: Path, run: Runner) -> bool:
+    """Whether everything the ref adds is content the default branch has held.
+
+    Containment answers this for a merge commit and never for a squash: the
+    squash writes one new commit carrying the branch's *content* and none of
+    its commits, so `--merged` calls the branch unmerged for as long as its ref
+    survives, and every id leading one of its subjects reports in flight
+    forever. GitHub deleting the head branch on merge is what usually hides
+    that; a long-lived checkout that does not prune is where it bites.
+
+    So the question asked here is about content rather than ancestry: of the
+    blobs the ref adds to the tree it forked from, has the default branch held
+    each one at some point? That is `stranded`'s rule - compare what the trees
+    hold, never how the commits got there - pointed the other way, and it
+    answers a rebase or a cherry-pick the same way it answers a squash.
+
+    **The default branch's history, not its tip.** Comparing against `base`
+    itself would call a squash-merged branch unlanded again the moment anyone
+    edited a file it had touched - which in this store is what the next triage
+    pass does to every item a branch captured, so the branch would be back to
+    reporting in flight forever one merge later. `git log --find-object` asks
+    instead whether the blob was ever on the default branch, and that does not
+    decay.
+
+    Two silences read as "not landed", which is the safe direction. A ref that
+    adds no blob at all - one with no commits yet, one that only deletes, or
+    one git could not read - and a blob whose landing sits below a truncated
+    clone's horizon: both keep the ref in the report. Reporting a merged branch
+    as in flight is the noise this removes; reporting a live session's branch
+    as merged would hand its item to a second session, which is the collision
+    the whole read exists to prevent.
+    """
+    introduced: list[str] = []
+    for line in run(
+        ["diff", "--raw", "--no-renames", "--no-abbrev", fork_point, ref, "--"], root
+    ).splitlines():
+        # `:<src mode> <dst mode> <src blob> <dst blob> <status>\t<path>`. The
+        # path is dropped rather than parsed - a blob is what is asked about,
+        # and a path can contain anything including the tab that precedes it.
+        fields = line.split("\t", 1)[0].split()
+        if len(fields) == 5 and set(fields[3]) != {"0"}:
+            introduced.append(fields[3])
+    if not introduced:
+        return False
+    return all(
+        run(["log", "-1", "--format=%H", f"--find-object={blob}", base], root).strip()
+        for blob in introduced
+    )
+
+
 def branches_in_flight(
     root: Path, *, include_remote: bool = True, runner: Runner | None = None
 ) -> FlightReport:
@@ -187,11 +237,14 @@ def branches_in_flight(
     exactly one fetch. That is an acceptable error for an advisory and an
     unacceptable one for a lock, which is why this reports rather than blocks.
 
-    Merged branches are excluded, and that exclusion matters more than it
-    looks: deleting a branch on the remote does not remove the local
-    remote-tracking ref until someone prunes, so without this every item ever
-    shipped goes on being reported as in-flight work and the signal becomes
-    noise within a few releases.
+    Branches whose work has landed are excluded, and that exclusion matters
+    more than it looks: deleting a branch on the remote does not remove the
+    local remote-tracking ref until someone prunes, so without this every item
+    ever shipped goes on being reported as in-flight work and the signal
+    becomes noise within a few releases. It is asked twice, because one test
+    cannot answer it. `--merged` is exact and cheap for a branch the default
+    branch contains; a squash merge keeps none of the branch's commits, so
+    `_work_already_on_base` asks after the content instead.
 
     What remains is qualified rather than filtered. An unmerged branch may be a
     live session or work nobody will ever merge, and only the date of its last
@@ -221,19 +274,27 @@ def branches_in_flight(
     # simply does not have. Excluding `^base` from a walk that cannot reach
     # `base` would report the ref's whole visible history as its own work, so
     # it is named as unread instead of answered wrongly.
-    readable: list[str] = []
+    #
+    # The merge-base is the fork point the content test compares against, so
+    # the read that decides whether a ref can be answered at all is the same
+    # one that answers it - two calls asking git the same question could
+    # disagree about which commit the branch left from.
+    unlanded: list[str] = []
     unreadable: list[str] = []
     for name in candidates:
-        found = readable if run(["merge-base", base, name], root).strip() else unreadable
-        found.append(name)
+        fork_point = run(["merge-base", base, name], root).strip()
+        if not fork_point:
+            unreadable.append(name)
+        elif not _work_already_on_base(name, fork_point, base, root, run):
+            unlanded.append(name)
 
-    last_commit, subject_ids = _unmerged_commits(readable, base, root, run)
+    last_commit, subject_ids = _unmerged_commits(unlanded, base, root, run)
 
     # A local branch and its remote tracking ref are one piece of work, and so
     # are a branch named for an item and its own commits: the first ref that
     # accounts for an id is the one reported for it.
     in_flight: dict[str, Branch] = {}
-    for name in readable:
+    for name in unlanded:
         match = BRANCH_ID_RE.search(name)
         if match is None:
             continue
