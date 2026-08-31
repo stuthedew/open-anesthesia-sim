@@ -83,3 +83,14 @@ freeze closes, and what it does not" sends it to the queue instead. The
 countervailing case - that a release named "the workflow works" should not
 ship with its own digest recommending a wrong release - is real, and is the
 owner's to weigh rather than a session's.
+
+**Admitted to v0.2.8's frozen list, 2026-08-31, reversing the paragraph
+above,** under the scope test now recorded in `ROADMAP.md`'s "What the freeze
+closes". The paragraph above is right that this is not `PL-NSN9`'s other half
+and right that the exposure on *this* release is small; both are answers to
+the completion question, which is no longer the test. The digest and the
+release script are two of the six pieces of machinery the release's goal
+names, and the deferral it proposed — fix it before v0.3.0 is cut rather than
+before v0.2.8 — put the fix outside the release whose title claims the
+workflow works, on the strength of a window it also says "reopens
+permanently".

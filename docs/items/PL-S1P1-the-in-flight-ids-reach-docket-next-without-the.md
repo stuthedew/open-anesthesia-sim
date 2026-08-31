@@ -57,3 +57,17 @@ today.
 Not admitted to v0.2.8's frozen list: it completes no entry. `PL-KWC1` is an
 entry and is `done`; this is `in_flight_ids` discarding a field `PL-KWC1` did
 not add and does not depend on.
+
+**Admitted to v0.2.8's frozen list, 2026-08-31, reversing the paragraph
+above,** under the scope test now recorded in `ROADMAP.md`'s "What the freeze
+closes": the queue's ranking is machinery the release's goal names, and this
+is a third hole in the function `PL-CPSY` and `PL-KWC1` already cover.
+
+**The "no observed instance" claim above is wrong, and the P3 band rests on
+it.** A `--depth 1` clone of this repository with every branch tip fetched —
+which is what the session-start hook produces, and therefore the normal state
+of a container — was measured on 2026-08-31 with `bin/docket flight` reporting
+two refs whose history it could not read. `in_flight_ids` drops exactly that
+half, so `docket next` in a fresh container answers as though the refs had
+been read and found clean. The precondition the paragraph above calls
+unmet is met by default. Reband when the item is picked up.

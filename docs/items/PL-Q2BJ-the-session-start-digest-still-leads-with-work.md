@@ -62,3 +62,13 @@ same command, same function, and `PL-1TPM`'s ranking is visibly half-fixed
 without it - and it was nonetheless worked as an ordinary P2 queue item and
 never recorded as a frozen entry. A third surface, one renderer further out,
 cannot have a stronger claim than the second one did.
+
+**Admitted to v0.2.8's frozen list, 2026-08-31, reversing the paragraph
+above.** The `PL-0RS6` precedent it rests on does not say what the paragraph
+takes it to say: `ROADMAP.md`'s "Friction that compounds is the clearest
+presence case" records `PL-0RS6` as having *qualified* for the gate and been
+"worked early rather than merely admitted", so it is a precedent for working
+such a finding at once, not for keeping it off the list. Under the scope test
+now recorded in "What the freeze closes", the session-start digest and the
+queue's ranking are both machinery the release's goal names, and this item is
+the one defect of the nine that every session reads on its first screen.

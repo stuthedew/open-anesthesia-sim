@@ -75,3 +75,13 @@ changed; or escalated the moment a second session starts with no checkout.
 Not admitted to v0.2.8's frozen list: it is outside the tree that release
 touches, and `PL-4CW7` (the web container's uv floor) is the precedent for
 carrying an environment finding as an ordinary P3 queue item.
+
+**Still not admitted after the 2026-08-31 reassessment, and now for a stated
+reason rather than the completion rule.** `ROADMAP.md`'s scope test admits a
+defect in machinery the release's goal names *and* workable in this tree; this
+one fails the second limit. Its own `not-delegable:` field says the cause is
+outside the repository and the only action available here is to record a
+second sighting, so admitting it would put an entry on the frozen list that
+nothing in the tree can close, holding the gate open indefinitely. That limit
+is written into "What the freeze closes" so the case does not have to be
+re-argued.
