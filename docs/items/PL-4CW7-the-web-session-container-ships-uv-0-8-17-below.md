@@ -76,6 +76,14 @@ the next fresh session is the next test.
 Note `pip download uv` succeeds in this container, so PyPI reachability is
 not the failure; only the setup script's effect is.
 
+**Re-saved 2026-08-31** by the project owner, in response to the observation
+above. So the test is again the next fresh web session, and again nothing
+needs scheduling: its first `uv` command either reports 0.12.5 or newer with
+nothing installed by hand, or it does not. A second consecutive 0.8.17 would
+mean the environment being edited is not the one these sessions start in,
+which is a different problem from the one this item was filed for and should
+be recorded as such rather than folded in here.
+
 **Done when.** A fresh web session reports uv 0.12.5 or newer from
 `uv --version` before anything has been installed by hand, and runs
 `make check` through to the end.
