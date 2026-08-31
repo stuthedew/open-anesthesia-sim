@@ -32,15 +32,26 @@ def _runner(
     merged: list[str] | None = None,
     commits: dict[str, list[tuple[str, str]]] | None = None,
     unrelated: tuple[str, ...] = (),
+    adds: dict[str, list[str]] | None = None,
+    on_base: set[str] | None = None,
+    log: list[list[str]] | None = None,
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
 
     `unrelated` names the refs whose merge-base with the default branch does
     not resolve - a truncated clone's missing history, which git answers with
     a failure rather than an empty result.
+
+    `adds` maps a ref to the blobs it introduces since its fork point and
+    `on_base` names the blobs the default branch has held at some point, which
+    is what separates a branch whose work has landed from one still carrying
+    it. `log`, when passed, collects every command for a test that asserts
+    which question was asked rather than what the answer was.
     """
 
     def run(args: list[str], root: Path) -> str:
+        if log is not None:
+            log.append(args)
         if args[0] == "rev-parse":
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "for-each-ref":
@@ -49,7 +60,16 @@ def _runner(
             return "\n".join(refs)
         if args[0] == "merge-base":
             return "" if args[-1] in unrelated else "0123456789abcdef\n"
+        if args[0] == "diff":
+            return "\n".join(
+                f":000000 100644 {'0' * 40} {blob} A\tsome/file"
+                for blob in (adds or {}).get(args[-2], [])
+            )
         if args[0] == "log":
+            wanted = [arg for arg in args if arg.startswith("--find-object=")]
+            if wanted:
+                held = wanted[0].split("=", 1)[1] in (on_base or set())
+                return "fedcba9876543210\n" if held else ""
             walked = [arg for arg in args[1:] if not arg.startswith(("-", "^"))]
             return "\n".join(
                 f"{ref}\x1f{day}\x1f{subject}"
@@ -66,8 +86,11 @@ def _in_flight(
     merged: list[str] | None = None,
     commits: dict[str, list[tuple[str, str]]] | None = None,
     unrelated: tuple[str, ...] = (),
+    adds: dict[str, list[str]] | None = None,
+    on_base: set[str] | None = None,
 ) -> tuple[Branch, ...]:
-    return branches_in_flight(ROOT, runner=_runner(refs, merged, commits, unrelated)).branches
+    runner = _runner(refs, merged, commits, unrelated, adds, on_base)
+    return branches_in_flight(ROOT, runner=runner).branches
 
 
 def test_a_branch_naming_an_item_is_in_flight() -> None:
@@ -99,6 +122,76 @@ def test_a_merged_branch_carries_no_commits_into_the_answer() -> None:
     )
 
     assert found == ()
+
+
+SQUASHED = "origin/claude/squash-merged-abcdef"
+
+
+def test_a_squash_merged_branch_whose_ref_survives_is_not_in_flight() -> None:
+    """The defect: a squash keeps the branch's content and none of its commits.
+
+    So `--merged` calls the branch unmerged for as long as the ref exists, and
+    a checkout that does not prune holds it indefinitely - reporting every id
+    at the front of one of its subjects as work somebody is still doing.
+    """
+    found = _in_flight(
+        [SQUASHED],
+        commits={SQUASHED: [("2026-08-20", "PL-K7QX Do the thing")]},
+        adds={SQUASHED: ["a1", "a2"]},
+        on_base={"a1", "a2"},
+    )
+
+    assert found == ()
+
+
+def test_a_squash_merged_branch_is_judged_against_the_history_not_the_tip() -> None:
+    """A landed blob stays landed; a tip comparison would un-land it on the next edit.
+
+    Every item this store captures is edited again by the triage pass that
+    follows it, so a branch judged against the default branch's *tip* would be
+    back to reporting in flight one merge after the one that finished it.
+    """
+    calls: list[list[str]] = []
+    branches_in_flight(
+        ROOT,
+        runner=_runner(
+            [SQUASHED],
+            commits={SQUASHED: [("2026-08-20", "PL-K7QX Do the thing")]},
+            adds={SQUASHED: ["a1"]},
+            on_base={"a1"},
+            log=calls,
+        ),
+    )
+
+    assert ["log", "-1", "--format=%H", "--find-object=a1", BASE] in calls
+    assert not [args for args in calls if args[0] == "diff" and BASE in args]
+
+
+def test_a_branch_the_squash_test_cannot_answer_is_left_in_flight() -> None:
+    """Silence is not evidence of landing, and the two errors are not equal.
+
+    A ref that introduces no blob this checkout can read - no commits yet, only
+    deletions, or history it does not hold - keeps its place in the report.
+    Naming a merged branch is noise; hiding a live one hands its item to a
+    second session.
+    """
+    found = _in_flight(
+        [SQUASHED], commits={SQUASHED: [("2026-08-20", "PL-K7QX Do the thing")]}, on_base={"a1"}
+    )
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
+
+
+def test_one_blob_the_base_has_never_held_is_not_a_squash_merge() -> None:
+    """Part of a branch landing is not the branch landing: all of it must have."""
+    found = _in_flight(
+        [SQUASHED],
+        commits={SQUASHED: [("2026-08-20", "PL-K7QX Do the thing")]},
+        adds={SQUASHED: ["a1", "a2"]},
+        on_base={"a1"},
+    )
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
 
 
 def test_a_local_branch_and_its_tracking_ref_are_one_piece_of_work() -> None:

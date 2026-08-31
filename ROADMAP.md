@@ -591,15 +591,20 @@ reports the split.
 - PL-S1P1 (S) The refs whose history could not be read are dropped before the
   in-flight ids reach `docket next`, so a partial answer is presented as a
   complete one everywhere except `docket flight`. Admitted 2026-08-31 under
-  the scope test, and worked with `PL-CPSY`: both are holes in one function's
-  answer and they collide on `touches`.
+  the scope test, and worked with `PL-MGNC`: both are holes in one function's
+  answer and they collide on `touches`. `PL-CPSY`, the third, closed on
+  2026-08-31 ahead of them - its half is answered before the commit walk
+  rather than inside it.
 - PL-MGNC (S) A readable merge-base does not make the in-flight commit walk
   complete, so a shallow clone — the normal state of a session container —
   reports merged items as in flight. Admitted 2026-08-31 under the scope test,
   and the only member of this family observed firing: the digest that opened
   the session reassessing this gate named twenty-seven ids, eighteen of them
   closed and one of them `PL-NSN9`, an open entry of this list. Third of the
-  three `vcs.py` holes; work it with `PL-CPSY` and `PL-S1P1`.
+  three `vcs.py` holes; work it with `PL-S1P1`. `PL-CPSY` closed on 2026-08-31
+  and excludes the squash-merged ref that produced that sighting, so
+  reproducing this one now needs a ref that is genuinely unlanded *and* a
+  clone truncated below its fork point.
 - PL-3CBS (S) Nothing notices that an open item's work already landed on
   `main`, so `docket next` offers work that is finished and the gate's own open
   count overstates what is left. Admitted 2026-08-31 under the scope test: it

@@ -736,6 +736,54 @@ def test_flight_does_not_read_a_mentioned_id_as_work_in_progress(
     assert "No branch carries an item id" in capsys.readouterr().out
 
 
+def _squash_merge(root: Path, branch: str, subject: str) -> None:
+    """Land a branch the way GitHub's squash button does, keeping the ref.
+
+    One new commit on the default branch holding the branch's content and none
+    of its commits - which is why `--merged` never names the branch again, and
+    why a checkout that has not pruned goes on holding a ref for finished work.
+    """
+    for args in (["merge", "--squash", "-q", branch], ["commit", "-qm", subject]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+
+def test_flight_does_not_report_a_squash_merged_branch_whose_ref_survives(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Real git, because the containment test this replaces was spelled right too.
+
+    The ref is what a session's own container never holds - GitHub deletes the
+    head branch on merge - and what a long-lived local checkout holds until
+    somebody prunes.
+    """
+    root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
+    _squash_merge(root, "roadmap-release-write-failure-nhsjwo", "PL-K7QX Do the thing (#71)")
+
+    assert main(["--items", str(root / "items"), "flight"]) == 0
+
+    assert "No branch carries an item id" in capsys.readouterr().out
+
+
+def test_flight_keeps_a_squash_merged_branch_out_after_the_base_moves_on(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The default branch editing the same file again does not un-land the work.
+
+    This is the case a comparison against the default branch's *tip* gets
+    wrong, and it is the ordinary one here: the triage pass that follows a
+    capture rewrites the very file the capturing branch added.
+    """
+    root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
+    _squash_merge(root, "roadmap-release-write-failure-nhsjwo", "PL-K7QX Do the thing (#71)")
+    (root / "items" / "scratch.txt").write_text("triaged since\n")
+    for args in (["add", "-A"], ["commit", "-qm", "PL-K7QX Close it out"]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    assert main(["--items", str(root / "items"), "flight"]) == 0
+
+    assert "No branch carries an item id" in capsys.readouterr().out
+
+
 def test_flight_names_a_ref_it_could_not_read_rather_than_ignoring_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
