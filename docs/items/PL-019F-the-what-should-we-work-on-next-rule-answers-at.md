@@ -4,6 +4,7 @@ title: The 'what should we work on next' rule answers at feature altitude, one l
 priority: P3
 effort: S
 status: ready
+verify: python3 tools/doc_check.py check
 classes: infra
 feature: planning-cadence
 touches: CLAUDE.md
@@ -52,3 +53,10 @@ this (rows 4-8 "are not yet scoped; each becomes real only when it gets its own
 goal, required scope, definition of done and out-of-scope list here") but never
 states the prohibition. Worth one sentence in `ROADMAP.md`'s development rules
 while making the edit above; not worth its own item.
+
+**Folded into `PL-DGM4`'s branch (2026-08-31)** (the instruction-writing rules and
+the docket skill prescribe opposite openings for a 'what next' reply). That item had to edit this same `CLAUDE.md` bullet to make it agree with rule 10, so
+the two were worked on one branch rather than contending on one paragraph. The
+bullet now names the step `bin/docket wave` reports as the first thing to
+answer from, `bin/docket status` second and `bin/docket next` third, and opens
+the reply with the recommendation.

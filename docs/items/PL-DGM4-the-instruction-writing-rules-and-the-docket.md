@@ -1,7 +1,13 @@
 ---
 id: PL-DGM4
 title: The instruction-writing rules and the docket skill prescribe opposite openings for a 'what next' reply
-status: untriaged
+priority: P2
+effort: S
+status: ready
+verify: python3 tools/doc_check.py check
+classes: docs
+feature: worker-instructions
+touches: CLAUDE.md, .claude/rules/instruction-writing.md, .claude/skills/docket/SKILL.md
 added: 2026-08-31
 ---
 
@@ -53,3 +59,27 @@ wrote, and then an edit to whichever document loses.
 **Done when.** One of the two documents is edited so that a session following
 both produces one format, and `CLAUDE.md`'s altitude bullet agrees with it.
 
+
+**Decided by the project owner (2026-08-31).** The rules file wins, and it
+wins generally rather than in this one instance: it should apply without being
+named in the prompt, which is how the conflict surfaced — the owner had to say
+"use instruction md file" to get rule 10's shape back.
+
+So precedence is now stated in three places, each doing a different job.
+`.claude/rules/instruction-writing.md` gains a `PRECEDENCE` preamble saying the
+rules apply to every reply unasked and decide its shape; it stays project-free,
+so the user-scope copy carries the same statement. `CLAUDE.md` names the file
+and states the split that makes the precedence liveable — **the rules file
+decides shape, the other document decides content** — because a bare "the rules
+win" would read as licence to drop what a skill was protecting. The `docket`
+skill's "Mode: recommend what to work on" is edited rather than obeyed: its
+release paragraph is no longer the opening but the first block of supporting
+detail, under the recommendation. Nothing it was protecting is lost — the
+paragraph is still required, still before any other item — and rule 10 is
+satisfied literally.
+
+`PL-019F` (the 'what next' rule answers one altitude below the roadmap step)
+was folded into the same branch rather than filed behind this one: its edit is
+to the same `CLAUDE.md` bullet this item had to touch, so two branches would
+have contended on one paragraph. The bullet now answers from the roadmap step
+down and opens with the recommendation.
