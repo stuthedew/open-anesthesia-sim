@@ -428,7 +428,8 @@ def test_every_payload_model_forbids_unknown_keys() -> None:
     rather than by a data file loading wrong in the field.
     """
 
-    strict_base = parameters_module._StrictPayload  # noqa: SLF001 - the guard under test
+    # Reaching for the private base is the point: it is the guard under test.
+    strict_base = parameters_module._StrictPayload
     subclasses = strict_base.__subclasses__()
 
     assert len(subclasses) == 6, "a payload model was added or removed; update this count"

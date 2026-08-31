@@ -62,7 +62,16 @@ line-length = 100
 skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+# `RUF100` is enabled on its own rather than through the whole `RUF` family:
+# it is the rule that makes every other entry in this list mean what it says,
+# by failing the build on a `noqa` that suppresses nothing. Without it a
+# directive naming a rule this list does not select, or one whose finding has
+# since been fixed, reads as a deliberate exemption while doing nothing.
+#
+# Measure it with `--extend-select RUF100`, never `--select RUF100`: the
+# latter replaces this list, so every directive naming a rule other than
+# RUF100 is reported "non-enabled" and a live suppression looks inert.
+select = ["E", "F", "I", "UP", "B", "RUF100"]
 # The type-check gate, and the single source of truth for what it covers:
 # `make check` and CI both run a bare `uv run mypy`, so widening it is one
 # edit here rather than three. `subprojects/docket/src` is listed rather than
