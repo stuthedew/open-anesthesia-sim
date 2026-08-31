@@ -3,11 +3,14 @@ id: PL-4CW7
 title: The web session container ships uv 0.8.17, below the project's required-version floor
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 added: 2026-08-30
+touches: docs/items/PL-4CW7-the-web-session-container-ships-uv-0-8-17-below.md
 not-delegable: the fix is a setting in the Claude Code environment, outside this repository, so no command run inside a checkout can prove it
+pr: 105
+closed: 2026-08-31
 ---
 
 **Problem.** The Claude Code web environment's container image ships uv 0.8.17
@@ -83,6 +86,19 @@ nothing installed by hand, or it does not. A second consecutive 0.8.17 would
 mean the environment being edited is not the one these sessions start in,
 which is a different problem from the one this item was filed for and should
 be recorded as such rather than folded in here.
+
+**Observed 2026-08-31, second reading, and the answer is yes.** A fresh web
+session - this one, started after the re-save above - ran `uv --version` as
+its first command, before installing anything, and got **uv 0.12.7**
+(x86_64-unknown-linux-gnu). The binary at `/root/.local/bin/uv` is dated
+2026-08-31 03:06, the minute the container started, where the stale 0.8.17
+was dated 2025-09-10: the setup script ran and replaced it. `make check` then
+ran through to the end green - ruff, mypy, 690 tests, `docket check` and
+`doc_check` - with no manual step and no `required-version` error.
+
+So the re-save took, and the environment being edited is the one these
+sessions start in. The failure recorded above was a save that did not stick,
+not a wrong environment.
 
 **Done when.** A fresh web session reports uv 0.12.5 or newer from
 `uv --version` before anything has been installed by hand, and runs

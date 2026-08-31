@@ -955,7 +955,7 @@ class SimulationView:
 
         try:
             self._refresh_and_render()
-        except Exception:  # noqa: BLE001 - see comment
+        except Exception:  # broad by design - see the comment below
             # The interface could not be updated to show the failure. The
             # run is stopped regardless, which is the part that matters: a
             # frozen display over a stopped simulation is at worst
@@ -987,7 +987,7 @@ class SimulationView:
 
             try:
                 self._controller.advance(SIMULATION_STEP_S)
-            except Exception as error:  # noqa: BLE001 - see _halt_run
+            except Exception as error:  # broad by design - see _halt_run
                 self._halt_run(error)
 
     async def _run_render_timer(self) -> None:
@@ -1012,7 +1012,7 @@ class SimulationView:
 
             try:
                 self._refresh_and_render()
-            except Exception as error:  # noqa: BLE001 - see _halt_run
+            except Exception as error:  # broad by design - see _halt_run
                 self._halt_run(error)
 
     @staticmethod

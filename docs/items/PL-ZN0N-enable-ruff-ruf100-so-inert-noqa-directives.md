@@ -3,11 +3,13 @@ id: PL-ZN0N
 title: Enable ruff RUF100 so inert noqa directives fail the build
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
 touches: pyproject.toml
 added: 2026-08-25
+pr: 105
+closed: 2026-08-31
 ---
 
 **Problem.** `pyproject.toml` sets ruff's `select = ["E", "F", "I", "UP", "B"]`.

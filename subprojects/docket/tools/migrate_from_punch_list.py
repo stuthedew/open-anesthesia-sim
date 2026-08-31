@@ -19,8 +19,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from docket.model import Item  # noqa: E402
-from docket.store import new_id, write_item  # noqa: E402
+# Both imports follow the path insertion above and have to stay below it.
+from docket.model import Item
+from docket.store import new_id, write_item
 
 ENTRY_RE = re.compile(r"^### (PL-(\d+)) (.+)$")
 BAND_RE = re.compile(r"^## (P[0-3])\b")

@@ -51,6 +51,12 @@ def _run_git(args: list[str], root: Path) -> str:
     A checkout without git, without a remote, or without network is a normal
     condition for this tool - the session-start digest must not fail because
     of it - so every failure mode collapses to "nothing known about branches".
+
+    `git` is named rather than given an absolute path on purpose: the path
+    differs across the environments this runs in, and resolving it through
+    `PATH` is what lets the same code work in all of them. That is also why
+    pinning one would not harden anything - a checkout that cannot run `git`
+    is already a case this function answers with "nothing known".
     """
     try:
         result = subprocess.run(

@@ -3,11 +3,13 @@ id: PL-69J3
 title: Clear the inert `noqa` directives and record why the deliberate suppressions exist
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
-touches: pyproject.toml, src/anesthesia_sim/app/simulation_view.py, subprojects/docket/src/docket/vcs.py, tools/doc_check.py
+touches: pyproject.toml, src/anesthesia_sim/app/simulation_view.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_store.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tools/migrate_from_punch_list.py, tests/unit/test_doc_check.py, tests/unit/test_parameters.py, tools/doc_check.py
 added: 2026-08-25
+pr: 105
+closed: 2026-08-31
 ---
 
 **Problem.** The tree carries eight `noqa` directives that suppress nothing,
