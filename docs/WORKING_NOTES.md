@@ -93,19 +93,21 @@ and its own `not-delegable:` field says the only action available is to record
 a second sighting, so it would hold the gate open indefinitely. `PL-SRCP` was
 dropped at triage as a duplicate of `PL-3CBS`.
 
-**Open: whether `PL-MGNC` joins them.** Found while reassessing, and it passes
-the same test — a shallow clone's incomplete `^base` walk made the digest
-report twenty-seven ids in flight, eighteen of them closed and one of them
-`PL-NSN9`, an open entry of this gate. It is the strongest live instance of
-the `vcs.py` family, and it collides on `touches` with `PL-CPSY` and
-`PL-S1P1`, so the three want one session whatever is decided. Not admitted
-yet: the reassessment was asked about the nine, and adding a tenth found
-during it is the project owner's call.
+**Two more admitted on the same reading, 2026-08-31,** bringing the list to
+thirty-one entries with eleven open. `PL-MGNC` was found while reassessing: a
+shallow clone's incomplete `^base` walk made the digest report twenty-seven
+ids in flight, eighteen of them closed and one of them `PL-NSN9`, an open
+entry of this gate. `PL-3CBS` (docket has no way to notice that an open item's
+work already landed on main) was not one of the nine and qualified on the same
+reading.
 
-**Adjacent, same test, not part of the nine.** `PL-3CBS` (docket has no way to
-notice that an open item's work already landed on main) is a defect in the
-queue's ranking and would qualify on the same reading. It was not reassessed
-because it was not one of the nine.
+**The `vcs.py` cluster is one piece of work, not three.** `PL-CPSY`,
+`PL-S1P1` and `PL-MGNC` are three holes in `branches_in_flight` and its return
+value — a stale ref never excluded, the unreadable refs dropped from the ids,
+and a walk that under-excludes when the merge-base resolves but the history
+does not reach it. They collide on `touches` by construction. Taking them
+together is one design pass over that function; taking them separately is
+three, each invalidating the last.
 
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 

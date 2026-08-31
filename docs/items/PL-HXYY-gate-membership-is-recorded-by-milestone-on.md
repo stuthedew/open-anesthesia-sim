@@ -1,7 +1,12 @@
 ---
 id: PL-HXYY
 title: Gate membership is recorded by milestone: on some open entries and not others
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: dev-tooling
+touches: docs/items/PL-1CYR-nothing-re-checks-the-branch-against-main.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/check.py, subprojects/docket/README.md
 added: 2026-08-31
 ---
 
@@ -25,6 +30,14 @@ failure mode produces, arrived at by hand.
 `subprojects/docket/src/docket/cli.py` (`cmd_release`) and whatever in
 `check.py` would enforce the rule; `subprojects/docket/README.md` for what the
 field means.
+
+**Decision needed.** Does `milestone:` mean "shipped in this release", which
+is what `docket release` stamps, or "scoped to this release", which is what a
+frozen entry is? The two cannot share one field: the first must be absent
+until a release is cut, the second must be present on every entry from the
+moment the list is frozen. Pick one meaning and give the other its own field,
+or drop the second use and let `ROADMAP.md`'s gate subsection remain the only
+record of membership — which is what `bin/docket wave` already reads.
 
 **Done when.** `milestone:` has one documented meaning, an item at a status
 that cannot have shipped cannot carry it (or the field is split in two), and

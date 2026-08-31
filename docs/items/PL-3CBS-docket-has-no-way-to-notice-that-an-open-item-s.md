@@ -17,8 +17,10 @@ place in `docket next`, it is counted as open by `docket wave` and `docket
 gate`, and the next session picks it up and re-derives work that is already on
 main before discovering that.
 
-Two of v0.2.8's sixteen "open" gate entries are in exactly this state, found
-2026-08-30 while answering what to work on next:
+Two of v0.2.8's then-sixteen "open" gate entries were in exactly this state,
+found 2026-08-30 while answering what to work on next. Both have since been
+closed by hand, so the instance is resolved and the defect that let it happen
+is not:
 
 - **PL-XCYB** (a provenance check must refuse to answer in a shallow checkout).
   Implemented by `1561b2a`. Its `verify:` command passes, `checks.py`'s
@@ -86,3 +88,15 @@ pass. `PL-64LS` is `done`, so what is left of that observation is narrower:
 reuse its ref-reading in `vcs.py` rather than adding a second traversal, and
 keep the two advisories' wording symmetric so a reader meeting one recognizes
 the other.
+
+**Admitted to v0.2.8's frozen list, 2026-08-31,** under the scope test
+recorded in `ROADMAP.md`'s "What the freeze closes, and what it does not": the
+queue's ranking is machinery the release's goal names, and this defect
+corrupts the two numbers the release is steered by — the gate's open count and
+what `docket next` offers. It was not one of the nine captures reassessed that
+day, and was admitted on the same reading immediately afterwards at the
+project owner's agreement.
+
+Also note the gate has grown since this brief was written: the sixteen above
+is thirty-one entries now, of which eleven are open. The arithmetic in "Why it
+matters" holds — the point is that the count is wrong, not what it was.

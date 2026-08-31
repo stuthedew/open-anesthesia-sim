@@ -1,8 +1,14 @@
 ---
 id: PL-H8MQ
 title: ROADMAP.md states the v0.2.8 entry count in four places and nothing holds them to the list
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, docs
+feature: dev-tooling
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-08-31
+verify: uv run pytest tests/unit/test_doc_check.py -k "gate and count"
 ---
 
 **Problem.** The number of entries on v0.2.8's frozen list is written in prose
