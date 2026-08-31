@@ -3,12 +3,15 @@ id: PL-KWC1
 title: docket flight reads ids from branch names only, so every harness-named branch is invisible
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 milestone: v0.2.8
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-08-31
+closed: 2026-08-31
+pr: 113
+commit: 6ad1b2f
 verify: uv run pytest subprojects/docket/tests/test_vcs.py -k subject
 ---
 

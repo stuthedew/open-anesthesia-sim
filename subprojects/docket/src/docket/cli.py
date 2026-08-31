@@ -642,12 +642,15 @@ def cmd_stranded(args: argparse.Namespace) -> int:
 
 
 def cmd_flight(args: argparse.Namespace) -> int:
-    branches = branches_in_flight(find_root())
-    if not branches:
-        print("no branch names carry an item id")
-        return 0
-    for branch in branches:
-        print(f"{branch.item_id}  {branch.name}")
+    """Which items are being worked on a branch, and how long since each moved.
+
+    Exits zero whether or not it finds any, for the reason `stranded` does:
+    an unmerged branch is a live session or abandoned work, the command cannot
+    tell which, and reporting is the whole job.
+    """
+    root = args.items.parent if args.items else find_root()
+    report = branches_in_flight(root)
+    print(render.format_flight(report, args.today or date.today()))
     return 0
 
 

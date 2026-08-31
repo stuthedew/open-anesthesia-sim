@@ -281,7 +281,10 @@ otherwise:
   branch.
 - **Branch** — `claude/pl-k7qx-short-slug` where the session creates it. A
   branch generated before the session started cannot be renamed; that is
-  expected, and the commits carry the id instead. Say so in the reply.
+  expected, and the commits carry the id instead. Say so in the reply. Leading
+  every commit subject with the id is what keeps such a branch visible:
+  `docket flight` reads the subjects, and an id buried mid-sentence does not
+  count.
 
 Set the item's `status` and `feature` as work begins, and add `touches` if it
 is missing — that is what makes the next concurrency answer correct.
