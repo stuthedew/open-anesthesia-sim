@@ -23,6 +23,7 @@ from .release import (
     bump_version,
     is_untagged,
     milestones,
+    outstanding_roadmap_edits,
     read_version,
     readiness,
     release_notes,
@@ -429,10 +430,42 @@ def cmd_release(args: argparse.Namespace) -> int:
     notes_path.write_text(notes, encoding="utf-8")
     print(f"Bumped {previous} -> {version} in {config.version_file}")
     print(f"Wrote {notes_path.relative_to(root)} and stamped {len(ready.shippable)} item(s)")
-    print("Next: review, commit, then tag the merge:")
-    print(f'  git tag -a {name} <merge commit> -m "{name}"')
-    print(f"  git push origin {name}")
+    print()
+    print(_hand_off(root, config, name))
     return 0
+
+
+def _hand_off(root: Path, config: Config, name: str) -> str:
+    """Say where the mechanical half ends, what is stale, and what comes next.
+
+    A release stops here on purpose. The roadmap's version row and baseline
+    section say what the release was *for*, which is a judgment about the work
+    rather than a fact about the store, so the sequence ends where the
+    judgment starts. What it must not do is end silently: the alternative this
+    replaces ran the project check straight into a failure caused by the edits
+    nobody had been asked for yet, with the tree half updated - which teaches a
+    maintainer to read a red check as the normal end of a release.
+    """
+    lines = ["Stopping here: the rest is prose, and the roadmap says what this release was for."]
+
+    roadmap = root / config.roadmap_file
+    if roadmap.is_file():
+        stale = outstanding_roadmap_edits(roadmap.read_text(encoding="utf-8"), name)
+        if stale:
+            lines.append("")
+            lines.append(f"Stale in {config.roadmap_file}, and owed by hand:")
+            lines.extend(f"  - {statement}" for statement in stale)
+        else:
+            lines.append("")
+            lines.append(f"{config.roadmap_file} already reads as {name}; nothing is owed there.")
+
+    lines.append("")
+    lines.append("Then:")
+    lines.append(f"  {config.check_command}")
+    lines.append("  review the diff and commit")
+    lines.append(f'  git tag -a {name} <merge commit> -m "{name}"')
+    lines.append(f"  git push origin {name}")
+    return "\n".join(lines)
 
 
 def _untagged_warning(version: str) -> str:

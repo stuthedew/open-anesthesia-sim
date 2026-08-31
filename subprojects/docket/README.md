@@ -162,10 +162,23 @@ the three questions that follow from it — one row per released version,
 exactly one marked current, and a "Current baseline:" heading naming that same
 version, which is the version the version file holds.
 
-Tags are deliberately outside that check. A shallow or tag-less clone is a
-normal checkout, and a documentation check that fails on how somebody fetched
-the repository is a check that gets switched off. `docket release` enforces
-the tag instead, at the one moment tags are certainly to hand.
+Not writing it is not the same as not mentioning it. Refusing later is only
+useful if somebody knows what is owed now, so `release` ends by reading the
+roadmap through those same two parsers and printing the statements the cut has
+just made stale, each with its line number
+(`release.outstanding_roadmap_edits`). A command that stops mid-sequence
+without saying where it stopped leaves the next one — the project's own check —
+to report the omission as a failure nobody caused, which is how a red check
+comes to look like the normal end of a release.
+
+Tags are outside that check, and inside the project's own. A shallow or
+tag-less clone is a normal checkout, so nothing about tags may be concluded
+from a repository that cannot answer — `vcs.tags` collapses every such failure
+to an empty set, and a checker reading it says nothing rather than reporting
+every release as untagged. What it does say, when git can answer, is which
+completed releases carry no tag and which tags name no release. `docket
+release` still enforces the tag at the one moment tags are certainly to hand:
+it refuses to cut the next release while the current one is untagged.
 
 ## The item format
 

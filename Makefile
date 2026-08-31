@@ -27,17 +27,24 @@ docket:
 doc-check:
 	python3 tools/doc_check.py check
 
-# The documented way to cut a release. `bin/docket release` writes the new
-# version into pyproject.toml and stops, but uv.lock records the project's own
-# version too, so the next command a release runs - `make check`, whose first
-# step is `uv sync --locked` - fails with "the lockfile needs to be updated".
-# That fired on both releases since the command existed; `5e9a8f6` and
-# `3ed704a` each carry a hand-run one-line uv.lock bump.
+# The documented way to cut a release: everything about one that a command can
+# do, and nothing that it cannot. `bin/docket release` writes the new version
+# into pyproject.toml and stops, but uv.lock records the project's own version
+# too, so a `uv sync --locked` afterwards fails with "the lockfile needs to be
+# updated". That fired on both releases before the relock was sequenced here;
+# `5e9a8f6` and `3ed704a` each carry a hand-run one-line uv.lock bump.
 #
 # The sequencing lives here rather than in docket because a lockfile is a
 # generated artifact and the tool that generates it is a toolchain fact, which
 # is what this file is for. docket stays standard-library-only and
 # package-manager-agnostic.
+#
+# It deliberately stops short of `make check`. ROADMAP.md's version-table row
+# and baseline section are release prose - what the release was *for* - and
+# nothing writes them, so running the check here fails on edits nobody has
+# been asked for yet, with the tree half updated. `bin/docket release` names
+# those edits instead; make them, then run `make check`, which is what proves
+# they landed.
 #
 # This project names its versions rather than incrementing them (see
 # ROADMAP.md, "Versioning decision"), so pass the version:
@@ -46,7 +53,8 @@ doc-check:
 release:
 	bin/docket release $(VERSION)
 	uv lock
-	$(MAKE) check
+	@echo
+	@echo "uv.lock relocked. Make the ROADMAP.md edits named above, then run: make check"
 
 run:
 	uv run anesthesia-sim

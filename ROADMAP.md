@@ -43,21 +43,33 @@ capability-boundary rule above governs.
 | v0.2.3 | Completed | Hardening and verification release on the same model: displayed concentrations are rounded to the resolution the solver actually supports, the chart payload is bounded and the render cadence decoupled from the simulation's, and the coupled dynamics are gated on an independent RK4 solution rather than on mass balance alone. Six further items rebuilt the development queue, swept the documentation, and recorded release provenance. |
 | v0.2.4 | Completed | Verification and delegation release on the same model: fourteen previously untested capacity and validation guards in the scientific core and the controller now have tests, `_halt_run`'s deliberate suppression is covered by a test rather than only a comment, and work whose success a command can prove can be handed to a cheaper model and verified in one step. |
 | v0.2.5 | Completed | Licensing, documentation and planning release: the project is licensed Apache-2.0, v0.3.0 through the MVP is scoped onto one timeline with its debt gates, Phase 0 is retired in favour of the standing debt gate, and `docs/worker.md` states what a delegated worker decides for itself. No source file changed. |
-| v0.2.6 | Completed | Delegation and release-tooling release on the same model: work whose success a command can prove now has to name that command and have run it, `docket` computes the debt gate and the cadence beat instead of a session transcribing them, and the release path itself stopped breaking `make check` and leaving this table behind. The one scientific item widened the splitting-error bound to the whole settings envelope. No equation, parameter, or numerical method changed. |
+| v0.2.6 | Completed | Delegation and release-tooling release on the same model: work whose success a command can prove now has to name that command and have run it, `docket` computes the debt gate and the cadence beat instead of a session transcribing them, and the release path stopped leaving `uv.lock` stale, while drift between this table and the version file became something a check catches - caught, not prevented, since nothing writes the row. The one scientific item widened the splitting-error bound to the whole settings envelope. No equation, parameter, or numerical method changed. |
 | v0.2.7 | Completed / current baseline | Session-discipline and applicability-domain release on the same model: the simulation step now refuses inputs outside the operator split's stated applicability domain and the splitting-error bound is measured across setting changes rather than one held operating point, while ten process items closed the three channels by which product work leaked into discussions that were not about it, gave multi-step instructions a written standard, and cleared three live tooling defects. No equation or parameter changed, and the numerical method is unchanged - it is now guarded at the domain it was always specified for. |
 | v0.2.8 | Planned / scoped | The workflow works: eighteen entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the type-check and lint gates, and the instructions a session reads before it does anything. No simulator change, and no equation, parameter, numerical method or displayed value changes. |
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
-**Tags.** Every released version carries an annotated tag: v0.0.1, v0.0.2,
-v0.1.0, v0.2.0, v0.2.1, v0.2.2, v0.2.3, v0.2.4, v0.2.5, v0.2.6 and v0.2.7.
-`git describe --contains` therefore resolves for every commit up to and
-including the latest release - verified on 2026-08-30 across all 214 commits
-on `main`, where the only nine it does not resolve are the unreleased commits
-after v0.2.7, which the next tag will cover. That span is the provenance
-guarantee PL-J3ZK was opened to restore.
-`bin/docket release` refuses to cut a release while the version it is
-releasing from is untagged, so the practice cannot lapse again.
+**Tags.** Every version the table above marks Completed carries an annotated
+tag. Which ones those are is deliberately not restated here - the table is the
+list, and a second copy is a second thing to keep true, which it twice was not.
+`tools/doc_check.py` reads the completed rows against `git tag` instead, so a
+release that shipped without one fails the check rather than waiting to be
+noticed. `git describe --contains` therefore resolves for every commit up to
+and including the latest release - verified on 2026-08-30 across the whole of
+`main`; the commits it does not resolve are the unreleased ones after the
+newest tag, which the next release's tag will cover. That span is the
+provenance guarantee PL-J3ZK was opened to restore.
+
+The tag goes on the merge commit, so between cutting a release and pushing its
+tag the newest version is Completed and carries none. That window is reported
+as an advisory rather than an error: failing it would turn `make check` red on
+every release branch, which is the failure PL-8HJ2 removed arriving by another
+door. `bin/docket release` refuses to cut the *next* release while that tag is
+still missing, which is what stops the window from staying open.
+
+A version that has genuinely gone out untagged is named in a bold sentence
+here, and the checker holds the count that sentence states to the versions it
+names. There are none.
 
 **The gap is closed, 2026-08-30.** v0.1.0 (`97cc66a`) and v0.2.0 (`796bf4f`)
 were the last two, and were recorded for a time as untaggable: `main` appeared

@@ -404,6 +404,58 @@ def test_a_project_that_has_never_tagged_is_not_refused(tmp_path: Path) -> None:
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
 
 
+RELEASE_ROADMAP = """# Roadmap
+
+## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.2.5 | Completed / current baseline | The current one. |
+
+## Current baseline: v0.2.5
+
+What it is.
+"""
+
+
+def test_a_cut_release_names_the_roadmap_edits_it_did_not_write(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-8HJ2: the sequence used to end in a test failure nobody had caused."""
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "ROADMAP.md").write_text(RELEASE_ROADMAP, encoding="utf-8")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    out = capsys.readouterr().out
+    assert "the version table has no row for v0.2.6" in out
+    assert "still marked" in out
+    assert "still names v0.2.5" in out
+    assert "make check" in out
+    assert 'git tag -a v0.2.6 <merge commit> -m "v0.2.6"' in out
+
+
+def test_a_release_whose_roadmap_is_already_written_says_nothing_is_owed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "ROADMAP.md").write_text(RELEASE_ROADMAP.replace("v0.2.5", "v0.2.6"), encoding="utf-8")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    assert "nothing is owed there" in capsys.readouterr().out
+
+
+def test_a_project_with_no_roadmap_still_gets_the_rest_of_the_hand_off(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The roadmap is this project's convention, not a requirement of the tool."""
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    out = capsys.readouterr().out
+    assert "Stale in" not in out
+    assert "git push origin v0.2.6" in out
+
+
 UNTRIAGED = """---
 id: PL-U1U1
 title: An idea nobody has weighed yet
