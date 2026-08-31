@@ -3,12 +3,15 @@ id: PL-64LS
 title: Detect items stranded on an unmerged branch
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost
 feature: dev-tooling
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, .claude/hooks/docket-digest.sh
 added: 2026-08-24
 verify: uv run pytest subprojects/docket/tests/test_vcs.py subprojects/docket/tests/test_cli.py
+closed: 2026-08-31
+pr: 108
+commit: 97ed318
 ---
 
 **Problem.** An item is committed on whatever branch the capturing session was
@@ -70,3 +73,9 @@ answered "nothing stranded". `.claude/hooks/docket-digest.sh` now fetches every
 branch tip rather than `main` alone - measured at well under a second - and
 deliberately does not prune, since a tracking ref for a branch deleted on the
 remote may be the only copy of what was committed on it.
+
+**Closed (2026-08-31).** `docket stranded` found one on its first run:
+`PL-D2GW` existed only on `claude/roadmap-release-write-failure-nhsjwo`,
+whose pull request 101 had merged the day before a later session pushed one
+more capture commit to it. Recovered in the same branch with the `git
+checkout` line the report prints.
