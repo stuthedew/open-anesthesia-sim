@@ -6,8 +6,9 @@ effort: S
 status: ready
 classes: infra
 feature: dev-tooling
-touches: pyproject.toml, Makefile, .github/workflows/quality.yml, src/anesthesia_sim/py.typed, subprojects/docket/src/docket/roadmap.py, tests/unit/test_simulation_view.py
+touches: pyproject.toml, Makefile, README.md, .github/workflows/quality.yml, src/anesthesia_sim/py.typed, subprojects/docket/src/docket/roadmap.py, tests/unit/test_bootstrap.py
 added: 2026-08-24
+verify: uv run mypy && uv run pytest tests/unit/test_bootstrap.py -k py_typed
 ---
 
 **Problem.** `make check` and CI both run `uv run mypy src`, so `tests/`,

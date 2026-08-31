@@ -28,7 +28,7 @@ immediately.
 **Why it matters.** Merging before the checks finish means unverified code
 reaches main in a repository whose stated standard is that a displayed value
 could influence patient management. The `checks` job — `ruff format --check`,
-`ruff check`, `mypy src`, `pytest`, `docket check`, `doc_check` — is the only
+`ruff check`, `mypy`, `pytest`, `docket check`, `doc_check` — is the only
 automated statement that the pinned reference states still hold. It is also
 the failure mode that scales with throughput: one ungated merge is a risk, and
 a release cadence of eight items is eight of them.
