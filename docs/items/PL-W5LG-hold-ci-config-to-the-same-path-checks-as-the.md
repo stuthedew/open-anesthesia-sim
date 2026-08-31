@@ -3,11 +3,14 @@ id: PL-W5LG
 title: Hold CI config to the same path checks as the documentation
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, session-cost
 feature: dev-tooling
-touches: tools/doc_check.py, .github/workflows/quality.yml
+touches: tools/doc_check.py, .github/workflows/quality.yml, tests/unit/test_doc_check.py
+verify: uv run pytest tests/unit/test_doc_check.py
 added: 2026-08-24
+pr: 106
+closed: 2026-08-31
 ---
 
 **Problem.** `tools/doc_check.py` resolves every path cited in the

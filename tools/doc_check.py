@@ -235,6 +235,26 @@ PHONY_RE = re.compile(r"^\.PHONY\s*:(?P<names>.*)$")
 # and fenced blocks: prose says "make sure" and means nothing of the kind.
 MAKE_MENTION_RE = re.compile(r"\bmake\s+(?P<name>[a-z][\w.-]*)")
 
+# Where CI's commands live. A workflow step names repository scripts by path
+# exactly as the documentation does, and nothing was holding it to them.
+WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
+
+# `run:` opens a step's shell, either inline or as a block scalar whose body
+# is every following line indented past the key. Reading it this way rather
+# than parsing YAML keeps this tool standard-library only, which is what lets
+# a hook or a bare checkout run it.
+RUN_STEP_RE = re.compile(r"^(?P<indent>\s*)-?\s*run:\s*(?P<inline>.*)$")
+BLOCK_SCALARS = frozenset({"|", ">", "|-", ">-", "|+", ">+"})
+
+# Shell syntax that separates one token from the next.
+COMMAND_SPLIT_RE = re.compile(r"[\s;|&()<>]+")
+
+# A token this check cannot resolve by reading the tree: a shell or GitHub
+# expansion, a glob whose intended match is not stated, a URL, or an action
+# reference. Skipped rather than guessed at - a checker that guesses at the
+# judgment half is worse than no checker.
+UNRESOLVABLE = ("$", "*", "?", "://", "@")
+
 
 @dataclass
 class Report:
@@ -940,6 +960,78 @@ def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -
                 )
 
 
+def workflow_commands(text: str) -> Iterator[tuple[str, int]]:
+    """Every shell line a workflow's `run:` steps execute, with its line number."""
+    lines = text.splitlines()
+    index = 0
+    while index < len(lines):
+        match = RUN_STEP_RE.match(lines[index])
+        index += 1
+        if match is None:
+            continue
+        inline = match.group("inline").strip()
+        if inline and inline not in BLOCK_SCALARS:
+            yield inline, index
+            continue
+        indent = len(match.group("indent"))
+        while index < len(lines):
+            body = lines[index]
+            if body.strip() and len(body) - len(body.lstrip()) <= indent:
+                break
+            index += 1
+            if body.strip():
+                yield body.strip(), index
+
+
+def _command_paths(command: str) -> Iterator[str]:
+    """Every token in a shell line that is written as a path."""
+    for raw in COMMAND_SPLIT_RE.split(command):
+        token = raw.strip("\"'`,")
+        # `--cov=src/x` and `KEY=path` carry the path on the right of the `=`.
+        if "=" in token:
+            token = token.rpartition("=")[2].strip("\"'")
+        token = token.removeprefix("./")
+        if "/" not in token or token.startswith("-"):
+            continue
+        if any(mark in token for mark in UNRESOLVABLE):
+            continue
+        yield token
+
+
+def check_workflow_paths(root: Path, report: Report) -> None:
+    """Resolve every repository path a CI step runs.
+
+    `tools/punch_list.py` was deleted with every documentation reference to it
+    found and fixed, while the workflow step invoking it was missed and would
+    have failed on merge. A broken CI reference is discovered at the worst
+    possible moment - after review, on the merge - so it is held to the same
+    standard as a path cited in prose.
+    """
+    workflows = sorted(
+        path for pattern in WORKFLOW_GLOBS for path in root.glob(pattern) if path.is_file()
+    )
+    if not workflows:
+        return
+    # A token claims to be a repository path when its first segment names
+    # something at the top of the checkout. That is what separates `bin/docket`
+    # from `actions/checkout@v7.0.1`, and it is why the suffix rule in
+    # `_is_path_citation` does not work here: `bin/docket` has no suffix, and
+    # it is exactly the reference this check exists to hold.
+    top_level = {child.name for child in root.iterdir()}
+    for path in workflows:
+        relative = path.relative_to(root)
+        reported: set[tuple[str, int]] = set()
+        for command, line in workflow_commands(path.read_text(encoding="utf-8")):
+            for token in _command_paths(command):
+                if PurePosixPath(token).parts[0] not in top_level:
+                    continue
+                if (token, line) in reported:
+                    continue
+                reported.add((token, line))
+                if not (root / token).exists():
+                    report.errors.append(f"{relative}:{line}: runs `{token}`, which does not exist")
+
+
 def analyze(root: Path) -> Report:
     """Run every mechanical documentation check over a checkout."""
     report = Report()
@@ -954,6 +1046,7 @@ def analyze(root: Path) -> Report:
     check_baseline(root, report)
     check_tags(root, report)
     check_make_targets(root, documents, report)
+    check_workflow_paths(root, report)
     return report
 
 
@@ -978,7 +1071,7 @@ def format_check(report: Report) -> str:
     if not report.errors and not report.advisories:
         lines.append(
             "Package map, provenance table, citations, release train, current "
-            "baseline, release tags and documented make targets all resolve."
+            "baseline, release tags, documented make targets and CI paths all resolve."
         )
     return "\n".join(lines)
 
