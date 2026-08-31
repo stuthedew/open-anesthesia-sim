@@ -46,7 +46,15 @@ def test_new_ids_are_valid_and_unique() -> None:
 
 
 def test_a_new_id_does_not_depend_on_what_else_exists() -> None:
-    """The property that makes concurrent capture safe: no shared counter."""
+    """The property that makes concurrent capture safe: no shared counter.
+
+    The seeded `random.Random` is what makes the assertion possible: two
+    allocations from the same seed must agree, which is only observable if
+    the generator is reproducible. `new_id` defaults to `random.SystemRandom`
+    in production and takes the generator as a parameter precisely so a test
+    can pass a seeded one - swapping this for the unseeded default would not
+    harden anything and would delete the property under test.
+    """
     empty = new_id(set(), random.Random(7))
     crowded = new_id({f"PL-{n:03d}" for n in range(500)}, random.Random(7))
 
@@ -54,6 +62,8 @@ def test_a_new_id_does_not_depend_on_what_else_exists() -> None:
 
 
 def test_new_id_avoids_a_collision_when_one_occurs() -> None:
+    # Seeded so both calls draw the same first candidate and the collision
+    # this test is about actually happens - see the test above.
     first = new_id(set(), random.Random(1))
     second = new_id({first}, random.Random(1))
 
