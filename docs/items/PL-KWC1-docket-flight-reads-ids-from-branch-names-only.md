@@ -11,7 +11,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/ren
 added: 2026-08-31
 closed: 2026-08-31
 pr: 113
-commit: 6ad1b2f
+commit: 3fb55ee
 verify: uv run pytest subprojects/docket/tests/test_vcs.py -k subject
 ---
 
