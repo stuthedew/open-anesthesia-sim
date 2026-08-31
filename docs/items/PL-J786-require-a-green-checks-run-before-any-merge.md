@@ -3,10 +3,12 @@ id: PL-J786
 title: Require a green `checks` run before any merge into main
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: infra, defect
 feature: public-history
 added: 2026-08-30
+closed: 2026-08-31
+reason: the plan question was answered by doing nothing (project owner, 2026-08-31). The repository stays private on GitHub Free, where rulesets are created but not enforced, so no rule can gate a merge into main and merges continue to rest on discipline. This is the second route the item itself offers, and its `Done when` names dropping with the reason recorded as the way to take it. The risk is the one measured above and is accepted knowingly, not overlooked: across the last twelve pull requests the median open-to-merge time was under two minutes against a ~50 s `checks` job, and pull request 71's check run completed 26 s after it was merged. Reopen this only if the repository moves to GitHub Pro or becomes public for its own reasons - never the reverse, per the standing decision below.
 not-delegable: the rule lives in GitHub repository configuration, not in the tree, and no MCP tool in this session exposes rulesets. A session can confirm the result on a throwaway pull request but cannot make the change.
 ---
 
