@@ -3,12 +3,15 @@ id: PL-CPSY
 title: A squash-merged branch whose ref survives reports its items in flight forever
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-08-31
-verify: uv run pytest subprojects/docket/tests/test_vcs.py -k squash
+closed: 2026-08-31
+pr: 121
+commit: b3a7315
+verify: uv run pytest subprojects/docket/tests -k squash
 ---
 
 **Problem.** `branches_in_flight` excludes a branch by containment: a ref
@@ -75,3 +78,23 @@ flight, eighteen of them closed, one of them `PL-NSN9` — an open entry of this
 gate. That instance is a different mechanism (`PL-MGNC`, the `^base` walk in a
 shallow clone) reaching the same wrong output, which is the argument for
 working all three `vcs.py` holes together rather than separately.
+
+**Done 2026-08-31, by content rather than by a pull-request number.** A
+candidate ref is now also tested by what it adds: every blob it puts on the
+tree it forked from is looked for in the default branch's *history*, and a ref
+whose every blob has been there carries nothing unlanded, however its commits
+got there. That is `stranded`'s rule from the other side, as the brief above
+suggested, with one correction the brief did not anticipate - the comparison
+has to be against the history and not the tip. A tip comparison un-lands the
+branch the moment anybody edits a file it touched, which here is what the
+triage pass does to every item a capture branch adds: this checkout's own
+surviving squash-merged ref
+(`origin/claude/roadmap-release-write-failure-nhsjwo`) was already in that
+state, so the tip test would have fixed nothing.
+
+A ref adding no blob this checkout can read stays in the report, because
+silence is not evidence of landing and naming a merged branch is the cheaper
+error. The mechanism this removes is also what produced the incident `PL-MGNC`
+records - that ref's walk, in a shallow clone, attributed `origin/main`'s own
+subjects to it - but `PL-MGNC`'s under-exclusion is untouched and still open,
+as is `PL-S1P1`.
