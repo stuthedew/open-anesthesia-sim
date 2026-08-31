@@ -74,14 +74,39 @@ def _flight(args: argparse.Namespace) -> set[str]:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
-    root, items, config = _load(args)
+    # The repository root, not the store beneath it: `_load` returns the item
+    # directory, and the roadmap `_offered` reads sits a level above it.
+    _, items, config = _load(args)
+    root = args.items.parent if args.items else find_root()
     # The only command that asks git anything, because it is the only one whose
     # answer depends on what has merged. `None` comes back from a checkout too
     # shallow to be trusted, and the provenance check is skipped rather than
     # run against a truncated history.
-    report = analyze(items, args.today or date.today(), config, history=merged_pull_requests(root))
+    report = analyze(
+        items,
+        args.today or date.today(),
+        config,
+        history=merged_pull_requests(root),
+        offered=_offered(root, items, config, args),
+    )
     print(render.format_check(report))
     return 1 if report.errors else 0
+
+
+def _offered(
+    root: Path, items: Sequence[Item], config: Config, args: argparse.Namespace
+) -> frozenset[str]:
+    """The ids `next` would suggest, as the grooming advisories read them.
+
+    Deliberately the default offering - the same limit for every caller,
+    ignoring `--effort` and `--limit` - because an advisory that changed with
+    the flags of the command that happened to print it would report a
+    different count in `check` than in `next`, and the count is the thing a
+    session is being asked to act on.
+    """
+    plan = _plan(root, items, config)
+    picks = recommend(list(items), _flight(args), scope=plan.scope if plan is not None else None)
+    return frozenset(pick.item.identifier for pick in picks)
 
 
 def cmd_list(args: argparse.Namespace) -> int:
@@ -120,8 +145,10 @@ def cmd_digest(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
     if not items:
         return 0
-    report = analyze(items, args.today or date.today(), config)
     root = args.items.parent if args.items else find_root()
+    report = analyze(
+        items, args.today or date.today(), config, offered=_offered(root, items, config, args)
+    )
     ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
     rendered = render.format_digest(report, _flight(args), ready, _plan(root, items, config))
     if rendered:
@@ -281,8 +308,10 @@ def cmd_next(args: argparse.Namespace) -> int:
     `_plan` returning `None`, and the ranking falls back to what it was.
     """
     _, items, config = _load(args)
-    report = analyze(items, args.today or date.today(), config)
     root = args.items.parent if args.items else find_root()
+    report = analyze(
+        items, args.today or date.today(), config, offered=_offered(root, items, config, args)
+    )
     plan = _plan(root, items, config)
     flight = _flight(args)
     picks = recommend(

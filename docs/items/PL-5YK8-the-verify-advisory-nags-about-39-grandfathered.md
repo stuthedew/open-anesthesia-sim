@@ -37,9 +37,33 @@ are the only channel grooming has.
 - **Drop the advisory** and rely on the per-item error at `ready`. Cheapest,
   and loses the only signal that the backlog exists.
 
-**Where.** `subprojects/docket/src/docket/checks.py` raises it;
-`verify_required_from` in `docket.toml` sets the cutover.
+**Decided 2026-08-31 (project owner): narrow it, and carry the count.** The
+second disposition, with the addition that the message states how many remain,
+which answers the only real cost of narrowing - losing sight of the size of the
+set. The advisory now fires only when an item `docket next` is about to offer
+names no command, so on a normal day there is none at all.
 
-**Done when.** The advisory reports something a session can act on in the
-session that sees it, and the store's grandfathered items are either burned
-down or recorded as deliberately exempt with the reason.
+Backfilling was rejected on correctness rather than cost. The skill's own rule
+is to run the command before writing it, and an item nobody has started offers
+nothing to run it against; all six commands this store ever carried that were
+written that way were wrong. Backfilling 39 would convert a known gap - "no
+command names this" - into 39 false claims that fail only after a worker has
+done the work. Dropping the advisory was rejected because it would make
+grandfathering permanent by default while `docket.toml` still recorded it as a
+burn-down.
+
+Two facts that made the decision easier, measured on the day: the set is closed
+and can only shrink, since the test is the capture date and all 39 were
+captured between 2026-08-23 and 2026-08-26; and 6 of the 12 open v0.2.8 gate
+entries are in it, so clearing the gate drains a sixth of it as a side effect.
+
+**Where.** `subprojects/docket/src/docket/checks.py` raises it;
+`verify_required_from` in `docket.toml` sets the cutover; `_offered` in
+`cli.py` supplies the ranking to the three commands that show advisories.
+
+**Done when.** The advisory names only the grandfathered items `docket next`
+is about to offer, states how many remain, and is silent when those items name
+a command - so it can reach zero on a normal day; `check`, `digest` and `next`
+agree on it, none of them reporting a count another would contradict; and
+`docket.toml` records the burn-down as happening at the moment an item is
+started rather than by moving the cutover date.
