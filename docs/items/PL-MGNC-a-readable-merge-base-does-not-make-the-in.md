@@ -1,8 +1,14 @@
 ---
 id: PL-MGNC
 title: A readable merge-base does not make the in-flight commit walk complete, so a shallow clone reports merged items as in flight
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-08-31
+verify: uv run pytest subprojects/docket/tests/test_vcs.py -k contained
 ---
 
 **Problem.** `branches_in_flight` splits candidate refs on whether `git
@@ -65,3 +71,21 @@ its items in flight forever) is the same output going wrong by a different
 mechanism, and `PL-S1P1` (the refs that went unread never reach `docket
 next`) is the third hole in the same function. All three are `vcs.py` and
 collide on `touches`: one session, or serialized.
+
+**Triaged and admitted to v0.2.8's frozen list, 2026-08-31.** P2, `defect`/
+`infra`, `parallel-sessions` beside `PL-CPSY` and `PL-S1P1`. Admitted under
+the scope test in `ROADMAP.md`'s "What the freeze closes, and what it does
+not" — the session-start digest and the queue's ranking are both machinery
+this release's goal names — and it is the only one of the three `vcs.py` holes
+observed firing.
+
+The `verify:` command keys on `contained`, matching the word the Done-when
+uses, and selects nothing in `test_vcs.py` today: the three existing tests
+that mention a shallow clone (`-k shallow`) all pass already, so that key
+would have proved nothing. Confirmed before it was written down — `-k
+contained` collects 40 items and deselects all 40.
+
+Work it with `PL-CPSY` and `PL-S1P1`: all three change `branches_in_flight`
+and its return value, so serializing them or taking them in one session is the
+difference between one design pass over that function and three conflicting
+ones.
