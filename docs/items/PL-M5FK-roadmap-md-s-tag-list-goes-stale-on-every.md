@@ -53,6 +53,15 @@ into this one, was filed because the original scope drew it one sentence too
 early and excluded the count and the version names, which are as decidable as
 the list above them.
 
+**Live instance, 2026-08-31.** A third decidable sentence in the same
+paragraph is false on `main` today: "the only nine it does not resolve are the
+unreleased commits after v0.2.7". `git rev-list --count v0.2.7..origin/main`
+reports 67. It went stale the same way the list and the count did - by commits
+landing, with nothing reading the sentence - so it belongs in the same check as
+a sixth direction: the number named against the count of commits after the
+newest tag. Like the others, it says nothing when git cannot answer, which a
+shallow checkout cannot.
+
 **Related.** `PL-8HJ2` (`make release` stops mid-way on the `ROADMAP.md` table
 it does not write) is the other half of the same seam and shares this feature.
 Decided 2026-08-30: `doc_check` grows the checks, `make release` does not grow
