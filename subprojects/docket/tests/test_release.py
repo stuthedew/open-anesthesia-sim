@@ -12,6 +12,7 @@ from docket.release import (
     bump_version,
     is_untagged,
     milestones,
+    outstanding_roadmap_edits,
     read_version,
     release_notes,
     suggest_version,
@@ -185,3 +186,69 @@ def test_notes_fall_back_to_the_commit_for_an_item_closed_before_the_field() -> 
     milestone = milestones([_item("PL-1111", pr="")])["v0.3.0"]
 
     assert " — `abc1234`" in release_notes(milestone, TODAY)
+
+
+# --- what a release leaves the roadmap owing ---------------------------------
+
+ROADMAP = """# Roadmap
+
+## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.2.4 | Completed | The one before. |
+| v0.2.5 | Completed / current baseline | The current one. |
+
+## Current baseline: v0.2.5
+
+What it is.
+"""
+
+
+def test_a_roadmap_already_naming_the_new_version_owes_nothing() -> None:
+    assert outstanding_roadmap_edits(ROADMAP, "v0.2.5") == []
+
+
+def test_a_release_with_no_row_of_its_own_is_named() -> None:
+    """The v0.2.7 cut: pyproject moved, the table did not, and `make check` broke."""
+    owed = outstanding_roadmap_edits(ROADMAP, "0.2.6")
+
+    assert "the version table has no row for v0.2.6" in owed
+
+
+def test_the_previous_baseline_mark_left_behind_is_named_with_its_line() -> None:
+    owed = outstanding_roadmap_edits(ROADMAP, "0.2.6")
+
+    assert any("v0.2.5 row (line 8) is still marked" in statement for statement in owed)
+
+
+def test_the_baseline_heading_left_behind_is_named_with_its_line() -> None:
+    owed = outstanding_roadmap_edits(ROADMAP, "0.2.6")
+
+    assert any("baseline heading (line 10) still names v0.2.5" in statement for statement in owed)
+
+
+def test_a_row_that_exists_but_carries_no_baseline_mark_is_named() -> None:
+    """The half-done edit: the row was added and the mark was not moved."""
+    roadmap = ROADMAP.replace(
+        "| v0.2.5 | Completed / current baseline | The current one. |",
+        "| v0.2.5 | Completed | The current one. |\n| v0.2.6 | Completed | The new one. |",
+    )
+    owed = outstanding_roadmap_edits(roadmap, "0.2.6")
+
+    assert any('v0.2.6 row (line 9) is not marked "current baseline"' in s for s in owed)
+
+
+def test_a_missing_baseline_heading_is_named() -> None:
+    owed = outstanding_roadmap_edits(
+        ROADMAP.replace("## Current baseline: v0.2.5", "## Where"), "0.2.5"
+    )
+
+    assert owed == ['there is no "Current baseline: vX.Y.Z" heading']
+
+
+def test_a_roadmap_with_no_version_table_says_so_rather_than_listing_nothing() -> None:
+    """Silence would read as "nothing owed", which is the opposite of the truth."""
+    owed = outstanding_roadmap_edits("# Roadmap\n\nNo table here.\n", "0.2.6")
+
+    assert owed == ['there is no version table under "Versioning decision"']
