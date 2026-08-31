@@ -74,8 +74,14 @@ today and is much the smaller change.
 gate clears before the milestone it gates must survive unchanged.
 
 **Related.** `PL-20ZR` (the workflow-before-features ordering is re-explained
-every session) is blocked on this: it is the mechanism that would carry the
-ordering. `PL-1TPM` (`docket next` ranks work the current milestone excludes)
+every session) *was* recorded as blocked on this, on the grounds that this was
+the mechanism that would carry the ordering. **Corrected 2026-08-31:** it
+closed without this item. The ordering is carried by a workflow-hardening step
+on the timeline instead, and `docket next` now ranks what the current step
+names ahead of what it does not - visible in its reason line, "In scope for
+v0.2.8 - the workflow works, the step the project is on". So nothing is
+blocked on this item, which removes the main argument for the larger of the
+two approaches below. `PL-1TPM` (`docket next` ranks work the current milestone excludes)
 and `PL-019F` (the "what next" rule answers one level below the roadmap step
 that should decide it) are the same seam seen from the queue side.
 
