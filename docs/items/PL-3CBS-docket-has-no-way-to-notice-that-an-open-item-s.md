@@ -65,3 +65,24 @@ git.
 whose `verify:` command passes, a test covers both the passing and the failing
 case, `subprojects/docket/README.md` documents it, and running it against
 today's store names PL-XCYB and PL-ZQ9C.
+
+**Two further instances, and one more argument for the `verify:` key
+(2026-08-31).** Folded in from `PL-SRCP`, captured separately on 2026-08-30 and
+dropped as a duplicate of this item. PR 92 squash-merged `PL-1TPM` (mark a
+suggestion the current step has not reached) and `PL-0RS6` (rank in-scope work
+above out-of-scope work) into `main`; both item files still read
+`status: ready` afterwards, both `verify:` commands passed on the merged tree,
+and `PL-1TPM` was a frozen v0.2.8 gate entry - so `wave` read the gate one
+entry larger than it was and `docket next` offered `PL-1TPM` as the second-best
+thing to do, which is work a session would have started and found already
+written. Closed out by hand in the session that found it. That is four known
+instances now (`PL-XCYB`, `PL-ZQ9C`, `PL-1TPM`, `PL-0RS6`), and in both of
+these the `verify:` command passing is precisely what would have flagged them,
+which is the signal this item chooses.
+
+`PL-SRCP` also noted that `PL-64LS` (detect items stranded on an unmerged
+branch) asks this same question in the other direction and may share one git
+pass. `PL-64LS` is `done`, so what is left of that observation is narrower:
+reuse its ref-reading in `vcs.py` rather than adding a second traversal, and
+keep the two advisories' wording symmetric so a reader meeting one recognizes
+the other.

@@ -1,9 +1,14 @@
 ---
 id: PL-CPSY
 title: A squash-merged branch whose ref survives reports its items in flight forever
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-08-31
+verify: uv run pytest subprojects/docket/tests/test_vcs.py -k squash
 ---
 
 **Problem.** `branches_in_flight` excludes a branch by containment: a ref
@@ -38,3 +43,24 @@ containment test is the mechanism at fault, not the commit read.
 checkout still holds is not reported in flight, and a regression test covers
 the case. Whether that is a tree comparison like `stranded`'s, a pull-request
 number read off the branch, or something narrower is the design work.
+
+**Triaged 2026-08-31.** P2, `defect`/`infra`, `parallel-sessions` alongside
+`PL-KWC1` (read in-flight ids from the commits, not the branch name) and
+`PL-S1P1` (the refs that went unread never reach `docket next`). All three are
+`vcs.py`, and `PL-S1P1` touches the same function's return value, so the two
+collide on `touches` by design rather than by accident - work them in one
+session or serialize them.
+
+P2 rather than P3 despite nothing having been observed: the failure direction
+is the dangerous one. `PL-SRCP`'s counterpart defect makes finished work
+*visible*, and this one makes startable work *invisible*, with no line of
+output saying so. `README.md` is in `touches` because `stranded`'s docstring
+already documents this exact trap from the other side, and the fix should
+leave one statement of it rather than two.
+
+Not admitted to v0.2.8's frozen list. It is close: `PL-KWC1` is an entry, and
+this widens the same blindness. But `PL-KWC1` is `done` and its own claim -
+that a harness-named branch's ids are read - holds; a stale ref is a second
+mechanism, present before `PL-KWC1` and unchanged by it, so this is a new
+finding rather than the completion of one. `ROADMAP.md`'s "What the freeze
+closes" sends it to the queue.

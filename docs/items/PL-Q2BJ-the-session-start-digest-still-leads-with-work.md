@@ -1,8 +1,14 @@
 ---
 id: PL-Q2BJ
 title: The session-start digest still leads with work the current step excludes
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: planning-cadence
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-08-30
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py -k "digest and scope"
 ---
 
 **Problem.** `PL-1TPM` and `PL-0RS6` taught `docket next` to read the roadmap:
@@ -34,3 +40,25 @@ with its own one-line budget to respect.
 **Done when.** The digest's `Top:` line does not name work the current step
 excludes while in-scope work is ready, and says nothing longer than it does
 now.
+
+**Triaged 2026-08-31, and still reproducing.** The digest that opened the
+triage session read `Top: PL-9Y42 Validate wash-in against a published human
+measurement` - `v0.4.0` science scope - two lines above `Beat  clear the gate
+- 2 entries of 22 still open`. The contradiction this item describes is what
+every session is reading today.
+
+P2, `defect`/`infra`, `planning-cadence` beside `PL-1TPM` (`docket next` ranks
+work the current milestone excludes) and `PL-0RS6` (marking does not reorder),
+which are the same seam on the `next` surface.
+
+The `verify:` command selects on `digest` *and* `scope`, which no test in
+`test_roadmap.py` satisfies today, so it fails now and the new test has to
+carry both words. The digest assertions live in that file rather than in a
+`test_render.py`, which does not exist.
+
+Not admitted to v0.2.8's frozen list, and `PL-0RS6` is the precedent that
+settles it. `PL-0RS6` completes `PL-1TPM` far more directly than this does -
+same command, same function, and `PL-1TPM`'s ranking is visibly half-fixed
+without it - and it was nonetheless worked as an ordinary P2 queue item and
+never recorded as a frozen entry. A third surface, one renderer further out,
+cannot have a stronger claim than the second one did.
