@@ -3,11 +3,14 @@ id: PL-5YK8
 title: The `verify:` advisory nags about 39 grandfathered items, so it can never reach zero
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: infra, session-cost
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, docket.toml, .claude/skills/docket/SKILL.md
 added: 2026-08-30
+closed: 2026-08-31
+commit: 42875bc
+pr: 101
 ---
 
 **Problem.** `docket check` raises one grooming advisory on every run: 39
