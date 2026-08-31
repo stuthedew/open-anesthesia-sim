@@ -70,7 +70,8 @@ from pathlib import Path, PurePosixPath
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "subprojects" / "docket" / "src"))
 
 try:
-    from docket.roadmap import (  # noqa: E402  - import follows the path insertion above
+    # This import and the one below follow the path insertion above.
+    from docket.roadmap import (
         BASELINE_MARK,
         HEADING_RE,
         TIMELINE_HEADING,
@@ -87,7 +88,7 @@ try:
     # question itself would either duplicate that or, by omitting it, fail on a
     # checkout with no git at all. The emptiness is read here as "this checkout
     # cannot say", never as "there are no tags".
-    from docket.vcs import tags  # noqa: E402  - import follows the path insertion above
+    from docket.vcs import tags
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
