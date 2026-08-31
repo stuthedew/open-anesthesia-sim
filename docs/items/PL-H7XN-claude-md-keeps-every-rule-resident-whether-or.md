@@ -3,12 +3,14 @@ id: PL-H7XN
 title: CLAUDE.md keeps every rule resident whether or not a session needs it, which reduces adherence to the ones it does
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost, infra
 not-delegable: the test is that no rule was lost, that each one still fires at the moment it is needed, and that the safety-critical standard still loads in every session. That is a reading of the file against the routing test below, not a command. Anything decidable here is being built into `doc_check.py` by this item rather than checked by a worker.
 feature: worker-instructions
 touches: CLAUDE.md, .claude/rules, .claude/skills/docket/SKILL.md, tools/doc_check.py
 added: 2026-08-30
+closed: 2026-08-31
+pr: 116
 ---
 
 **Problem.** The whole of this project's working agreement with its agents is
@@ -195,3 +197,47 @@ standard is resident and untouched; the commit-subject id rule is resident;
 the behavior-change rule routes rather than appends; `doc_check.py` reports
 the resident line total; and a cold session still reaches every rule by the
 route that fires when it needs it.
+
+
+**Worked 2026-08-31.** Executed in the dependency order above. Resident
+instruction lines went 684 to 482 (`CLAUDE.md` 640 to 364); the rest is
+path-scoped, in the skill, or addressed to the owner rather than to a session.
+
+The table's projections held for five of seven sections. Two ran over and were
+compressed against the routing test rather than against the number: `Prefer
+deterministic tooling` kept its worked examples on the first pass, and `The
+queue` kept the rationale paragraphs behind rules whose statements were two
+lines each.
+
+**Judgment 1 needed a destination the table did not name.** `PL-DGM4` recorded
+that `.claude/rules/instruction-writing.md` stays project-free so a user-scope
+copy carries the same statement, and the closing-block spec is roughly a fifth
+project-specific — `bin/docket show`, filing a queue item, release offers.
+Splitting one rule across two files would have recreated the hazard judgment 1
+exists to remove, so the spec went in whole as rule 14, written project-free,
+and the queue-flavoured instances went to the skill's close-out and `Always`
+sections. The gloss rule is rule 7, which meant amending the `SCOPE` preamble:
+rules 1-9 apply only to step-by-step procedures, and a gloss that applied only
+there would have lost the rule.
+
+**Judgment 3, the one open question, took the item's own recommendation.**
+`docs/maintainer.md`, addressed to the owner. `docs/MODEL.md` was too close a
+name to reuse for anything about model *choice*.
+
+**Judgment 7 was widened by one file.** `expert-review.md` is scoped to
+`tests/**` as well as `src/**` and `docs/**`: the verification-versus-validation
+principle and the reference-case principles apply while writing a test, and a
+session editing only `tests/` would otherwise not see them.
+
+One principle was reclassified out of the path-scoped file after re-reading it:
+"consult the source rather than memory, before forming the recommendation"
+covers how the project is run as much as what it builds — testing strategy,
+release process, delegation design — so it can fire in a session that opens no
+matching file, and it is resident.
+
+`PL-921W` (the formatter target applies to `tools/`, which must run under bare
+`python3`) was found while adding the reporter and is captured: `ruff format`
+at `py314` rewrote a parenthesized multi-type `except` into PEP 758's
+unparenthesized form, which the 3.11 that runs `make check`'s `python3
+tools/doc_check.py check` cannot parse. Worked around here by naming the tuple,
+with a regression test at the 3.11 floor; the general guard is that item.
