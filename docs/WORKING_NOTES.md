@@ -109,6 +109,23 @@ does not reach it. They collide on `touches` by construction. Taking them
 together is one design pass over that function; taking them separately is
 three, each invalidating the last.
 
+**`PL-CPSY` landed on its own, 2026-08-31** (pull request 121), so the cluster
+is two. The stale-ref hole turned out to be separable: it is answered before
+the commit walk, by asking whether every blob a candidate ref adds has been on
+the default branch's history, so it changes which refs reach the walk and not
+how the walk reads them. `PL-MGNC` (the `^base` walk under-excludes in a
+shallow clone) and `PL-S1P1` (the unread refs never reach `docket next`) are
+still one pass: `PL-MGNC`'s fix is to stop trusting a walk the history cannot
+support, which means marking those refs unreadable, which is the value
+`PL-S1P1` is about carrying to the callers.
+
+Worth knowing before that session starts: the incident `PL-MGNC` records -
+twenty-seven ids in flight, eighteen closed - was produced by
+`origin/claude/roadmap-release-write-failure-nhsjwo`, a squash-merged ref that
+`PL-CPSY` now excludes before the walk begins. So the observed symptom is
+gone, and reproducing `PL-MGNC` needs a ref that is genuinely unlanded *and* a
+clone truncated below its fork point.
+
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 
 Not scoped yet. The performance blocker this waited on has landed: render
