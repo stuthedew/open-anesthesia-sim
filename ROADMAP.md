@@ -510,16 +510,16 @@ minor-version exception is not extended to it and is not needed.
 ### Debt gate: the frozen list
 
 **Frozen 2026-08-30, the day this release was scoped, at seventeen entries.**
-Fourteen have been admitted since — four under the completion rule beneath
-this list, one at the project owner's direction, and nine on 2026-08-31 under
-the scope test beneath this list — so the thirty-one entries below are its
+Fifteen have been admitted since — four under the completion rule beneath
+this list, one at the project owner's direction, and ten on 2026-08-31 under
+the scope test beneath this list — so the thirty-two entries below are its
 whole content. What the freeze does and does not close is set
 out beneath the list; an entry records its own outcome as it closes, per
 "The cadence" below.
 
-**It is a frozen scope, not a fourth gate in the cadence.** Ten of its
+**It is a frozen scope, not a fourth gate in the cadence.** Nineteen of its
 entries are debt by "What counts" below, all classed `defect`, and the other
-twelve are new workflow capability, which
+thirteen are new workflow capability, which
 that section says explicitly is *not* debt and does not hold a gate. The list
 is recorded under a heading named "Debt gate" because that subsection is what
 `bin/docket wave` reads: a release records a gate to say that it comes ahead
@@ -534,7 +534,7 @@ the v0.4.0 section: a count written into a document goes stale the next time an
 item closes. `bin/docket wave` reads these entries against `docs/items/` and
 reports the split.
 
-*The loop is visibly broken without these — eighteen entries:*
+*The loop is visibly broken without these — nineteen entries:*
 
 - PL-J786 (S) Require a green `checks` run before any merge into main
 - PL-64LS (S) Detect items stranded on an unmerged branch
@@ -587,7 +587,9 @@ reports the split.
   flight forever, so `docket next` withholds work that is finished and
   startable. Admitted 2026-08-31 under the scope test: squash-merge is the
   merge path `PL-S4M2` installed for this release, and the queue's ranking is
-  what reads it.
+  what reads it. Closed 2026-08-31 (pull request 121): a branch is finished
+  when its content has landed, which is asked before the commit walk rather
+  than inside it.
 - PL-S1P1 (S) The refs whose history could not be read are dropped before the
   in-flight ids reach `docket next`, so a partial answer is presented as a
   complete one everywhere except `docket flight`. Admitted 2026-08-31 under
@@ -596,7 +598,18 @@ reports the split.
   commit walk and one inside it, neither needing this one's lines. What they
   left is a larger `unreadable` half for this item to carry to the callers,
   and `PL-YSXF` (an unread ref loses the id its own branch name carries) is
-  the same hole from inside the function: one pass.
+  the same hole from inside the function: one pass. Closed 2026-08-31 (pull
+  request 123): `in_flight_ids` is gone and every caller takes the
+  `FlightReport` itself, so the gap travels with the answer rather than being
+  dropped at the boundary, and one sentence appears under all six.
+- PL-YSXF (S) A ref named as unread loses the item id its own branch name
+  carries, which needs no history to read, so `docket next` offers an item a
+  live session is holding. Admitted 2026-08-31 under the scope test, at the
+  project owner's direction once `PL-S1P1` had closed: it is the fourth and
+  last hole in the function the three entries above are about, and the only
+  one where the checkout knew the answer for certain and threw it away. The
+  guards `PL-MGNC` added are what widened it, so it grew rather than staying
+  where `PL-KWC1` left it.
 - PL-MGNC (S) A readable merge-base does not make the in-flight commit walk
   complete, so a shallow clone — the normal state of a session container —
   reports merged items as in flight. Admitted 2026-08-31 under the scope test,

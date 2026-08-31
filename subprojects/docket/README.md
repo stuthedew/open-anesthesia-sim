@@ -168,12 +168,31 @@ answer:
 
 ```
 1 ref could not be compared with origin/main on the history this checkout
-holds, so work in flight on it is missing here; `bin/docket flight` names it.
+holds, so any item its commits carry is missing here; `bin/docket flight`
+names it.
 ```
 
 It still reports rather than refuses, for the reason the rest of this read
 does: a ref past a truncated clone's horizon is the ordinary state of an agent
 session's container, not an error in it.
+
+**What went unread is the ref's commits, and its name is read either way.**
+The two reads need different evidence and only one of them needs history:
+`^origin/main` can exclude the default branch's own work only where the
+checkout holds it, while `claude/pl-k7qx-short-slug` names its item in a
+checkout holding nothing at all. So an unread ref still contributes the id its
+name proves, and still appears in the block above for the ids its commits
+might have added — one ref, in both halves of the answer, neither line
+claiming what the other says.
+
+That cuts against the direction of the two guards, deliberately, and the
+difference is what is being believed. A guard refuses an id *inferred* from a
+walk the history could not support, where being wrong withholds a startable
+item under the digest line telling a session not to start it again. A branch
+name proves its id outright,
+and what stays open is only whether the branch has landed — the cheaper
+uncertainty, because an item whose work landed is closed and never offered
+anyway, while dropping the id offers an item a live session is holding.
 
 ### Triage is a worklist, not a verdict
 

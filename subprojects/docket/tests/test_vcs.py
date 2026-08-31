@@ -720,3 +720,84 @@ def test_the_unread_line_counts_the_refs_and_names_where_they_are_listed() -> No
     assert format_unread(both).startswith("2 refs could not be compared with origin/main")
     assert format_unread(both).endswith("`bin/docket flight` names them.")
     assert format_unread(FlightReport()) == ""
+
+
+# The two routes into `unreadable`, on refs whose *names* answer the question
+# their commits could not: no merge-base at all, and a walk that ran off the
+# end of a grafted history.
+NAMED_UNREADABLE = "origin/claude/pl-k7qx-live"
+NAMED_RAN_OUT = "origin/claude/pl-k7qx-merged-main-in-abcdef"
+
+
+def test_a_ref_with_no_readable_merge_base_still_contributes_the_id_its_name_carries() -> None:
+    """The id a branch name carries needs no history, so declining it declines nothing.
+
+    Dropping it means `docket next` offers an item a live session is holding,
+    which is the collision the whole read exists to prevent - and the branch
+    named for its item is the case where the checkout knew the answer.
+    """
+    report = branches_in_flight(
+        ROOT, runner=_runner([NAMED_UNREADABLE], unrelated=(NAMED_UNREADABLE,))
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
+    assert report.unreadable == (NAMED_UNREADABLE,)
+    assert report.branches[0].last_commit is None
+
+
+def test_a_ref_that_ran_off_the_end_of_its_walk_contributes_its_name_id_and_no_other() -> None:
+    """The halves are separable, and this is the case that proves it.
+
+    The walk over this ref reached round the graft into the default branch's
+    own commits, so `PL-M0J2` is exactly the id `PL-MGNC` stopped believing.
+    The name's `PL-K7QX` was never in doubt. One survives and one does not.
+    """
+    report = branches_in_flight(
+        ROOT,
+        runner=_runner(
+            [NAMED_RAN_OUT], commits={NAMED_RAN_OUT: RAN_OFF_THE_END}, ran_out=(NAMED_RAN_OUT,)
+        ),
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
+    assert report.unreadable == (NAMED_RAN_OUT,)
+
+
+def test_a_ref_whose_name_carries_no_id_contributes_nothing_when_it_goes_unread() -> None:
+    """The harness-named branch, which is why the commit read exists at all."""
+    report = branches_in_flight(ROOT, runner=_runner([TRUNCATED], unrelated=(TRUNCATED,)))
+
+    assert report.branches == ()
+    assert report.unreadable == (TRUNCATED,)
+
+
+def test_a_landed_branch_contributes_nothing_however_its_name_reads() -> None:
+    """The name is evidence of the item, never of the work being unfinished.
+
+    A ref the default branch already contains never reaches the read, so
+    reporting a name-proved id cannot resurrect finished work - which is what
+    makes the landedness the cheaper uncertainty on the ref above.
+    """
+    found = _in_flight([NAMED_UNREADABLE], merged=[NAMED_UNREADABLE])
+
+    assert found == ()
+
+
+def test_flight_names_a_ref_that_contributes_by_name_in_both_halves() -> None:
+    """One ref, two lines, and neither claims what the other says.
+
+    The table carries the id its name proved; the block below says the commits
+    went unread. A reader who saw only the first would think the ref had been
+    read, and one who saw only the second would think it said nothing.
+    """
+    from docket.render import format_flight
+
+    report = branches_in_flight(
+        ROOT, runner=_runner([NAMED_UNREADABLE], unrelated=(NAMED_UNREADABLE,))
+    )
+    printed = format_flight(report, date(2026, 8, 31))
+
+    assert f"PL-K7QX  {NAMED_UNREADABLE}" in printed
+    assert "no commit of its own this checkout can read" in printed
+    assert "so what its commits carry is unknown" in printed
+    assert printed.count(NAMED_UNREADABLE) == 2

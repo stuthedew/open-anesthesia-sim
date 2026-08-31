@@ -116,12 +116,12 @@ class Branch:
 class FlightReport:
     """Which items are in flight, and which refs could not be read to find out.
 
-    `unreadable` is why this is a type rather than a list. A ref this checkout
-    cannot compare with the default branch contributes nothing to the answer,
-    and silence about it would present a partial reading as a complete one -
-    the same collapse `PullRequestHistory.declined` guards against, per ref
-    rather than for the whole check, because one unreadable ref does not stop
-    the others from being read.
+    `unreadable` is why this is a type rather than a list. A ref whose commits
+    this checkout cannot compare with the default branch contributes nothing
+    from them, and silence about it would present a partial reading as a
+    complete one - the same collapse `PullRequestHistory.declined` guards
+    against, per ref rather than for the whole check, because one unreadable
+    ref does not stop the others from being read.
 
     Two things put a ref there, and a truncated clone is behind both: no
     merge-base with the default branch that this checkout can resolve, and a
@@ -129,6 +129,12 @@ class FlightReport:
     against the default branch. The second is not implied by the first -
     `_unmerged_commits` has the argument - so a ref answering the merge-base
     is not thereby answerable.
+
+    **It names what went unread, not a ref that was skipped, so a ref can sit
+    in both halves at once.** What the checkout could not read is the commits;
+    a branch named `claude/pl-k7qx-short-slug` still names its item, and that
+    read needs no history. Such a ref appears in `branches` for the id its name
+    proves *and* in `unreadable` for the ids its commits might have added.
 
     **Every caller takes the ids from here rather than from a function that
     returns them alone.** A `set[str]` is the natural shape for ranking and
@@ -294,11 +300,13 @@ def branches_in_flight(
     `_work_already_on_base` asks after the content instead.
 
     What that leaves is read, and only what the checkout can prove is reported.
-    Both reads of a ref against the default branch need history the checkout
-    may not hold, so each has a guard and neither guard covers the other: a
-    merge-base that will not resolve, and a commit walk that ran off the end of
-    a grafted history rather than stopping against the default branch. Either
-    one names the ref as unread.
+    Both reads of a ref's *commits* against the default branch need history the
+    checkout may not hold, so each has a guard and neither guard covers the
+    other: a merge-base that will not resolve, and a commit walk that ran off
+    the end of a grafted history rather than stopping against the default
+    branch. Either one names the ref as unread - and naming it so stops its
+    commits being believed, not its name being read, because the id a branch
+    name carries needs no history at all.
 
     What remains is qualified rather than filtered. An unmerged branch may be a
     live session or work nobody will ever merge, and only the date of its last
@@ -359,12 +367,33 @@ def branches_in_flight(
         subject_ids = {
             identifier: name for identifier, name in subject_ids.items() if name not in unbounded
         }
+    unlanded_set = set(unlanded)
 
+    # **A ref whose name carries an id contributes it whether or not its
+    # commits could be read.** The two reads need different evidence and only
+    # one of them needs history: `^base` can exclude the default branch's own
+    # work only where the checkout holds it, while `claude/pl-k7qx-short-slug`
+    # names its item in a checkout holding nothing at all. Sending an unread
+    # ref past this loop discarded the answer that was certain along with the
+    # ones that were not.
+    #
+    # It cuts against the direction the two guards above take, and the
+    # difference is what is being believed. There an id was *inferred* from a
+    # walk the history could not support, and a wrong one withholds a startable
+    # item under "do not start these again". Here the id is proven and only the
+    # branch's landedness is open - which is the cheaper uncertainty, because
+    # an item whose work landed is closed and never a candidate for `docket
+    # next` anyway, while dropping the id offers an item a live session is
+    # holding. That is the collision this whole read exists to prevent.
+    #
     # A local branch and its remote tracking ref are one piece of work, and so
     # are a branch named for an item and its own commits: the first ref that
-    # accounts for an id is the one reported for it.
+    # accounts for an id is the one reported for it. Candidate order decides
+    # that, which prefers a local branch to its tracking ref and a ref that was
+    # read to one that was not.
+    named = [name for name in candidates if name in unlanded_set or name in unreadable]
     in_flight: dict[str, Branch] = {}
-    for name in unlanded:
+    for name in named:
         match = BRANCH_ID_RE.search(name)
         if match is None:
             continue

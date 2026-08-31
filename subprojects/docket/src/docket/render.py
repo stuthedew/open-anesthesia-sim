@@ -54,6 +54,10 @@ def format_unread(flight: FlightReport) -> str:
     an item is startable when the truth is that one ref went unread and might
     be carrying it, and the collision surfaces at push time instead.
 
+    It is the ref's *commits* that went unread. Where such a ref is named for
+    its item, `branches_in_flight` reports that id anyway - the branch name
+    needs no history - so the sentence claims only what is actually missing.
+
     It says what went unread rather than what to do about it, for the reason
     `flight` reports rather than blocks - a ref beyond a truncated clone's
     horizon is the normal state of an agent session's container, and a tool
@@ -65,8 +69,8 @@ def format_unread(flight: FlightReport) -> str:
     them = "it" if len(flight.unreadable) == 1 else "them"
     return (
         f"{_plural(len(flight.unreadable), 'ref', 'refs')} could not be compared with {base} "
-        f"on the history this checkout holds, so work in flight on {them} is missing here; "
-        f"`bin/docket flight` names {them}."
+        f"on the history this checkout holds, so any item {'its' if them == 'it' else 'their'} "
+        f"commits carry is missing here; `bin/docket flight` names {them}."
     )
 
 
@@ -334,7 +338,7 @@ def format_flight(report: FlightReport, today: date) -> str:
     if report.unreadable:
         lines.append("")
         base = report.base or "the default branch"
-        carried = "it carries" if len(report.unreadable) == 1 else "they carry"
+        carried = "its commits carry" if len(report.unreadable) == 1 else "their commits carry"
         lines.append(
             f"{_plural(len(report.unreadable), 'ref cannot', 'refs cannot')} be compared with "
             f"{base} on the history this checkout holds, so what {carried} is unknown:"
