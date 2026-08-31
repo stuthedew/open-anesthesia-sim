@@ -386,6 +386,8 @@ def _release_repo(tmp_path: Path, *tag_names: str) -> Path:
     (root / "items").mkdir(parents=True)
     (root / "items" / "done.md").write_text(DONE, encoding="utf-8")
     (root / "pyproject.toml").write_text('[project]\nversion = "0.2.5"\n', encoding="utf-8")
+    # A real git checkout, built by running real git from `PATH`: the release
+    # commands read tags and refs, so a stub would test the stub.
     subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
     for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
         subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)

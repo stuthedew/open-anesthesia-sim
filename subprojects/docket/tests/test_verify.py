@@ -26,6 +26,9 @@ BRIEF = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
 
 
 def _git(root: Path, *args: str) -> None:
+    # A real git checkout, built by running real git from `PATH`: verification
+    # is defined in terms of a diff against a base ref, so a stub would test
+    # the stub. Every subprocess call in this file is here for that reason.
     subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True)
 
 

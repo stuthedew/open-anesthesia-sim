@@ -100,7 +100,18 @@ class Verification:
 
 
 def _run(args: list[str], root: Path, *, shell: bool = False) -> tuple[int, str]:
-    """Run a command, returning its exit status and combined output."""
+    """Run a command, returning its exit status and combined output.
+
+    Two kinds of command come through here, and both are meant to. Most
+    callers read history with `git`, named rather than given an absolute
+    path for the same reason as `vcs._run_git`: the path differs by
+    environment. The other two run a command recorded in the store - an
+    item's `verify:` field, and the configured check command - as written
+    and through a shell, because running the recorded command verbatim is
+    the entire job. Both were trusted enough to be committed to the
+    repository, so there is no untrusted input to guard against here; the
+    guard that matters is review of what gets committed.
+    """
     try:
         result = subprocess.run(
             " ".join(args) if shell else args,
