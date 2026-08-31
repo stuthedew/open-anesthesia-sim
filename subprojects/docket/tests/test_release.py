@@ -155,8 +155,8 @@ def test_both_renderers_read_a_real_readiness() -> None:
     )
     report = Report(items=[_item("PL-4444")])
 
-    digest = format_digest(report, set(), ready, None)
-    status = format_status(report, ready, set())
+    digest = format_digest(report, None, ready, None)
+    status = format_status(report, ready, None)
 
     assert "Releasable: 3 finished item(s) since 0.2.2, completing alpha." in digest
     assert "Offer 0.2.3 before taking new work." in digest

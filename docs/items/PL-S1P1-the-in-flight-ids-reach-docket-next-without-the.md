@@ -1,14 +1,16 @@
 ---
 id: PL-S1P1
 title: The in-flight ids reach docket next without the refs that went unread
-priority: P3
+priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-08-31
-verify: uv run pytest subprojects/docket/tests/test_vcs.py -k unread
+closed: 2026-08-31
+pr: 123
+verify: uv run pytest subprojects/docket/tests -k unread
 ---
 
 **Problem.** `branches_in_flight` returns a `FlightReport` that names both what
@@ -71,3 +73,35 @@ two refs whose history it could not read. `in_flight_ids` drops exactly that
 half, so `docket next` in a fresh container answers as though the refs had
 been read and found clean. The precondition the paragraph above calls
 unmet is met by default. Reband when the item is picked up.
+
+**Rebanded P2 on being picked up, 2026-08-31,** as the paragraph above
+required. The condition is met by default rather than not at all: this
+container held one unread ref (`origin/Review_articles`) at the moment the work
+started, `bin/docket flight` named it, and `bin/docket next` said nothing. That
+puts it beside `PL-CPSY` and `PL-MGNC`, the other two holes in the same
+function, rather than a band below them.
+
+**Done 2026-08-31, by fixing the type rather than adding a line of output.**
+`in_flight_ids` is gone. `FlightReport` grew an `ids` property, and every
+caller that ranks or marks - `next`, `list`, `status`, `concurrent`,
+`delegable` and the session digest - now takes the report and reads the ids off
+it, so the unread refs travel with the answer instead of being dropped at the
+boundary. A caller that wants to ignore them has to do so in writing, which is
+what stops the next one re-opening the hole. `render.format_unread` owns the
+one sentence all six print, so there is a single wording and a single place to
+change it.
+
+Found and fixed on the way: `_flight` resolved its root with `find_root()`
+while every other command resolves it from the store, so `docket next --items
+<elsewhere>` answered about in-flight work in whatever repository the command
+happened to be run in. It is the wrong-project error `_load`'s docstring
+already guards against, and it is also what made an end-to-end test possible -
+`test_the_queue_commands_say_when_a_ref_went_unread` in `test_cli.py` runs all
+six commands against `_shallow_pair`, the real truncated checkout `PL-MGNC`
+built, and asserts each one says it.
+
+**What this does not do.** `PL-YSXF` (a ref named as unread loses the id its
+own branch name carries, which needs no history to read) is untouched: this
+carried the gap to the callers, that one narrows the gap itself. Neither needs
+the other's lines, and `branches_in_flight` is still the cheapest place to
+spend the next pass.

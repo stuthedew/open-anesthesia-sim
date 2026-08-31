@@ -129,11 +129,24 @@ class FlightReport:
     against the default branch. The second is not implied by the first -
     `_unmerged_commits` has the argument - so a ref answering the merge-base
     is not thereby answerable.
+
+    **Every caller takes the ids from here rather than from a function that
+    returns them alone.** A `set[str]` is the natural shape for ranking and
+    marking, and it is exactly the shape that cannot say "and one ref went
+    unread" - so a caller handed one presents a partial reading as a complete
+    one, which is the collapse this type exists to prevent. `ids` is a
+    property of the report for that reason: the gap travels with the answer,
+    and a caller that wants to ignore it has to do so in writing.
     """
 
     branches: tuple[Branch, ...] = ()
     unreadable: tuple[str, ...] = ()
     base: str = ""
+
+    @property
+    def ids(self) -> frozenset[str]:
+        """The items this checkout proved are in flight, for ranking and marking."""
+        return frozenset(branch.item_id for branch in self.branches)
 
 
 def _leading_ids(subject: str) -> list[str]:
@@ -449,18 +462,6 @@ def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
     return frozenset(
         line.strip() for line in run(["tag", "--list"], root).splitlines() if line.strip()
     )
-
-
-def in_flight_ids(root: Path, *, runner: Runner | None = None) -> set[str]:
-    """Just the ids, for the callers that rank and mark rather than report.
-
-    A ref that could not be read is dropped here rather than reported, because
-    a set cannot carry the difference and these callers cannot act on it: an
-    id missing from the set is an item `docket next` may offer, which is the
-    same answer they had before the ref existed. `docket flight` is where the
-    gap is named.
-    """
-    return {branch.item_id for branch in branches_in_flight(root, runner=runner).branches}
 
 
 # A pull request number as it reaches the default branch. GitHub writes one of

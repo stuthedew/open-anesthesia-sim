@@ -157,6 +157,24 @@ believed, on the same reasoning as everything else here: the ids it produced
 would be *removed* from `docket next`, so believing a walk that cannot be
 checked hides startable work, while naming the ref costs a line of output.
 
+**And the naming reaches wherever the queue is read**, not only `docket
+flight`. The six answers that rank or mark against in-flight work — `next`,
+`list`, `status`, `concurrent`, `delegable` and the session digest — took the
+ids alone, and a `set[str]` cannot carry "and one ref went unread": the same
+checkout that told `flight` it could not read a ref told `next` that the queue
+was fully known. So they take the whole `FlightReport` and read `ids` off it,
+which keeps the gap in the caller's hands and puts one sentence under every
+answer:
+
+```
+1 ref could not be compared with origin/main on the history this checkout
+holds, so work in flight on it is missing here; `bin/docket flight` names it.
+```
+
+It still reports rather than refuses, for the reason the rest of this read
+does: a ref past a truncated clone's horizon is the ordinary state of an agent
+session's container, not an error in it.
+
 ### Triage is a worklist, not a verdict
 
 `docket triage` prints every untriaged item with its body, the fields still
