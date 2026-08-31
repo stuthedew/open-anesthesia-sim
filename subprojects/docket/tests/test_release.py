@@ -134,6 +134,36 @@ def test_a_completed_feature_is_worth_raising_on_its_own() -> None:
     assert not trivial.is_worth_cutting
 
 
+def test_both_renderers_read_a_real_readiness() -> None:
+    """PL-WFJ9: `render.py` took `ready` as `object` and read it through 11
+    `type: ignore[attr-defined]` and two `getattr` guards, so nothing exercised
+    the coupling between the dataclass and the two lines that print it. These
+    are the release lines in the digest and in `status` - the first thing a
+    session reads and the answer to "what next" - and a renamed field on
+    `Readiness` would have reached both without a checker or a test objecting.
+    """
+    from docket.checks import Report
+    from docket.release import Readiness
+    from docket.render import format_digest, format_status
+
+    ready = Readiness(
+        shippable=[_item("PL-1111"), _item("PL-2222"), _item("PL-3333")],
+        completed_features=["alpha"],
+        partial_features=[],
+        current_version="0.2.2",
+        suggested_version="0.2.3",
+    )
+    report = Report(items=[_item("PL-4444")])
+
+    digest = format_digest(report, set(), ready, None)
+    status = format_status(report, ready, set())
+
+    assert "Releasable: 3 finished item(s) since 0.2.2, completing alpha." in digest
+    assert "Offer 0.2.3 before taking new work." in digest
+    assert "Unreleased: 3 finished item(s) since 0.2.2, completing alpha." in status
+    assert "Next version would be 0.2.3." in status
+
+
 def test_stamping_records_the_release_without_touching_anything_else() -> None:
     from docket.release import stamp
 

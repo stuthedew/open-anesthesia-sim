@@ -44,12 +44,29 @@ computed in a different module that never sees one.
 `is_worth_cutting`) and `subprojects/docket/src/docket/render.py`
 (`format_digest`, around line 154).
 
-**Worth deciding as part of it:** whether the right answer is to suppress the
-offer while the suggested version's gate is open, or to keep offering and say
-so in the line ("Offer 0.2.8 once its gate clears - 8 entries open"). The
-second keeps the finished-work count visible, which is the thing the line
-exists to surface.
+**Corrected 2026-08-31, the same day this was filed.** It was filed as though
+the offer itself were the defect. It is not: `ROADMAP.md`'s "The cadence" says
+outright that "`docket release` will offer one as soon as a few gate items are
+finished - decline it, or the gate work scatters across patch releases and the
+milestone ships carrying only its feature work." The offer is expected
+behaviour with a documented answer.
 
-**Done when.** The digest cannot instruct a session to offer a release whose
-own gate is open, and a test covers the case with a gate recorded under the
-suggested version.
+What remains is a session-cost defect rather than a correctness one, and it is
+still worth fixing. The digest is the one channel that reaches a session before
+it reads anything, and on that channel the line says "Offer 0.2.8 before taking
+new work" with no hint that the roadmap's standing answer is to decline. The
+rule that resolves it lives 1,180 lines into `ROADMAP.md`, in a section a
+session has no reason to open, so every session either offers a release the
+project has already decided against or spends the reading to find out it
+should not. `CLAUDE.md` tells sessions to make the offer unprompted, which
+makes the wrong half the one that gets acted on.
+
+**Worth deciding as part of it:** suppress the line while the suggested
+version's gate is open, or keep it and carry the answer ("18 finished item(s)
+since 0.2.7 - not releasable: v0.2.8's gate has 8 entries open"). The second is
+better: the finished-work count is the thing the line exists to surface, and a
+session that can see both facts can still raise it if the owner asks.
+
+**Done when.** The digest cannot tell a session to offer a release the roadmap
+says to decline, the finished-work count stays visible either way, and a test
+covers a gate recorded under the suggested version.
