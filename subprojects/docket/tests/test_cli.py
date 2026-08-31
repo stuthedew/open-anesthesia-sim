@@ -676,6 +676,11 @@ def test_stranded_says_so_when_it_was_told_not_to_ask_git(
     assert "branch detection is off" in capsys.readouterr().out
 
 
+# The name a web harness gives a branch: built from the opening prompt, so it
+# carries no item id and cannot be renamed afterwards.
+BRANCH = "roadmap-release-write-failure-nhsjwo"
+
+
 def _flight_repo(tmp_path: Path, subject: str) -> Path:
     """A repository whose one live branch is named the way the harness names one.
 
@@ -704,7 +709,7 @@ def _flight_repo(tmp_path: Path, subject: str) -> Path:
         git("config", name, value)
     git("add", "-A")
     git("commit", "-qm", "base", env=dated)
-    git("checkout", "-qb", "roadmap-release-write-failure-nhsjwo")
+    git("checkout", "-qb", BRANCH)
     (root / "items" / "scratch.txt").write_text("work in progress\n")
     git("add", "-A")
     git("commit", "-qm", subject, env=dated)
@@ -757,7 +762,7 @@ def test_flight_does_not_report_a_squash_merged_branch_whose_ref_survives(
     somebody prunes.
     """
     root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
-    _squash_merge(root, "roadmap-release-write-failure-nhsjwo", "PL-K7QX Do the thing (#71)")
+    _squash_merge(root, BRANCH, "PL-K7QX Do the thing (#71)")
 
     assert main(["--items", str(root / "items"), "flight"]) == 0
 
@@ -774,7 +779,7 @@ def test_flight_keeps_a_squash_merged_branch_out_after_the_base_moves_on(
     capture rewrites the very file the capturing branch added.
     """
     root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
-    _squash_merge(root, "roadmap-release-write-failure-nhsjwo", "PL-K7QX Do the thing (#71)")
+    _squash_merge(root, BRANCH, "PL-K7QX Do the thing (#71)")
     (root / "items" / "scratch.txt").write_text("triaged since\n")
     for args in (["add", "-A"], ["commit", "-qm", "PL-K7QX Close it out"]):
         subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
@@ -801,6 +806,98 @@ def test_flight_names_a_ref_it_could_not_read_rather_than_ignoring_it(
     assert main(["--items", str(root / "items"), "flight"]) == 0
 
     out = capsys.readouterr().out
-    assert "1 ref shares no history with main" in out
+    assert "1 ref cannot be compared with main" in out
     assert "  unrelated" in out
     assert "PL-9Y42" not in out
+
+
+def _shallow_pair(tmp_path: Path) -> Path:
+    """A clone deep enough to resolve a merge-base and too shallow to walk past it.
+
+    An agent session's container in miniature, built the only way that proves
+    anything: real git, real depths, real grafts. The default branch is fetched
+    to a depth that leaves its own history ending at a grafted commit, and the
+    branch is fetched deep enough to reach round that graft - which the merge
+    of the default branch that resolving a conflict leaves behind is enough to
+    do. Both fetches are ordinary. Together they make `git merge-base` resolve
+    while `^origin/main` still fails to exclude the default branch's own
+    commits, which is the intermediate depth the incident of 2026-08-31 hit and
+    a `--depth 1` clone does not reach: there the merge-base declines instead.
+    """
+    origin = tmp_path / "origin"
+    (origin / "items").mkdir(parents=True)
+    (origin / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-20T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+
+    def git(*args: str, cwd: Path = origin) -> None:
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, env=dated)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(origin)],
+        check=True,
+        capture_output=True,
+    )
+
+    def commit(number: int) -> None:
+        (origin / f"f{number}").write_text(f"main {number}\n")
+        git("add", "-A")
+        git("commit", "-qm", f"PL-M0{number} Main work {number}")
+
+    for number in range(1, 7):
+        commit(number)
+    git("checkout", "-qb", BRANCH, "main~5")
+    (origin / "items" / "scratch.txt").write_text("work in progress\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX Do the thing")
+    git("merge", "-q", "--no-edit", "-m", "Merge main into the branch", "main")
+    git("checkout", "-q", "main")
+    for number in range(7, 11):
+        commit(number)
+
+    work = tmp_path / "work"
+    # Depths chosen for the topology above: five leaves `origin/main` ending at
+    # a graft, and three carries the branch past it to the commit it forked
+    # from, which the default branch can then no longer account for.
+    subprocess.run(
+        ["git", "clone", "-q", "--depth=5", "--branch", "main", origin.as_uri(), str(work)],
+        check=True,
+        capture_output=True,
+        env=dated,
+    )
+    git("fetch", "-q", "--depth=3", "origin", f"{BRANCH}:refs/remotes/origin/{BRANCH}", cwd=work)
+    return work
+
+
+def test_flight_does_not_answer_from_a_walk_the_clone_truncated(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The defect: a readable merge-base does not make the walk complete.
+
+    Without the guard the walk reports `PL-M01` - a commit of the default
+    branch's own, below the horizon `^origin/main` can exclude - as work this
+    branch is carrying, and `docket next` then withholds that item under the
+    words "do not start these again".
+    """
+    work = _shallow_pair(tmp_path)
+    assert subprocess.run(
+        ["git", "merge-base", "origin/main", f"origin/{BRANCH}"],
+        cwd=work,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip(), "the merge-base must resolve, or this tests the case already covered"
+
+    assert main(["--items", str(work / "items"), "flight"]) == 0
+
+    out = capsys.readouterr().out
+    assert "No branch carries an item id" in out
+    assert "PL-M01" not in out
+    assert "1 ref cannot be compared with origin/main" in out
+    assert f"  origin/{BRANCH}" in out

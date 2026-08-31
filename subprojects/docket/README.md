@@ -136,6 +136,27 @@ an agent session's container is — that means history the checkout does not
 have, and walking such a ref would report everything it can see as that
 branch's own work.
 
+**A readable merge-base does not make the walk complete**, and that is a
+second guard rather than the same one. `^origin/main` excludes only what the
+checkout can reach *from* the default branch, and in a truncated clone that
+history ends at a grafted commit — so anything below the graft goes
+unexcluded. A branch reaching round it, which one merge of the default branch
+into the branch is enough to do, then has the default branch's own commits
+reported as its work and the ids leading their subjects reported as items
+somebody is implementing. On 2026-08-31 that put twenty-seven ids in a
+session's digest, under a line telling it not to start them again: eighteen
+were closed, and one of the nine open was an entry of the release that same
+session had just been asked to finish.
+
+So the walk is checked as well as the merge-base. It has to stop against a
+commit the default branch accounted for, never because the checkout ran out of
+history, and a commit with no parents in this checkout is the signature of the
+second — a grafted boundary, or a root the default branch should have
+excluded. A ref whose walk ends that way is named as unread rather than
+believed, on the same reasoning as everything else here: the ids it produced
+would be *removed* from `docket next`, so believing a walk that cannot be
+checked hides startable work, while naming the ref costs a line of output.
+
 ### Triage is a worklist, not a verdict
 
 `docket triage` prints every untriaged item with its body, the fields still
