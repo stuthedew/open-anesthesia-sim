@@ -269,7 +269,7 @@ def _check_references(report: Report) -> None:
         report.errors.append(f"{identifier}: used by more than one file ({paths})")
 
 
-def _groom(report: Report, today: date, config: Config) -> None:
+def _groom(report: Report, today: date, config: Config, offered: frozenset[str] | None) -> None:
     """Detect the conditions that make a grooming pass worth someone's time."""
     stale = [
         item
@@ -284,6 +284,20 @@ def _groom(report: Report, today: date, config: Config) -> None:
 
     # Only worth saying where the rule is in force: a project that has not
     # adopted it is not carrying a backlog against it.
+    #
+    # Reported against what is about to be offered, not against the whole
+    # backlog. Naming all of it fired on every run and could be discharged by
+    # nothing short of a campaign, so it was an advisory that could not reach
+    # zero - and the cost of one of those is not the items it names but the
+    # next advisory, which gets read the same way. `docket check`'s advisories
+    # are the only channel grooming has.
+    #
+    # Narrowing it here rather than burning the backlog down also puts the
+    # command where it can be run before it is written. Every command this
+    # store has ever carried that was written away from the work was wrong, so
+    # a command invented for an item nobody has started is not a gap closed
+    # but a false claim opened. The moment an item is offered is the first
+    # moment there is something to run.
     unspecified = [
         item
         for item in report.open_items
@@ -293,11 +307,15 @@ def _groom(report: Report, today: date, config: Config) -> None:
         and not item.not_delegable
         and not _verify_required(item, config)
     ]
-    if unspecified:
+    due = [item for item in unspecified if item.identifier in (offered or frozenset())]
+    if due:
+        one = len(due) == 1
         report.advisories.append(
-            f"{len(unspecified)} ready item(s) predate the `verify:` requirement "
-            f"({config.verify_required_from}) and name no command that would prove them "
-            "done; each one is work no reviewer can accept without reading the diff"
+            f"{', '.join(item.identifier for item in due)} "
+            f"{'is' if one else 'are'} next to be offered and {'names' if one else 'name'} "
+            f"no `verify:` command ({len(due)} of {len(unspecified)} ready item(s) predating "
+            f"the requirement, {config.verify_required_from}); give the command when you "
+            "start it, having run it first"
         )
 
     resolved = {i.identifier for i in report.items if i.status in ("done", "dropped")}
@@ -345,14 +363,20 @@ def analyze(
     today: date,
     config: Config | None = None,
     history: PullRequestHistory | None = None,
+    offered: frozenset[str] | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
-    `history` is the one input that cannot be read from the store, so it is
-    passed in rather than fetched here: this module stays pure and testable,
-    and the caller decides whether asking git is worth it. Omitting it - which
-    every caller but `check` does - skips the provenance check rather than
-    failing it.
+    `history` and `offered` are the two inputs that cannot be read from the
+    store, so they are passed in rather than fetched here: this module stays
+    pure and testable, and the caller decides whether asking git or ranking
+    the queue is worth it. Omitting either skips the check that needs it
+    rather than failing it.
+
+    `offered` is the ids `next` would suggest. It is supplied by the three
+    commands that put advisories in front of a person - `check`, `digest` and
+    `next` - and by nothing else, so no command reports a count another
+    command would contradict.
     """
     settings = config or Config()
     report = Report(items=list(items))
@@ -360,5 +384,5 @@ def analyze(
         _check_item(item, report, settings)
     _check_references(report)
     _check_provenance(report, history)
-    _groom(report, today, settings)
+    _groom(report, today, settings, offered)
     return report

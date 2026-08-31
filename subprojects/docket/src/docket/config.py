@@ -41,7 +41,9 @@ class Config:
     #: useless from its first run rather than making the queue better. So the
     #: requirement is anchored to a date a project records here: items
     #: captured on or after it are held to the rule, and the ones before it
-    #: are counted in a single grooming advisory instead. `None` leaves the
+    #: raise a grooming advisory only as each is about to be offered, which is
+    #: also the first moment its command could be run before being written.
+    #: `None` leaves the
     #: requirement off entirely, which is the right default for a project that
     #: does not delegate work and therefore has nothing riding on the field.
     verify_required_from: date | None = None

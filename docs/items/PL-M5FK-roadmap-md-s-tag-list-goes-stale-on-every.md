@@ -3,11 +3,14 @@ id: PL-M5FK
 title: ROADMAP.md's tag statements go stale on every release and no check reads them
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, infra
 feature: release-roadmap-seam
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-08-30
+closed: 2026-08-31
+commit: 3f0d5e6
+pr: 100
 verify: uv run pytest tests/unit/test_doc_check.py -k tag_inventory
 ---
 
