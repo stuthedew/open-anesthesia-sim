@@ -56,3 +56,10 @@ Not admitted to v0.2.8's frozen list: `PL-8HJ2` (`make release` stops mid-way
 on the ROADMAP table) is `done` and its own claim holds without this. Neither
 new scope for that entry nor its completion, so `ROADMAP.md`'s "What the freeze
 closes" sends it to the queue.
+
+**Admitted to v0.2.8's frozen list, 2026-08-31, reversing the paragraph
+above,** under the scope test now recorded in `ROADMAP.md`'s "What the freeze
+closes": the release script is machinery the release's goal names, so a defect
+in it is inside the frozen scope whether or not `PL-8HJ2`'s own claim survives
+without the fix. The paragraph above answers the completion question
+correctly; that is no longer the question.

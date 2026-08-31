@@ -64,3 +64,14 @@ that a harness-named branch's ids are read - holds; a stale ref is a second
 mechanism, present before `PL-KWC1` and unchanged by it, so this is a new
 finding rather than the completion of one. `ROADMAP.md`'s "What the freeze
 closes" sends it to the queue.
+
+**Admitted to v0.2.8's frozen list, 2026-08-31, reversing the paragraph
+above.** Two things changed the answer. The test is the scope test rather than
+the completion rule — the merge path and the queue's ranking are both named in
+the release's goal, and squash-merge is the merge path `PL-S4M2` installed for
+this very release. And the failure stopped being hypothetical: the session
+that reassessed the gate opened with a digest reporting twenty-seven ids in
+flight, eighteen of them closed, one of them `PL-NSN9` — an open entry of this
+gate. That instance is a different mechanism (`PL-MGNC`, the `^base` walk in a
+shallow clone) reaching the same wrong output, which is the argument for
+working all three `vcs.py` holes together rather than separately.

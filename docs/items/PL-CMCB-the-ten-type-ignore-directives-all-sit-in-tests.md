@@ -88,3 +88,11 @@ The first pass is a measurement out of the gate, which changes no file at all.
 Not admitted to v0.2.8's frozen list: it completes no entry on it. `PL-020`
 (widen the type-check gate past `src`) is the nearest, and it is `done` and
 bounded to the paths it named.
+
+**Admitted to v0.2.8's frozen list, 2026-08-31, reversing the paragraph
+above,** under the scope test now recorded in `ROADMAP.md`'s "What the freeze
+closes": the type-check gate is machinery the release's goal names, and this
+is the mypy half of what `PL-ZN0N` and `PL-69J3` did for `noqa`. It is the
+weakest of the seven admitted that day and is recorded in the list as the
+first to drop if the release needs shortening — inert *reporting* is not a
+loop that misfires, which is also why it stays P3.
