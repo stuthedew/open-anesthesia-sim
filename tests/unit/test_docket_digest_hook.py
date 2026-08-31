@@ -1,13 +1,18 @@
 """Tests for `.claude/hooks/docket-digest.sh`, the session-start digest.
 
 Only the branch-position half is exercised here. The digest itself is
-`bin/docket digest`, tested with the rest of that package; what this file
-holds is the part written in shell, which nothing else can reach.
+`bin/docket digest`, tested with the rest of that package.
 
-The fixtures are real git repositories - a bare remote, a shallow clone of
-it, and a remote that has since moved - because the behaviour under test is
-git's own answer to a question about a clone's shape, and a stub would test
-the stub. They are local `file://` remotes, so nothing here touches a network.
+What this file held was the part written in shell, which nothing else could
+reach. That part is now `bin/docket branch`, and these run the hook end to end
+against the real command instead - the fixtures install a shim that execs this
+repository's own `bin/docket`, so what is under test is the whole path a
+session start takes: hook, fetch, command, git.
+
+The fixtures are real git repositories - a bare remote, a shallow clone of it,
+and a remote that has since moved - because the behaviour under test is git's
+own answer to a question about a clone's shape, and a stub would test the
+stub. They are local `file://` remotes, so nothing here touches a network.
 """
 
 from __future__ import annotations
@@ -15,7 +20,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-HOOK = Path(__file__).resolve().parents[2] / ".claude" / "hooks" / "docket-digest.sh"
+REPO = Path(__file__).resolve().parents[2]
+HOOK = REPO / ".claude" / "hooks" / "docket-digest.sh"
 
 
 def _git(*args: str, cwd: Path) -> None:
@@ -48,19 +54,35 @@ def _shallow_clone_of_a_moved_remote(tmp_path: Path) -> Path:
         _git("commit", "-qm", f"c{index}", cwd=seed)
     _git("push", "-q", str(remote), "main", cwd=seed)
 
-    # The hook declines unless the store and the command it runs are both
-    # present, and neither is what these tests are about.
-    (work / "docs" / "items").mkdir(parents=True)
-    stub = work / "bin" / "docket"
-    stub.parent.mkdir()
-    stub.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    stub.chmod(0o755)
+    _install_docket(work)
     return work
 
 
+def _install_docket(root: Path) -> None:
+    """The store the hook requires, and a `bin/docket` that is the real one.
+
+    A shim rather than a copy: `bin/docket` resolves the package from its own
+    location, so execing this repository's copy is what makes the command under
+    test the command that ships. The store is left empty - `digest` then prints
+    nothing, and these tests are about the branch line.
+    """
+    (root / "docs" / "items").mkdir(parents=True)
+    shim = root / "bin" / "docket"
+    shim.parent.mkdir()
+    shim.write_text(f'#!/bin/sh\nexec "{REPO / "bin" / "docket"}" "$@"\n', encoding="utf-8")
+    shim.chmod(0o755)
+
+
 def _run_hook(root: Path) -> str:
+    """The hook as a session start runs it: from the project directory.
+
+    `cwd` is load-bearing rather than tidiness - `docket` resolves the store
+    from the working directory, so a hook run from somewhere else would answer
+    confidently about the wrong repository.
+    """
     result = subprocess.run(
         ["bash", str(HOOK)],
+        cwd=root,
         env={
             "CLAUDE_PROJECT_DIR": str(root),
             "PATH": "/usr/bin:/bin:/usr/local/bin",
@@ -112,16 +134,18 @@ def test_the_repair_the_hook_names_actually_repairs_it(tmp_path: Path) -> None:
 
 
 def test_a_repository_with_no_remote_branch_says_nothing(tmp_path: Path) -> None:
-    """Silence, not a shallow-clone complaint: there is nothing to compare to."""
+    """Silence, not a shallow-clone complaint: there is nothing to compare to.
+
+    The comparison would be the default branch against itself, which answers
+    nothing, and this text is resent on every turn of the session. `docket
+    branch` says why when a person asks it directly; `--brief` is what the hook
+    passes, and it keeps the silence.
+    """
     root = tmp_path / "solo"
     subprocess.run(["git", "init", "-q", "-b", "main", str(root)], check=True)
     for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
         _git("config", name, value, cwd=root)
-    (root / "docs" / "items").mkdir(parents=True)
-    stub = root / "bin" / "docket"
-    stub.parent.mkdir()
-    stub.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    stub.chmod(0o755)
+    _install_docket(root)
     (root / "f.txt").write_text("x", encoding="utf-8")
     _git("add", "-A", cwd=root)
     _git("commit", "-qm", "only", cwd=root)

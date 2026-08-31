@@ -811,6 +811,87 @@ def test_flight_names_a_ref_it_could_not_read_rather_than_ignoring_it(
     assert "PL-9Y42" not in out
 
 
+def _diverged_repo(tmp_path: Path) -> Path:
+    """A branch carrying its own commit while the default branch moved under it.
+
+    The shape the session-start check exists for, and the one it could not see:
+    the branch was current when the session opened and is not by the time the
+    discussion becomes implementation. No remote, so `default_base` falls back
+    to the local `main` - which is also the fallback this exercises.
+    """
+    root = tmp_path / "diverged"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-20T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
+    }
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    git("checkout", "-qb", "claude/pl-k7qx-live")
+    (root / "items" / "scratch.txt").write_text("work in progress\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX Do the thing")
+    git("checkout", "-q", "main")
+    (root / "items" / "PL-9Y42-landed.md").write_text(READY.replace("PL-B1B1", "PL-9Y42"))
+    git("add", "-A")
+    git("commit", "-qm", "PL-9Y42 Validate wash-in (#131)")
+    git("checkout", "-q", "claude/pl-k7qx-live")
+    return root
+
+
+def test_branch_state_is_spelled_in_a_way_real_git_answers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The plumbing half: `rev-list --left-right --count` and the fork-point walk.
+
+    `--no-fetch` because a test must not reach the network, and because it is
+    the flag a checkout without one uses - so the caveat it prints is asserted
+    here too.
+    """
+    root = _diverged_repo(tmp_path)
+
+    assert main(["--items", str(root / "items"), "branch", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "Branch: claude/pl-k7qx-live is 1 behind main and 1 ahead." in out
+    assert "git merge main" in out
+    assert "Landed on main since this branch forked: PL-9Y42." in out
+    # No caveat: this checkout's base is a local branch, which no fetch refreshes.
+    assert "last fetch" not in out
+
+
+def test_branch_state_says_nothing_to_the_digest_with_nothing_to_compare(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The hook's silence, kept: the default branch with no remote copy of it.
+
+    Comparing a ref with itself answers nothing, and the digest is resent on
+    every turn of the session - so `--brief`, which is what the hook passes,
+    prints no line at all. A person who ran the command is told why.
+    """
+    root = _diverged_repo(tmp_path)
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+    store = str(root / "items")
+
+    assert main(["--items", store, "branch", "--no-fetch", "--brief"]) == 0
+    assert capsys.readouterr().out == ""
+
+    assert main(["--items", store, "branch", "--no-fetch"]) == 0
+    assert "no remote copy to compare with" in capsys.readouterr().out
+
+
 def _shallow_pair(tmp_path: Path) -> Path:
     """A clone deep enough to resolve a merge-base and too shallow to walk past it.
 

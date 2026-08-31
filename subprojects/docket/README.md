@@ -32,6 +32,7 @@ docket gate --feature x      # the open debt a milestone has to clear
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
+docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # items that exist only on a branch
 docket check                 # validate the store; exits non-zero on errors
@@ -74,6 +75,54 @@ reporting a clean store. Read the other way, the report answers whether a
 branch is safe to delete: a branch named nowhere in it carries no item the
 default branch lacks. That claim is about items only. It says nothing about
 code on the branch, which is not what it read.
+
+### The branch's position is a question, not a session-start fact
+
+`docket branch` reports where the working branch stands against the default
+branch, names the command that repairs it, and lists the items that landed
+while the branch sat.
+
+It was fifty lines of bash in the session-start hook, and that was the whole
+problem: a hook runs once, at session start, and the condition it guards
+against develops *during* a session. A session opened to discuss the next piece
+of work, while another session finishes something, is told its base is current
+- and by the time the discussion becomes implementation, the other session has
+merged. Nothing looks again, so the staleness surfaces at push time as a merge
+conflict, which is the rework cycle the check exists to prevent.
+
+So the decision lives in `vcs.py`, where a command can ask it at any moment and
+a test can hold it to an answer, and the hook keeps only the half that has to
+happen outside: the network.
+
+**It prints; it does not act.** `git checkout -B` discards commits, so a check
+that fired unattended would be a worse failure than the staleness it cures. Two
+commands and no third: a branch behind with nothing of its own is restarted, a
+branch behind with work of its own merges the base in. Rebase is deliberately
+not offered - telling "only capture commits" from any other commits means
+guessing, and a rebase of a pushed branch needs a force-push, which this
+project's squash-merge path exists to avoid.
+
+**The fork point is proven before the counts.** `git rev-list --left-right
+--count A...B` does not fail on refs sharing no history: it prints the size of
+each side, which reads exactly like a position. That state is reachable - a
+`--depth` fetch re-truncates `origin/main`, and `.git/shallow` records it, so a
+later ordinary fetch does not undo it - and a fabricated "98 ahead" argues
+against merging in the very case the line exists to catch. So a clone that
+cannot see the fork point is told to deepen instead of being given a number.
+
+**The command fetches; the function does not.** `branch_state` reads only what
+the checkout holds, because the rule the rest of `vcs.py` follows is that a
+read must work from a bare checkout with no network. A command whose one
+question is "has the base moved" would then answer "current" from a ref nobody
+refreshed, so `docket branch` refreshes first and `--no-fetch` says not to -
+and the line says which happened, rather than letting a stale answer look
+fresh.
+
+Where no comparison exists at all - a detached HEAD, no base, or the default
+branch with no remote copy of it - `--brief` prints nothing. That is what the
+hook passes, and this text is resent on every turn of a session, so a line
+saying there is nothing to say is a line worth not printing. Asked directly,
+the command says why.
 
 ### In flight is read from the commits, not from the branch name
 
