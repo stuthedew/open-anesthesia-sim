@@ -11,6 +11,8 @@ here and the one that compounds.
 
 from __future__ import annotations
 
+from datetime import date
+
 from .checks import REQUIRED_BRIEF, Report
 from .concurrency import undeclared
 from .config import Config
@@ -18,7 +20,7 @@ from .model import PRIORITIES, Item
 from .plan import Feature, Gate, effort_total
 from .release import Readiness
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
-from .vcs import StrandedReport
+from .vcs import Branch, FlightReport, StrandedReport
 
 
 def _plural(count: int, singular: str, plural: str) -> str:
@@ -246,6 +248,55 @@ def format_stranded(report: StrandedReport) -> str:
         "branch nobody will merge."
     )
     lines.append("Every other branch read carries no item the default branch lacks.")
+    return "\n".join(lines)
+
+
+def _since(branch: Branch, today: date) -> str:
+    """How long a branch has been sitting, in the words the reader judges with."""
+    if branch.last_commit is None:
+        return "no commit of its own this checkout can read"
+    days = (today - branch.last_commit).days
+    if days <= 0:
+        return "last commit today"
+    return f"last commit {_plural(days, 'day', 'days')} ago"
+
+
+def format_flight(report: FlightReport, today: date) -> str:
+    """Which items are on a branch, how stale each branch is, and what went unread.
+
+    The age is reported rather than thresholded, because "has an unmerged
+    branch" and "is being worked right now" are different claims and no
+    timeout tells them apart: a branch touched an hour ago is a live session,
+    and the same branch three weeks on is work nobody will merge. Only the
+    reader knows which, so both get the same line and the date decides it.
+    """
+    lines: list[str] = []
+    if report.branches:
+        lines.append(
+            f"{_plural(len(report.branches), 'item is', 'items are')} on a branch "
+            "the default branch has not taken:"
+        )
+        lines.append("")
+        width = max(len(branch.name) for branch in report.branches)
+        for branch in report.branches:
+            lines.append(f"{branch.item_id}  {branch.name:<{width}}  {_since(branch, today)}")
+        lines.append("")
+        lines.append(
+            "A live session and a branch nobody will merge look the same here; "
+            "the age is what separates them."
+        )
+    else:
+        lines.append("No branch carries an item id, in its name or at the front of a commit.")
+
+    if report.unreadable:
+        lines.append("")
+        base = report.base or "the default branch"
+        carried = "it carries" if len(report.unreadable) == 1 else "they carry"
+        lines.append(
+            f"{_plural(len(report.unreadable), 'ref shares', 'refs share')} no history with "
+            f"{base} that this checkout can read, so what {carried} is unknown:"
+        )
+        lines.extend(f"  {name}" for name in report.unreadable)
     return "\n".join(lines)
 
 

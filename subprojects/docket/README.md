@@ -32,6 +32,7 @@ docket gate --feature x      # the open debt a milestone has to clear
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
+docket flight                # which items a branch is already carrying
 docket stranded              # items that exist only on a branch
 docket check                 # validate the store; exits non-zero on errors
 ```
@@ -73,6 +74,42 @@ reporting a clean store. Read the other way, the report answers whether a
 branch is safe to delete: a branch named nowhere in it carries no item the
 default branch lacks. That claim is about items only. It says nothing about
 code on the branch, which is not what it read.
+
+### In flight is read from the commits, not from the branch name
+
+Two sessions may be running at once, so neither must start an item the other
+is already implementing — and nothing records that one has. The fact is in git,
+where a branch is already carrying the work: `docket flight` reads it back, and
+`docket next` excludes what it finds.
+
+The id is taken from **the front of the commit subjects**, and from the branch
+name where it carries one. Reading names alone is what this replaced, and it
+went blind in exactly the case it existed for. A session names its own branch
+`claude/pl-k7qx-short-slug`, but a branch created for it by a web harness is
+named from the opening prompt — `claude/roadmap-release-write-failure-nhsjwo` —
+and cannot be renamed afterwards. One such branch sat with 22 commits of item
+work on it while the command reported that nothing was in flight.
+
+**Only a leading id counts.** A subject mentioning an item further in is
+usually about somebody else's work — a capture, a close-out, a merge — and
+counting those would make `docket next` skip an item that is *startable*, which
+is a worse failure than the blindness being fixed. Measured over 120 commits of
+this project's history: 79 subjects contained an id, 64 led with one, and every
+one of the difference was bookkeeping rather than implementation. A subject may
+lead with two ids, because one branch may carry two items, and then both count.
+
+**The age is reported, not thresholded.** "Has an unmerged branch" and "is being
+worked right now" are different claims and no timeout separates them: a branch
+touched an hour ago is a live session, and the same branch three weeks later is
+work nobody will merge. So each line carries the date of the branch's last
+unmerged commit and the reader decides, the way `stranded` reports rather than
+decides.
+
+A ref whose merge-base with the default branch cannot be read is named as
+unread rather than passed over silently. In a truncated clone — which is what
+an agent session's container is — that means history the checkout does not
+have, and walking such a ref would report everything it can see as that
+branch's own work.
 
 ### Triage is a worklist, not a verdict
 

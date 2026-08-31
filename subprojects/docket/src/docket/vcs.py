@@ -1,7 +1,7 @@
 """What git already knows about work in progress.
 
 Whether an item is being worked on right now is a fact the repository
-already holds: a branch named after it exists. Storing that in the item file
+already holds: a branch is carrying its commits. Storing that in the item file
 instead would mean a session has to remember to write it when it starts and
 to clear it when it stops - and a session that crashes, or that is simply
 abandoned, leaves the item marked in-progress forever with nobody able to
@@ -27,28 +27,17 @@ import re
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from .model import parse_item
 from .store import ID_PATTERN
 
-# Branches whose tip is already contained in one of these are finished, not in
-# flight. Checked against whichever exists, so a repository using a different
-# default branch name still gets the filtering.
+# The default branch, in the order it is looked for: a branch whose tip that
+# one already contains is finished rather than in flight. Trying several means
+# a repository using a different name for it still gets the filtering, and a
+# checkout with no remote falls back to its local branch.
 DEFAULT_BRANCHES = ("origin/main", "origin/master", "main", "master")
-
-BRANCH_ID_RE = re.compile(
-    r"(?:^|[/_-])(pl-(?:\d{3}|[0-9bcdfghjklmnpqrstvwxyz]{4}))(?:$|[/_-])", re.I
-)
-
-
-@dataclass(frozen=True)
-class Branch:
-    """One ref that may be carrying an item's work."""
-
-    name: str
-    item_id: str
-
 
 Runner = Callable[[list[str], Path], str]
 
@@ -75,10 +64,124 @@ def _run_git(args: list[str], root: Path) -> str:
     return result.stdout if result.returncode == 0 else ""
 
 
+BRANCH_ID_RE = re.compile(
+    r"(?:^|[/_-])(pl-(?:\d{3}|[0-9bcdfghjklmnpqrstvwxyz]{4}))(?:$|[/_-])", re.I
+)
+
+# The ids at the *front* of a commit subject, and only there. `CLAUDE.md`
+# requires the id of the work to lead every implementation subject, so an id
+# that leads is the branch's own work while one mentioned further in is
+# usually somebody else's: measured over 120 commits of this project's `main`,
+# 79 subjects contained an id and 64 led with one, and all 15 of the
+# difference were captures, close-outs or merges rather than implementation.
+#
+# So matching an id anywhere in a subject would report roughly 19% false
+# positives, and a false positive here is worse than the blindness it would
+# cure - it makes `docket next` skip an item that is startable, which is the
+# opposite of the defect. `PL-F5HB Close it out; triage PL-4CW7 with the
+# environment fix applied` is the case in miniature: the leading id is the
+# work, the mentioned one had merely been triaged.
+#
+# A subject may lead with more than one id, because one branch may carry two
+# items (`PL-N7R9, PL-J295: the pull request stops being a question`), so the
+# whole leading run is read rather than only its first id.
+LEADING_IDS_RE = re.compile(rf"^\s*{ID_PATTERN}(?:\s*(?:,|&|and)\s*{ID_PATTERN})*", re.I)
+ANY_ID_RE = re.compile(ID_PATTERN, re.I)
+
+# One line per commit: the ref that reached it, the day it was committed, and
+# its subject. `%S` needs `--source`, and the unit separator is used as the
+# delimiter because a subject can contain anything a keyboard can type.
+COMMIT_FORMAT = "--format=%S%x1f%cs%x1f%s"
+
+
+@dataclass(frozen=True)
+class Branch:
+    """One ref that is carrying an item's work.
+
+    `last_commit` is the day of the newest commit the ref holds that the
+    default branch does not, or `None` when this checkout could read none of
+    them - a branch created but not yet committed on, or one whose commits sit
+    beyond a truncated clone's horizon.
+    """
+
+    name: str
+    item_id: str
+    last_commit: date | None = None
+
+
+@dataclass(frozen=True)
+class FlightReport:
+    """Which items are in flight, and which refs could not be read to find out.
+
+    `unreadable` is why this is a type rather than a list. A ref sharing no
+    history this checkout can read contributes nothing to the answer, and
+    silence about it would present a partial reading as a complete one - the
+    same collapse `PullRequestHistory.declined` guards against, per ref rather
+    than for the whole check, because one unreadable ref does not stop the
+    others from being read.
+    """
+
+    branches: tuple[Branch, ...] = ()
+    unreadable: tuple[str, ...] = ()
+    base: str = ""
+
+
+def _leading_ids(subject: str) -> list[str]:
+    """Every item id in the run of them a commit subject opens with."""
+    match = LEADING_IDS_RE.match(subject)
+    if match is None:
+        return []
+    return [found.group(0).upper() for found in ANY_ID_RE.finditer(match.group(0))]
+
+
+def _unmerged_commits(
+    refs: list[str], base: str, root: Path, run: Runner
+) -> tuple[dict[str, date], dict[str, str]]:
+    """The newest commit day per ref, and the ref that first leads with each id.
+
+    One `git log` covers every ref at once: `--source` reports which ref on the
+    command line reached each commit, so the walk that finds the ids also dates
+    the branches. Refs are passed in the order they will be reported in, so a
+    commit two refs share - a local branch and its own tracking ref - is
+    attributed to the one that will be named.
+    """
+    if not refs:
+        return {}, {}
+    # The trailing `--` is what keeps a branch sharing a name with a file from
+    # being read as a path, which git refuses to guess at and answers with an
+    # error - and every error here collapses to "nothing known".
+    output = run(["log", "--source", COMMIT_FORMAT, f"^{base}", *refs, "--"], root)
+    last: dict[str, date] = {}
+    ids: dict[str, str] = {}
+    for line in output.splitlines():
+        parts = line.split("\x1f", 2)
+        if len(parts) != 3:
+            continue
+        ref, committed, subject = parts
+        try:
+            day = date.fromisoformat(committed)
+        except ValueError:
+            day = None
+        if day is not None and day > last.get(ref, date.min):
+            last[ref] = day
+        for identifier in _leading_ids(subject):
+            ids.setdefault(identifier, ref)
+    return last, ids
+
+
 def branches_in_flight(
     root: Path, *, include_remote: bool = True, runner: Runner | None = None
-) -> list[Branch]:
-    """Every branch whose name carries an item id and whose work is unfinished.
+) -> FlightReport:
+    """Every item whose work sits on a branch the default branch has not taken.
+
+    **The id is read from the commit subjects as well as from the branch
+    name**, and that is the whole point of the read. A branch a session names
+    for itself carries the id (`claude/pl-k7qx-short-slug`); a branch the web
+    harness names is built from the opening prompt
+    (`claude/roadmap-release-write-failure-nhsjwo`) and carries nothing, and
+    cannot be renamed afterwards. Reading names alone therefore went blind in
+    exactly the case this exists for, and `docket next` would hand a session an
+    item another session was already implementing.
 
     Refs are read from what is already fetched, so the answer can be stale by
     exactly one fetch. That is an acceptable error for an advisory and an
@@ -89,31 +192,65 @@ def branches_in_flight(
     remote-tracking ref until someone prunes, so without this every item ever
     shipped goes on being reported as in-flight work and the signal becomes
     noise within a few releases.
+
+    What remains is qualified rather than filtered. An unmerged branch may be a
+    live session or work nobody will ever merge, and only the date of its last
+    commit separates the two - so that is carried into the report and left to
+    the reader, the way `stranded` reports rather than decides.
     """
     run = runner or _run_git
     args = ["for-each-ref", "--format=%(refname:short)", "refs/heads"]
     if include_remote:
         args.append("refs/remotes")
 
-    merged: set[str] = set()
-    for base in DEFAULT_BRANCHES:
-        output = run([*args, f"--merged={base}"], root)
-        if output:
-            merged |= {name.strip() for name in output.splitlines() if name.strip()}
-            break
+    # One base for the whole read: what counts as merged, what a ref is
+    # compared against, and what the commit walk excludes have to agree, or the
+    # answer is assembled from two different questions.
+    base = default_base(root, runner=run)
+    merged = {
+        name.strip() for name in run([*args, f"--merged={base}"], root).splitlines() if name.strip()
+    }
+    candidates = [
+        name.strip()
+        for name in run(args, root).splitlines()
+        if name.strip() and name.strip() not in merged
+    ]
 
-    found: dict[str, Branch] = {}
-    for name in run(args, root).splitlines():
-        name = name.strip()
-        if not name or name in merged:
-            continue
+    # A truncated clone is the normal state of an agent session's container,
+    # and a ref with no readable merge-base is one whose commits this checkout
+    # simply does not have. Excluding `^base` from a walk that cannot reach
+    # `base` would report the ref's whole visible history as its own work, so
+    # it is named as unread instead of answered wrongly.
+    readable: list[str] = []
+    unreadable: list[str] = []
+    for name in candidates:
+        found = readable if run(["merge-base", base, name], root).strip() else unreadable
+        found.append(name)
+
+    last_commit, subject_ids = _unmerged_commits(readable, base, root, run)
+
+    # A local branch and its remote tracking ref are one piece of work, and so
+    # are a branch named for an item and its own commits: the first ref that
+    # accounts for an id is the one reported for it.
+    in_flight: dict[str, Branch] = {}
+    for name in readable:
         match = BRANCH_ID_RE.search(name)
         if match is None:
             continue
-        item_id = match.group(1).upper()
-        # A local branch and its remote tracking ref are one piece of work.
-        found.setdefault(item_id, Branch(name=name, item_id=item_id))
-    return sorted(found.values(), key=lambda b: b.item_id)
+        identifier = match.group(1).upper()
+        in_flight.setdefault(
+            identifier, Branch(name=name, item_id=identifier, last_commit=last_commit.get(name))
+        )
+    for identifier, name in subject_ids.items():
+        in_flight.setdefault(
+            identifier, Branch(name=name, item_id=identifier, last_commit=last_commit.get(name))
+        )
+
+    return FlightReport(
+        branches=tuple(sorted(in_flight.values(), key=lambda branch: branch.item_id)),
+        unreadable=tuple(unreadable),
+        base=base,
+    )
 
 
 def default_base(root: Path, *, runner: Runner | None = None) -> str:
@@ -197,7 +334,15 @@ def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
 
 
 def in_flight_ids(root: Path, *, runner: Runner | None = None) -> set[str]:
-    return {branch.item_id for branch in branches_in_flight(root, runner=runner)}
+    """Just the ids, for the callers that rank and mark rather than report.
+
+    A ref that could not be read is dropped here rather than reported, because
+    a set cannot carry the difference and these callers cannot act on it: an
+    id missing from the set is an item `docket next` may offer, which is the
+    same answer they had before the ref existed. `docket flight` is where the
+    gap is named.
+    """
+    return {branch.item_id for branch in branches_in_flight(root, runner=runner).branches}
 
 
 # A pull request number as it reaches the default branch. GitHub writes one of
