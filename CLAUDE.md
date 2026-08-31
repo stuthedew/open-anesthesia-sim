@@ -331,6 +331,16 @@ reason to load the skill:
   this file mid-session is right despite the cache cost noted above — a rule
   that takes effect three sessions late has already cost more than the cache
   would have.
+
+  **Route it; do not append here by default.** Ask when a session needs the
+  rule. One that something deterministic can enforce becomes a check. One that
+  matters only once a session is doing a particular task goes in the skill
+  covering that task, which loads on demand. One that matters only in part of
+  the tree goes in a `.claude/rules/*.md` with `paths:` frontmatter, which
+  loads when a session reads a matching file. Only a rule a session could
+  violate before it would think to look anything up is written here. Appending
+  to this file is the last resort rather than the default; PL-H7XN carries the
+  reasoning.
 - **Prefer finishing a feature to advancing several.** Related items share a
   `feature`; a release is a `milestone`. `docket next` already prefers work
   that finishes something underway, within its priority band. Do not override
