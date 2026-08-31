@@ -21,7 +21,7 @@ from .model import PRIORITIES, Item
 from .plan import Feature, Gate, effort_total
 from .release import Readiness
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
-from .vcs import Branch, FlightReport, StrandedReport
+from .vcs import CURRENT, PULL, RESTART, Branch, BranchState, FlightReport, StrandedReport
 
 
 def _plural(count: int, singular: str, plural: str) -> str:
@@ -344,6 +344,71 @@ def format_flight(report: FlightReport, today: date) -> str:
             f"{base} on the history this checkout holds, so what {carried} is unknown:"
         )
         lines.extend(f"  {name}" for name in report.unreadable)
+    return "\n".join(lines)
+
+
+def format_branch_state(state: BranchState, flight: FlightReport | None = None) -> str:
+    """Where the branch stands, what to run about it, and what moved while it sat.
+
+    The recovery command is printed rather than run, and that is the whole
+    posture: `git checkout -B` discards commits, so a check that fired
+    unattended would be a worse failure than the staleness it cures. It reports
+    and the reader decides, the way `flight` and `stranded` do.
+
+    Two commands and no third. A branch behind with nothing of its own is
+    restarted; a branch behind with work of its own merges the base in. Rebase
+    is deliberately not offered: telling the two apart would mean guessing
+    which commits are disposable, and a rebase of a pushed branch needs a
+    force-push, which this project's squash-merge path is set up to avoid.
+
+    The ids are what make it worth re-running mid-session. "3 behind" says the
+    base moved; naming what landed answers whether the thing this session was
+    waiting on is in.
+    """
+    if state.declined:
+        head = f"Branch: {state.branch or 'unknown'} - {state.declined}."
+        return head if flight is None else "\n".join(filter(None, (head, _flight_lines(flight))))
+
+    base, branch = state.base, state.branch
+    lines: list[str] = []
+    if state.disposition == CURRENT:
+        lines.append(f"Branch: {branch}, current with {base} ({state.ahead} ahead).")
+    elif state.disposition == PULL:
+        lines.append(f"Branch: {branch} is {state.behind} behind {base}.")
+        lines.append("  `git pull` before starting.")
+    elif state.disposition == RESTART:
+        lines.append(f"Branch: {branch} is {state.behind} behind {base} with nothing of its own.")
+        lines.append("  Its work is merged or it never had any. Restart it before editing:")
+        lines.append(f"  git checkout main && git pull && git checkout -B {branch} {base}")
+    else:
+        lines.append(f"Branch: {branch} is {state.behind} behind {base} and {state.ahead} ahead.")
+        lines.append(f"  Merge {base} before your first edit, not at push time:")
+        lines.append(f"  git merge {base}")
+
+    if state.landed:
+        lines.append(f"  Landed on {base} since this branch forked: {', '.join(state.landed)}.")
+    # Only where the base is a remote-tracking ref: a local base is not made
+    # fresher by fetching, so the caveat would be describing a hazard that
+    # cannot arise and teaching the reader to discount the ones that can.
+    if not state.fetched and "/" in base:
+        lines.append(f"  Read from the last fetch; nothing refreshed {base} for this answer.")
+    if flight is not None and (extra := _flight_lines(flight)):
+        lines.append(extra)
+    return "\n".join(lines)
+
+
+def _flight_lines(flight: FlightReport) -> str:
+    """What is being worked elsewhere, for a reader asking whether to wait.
+
+    The digest carries the same line, and carries it once per session; this one
+    is read when a session asks again, which is the moment the digest's copy is
+    most likely to be out of date.
+    """
+    lines = []
+    if flight.ids:
+        lines.append(f"  Still in flight on a branch: {', '.join(sorted(flight.ids))}.")
+    if unread := format_unread(flight):
+        lines.append(f"  {unread}")
     return "\n".join(lines)
 
 

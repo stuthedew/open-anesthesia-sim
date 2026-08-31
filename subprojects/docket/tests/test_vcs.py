@@ -13,10 +13,12 @@ from pathlib import Path
 from docket.checks import Report
 from docket.vcs import (
     Branch,
+    BranchState,
     FlightReport,
     StrandedItem,
     StrandedReport,
     behind_remote,
+    branch_state,
     branches_in_flight,
     default_base,
     merged_pull_requests,
@@ -801,3 +803,130 @@ def test_flight_names_a_ref_that_contributes_by_name_in_both_halves() -> None:
     assert "no commit of its own this checkout can read" in printed
     assert "so what its commits carry is unknown" in printed
     assert printed.count(NAMED_UNREADABLE) == 2
+
+
+def _branch_runner(
+    branch: str = "claude/pl-k7qx-live",
+    behind: int = 0,
+    ahead: int = 0,
+    landed: tuple[str, ...] = (),
+    unrelated: bool = False,
+    base_exists: bool = True,
+):
+    """A git holding one checked-out branch at a known position against the base.
+
+    `unrelated` is the case the guard exists for: `merge-base` finds nothing,
+    and `rev-list --left-right --count` would still answer - with the length of
+    each side of two unrelated histories, which reads exactly like a position.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[:3] == ["rev-parse", "--abbrev-ref", "HEAD"]:
+            return f"{branch}\n"
+        if args[0] == "rev-parse":
+            return f"{args[-1]}\n" if args[-1] == BASE and base_exists else ""
+        if args[0] == "merge-base":
+            return "" if unrelated else "0123456789abcdef\n"
+        if args[0] == "rev-list":
+            return f"{behind}\t{ahead}\n"
+        if args[0] == "log":
+            return "\n".join(f"{identifier} Something that landed" for identifier in landed)
+        return ""
+
+    return run
+
+
+def test_branch_state_reports_the_position_when_the_base_has_not_moved() -> None:
+    state = branch_state(ROOT, runner=_branch_runner(ahead=2))
+
+    assert state.disposition == "current"
+    assert (state.branch, state.base, state.behind, state.ahead) == (
+        "claude/pl-k7qx-live",
+        BASE,
+        0,
+        2,
+    )
+    assert state.landed == ()
+
+
+def test_branch_state_says_restart_when_the_branch_is_behind_with_nothing_of_its_own() -> None:
+    """Its work merged or it never had any, and `checkout -B` is safe either way."""
+    state = branch_state(ROOT, runner=_branch_runner(behind=4))
+
+    assert state.disposition == "restart"
+
+
+def test_branch_state_says_merge_when_the_branch_is_behind_and_carrying_work() -> None:
+    """The case that costs the rework cycle: work of its own, on a base that moved."""
+    state = branch_state(ROOT, runner=_branch_runner(behind=4, ahead=2))
+
+    assert state.disposition == "merge"
+
+
+def test_branch_state_says_pull_on_the_default_branch_itself() -> None:
+    state = branch_state(ROOT, runner=_branch_runner(branch="main", behind=3))
+
+    assert state.disposition == "pull"
+    assert state.is_default
+
+
+def test_branch_state_declines_rather_than_counting_two_unrelated_histories() -> None:
+    """`rev-list --left-right --count` does not fail on refs sharing no history.
+
+    It reports the whole length of each side, which reads like a position and
+    is not one - and a fabricated "98 ahead" argues against merging in exactly
+    the case the line exists to catch. So the fork point is proven first.
+    """
+    state = branch_state(ROOT, runner=_branch_runner(behind=98, ahead=98, unrelated=True))
+
+    assert state.disposition == ""
+    assert "shares no readable history" in state.declined
+    assert (state.behind, state.ahead) == (0, 0)
+
+
+def test_branch_state_names_the_items_that_landed_while_the_branch_sat() -> None:
+    """The counts say the base moved; this says what moved, which is the question."""
+    state = branch_state(
+        ROOT, runner=_branch_runner(behind=2, ahead=1, landed=("PL-K7QX", "PL-9Y42"))
+    )
+
+    assert state.landed == ("PL-K7QX", "PL-9Y42")
+
+
+def test_branch_state_declines_on_a_detached_head() -> None:
+    state = branch_state(ROOT, runner=lambda args, root: "HEAD\n")
+
+    assert state.disposition == ""
+    assert "no branch is checked out" in state.declined
+
+
+def test_branch_state_declines_when_the_checkout_has_no_base_to_compare() -> None:
+    state = branch_state(ROOT, runner=_branch_runner(base_exists=False))
+
+    assert state.disposition == ""
+    assert state.declined
+
+
+def test_the_branch_state_line_prints_the_command_for_each_state() -> None:
+    """The recovery command is printed, never run: `checkout -B` discards commits."""
+    from docket.render import format_branch_state
+
+    restart = format_branch_state(BranchState(branch="claude/pl-k7qx-live", base=BASE, behind=4))
+    merge = format_branch_state(
+        BranchState(branch="claude/pl-k7qx-live", base=BASE, behind=4, ahead=2, fetched=True)
+    )
+
+    assert "git checkout -B claude/pl-k7qx-live origin/main" in restart
+    assert f"git merge {BASE}" in merge
+    assert "rebase" not in restart + merge
+
+
+def test_the_branch_state_line_says_when_nothing_refreshed_the_base() -> None:
+    """A position measured against a ref nobody refreshed is a report, not a claim."""
+    from docket.render import format_branch_state
+
+    stale = format_branch_state(BranchState(branch="main", base=BASE, behind=1))
+    fresh = format_branch_state(BranchState(branch="main", base=BASE, behind=1, fetched=True))
+
+    assert "nothing refreshed origin/main" in stale
+    assert "nothing refreshed" not in fresh

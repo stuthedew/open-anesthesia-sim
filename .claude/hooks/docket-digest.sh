@@ -1,21 +1,24 @@
 #!/usr/bin/env bash
 # SessionStart hook: emit a short digest of the docket into session context, so
-# a session knows the queue exists, what is at the top of it, what is already
-# in flight on a branch, and whether anything is waiting to be triaged - all
-# without reading the store. The digest is deliberately a few lines: this text
-# is resent on every turn of the session.
+# a session knows where its branch stands, that the queue exists, what is at
+# the top of it, what is already in flight on a branch, and whether anything is
+# waiting to be triaged - all without reading the store. The digest is
+# deliberately a few lines: this text is resent on every turn of the session.
 #
-# It also fetches every branch tip, so the digest's stranded-item line has refs
-# to read: an item committed on a branch that never merges is invisible to a
-# checkout that never fetched that branch, and a container clones one.
+# `docket branch` runs first because it is what fetches, and both it and the
+# digest's stranded-item line need refs a container does not hold: it clones
+# one branch, so an item committed on a branch that never merged is invisible
+# to it. The fetch used to sit in this file and run *after* the digest, so that
+# line was computed from the previous session's refs while the comment above it
+# claimed otherwise.
 #
-# It also reports where the working branch stands against `origin/main`. That
-# is a check rather than a rule for the same reason the rest of this is a
-# digest rather than a paragraph in CLAUDE.md: a session that picks up a
-# branch whose pull request has already merged stacks new commits on merged
-# history, and one starting from a stale base does the work against code that
-# has since moved. Both cost a full rework cycle, paid at push time rather
-# than at the start, and both are invisible unless something looks.
+# Neither line is bash any more, and the branch check is the reason. It was
+# fifty lines here, which is the only place it could run: at session start,
+# once, on a condition that develops *during* a session - another session
+# merges, and a discussion that is about to become implementation is sitting on
+# a base that moved. A rule that can only run at session start cannot answer
+# that, so it moved into `vcs.py`, where `bin/docket branch` asks it again at
+# any moment.
 #
 # Fails silently if python3, git, the remote or the store is missing, so a
 # checkout without any of them still starts cleanly.
@@ -27,70 +30,9 @@ root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}
 [ -x "$root/bin/docket" ] || exit 0
 [ -d "$root/docs/items" ] || exit 0
 
+# `--brief` because the digest below prints what is in flight, and printing it
+# twice in text that is resent on every turn is the one cost this file is
+# careful about.
+"$root/bin/docket" branch --brief 2>/dev/null || true
+
 "$root/bin/docket" digest 2>/dev/null || true
-
-branch_state() {
-  command -v git >/dev/null 2>&1 || return 0
-  git -C "$root" rev-parse --git-dir >/dev/null 2>&1 || return 0
-
-  # Every branch tip, not just main. The stranded-item check can only see refs
-  # this checkout holds, and a session container clones one branch - so without
-  # this it reads two refs, finds nothing, and says so in words that sound like
-  # a clean answer. Measured at well under a second here, against a fetch of
-  # `main` alone that was already being paid.
-  #
-  # Deliberately not `--prune`. A branch deleted on the remote leaves a
-  # tracking ref that is now the only copy of anything committed on it, which
-  # is precisely the case the check exists to catch; pruning would delete the
-  # evidence before anything looked at it.
-  local branch counts behind ahead fetch=(git -C "$root" fetch --quiet origin)
-  branch=$(git -C "$root" rev-parse --abbrev-ref HEAD 2>/dev/null) || return 0
-  [ -n "$branch" ] && [ "$branch" != "HEAD" ] || return 0
-
-  # A fetch that hangs would stall every session start, so it is bounded and
-  # its failure is not an error: the counts below then read the last fetch,
-  # which is stale by exactly one fetch rather than wrong.
-  if command -v timeout >/dev/null 2>&1; then
-    timeout 20 "${fetch[@]}" >/dev/null 2>&1 || true
-  else
-    "${fetch[@]}" >/dev/null 2>&1 || true
-  fi
-
-  git -C "$root" rev-parse --verify --quiet origin/main >/dev/null 2>&1 || return 0
-
-  # `rev-list --left-right --count A...B` does not fail when A and B share no
-  # history: it prints the size of each side of an unrelated pair, which reads
-  # exactly like a real answer. That state is reachable - a `--depth` fetch
-  # re-truncates `origin/main`, and the truncation is recorded in
-  # `.git/shallow`, so a later ordinary fetch does not undo it - and a
-  # fabricated "98 ahead" tells a session it is carrying work it does not
-  # have, which argues against merging in the very case this line exists to
-  # catch. So the counts are printed only once the two refs are known to share
-  # history, and otherwise the clone says it cannot tell.
-  if ! git -C "$root" merge-base HEAD origin/main >/dev/null 2>&1; then
-    echo "Branch: $branch - this clone shares no readable history with origin/main,"
-    echo "  so its position cannot be counted. Something ran a \`--depth\` fetch;"
-    echo "  \`git fetch --deepen=100 origin\` restores the answer."
-    return 0
-  fi
-
-  counts=$(git -C "$root" rev-list --left-right --count origin/main...HEAD 2>/dev/null) || return 0
-  behind=${counts%%[[:space:]]*}
-  ahead=${counts##*[[:space:]]}
-  [ -n "$behind" ] && [ -n "$ahead" ] || return 0
-
-  if [ "$behind" -eq 0 ]; then
-    echo "Branch: $branch, current with origin/main ($ahead ahead)."
-  elif [ "$ahead" -eq 0 ] && [ "$branch" != "main" ]; then
-    echo "Branch: $branch is $behind behind origin/main with nothing of its own."
-    echo "  Its work is merged or it never had any. Restart it from main before editing:"
-    echo "  git checkout main && git pull && git checkout -B $branch origin/main"
-  elif [ "$branch" = "main" ]; then
-    echo "Branch: main is $behind behind origin/main. \`git pull\` before starting."
-  else
-    echo "Branch: $branch is $behind behind origin/main and $ahead ahead."
-    echo "  Merge origin/main before your first edit, not at push time."
-  fi
-}
-
-branch_state
