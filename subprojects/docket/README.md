@@ -203,14 +203,27 @@ without saying where it stopped leaves the next one — the project's own check 
 to report the omission as a failure nobody caused, which is how a red check
 comes to look like the normal end of a release.
 
-Tags are outside that check, and inside the project's own. A shallow or
-tag-less clone is a normal checkout, so nothing about tags may be concluded
-from a repository that cannot answer — `vcs.tags` collapses every such failure
-to an empty set, and a checker reading it says nothing rather than reporting
-every release as untagged. What it does say, when git can answer, is which
-completed releases carry no tag and which tags name no release. `docket
-release` still enforces the tag at the one moment tags are certainly to hand:
-it refuses to cut the next release while the current one is untagged.
+Tags are outside that check, and inside the project's own. A tag-less clone is
+a normal checkout, so nothing about tags may be concluded from a repository
+that cannot answer — `vcs.tags` collapses no git, no repository and no tags
+alike to an empty set, and a checker reading it says nothing rather than
+reporting every release as untagged.
+
+A **shallow** clone was assumed to collapse the same way and does not: it holds
+the tags reachable within its depth and omits the rest, so every release older
+than that depth reads as never tagged (`PL-J295`). `vcs.is_shallow` tells the
+two apart. The rule built on it is deliberately narrower than "decline in a
+shallow clone" — every environment this runs in clones shallow, the session
+container and `actions/checkout` alike, and one that has since run `git fetch
+--tags` can answer exactly. So the findings are computed first and withheld
+only when there is one *and* truncation could account for it. A tag being
+**present** is never in doubt, so the conclusions drawn from that stand either
+way.
+
+What the check does say, when it can, is which completed releases carry no tag
+and which tags name no release. `docket release` still enforces the tag at the
+one moment tags are certainly to hand: it refuses to cut the next release while
+the current one is untagged.
 
 ## The item format
 
