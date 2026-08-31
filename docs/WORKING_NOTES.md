@@ -162,6 +162,21 @@ still the cheapest thing to do next in that function, the design pass over it
 having just been paid for. It is untriaged and was captured after v0.2.8's
 freeze, so admitting it is a decision rather than an assumption.
 
+**`PL-YSXF` was admitted and landed the same day, 2026-08-31** (pull request
+124), at the project owner's direction, in the session that had just closed
+`PL-S1P1` and still had the function loaded. That closes the `vcs.py` cluster:
+four holes in `branches_in_flight` - a stale ref never excluded, a walk that
+under-excluded, the unread refs dropped before the callers, and the name read
+discarded with the commit read - none of which needed another's lines, and all
+four found within two days of each other because each fix made the next one
+visible.
+
+What is left of that function is `PL-W1LN` (the parentless commit is the
+signature of every shape observed, not a proof that a walk is complete), which
+is a different question: the guards decide *whether* to believe a walk, and
+that one asks whether the signature they key on is sufficient. Nothing in the
+cluster's four fixes bears on it.
+
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 
 Not scoped yet. The performance blocker this waited on has landed: render
