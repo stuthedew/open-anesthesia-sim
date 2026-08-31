@@ -60,6 +60,16 @@ is simply wide:
 - **No approach proposed.** Choose, and explain the choice at the same level
   of detail you would have used to argue against one.
 
+**`.claude/rules/instruction-writing.md` decides the shape of a reply, and it
+wins.** It loads in every session and applies unasked, so it never needs to be
+named in a prompt. Where it and another instruction — this file, a skill, an
+item's brief — describe the same message differently, the rules file decides
+*shape* and the other decides *content*: what the reply must contain, in what
+words, with what judgment, is theirs; what comes first is the rules file's.
+Being the more specific document does not carry the format question. A
+prescribed opening that cannot survive that is edited, not obeyed — say so and
+fix it, per the behavior-change rule below.
+
 **End every reply with what the project owner has to do.** The reasoning
 above it is worth having — they have asked for it — but prose buries the thing
 that needs acting on, and a punchline they have to hunt for is one they will
@@ -453,11 +463,16 @@ reason to load the skill:
   ships and the work that remains is small, say so and offer to scope the next
   planned milestone into items — that is the moment the design round is worth
   spending on, and nobody else is going to notice it has arrived.
-- **Answer "what should we work on next?" at feature altitude.** `bin/docket
-  status` groups the project the way a decision is actually made — what is
-  underway, what has not started, what is individually urgent. Lead with that,
-  then drop to `bin/docket next` for the specific item once a direction is
-  picked. A list of item ids is a list of homework, not an answer.
+- **Answer "what should we work on next?" from the roadmap step down.** The
+  step `bin/docket wave` names — clear a gate, cut a release, implement a
+  scoped milestone, scope the next one — decides whether any feature is the
+  right answer at all, and the queue cannot see it. Then `bin/docket status`
+  groups the project the way a decision is actually made — what is underway,
+  what has not started, what is individually urgent — and `bin/docket next`
+  names the item. Open the reply with the recommendation itself, per rule 10
+  of `.claude/rules/instruction-writing.md`, and put the step, the grouping
+  and the reasoning under it. A list of item ids is a list of homework, not an
+  answer.
 - **Decompose ideas; never hand the decomposition back.** When the owner
   describes something they want, working out what it breaks into, naming the
   feature and writing the briefs is the job being delegated. Do not ask which
