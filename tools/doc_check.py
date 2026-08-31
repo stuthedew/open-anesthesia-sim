@@ -984,6 +984,10 @@ def format_check(report: Report) -> str:
 
 
 def _git(root: Path, *args: str) -> list[str]:
+    # `git` is resolved through `PATH` rather than pinned, for the same reason
+    # as docket's `vcs._run_git`: the path differs by environment, and a
+    # checkout that cannot run git is answered with an empty list here rather
+    # than treated as an error.
     result = subprocess.run(("git", *args), cwd=root, capture_output=True, text=True, check=False)
     if result.returncode:
         return []

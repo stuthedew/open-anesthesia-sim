@@ -356,6 +356,8 @@ def _git_init(root: Path) -> None:
         ("add", "-A"),
         ("commit", "-qm", "initial"),
     ):
+        # A real git checkout, built by running real git from `PATH`: what is
+        # under test is how doc_check reads one, so a stub would test the stub.
         subprocess.run(("git", *command), cwd=root, check=True, capture_output=True)
 
 
@@ -676,6 +678,7 @@ def _tagged(tmp_path: Path, *names: str, roadmap: str = VERSIONED_ROADMAP) -> Pa
     root = _versioned(tmp_path, roadmap=roadmap)
     _git_init(root)
     for name in names:
+        # Real tags, made with real git - see `_git_init` above.
         subprocess.run(("git", "tag", name), cwd=root, check=True, capture_output=True)
     return root
 
