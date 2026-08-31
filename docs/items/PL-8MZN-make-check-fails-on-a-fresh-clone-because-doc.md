@@ -1,8 +1,10 @@
 ---
 id: PL-8MZN
 title: make check fails on a fresh clone because doc_check.py reads absent tags as missing releases, not as tags never fetched
-status: untriaged
+status: dropped
 added: 2026-08-31
+closed: 2026-08-31
+reason: duplicate of PL-J295, which shipped the fix inside this same gate; the behaviour this describes no longer exists
 ---
 
 **Problem.** make check fails on a fresh clone because doc_check.py reads absent tags as missing releases, not as tags never fetched
@@ -51,3 +53,24 @@ the checkout is in a position to know.
 **Done when.** `make check` passes in a fresh shallow clone with no tags
 fetched, still fails when a release is genuinely untagged in a full clone, and
 a regression test covers both.
+
+
+**Dropped 2026-08-31.** `PL-J295` (the release-train check reads a tag missing
+from a shallow clone as a release that was never tagged) is the same defect,
+was triaged with the full brief, and is `done` — merged under `v0.2.8`.
+
+Verified rather than assumed: `python3 tools/doc_check.py check` in this
+container now reports the shallow-clone case as *not checked* rather than as an
+error —
+
+    Not checked (this checkout cannot answer; nothing is claimed):
+      release tags: the checkout is a shallow clone, so the 8 releases with no
+      tag here cannot be told from a release whose tag was never fetched;
+      `git fetch --tags` makes the question answerable
+
+— which is exactly what this item asked for. `make check` no longer fails on a
+fresh clone for this reason.
+
+Recorded rather than deleted so the finding is not raised a third time. If the
+shallow-clone case ever errors again, that is a regression against `PL-J295`
+and belongs on a new item citing it.
