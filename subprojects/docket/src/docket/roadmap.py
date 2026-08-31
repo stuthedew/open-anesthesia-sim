@@ -735,6 +735,11 @@ def wave(roadmap: str, version: str, closed_ids: frozenset[str], known_ids: froz
     recorded = [section for section in unreleased if section.records_a_gate]
     gate = gate_status(recorded[0], closed_ids, known_ids) if recorded else None
 
+    # Declared, not inferred: two of the three branches below bind a section
+    # and the third may find none, so the union is the real type of the
+    # variable rather than a widening of the first branch's.
+    milestone: MilestoneSection | None
+
     if gate is not None and not gate.is_clear:
         beat, milestone, subject = CLEAR, gate.milestone, gate.milestone.label
     elif gate is not None:

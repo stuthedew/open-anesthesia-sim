@@ -59,6 +59,23 @@ list was frozen and describes a problem that did not exist until PL-F5HB
 landed the `required-version` floor, so it belongs to the next gate rather
 than extending this one.
 
+**Observed 2026-08-31, and the answer is no.** A fresh web session (the one
+that did PL-020, the type-check gate) ran `uv --version` before installing
+anything and got **0.8.17** - the stale binary at `/root/.local/bin/uv`,
+unchanged. `make check` stopped on the `required-version` error at its first
+command. `uv self update` still fails on the GitHub rate limit, exactly as
+recorded above. That session finished by fetching the wheel from PyPI and
+putting its `uv` on `PATH` by hand, so the work landed, but the environment
+had not been fixed.
+
+So the setup-script line either was not saved, or the environment the web
+sessions actually start in is not the one it was saved to, or the snapshot it
+was meant to invalidate did not re-run the script. The item stays open, and
+the next fresh session is the next test.
+
+Note `pip download uv` succeeds in this container, so PyPI reachability is
+not the failure; only the setup script's effect is.
+
 **Done when.** A fresh web session reports uv 0.12.5 or newer from
 `uv --version` before anything has been installed by hand, and runs
 `make check` through to the end.
