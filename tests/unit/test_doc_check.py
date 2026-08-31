@@ -88,6 +88,9 @@ VERSION_SECTION = """## Versioning decision
 | v0.2.5 | Completed / current baseline | The current one. |
 | v0.3.0 | Planned / scoped | Not out yet. |
 
+**Tags.** Every version the table above marks Completed carries an annotated
+tag.
+
 ## Current baseline: v0.2.5
 
 What it is.
@@ -661,3 +664,143 @@ def test_prose_that_says_make_sure_names_no_target(tmp_path: Path) -> None:
 
 def test_a_repository_with_no_makefile_is_left_alone(tmp_path: Path) -> None:
     assert _errors(_repo(tmp_path, readme=README + "\nRun `make lint`.\n")) == []
+
+
+# --- release tags -----------------------------------------------------------
+
+UNTAGGED_CLAIM = "\n\n**One version is untagged**: v0.2.4.\n"
+
+
+def _tagged(tmp_path: Path, *names: str, roadmap: str = VERSIONED_ROADMAP) -> Path:
+    """A versioned repository that is a git checkout holding the tags given."""
+    root = _versioned(tmp_path, roadmap=roadmap)
+    _git_init(root)
+    for name in names:
+        subprocess.run(("git", "tag", name), cwd=root, check=True, capture_output=True)
+    return root
+
+
+def _advisories(root: Path) -> list[str]:
+    return doc_check.analyze(root).advisories
+
+
+def test_a_roadmap_whose_tags_match_the_repository_is_quiet(tmp_path: Path) -> None:
+    root = _tagged(tmp_path, "v0.2.4", "v0.2.5")
+
+    assert _errors(root) == []
+    assert _advisories(root) == []
+
+
+def test_a_completed_release_with_no_tag_is_an_error(tmp_path: Path) -> None:
+    """PL-J3ZK's failure: a release whose span nothing can map back to a version."""
+    errors = _errors(_tagged(tmp_path, "v0.2.5"))
+
+    assert any("v0.2.4 is marked completed but git holds no tag" in message for message in errors)
+
+
+def test_the_release_being_cut_is_an_advisory_not_an_error(tmp_path: Path) -> None:
+    """The tag lands on the merge commit, so the newest version has none yet.
+
+    Failing this would turn `make check` red on every release branch, which is
+    the failure PL-8HJ2 removed.
+    """
+    root = _tagged(tmp_path, "v0.2.4")
+
+    assert _errors(root) == []
+    assert any("v0.2.5 is the current baseline and carries no tag" in a for a in _advisories(root))
+
+
+def test_the_advisory_pastes_the_tag_commands_rather_than_asking_for_a_tag(tmp_path: Path) -> None:
+    advisories = _advisories(_tagged(tmp_path, "v0.2.4"))
+
+    assert any('git tag -a v0.2.5 <merge commit> -m "v0.2.5"' in a for a in advisories)
+
+
+def test_a_tag_the_version_table_does_not_name_is_an_error(tmp_path: Path) -> None:
+    """A release that shipped and never reached the table is invisible to the plan."""
+    errors = _errors(_tagged(tmp_path, "v0.2.4", "v0.2.5", "v0.2.9"))
+
+    assert any("git holds v0.2.9, but no row of the version table" in message for message in errors)
+
+
+def test_a_tag_of_another_shape_is_not_read_as_a_release(tmp_path: Path) -> None:
+    """`v0.2.6-rc1` names something the version table has no business holding."""
+    assert _errors(_tagged(tmp_path, "v0.2.4", "v0.2.5", "v0.2.6-rc1")) == []
+
+
+def test_a_version_named_untagged_that_is_in_fact_tagged_is_an_error(tmp_path: Path) -> None:
+    """The two sentences agreeing with the repository is not enough on its own."""
+    roadmap = VERSIONED_ROADMAP.replace("tag.\n", "tag." + UNTAGGED_CLAIM, 1)
+    errors = _errors(_tagged(tmp_path, "v0.2.4", "v0.2.5", roadmap=roadmap))
+
+    assert any("v0.2.4 is named as untagged, but git holds a tag" in message for message in errors)
+
+
+def test_a_version_named_untagged_is_not_also_required_to_have_one(tmp_path: Path) -> None:
+    """The exception is the whole point of writing it: it stops being an error."""
+    roadmap = VERSIONED_ROADMAP.replace("tag.\n", "tag." + UNTAGGED_CLAIM, 1)
+
+    assert _errors(_tagged(tmp_path, "v0.2.5", roadmap=roadmap)) == []
+
+
+def test_a_count_that_disagrees_with_the_names_is_an_error(tmp_path: Path) -> None:
+    """Neither half can be caught by comparing it with git; only by each other."""
+    claim = UNTAGGED_CLAIM.replace("One version is", "Two versions are")
+    roadmap = VERSIONED_ROADMAP.replace("tag.\n", "tag." + claim, 1)
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any("says Two untagged, but names 1" in message for message in errors)
+
+
+def test_a_count_written_as_a_numeral_is_read_too(tmp_path: Path) -> None:
+    claim = UNTAGGED_CLAIM.replace("One version is", "1 version is")
+    roadmap = VERSIONED_ROADMAP.replace("tag.\n", "tag." + claim, 1)
+
+    assert _errors(_versioned(tmp_path, roadmap=roadmap)) == []
+
+
+def test_a_count_the_checker_cannot_read_is_reported_rather_than_guessed(tmp_path: Path) -> None:
+    """Silently passing an unreadable count is a check nobody is running."""
+    claim = UNTAGGED_CLAIM.replace("One version is", "Several versions are")
+    roadmap = VERSIONED_ROADMAP.replace("tag.\n", "tag." + claim, 1)
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any('cannot read "Several" as a count' in message for message in errors)
+
+
+def test_a_version_named_untagged_that_never_shipped_is_an_error(tmp_path: Path) -> None:
+    claim = UNTAGGED_CLAIM.replace("v0.2.4", "v0.9.9")
+    roadmap = VERSIONED_ROADMAP.replace("tag.\n", "tag." + claim, 1)
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any("v0.9.9 is named as untagged, but no row" in message for message in errors)
+
+
+def test_a_missing_tags_statement_is_an_error(tmp_path: Path) -> None:
+    """Deleting the claim removes it; it does not make it true."""
+    roadmap = VERSIONED_ROADMAP.replace(
+        "**Tags.** Every version the table above marks Completed carries an annotated\ntag.\n", ""
+    )
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any('no "**Tags.**" statement' in message for message in errors)
+
+
+def test_a_checkout_git_cannot_answer_for_is_told_nothing(tmp_path: Path) -> None:
+    """A tag-less clone is a normal checkout, and PL-J3ZK's own trap.
+
+    Every way git can fail to answer collapses to the same empty set - no
+    repository, no git, tags not fetched, a shallow clone - so a repository
+    holding no tags exercises the silence deterministically, where a directory
+    that merely is not a checkout would depend on what sits above `tmp_path`.
+    """
+    root = _tagged(tmp_path)
+
+    assert _errors(root) == []
+    assert _advisories(root) == []
+
+
+def test_a_roadmap_with_no_completed_release_is_left_alone(tmp_path: Path) -> None:
+    roadmap = VERSIONED_ROADMAP.replace("Completed", "Planned")
+
+    assert _errors(_tagged(tmp_path, "v0.2.4", roadmap=roadmap)) == []

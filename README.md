@@ -90,7 +90,7 @@ make docket      # validate docs/items/ and list anything untriaged
 make release VERSION=0.3.0   # cut a release: bump and relock, then name the
                  # ROADMAP.md edits it does not write
 make doc-check   # validate the package map, provenance table, citations,
-                 # release train, and the current-baseline version
+                 # release train, current-baseline version, and release tags
 ```
 
 The last two are stdlib-only scripts in `tools/`, so they run in a bare

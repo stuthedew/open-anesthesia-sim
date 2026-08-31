@@ -70,8 +70,10 @@ thing and cannot go stale. The general rule is worth stating, because the same
 trap is available in the other directions: a number that ages with commits is
 deleted, and only a number that ages with releases is worth a check.
 
-**Two design findings from the PL-8HJ2 branch, 2026-08-31 - the approach above
-needs a decision before it is built.**
+**Two design findings from the PL-8HJ2 branch, 2026-08-31. Both recommendations
+taken (project owner, 2026-08-31); the approach above is superseded by them and
+by the withdrawal of the sixth direction, and what was built follows this
+section rather than the "Approach" above.**
 
 *The newest release is untagged at the moment the check runs.* The tag is
 placed on the merge commit, so between the release commit and the tag push
@@ -101,7 +103,12 @@ Decided 2026-08-30: `doc_check` grows the checks, `make release` does not grow
 prose generation. `PL-J3ZK` (tag releases so a commit maps to its version) owns
 the still-open v0.1.0/v0.2.0 decision the paragraph describes.
 
-**Done when.** `doc_check` reports a mismatch in any of the five directions
-above, says nothing when git cannot answer, and has tests covering a matching
-pair of sentences, a missing tag, an unclaimed tag, a wrong count, and two
-sentences that disagree with each other.
+**Done when.** `doc_check` reads the version table's `Completed` rows against
+`git tag` and reports, in both directions, a completed release carrying no tag
+and a release tag the table does not name; holds an explicit `**N versions are
+untagged**` sentence to the versions it names, to their rows, and to `git tag`;
+reports the version marked `current baseline` as an advisory rather than an
+error while its tag is still to be pushed; and says nothing at all when git
+cannot answer. Tests cover a matching pair, a missing tag, an unclaimed tag, a
+wrong count, two sentences that disagree with each other, the mid-release
+advisory, and the silence.
