@@ -3,12 +3,14 @@ id: PL-FBCC
 title: The session-start hook prints fabricated ahead/behind counts when no merge base resolves
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: dev-tooling
 touches: .claude/hooks/docket-digest.sh, tests/unit/test_docket_digest_hook.py
 added: 2026-08-31
 verify: uv run pytest tests/unit/test_docket_digest_hook.py
+closed: 2026-08-31
+pr: 109
 ---
 
 **Problem.** `branch_state()` prints whatever `git rev-list --left-right
