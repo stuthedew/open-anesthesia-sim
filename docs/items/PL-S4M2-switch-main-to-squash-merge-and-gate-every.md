@@ -3,12 +3,14 @@ id: PL-S4M2
 title: Switch main to squash-merge, so each item lands as one commit
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: public-history
 blocked-by: PL-ZQ9C
 added: 2026-08-30
 not-delegable: the two settings live in GitHub repository configuration, not in the tree, and no MCP tool in this session exposes them. A session can confirm the result on a throwaway pull request but cannot make the change.
+pr: 106
+closed: 2026-08-31
 ---
 
 **Problem.** Main carries 59 merge commits whose subjects are branch names
