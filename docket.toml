@@ -45,11 +45,23 @@ untriaged_stale_days = 14
 
 # The date this project adopted the rule that a `ready` item names the command
 # that proves it done (PL-G049). Items captured on or after it must carry
-# `verify:`, or record in `not-delegable:` why no command can prove them; the
-# 47 captured before it are reported as one grooming advisory instead of 47
-# errors, so the rule starts working immediately without making `docket check`
-# useless on the day it lands. Moving this date earlier is how the backlog is
-# closed out - it is a burn-down, not a permanent exemption.
+# `verify:`, or record in `not-delegable:` why no command can prove them, so
+# the rule started working immediately without making `docket check` useless
+# on the day it landed.
+#
+# The items captured before it are a closed set - nothing can be added to it,
+# since the test is the capture date - and it burns down as work is picked up
+# rather than in a campaign (PL-5YK8). `checks.py` raises the advisory only
+# for the ones `docket next` is about to offer, and carries the remaining
+# total inside the message, so it names work a session can do in the session
+# that sees it and reaches zero on a normal day. Backfilling the rest was
+# rejected: a command written for an item nobody has started cannot be run
+# before it is written, and every command in this store that was written that
+# way was wrong.
+#
+# Moving this date earlier remains available and would make the whole set an
+# error at once. Do not, without first giving each item a command that has
+# actually been run.
 verify_required_from = 2026-08-30
 
 # Classes that make a release a minor version bump rather than a patch.

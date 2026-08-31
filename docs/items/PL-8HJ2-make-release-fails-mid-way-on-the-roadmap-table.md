@@ -3,11 +3,14 @@ id: PL-8HJ2
 title: make release stops mid-way on the ROADMAP table it does not write, so every release ends in a red test
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: release-roadmap-seam
 touches: subprojects/docket/src/docket/release.py, Makefile, subprojects/docket/tests/test_release.py, ROADMAP.md
 added: 2026-08-30
+closed: 2026-08-31
+commit: f9f5226
+pr: 100
 not-delegable: proving this means cutting a release, so no check can run beforehand - the same reason PL-674D carried
 ---
 
