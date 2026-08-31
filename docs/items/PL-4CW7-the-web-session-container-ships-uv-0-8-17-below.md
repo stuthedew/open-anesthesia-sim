@@ -3,12 +3,14 @@ id: PL-4CW7
 title: The web session container ships uv 0.8.17, below the project's required-version floor
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 added: 2026-08-30
 touches: docs/items/PL-4CW7-the-web-session-container-ships-uv-0-8-17-below.md
 not-delegable: the fix is a setting in the Claude Code environment, outside this repository, so no command run inside a checkout can prove it
+pr: 105
+closed: 2026-08-31
 ---
 
 **Problem.** The Claude Code web environment's container image ships uv 0.8.17
