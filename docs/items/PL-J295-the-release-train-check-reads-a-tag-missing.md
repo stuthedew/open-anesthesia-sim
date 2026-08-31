@@ -7,7 +7,7 @@ status: ready
 classes: defect, infra
 feature: dev-tooling
 milestone: v0.2.8
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/README.md
 added: 2026-08-31
 verify: uv run pytest tests/unit/test_doc_check.py -k shallow
 ---

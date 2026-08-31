@@ -159,11 +159,32 @@ def behind_remote(root: Path, base: str, *, runner: Runner | None = None) -> int
     return int(counts) if counts.isdigit() else None
 
 
+def is_shallow(root: Path, *, runner: Runner | None = None) -> bool | None:
+    """Whether this checkout is truncated, or `None` when git will not say.
+
+    Three answers rather than two, because the callers need the difference. A
+    shallow clone is missing history and tags it can name; a git too old for
+    `--is-shallow-repository`, a directory that is not a repository, or no git
+    at all leaves the question open. Both forbid inferring anything from
+    something's absence, and only the first can explain why.
+    """
+    run = runner or _run_git
+    answer = run(["rev-parse", "--is-shallow-repository"], root).strip()
+    if answer == "true":
+        return True
+    if answer == "false":
+        return False
+    return None
+
+
 def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
     """Every tag name the repository holds.
 
     Empty for a checkout with no tags, no git, or no repository at all - the
-    same collapse every other read here makes. What that emptiness *means* is
+    same collapse every other read here makes. **A truncated clone does not
+    collapse to empty**: it returns the tags reachable within its depth and
+    silently omits the rest, so a caller reasoning from a tag's absence must
+    ask `is_shallow` first (`PL-J295`). What that emptiness *means* is
     decided by the caller: `release.is_untagged` reads it as "this project does
     not tag" rather than as "every release is untagged", because a tool that
     started refusing releases in a project that never tagged would be teaching
@@ -228,13 +249,13 @@ def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullReq
     question the caller is perfectly able to skip.
     """
     run = runner or _run_git
-    shallow = run(["rev-parse", "--is-shallow-repository"], root).strip()
-    if shallow == "true":
+    shallow = is_shallow(root, runner=run)
+    if shallow is True:
         return PullRequestHistory(
             declined="the checkout is a shallow clone, so the commits it is missing are "
             "the oldest ones and the longest-settled provenance would read as broken"
         )
-    if shallow != "false":
+    if shallow is None:
         return PullRequestHistory(declined="git cannot say whether this checkout is complete")
     subjects = run(["log", "--format=%s", default_base(root, runner=run)], root)
     if not subjects.strip():

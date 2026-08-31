@@ -687,6 +687,13 @@ def _advisories(root: Path) -> list[str]:
     return doc_check.analyze(root).advisories
 
 
+def _tag_names(root: Path) -> set[str]:
+    listed = subprocess.run(
+        ("git", "tag", "--list"), cwd=root, check=True, capture_output=True, text=True
+    )
+    return {name.strip() for name in listed.stdout.splitlines() if name.strip()}
+
+
 def test_a_roadmap_whose_tags_match_the_repository_is_quiet(tmp_path: Path) -> None:
     root = _tagged(tmp_path, "v0.2.4", "v0.2.5")
 
@@ -792,15 +799,59 @@ def test_a_missing_tags_statement_is_an_error(tmp_path: Path) -> None:
 def test_a_checkout_git_cannot_answer_for_is_told_nothing(tmp_path: Path) -> None:
     """A tag-less clone is a normal checkout, and PL-J3ZK's own trap.
 
-    Every way git can fail to answer collapses to the same empty set - no
-    repository, no git, tags not fetched, a shallow clone - so a repository
-    holding no tags exercises the silence deterministically, where a directory
-    that merely is not a checkout would depend on what sits above `tmp_path`.
+    No repository, no git and no tags fetched all collapse to the same empty
+    set, so a repository holding no tags exercises the silence
+    deterministically, where a directory that merely is not a checkout would
+    depend on what sits above `tmp_path`.
+
+    A shallow clone was listed here too and does *not* belong: it returns a
+    partial set rather than an empty one, which is why it went unguarded until
+    `PL-J295`. The test below covers it.
     """
     root = _tagged(tmp_path)
 
     assert _errors(root) == []
     assert _advisories(root) == []
+
+
+def test_a_truncated_clone_declines_instead_of_calling_older_releases_untagged(
+    tmp_path: Path,
+) -> None:
+    """PL-J295: a shallow clone holds some tags, so absence proves nothing.
+
+    Built as a real `--depth=1` clone rather than a stub, because the whole
+    defect was a wrong belief about what git returns in this state: the tag on
+    the older commit is unreachable and simply does not appear, while the tag
+    on the tip does. A fake tag reader would encode the belief instead of
+    testing it.
+    """
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    root = _tagged(origin, "v0.2.4")
+    (root / "second.txt").write_text("a later commit\n", encoding="utf-8")
+    for command in (("add", "-A"), ("commit", "-qm", "second"), ("tag", "v0.2.5")):
+        subprocess.run(("git", *command), cwd=root, check=True, capture_output=True)
+
+    clone = tmp_path / "clone"
+    subprocess.run(
+        ("git", "clone", "--depth=1", "--quiet", root.as_uri(), str(clone)),
+        check=True,
+        capture_output=True,
+    )
+    assert _tag_names(clone) == {"v0.2.5"}, "the fixture must actually truncate the tag set"
+
+    report = doc_check.analyze(clone)
+
+    assert report.errors == []
+    assert any("shallow clone" in message for message in report.declined)
+
+
+def test_a_complete_clone_still_reports_a_release_with_no_tag(tmp_path: Path) -> None:
+    """The decline must not become a blanket amnesty for the check it guards."""
+    root = _tagged(tmp_path, "v0.2.5")
+
+    assert any("v0.2.4 is marked completed but git holds no tag" in e for e in _errors(root))
+    assert doc_check.analyze(root).declined == []
 
 
 def test_a_roadmap_with_no_completed_release_is_left_alone(tmp_path: Path) -> None:
