@@ -6,7 +6,8 @@ effort: S
 status: ready
 classes: infra, session-cost
 feature: dev-tooling
-touches: tools/doc_check.py, .github/workflows/quality.yml
+touches: tools/doc_check.py, .github/workflows/quality.yml, tests/unit/test_doc_check.py
+verify: uv run pytest tests/unit/test_doc_check.py
 added: 2026-08-24
 ---
 

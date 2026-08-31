@@ -807,3 +807,111 @@ def test_a_roadmap_with_no_completed_release_is_left_alone(tmp_path: Path) -> No
     roadmap = VERSIONED_ROADMAP.replace("Completed", "Planned")
 
     assert _errors(_tagged(tmp_path, "v0.2.4", roadmap=roadmap)) == []
+
+
+# PL-W5LG: a workflow step names repository scripts by path exactly as the
+# documentation does, and nothing held it to them until this check. The
+# scripts live under `tools/harness/`, which the fixture's package map draws
+# as a covered directory, so adding one does not trip the map check as well.
+
+WORKFLOW = """\
+name: quality
+
+on: [push, pull_request]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: uv run python tools/harness/thing.py check
+      - run: bin/runner check
+"""
+
+
+def _with_workflow(root: Path, body: str = WORKFLOW) -> Path:
+    """Give a repository a CI workflow, and the scripts its steps name."""
+    workflows = root / ".github" / "workflows"
+    workflows.mkdir(parents=True, exist_ok=True)
+    (workflows / "quality.yml").write_text(body, encoding="utf-8")
+    (root / "tools" / "harness").mkdir(parents=True, exist_ok=True)
+    (root / "tools" / "harness" / "thing.py").write_text("", encoding="utf-8")
+    (root / "bin").mkdir(exist_ok=True)
+    (root / "bin" / "runner").write_text("", encoding="utf-8")
+    return root
+
+
+def test_a_workflow_whose_paths_resolve_is_quiet(tmp_path: Path) -> None:
+    assert _errors(_with_workflow(_repo(tmp_path))) == []
+
+
+def test_a_deleted_script_a_ci_step_runs_is_an_error(tmp_path: Path) -> None:
+    """PL-W5LG's failure: `tools/punch_list.py` went, and only CI still named it."""
+    root = _with_workflow(_repo(tmp_path))
+    (root / "tools" / "harness" / "thing.py").unlink()
+
+    errors = _errors(root)
+
+    assert any(
+        "runs `tools/harness/thing.py`, which does not exist" in message for message in errors
+    )
+
+
+def test_a_suffixless_script_is_held_to_the_same_standard(tmp_path: Path) -> None:
+    """`bin/docket` is the reference that motivated the check, and has no suffix.
+
+    The citation checker keys on a file's extension, which cannot see this one
+    at all, so the workflow check keys on the first path segment instead.
+    """
+    root = _with_workflow(_repo(tmp_path))
+    (root / "bin" / "runner").unlink()
+
+    errors = _errors(root)
+
+    assert any("runs `bin/runner`, which does not exist" in message for message in errors)
+
+
+def test_an_action_reference_is_not_read_as_a_repository_path(tmp_path: Path) -> None:
+    """`actions/checkout@v7.0.1` has a path's shape and names nothing in the tree."""
+    root = _with_workflow(_repo(tmp_path))
+
+    assert not any("actions/checkout" in message for message in _errors(root))
+
+
+def test_a_block_scalar_step_is_read_line_by_line(tmp_path: Path) -> None:
+    body = WORKFLOW.replace(
+        "      - run: uv run python tools/harness/thing.py check\n",
+        "      - run: |\n"
+        "          uv sync --locked\n"
+        "          uv run python tools/harness/gone.py check\n",
+    )
+    root = _with_workflow(_repo(tmp_path), body=body)
+
+    errors = _errors(root)
+
+    assert any(
+        "runs `tools/harness/gone.py`, which does not exist" in message for message in errors
+    )
+
+
+def test_a_block_scalar_ends_at_the_next_step(tmp_path: Path) -> None:
+    """A step after a block scalar is a step, not more of the block's body."""
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n",
+        "      - run: |\n          bin/runner check\n      - run: tools/harness/thing.py\n",
+    )
+
+    assert _errors(_with_workflow(_repo(tmp_path), body=body)) == []
+
+
+def test_an_expansion_is_skipped_rather_than_guessed_at(tmp_path: Path) -> None:
+    """A path built at run time cannot be resolved by reading the tree."""
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n", "      - run: ${{ github.workspace }}/bin/runner check\n"
+    )
+
+    assert _errors(_with_workflow(_repo(tmp_path), body=body)) == []
+
+
+def test_a_repository_with_no_workflows_is_left_alone(tmp_path: Path) -> None:
+    assert _errors(_repo(tmp_path)) == []
