@@ -32,10 +32,10 @@ from .release import (
 from .roadmap import Wave, wave
 from .store import find_item, new_id, read_items, write_item
 from .vcs import (
+    FlightReport,
     StrandedReport,
     branches_in_flight,
     default_base,
-    in_flight_ids,
     merged_pull_requests,
     stranded,
     tags,
@@ -75,10 +75,36 @@ def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
     return directory, read_items(directory), config
 
 
-def _flight(args: argparse.Namespace) -> set[str]:
+def _flight(args: argparse.Namespace) -> FlightReport:
+    """What is in flight, and which refs this checkout could not read to find out.
+
+    The whole report rather than its ids, because every command below ranks or
+    marks against the ids and none of them can see the refs that went unread.
+    Handing them a set would present a partial reading as a complete one - a
+    session told an item is startable when one unread ref might be carrying it
+    - which is the collapse `FlightReport` exists to prevent.
+
+    The root is resolved from the store, exactly as `_load` resolves it. Asking
+    git about the repository this command happens to be *run* in, while
+    answering about a queue somewhere else, is the same wrong-project error
+    `_load` guards against and is harder to see: the branches come back looking
+    perfectly plausible.
+    """
     if getattr(args, "no_git", False):
-        return set()
-    return in_flight_ids(find_root())
+        return FlightReport()
+    return branches_in_flight(args.items.parent if args.items else find_root())
+
+
+def _say_unread(flight: FlightReport) -> None:
+    """Print the partial-answer line, for the commands that render their own output.
+
+    `list`, `status`, `delegable` and the digest get it from the renderer that
+    builds the rest of their answer; `next` and `concurrent` assemble theirs
+    here, so they say it here. One sentence either way - it is `render` that
+    owns the wording.
+    """
+    if line := render.format_unread(flight):
+        print(line)
 
 
 def _stranded(
@@ -134,7 +160,9 @@ def _offered(
     session is being asked to act on.
     """
     plan = _plan(root, items, config)
-    picks = recommend(list(items), _flight(args), scope=plan.scope if plan is not None else None)
+    picks = recommend(
+        list(items), _flight(args).ids, scope=plan.scope if plan is not None else None
+    )
     return frozenset(pick.item.identifier for pick in picks)
 
 
@@ -300,20 +328,22 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         print()
         print("  No declared overlap (not a guarantee - verify before starting both):")
         for other in free:
-            flag = " [IN FLIGHT]" if other.identifier in flight else ""
+            flag = " [IN FLIGHT]" if other.identifier in flight.ids else ""
             print(f"    {other.identifier} {other.title}{flag}")
         if not free:
             print("    nothing")
+        _say_unread(flight)
         return 0
 
     batch = parallel_batch(candidates, args.limit)
     print(f"A batch that can be worked at once ({len(batch)} items, best-first):")
     for item in batch:
-        flag = " [IN FLIGHT]" if item.identifier in flight else ""
+        flag = " [IN FLIGHT]" if item.identifier in flight.ids else ""
         print(f"  {item.priority} {item.identifier} {item.title}{flag}")
     print()
     print("No declared overlap between these. That is not a guarantee: `touches` is")
     print("a prediction made when each item was written, so verify before starting.")
+    _say_unread(flight)
     return 0
 
 
@@ -351,7 +381,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     flight = _flight(args)
     picks = recommend(
         items,
-        flight,
+        flight.ids,
         effort=args.effort,
         limit=args.limit,
         scope=plan.scope if plan is not None else None,
@@ -360,16 +390,18 @@ def cmd_next(args: argparse.Namespace) -> int:
         print("Nothing is ready to start.")
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
+        _say_unread(flight)
         return 0
     print(f"{len(report.open_items)} open. Suggested next:\n")
     for index, pick in enumerate(picks, start=1):
         print(f"  {index}. {pick.describe()}\n")
-    if flight:
-        print(f"Excluded, already in flight: {', '.join(sorted(flight))}")
+    if flight.ids:
+        print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
     if report.advisories:
         print(
             f"{len(report.advisories)} grooming advisory(ies) pending; `docket check` to see them."
         )
+    _say_unread(flight)
     return 0
 
 

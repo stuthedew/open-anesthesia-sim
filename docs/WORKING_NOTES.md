@@ -146,6 +146,22 @@ larger half. `PL-YSXF` (a ref named as unread loses the id its own branch name
 carries) is the same hole seen from inside `branches_in_flight` and was
 captured in the same session; the two are one pass.
 
+**`PL-S1P1` landed, 2026-08-31** (pull request 123), and it closed as a type
+change rather than a line of output: `in_flight_ids` is gone, `FlightReport`
+carries an `ids` property, and the six answers that rank or mark against
+in-flight work take the report. The gap now travels with the answer instead of
+being dropped at the boundary, which is what stops the next caller re-opening
+it. `_flight` also stopped resolving its root with `find_root()` while every
+other command resolved it from the store.
+
+`PL-YSXF` is what is left of the cluster, and it did *not* come with
+`PL-S1P1`: this pass carried the gap to the callers, that one narrows the gap
+itself - a ref whose *name* proves an id needs no history at all, and the name
+loop never sees it because `unreadable` is filtered out before it runs. It is
+still the cheapest thing to do next in that function, the design pass over it
+having just been paid for. It is untriaged and was captured after v0.2.8's
+freeze, so admitting it is a decision rather than an assumption.
+
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 
 Not scoped yet. The performance blocker this waited on has landed: render

@@ -11,6 +11,7 @@ here and the one that compounds.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import date
 
 from .checks import REQUIRED_BRIEF, Report
@@ -44,7 +45,32 @@ def _counts(report: Report) -> str:
     return ", ".join(f"{n} {p}" for p, n in counts.items())
 
 
-def _marks(item: Item, in_flight: set[str], protected: tuple[str, ...] = ()) -> str:
+def format_unread(flight: FlightReport) -> str:
+    """The one line saying this answer is partial, or nothing when it is whole.
+
+    Every command that reads the queue prints it, because every one of them
+    ranks or marks against ids the checkout could prove and none of them can
+    see the refs it could not. Silence there is the failure: a session is told
+    an item is startable when the truth is that one ref went unread and might
+    be carrying it, and the collision surfaces at push time instead.
+
+    It says what went unread rather than what to do about it, for the reason
+    `flight` reports rather than blocks - a ref beyond a truncated clone's
+    horizon is the normal state of an agent session's container, and a tool
+    that refused to answer there would refuse to answer at all.
+    """
+    if not flight.unreadable:
+        return ""
+    base = flight.base or "the default branch"
+    them = "it" if len(flight.unreadable) == 1 else "them"
+    return (
+        f"{_plural(len(flight.unreadable), 'ref', 'refs')} could not be compared with {base} "
+        f"on the history this checkout holds, so work in flight on {them} is missing here; "
+        f"`bin/docket flight` names {them}."
+    )
+
+
+def _marks(item: Item, in_flight: Collection[str], protected: tuple[str, ...] = ()) -> str:
     marks = [m for m in (item.effort, item.status) if m]
     if item.milestone:
         marks.append(item.milestone)
@@ -58,10 +84,10 @@ def _marks(item: Item, in_flight: set[str], protected: tuple[str, ...] = ()) -> 
 
 
 def format_list(
-    report: Report, in_flight: set[str] | None = None, protected_paths: tuple[str, ...] = ()
+    report: Report, in_flight: FlightReport | None = None, protected_paths: tuple[str, ...] = ()
 ) -> str:
     """One line per open item: the queue without the briefs."""
-    flight = in_flight or set()
+    flight = in_flight or FlightReport()
     if not report.open_items and not report.untriaged:
         return ""
 
@@ -71,7 +97,7 @@ def format_list(
     for item in ordered:
         lines.append(
             f"{item.priority} {item.identifier:<{width}} {item.title} "
-            f"({_marks(item, flight, protected_paths)})"
+            f"({_marks(item, flight.ids, protected_paths)})"
         )
 
     if report.untriaged:
@@ -80,10 +106,14 @@ def format_list(
         for item in sorted(report.untriaged, key=lambda i: i.sort_key()):
             lines.append(f"   {item.identifier:<{width}} {item.title}")
     lines.append("Read an item's brief before starting it; this listing is for choosing.")
+    if unread := format_unread(flight):
+        lines.append(unread)
     return "\n".join(lines)
 
 
-def format_delegable(report: Report, in_flight: set[str], protected_paths: tuple[str, ...]) -> str:
+def format_delegable(
+    report: Report, in_flight: FlightReport, protected_paths: tuple[str, ...]
+) -> str:
     """The worker's whole reading list: what may be worked, and what proves it.
 
     A separate answer from `next`, deliberately. `next` answers "what should
@@ -95,14 +125,22 @@ def format_delegable(report: Report, in_flight: set[str], protected_paths: tuple
     candidates = [
         item
         for item in sorted(report.open_items, key=lambda i: i.sort_key())
-        if item.delegability(protected_paths) is None and item.identifier not in in_flight
+        if item.delegability(protected_paths) is None and item.identifier not in in_flight.ids
     ]
+    unread = format_unread(in_flight)
     if not candidates:
-        return (
-            "Nothing is delegable right now.\n"
-            "An item qualifies when it is ready, is not safety- or science-classed, "
-            "names a `verify:` command,\nand declares `touches` outside the "
-            "protected paths. `docket list` shows what is open."
+        return "\n".join(
+            filter(
+                None,
+                (
+                    "Nothing is delegable right now.",
+                    "An item qualifies when it is ready, is not safety- or science-classed, "
+                    "names a `verify:` command,",
+                    "and declares `touches` outside the "
+                    "protected paths. `docket list` shows what is open.",
+                    unread,
+                ),
+            )
         )
 
     width = max(len(item.identifier) for item in candidates)
@@ -113,12 +151,14 @@ def format_delegable(report: Report, in_flight: set[str], protected_paths: tuple
         lines.append("")
     lines.append("Read each item's brief before starting it, and follow docs/worker.md.")
     lines.append("Anything not listed here is not yours to take, whatever its priority.")
+    if unread:
+        lines.append(unread)
     return "\n".join(lines)
 
 
 def format_digest(
     report: Report,
-    in_flight: set[str] | None = None,
+    in_flight: FlightReport | None = None,
     ready: Readiness | None = None,
     plan: Wave | None = None,
     stranded: StrandedReport | None = None,
@@ -142,7 +182,7 @@ def format_digest(
     the digest is the only place a session can be told the queue it is reading
     is not all of it.
     """
-    flight = in_flight or set()
+    flight = in_flight or FlightReport()
     if not report.items:
         return ""
 
@@ -151,17 +191,20 @@ def format_digest(
         if item.priority != "P0":
             continue
         lines.append(
-            f"  P0 (before feature work): {item.identifier} {item.title} ({_marks(item, flight)})"
+            "  P0 (before feature work): "
+            f"{item.identifier} {item.title} ({_marks(item, flight.ids)})"
         )
 
     top = next((i for i in sorted(report.open_items, key=lambda i: i.sort_key())), None)
     if top is not None and top.priority != "P0":
-        lines.append(f"  Top: {top.identifier} {top.title} ({_marks(top, flight)})")
+        lines.append(f"  Top: {top.identifier} {top.title} ({_marks(top, flight.ids)})")
 
-    if flight:
+    if flight.ids:
         lines.append(
-            f"  In flight on a branch: {', '.join(sorted(flight))} - do not start these again."
+            f"  In flight on a branch: {', '.join(sorted(flight.ids))} - do not start these again."
         )
+    if unread := format_unread(flight):
+        lines.append(f"  {unread}")
     if stranded is not None and stranded.items:
         named = ", ".join(
             f"{item.identifier} ({_gloss(item.title)})" for item in stranded.items[:2]
@@ -510,7 +553,7 @@ def format_priority_groups(items: list[Item]) -> str:
 
 
 def format_status(
-    report: Report, ready: Readiness | None = None, in_flight: set[str] | None = None
+    report: Report, ready: Readiness | None = None, in_flight: FlightReport | None = None
 ) -> str:
     """The whole project at feature altitude, which is the altitude decisions happen at.
 
@@ -523,7 +566,7 @@ def format_status(
     """
     from .plan import features as group_features
 
-    flight = in_flight or set()
+    flight = in_flight or FlightReport()
     grouped = group_features(report.items)
     lines: list[str] = []
 
@@ -538,7 +581,7 @@ def format_status(
         if not candidates:
             return "all remaining work is blocked"
         item = candidates[0]
-        mark = " [IN FLIGHT]" if item.identifier in flight else ""
+        mark = " [IN FLIGHT]" if item.identifier in flight.ids else ""
         return f"next: {item.identifier} {item.title} ({item.effort}){mark}"
 
     if underway:
@@ -557,7 +600,7 @@ def format_status(
     loose = [
         i
         for i in report.open_items
-        if not i.feature and i.status != "blocked" and i.identifier not in flight
+        if not i.feature and i.status != "blocked" and i.identifier not in flight.ids
     ]
     if loose:
         lines.append("")
@@ -582,6 +625,9 @@ def format_status(
             f"{ready.current_version}{done_note}."
         )
         lines.append(f"  Next version would be {ready.suggested_version}.")
+    if unread := format_unread(flight):
+        lines.append("")
+        lines.append(unread)
     return "\n".join(lines)
 
 

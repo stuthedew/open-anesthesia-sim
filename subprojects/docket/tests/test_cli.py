@@ -901,3 +901,24 @@ def test_flight_does_not_answer_from_a_walk_the_clone_truncated(
     assert "PL-M01" not in out
     assert "1 ref cannot be compared with origin/main" in out
     assert f"  origin/{BRANCH}" in out
+
+
+def test_the_queue_commands_say_when_a_ref_went_unread(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-S1P1: the gap reached `docket flight` and stopped there.
+
+    Every other command read the ids alone, so the same checkout that tells
+    `flight` it could not read a ref told `next` that the queue was fully
+    known - and `next` is the one a session actually asks. The refs here are
+    real and so is the truncation: `_shallow_pair` is the container in
+    miniature, and it is the ordinary state of one.
+    """
+    work = _shallow_pair(tmp_path)
+    store = str(work / "items")
+
+    for command in ("next", "list", "status", "digest", "delegable", "concurrent"):
+        assert main(["--items", store, command]) == 0
+        out = capsys.readouterr().out
+        assert "1 ref could not be compared with origin/main" in out, command
+        assert "bin/docket flight" in out, command
