@@ -75,8 +75,15 @@ select = ["E", "F", "I", "UP", "B"]
 # doubles stand in for Flet's `Page` and `Control`. Annotating a UI double to
 # satisfy the framework's types is the most work in this repository for the
 # least return, because a wrongly typed fake fails the test that uses it.
-# Revisit if the count outside `test_simulation_view.py` grows well past the
-# 12 that sit there now.
+#
+# Most of the 12 errors outside that file are the gate arguing with a
+# required practice rather than finding a defect: `test_alveolar.py` passes
+# `"not a number"` to a `float` parameter, and `test_parameters.py` builds a
+# model with `type()` so its `.model_validate` is invisible. Both are the
+# invalid-input and pathological-input tests CLAUDE.md's safety standard asks
+# for, and gating `tests/` would mean a suppression on each - which
+# `docs/worker.md` forbids a delegated worker from writing. Revisit if errors
+# appear there that are neither a UI double nor a deliberately wrong argument.
 [tool.mypy]
 python_version = "3.14"
 files = ["src", "tools", "subprojects/docket/src"]
