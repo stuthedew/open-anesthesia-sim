@@ -53,14 +53,47 @@ into this one, was filed because the original scope drew it one sentence too
 early and excluded the count and the version names, which are as decidable as
 the list above them.
 
-**Live instance, 2026-08-31.** A third decidable sentence in the same
-paragraph is false on `main` today: "the only nine it does not resolve are the
-unreleased commits after v0.2.7". `git rev-list --count v0.2.7..origin/main`
-reports 67. It went stale the same way the list and the count did - by commits
-landing, with nothing reading the sentence - so it belongs in the same check as
-a sixth direction: the number named against the count of commits after the
-newest tag. Like the others, it says nothing when git cannot answer, which a
-shallow checkout cannot.
+**Live instance, 2026-08-31 - corrected, and the sixth direction withdrawn.**
+A third decidable sentence in the same paragraph was false on `main`: "the only
+nine it does not resolve are the unreleased commits after v0.2.7", against a
+true count of 69. Repaired in the PL-8HJ2 branch by deleting the number rather
+than by checking it, along with "all 214 commits on `main`" in the same
+sentence.
+
+Checking it, as this item originally proposed, would have been the wrong fix.
+That number moves on every commit, not on every release, so a check reading it
+turns `make check` red on `main` after each merge until somebody edits this
+file - a check that fires on a fixed schedule of "always" and is switched off
+within a week. The sentence loses nothing by not carrying a count: "the commits
+it does not resolve are the unreleased ones after the newest tag" says the same
+thing and cannot go stale. The general rule is worth stating, because the same
+trap is available in the other directions: a number that ages with commits is
+deleted, and only a number that ages with releases is worth a check.
+
+**Two design findings from the PL-8HJ2 branch, 2026-08-31 - the approach above
+needs a decision before it is built.**
+
+*The newest release is untagged at the moment the check runs.* The tag is
+placed on the merge commit, so between the release commit and the tag push
+there is a version that is `Completed` in the table and absent from `git tag`.
+Any of the directions above, phrased as an error, therefore fails `make check`
+on every release branch - which is exactly the failure PL-8HJ2 was opened to
+remove, arriving through a different door. Whatever the mechanism, the version
+the table marks `current baseline` has to be an advisory rather than an error
+until its tag exists.
+
+*The tagged-version list duplicates the version table, and deleting it is
+stronger than checking it.* The list restates which versions have shipped -
+which the table above it already says - and adds one bit per version, tagged or
+not, which `git tag` answers outright. So the recommendation is to drop the
+list from the prose and hold the table's `Completed` rows to `git tag`
+directly, keeping an explicit exception sentence (`**N versions are
+untagged**: ...`, count checked against the names) for the case the project has
+had before. That is one fewer hand-edit per release, no prose grammar for the
+list, and it catches the failure the list cannot: a release that goes out
+untagged *and* unmentioned reads as consistent under the original approach,
+because the list and `git tag` agree that neither has it. Only the table knows
+it shipped.
 
 **Related.** `PL-8HJ2` (`make release` stops mid-way on the `ROADMAP.md` table
 it does not write) is the other half of the same seam and shares this feature.
