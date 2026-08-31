@@ -2,6 +2,16 @@
 
 These instructions apply to all AI coding agents working on this repository.
 
+Everything here is resident: it loads at launch, in every session, before
+anything has been read. It is therefore limited to what a session could get
+wrong *before* it would think to look anything up. The rest of the working
+agreement is routed to where it fires — `.claude/skills/docket/SKILL.md` for
+the queue workflows, `.claude/rules/instruction-writing.md` for the shape of a
+reply, `.claude/rules/core-domain.md` and `.claude/rules/expert-review.md` for
+the standards that apply to particular parts of the tree, and
+`docs/maintainer.md` for what only the project owner can act on. Nothing was
+dropped in that routing; adding to it follows the same test, below.
+
 ## Working with the project owner
 
 **The outcome is the requirement. An implementation sketched alongside it is
@@ -62,85 +72,16 @@ is simply wide:
 
 **`.claude/rules/instruction-writing.md` decides the shape of a reply, and it
 wins.** It loads in every session and applies unasked, so it never needs to be
-named in a prompt. Where it and another instruction — this file, a skill, an
-item's brief — describe the same message differently, the rules file decides
-*shape* and the other decides *content*: what the reply must contain, in what
-words, with what judgment, is theirs; what comes first is the rules file's.
-Being the more specific document does not carry the format question. A
-prescribed opening that cannot survive that is edited, not obeyed — say so and
-fix it, per the behavior-change rule below.
-
-**End every reply with what the project owner has to do.** The reasoning
-above it is worth having — they have asked for it — but prose buries the thing
-that needs acting on, and a punchline they have to hunt for is one they will
-miss. So close with a short, scannable block of actions, decisions and things
-to consider, and nothing else:
-
-- Only what needs *them*: a decision, an approval, something to look at, a
-  choice between options. Not a summary of what was just done — that is what
-  the body of the reply was for.
-- Mark a recommendation as a recommendation, plainly, so "here are the
-  options" and "I think you should do this one" are never mixed up.
-- **Order the block the way it will be done, and let the order carry it.**
-  This is `.claude/rules/instruction-writing.md`'s chronological-order rule
-  applied to the closing block; that file governs multi-step output generally,
-  and this bullet covers only the block itself. Where the items have a sequence
-  — one unblocks another, one has to land before the next makes sense — the
-  first line is the first thing to do.
-  Never annotate a later line with "do this one first": a numbered list
-  states an order whether or not one was meant, so an ordering note that
-  disagrees with the numbering makes the reader stop and work out which to
-  believe, which is exactly the friction the block exists to remove. Where
-  the items are genuinely independent, order them by consequence and say in
-  one clause that they can be done in any order.
-- **An action outside the repository carries its exact steps, not its
-  intent.** Anything the owner has to do somewhere this session cannot reach
-  — a repository or account setting, a tag, a plan change, a third-party
-  console — is written as the steps themselves: where to click or what to
-  run, the values to enter, and what the result should look like when it has
-  worked. "Turn on the required-check ruleset" is a task handed back; the
-  menu path, the fields, and the exact check name are the answer. Verify the
-  steps against current documentation before writing them, and where that
-  cannot be reached, say so and give the API or CLI equivalent alongside, so
-  a stale label in one is caught by the other.
-- Keep it short enough to take in at a glance. If it is as long as the reply,
-  it has become a summary rather than a list of actions.
-- When there is genuinely nothing to act on, say that in one line rather than
-  inventing items to fill the block.
-- **Every line must be actionable now. Nothing parked.** "Worth deciding
-  sometime", "consider at some point", "we should think about X eventually" —
-  none of these belong here. They read as items but cannot be acted on, so
-  they turn a list of actions into a list of obligations that never close,
-  and the genuinely actionable lines get skimmed past with them. When
-  something surfaces that is not yet actionable, there are exactly three
-  honest dispositions and they are all yours to pick, not the owner's:
-  decide it yourself if it is yours to decide; put it to them **now** as a
-  real decision, with a recommendation and enough context to answer in one
-  read; or record it and say you did. Filing a queue item is not a decision
-  the owner needs to make — the capture rule already says to do it and not
-  ask. Raising something in order to defer it is the one option that is not
-  available.
-- **Only what this discussion raised.** The block closes the reply that was
-  actually given, not the project. A release offer, a next-item ranking, or a
-  reminder about unrelated open work belongs to a session answering "what
-  should we work on next" — appended to a design round, a question about one
-  mechanism, or a review of one change, it is noise the owner reads past, and
-  it drags the genuinely actionable lines past with it. Two things are always
-  in scope: the next step of the discussion itself, and an existing item that
-  would fix or unblock what the discussion found — name that one, glossed, and
-  say which comes first.
-- **Re-verify every carried-over item before repeating it.** An action that
-  was outstanding earlier in the session may have been done since — by the
-  owner, or on another branch. Repeating it from memory is the single most
-  likely way this block goes wrong, and it costs the owner either a lookup or
-  the same work twice. Whether something is merged, tagged, closed or still
-  open is a fact to check, not a memory to recall: `git fetch --tags`, a
-  glance at `git log origin/main`, `bin/docket show <id>`, or the PR's state
-  — one command each, against the remote rather than the local checkout.
-  Do this for anything asserted about repository state anywhere in a reply,
-  not only in this block; the block is merely where a stale claim is acted on.
-  Say what the check showed when it changes the answer, rather than quietly
-  dropping the item.
+named in a prompt — including its rule 14, the closing block of what the owner
+has to do, which every reply ends with. Where it and another instruction —
+this file, a skill, an item's brief — describe the same message differently,
+the rules file decides *shape* and the other decides *content*: what the reply
+must contain, in what words, with what judgment, is theirs; what comes first is
+the rules file's. Being the more specific document does not carry the format
+question. A prescribed opening that cannot survive that is edited, not obeyed —
+say so and fix it, per the behavior-change rule below. This file states no
+reply format of its own, deliberately: two documents specifying one thing is
+the hazard that rule exists to remove.
 
 This governs the deliverable, not the session. Ordinary judgment inside an
 approach already agreed — naming, structure, where a thing lives, how it is
@@ -168,137 +109,95 @@ is not optional.
 - Keep agent/model parameters in validated, versioned data files.
 - Do not add executable equations to data files.
 - Do not implement beyond the current milestone. `ROADMAP.md` is the
-  authoritative version and milestone map.
+  authoritative version and milestone map. An out-of-milestone idea is
+  recommended and its value explained, never silently implemented; it is
+  built when it fits the current milestone or when the owner approves the
+  scope change.
 - Run pytest, Ruff, and the configured type checker before finishing.
 
 ## Session and tool-use efficiency
 
-Session cost scales with the number of turns multiplied by the size of the
-context, because the whole conversation is resent on every turn. Long
-sessions are therefore disproportionately expensive, and the practices
-below work mainly by keeping context small rather than by choosing a
-cheaper model. They never override the safety-critical verification
-requirements below — trimming applies to routine, low-risk iteration, not
-to skipping a check before a commit or before finishing a task.
+Session cost is turns times context, because the whole conversation is resent
+every turn. So the practices below work by keeping context small — and none of
+them overrides the safety-critical verification requirements below: trimming
+applies to routine iteration, never to skipping a check before a commit or
+before finishing.
 
-- Keep a session short and scoped to one topic. Start a fresh session for
-  an unrelated topic rather than continuing a long one, and prefer a fresh
-  session over compacting an existing one: compaction costs a summarization
-  pass and drops detail that this repository's provenance and safety
-  requirements depend on. `docs/items/` and `docs/WORKING_NOTES.md` exist so
-  that a new session can pick up cold, but picking up cold does not mean
-  reading them whole: rely on the session-start digest for the state of the
-  queue, `docket list` or `docket next` for the items, and read only the item
-  you are working on plus any `docs/WORKING_NOTES.md` thread it cites. One
-  file per item means reading one costs one file. Update both before ending a
-  session with a thread still open.
-- Batch related questions, and related edits, into one turn rather than
-  spreading them across several. Each turn resends the entire context.
-- Prefer targeted reads (an offset/limit range) over whole-file reads for
-  large docs (`docs/MODEL.md`, `docs/WORKING_NOTES.md`, `ROADMAP.md`) once
-  you know roughly where the relevant section is. Read the whole file
-  when editing it or when its overall structure matters.
-- Delegate broad codebase search and file lookup to exploration subagents,
-  whose transcripts stay out of the main context; a small, fast model is
-  appropriate for them (`CLAUDE_CODE_SUBAGENT_MODEL` in Claude Code). Treat
-  what they return as leads to verify against the source, not as findings
-  to rely on.
-- Edit `CLAUDE.md` and the core docs in their own session where practical.
-  They sit in the cached prefix of every request, so editing one partway
-  through a session invalidates that cache for the rest of it.
-- Batch related edits before rerunning the full quality suite (`ruff
-  format`, `ruff check`, `mypy`, `pytest`) rather than rerunning all four
-  after every individual small edit. Still run the full suite before
-  finishing or committing. Use `pytest -q` for routine reruns during
-  iteration; reserve `--cov` for changes where coverage is actually the
-  question (a new test, a new module, a coverage-focused task).
-- Match model capability to the work rather than pinning one model for a
-  whole session. Reasoning-heavy work — architecture and design decisions,
-  new scientific-model design, ambiguous problems or genuine trade-offs,
-  non-obvious debugging and root-cause analysis, and anything within the
-  scope of "Safety-critical clinical-output standard" below — warrants the
-  strongest available model at a high effort setting, both for its design
-  and for the review of the final diff. Executing an already-agreed plan
-  does not. Presentation of clinical values, and the scientific content of
-  `docs/MODEL.md`, are safety-critical work rather than routine execution.
-- Claude Code's `opusplan` mode is a reasonable default for that split, with
-  two caveats: it returns to the cheaper model for execution, so the
-  strong-model review of a safety-critical diff is a deliberate step and not
-  an automatic one; and switching models mid-session starts a cold cache, so
-  group design and execution into runs rather than alternating between them.
-  Model choice never changes what a change must satisfy before it lands, and
-  the maintainer still reviews every safety-critical diff regardless of which
-  model drafted it.
+- Keep a session short and scoped to one topic; start a fresh one for an
+  unrelated topic rather than continuing or compacting a long one. Pick up cold
+  from the session-start digest, `bin/docket next`, and the one item being
+  worked — not by reading the queue whole.
+- Batch related questions, and related edits, into one turn.
+- Prefer targeted reads over whole-file reads of large documents once you know
+  roughly where the section is. Read the whole file when editing it.
+- Delegate broad codebase search to exploration subagents, whose transcripts
+  stay out of the main context. Treat what they return as leads to verify
+  against the source, not findings to rely on.
+- Edit this file and the core docs in their own session where practical: they
+  sit in the cached prefix of every request, so editing one partway through
+  invalidates that cache for the rest of the session.
+- Batch edits before rerunning the full quality suite (`ruff format`, `ruff
+  check`, `mypy`, `pytest`) rather than rerunning all four after each one. Run
+  it in full before finishing or committing; use `pytest -q` while iterating,
+  and `--cov` only when coverage is the question.
+
+Which model a session runs is the owner's lever rather than a session's, so it
+lives in `docs/maintainer.md` along with the settings that support it.
 
 ## Prefer deterministic tooling over repeated model work
 
-The section above keeps one session cheap. This one keeps every later session
-cheap, and it is the higher-leverage of the two: work moved out of the model
-is paid for once and then runs free, while work left to the model is
-re-derived at full context in every session that needs it.
-
-`tools/doc_check.py` and `subprojects/docket/` are what this looks like here.
-Both replaced a pass a session used to do by hand, and both are deliberately
-partial — they decide what the files on disk can decide, and leave the
-judgment alone.
-
-So, when building a mechanism:
+The section above keeps one session cheap; this one keeps every later session
+cheap, and is the higher-leverage of the two. Work moved out of the model is
+paid for once and then runs free; work left to the model is re-derived at full
+context in every session that needs it. `tools/doc_check.py` and
+`subprojects/docket/` are the worked examples. So, when building a mechanism:
 
 - **Find the decidable part and put it in code.** Anything answerable by
-  reading the tree, a data file, or a diff — does this path resolve, is this
-  id already used, does this constant still match the JSON, which
-  documentation lines mention what a change touched — belongs in a script
-  wired into `make check`, a hook, or CI. Prefer this without being asked:
-  it is standing approval for that substitution, and needs no case put for it
-  each time.
-- **Do not script the judgment.** `tools/doc_check.py` decides whether a
-  cited path exists, never whether the sentence around it is still true. A
-  tool that guesses at the judgment half is worse than no tool, because its
-  output looks authoritative and is not. Where that line falls is the design
-  work, and it is worth spending real thought on.
-- **Use the cheapest sufficient tier:** a tool that already exists, then a
+  reading the tree, a data file, or a diff belongs in a script wired into `make
+  check`, a hook, or CI. Prefer this without being asked — it is standing
+  approval, needing no case put for it each time.
+- **Do not script the judgment.** `tools/doc_check.py` decides whether a cited
+  path exists, never whether the sentence around it is still true. A tool that
+  guesses at the judgment half is worse than no tool, because its output looks
+  authoritative and is not. Where that line falls is the design work.
+- **Use the cheapest sufficient tier:** an existing tool, then a
   standard-library script under `tools/`, then a subagent whose transcript
-  stays out of the main context, then the session itself — the last being by
-  a wide margin the most expensive, since its context is resent on every
-  later turn.
-- **Summarizing counts, not only deciding.** `docket next` exists because it
-  answers "which item next" without a session reading the queue at all.
-  Printing the few lines a decision needs, instead of loading the documents
-  that contain them, is the same win as answering a question outright.
-- **The gate is whether it will genuinely run again.** Build when the work
-  recurs — every commit, every close-out, every session start — and the
-  answer is deterministic. Not for a one-off, not around what an existing
-  linter already does, and not where the upkeep would cost more than the
-  passes it saves. Where the benefit is not clear, the answer is no; an
-  unused tool is a maintenance burden that also has to be kept true.
+  stays out of the main context, then the session itself — the last by a wide
+  margin the most expensive.
+- **Summarizing counts, not only deciding.** Printing the few lines a decision
+  needs, instead of loading the documents that hold them, is the same win as
+  answering the question outright.
+- **The gate is whether it will genuinely run again.** Build where the work
+  recurs and the answer is deterministic. Not for a one-off, not around what a
+  linter already does, and not where upkeep would cost more than the passes it
+  saves. Where the benefit is unclear, the answer is no.
 
-Cost is not the only argument. A script answers identically on every run,
-can carry regression tests, and states its rule where a reviewer can read
-it — which is the safety-critical standard's determinism, traceability, and
-auditability arriving as a side effect. New tools follow the convention the
-existing two set: standard library only, so a hook or a bare checkout can run
-them without the project virtualenv.
+New tools use the standard library only, so a hook or a bare checkout can run
+them without the project virtualenv. A script also answers identically every
+run and states its rule where a reviewer can read it, which is the
+safety-critical standard's determinism and auditability arriving free.
 
 ## The queue, and how the project owner works
 
 `docs/items/` is the queue: one file per item, read and written through
-`bin/docket <command>`, which runs from a bare checkout with no virtualenv. `ROADMAP.md` holds releases; `docs/WORKING_NOTES.md`
-holds narrative behind open threads. The `docket` skill carries the workflows
-and `subprojects/docket/README.md` carries the item format. Invoke the skill
-rather than reconstructing either from here.
+`bin/docket <command>`, which runs from a bare checkout with no virtualenv.
+`ROADMAP.md` holds releases; `docs/WORKING_NOTES.md` holds narrative behind
+open threads. **Invoke the `docket` skill for any queue workflow** — picking
+what to work on, triaging, freezing a debt gate, shipping a release, closing an
+item out — rather than reconstructing it from here; `subprojects/docket/README.md`
+carries the item format. The rules below stay resident only because a session
+acts on them before it would have any reason to load the skill.
 
-**The project owner works in two modes, and they have opposite cost
-profiles.** Recognizing which one is happening is the difference between
-being useful and being expensive.
+**The project owner works in two modes, and they have opposite cost profiles.**
+Recognizing which one is happening is the difference between being useful and
+being expensive.
 
-- **Ideation** — ideas, direction, plans, "what if we". This has to stay
-  cheap, because it often happens when usage is nearly spent, and because a
-  thought lost to a rate limit is the worst available outcome. Capture it and
-  carry on: `docket new` takes several titles in one call, since ideas arrive
-  in clusters. Read nothing you were not already reading, and take no
-  detours.
-- **Implementation** — usage is available and the point is to spend it on
-  work. Here `docket next` picks and the session goes deep.
+- **Ideation** — ideas, direction, plans, "what if we". This has to stay cheap,
+  because it often happens when usage is nearly spent, and because a thought
+  lost to a rate limit is the worst available outcome. Capture it and carry on.
+  Read nothing you were not already reading, and take no detours.
+- **Implementation** — usage is available and the point is to spend it on work.
+  Here `bin/docket next` picks and the session goes deep.
 
 Do not silently convert the first into the second. An idea raised mid-session
 is captured and the session continues; it becomes work only when the owner
@@ -306,259 +205,109 @@ says so.
 
 The division of labour is theirs to set direction and yours to make it real,
 including the parts they did not think to ask for: the version bump, the
-release notes, the item that should have been filed, the check that should
-have run. Anticipate those rather than waiting to be asked, and keep them off
-the owner's desk.
-
-These rules stay here because a session acts on them before it would have any
-reason to load the skill:
+release notes, the item that should have been filed, the check that should have
+run. Anticipate those and keep them off the owner's desk. Decomposition is one
+of them — working out what an idea breaks into, naming the feature and writing
+the briefs is the job being delegated, so propose an answer and invite
+correction rather than handing the question back.
 
 - **Capture, always, and capture cheaply.** Any defect, risk, cleanup,
-  optimization, inconsistency, or idea identified in a session and not fixed
-  in that same session gets recorded before the session ends — findings the
-  owner raises and findings you make on your own alike. `docket new "..."` is
-  the whole procedure: no id to allocate, no band to choose, nothing that can
-  conflict with another branch. Do not ask whether to record it. Say in your
-  reply that you did.
+  optimization, inconsistency, or idea identified in a session and not fixed in
+  that same session gets recorded before the session ends — findings the owner
+  raises and findings you make on your own alike. `bin/docket new "..."` is the
+  whole procedure: no id to allocate, no band to choose, nothing that can
+  conflict with another branch, and it takes several titles in one call because
+  ideas arrive in clusters. Do not ask whether to record it — filing an item is
+  not a decision the owner needs to make. Say in your reply that you did. Where
+  a thread is still open when the session ends, update `docs/WORKING_NOTES.md`
+  too: the item records the work, that file records the narrative behind it.
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and
   then *make the edit before the session ends*. An item on its own changes
-  nothing: it sits in the queue, untriaged and therefore invisible to `docket
-  next`, while every session in the meantime keeps doing the thing that was
-  just corrected. The capture is the record; the edit is the change. Do both,
-  and say in your reply that you did both. This is the one case where editing
-  this file mid-session is right despite the cache cost noted above — a rule
-  that takes effect three sessions late has already cost more than the cache
-  would have.
+  nothing: it sits in the queue, untriaged and therefore invisible to `bin/docket
+  next`, while every session in the meantime keeps doing the thing that was just
+  corrected. The capture is the record; the edit is the change. Do both, and say
+  in your reply that you did both. This is the one case where editing this file
+  mid-session is right despite the cache cost noted above.
 
-  **Route it; do not append here by default.** Ask when a session needs the
-  rule. One that something deterministic can enforce becomes a check. One that
-  matters only once a session is doing a particular task goes in the skill
-  covering that task, which loads on demand. One that matters only in part of
-  the tree goes in a `.claude/rules/*.md` with `paths:` frontmatter, which
-  loads when a session reads a matching file. Only a rule a session could
-  violate before it would think to look anything up is written here. Appending
-  to this file is the last resort rather than the default; PL-H7XN carries the
-  reasoning.
-- **Prefer finishing a feature to advancing several.** Related items share a
-  `feature`; a release is a `milestone`. `docket next` already prefers work
-  that finishes something underway, within its priority band. Do not override
-  that toward novelty.
-- **Workflow work comes before product work until the workflow is settled.**
-  Standing decision, 2026-08-30. The owner's half of this project is ideas,
-  features and direction; the session's half is keeping the work organized and
-  on track. Friction in that second half is paid on every future session, so
-  until it is gone, an item that removes friction from the loop or stops new
-  debt being introduced outranks one that adds capability - whatever the
-  priority bands say.
+  **Route it; do not append here by default.** Ask *at what moment a session
+  needs the rule, and what is the cheapest thing that delivers it then.* Four
+  dispositions, cheapest first:
 
-  This cannot be read off the queue, and the priority field cannot carry it:
-  `docket check` pins `safety`- and `science`-classed items to P1, so the top
-  band is product work by construction and no arrangement of process items
-  gets ahead of it. Do not resolve that by promoting process work into P1 -
-  P1 means "a clinician could be misled", and it stops meaning that the moment
-  it also means "the release script is annoying". `docket next` now ranks what
-  the roadmap's current step names above what it does not, which is what makes
-  the gate lead the list while v0.2.8 is the step - but it reads ids in
-  milestone sections, not this decision, so an item neither section names is
-  placed by neither. Read this rule for those, and say which side of it a
-  proposed piece of work sits on. The exception is work needed to exercise the workflow
-  itself: a product item taken as a test case for a workflow change is
-  workflow work.
+  1. **A check or a script**, wired into `make check`, a hook, or CI. Zero
+     resident context, and it never fails to fire. Deleting prose because
+     something deterministic now enforces it is the strongest outcome here.
+  2. **A skill**, for a multi-step procedure whose trigger is the skill's own
+     trigger. It loads only when relevant; the queue workflows are the example.
+  3. **A path-scoped rule** — a `.claude/rules/*.md` with `paths:` frontmatter,
+     which loads when a session *reads* a matching file. Right for a rule that
+     matters only in part of the tree; wrong for one that must fire before a
+     first write, which no read precedes.
+  4. **Resident here**, only for what a session could violate before it would
+     think to look anything up.
 
-  Retire this bullet when the workflow release ships - it is a phase, not a
-  permanent policy, and leaving it here after it is true would misdirect every
-  session that reads it.
-- **Name the work after the item.** On starting one, rename the session to
-  lead with its id, and put that id at the front of every commit subject and
-  pull request title. Name the branch too where the session creates it
-  (`claude/pl-k7qx-short-slug`); a branch generated before the session
-  started cannot be renamed, which is expected rather than a failure. Say in
-  your reply where you put the id.
-- **Never write an item id bare in a reply.** Ids are random rather than
-  sequential, which is what lets two branches capture work without
-  coordinating — but it means an id carries no information at all. `PL-7YZH`
-  does not hint at what it is the way `PL-042` at least hints at when it was
-  filed, so a reader meeting one cold has to go and open a file. Gloss every
-  mention: the id, then a few words of what it is —
-  `PL-7YZH (test the untested failure paths in the core)`. Repeat the gloss
-  each time rather than only on first use, since replies are read out of
-  order and skimmed. This matters most in the closing block of actions: a
-  decision asked about an unglossed id cannot be made without going to look
-  for it, which is precisely the friction that block exists to remove. Cost
-  is a few words; the alternative is making the owner do a lookup to read
-  their own action list.
-- **Decide where an item's work happens, and act on it.** Continue here or
-  open a fresh session — choose and proceed, do not ask. The skill has the
-  criteria.
+  A rule that lands in none of the four has been lost, which is worse than this
+  file staying long: never delete a rule for being wordy. `make check` reports
+  the resident line total, so growth raises this question instead of passing
+  silently; `PL-H7XN` carries the reasoning.
+- **Name the work after the item.** On starting one, rename the session to lead
+  with its id, and put that id **at the front of every commit subject** and pull
+  request title. This is load-bearing rather than cosmetic: `bin/docket flight`
+  recovers in-flight state by parsing commit subjects, so a session that commits
+  without a leading id makes its own work invisible to every other session's
+  `bin/docket next`. Name the branch too where the session creates it
+  (`claude/pl-k7qx-short-slug`); a branch generated before the session started
+  cannot be renamed, which is expected rather than a failure. Say in your reply
+  where you put the id.
 - **Commit and push as you go; the pull request arrives with the work**
-  (project owner, 2026-08-31). Neither is deferred: the container is
-  ephemeral, so an uncommitted thought is one interruption from gone, and an
-  unpushed commit dies with the container. Once the owner has approved a piece
-  of work, the pull request opens as soon as that work is finished and its
-  checks are green. Do not ask first. The approval *was* the invitation, and
-  asking again spends a whole turn - the entire context resent - on a question
-  already answered.
-
-  This supersedes the rule that held the pull request until it was asked for.
-  That rule was right that a pull request is the act asking for someone's
-  attention, and wrong about when: it put the asking after the point where the
-  attention had already been given. What it was really guarding - that nothing
-  is proposed for merge which the owner did not agree to - is carried by the
-  approval itself, which comes earlier and means more.
-
-  Two limits keep this from reading wider than it is. **Approved work, not any
-  commits**: pushing is continuous, so a session that only captured items also
-  has commits on its branch, and those are not a pull request - the trigger is
-  finished work the owner agreed to, not a branch with something on it. And
-  the **web harness instructs sessions not to open a pull request unless the
-  owner explicitly asks**; this bullet is that ask, standing rather than given
-  per pull request, so a session reading both should proceed rather than
-  stall.
-- **Pair a finding with the item it completes.** When work turns up something a
-  frozen or in-progress item needs in order to be properly finished, the two
-  are worked together - one branch, closed together - not filed as sequential
-  items. A freeze closes new behavior and features, not the completeness of a
-  fix; `ROADMAP.md`'s "The gate is a snapshot, not a moving target" carries the
-  rule and the reasoning.
-- **`P0` items are hotfixes.** Before feature work, on their own branch, with
-  a patch version bump and a regression test.
-- **Capture intent, and route it by how ready it is.** What the owner says
-  they want always gets recorded; where it goes depends on whether it can be
-  acted on:
-  - A **specific change** — a code tweak, a defect, a named improvement — is a
-    queue item, written now. It is already actionable, so nothing is gained by
-    deferring it.
-  - A **feature wanted but not yet ready to build** goes to `ROADMAP.md`'s
-    "Planned milestones" as one line of intent, not into the queue. It is
-    deliberately left unscoped there. Filing it as an `L` queue item instead
-    puts something in the work queue that cannot be worked, and it sits at the
-    bottom being skipped by every session that reads past it.
-  - A **feature being designed right now** gets the design round above, then
-    items once the shape has settled.
-- **Do not start an `L` item from a queue entry.** Promote it into a scoped
-  `ROADMAP.md` milestone first, per the development rules there.
-- **Clear recorded debt before a new milestone begins.** `ROADMAP.md`'s "The
-  debt gate" is the rule: open items classed `defect`, `safety`, `science`,
-  `refactor` or `perf`, and anything at `needs-decision`, are cleared — `done`,
-  or `dropped` with the reason — before milestone work starts. Process work is
-  debt once the mechanism is live and unreliable, not while it is still being
-  built; that case is classed `defect` like any other, so the class carries the
-  rule. `feature` and `planning` items are not debt. The list is frozen when
-  the milestone is scoped, so findings made while clearing go to the next gate
-  rather than extending this one; `P0` and safety- or science-classed findings
-  are the exceptions and re-enter immediately. Say which gate a piece of work
-  is inside when it matters.
+  (project owner, 2026-08-31). The container is ephemeral, so an uncommitted
+  thought is one interruption from gone and an unpushed commit dies with it.
+  Once the owner has approved a piece of work, the pull request opens as soon as
+  that work is finished and its checks are green — do not ask first, because the
+  approval *was* the invitation. Two limits: it is **approved work, not any
+  commits**, so a branch carrying only captured items is not a pull request; and
+  where the **web harness says not to open one unless the owner explicitly
+  asks**, this bullet is that ask, standing rather than per pull request, so a
+  session reading both proceeds rather than stalls.
+- **Capture intent, and route it by how ready it is.** A **specific change** is
+  a queue item, written now. A **feature wanted but not yet ready to build** is
+  one unscoped line of intent in `ROADMAP.md`'s "Planned milestones" — filing it
+  as an `L` queue item instead puts work in the queue that cannot be worked,
+  where every session reads past it. A **feature being designed right now** gets
+  the design round first and items only once the shape has settled, because an
+  idea changes most in its first exchange.
+- **Prefer finishing a feature to advancing several.** `bin/docket next`
+  already ranks this way within a priority band; do not override it toward
+  novelty.
 - **Friction that compounds is recommended the moment it is found, not filed.**
   Some process findings are paid again by every remaining piece of work: a tool
   that answers the wrong question, a check that cries wolf, a command that ends
   red on success. Their cost is the per-item cost times the items left, so
   deferring one is a decision to pay it N more times. Say so in the reply that
-  finds it - with the arithmetic, and a recommendation to do it first. Recording
+  finds it — with the arithmetic, and a recommendation to do it first. Recording
   it and moving on is not enough: the owner cannot act on what only reached the
-  queue, and by the time they notice, the N has been paid.
-
-  A freeze is not a reason to defer it. `ROADMAP.md`'s "The gate is a snapshot"
-  re-enters a finding whose *problem* was present when the list was frozen,
-  whatever date it was filed under, and compounding friction is nearly always
-  such a problem - it was there all along and only became visible once the
-  gate's own work began paying it.
-
-  The test is arithmetic, not enthusiasm. Name the per-item saving and multiply
-  by the items remaining. Work that is merely valuable, cleaner or more
-  interesting - rewriting a working tool in another language, say - makes no
-  remaining item cheaper and waits for the roadmap, however appealing. If the
-  per-item saving cannot be named, it does not qualify.
-- **A new idea raised mid-task goes to the roadmap, not into the work.** The
-  owner generates ideas faster than any queue absorbs them, and has asked to
-  be kept on task when one arrives in the middle of something else. So say
-  what it would displace, propose where it belongs — a specific phase, near a
-  specific item, with a reason — and let them place it. Do not silently file
-  it, and do not silently drop the current work to chase it. Two sentences,
-  then back to what was being done.
-
-  This is a nudge, not a gate. If they want to switch, switch: it is their
-  project and an idea that will not wait is sometimes the right thing to
-  follow. The obligation is to make the trade visible, not to enforce it.
-- **Close the loop back to the roadmap.** Intent parked there is only worth
-  parking if something brings it back. When the queue thins out, or a release
-  ships and the work that remains is small, say so and offer to scope the next
-  planned milestone into items — that is the moment the design round is worth
-  spending on, and nobody else is going to notice it has arrived.
-- **Answer "what should we work on next?" from the roadmap step down.** The
-  step `bin/docket wave` names — clear a gate, cut a release, implement a
-  scoped milestone, scope the next one — decides whether any feature is the
-  right answer at all, and the queue cannot see it. Then `bin/docket status`
-  groups the project the way a decision is actually made — what is underway,
-  what has not started, what is individually urgent — and `bin/docket next`
-  names the item. Open the reply with the recommendation itself, per rule 10
-  of `.claude/rules/instruction-writing.md`, and put the step, the grouping
-  and the reasoning under it. A list of item ids is a list of homework, not an
-  answer.
-- **Decompose ideas; never hand the decomposition back.** When the owner
-  describes something they want, working out what it breaks into, naming the
-  feature and writing the briefs is the job being delegated. Do not ask which
-  items it should become, what the feature should be called, or which items
-  belong in a release. Propose an answer and invite correction.
-- **Design first, items second.** A described feature gets a proposal, not a
-  receipt: what the request is understood to be, what genuinely needs
-  deciding, how it would be built, and what it would break into — items named
-  and sized but not created. Create them once, after the shape has settled.
-  An idea changes most in its first exchange, and items written before that
-  get rewritten and deleted across the next three replies, filling the queue's
-  history with churn. This does not touch the capture rule above: a thought
-  raised in passing is recorded immediately, because nothing about it is still
-  moving. The test is whether the next reply is likely to change what the item
-  would say.
-- **Offer the release; do not wait to be asked — in a session answering "what
-  next".** The digest says when finished work has accumulated, and it says so
-  in every session, including the ones where it is beside the point. Offer it
-  when the owner is choosing what to do next or has just finished something;
-  not in the middle of a design round or a question about one mechanism, where
-  it is both noise and a silent conversion of ideation into implementation. `bin/docket release` takes no arguments and
-  infers the version, so there is nothing for the owner to look up — say what
-  shipped, what it completes, what the version would be, and ask.
-- **Never ask for a tag without pasting the commands.** `docket release`
-  stops short of tagging, so every release ends with the owner tagging by
-  hand. Asking them to "tag v0.2.5" makes them go and reconstruct three
-  commands; give the actual `git tag`/`git push` lines with the version and
-  the merge SHA already filled in. Every time, not only the first. This is the
-  named instance of the general rule above — an action outside the repository
-  carries its exact steps — kept because it is the one that recurs most.
-- **Report gate progress when the item just closed is one the gate contains.**
-  The owner is tracking how far the current debt gate has left to run, not
-  just whether the last task landed. So close such an item out with where the
-  gate now stands: how many of its frozen entries are done, how many remain,
-  and what the remaining ones are — glossed, and grouped so the shape is
-  visible (what is blocked on the strongest model, what is cheap). Say the
-  same for the entries the milestone clears itself, which are progress toward
-  the same end and are otherwise invisible.
-
-  Membership is the trigger, and it is decidable rather than a matter of
-  judgment: `bin/docket wave` prints the gate's open entries by id, and
-  `bin/docket gate` recomputes the split. So closing an item the gate does not
-  contain — a tooling fix, a docs pass, anything captured after the freeze —
-  ends without a gate report at all. The entries that remain are all simulator
-  work, and listing them at the end of a process session is the third channel
-  by which product work arrives in a discussion that was not about it.
-- **Concurrency is ruled out, never certified.** `docket concurrent` proves
-  two items will contend when their declared paths overlap. It cannot prove
-  the reverse — an item with no declared overlap may still wander into a
-  shared file, and one with no `touches` at all is unanalysed rather than
-  safe. Report it that way.
+  queue. The test is arithmetic, not enthusiasm — name the per-item saving and
+  multiply by the items remaining. Work that is merely valuable, cleaner or more
+  interesting makes no remaining item cheaper and waits for the roadmap.
+- **Workflow work comes before product work until the workflow is settled.**
+  Standing decision, 2026-08-30. Friction in how the work is organized is paid
+  by every future session, so an item that removes it, or stops new debt being
+  introduced, outranks one that adds capability — whatever the priority bands
+  say. No arrangement of the queue shows this and the `docket` skill carries
+  why, so say which side of the rule a piece of work sits on. Retire this
+  bullet when the workflow release ships: it is a phase, not a policy.
 
 **Sweep the docs before calling an item done.** Landing a change is not
 finishing it. `make check` runs `tools/doc_check.py`, which decides the
 package-map, provenance-table, dangling-citation and release-train questions
-outright, and
-`python3 tools/doc_check.py candidates --base <ref>` prints the documentation
-lines mentioning anything the diff touched. Spend the judgment on what neither
-can decide: whether each statement is still *true*. Stale documentation is a
-safety issue here, not tidiness — a reader who trusts a wrong statement about
-which agent is running, what a value means, or what the interface displays can
-reach a wrong clinical conclusion from a correct number. Say in your reply
-which files you checked, not merely that you updated the docs.
+outright, and `python3 tools/doc_check.py candidates --base <ref>` prints the
+documentation lines mentioning anything the diff touched. Spend the judgment on
+what neither can decide: whether each statement is still *true*. Stale
+documentation is a safety issue here, not tidiness — a reader who trusts a
+wrong statement about which agent is running, what a value means, or what the
+interface displays can reach a wrong clinical conclusion from a correct number.
+Say in your reply which files you checked, not merely that you updated the docs.
 
 ## Safety-critical clinical-output standard
 
@@ -591,50 +340,25 @@ For safety-critical paths:
 - Test the end-to-end path when appropriate: patient inputs -> model selection -> calculation -> units -> formatting -> displayed value.
 - Make clinically meaningful displayed values traceable to the exact model/version, inputs, units, and transformations that produced them.
 
-Disclaimers do not lower the engineering standard for these paths.
+What a displayed value may imply is part of the same standard, and these are resident for the same reason as the rest of it — a session that opens no file matching a path-scoped rule must still see them:
 
-## Proactive expert review and domain best practices
-
-Do not limit review or recommendations to conventional software-engineering concerns. Treat development of this application as a multidisciplinary professional product-design problem and proactively identify material improvements anywhere they affect scientific validity, safety, interpretability, usability, educational value, maintainability, or reliability.
-
-Recommendations should reflect the standard expected from a top-tier specialist in the relevant field, not merely common or minimally acceptable practice. When the user's proposed approach is materially weaker than a better established approach, say so clearly and recommend the stronger approach with the reasoning behind it.
-
-**Two standards, deliberately unequal.** The simulator and the documentation a reader of it needs — `src/`, `tests/`, `docs/MODEL.md`, `README.md` — are held to that specialist standard: code an expert contributor would recognize as high quality and could maintain without explanation. The workflow apparatus that exists so agent sessions can be productive — `subprojects/docket/`, `tools/`, `.claude/`, `docs/worker.md`, and this file — is held only to *working reliably and staying small*. It is scaffolding, not product; nobody evaluating this project will read it. Polishing it past sufficient is the most common way this project wastes a session. Where the two compete for a session, the simulator wins.
-
-The bar for `core/` is concrete: **it should read like the domain.** A clinician who knows uptake and distribution should recognize the physiology in the code without a translation step - names that match the literature, units carried in the identifier (`gas_volume_l`, `alveolar_ventilation_l_min`), and the equation visible rather than buried under its own guards. Where a guard, a facade, or a naming choice makes the model harder to see, the model wins. "Would a reader who knows the domain guess this?" is the test, and it settles naming and boundary questions that "high quality" leaves open.
-
-Relevant domains include, but are not limited to:
-
-- pharmacokinetic, pharmacodynamic, physiologic, and inhaled-anesthetic modeling;
-- numerical simulation methods, solver choice, timestep behavior, stability, interpolation, and error handling;
-- model verification, validation, applicability domains, uncertainty, sensitivity analysis, and reproducibility;
-- anesthesia and critical-care domain conventions where they affect terminology, units, workflow, interpretation, or safety;
-- simulation and medical-education best practices, including choosing fidelity appropriate to the learning objective and making model limitations visible;
-- human factors, cognitive ergonomics, mode awareness, error prevention, attention management, and prevention of stale-state or wrong-context interpretation;
-- information architecture, interaction design, UI/UX, visual hierarchy, responsive behavior, and cross-platform interaction patterns;
-- scientific and clinical data visualization, including axis choice, scale, normalization, reference ranges, uncertainty, annotations, and avoidance of misleading visual encodings;
-- accessibility, typography, color use, contrast, keyboard/touch interaction, and color-vision deficiencies;
-- software architecture, APIs, data schemas, testing strategy, performance, security, privacy, packaging, dependency management, and maintainability;
-- provenance, citations, versioning, documentation, reproducible examples, and long-term scientific stewardship;
-- product-level risks such as ambiguous terminology, false precision, inappropriate defaults, overconfident presentation, and features that could encourage unintended clinical use.
-
-Apply the following principles when making recommendations:
-
-- Proactively surface important domain-specific concerns even if the user did not explicitly ask about that discipline.
-- Prioritize recommendations by consequence. Safety, scientific correctness, misleading output, and irreversible architectural problems outrank visual polish or minor code style.
-- Distinguish a required correctness/safety issue from a high-value recommendation and from optional polish.
-- Do not create scope creep by silently implementing out-of-milestone ideas. Recommend them and explain their value; implement them only when they fit the current milestone or the user approves the scope change.
-- Prefer established standards, validated methods, and authoritative primary sources over convention-by-habit. Where a recommendation depends on current standards, guidance, libraries, or evidence, consult the source rather than memory - **before** forming the recommendation, not to confirm one already given. This covers how the project is run as much as what it builds: technical-debt policy, delegation and review design, testing strategy and release process are well-studied problems with published evidence, and advice on one of them from memory is worth no more than a solubility coefficient from memory. Recommending first and researching afterwards produces advice that has to be withdrawn, which costs the owner a decision they already made and more than the search would have.
 - Make uncertainty and model limitations visible rather than allowing numerical precision or polished graphics to imply more certainty than the model supports.
 - Avoid false precision in displayed outputs. Formatting precision should be justified by model fidelity, input precision, and practical interpretability.
 - Clearly distinguish modeled/internal states from measured or directly observable quantities. Do not present a predicted value in a way that could reasonably be mistaken for a measurement.
 - Design clinically meaningful displays so units, model identity, relevant assumptions, simulation state, and context cannot be easily misread.
-- Favor interfaces that prevent errors over interfaces that merely warn after an error occurs.
-- Minimize hidden modes, surprising defaults, context-dependent behavior, and stale UI state.
-- Consider how an expert, trainee, distracted clinician, color-blind user, keyboard user, and touch-device user could each interpret or misuse an interface.
 - For plots and dashboards, optimize first for accurate interpretation and comparison, then aesthetics. A visually attractive but misleading graph is a defect.
-- For simulation behavior, separate verification (the implementation solves the intended equations correctly) from validation (the equations/model adequately represent the intended phenomenon).
-- Preserve enough provenance and metadata that a future reviewer can determine exactly why a model, equation, constant, UI convention, or design decision exists.
-- Challenge assumptions when warranted. Do not preserve a weak design solely because it was proposed earlier.
 
-The goal is not to maximize the number of suggestions. Surface the few recommendations that would materially improve the quality of the product, and explain them at the level needed to make a sound engineering or design decision.
+Disclaimers do not lower the engineering standard for these paths.
+
+## Proactive expert review and domain best practices
+
+Do not limit review or recommendations to conventional software-engineering concerns. Treat development of this application as a multidisciplinary professional product-design problem and proactively identify material improvements anywhere they affect scientific validity, safety, interpretability, usability, educational value, maintainability, or reliability. Recommendations should reflect the standard expected from a top-tier specialist in the relevant field, not merely common or minimally acceptable practice. When the owner's proposed approach is materially weaker than a better established approach, say so clearly and recommend the stronger approach with the reasoning behind it.
+
+**Two standards, deliberately unequal.** The simulator and the documentation a reader of it needs — `src/`, `tests/`, `docs/MODEL.md`, `README.md` — are held to that specialist standard: code an expert contributor would recognize as high quality and could maintain without explanation. The workflow apparatus that exists so agent sessions can be productive — `subprojects/docket/`, `tools/`, `.claude/`, `docs/worker.md`, and this file — is held only to *working reliably and staying small*. It is scaffolding, not product; nobody evaluating this project will read it. Polishing it past sufficient is the most common way this project wastes a session. Where the two compete for a session, the simulator wins.
+
+- Prioritize recommendations by consequence. Safety, scientific correctness, misleading output, and irreversible architectural problems outrank visual polish or minor code style, and a required correctness/safety issue is distinguished from a high-value recommendation and from optional polish.
+- Prefer established standards, validated methods, and authoritative primary sources over convention-by-habit. Where a recommendation depends on current standards, guidance, libraries, or evidence, consult the source rather than memory — **before** forming the recommendation, not to confirm one already given. This covers how the project is run as much as what it builds: technical-debt policy, delegation and review design, testing strategy and release process are well-studied problems with published evidence, and advice on one of them from memory is worth no more than a solubility coefficient from memory. Recommending first and researching afterwards produces advice that has to be withdrawn, which costs the owner a decision they already made and more than the search would have.
+- Challenge assumptions when warranted. Do not preserve a weak design solely because it was proposed earlier.
+- The goal is not to maximize the number of suggestions. Surface the few recommendations that would materially improve the quality of the product, and explain them at the level needed to make a sound engineering or design decision.
+
+The fields this review reaches across, and the design principles that follow from them, are in `.claude/rules/expert-review.md`, which loads when a session reads `src/`, `tests/` or `docs/`. The concrete bar for `core/` — that it should read like the domain — is in `.claude/rules/core-domain.md`.

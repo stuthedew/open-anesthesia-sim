@@ -547,8 +547,8 @@ reports the split.
   the roadmap step that should decide it
 - PL-5YK8 (S) The `verify:` advisory nags about grandfathered items, so it can
   never reach zero
-- PL-H7XN (M) `CLAUDE.md` runs far past its documented 200-line target, which
-  reduces adherence to all of it
+- PL-H7XN (M) `CLAUDE.md` keeps every rule resident whether or not a session
+  needs it, which reduces adherence to the ones it does
 - PL-NSN9 (S) A milestone that gates itself reports `implement` when its gate
   clears, where `release` is due
 - PL-J295 (S) The release-train check reads a tag missing from a shallow clone
@@ -633,8 +633,8 @@ paragraph said the opposite when the section was first written, and was wrong.
 A finding that is neither new scope nor the completion of an entry is captured
 in the queue and triaged there. A `safety`- or `science`-classed finding goes
 to Gate 0 rather than here — it is about the simulator, which this release does
-not touch. A `P0` is a hotfix on its own branch under `CLAUDE.md` and joins no
-list.
+not touch. A `P0` is a hotfix on its own branch under the `docket` skill and joins
+no list.
 
 **Two entries have been added under this rule so far, PL-XCYB and PL-WFJ9,
 both above.** PL-XCYB is paired with PL-ZQ9C rather than queued behind it. It was found while handing

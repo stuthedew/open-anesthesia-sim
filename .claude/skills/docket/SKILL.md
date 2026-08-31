@@ -162,6 +162,13 @@ if the context is live and worth keeping — it is expensive to reconstruct
 later and cheap to write now — but never let a missing brief stop the
 capture.
 
+**A finding that completes a frozen or in-progress item is not a new item.**
+When work turns up something such an item needs in order to be properly
+finished, the two are worked together - one branch, closed together - rather
+than filed as sequential items. A freeze closes new behavior and features, not
+the completeness of a fix; `ROADMAP.md`'s "The gate is a snapshot, not a moving
+target" carries the rule and the reasoning.
+
 Never hold a finding in conversation until the current work lands. The
 container is ephemeral; an uncommitted thought is one interruption from gone.
 Commit the new item on its own so it survives an abandoned branch.
@@ -215,7 +222,8 @@ items wanting the strongest model, and the four `core-boundaries` refactors.
 Closing it opens v0.4.0, the teachable case."
 
 That is the paragraph the owner is actually asking for, and it costs one
-`wave` call. Gloss every id, per `CLAUDE.md`. Then drop to the queue.
+`wave` call. Gloss every id at every mention, per rule 7 of
+`.claude/rules/instruction-writing.md`. Then drop to the queue.
 
 **Answer at feature altitude first.** "We could finish chart-readout — two
 items left, both small — or start vaporizer-controls, which is four. Outside
@@ -233,6 +241,21 @@ cannot support. Lead the reply with its answer. Add judgment the tool cannot
 have: whether the item is still real, whether the marking is right about a
 milestone whose prose it cannot read, and how it fits what the owner said
 they were trying to do.
+
+**Workflow work outranks product work until the workflow is settled**
+(`CLAUDE.md`, standing decision of 2026-08-30). No arrangement of the queue
+shows this, because `docket check` pins `safety`- and `science`-classed items
+to P1, so the top band is product work by construction. Do not promote process
+work into P1 to compensate: P1 means "a clinician could be misled", and it
+stops meaning that the moment it also means "the release script is annoying".
+
+What carries it instead is the roadmap's current step, which `docket next`
+ranks above everything but `P0` — so while the step names a workflow
+milestone, the gate leads the list on its own. That ranking reads ids out of
+milestone sections, not the standing decision, so **an item that neither
+section names is placed by neither**. Apply the rule by hand for those, and
+say which side of it the work sits on. A product item taken as a test case for
+a workflow change is workflow work.
 
 `docket next` states which model the work warrants. That is not a suggestion
 to weigh: safety- or science-classed work, and any item whose next step is an
@@ -285,6 +308,14 @@ otherwise:
   every commit subject with the id is what keeps such a branch visible:
   `docket flight` reads the subjects, and an id buried mid-sentence does not
   count.
+
+**A `P0` is a hotfix.** Before feature work, on its own branch, with a patch
+version bump and a regression test. It joins no milestone list.
+
+**Never start an `L` item straight from a queue entry.** An `L` is aspirational
+scope that reached the queue rather than `ROADMAP.md`. Promote it into a scoped
+milestone first, per the development rules there, and start the items that
+milestone produces.
 
 Set the item's `status` and `feature` as work begins, and add `touches` if it
 is missing — that is what makes the next concurrency answer correct.
@@ -368,6 +399,14 @@ That is the whole pass: the open debt, split into what the milestone clears
 itself (the items carrying its feature) and what clears before it begins, with
 effort totals for each. Recording Gate 0 by hand meant reading 48 items and
 applying the rule to each; do not repeat that.
+
+**Recorded debt is cleared before a new milestone begins.** `ROADMAP.md`'s
+"The debt gate" is the rule: open items classed `defect`, `safety`, `science`,
+`refactor` or `perf`, and anything at `needs-decision`, reach `done` — or
+`dropped` with a reason — before milestone work starts. `feature` and
+`planning` items are not debt. Process work is debt once its mechanism is live
+and unreliable, not while it is still being built; that case is classed
+`defect` like any other, so the class carries the rule.
 
 The command computes and decides nothing. Whether an item is *really* debt,
 whether the gate should open, and what goes into `ROADMAP.md` are yours —
@@ -463,9 +502,29 @@ reconstruct three commands at the moment they are trying to do something else.
    means can reach a wrong clinical conclusion from a correct number. Say in
    the reply which files were checked.
 3. Capture anything found but not fixed as its own item.
-4. Re-run `make check`.
+4. **Report gate progress if the item is one the gate contains.** Membership is
+   decidable rather than a judgment: `bin/docket wave` prints the gate's open
+   entries by id and `bin/docket gate` recomputes the split. When the item is
+   one of them, close out with where the gate now stands — how many of its
+   frozen entries are done, how many remain, and what the remaining ones are,
+   glossed and grouped so the shape is visible (what is blocked on the
+   strongest model, what is cheap). Say the same for entries the milestone
+   clears itself. When the gate does not contain the item — a tooling fix, a
+   docs pass, anything captured after the freeze — end without a gate report:
+   the remaining entries are all simulator work, and listing them at the end of
+   a process session is product work arriving in a discussion that was not
+   about it.
+5. Re-run `make check`.
 
 ## Always
+
+**Check repository state; never recall it.** Rule 14 of
+`.claude/rules/instruction-writing.md` requires anything asserted about
+external state to be re-verified before it is repeated. Here that is one
+command each, against the remote rather than the local checkout: `bin/docket
+show <id>` for an item's status, `git log origin/main` for what has merged,
+`git fetch --tags` for what is tagged, the pull request's own state for
+whether it is open. Say what the check showed when it changes the answer.
 
 `make docket` after editing the store — it gates `make check` and CI, and its
 errors mean an item is about to be silently wrong. Commit item changes with

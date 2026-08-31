@@ -12,6 +12,7 @@ one data file, so a test names only the thing it breaks.
 
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 from pathlib import Path
@@ -966,3 +967,169 @@ def test_an_expansion_is_skipped_rather_than_guessed_at(tmp_path: Path) -> None:
 
 def test_a_repository_with_no_workflows_is_left_alone(tmp_path: Path) -> None:
     assert _errors(_repo(tmp_path)) == []
+
+
+# --- resident instructions --------------------------------------------------
+
+
+SCOPED_RULE = """---
+paths:
+  - "src/**"
+---
+
+# Scoped
+
+One line.
+"""
+
+UNSCOPED_RULE = """# Unscoped
+
+One line.
+"""
+
+
+def _instructed(root: Path, *, claude: str = "# Rules\n\nOne.\n", **rules: str) -> Path:
+    """Add the instruction files a session loads at launch."""
+    (root / "CLAUDE.md").write_text(claude, encoding="utf-8")
+    if rules:
+        (root / ".claude" / "rules").mkdir(parents=True, exist_ok=True)
+        for name, body in rules.items():
+            (root / ".claude" / "rules" / f"{name}.md").write_text(body, encoding="utf-8")
+    return root
+
+
+def test_a_path_scoped_rule_is_not_resident(tmp_path: Path) -> None:
+    """`paths:` frontmatter defers a rule to the sessions that match it."""
+    root = _instructed(_repo(tmp_path), scoped=SCOPED_RULE, always=UNSCOPED_RULE)
+
+    measured = dict(doc_check.measure_resident(root))
+
+    assert measured == {"CLAUDE.md": 3, ".claude/rules/always.md": 3}
+
+
+def test_frontmatter_without_a_paths_key_is_still_resident(tmp_path: Path) -> None:
+    """Other frontmatter does not defer a rule; only `paths:` does."""
+    root = _instructed(_repo(tmp_path), other="---\nname: x\n---\n\nBody.\n")
+
+    assert ".claude/rules/other.md" in dict(doc_check.measure_resident(root))
+
+
+def test_an_unterminated_frontmatter_block_is_not_read_as_scoped(tmp_path: Path) -> None:
+    root = _instructed(_repo(tmp_path), broken="---\npaths:\n  - src\n\nBody with no close.\n")
+
+    assert ".claude/rules/broken.md" in dict(doc_check.measure_resident(root))
+
+
+def test_nested_rule_directories_are_measured(tmp_path: Path) -> None:
+    """Claude Code discovers `.claude/rules/**.md` recursively, so this does too."""
+    root = _instructed(_repo(tmp_path))
+    nested = root / ".claude" / "rules" / "backend"
+    nested.mkdir(parents=True)
+    (nested / "api.md").write_text(UNSCOPED_RULE, encoding="utf-8")
+
+    assert ".claude/rules/backend/api.md" in dict(doc_check.measure_resident(root))
+
+
+def test_a_repository_with_no_instruction_files_reports_nothing(tmp_path: Path) -> None:
+    assert doc_check.analyze(_repo(tmp_path)).resident is None
+
+
+def test_growth_against_the_default_branch_is_an_advisory(tmp_path: Path) -> None:
+    root = _instructed(_repo(tmp_path))
+    _git_init(root)
+    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
+    (root / "CLAUDE.md").write_text("# Rules\n\nOne.\nTwo.\nThree.\n", encoding="utf-8")
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.growth == 2
+    assert report.resident.deltas() == [("CLAUDE.md", 2)]
+    assert report.errors == []
+    assert any("resident instructions grew 2 lines" in m for m in report.advisories)
+    assert any("PL-H7XN" in m for m in report.advisories)
+
+
+def test_shrinking_is_reported_but_is_not_an_advisory(tmp_path: Path) -> None:
+    """A routing pass that moves a rule out must not read as a finding."""
+    root = _instructed(_repo(tmp_path), always=UNSCOPED_RULE)
+    _git_init(root)
+    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
+    (root / ".claude" / "rules" / "always.md").write_text(SCOPED_RULE, encoding="utf-8")
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.growth == -3
+    assert report.advisories == []
+    assert "3 fewer than main" in doc_check.format_check(report)
+
+
+def test_an_unchanged_total_is_reported_as_unchanged(tmp_path: Path) -> None:
+    root = _instructed(_repo(tmp_path))
+    _git_init(root)
+    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
+
+    report = doc_check.analyze(root)
+
+    assert report.advisories == []
+    assert "unchanged against main" in doc_check.format_check(report)
+
+
+def test_a_checkout_with_no_default_branch_still_reports_the_total(tmp_path: Path) -> None:
+    """The comparison goes missing, not the measurement, and it says so."""
+    root = _instructed(_repo(tmp_path))
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.total == 3
+    assert report.resident.growth is None
+    assert report.advisories == []
+    assert "no default branch here to compare against" in doc_check.format_check(report)
+
+
+def test_the_total_is_printed_even_when_nothing_else_fired(tmp_path: Path) -> None:
+    report = doc_check.analyze(_instructed(_repo(tmp_path)))
+    printed = doc_check.format_check(report)
+
+    assert "resident instructions: 3 lines loaded at launch" in printed
+    assert "all resolve" in printed
+
+
+def test_this_repository_reports_its_own_resident_total() -> None:
+    """The real tree, not only a fixture: the number has to be about this file."""
+    root = Path(doc_check.__file__).resolve().parent.parent
+    resident = doc_check.analyze(root).resident
+
+    assert resident is not None
+    assert dict(resident.files)["CLAUDE.md"] > 0
+    assert ".claude/rules/expert-review.md" not in dict(resident.files)
+    assert ".claude/rules/instruction-writing.md" in dict(resident.files)
+
+
+# --- portability ------------------------------------------------------------
+
+
+#: The oldest interpreter this tool must parse under. It is invoked as bare
+#: `python3` from `make check`, from CI and from a checkout with no virtualenv,
+#: so it cannot assume the version `pyproject.toml` requires — the same promise
+#: `subprojects/docket/` makes, where the floor is declared as 3.11.
+BARE_PYTHON_FLOOR = (3, 11)
+
+
+def test_the_tool_parses_under_the_interpreter_that_actually_runs_it() -> None:
+    """The repository's formatter targets a newer Python than this file may use.
+
+    Set to `py314`, `ruff format` rewrites a parenthesized multi-type `except`
+    into PEP 758's unparenthesized form, which an older interpreter cannot
+    parse. That break is silent: the suite runs under the project virtualenv
+    and passes, while `make check`'s own `python3 tools/doc_check.py check`
+    fails with a `SyntaxError`. `subprojects/docket/` was broken this way once
+    and guards it with `tests/test_portability.py`; this asserts the same
+    promise for the one tool outside that subproject which makes it.
+    """
+    source = Path(doc_check.__file__).resolve()
+    body = source.read_text(encoding="utf-8")
+
+    ast.parse(body, filename=str(source), feature_version=BARE_PYTHON_FLOOR)

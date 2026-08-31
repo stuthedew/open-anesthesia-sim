@@ -174,7 +174,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-└── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, ROADMAP.md's release train and current baseline
+└── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, ROADMAP.md's release train and current baseline; reports resident instruction size
 ```
 
 `tools/doc_check.py` holds this document to the code. The package-map trees
@@ -201,6 +201,15 @@ The grammar itself lives in `subprojects/docket/src/docket/roadmap.py` and is
 imported here. `docket wave` reads the same table to report which beat of the
 planning cadence is due, and a second copy of the rules would drift from the
 first silently — in the one document that says which milestone is current.
+
+One thing it reports rather than checks: how many lines of instruction every
+session loads before it has read anything — `CLAUDE.md` plus the
+`.claude/rules/*.md` files carrying no `paths:` frontmatter — and whether that
+total has grown against the default branch. Growth is an advisory, never an
+error. A threshold would be met by deleting a rule to reach a number, and no
+number the tool could hold would know which rules a session must see before it
+reads anything; where each rule belongs stays with the reader, the way
+`docket stranded` leaves its own judgment.
 
 The same module reads `ROADMAP.md`'s *version* table, and `doc_check` holds
 the three statements of the current version to each other: one row per
