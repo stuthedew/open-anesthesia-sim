@@ -1,13 +1,14 @@
 ---
 id: PL-020
-title: Bring tests and `tools/` under the type-check gate
+title: Widen the type-check gate past `src`, and ship a `py.typed` marker
 priority: P2
 effort: S
 status: ready
 classes: infra
 feature: dev-tooling
-touches: pyproject.toml, Makefile, .github/workflows/quality.yml, src/anesthesia_sim/py.typed, subprojects/docket/src/docket/roadmap.py, tests/unit/test_simulation_view.py
+touches: pyproject.toml, Makefile, README.md, .github/workflows/quality.yml, src/anesthesia_sim/py.typed, subprojects/docket/src/docket/roadmap.py, tests/unit/test_bootstrap.py
 added: 2026-08-24
+verify: uv run mypy && uv run pytest tests/unit/test_bootstrap.py -k py_typed
 ---
 
 **Problem.** `make check` and CI both run `uv run mypy src`, so `tests/`,
@@ -60,6 +61,11 @@ the reason in the same place: annotating a test double to satisfy a UI
 framework's types costs real work and returns the least, since a wrongly typed
 fake fails the test it is used in. Revisit only if the count outside
 `test_simulation_view.py` grows.
+
+**Retitled 2026-08-31**, from "Bring tests and `tools/` under the type-check
+gate". The decision above excludes `tests/`, so the original title described
+work this item deliberately does not do - and it is the line that would have
+appeared in v0.2.8's release notes claiming the tests are gated.
 
 **Where.** `pyproject.toml` (`[tool.mypy] files`), `Makefile` (`check`),
 `.github/workflows/quality.yml`, and a new empty `src/anesthesia_sim/py.typed`.

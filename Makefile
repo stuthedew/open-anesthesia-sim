@@ -6,7 +6,9 @@ sync:
 check: sync
 	uv run ruff format --check .
 	uv run ruff check .
-	uv run mypy src
+# No paths: `[tool.mypy] files` in pyproject.toml names what the gate covers,
+# and says why `tests/` is not in it.
+	uv run mypy
 	uv run pytest
 	bin/docket check
 	python3 tools/doc_check.py check
