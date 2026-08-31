@@ -235,3 +235,46 @@ def readiness(items: list[Item], current_version: str, minor_classes: tuple[str,
 def stamp(items: list[Item], version: str) -> list[Item]:
     """Record which release a batch of finished work went out in."""
     return [item.__class__(**{**item.__dict__, "milestone": version}) for item in items]
+
+
+def outstanding_roadmap_edits(roadmap: str, version: str) -> list[str]:
+    """The roadmap statements a cut release has just made wrong.
+
+    Reported, never written. The version table's milestone column and the
+    baseline section say what a release was *for*, which is a judgment about
+    the work rather than a fact about the store - a generated row would either
+    be thin or would overwrite something considered. What a tool can do is say
+    exactly which statements are now stale, so the hand-off names them instead
+    of leaving the next command to discover them as a test failure.
+
+    Each string is one wrong statement, phrased as the state of the file
+    rather than as an instruction, so a reader can check it against what they
+    are looking at.
+    """
+    # Imported here rather than at module scope: `roadmap` reads this module's
+    # version grammar, so a top-level import would close the cycle.
+    from .roadmap import BASELINE_MARK, VERSION_TABLE_HEADING, baseline_heading, parse_version_table
+
+    name = version.lstrip("v")
+    rows = parse_version_table(roadmap)
+    if not rows:
+        return [f'there is no version table under "{VERSION_TABLE_HEADING}"']
+
+    owed: list[str] = []
+    row = next((candidate for candidate in rows if candidate.version == name), None)
+    if row is None:
+        owed.append(f"the version table has no row for v{name}")
+    elif not row.is_baseline:
+        owed.append(f'the v{name} row (line {row.line}) is not marked "{BASELINE_MARK}"')
+    owed.extend(
+        f'the v{other.version} row (line {other.line}) is still marked "{BASELINE_MARK}"'
+        for other in rows
+        if other.is_baseline and other.version != name
+    )
+
+    heading = baseline_heading(roadmap)
+    if heading is None:
+        owed.append('there is no "Current baseline: vX.Y.Z" heading')
+    elif heading[1] != name:
+        owed.append(f"the baseline heading (line {heading[0]}) still names v{heading[1]}")
+    return owed

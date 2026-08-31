@@ -162,6 +162,15 @@ the three questions that follow from it — one row per released version,
 exactly one marked current, and a "Current baseline:" heading naming that same
 version, which is the version the version file holds.
 
+Not writing it is not the same as not mentioning it. Refusing later is only
+useful if somebody knows what is owed now, so `release` ends by reading the
+roadmap through those same two parsers and printing the statements the cut has
+just made stale, each with its line number
+(`release.outstanding_roadmap_edits`). A command that stops mid-sequence
+without saying where it stopped leaves the next one — the project's own check —
+to report the omission as a failure nobody caused, which is how a red check
+comes to look like the normal end of a release.
+
 Tags are deliberately outside that check. A shallow or tag-less clone is a
 normal checkout, and a documentation check that fails on how somebody fetched
 the repository is a check that gets switched off. `docket release` enforces

@@ -380,8 +380,16 @@ tool writes the new version into `pyproject.toml` and stops, but `uv.lock`
 records the project's own version too, so the next `make check` fails on `uv
 sync --locked` with the tree half-updated and the reason unrelated to the
 release. That happened on both releases the command has existed for. `make
-release` runs `bin/docket release`, then `uv lock`, then `make check`, which
-is the whole sequence.
+release` runs `bin/docket release` and then `uv lock`, which is the whole
+mechanical half.
+
+**It stops there, and the last thing it prints is what is left.** `ROADMAP.md`
+needs a version-table row, the `current baseline` mark moved onto it, and a
+baseline section — release prose that says what the release was *for*, which
+nothing generates. `bin/docket release` names each statement that is now
+stale, with its line number. Make those edits, then run `make check`: that is
+what proves they landed, and running it any earlier fails on edits nobody has
+been asked for yet.
 
 This project names its version rather than incrementing it, so `VERSION=` is
 required; `bin/docket release --dry-run` prints the mechanical guess for
