@@ -171,10 +171,14 @@ without saying where it stopped leaves the next one — the project's own check 
 to report the omission as a failure nobody caused, which is how a red check
 comes to look like the normal end of a release.
 
-Tags are deliberately outside that check. A shallow or tag-less clone is a
-normal checkout, and a documentation check that fails on how somebody fetched
-the repository is a check that gets switched off. `docket release` enforces
-the tag instead, at the one moment tags are certainly to hand.
+Tags are outside that check, and inside the project's own. A shallow or
+tag-less clone is a normal checkout, so nothing about tags may be concluded
+from a repository that cannot answer — `vcs.tags` collapses every such failure
+to an empty set, and a checker reading it says nothing rather than reporting
+every release as untagged. What it does say, when git can answer, is which
+completed releases carry no tag and which tags name no release. `docket
+release` still enforces the tag at the one moment tags are certainly to hand:
+it refuses to cut the next release while the current one is untagged.
 
 ## The item format
 

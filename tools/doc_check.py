@@ -80,10 +80,18 @@ try:
         parse_version_table,
         table_rows,
     )
+
+    # Reading `git tag` is a second borrowing, for the same reason as the first.
+    # `vcs` collapses every way git can fail to answer - not installed, not a
+    # repository, timed out - into an empty answer, and a check that asked the
+    # question itself would either duplicate that or, by omitting it, fail on a
+    # checkout with no git at all. The emptiness is read here as "this checkout
+    # cannot say", never as "there are no tags".
+    from docket.vcs import tags  # noqa: E402  - import follows the path insertion above
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
-        f"grammar, and could not import it: {error}"
+        f"grammar and docket/vcs.py for the tag read, and could not import them: {error}"
     ) from error
 
 # Documentation whose claims this tool holds to the tree. `CLAUDE.md` and the
@@ -172,6 +180,48 @@ CITATION_RE = re.compile(
     re.IGNORECASE,
 )
 DIRECTION_RE = re.compile(r"^[ ]*(?:above|below)\b", re.IGNORECASE)
+
+# The `**Tags.**` statement. What it claims is deliberately not a list: the
+# version table above it already says which releases exist, so restating them
+# would be a second copy to keep true, and it was wrong twice before this check
+# was written. The claim is the invariant instead - every completed release
+# carries a tag - which is read against the table and `git tag` directly.
+#
+# What stays prose is the exception. A version that genuinely shipped untagged
+# is named in a bold sentence, and the decidable half of that is its count
+# against the names it gives; whether the omission is settled or an open
+# decision is not, and is left alone.
+TAGS_MARK_RE = re.compile(r"^\*\*Tags\.\*\*")
+UNTAGGED_CLAIM_RE = re.compile(
+    r"\*\*(?P<count>[A-Za-z]+|\d+)\s+versions?\s+(?:are|is)\s+untagged\*\*", re.I
+)
+# `: v0.1.0, v0.2.0 and v0.3.0` - read one version at a time so the list ends
+# where the prose resumes, rather than sweeping up every version in the region.
+LIST_SEPARATOR_RE = re.compile(r"[\s,:]*(?:and\s+)?")
+LIST_VERSION_RE = re.compile(r"v(?P<version>\d+\.\d+\.\d+)")
+# A tag naming a release, as against `v1.2.3-rc1` or a name of another shape.
+RELEASE_TAG_RE = re.compile(r"^v?(?P<version>\d+\.\d+\.\d+)$")
+# The status cell that says a version has gone out.
+COMPLETED_MARK = "completed"
+# This document writes its counts as words, so both forms are read. Anything
+# outside the table is reported rather than guessed at: a count nobody can read
+# is a count nobody is checking.
+NUMBER_WORDS = {
+    "no": 0,
+    "zero": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+}
 
 # A Makefile target is a line-initial name followed by a colon. `:=` is an
 # assignment, and `.PHONY` and its kin start with a dot, so neither matches.
@@ -499,10 +549,10 @@ def check_baseline(root: Path, report: Report) -> None:
     This refuses rather than writes. The milestone column is editorial prose,
     and a generated row would either be thin or would overwrite something
     considered; refusing costs the owner one hand-written row per release and
-    cannot corrupt the file. Tags are deliberately not compared: a shallow or
-    tag-less clone is a normal checkout, and a check that fails on how someone
-    fetched the repository is a check that gets switched off. `docket release`
-    is where the tag is enforced, at the moment tags are actually to hand.
+    cannot corrupt the file. Whether those versions carry tags is `check_tags`
+    below, which reads git and therefore has to stay silent when git cannot
+    answer; this one compares three statements already in the tree and can run
+    anywhere.
     """
     roadmap = root / ROADMAP
     version_file = root / "pyproject.toml"
@@ -548,6 +598,163 @@ def check_baseline(root: Path, report: Report) -> None:
             f"{ROADMAP}:{heading[0]}: the baseline heading names v{heading[1]}, but the "
             f"table marks v{marked[0].version} current"
         )
+
+
+def _tags_region(text: str) -> tuple[int, str] | None:
+    """The `**Tags.**` statement, and everything up to the next section heading.
+
+    The exception sentence has historically sat in a paragraph below the claim
+    rather than inside it, so the region runs to the heading rather than to the
+    blank line.
+    """
+    lines = text.splitlines()
+    start = next((index for index, line in enumerate(lines) if TAGS_MARK_RE.match(line)), None)
+    if start is None:
+        return None
+    end = next(
+        (index for index in range(start + 1, len(lines)) if HEADING_RE.match(lines[index])),
+        len(lines),
+    )
+    return start + 1, "\n".join(lines[start:end])
+
+
+def _version_list(text: str, start: int) -> list[str]:
+    """Versions written as a run of `v0.1.0`, separated by commas and `and`."""
+    found: list[str] = []
+    position = start
+    while True:
+        gap = LIST_SEPARATOR_RE.match(text, position)
+        candidate = LIST_VERSION_RE.match(text, gap.end() if gap else position)
+        if candidate is None:
+            return found
+        found.append(candidate.group("version"))
+        position = candidate.end()
+
+
+def _untagged_claim(body: str, first_line: int) -> tuple[frozenset[str], list[str], int]:
+    """The versions the roadmap says went out untagged, and whether it counts them right.
+
+    Two sentences that each agree with `git tag` can still disagree with each
+    other, which is why the count is read at all: it is the one part of the
+    claim that no comparison with the repository would catch.
+    """
+    match = UNTAGGED_CLAIM_RE.search(body)
+    if match is None:
+        return frozenset(), [], 0
+    line = first_line + body[: match.start()].count("\n")
+    named = _version_list(body, match.end())
+
+    stated = match.group("count")
+    count = int(stated) if stated.isdigit() else NUMBER_WORDS.get(stated.casefold())
+    if count is None:
+        return frozenset(named), [f'{ROADMAP}:{line}: cannot read "{stated}" as a count'], line
+    if count != len(named):
+        return (
+            frozenset(named),
+            [
+                f"{ROADMAP}:{line}: the sentence says {stated} untagged, but names "
+                f"{len(named)}; the two halves cannot both be right"
+            ],
+            line,
+        )
+    return frozenset(named), [], line
+
+
+def _is_tagged(version: str, existing: frozenset[str]) -> bool:
+    """Whether a tag names this release, written with or without its leading `v`."""
+    return f"v{version}" in existing or version in existing
+
+
+def check_tags(root: Path, report: Report) -> None:
+    """Hold the roadmap's tag statements to `git tag`, and to each other.
+
+    The statements exist because four versions once went out untagged and the
+    gap could not be repaired afterwards with any confidence: `git describe
+    --contains` resolves nothing across an untagged release's span, so "which
+    release did this change go out in" stops having an answer. A claim about
+    which releases are traceable that is not itself traceable is the wrong way
+    round, and it went stale exactly as one would expect - by releases landing,
+    with nothing reading the sentence.
+
+    Two silences are deliberate. A checkout git cannot answer for - no
+    repository, no git, no tags fetched - is told nothing at all, because a
+    shallow clone is how the untagged-version question was got wrong in the
+    first place and a check that fails on how somebody fetched the repository
+    is a check that gets switched off. And the release being cut right now is
+    an advisory rather than an error: its tag goes on the merge commit, so
+    there is a window in which the newest version is completed and untagged,
+    and failing it would turn `make check` red on every release branch - which
+    is the failure `make release` was just repaired to stop causing.
+    """
+    roadmap = root / ROADMAP
+    if not roadmap.is_file():
+        return
+    text = roadmap.read_text(encoding="utf-8")
+
+    rows = parse_version_table(text)
+    completed = {row.version: row for row in rows if COMPLETED_MARK in row.status.casefold()}
+    if not completed:
+        return
+
+    region = _tags_region(text)
+    if region is None:
+        report.errors.append(
+            f'{ROADMAP}: no "**Tags.**" statement; it is where this file says every '
+            "released version is traceable to a tag, and deleting it removes the claim "
+            "rather than making it true"
+        )
+        return
+    first_line, body = region
+
+    untagged, problems, claim_line = _untagged_claim(body, first_line)
+    report.errors.extend(problems)
+    for version in sorted(untagged):
+        if version not in completed:
+            report.errors.append(
+                f"{ROADMAP}:{claim_line}: v{version} is named as untagged, but no row of the "
+                "version table marks it completed"
+            )
+
+    existing = tags(root)
+    if not existing:
+        return
+
+    marked = [row for row in rows if row.is_baseline]
+    baseline = marked[0].version if len(marked) == 1 else ""
+
+    for version, row in sorted(completed.items()):
+        if version in untagged or _is_tagged(version, existing):
+            continue
+        if version == baseline:
+            report.advisories.append(
+                f"{ROADMAP}:{row.line}: v{version} is the current baseline and carries no tag "
+                f"yet; tag the merge once it lands:\n"
+                f'    git tag -a v{version} <merge commit> -m "v{version}"\n'
+                f"    git push origin v{version}"
+            )
+            continue
+        report.errors.append(
+            f"{ROADMAP}:{row.line}: v{version} is marked completed but git holds no tag for "
+            "it, so no commit in its span maps to the release it went out in"
+        )
+
+    for version in sorted(untagged):
+        if _is_tagged(version, existing):
+            report.errors.append(
+                f"{ROADMAP}:{claim_line}: v{version} is named as untagged, but git holds a "
+                "tag for it"
+            )
+
+    for name in sorted(existing):
+        match = RELEASE_TAG_RE.match(name)
+        if match is None:
+            continue
+        version = match.group("version")
+        if version not in completed:
+            report.errors.append(
+                f"{ROADMAP}: git holds {name}, but no row of the version table marks v{version} "
+                "completed; a release that shipped is one this table has to name"
+            )
 
 
 def _project_version(pyproject: Path) -> str:
@@ -744,6 +951,7 @@ def analyze(root: Path) -> Report:
     check_citations(root, documents, report)
     check_timeline(root, report)
     check_baseline(root, report)
+    check_tags(root, report)
     check_make_targets(root, documents, report)
     return report
 
@@ -769,7 +977,7 @@ def format_check(report: Report) -> str:
     if not report.errors and not report.advisories:
         lines.append(
             "Package map, provenance table, citations, release train, current "
-            "baseline and documented make targets all resolve."
+            "baseline, release tags and documented make targets all resolve."
         )
     return "\n".join(lines)
 
