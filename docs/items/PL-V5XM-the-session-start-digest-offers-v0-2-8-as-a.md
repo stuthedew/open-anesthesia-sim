@@ -1,8 +1,10 @@
 ---
 id: PL-V5XM
 title: The session-start digest offers v0.2.8 as a release while the line below it says v0.2.8's gate has 8 entries open
-status: untriaged
+status: dropped
 added: 2026-08-31
+closed: 2026-08-31
+reason: duplicate of PL-D2GW, which states the same problem with a full brief and a worked decision; nothing here that PL-D2GW does not carry
 ---
 
 **Problem.** The session-start digest offers v0.2.8 as a release while the line below it says v0.2.8's gate has 8 entries open
@@ -70,3 +72,18 @@ session that can see both facts can still raise it if the owner asks.
 **Done when.** The digest cannot tell a session to offer a release the roadmap
 says to decline, the finished-work count stays visible either way, and a test
 covers a gate recorded under the suggested version.
+
+
+**Dropped 2026-08-31.** `PL-D2GW` (the session digest offers a release whose
+version names a milestone whose gate is still open) is the same defect, caught
+minutes apart. It carries the transcript of both contradicting lines, names
+where the digest reads them, and already works the design question — suppress
+the release line while the suggested version's gate is open, or keep it and
+carry the answer, with a recommendation for the second — none of which this
+item has.
+
+This one's brief is the capture stub: `**Why it matters.**`, `**Where.**` and
+`**Done when.**` are empty. Merging the two would mean rewriting this into what
+`PL-D2GW` already says.
+
+Recorded rather than deleted so the finding is not raised again.
