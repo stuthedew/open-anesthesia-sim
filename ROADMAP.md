@@ -510,14 +510,15 @@ minor-version exception is not extended to it and is not needed.
 ### Debt gate: the frozen list
 
 **Frozen 2026-08-30, the day this release was scoped, at seventeen entries.**
-Two have been admitted since under the completion rule beneath this list, so
-the nineteen entries below are its whole content. What the freeze does and does not close is set
+Five have been admitted since — four under the completion rule beneath this
+list, one at the project owner's direction — so the twenty-two entries below
+are its whole content. What the freeze does and does not close is set
 out beneath the list; an entry records its own outcome as it closes, per
 "The cadence" below.
 
-**It is a frozen scope, not a fourth gate in the cadence.** Eight of its
-entries are debt by "What counts" below — seven classed `defect`, one at
-`needs-decision` — and the other eleven are new workflow capability, which
+**It is a frozen scope, not a fourth gate in the cadence.** Ten of its
+entries are debt by "What counts" below, all classed `defect`, and the other
+twelve are new workflow capability, which
 that section says explicitly is *not* debt and does not hold a gate. The list
 is recorded under a heading named "Debt gate" because that subsection is what
 `bin/docket wave` reads: a release records a gate to say that it comes ahead
@@ -532,7 +533,7 @@ the v0.4.0 section: a count written into a document goes stale the next time an
 item closes. `bin/docket wave` reads these entries against `docs/items/` and
 reports the split.
 
-*The loop is visibly broken without these — nine entries:*
+*The loop is visibly broken without these — twelve entries:*
 
 - PL-J786 (S) Require a green `checks` run before any merge into main
 - PL-64LS (S) Detect items stranded on an unmerged branch
@@ -550,6 +551,26 @@ reports the split.
   reduces adherence to all of it
 - PL-NSN9 (S) A milestone that gates itself reports `implement` when its gate
   clears, where `release` is due
+- PL-J295 (S) The release-train check reads a tag missing from a shallow clone
+  as a release that was never tagged, so `make check` fails on unmodified
+  `main` in every web-session container. Added after the freeze because it
+  completes `PL-XCYB`, further down this list: that entry established that a
+  check must refuse to answer in a shallow checkout rather than answer
+  wrongly, and fixed the pull-request reader; the tag reader has the identical
+  exposure and was missed. See the rule beneath this list.
+- PL-KWC1 (S) `docket flight` reads item ids from branch names only, so a
+  branch the web harness named carries none and is invisible — and `docket
+  next` therefore hands out items another session is already implementing.
+  Added after the freeze because it completes PL-64LS above: that entry made a
+  branch's stranded items visible to a session, reading the same refs through
+  the same module, and left the in-flight signal blind on every branch this
+  project actually produces.
+- PL-1CYR (S) Nothing re-checks the branch against `main` once a session is
+  underway, so a discussion that becomes implementation builds on a base that
+  moved while it was talking. Added 2026-08-31 at the project owner's
+  direction rather than under the completion rule: it is new scope, admitted
+  because the staleness is paid by every session that opens as a discussion,
+  which is how this project is normally worked.
 
 *Stops new debt being introduced — ten entries:*
 
@@ -587,7 +608,7 @@ re-explained every session) were on the list the project owner approved and
 closed before it was written here. Recording a closed item as a frozen entry
 would make this release report a size it never had to clear.
 
-**Five of the nineteen are marked `not-delegable`,** which is high for a
+**Five of the twenty-two are marked `not-delegable`,** which is high for a
 release this size and is worth knowing before the work is planned: PL-J786 and
 PL-S4M2 change GitHub repository configuration that no session in this project
 can reach; PL-8HJ2 can only be proved by cutting a release; PL-ZQ9C leaves a

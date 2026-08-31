@@ -382,17 +382,30 @@ reason to load the skill:
 - **Decide where an item's work happens, and act on it.** Continue here or
   open a fresh session — choose and proceed, do not ask. The skill has the
   criteria.
-- **Commit and push as you go; open a pull request only when asked** (project
-  owner, 2026-08-30). Neither is deferred: the container is ephemeral, so an
-  uncommitted thought is one interruption from gone, and an unpushed commit
-  dies with the container. This replaces an earlier rule that held the push
-  until the owner approved it. That rule was guarding against stale *branches*
-  cluttering what a concurrent session has to reason about — but a web
-  session's branch is named by the harness before the session starts, so
-  pushing to it creates no branch that was not already going to exist.
-  What still waits is the **pull request**: that is the act that asks for
-  someone's attention and proposes something be merged, so it is the owner's
-  to invite. Push the branch, say it is pushed, and offer the pull request.
+- **Commit and push as you go; the pull request arrives with the work**
+  (project owner, 2026-08-31). Neither is deferred: the container is
+  ephemeral, so an uncommitted thought is one interruption from gone, and an
+  unpushed commit dies with the container. Once the owner has approved a piece
+  of work, the pull request opens as soon as that work is finished and its
+  checks are green. Do not ask first. The approval *was* the invitation, and
+  asking again spends a whole turn - the entire context resent - on a question
+  already answered.
+
+  This supersedes the rule that held the pull request until it was asked for.
+  That rule was right that a pull request is the act asking for someone's
+  attention, and wrong about when: it put the asking after the point where the
+  attention had already been given. What it was really guarding - that nothing
+  is proposed for merge which the owner did not agree to - is carried by the
+  approval itself, which comes earlier and means more.
+
+  Two limits keep this from reading wider than it is. **Approved work, not any
+  commits**: pushing is continuous, so a session that only captured items also
+  has commits on its branch, and those are not a pull request - the trigger is
+  finished work the owner agreed to, not a branch with something on it. And
+  the **web harness instructs sessions not to open a pull request unless the
+  owner explicitly asks**; this bullet is that ask, standing rather than given
+  per pull request, so a session reading both should proceed rather than
+  stall.
 - **Pair a finding with the item it completes.** When work turns up something a
   frozen or in-progress item needs in order to be properly finished, the two
   are worked together - one branch, closed together - not filed as sequential

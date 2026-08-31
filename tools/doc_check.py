@@ -88,7 +88,7 @@ try:
     # question itself would either duplicate that or, by omitting it, fail on a
     # checkout with no git at all. The emptiness is read here as "this checkout
     # cannot say", never as "there are no tags".
-    from docket.vcs import tags
+    from docket.vcs import is_shallow, tags
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
@@ -262,6 +262,12 @@ class Report:
 
     errors: list[str] = field(default_factory=list)
     advisories: list[str] = field(default_factory=list)
+    # Checks this checkout could not run, each naming why. Kept apart from
+    # advisories because they are the opposite claim: an advisory says
+    # something was read and wants judgment, a decline says nothing was read
+    # at all, and collapsing the two lets a check that never ran be reported
+    # as one that passed (`PL-XCYB`, and `PL-J295` for the tag reader).
+    declined: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -697,11 +703,27 @@ def check_tags(root: Path, report: Report) -> None:
     round, and it went stale exactly as one would expect - by releases landing,
     with nothing reading the sentence.
 
-    Two silences are deliberate. A checkout git cannot answer for - no
+    Three silences are deliberate. A checkout git cannot answer for - no
     repository, no git, no tags fetched - is told nothing at all, because a
-    shallow clone is how the untagged-version question was got wrong in the
-    first place and a check that fails on how somebody fetched the repository
-    is a check that gets switched off. And the release being cut right now is
+    check that fails on how somebody fetched the repository is a check that
+    gets switched off.
+
+    A **truncated** checkout is the second, and it was missed for exactly as
+    long as this docstring claimed the first one covered it (`PL-J295`). A
+    shallow clone does not collapse to an empty tag set: it holds the tags
+    pointing into its fetched depth and omits the rest, so every release older
+    than that depth reads as never tagged. That fired on `main` in every web
+    session container, eight false errors at a time.
+
+    The guard is deliberately narrower than "this clone is shallow". Both the
+    session containers and `actions/checkout` clone shallow, so declining on
+    that alone would retire the check everywhere it runs - including in a
+    checkout that has since fetched its tags and can answer exactly. So the
+    findings are computed first, and only withheld when there is something to
+    withhold *and* truncation could account for it. A tag being **present** is
+    never in doubt, so those inferences are untouched.
+
+    And the release being cut right now is
     an advisory rather than an error: its tag goes on the merge commit, so
     there is a window in which the newest version is completed and untagged,
     and failing it would turn `make check` red on every release branch - which
@@ -743,21 +765,43 @@ def check_tags(root: Path, report: Report) -> None:
     marked = [row for row in rows if row.is_baseline]
     baseline = marked[0].version if len(marked) == 1 else ""
 
+    absent: list[str] = []
     for version, row in sorted(completed.items()):
         if version in untagged or _is_tagged(version, existing):
             continue
         if version == baseline:
             report.advisories.append(
-                f"{ROADMAP}:{row.line}: v{version} is the current baseline and carries no tag "
-                f"yet; tag the merge once it lands:\n"
+                f"{ROADMAP}:{row.line}: v{version} is the current baseline and carries no "
+                f"tag yet; tag the merge once it lands:\n"
                 f'    git tag -a v{version} <merge commit> -m "v{version}"\n'
                 f"    git push origin v{version}"
             )
             continue
-        report.errors.append(
-            f"{ROADMAP}:{row.line}: v{version} is marked completed but git holds no tag for "
-            "it, so no commit in its span maps to the release it went out in"
+        absent.append(
+            f"{ROADMAP}:{row.line}: v{version} is marked completed but git holds no tag "
+            "for it, so no commit in its span maps to the release it went out in"
         )
+
+    # Only a finding that a truncated checkout could have invented is withheld,
+    # and only when there is one. Declining on `is_shallow` alone would silence
+    # this check in every environment that matters - a web session's container
+    # and `actions/checkout` both clone shallow - including the ones that have
+    # since run `git fetch --tags` and can answer perfectly well.
+    truncated = is_shallow(root)
+    if absent and truncated is not False:
+        report.declined.append(
+            "release tags: "
+            + (
+                "the checkout is a shallow clone"
+                if truncated
+                else "git cannot say whether this checkout is complete"
+            )
+            + f", so the {_plural(len(absent), 'release', 'releases')} with no tag here "
+            "cannot be told from a release whose tag was never fetched; "
+            "`git fetch --tags` makes the question answerable"
+        )
+    else:
+        report.errors.extend(absent)
 
     for version in sorted(untagged):
         if _is_tagged(version, existing):
@@ -1055,11 +1099,14 @@ def _plural(count: int, singular: str, plural: str) -> str:
 
 
 def format_check(report: Report) -> str:
-    lines = [
+    summary = (
         "documentation: "
         f"{_plural(len(report.errors), 'error', 'errors')}, "
         f"{_plural(len(report.advisories), 'advisory', 'advisories')}"
-    ]
+    )
+    if report.declined:
+        summary += f", {len(report.declined)} not checked"
+    lines = [summary]
     if report.errors:
         lines.append("")
         lines.append("Errors (the documentation is wrong; fix before committing):")
@@ -1068,7 +1115,11 @@ def format_check(report: Report) -> str:
         lines.append("")
         lines.append("Advisories (judgment needed):")
         lines.extend(f"  {message}" for message in report.advisories)
-    if not report.errors and not report.advisories:
+    if report.declined:
+        lines.append("")
+        lines.append("Not checked (this checkout cannot answer; nothing is claimed):")
+        lines.extend(f"  {message}" for message in report.declined)
+    if not report.errors and not report.advisories and not report.declined:
         lines.append(
             "Package map, provenance table, citations, release train, current "
             "baseline, release tags, documented make targets and CI paths all resolve."
