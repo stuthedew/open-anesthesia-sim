@@ -32,6 +32,7 @@ docket gate --feature x      # the open debt a milestone has to clear
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
+docket stranded              # items that exist only on a branch
 docket check                 # validate the store; exits non-zero on errors
 ```
 
@@ -41,6 +42,37 @@ docket check                 # validate the store; exits non-zero on errors
 band — those are triage, and demanding them at the moment an idea occurs is
 how ideas stop being written down. Several titles in one call, because
 interruptions rarely carry exactly one thought.
+
+### Capture is only unloseable if a lost branch is noticed
+
+An item is committed on whatever branch the capturing session was on. If that
+branch never merges, the item exists only there — and since every session
+reads the store in its own checkout, nothing will ever mention it again. The
+thought is lost as silently as if it had stayed in the conversation, which is
+the one failure the store exists to rule out.
+
+`docket stranded` reads it back off the branches: every item id present on
+some ref and absent from both the default branch and this checkout, with the
+`git checkout` line that brings each file back. The session digest carries the
+same finding as one line, and only when there is one, because a session that
+must be told its queue is incomplete cannot find that out by reading the queue.
+
+**The comparison is by id and content, never by commit counts**, and that is
+the design rather than an implementation note. A squash-merged branch contains
+none of the commits it merged, so a containment test calls it unmerged forever
+and reports everything on it as lost; a renamed item file was added twice and
+deleted once, so a test over added paths reports the old name as lost. Reading
+what the trees hold answers both: an id on the default branch is not stranded,
+however its commits got there. It also means the check works in a shallow
+clone, where every commit-graph question is unreliable — which is what an
+agent session's container is.
+
+The answer is bounded by the refs the checkout holds, so the count of refs read
+is part of the output, and a checkout that can read none declines rather than
+reporting a clean store. Read the other way, the report answers whether a
+branch is safe to delete: a branch named nowhere in it carries no item the
+default branch lacks. That claim is about items only. It says nothing about
+code on the branch, which is not what it read.
 
 ### Triage is a worklist, not a verdict
 
