@@ -9,11 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from docket.vcs import (
+    StrandedItem,
+    StrandedReport,
     behind_remote,
     branches_in_flight,
     default_base,
     in_flight_ids,
     merged_pull_requests,
+    stranded,
     tags,
 )
 
@@ -191,3 +194,166 @@ def test_a_hash_that_merely_looks_like_a_number_is_not_a_pull_request() -> None:
     history = merged_pull_requests(ROOT, runner=_pr_runner("false", subjects))
 
     assert history.known and history.numbers == frozenset()
+
+
+def _tree_runner(trees: dict[str, dict[str, str]], titles: dict[str, str] | None = None):
+    """A git that holds the given trees, as `ref -> {item file: contents}`.
+
+    Deliberately no commit graph at all: no `--merged`, no `rev-list`, nothing
+    a shallow clone would answer wrongly. If these tests pass with a runner
+    that cannot answer a containment question, the implementation is not
+    asking one.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "for-each-ref":
+            return "\n".join(trees)
+        if args[:2] == ["rev-parse", "--verify"]:
+            return "abc123\n" if args[-1] in trees else ""
+        if args[0] == "ls-tree":
+            return "\n".join(f"docs/items/{name}" for name in trees.get(args[3], {}))
+        if args[0] == "show":
+            ref, _, path = args[1].partition(":")
+            return trees.get(ref, {}).get(path.rsplit("/", 1)[-1], "")
+        return ""
+
+    return run
+
+
+def _document(identifier: str, title: str) -> str:
+    return f"---\nid: {identifier}\ntitle: {title}\nstatus: untriaged\n---\n\n**Problem.** x\n"
+
+
+MAIN = {"PL-0001-on-main.md": _document("PL-0001", "On main")}
+
+
+def test_an_item_only_on_a_branch_is_reported() -> None:
+    runner = _tree_runner(
+        {
+            "origin/main": MAIN,
+            "origin/claude/abandoned": {
+                **MAIN,
+                "PL-K7QX-lost-thought.md": _document("PL-K7QX", "A lost thought"),
+            },
+        }
+    )
+
+    report = stranded(ROOT, {"PL-0001"}, runner=runner)
+
+    assert [(i.identifier, i.title) for i in report.items] == [("PL-K7QX", "A lost thought")]
+    assert report.items[0].branches == ("origin/claude/abandoned",)
+    assert report.items[0].path == "docs/items/PL-K7QX-lost-thought.md"
+
+
+def test_an_item_the_default_branch_holds_is_not_stranded() -> None:
+    """However its commits got there - a squash merge contains none of them."""
+    runner = _tree_runner({"origin/main": MAIN, "origin/claude/squashed": MAIN})
+
+    assert stranded(ROOT, set(), runner=runner).items == ()
+
+
+def test_an_item_this_checkout_already_holds_is_not_reported_back_to_it() -> None:
+    """The session that captured it can see it; it is at risk, not lost."""
+    branch = {**MAIN, "PL-K7QX-just-captured.md": _document("PL-K7QX", "Just captured")}
+    runner = _tree_runner({"origin/main": MAIN, "claude/this-session": branch})
+
+    assert stranded(ROOT, {"PL-0001", "PL-K7QX"}, runner=runner).items == ()
+
+
+def test_an_item_that_landed_after_this_branch_forked_is_not_stranded() -> None:
+    """A stale working tree lacks it, so the default branch has to be read too."""
+    landed = {**MAIN, "PL-M3PP-landed-later.md": _document("PL-M3PP", "Landed later")}
+    runner = _tree_runner({"origin/main": landed, "origin/claude/other": landed})
+
+    assert stranded(ROOT, {"PL-0001"}, runner=runner).items == ()
+
+
+def test_every_branch_holding_a_copy_is_named() -> None:
+    """A branch named nowhere strands nothing; naming one copy would break that."""
+    branch = {**MAIN, "PL-K7QX-two-copies.md": _document("PL-K7QX", "Two copies")}
+    runner = _tree_runner(
+        {"origin/main": MAIN, "claude/local": branch, "origin/claude/local": branch}
+    )
+
+    report = stranded(ROOT, {"PL-0001"}, runner=runner)
+
+    assert report.items[0].branches == ("claude/local", "origin/claude/local")
+
+
+def test_a_file_that_is_not_an_item_is_ignored() -> None:
+    runner = _tree_runner({"origin/main": MAIN, "origin/topic": {**MAIN, "README.md": "notes"}})
+
+    assert stranded(ROOT, {"PL-0001"}, runner=runner).items == ()
+
+
+def test_the_number_of_refs_read_is_part_of_the_answer() -> None:
+    """ "Nothing stranded" from two refs and from twenty are different claims."""
+    runner = _tree_runner({"origin/main": MAIN, "origin/a": MAIN, "origin/b": MAIN})
+
+    assert stranded(ROOT, {"PL-0001"}, runner=runner).refs_read == 3
+
+
+def test_no_git_declines_rather_than_reporting_a_clean_store() -> None:
+    report = stranded(ROOT, set(), runner=lambda args, root: "")
+
+    assert not report.known
+    assert report.items == ()
+
+
+def test_a_default_branch_with_no_items_declines() -> None:
+    """Otherwise every item on every branch reads as stranded: long, alarming, wrong."""
+    runner = _tree_runner(
+        {"origin/main": {}, "origin/topic": {"PL-K7QX-x.md": _document("PL-K7QX", "x")}}
+    )
+
+    report = stranded(ROOT, set(), runner=runner)
+
+    assert not report.known
+    assert "origin/main" in report.declined
+
+
+DIGEST_ITEM = """---
+id: PL-0001
+title: An item in the store
+priority: P2
+effort: S
+status: ready
+verify: uv run pytest
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def _digest(report: StrandedReport) -> str:
+    from docket.checks import Report
+    from docket.model import parse_item
+    from docket.render import format_digest
+
+    return format_digest(Report(items=[parse_item(DIGEST_ITEM)]), set(), None, None, report)
+
+
+def test_the_digest_names_an_item_only_a_branch_holds() -> None:
+    """The one line telling a session the queue it is reading is not all of it."""
+    lost = StrandedItem(
+        identifier="PL-K7QX",
+        title="A lost thought",
+        path="docs/items/PL-K7QX-lost.md",
+        branches=("origin/claude/abandoned",),
+    )
+
+    stated = [
+        line for line in _digest(StrandedReport(items=(lost,))).splitlines() if "PL-K7QX" in line
+    ]
+
+    assert len(stated) == 1
+    assert "A lost thought" in stated[0]
+    assert "bin/docket stranded" in stated[0]
+
+
+def test_the_digest_stays_silent_when_nothing_is_only_on_a_branch() -> None:
+    """It is resent on every turn, so it earns its line or does not take one."""
+    assert "only on a branch" not in _digest(StrandedReport(refs_read=4))

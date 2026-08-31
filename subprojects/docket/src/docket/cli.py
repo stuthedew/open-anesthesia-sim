@@ -31,7 +31,15 @@ from .release import (
 )
 from .roadmap import Wave, wave
 from .store import find_item, new_id, read_items, write_item
-from .vcs import branches_in_flight, default_base, in_flight_ids, merged_pull_requests, tags
+from .vcs import (
+    StrandedReport,
+    branches_in_flight,
+    default_base,
+    in_flight_ids,
+    merged_pull_requests,
+    stranded,
+    tags,
+)
 from .verify import verify_batch
 
 CAPTURE_TEMPLATE = """**Problem.** {title}
@@ -71,6 +79,27 @@ def _flight(args: argparse.Namespace) -> set[str]:
     if getattr(args, "no_git", False):
         return set()
     return in_flight_ids(find_root())
+
+
+def _stranded(
+    root: Path, directory: Path, items: Sequence[Item], args: argparse.Namespace
+) -> StrandedReport | None:
+    """What exists only on a branch, or `None` when the question cannot be asked.
+
+    The store is passed in rather than re-read: what this session can already
+    see is exactly what must not be reported back to it, and the caller has it.
+
+    A store outside the repository is `None` rather than an answer. Git can
+    only be asked about paths it tracks, and searching the wrong path would
+    find no items and report every branch as stranding all of its own.
+    """
+    if getattr(args, "no_git", False):
+        return None
+    try:
+        tracked = directory.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return None
+    return stranded(root, {item.identifier for item in items}, items_dir=tracked)
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -142,7 +171,7 @@ def _plan(root: Path, items: Sequence[Item], config: Config) -> Wave | None:
 
 
 def cmd_digest(args: argparse.Namespace) -> int:
-    _, items, config = _load(args)
+    directory, items, config = _load(args)
     if not items:
         return 0
     root = args.items.parent if args.items else find_root()
@@ -150,7 +179,13 @@ def cmd_digest(args: argparse.Namespace) -> int:
         items, args.today or date.today(), config, offered=_offered(root, items, config, args)
     )
     ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
-    rendered = render.format_digest(report, _flight(args), ready, _plan(root, items, config))
+    rendered = render.format_digest(
+        report,
+        _flight(args),
+        ready,
+        _plan(root, items, config),
+        _stranded(root, directory, items, args),
+    )
     if rendered:
         print(rendered)
     return 0
@@ -588,6 +623,24 @@ def cmd_wave(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_stranded(args: argparse.Namespace) -> int:
+    """Items that exist on a branch and nowhere this checkout's store can see.
+
+    Exits zero whether or not it finds any: an item on a branch that is still
+    being worked is the normal case, and the command cannot tell that from an
+    item on a branch nobody will merge. Reporting is the whole job; deciding
+    which of the two a branch is remains the reader's.
+    """
+    directory, items, _ = _load(args)
+    root = args.items.parent if args.items else find_root()
+    report = _stranded(root, directory, items, args)
+    if report is None:
+        print("branch detection is off (`--no-git`), so nothing was read")
+        return 0
+    print(render.format_stranded(report))
+    return 0
+
+
 def cmd_flight(args: argparse.Namespace) -> int:
     branches = branches_in_flight(find_root())
     if not branches:
@@ -647,6 +700,7 @@ def build_parser() -> argparse.ArgumentParser:
     add("list", "one line per open item").set_defaults(func=cmd_list)
     add("digest", "the session-start summary").set_defaults(func=cmd_digest)
     add("flight", "branches carrying item work").set_defaults(func=cmd_flight)
+    add("stranded", "items that exist only on a branch").set_defaults(func=cmd_stranded)
     add("triage", "what is untriaged, and the rules the answers must satisfy").set_defaults(
         func=cmd_triage
     )

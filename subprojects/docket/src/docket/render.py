@@ -18,10 +18,23 @@ from .model import PRIORITIES, Item
 from .plan import Feature, Gate, effort_total
 from .release import Readiness
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
+from .vcs import StrandedReport
 
 
 def _plural(count: int, singular: str, plural: str) -> str:
     return f"{count} {singular if count == 1 else plural}"
+
+
+def _gloss(title: str, limit: int = 52) -> str:
+    """A title short enough to sit inside a digest line and still identify the item.
+
+    An id on its own identifies nothing - they are random by design - so a
+    line naming one without a gloss makes the reader open a file to find out
+    whether it matters.
+    """
+    if not title:
+        return "no title"
+    return title if len(title) <= limit else title[: limit - 1].rstrip() + "\u2026"
 
 
 def _counts(report: Report) -> str:
@@ -106,6 +119,7 @@ def format_digest(
     in_flight: set[str] | None = None,
     ready: Readiness | None = None,
     plan: Wave | None = None,
+    stranded: StrandedReport | None = None,
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -119,6 +133,12 @@ def format_digest(
 
     Every line is resent on every turn of the session, so the plan gets one:
     the beat and the step, and `docket wave` for the rest.
+
+    The stranded line is the one that only ever appears when it matters. An
+    item on an unmerged branch is invisible to `list`, to `next`, and to every
+    other line here, because all of them read the store in this checkout - so
+    the digest is the only place a session can be told the queue it is reading
+    is not all of it.
     """
     flight = in_flight or set()
     if not report.items:
@@ -139,6 +159,15 @@ def format_digest(
     if flight:
         lines.append(
             f"  In flight on a branch: {', '.join(sorted(flight))} - do not start these again."
+        )
+    if stranded is not None and stranded.items:
+        named = ", ".join(
+            f"{item.identifier} ({_gloss(item.title)})" for item in stranded.items[:2]
+        )
+        rest = f", +{len(stranded.items) - 2} more" if len(stranded.items) > 2 else ""
+        lines.append(
+            f"  Only on a branch, not in this checkout: {named}{rest}. "
+            "`bin/docket stranded` to recover."
         )
     if report.untriaged:
         lines.append(
@@ -177,6 +206,46 @@ def format_digest(
     lines.append(
         "`bin/docket status` shows the project by feature; `list` every item; `wave` the plan."
     )
+    return "\n".join(lines)
+
+
+def format_stranded(report: StrandedReport) -> str:
+    """What exists only on a branch, with the command that brings each one back.
+
+    Organized by item rather than by branch, because the loss is of an item and
+    the recovery is of a file. The branches are still named in full - every one
+    holding a copy, not just the first - so the other question this answers
+    reads off the same output: a branch named nowhere below carries no item the
+    default branch lacks, and deleting it loses no work the queue knows about.
+
+    That is the only claim being made. This says nothing about *code* on a
+    branch, which is not what it read.
+    """
+    if not report.known:
+        return f"Stranded items not checked: {report.declined}."
+
+    refs = _plural(report.refs_read, "branch ref", "branch refs")
+    if not report.items:
+        return (
+            f"No item exists only on a branch, across the {refs} this checkout holds.\n"
+            "A branch not fetched here was not read, so this is bounded by what has been."
+        )
+
+    lines = [
+        f"{_plural(len(report.items), 'item exists', 'items exist')} only on a branch, "
+        f"across the {refs} this checkout holds:",
+        "",
+    ]
+    for item in report.items:
+        lines.append(f"{item.identifier}  {item.title or '(title unreadable)'}")
+        lines.append(f"  only on: {', '.join(item.branches)}")
+        lines.append(f"  recover: git checkout {item.branches[0]} -- {item.path}")
+        lines.append("")
+    lines.append(
+        "A branch on live work will appear here and that is expected; the hole is a "
+        "branch nobody will merge."
+    )
+    lines.append("Every other branch read carries no item the default branch lacks.")
     return "\n".join(lines)
 
 

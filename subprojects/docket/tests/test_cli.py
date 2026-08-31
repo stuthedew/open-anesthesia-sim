@@ -609,3 +609,67 @@ def test_gate_writes_nothing_and_reaches_no_verdict(
 
     assert {path.name: path.read_text() for path in store.glob("*.md")} == before
     assert "not decided here" in capsys.readouterr().out
+
+
+def _branched_repo(tmp_path: Path) -> Path:
+    """A repository whose second branch carries an item `main` has never seen.
+
+    Real git, for the same reason `_release_repo` uses it: the injected-runner
+    tests assert the filtering, and only a real checkout proves the commands
+    are spelled in a way git accepts.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "checkout", "-qb", "abandoned"], cwd=root, check=True, capture_output=True
+    )
+    (root / "items" / "PL-K7QX-lost.md").write_text(
+        READY.replace("PL-B1B1", "PL-K7QX").replace("A ready item", "A lost thought")
+    )
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "capture"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+    return root
+
+
+def test_stranded_finds_an_item_that_exists_only_on_a_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _branched_repo(tmp_path)
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert "PL-K7QX  A lost thought" in out
+    assert "only on: abandoned" in out
+    assert "git checkout abandoned -- items/PL-K7QX-lost.md" in out
+
+
+def test_stranded_reports_nothing_when_every_branch_has_landed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _branched_repo(tmp_path)
+    subprocess.run(["git", "merge", "-q", "abandoned"], cwd=root, check=True, capture_output=True)
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    assert "No item exists only on a branch" in capsys.readouterr().out
+
+
+def test_stranded_says_so_when_it_was_told_not_to_ask_git(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Silence would read as a clean answer; it is an unasked question."""
+    assert _run("stranded", "--items", str(_store(tmp_path, READY))) == 0
+
+    assert "branch detection is off" in capsys.readouterr().out
