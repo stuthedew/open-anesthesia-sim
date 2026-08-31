@@ -3,12 +3,15 @@ id: PL-J295
 title: The release-train check reads a tag missing from a shallow clone as a release that was never tagged
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 milestone: v0.2.8
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/README.md
 added: 2026-08-31
+closed: 2026-08-31
+commit: 752ca02
+pr: 111
 verify: uv run pytest tests/unit/test_doc_check.py -k shallow
 ---
 

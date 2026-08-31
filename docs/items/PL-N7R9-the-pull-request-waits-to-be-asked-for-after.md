@@ -3,11 +3,14 @@ id: PL-N7R9
 title: The pull request waits to be asked for, after the owner has already agreed to the work
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, infra
 feature: parallel-sessions
 touches: CLAUDE.md
 added: 2026-08-31
+closed: 2026-08-31
+commit: f8ec703
+pr: 111
 verify: grep -q 'the pull request arrives with the work' CLAUDE.md
 ---
 
