@@ -3,11 +3,14 @@ id: PL-F5HB
 title: The project runs a Python 3.14 release candidate, not 3.14 final
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: pyproject.toml, .python-version, uv.lock, .github/workflows/quality.yml, README.md
 added: 2026-08-30
+closed: 2026-08-30
+pr: 96
+commit: fb81597
 verify: uv run python -c "import sys; assert sys.version_info.releaselevel == 'final', sys.version"
 ---
 

@@ -1,8 +1,14 @@
 ---
 id: PL-S2L4
 title: bin/docket delegable offers items that docs/worker.md forbids a worker to touch
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: docket.toml, docs/worker.md, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
 added: 2026-08-30
+verify: uv run pytest subprojects/docket/tests/test_model.py -k check_paths
 ---
 
 **Problem.** Two lists say what a delegated worker may not edit, and they

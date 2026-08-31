@@ -1,7 +1,11 @@
 ---
 id: PL-4CW7
 title: The web session container ships uv 0.8.17, below the project's required-version floor
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
 added: 2026-08-30
 not-delegable: the fix is a setting in the Claude Code environment, outside this repository, so no command run inside a checkout can prove it
 ---
@@ -41,5 +45,20 @@ install script is the alternative, but it downloads from GitHub releases,
 which is what rate-limits `uv self update` here. Nothing in this repository
 can make the change; the item exists so the finding is not lost.
 
-**Done when.** A fresh web session runs `make check` successfully without
-installing anything by hand.
+**State, 2026-08-30.** The project owner added that line to the environment's
+setup script the same day the item was filed, so the fix is applied and only
+the confirmation is outstanding. Editing the setup script invalidates the
+environment's filesystem snapshot, so the script re-runs on the next session
+started in it - which makes the *next fresh session* the test. Nothing needs
+scheduling: that session's first `uv` command either reports 0.12.5 or newer
+with nothing installed by hand, or it does not. The session that observes it
+closes this item.
+
+This item is not part of the v0.2.8 debt gate. It was captured after the gate
+list was frozen and describes a problem that did not exist until PL-F5HB
+landed the `required-version` floor, so it belongs to the next gate rather
+than extending this one.
+
+**Done when.** A fresh web session reports uv 0.12.5 or newer from
+`uv --version` before anything has been installed by hand, and runs
+`make check` through to the end.
