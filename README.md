@@ -121,7 +121,11 @@ and must pass before a change is considered complete.
   equations, units, assumptions, parameter provenance, numerical method, and
   known limitations.
 - [`CLAUDE.md`](CLAUDE.md) — development and safety-critical engineering
-  standards followed in this repository.
+  standards followed in this repository. The standards that apply only to part
+  of the tree, and the shape a reply takes, live alongside it in
+  [`.claude/rules/`](.claude/rules).
+- [`docs/maintainer.md`](docs/maintainer.md) — the notes addressed to whoever
+  runs the sessions rather than to the sessions themselves.
 
 ## License
 

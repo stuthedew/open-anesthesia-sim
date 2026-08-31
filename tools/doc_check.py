@@ -29,6 +29,13 @@ they are checked here and never left to a session to remember:
   this file naming the previous one until somebody notices, which has now
   happened twice.
 
+One more thing is *reported* rather than checked:
+
+- **Resident instructions.** How many lines every session loads before it has
+  read anything - `CLAUDE.md` plus the rules carrying no `paths:` frontmatter
+  - and whether that total has grown against the default branch. Nothing here
+  passes or fails; see `check_resident_instructions` for why it must not.
+
 What is left to judgment - whether a statement is still *true*, whether a
 `must` in `docs/MODEL.md` still matches the code, whether a milestone's
 out-of-scope list has become a lie - this tool does not attempt. It narrows
@@ -88,11 +95,12 @@ try:
     # question itself would either duplicate that or, by omitting it, fail on a
     # checkout with no git at all. The emptiness is read here as "this checkout
     # cannot say", never as "there are no tags".
-    from docket.vcs import is_shallow, tags
+    from docket.vcs import DEFAULT_BRANCHES, is_shallow, tags
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
-        f"grammar and docket/vcs.py for the tag read, and could not import them: {error}"
+        "grammar and docket/vcs.py for the tag read and the default-branch list, "
+        f"and could not import them: {error}"
     ) from error
 
 # Documentation whose claims this tool holds to the tree. `CLAUDE.md` and the
@@ -105,9 +113,31 @@ DOC_GLOBS = (
     "CLAUDE.md",
     "AGENTS.md",
     "docs/*.md",
+    ".claude/rules/**/*.md",
     ".claude/skills/*/SKILL.md",
     "subprojects/*/README.md",
 )
+
+# What every session loads before it has read anything. `CLAUDE.md` may live at
+# either of two paths, and a `.claude/rules/*.md` joins them unless it carries
+# `paths:` frontmatter, which defers it to the sessions that open a matching
+# file.
+RESIDENT_ROOTS = ("CLAUDE.md", ".claude/CLAUDE.md")
+RULES_DIR = ".claude/rules"
+
+# A top-level `paths` key inside the YAML frontmatter block. Read this way
+# rather than with a YAML parser because this tool is standard library only,
+# and because the question is only ever "is the key there".
+PATHS_KEY_RE = re.compile(r"paths\s*:")
+
+# Every way git can fail to answer, named rather than written as a tuple in the
+# `except` clause itself. This file must run under whatever bare `python3` is on
+# PATH, but the repository's formatter targets a newer one, and it rewrites a
+# parenthesized multi-type `except` into PEP 758's unparenthesized form, which
+# older interpreters cannot parse. `subprojects/docket/` was broken exactly this
+# way once and now guards it with a portability test; this file has the same
+# exposure and no such guard. A name is not rewritten.
+GIT_UNAVAILABLE = (OSError, subprocess.SubprocessError)
 
 # Where the package map lives, and where the provenance table lives.
 ARCHITECTURE = Path("docs/ARCHITECTURE.md")
@@ -268,6 +298,50 @@ class Report:
     # at all, and collapsing the two lets a check that never ran be reported
     # as one that passed (`PL-XCYB`, and `PL-J295` for the tag reader).
     declined: list[str] = field(default_factory=list)
+    # What every session loads before it has read anything. Not a finding:
+    # `format_check` prints it whether or not anything else fired, because the
+    # number is the point rather than any verdict on it. `None` only when the
+    # checkout holds no resident instruction file at all.
+    resident: ResidentInstructions | None = None
+
+
+@dataclass(frozen=True)
+class ResidentInstructions:
+    """The instruction files loaded at launch, measured, and against the base.
+
+    `baseline_ref` is the default branch this was compared against, and is
+    `None` when no checkout could be read - a bare tree, no git, no default
+    branch. The comparison is the part that goes missing then; the current
+    total is still known, so it is still reported.
+    """
+
+    files: tuple[tuple[str, int], ...]
+    baseline_ref: str | None = None
+    baseline_files: tuple[tuple[str, int], ...] | None = None
+
+    @property
+    def total(self) -> int:
+        return sum(count for _, count in self.files)
+
+    @property
+    def baseline_total(self) -> int | None:
+        if self.baseline_files is None:
+            return None
+        return sum(count for _, count in self.baseline_files)
+
+    @property
+    def growth(self) -> int | None:
+        baseline = self.baseline_total
+        return None if baseline is None else self.total - baseline
+
+    def deltas(self) -> list[tuple[str, int]]:
+        """Per-file change against the baseline, largest growth first."""
+        if self.baseline_files is None:
+            return []
+        before = dict(self.baseline_files)
+        names = sorted({*before, *dict(self.files)})
+        changed = [(name, dict(self.files).get(name, 0) - before.get(name, 0)) for name in names]
+        return sorted((row for row in changed if row[1]), key=lambda row: -row[1])
 
 
 @dataclass(frozen=True)
@@ -1076,6 +1150,139 @@ def check_workflow_paths(root: Path, report: Report) -> None:
                     report.errors.append(f"{relative}:{line}: runs `{token}`, which does not exist")
 
 
+def _frontmatter(text: str) -> list[str] | None:
+    """The YAML frontmatter block's lines, or `None` if the file has none."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    for index, line in enumerate(lines[1:], start=1):
+        if line.strip() == "---":
+            return lines[1:index]
+    return None
+
+
+def is_path_scoped(text: str) -> bool:
+    """Does this rules file defer itself to the sessions that match its paths?
+
+    A rule carrying `paths:` frontmatter loads when a session reads a matching
+    file; one without it loads at launch with the same priority as
+    `.claude/CLAUDE.md`. That distinction is the whole content of the resident
+    total, so it is read here exactly as Claude Code documents it.
+    """
+    block = _frontmatter(text)
+    return block is not None and any(PATHS_KEY_RE.match(line) for line in block)
+
+
+def _measure(name: str, text: str) -> tuple[str, int] | None:
+    """One resident file as its path and its line count, or `None` if deferred."""
+    if name.startswith(f"{RULES_DIR}/") and is_path_scoped(text):
+        return None
+    return name, len(text.splitlines())
+
+
+def measure_resident(root: Path) -> list[tuple[str, int]]:
+    """Which instruction files load at launch in this working tree, and how big."""
+    measured: list[tuple[str, int]] = []
+    names = [name for name in RESIDENT_ROOTS if (root / name).is_file()]
+    rules = root / RULES_DIR
+    if rules.is_dir():
+        names += sorted(
+            path.relative_to(root).as_posix() for path in rules.rglob("*.md") if path.is_file()
+        )
+    for name in names:
+        row = _measure(name, (root / name).read_text(encoding="utf-8"))
+        if row is not None:
+            measured.append(row)
+    return measured
+
+
+def _git_text(root: Path, *args: str) -> str | None:
+    """Git's stdout verbatim, or `None` when it could not answer.
+
+    `_git` drops blank lines, which is right for listing refs and wrong for
+    counting the lines of a file, so the two readers are kept apart.
+    """
+    try:
+        result = subprocess.run(
+            ("git", *args), cwd=root, capture_output=True, text=True, timeout=10, check=False
+        )
+    except GIT_UNAVAILABLE:
+        return None
+    return None if result.returncode else result.stdout
+
+
+def _resident_baseline(root: Path) -> tuple[str, tuple[tuple[str, int], ...]] | None:
+    """The same measurement at the tip of the default branch.
+
+    The tip rather than the merge base, because the question this answers is
+    "does merging this make every session's resident context larger than it is
+    on the default branch" - which a merge base cannot see, since it reports
+    nothing when the growth arrived on the branch being merged into.
+    """
+    for ref in DEFAULT_BRANCHES:
+        listing = _git_text(
+            root, "ls-tree", "-r", "--name-only", ref, "--", *RESIDENT_ROOTS, RULES_DIR
+        )
+        if listing is None:
+            continue
+        measured: list[tuple[str, int]] = []
+        for name in sorted(listing.splitlines()):
+            if not name.endswith(".md"):
+                continue
+            text = _git_text(root, "show", f"{ref}:{name}")
+            if text is None:
+                continue
+            row = _measure(name, text)
+            if row is not None:
+                measured.append(row)
+        return ref, tuple(measured)
+    return None
+
+
+def check_resident_instructions(root: Path, report: Report) -> None:
+    """Report what every session loads before it has read anything.
+
+    Claude Code's memory documentation ties instruction-file size to adherence
+    rather than to token cost: a long resident file makes every rule in it
+    slightly less likely to be followed, the safety-critical standard among
+    them. Nothing in this project's history ever shortened one - the rule that
+    a behavior change takes effect in the session that asks for it guarantees
+    growth, and PL-034's one-time trim regrew within a release.
+
+    So the total is printed on every run and growth is named, which puts
+    `PL-H7XN`'s routing question in front of whoever added the rule: at what
+    moment does a session need this, and what is the cheapest thing that
+    delivers it then - a check, the skill, a path-scoped rule, or resident.
+
+    Reported, never thresholded, and this is the deliberate half. A limit would
+    be met by deleting a rule to reach a number, which is the one outcome the
+    routing pass must not produce; and no number this tool could hold would
+    know which rules a session must see before it reads anything. Growth is a
+    fact about the files; whether it is justified is not, so the judgment is
+    left where `stranded` leaves its own.
+    """
+    files = measure_resident(root)
+    if not files:
+        return
+    baseline = _resident_baseline(root)
+    report.resident = ResidentInstructions(
+        files=tuple(files),
+        baseline_ref=None if baseline is None else baseline[0],
+        baseline_files=None if baseline is None else baseline[1],
+    )
+    growth = report.resident.growth
+    if growth is not None and growth > 0:
+        deltas = ", ".join(f"{name} {count:+d}" for name, count in report.resident.deltas())
+        report.advisories.append(
+            f"resident instructions grew {growth} lines against "
+            f"{report.resident.baseline_ref} ({deltas}); every session pays this before "
+            "it has read anything. Route the new rule to the cheapest thing that "
+            "delivers it when it is needed - a check, the `docket` skill, a "
+            "path-scoped rule - or say why a session could violate it before it "
+            "would look anything up. `PL-H7XN` carries the test."
+        )
+
+
 def analyze(root: Path) -> Report:
     """Run every mechanical documentation check over a checkout."""
     report = Report()
@@ -1091,11 +1298,30 @@ def analyze(root: Path) -> Report:
     check_tags(root, report)
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)
+    check_resident_instructions(root, report)
     return report
 
 
 def _plural(count: int, singular: str, plural: str) -> str:
     return f"{count} {singular if count == 1 else plural}"
+
+
+def _format_resident(resident: ResidentInstructions) -> str:
+    """One line: what every session loads, and how that compares to the base."""
+    breakdown = ", ".join(f"{name} {count}" for name, count in resident.files)
+    growth = resident.growth
+    if growth is None:
+        against = "no default branch here to compare against"
+    elif growth > 0:
+        against = f"{growth} more than {resident.baseline_ref}"
+    elif growth < 0:
+        against = f"{-growth} fewer than {resident.baseline_ref}"
+    else:
+        against = f"unchanged against {resident.baseline_ref}"
+    return (
+        f"resident instructions: {_plural(resident.total, 'line', 'lines')} "
+        f"loaded at launch ({breakdown}) - {against}"
+    )
 
 
 def format_check(report: Report) -> str:
@@ -1107,6 +1333,8 @@ def format_check(report: Report) -> str:
     if report.declined:
         summary += f", {len(report.declined)} not checked"
     lines = [summary]
+    if report.resident is not None:
+        lines.append(_format_resident(report.resident))
     if report.errors:
         lines.append("")
         lines.append("Errors (the documentation is wrong; fix before committing):")
