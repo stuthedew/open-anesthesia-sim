@@ -1,8 +1,13 @@
 ---
 id: PL-KKX4
 title: A fresh web session started with no repository checked out at all
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra
+feature: dev-tooling
 added: 2026-08-31
+not-delegable: the cause is outside this repository and no command here can reach it; the only action this queue can carry is to add a dated observation when it recurs, and the disposition - drop as a one-off, or escalate to the harness - is decidable only on a second sighting
 ---
 
 **Problem.** A web session on 2026-08-31 started with no checkout. The
@@ -45,3 +50,28 @@ if this proves to be a one-off - the item is dropped with what was learned.
 A repeat observation in another session is what would tell the two apart,
 so the next session that hits it should add a dated note here rather than
 filing a second item.
+
+**Did not recur, 2026-08-31 (observation 1 of the "not a one-off" test).** The
+web session that triaged this item started normally: working directory
+`/home/user/open-anesthesia-sim`, a git repository, on the harness-named
+branch `claude/triage-v0.2.8-items-5phbzm`, with the session-start digest
+printed before the first turn. So the failure is not reproducing on every web
+session, which is one point against it and nothing like proof. Add the next
+observation - working or broken - beneath this one.
+
+**Triaged 2026-08-31.** P3, `infra`, `dev-tooling`, `not-delegable` and no
+`verify:` command: nothing in this checkout can prove or disprove it, which
+the front matter records. No `touches` either, for the same reason - the only
+file this item ever edits is itself.
+
+`ready` rather than `needs-decision` is deliberate. The status is honest about
+what a session can do on meeting this - append a dated line - whereas
+`needs-decision` would tag it "open design decision" and route it to the
+strongest model at high effort, which is a false signal for an item whose
+whole content is a wait. It should be dropped, with what was learned, on the
+first session that starts cleanly *and* has reason to believe the harness path
+changed; or escalated the moment a second session starts with no checkout.
+
+Not admitted to v0.2.8's frozen list: it is outside the tree that release
+touches, and `PL-4CW7` (the web container's uv floor) is the precedent for
+carrying an environment finding as an ordinary P3 queue item.

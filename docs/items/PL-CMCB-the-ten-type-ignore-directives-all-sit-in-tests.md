@@ -1,8 +1,14 @@
 ---
 id: PL-CMCB
 title: The ten type: ignore directives all sit in tests/, outside the mypy gate, so warn_unused_ignores never evaluates them
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra
+feature: dev-tooling
+touches: tests/unit/test_simulation_view.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_verify.py
 added: 2026-08-31
+not-delegable: the deliverable is a verdict on ten suppressions, not an exit code - mypy over the test trees reports dozens of pre-existing errors either way, so "which of these ignores is inert" is read out of its output rather than returned by it, and the prose recording why a live one stays is a judgment
 ---
 
 **Problem.** `grep -rn 'type: *ignore' --include='*.py'` finds twelve hits.
@@ -64,3 +70,21 @@ arguing with a required practice".
 removed, the live ones say why in prose where the reason is not obvious, and
 the decision about `[tool.mypy] files` is either taken or written down as a
 separate item.
+
+**Triaged 2026-08-31.** P3, `infra`, `dev-tooling`, and `not-delegable` rather
+than carrying a `verify:` command - see the front matter for why. P3 rather
+than P2 because the directives are inert *reporting*, not inert *checking*:
+the gate covers `src`, `tools` and `subprojects/docket/src` and is unaffected
+by anything under `tests/`, so nothing type-checked is going unchecked. It is
+the same band `PL-ZN0N` and `PL-69J3` were given for the `noqa` half of the
+identical problem, and it should not be started ahead of them being the
+precedent.
+
+`pyproject.toml` is deliberately absent from `touches`: widening
+`[tool.mypy] files` is the separate item the Done-when names, and the standing
+decision recorded in the comment above `files` is not this item's to overturn.
+The first pass is a measurement out of the gate, which changes no file at all.
+
+Not admitted to v0.2.8's frozen list: it completes no entry on it. `PL-020`
+(widen the type-check gate past `src`) is the nearest, and it is `done` and
+bounded to the paths it named.

@@ -1,8 +1,14 @@
 ---
 id: PL-DL1X
 title: docket release stamps every item file before it bumps the version, so a failure in the bump leaves the store recording a release that did not happen
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-31
+verify: uv run pytest subprojects/docket/tests/test_cli.py -k unstamped
 ---
 
 **Problem.** `cmd_release` writes the store before it writes anything else:
@@ -32,3 +38,21 @@ after the dry-run return.
 version bump is proved possible before the store is written (read and validate
 the version file first, then stamp, then write), and a test covers a version
 file `bump_version` will reject, asserting the items come out unstamped.
+
+**Triaged 2026-08-31.** P2, `defect`/`infra`, `dev-tooling`. The `verify:`
+command keys on `unstamped` because the Done-when already names that word as
+the assertion; `-k stamp` was rejected as the key, since it selects the
+existing `test_stamping_records_the_release_without_touching_anything_else`
+and would pass today against no work at all.
+
+`dev-tooling` rather than `release-roadmap-seam` deliberately, even though it
+was found while exercising `PL-8HJ2`, which carries that feature. Nothing here
+touches `ROADMAP.md` or the seam between the release and the roadmap - it is
+ordering inside `cmd_release` between two writes - and grouping it there would
+make `docket status` report a feature by a name that does not describe a third
+of it.
+
+Not admitted to v0.2.8's frozen list: `PL-8HJ2` (`make release` stops mid-way
+on the ROADMAP table) is `done` and its own claim holds without this. Neither
+new scope for that entry nor its completion, so `ROADMAP.md`'s "What the freeze
+closes" sends it to the queue.
