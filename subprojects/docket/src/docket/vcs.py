@@ -14,6 +14,11 @@ request merges.
 The same holds for finished work: which pull requests have reached the
 default branch is a fact the repository holds, so an item's recorded pull
 request can be checked against it rather than trusted.
+
+And for work that never arrived: an item committed on a branch that is closed
+without merging exists only on that branch, invisible to every session that
+reads the store in its own checkout. Git holds the branch, so git can be asked
+what is on it that nowhere else has.
 """
 
 from __future__ import annotations
@@ -23,6 +28,9 @@ import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+
+from .model import parse_item
+from .store import ID_PATTERN
 
 # Branches whose tip is already contained in one of these are finished, not in
 # flight. Checked against whichever exists, so a repository using a different
@@ -237,3 +245,138 @@ def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullReq
         if match is not None:
             found.add(int(match.group(1) or match.group(2)))
     return PullRequestHistory(numbers=frozenset(found))
+
+
+# An item file is named `<id>-<slug>.md`, so the id can be read from a tree
+# listing without opening anything. The id grammar comes from `store` rather
+# than being spelled again here: two spellings of it would drift, and the one
+# that drifted would silently stop recognising items.
+ITEM_FILE_RE = re.compile(rf"^({ID_PATTERN})-")
+
+
+@dataclass(frozen=True)
+class StrandedItem:
+    """An item that exists on a branch and nowhere the store can see."""
+
+    identifier: str
+    title: str
+    path: str
+    branches: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class StrandedReport:
+    """What is only on a branch, and how much of the repository was read.
+
+    `refs_read` is part of the answer rather than diagnostics. The check can
+    only see refs this checkout holds, and a container that cloned one branch
+    holds two - so "nothing stranded" from a checkout that read two refs and
+    the same words from one that read twenty are different claims, and the
+    count is what tells them apart.
+
+    `declined` carries the same meaning it does for `PullRequestHistory`: a
+    check that could not run, reported as such rather than as a clean result.
+    """
+
+    items: tuple[StrandedItem, ...] = ()
+    refs_read: int = 0
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def _items_at(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, str]:
+    """Every item id the ref's tree holds, mapped to the file that holds it.
+
+    `ls-tree` reads one tree and needs no history behind it, which is what
+    makes this work in the shallow clone an agent session starts from. Every
+    commit-graph answer - is this branch merged, how far ahead is it - is
+    unreliable there, because the commits that would prove containment are
+    exactly the ones a shallow clone is missing.
+    """
+    found: dict[str, str] = {}
+    for line in run(["ls-tree", "-r", "--name-only", ref, "--", items_dir], root).splitlines():
+        path = line.strip()
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path else None
+        if match is not None:
+            found.setdefault(match.group(1), path)
+    return found
+
+
+def _title_at(ref: str, path: str, root: Path, run: Runner) -> str:
+    """The title an item file carries on a branch, or empty if it cannot be read."""
+    text = run(["show", f"{ref}:{path}"], root)
+    return parse_item(text, path).title if text else ""
+
+
+def stranded(
+    root: Path, known_ids: set[str], *, items_dir: str = "docs/items", runner: Runner | None = None
+) -> StrandedReport:
+    """Items that exist on some branch and in neither the store nor the default branch.
+
+    An item is committed on whatever branch the capturing session was on. If
+    that branch is never merged the item exists only there, and since every
+    other session reads `docs/items/` in its own checkout, nothing will ever
+    mention it again. This is the read that finds those.
+
+    Comparison is by **id and content, never by commit counts**, and that is
+    the whole design. A squash-merged branch is never contained in the default
+    branch, so a containment test calls it unmerged forever and reports every
+    item it carries as lost; a renamed item file was added twice and deleted
+    once, so a test over added paths reports the old name as lost. Both are
+    answered by looking at what the trees actually hold: an id present on the
+    default branch is not stranded, however its commits got there.
+
+    `known_ids` is what the calling session can already see - the store in its
+    own working tree - so an item captured on this branch a moment ago is not
+    reported back to the session that captured it. The default branch's own
+    ids are added to that, because a branch forked before an item landed has a
+    working tree missing it and would otherwise report it as stranded.
+    """
+    run = runner or _run_git
+    refs = [
+        line.strip()
+        for line in run(
+            ["for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"], root
+        ).splitlines()
+        if line.strip()
+    ]
+    if not refs:
+        return StrandedReport(declined="no branch refs this checkout can read")
+
+    base = default_base(root, runner=run)
+    on_base = _items_at(base, root, items_dir, run)
+    if not on_base:
+        # Either the read failed or the store does not live where it was said
+        # to. Both would make every item on every branch look stranded, which
+        # is the one output worse than none: it is long, alarming and wrong.
+        return StrandedReport(
+            declined=f"no items found on {base}, so every branch would read as stranding its own"
+        )
+
+    known = {identifier.upper() for identifier in known_ids} | set(on_base)
+    elsewhere: dict[str, tuple[str, list[str]]] = {}
+    for ref in refs:
+        if ref == base:
+            continue
+        for identifier, path in _items_at(ref, root, items_dir, run).items():
+            if identifier in known:
+                continue
+            # Every branch holding it is recorded, not just the first. A branch
+            # missing from the report strands nothing and is safe to delete on
+            # that count; naming only one copy would make the branch holding the
+            # other look clean.
+            elsewhere.setdefault(identifier, (path, []))[1].append(ref)
+
+    found = [
+        StrandedItem(
+            identifier=identifier,
+            title=_title_at(branches[0], path, root, run),
+            path=path,
+            branches=tuple(branches),
+        )
+        for identifier, (path, branches) in sorted(elsewhere.items())
+    ]
+    return StrandedReport(items=tuple(found), refs_read=len(refs))

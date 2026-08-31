@@ -166,6 +166,13 @@ Never hold a finding in conversation until the current work lands. The
 container is ephemeral; an uncommitted thought is one interruption from gone.
 Commit the new item on its own so it survives an abandoned branch.
 
+The digest names an item that exists only on a branch when it finds one, and
+`bin/docket stranded` prints it with the `git checkout` line that restores the
+file. The command cannot tell live work from an abandoned branch, so that
+judgment is the reply's: leave a branch someone is working, and recover from
+one nobody will merge - restore the file, commit it on its own, and say in the
+reply which branch it came off.
+
 ## Mode: recommend what to work on
 
 Triggered by "what should we work on next", "I have some time", "what's left".

@@ -6,8 +6,9 @@ effort: S
 status: ready
 classes: session-cost
 feature: dev-tooling
-touches: subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, .claude/hooks/docket-digest.sh
 added: 2026-08-24
+verify: uv run pytest subprojects/docket/tests/test_vcs.py subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** An item is committed on whatever branch the capturing session was
@@ -46,3 +47,26 @@ in `subprojects/docket/README.md` as accepted, with the reason.
 **Context.** Carried over from the single-file queue, where it applied to inbox
 notes. One file per item did not remove it: the mitigation is still that an
 item is committed alone, so recovering one is a single `git cherry-pick`.
+
+**Decided (2026-08-31).** In the tool, not in CI, and surfaced through the
+session digest. The requirement is that *a later session* sees it, and CI
+reports to whoever reads the run - so a CI job would answer the question in a
+place the reader who needs it never looks. `docket stranded` prints the full
+report; the digest carries one line, and only when there is something to say.
+
+**Built by content, not by commit counts.** The sketch above (`git log --all
+--diff-filter=A`) was replaced with a per-ref `git ls-tree` compared by item
+id. Three reasons, each of which would have made the sketch report items that
+are not lost: a squash-merged branch contains none of its own commits, so it
+reads as unmerged forever; a renamed item file was added twice and deleted
+once, so its old name reads as added-and-gone; and an agent session's
+container is a shallow clone, where every commit-graph question - containment
+included - is unreliable. `ls-tree` reads one tree and needs no history behind
+it.
+
+**The enabling half was the fetch.** A session container clones one branch, so
+before this the checkout held two refs and the check could only ever have
+answered "nothing stranded". `.claude/hooks/docket-digest.sh` now fetches every
+branch tip rather than `main` alone - measured at well under a second - and
+deliberately does not prune, since a tracking ref for a branch deleted on the
+remote may be the only copy of what was committed on it.

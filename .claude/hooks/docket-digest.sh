@@ -5,6 +5,10 @@
 # without reading the store. The digest is deliberately a few lines: this text
 # is resent on every turn of the session.
 #
+# It also fetches every branch tip, so the digest's stranded-item line has refs
+# to read: an item committed on a branch that never merges is invisible to a
+# checkout that never fetched that branch, and a container clones one.
+#
 # It also reports where the working branch stands against `origin/main`. That
 # is a check rather than a rule for the same reason the rest of this is a
 # digest rather than a paragraph in CLAUDE.md: a session that picks up a
@@ -29,7 +33,17 @@ branch_state() {
   command -v git >/dev/null 2>&1 || return 0
   git -C "$root" rev-parse --git-dir >/dev/null 2>&1 || return 0
 
-  local branch counts behind ahead fetch=(git -C "$root" fetch --quiet origin main)
+  # Every branch tip, not just main. The stranded-item check can only see refs
+  # this checkout holds, and a session container clones one branch - so without
+  # this it reads two refs, finds nothing, and says so in words that sound like
+  # a clean answer. Measured at well under a second here, against a fetch of
+  # `main` alone that was already being paid.
+  #
+  # Deliberately not `--prune`. A branch deleted on the remote leaves a
+  # tracking ref that is now the only copy of anything committed on it, which
+  # is precisely the case the check exists to catch; pruning would delete the
+  # evidence before anything looked at it.
+  local branch counts behind ahead fetch=(git -C "$root" fetch --quiet origin)
   branch=$(git -C "$root" rev-parse --abbrev-ref HEAD 2>/dev/null) || return 0
   [ -n "$branch" ] && [ "$branch" != "HEAD" ] || return 0
 
