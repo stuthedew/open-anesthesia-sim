@@ -3,11 +3,14 @@ id: PL-020
 title: Widen the type-check gate past `src`, and ship a `py.typed` marker
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
 touches: pyproject.toml, Makefile, README.md, .github/workflows/quality.yml, src/anesthesia_sim/py.typed, subprojects/docket/src/docket/roadmap.py, tests/unit/test_bootstrap.py
 added: 2026-08-24
+closed: 2026-08-31
+commit: 685cbd5
+pr: 102
 verify: uv run mypy && uv run pytest tests/unit/test_bootstrap.py -k py_typed
 ---
 
