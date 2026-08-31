@@ -34,8 +34,10 @@ from .store import find_item, new_id, read_items, write_item
 from .vcs import (
     FlightReport,
     StrandedReport,
+    branch_state,
     branches_in_flight,
     default_base,
+    fetch_remote,
     merged_pull_requests,
     stranded,
     tags,
@@ -673,6 +675,36 @@ def cmd_stranded(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_branch(args: argparse.Namespace) -> int:
+    """Where this branch stands against the default branch, asked again.
+
+    The session-start hook asked it once, at session start, on a condition that
+    develops during a session: another session merges while this one is still
+    discussing what to build, and the base goes stale under it. Nothing looked
+    again, so it surfaced at push time as a merge conflict.
+
+    **This fetches, and the library function it calls does not.** The decision
+    has to stay answerable from a bare checkout with no network, so
+    `branch_state` reads only what the checkout holds - but a command whose one
+    question is "has the base moved" would answer "current" from a ref nobody
+    refreshed, which is a confident wrong answer of exactly the kind the rest
+    of this package refuses to give. So the command refreshes first and says
+    which of the two happened. `--no-fetch` is for the caller that already
+    fetched - the hook among them - and for a checkout with no network.
+    """
+    root = args.items.parent if args.items else find_root()
+    if not args.no_fetch:
+        fetch_remote(root)
+    state = branch_state(root, fetched=not args.no_fetch)
+    if args.brief and state.absent:
+        # Nothing to compare against, and the digest is resent on every turn of
+        # the session: a line explaining why there is no position is worth
+        # having when a person asks, and is noise when nobody did.
+        return 0
+    print(render.format_branch_state(state, None if args.brief else _flight(args)))
+    return 0
+
+
 def cmd_flight(args: argparse.Namespace) -> int:
     """Which items are being worked on a branch, and how long since each moved.
 
@@ -735,6 +767,20 @@ def build_parser() -> argparse.ArgumentParser:
     add("list", "one line per open item").set_defaults(func=cmd_list)
     add("digest", "the session-start summary").set_defaults(func=cmd_digest)
     add("flight", "branches carrying item work").set_defaults(func=cmd_flight)
+    branch_cmd = add("branch", "where this branch stands against the default branch")
+    branch_cmd.add_argument(
+        "--no-fetch",
+        action="store_true",
+        default=False,
+        help="read the refs as they are; the caller refreshed them, or cannot",
+    )
+    branch_cmd.add_argument(
+        "--brief",
+        action="store_true",
+        default=False,
+        help="position and recovery command only, for a caller printing the rest itself",
+    )
+    branch_cmd.set_defaults(func=cmd_branch)
     add("stranded", "items that exist only on a branch").set_defaults(func=cmd_stranded)
     add("triage", "what is untriaged, and the rules the answers must satisfy").set_defaults(
         func=cmd_triage

@@ -456,6 +456,206 @@ def behind_remote(root: Path, base: str, *, runner: Runner | None = None) -> int
     return int(counts) if counts.isdigit() else None
 
 
+# What a branch should do about where it stands, decided from the counts rather
+# than from the words used to say it. `render` turns one of these into a
+# sentence and a command; keeping the choice here is what lets a test assert
+# the decision without matching prose, and what stops two callers wording the
+# same state differently.
+CURRENT = "current"
+RESTART = "restart"
+PULL = "pull"
+MERGE = "merge"
+
+
+@dataclass(frozen=True)
+class BranchState:
+    """Where the working branch stands against the default branch, and what moved.
+
+    `declined` carries the meaning it does everywhere else here: the question
+    could not be answered, and why. A checkout sharing no readable history with
+    the default branch is the case that matters, because `git rev-list
+    --left-right --count A...B` does not fail there - it prints the size of
+    each side of an unrelated pair, which reads exactly like a real answer. A
+    fabricated "98 ahead" tells a session it is carrying work it does not have,
+    which argues against merging in the very case this exists to catch.
+
+    `landed` is what makes it worth running twice. The counts say the base
+    moved; the ids say *what* moved, which is what a session waiting on another
+    session actually wants to know, and it costs one `git log` over a range
+    already computed.
+
+    `fetched` is not about git's answer but about how old the refs behind it
+    are. This reads what the checkout holds and never fetches - the decision
+    has to stay answerable from a bare checkout with no network - so a caller
+    that did not refresh `origin/main` first gets an answer as stale as its
+    last fetch, and saying so is the difference between a report and a guess.
+
+    `absent` separates the two shapes of "no position" that the session-start
+    hook has always distinguished by staying silent. A detached HEAD, a
+    checkout with no base, and the default branch itself with no remote copy
+    are cases where *no comparison exists*, and a digest resent on every turn
+    should not carry a line saying so. A clone that shares no readable history
+    is the other shape: the comparison exists and could not be made, which is
+    the one that has to be said out loud.
+
+    It records that the caller *attempted* a refresh, not that one arrived: a
+    quiet `git fetch` prints nothing whether it succeeded or failed, and no
+    read here can tell those apart. So it is reported only in the negative -
+    nothing tried - which is the claim that can be made. A fetch that tried and
+    failed leaves the answer stale by exactly one fetch, which is the error the
+    session-start hook has always accepted.
+    """
+
+    branch: str = ""
+    base: str = ""
+    behind: int = 0
+    ahead: int = 0
+    landed: tuple[str, ...] = ()
+    fetched: bool = False
+    declined: str = ""
+    absent: bool = False
+
+    @property
+    def disposition(self) -> str:
+        """Which of the four states this is, or `""` when there is no answer."""
+        if self.declined:
+            return ""
+        if self.behind == 0:
+            return CURRENT
+        if self.is_default:
+            return PULL
+        return RESTART if self.ahead == 0 else MERGE
+
+    @property
+    def is_default(self) -> bool:
+        """Whether the working branch is the default branch itself."""
+        return bool(self.branch) and self.base.rsplit("/", 1)[-1] == self.branch
+
+
+def _landed_since(
+    fork: str, base: str, root: Path, run: Runner, limit: int = 40
+) -> tuple[str, ...]:
+    """The ids leading the subjects the default branch gained since the fork.
+
+    Only a leading id counts, for the reason `_unmerged_commits` gives: a
+    subject mentioning an item further in is usually bookkeeping about somebody
+    else's work. Bounded, because a branch forked long ago would otherwise
+    print a release's worth of ids into a digest line - the newest are the ones
+    a session waiting on something wants.
+    """
+    output = run(["log", f"-n{limit}", "--format=%s", f"{fork}..{base}", "--"], root)
+    found: list[str] = []
+    for line in output.splitlines():
+        for identifier in _leading_ids(line):
+            if identifier not in found:
+                found.append(identifier)
+    return tuple(found)
+
+
+def fetch_remote(root: Path, *, runner: Runner | None = None) -> None:
+    """Refresh the remote-tracking refs, or fail quietly having tried.
+
+    The one read in this module that goes to the network, kept apart from the
+    rest for exactly that reason: a caller that must not touch it simply does
+    not call this. Every branch tip rather than `main` alone, and deliberately
+    not `--prune` - a branch deleted on the remote leaves a tracking ref that
+    is the only surviving copy of anything committed on it, which is the case
+    `stranded` exists to catch.
+    """
+    run = runner or _run_git
+    run(["fetch", "--quiet", "origin"], root)
+
+
+def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = False) -> BranchState:
+    """Where the working branch stands against the default branch.
+
+    This was fifty lines of bash in the session-start hook, which is the only
+    place it could run: at session start, once, on a condition that develops
+    *during* a session. A session opened to discuss the next piece of work
+    while another session finishes something is told its base is current, talks
+    for a while, and starts implementing against a base that moved - and the
+    staleness surfaces at push time as a merge conflict, which is the rework
+    cycle the check exists to prevent.
+
+    So the decision lives here, where a command can ask it again at any moment
+    and a test can hold it to an answer. The hook keeps only the fetch.
+
+    **It never fetches.** The rule the rest of this module follows - a read
+    that must work from a bare checkout with no network - applies to the
+    decision, so refreshing `origin/main` is the caller's, and `fetched` says
+    whether the caller did it. What is reported is therefore stale by exactly
+    one fetch at worst, which is an acceptable error for a report and would be
+    an unacceptable one for a claim.
+    """
+    run = runner or _run_git
+    branch = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
+    if not branch or branch == "HEAD":
+        return BranchState(
+            fetched=fetched,
+            absent=True,
+            declined="no branch is checked out here, so there is nothing to compare",
+        )
+
+    base = default_base(root, runner=run)
+    if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
+        return BranchState(
+            branch=branch,
+            fetched=fetched,
+            absent=True,
+            declined=f"this checkout has no {base} to compare against",
+        )
+
+    # The default branch with no remote copy of it: `default_base` fell all the
+    # way back to the local branch, which is the one already checked out, and
+    # comparing a ref with itself answers nothing. Distinct from being current,
+    # because there is no other side to have moved.
+    if base == branch:
+        return BranchState(
+            branch=branch,
+            base=base,
+            fetched=fetched,
+            absent=True,
+            declined=f"{branch} is the default branch and has no remote copy to compare with",
+        )
+
+    # The fork point is asked for before the counts, and both guard and answer
+    # come from the one read: `rev-list --left-right --count` on refs sharing
+    # no history reports each side's whole length instead of failing, and a
+    # count invented that way is worse than no count at all.
+    fork = run(["merge-base", "HEAD", base], root).strip()
+    if not fork:
+        return BranchState(
+            branch=branch,
+            base=base,
+            fetched=fetched,
+            declined=(
+                f"this clone shares no readable history with {base}, so its position "
+                "cannot be counted - something ran a `--depth` fetch, and "
+                "`git fetch --deepen=100 origin` restores the answer"
+            ),
+        )
+
+    counts = run(["rev-list", "--left-right", "--count", f"{base}...HEAD"], root).split()
+    if len(counts) != 2 or not all(part.isdigit() for part in counts):
+        return BranchState(
+            branch=branch,
+            base=base,
+            fetched=fetched,
+            absent=True,
+            declined="git would not count the two sides",
+        )
+
+    behind, ahead = int(counts[0]), int(counts[1])
+    return BranchState(
+        branch=branch,
+        base=base,
+        behind=behind,
+        ahead=ahead,
+        landed=_landed_since(fork, base, root, run) if behind else (),
+        fetched=fetched,
+    )
+
+
 def is_shallow(root: Path, *, runner: Runner | None = None) -> bool | None:
     """Whether this checkout is truncated, or `None` when git will not say.
 

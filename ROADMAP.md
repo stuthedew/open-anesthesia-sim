@@ -571,7 +571,10 @@ reports the split.
   moved while it was talking. Added 2026-08-31 at the project owner's
   direction rather than under the completion rule: it is new scope, admitted
   because the staleness is paid by every session that opens as a discussion,
-  which is how this project is normally worked.
+  which is how this project is normally worked. Closed 2026-08-31 (pull request
+  125): the check is `bin/docket branch`, so the question can be asked again at
+  any moment rather than only at session start, and the hook keeps only the
+  fetch.
 - PL-D2GW (S) The session digest offers a release whose version names a
   milestone whose gate is still open, so the line every session reads first
   tells it to cut v0.2.8 while entries of v0.2.8 are unfinished. Admitted
