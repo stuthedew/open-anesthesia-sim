@@ -3,12 +3,14 @@ id: PL-019F
 title: The 'what should we work on next' rule answers at feature altitude, one level below the roadmap step that should decide it
 priority: P3
 effort: S
-status: ready
+status: done
 verify: python3 tools/doc_check.py check
 classes: infra
 feature: planning-cadence
 touches: CLAUDE.md
 added: 2026-08-26
+closed: 2026-08-31
+pr: 110
 ---
 
 **Problem.** `CLAUDE.md`'s rule reads: "Answer 'what should we work on next?'

@@ -3,12 +3,14 @@ id: PL-DGM4
 title: The instruction-writing rules and the docket skill prescribe opposite openings for a 'what next' reply
 priority: P2
 effort: S
-status: ready
+status: done
 verify: python3 tools/doc_check.py check
 classes: docs
 feature: worker-instructions
 touches: CLAUDE.md, .claude/rules/instruction-writing.md, .claude/skills/docket/SKILL.md
 added: 2026-08-31
+closed: 2026-08-31
+pr: 110
 ---
 
 **Problem.** Two in-repo instruction sources give opposite instructions for
