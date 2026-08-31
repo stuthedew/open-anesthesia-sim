@@ -293,8 +293,8 @@ def format_flight(report: FlightReport, today: date) -> str:
         base = report.base or "the default branch"
         carried = "it carries" if len(report.unreadable) == 1 else "they carry"
         lines.append(
-            f"{_plural(len(report.unreadable), 'ref shares', 'refs share')} no history with "
-            f"{base} that this checkout can read, so what {carried} is unknown:"
+            f"{_plural(len(report.unreadable), 'ref cannot', 'refs cannot')} be compared with "
+            f"{base} on the history this checkout holds, so what {carried} is unknown:"
         )
         lines.extend(f"  {name}" for name in report.unreadable)
     return "\n".join(lines)

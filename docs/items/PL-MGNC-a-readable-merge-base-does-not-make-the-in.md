@@ -3,11 +3,14 @@ id: PL-MGNC
 title: A readable merge-base does not make the in-flight commit walk complete, so a shallow clone reports merged items as in flight
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-08-31
+closed: 2026-08-31
+pr: 122
+commit: aed638e
 verify: uv run pytest subprojects/docket/tests/test_vcs.py -k contained
 ---
 
@@ -89,3 +92,31 @@ Work it with `PL-CPSY` and `PL-S1P1`: all three change `branches_in_flight`
 and its return value, so serializing them or taking them in one session is the
 difference between one design pass over that function and three conflicting
 ones.
+
+**Done 2026-08-31, by checking the walk as well as the merge-base.** A walk has
+to stop against a commit the default branch accounted for, never because the
+checkout ran out of history, and the signature of the second is the commit with
+no parents such a walk ends on. So `%p` joins the commit format, and a ref whose
+walk emits a parentless commit is named as unread rather than believed - the
+disposition a ref with no readable merge-base already got, now reached by the
+second route as well. It costs no extra git invocation: the parent field rides
+the walk that was already being run. Reading the commits is also what settles
+it rather than `--is-shallow-repository`, so a git too old to answer that is
+covered.
+
+**Reproduced, as the brief required.** `_shallow_pair` in `test_cli.py` builds
+it with real git: the default branch fetched to a depth that leaves it grafted,
+the branch fetched to a depth that carries it past the graft, which one merge
+of the default branch into a branch is enough to reach round. The test asserts
+the merge-base resolves before asserting the report, so it cannot decay into a
+second copy of the `--depth 1` case the existing guard already covers. Both it
+and the injected-runner tests fail with the guard disabled.
+
+**What the fix does not claim.** The parentless commit is the signature of every
+shape observed and of the reproduction, not a proof that the walk is complete: a
+walk that descends past the default branch's horizon and then ends against some
+*other* commit the default branch reaches would go uncaught. Captured as
+`PL-W1LN` rather than left to be inferred from the guard's absence. Two further
+findings went with it - `PL-YSXF` (an unread ref loses the id its own branch
+name carries, which needs no history at all) and `PL-K2ZK` (the session-start
+hook could deepen the clone, turning a declined answer into the right one).

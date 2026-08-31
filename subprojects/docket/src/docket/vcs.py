@@ -88,10 +88,13 @@ BRANCH_ID_RE = re.compile(
 LEADING_IDS_RE = re.compile(rf"^\s*{ID_PATTERN}(?:\s*(?:,|&|and)\s*{ID_PATTERN})*", re.I)
 ANY_ID_RE = re.compile(ID_PATTERN, re.I)
 
-# One line per commit: the ref that reached it, the day it was committed, and
-# its subject. `%S` needs `--source`, and the unit separator is used as the
-# delimiter because a subject can contain anything a keyboard can type.
-COMMIT_FORMAT = "--format=%S%x1f%cs%x1f%s"
+# One line per commit: the ref that reached it, the day it was committed, the
+# parents this checkout holds, and its subject. `%S` needs `--source`, and the
+# unit separator is used as the delimiter because a subject can contain
+# anything a keyboard can type. `%p` is empty for a commit whose parents this
+# checkout does not have, which is how a walk that ran off the end of a
+# truncated history is told from one the default branch stopped.
+COMMIT_FORMAT = "--format=%S%x1f%cs%x1f%p%x1f%s"
 
 
 @dataclass(frozen=True)
@@ -113,12 +116,19 @@ class Branch:
 class FlightReport:
     """Which items are in flight, and which refs could not be read to find out.
 
-    `unreadable` is why this is a type rather than a list. A ref sharing no
-    history this checkout can read contributes nothing to the answer, and
-    silence about it would present a partial reading as a complete one - the
-    same collapse `PullRequestHistory.declined` guards against, per ref rather
-    than for the whole check, because one unreadable ref does not stop the
-    others from being read.
+    `unreadable` is why this is a type rather than a list. A ref this checkout
+    cannot compare with the default branch contributes nothing to the answer,
+    and silence about it would present a partial reading as a complete one -
+    the same collapse `PullRequestHistory.declined` guards against, per ref
+    rather than for the whole check, because one unreadable ref does not stop
+    the others from being read.
+
+    Two things put a ref there, and a truncated clone is behind both: no
+    merge-base with the default branch that this checkout can resolve, and a
+    commit walk that ran off the end of the history instead of stopping
+    against the default branch. The second is not implied by the first -
+    `_unmerged_commits` has the argument - so a ref answering the merge-base
+    is not thereby answerable.
     """
 
     branches: tuple[Branch, ...] = ()
@@ -136,28 +146,52 @@ def _leading_ids(subject: str) -> list[str]:
 
 def _unmerged_commits(
     refs: list[str], base: str, root: Path, run: Runner
-) -> tuple[dict[str, date], dict[str, str]]:
-    """The newest commit day per ref, and the ref that first leads with each id.
+) -> tuple[dict[str, date], dict[str, str], set[str]]:
+    """The newest commit day per ref, the ref leading with each id, and what went unread.
 
     One `git log` covers every ref at once: `--source` reports which ref on the
     command line reached each commit, so the walk that finds the ids also dates
     the branches. Refs are passed in the order they will be reported in, so a
     commit two refs share - a local branch and its own tracking ref - is
     attributed to the one that will be named.
+
+    **A walk must stop because the default branch accounted for what came next,
+    never because the checkout ran out of history.** `^base` excludes only the
+    commits this checkout can reach *from* `base`, and in a truncated clone
+    `base`'s own history ends at a grafted commit - so everything below that
+    graft goes unexcluded. A ref reaching round it, which a merge of the
+    default branch into a branch is enough to do, then has the default
+    branch's own commits reported as its work and the ids leading their
+    subjects reported as items somebody is implementing. A merge-base that
+    resolves does not rule this out: it proves the two share *a* commit this
+    checkout can see, never that the walk can see the rest.
+
+    The signature is a commit with no parents in this checkout. A walk that
+    ends soundly ends against a commit `base` excluded; one that emits a
+    parentless commit ran off the end of a grafted history instead, so nothing
+    it produced is proven and the ref it belongs to is returned as unread. The
+    repository's true root reads the same way and is answered the same way -
+    it sits on the default branch, so a walk reaching it is one `base` failed
+    to exclude. Reading the commits is what settles this rather than
+    `is_shallow`, so a git too old to say whether the checkout is truncated is
+    guarded too.
     """
     if not refs:
-        return {}, {}
+        return {}, {}, set()
     # The trailing `--` is what keeps a branch sharing a name with a file from
     # being read as a path, which git refuses to guess at and answers with an
     # error - and every error here collapses to "nothing known".
     output = run(["log", "--source", COMMIT_FORMAT, f"^{base}", *refs, "--"], root)
     last: dict[str, date] = {}
     ids: dict[str, str] = {}
+    unbounded: set[str] = set()
     for line in output.splitlines():
-        parts = line.split("\x1f", 2)
-        if len(parts) != 3:
+        parts = line.split("\x1f", 3)
+        if len(parts) != 4:
             continue
-        ref, committed, subject = parts
+        ref, committed, parents, subject = parts
+        if not parents.strip():
+            unbounded.add(ref)
         try:
             day = date.fromisoformat(committed)
         except ValueError:
@@ -166,7 +200,7 @@ def _unmerged_commits(
             last[ref] = day
         for identifier in _leading_ids(subject):
             ids.setdefault(identifier, ref)
-    return last, ids
+    return last, ids, unbounded
 
 
 def _work_already_on_base(ref: str, fork_point: str, base: str, root: Path, run: Runner) -> bool:
@@ -246,6 +280,13 @@ def branches_in_flight(
     branch contains; a squash merge keeps none of the branch's commits, so
     `_work_already_on_base` asks after the content instead.
 
+    What that leaves is read, and only what the checkout can prove is reported.
+    Both reads of a ref against the default branch need history the checkout
+    may not hold, so each has a guard and neither guard covers the other: a
+    merge-base that will not resolve, and a commit walk that ran off the end of
+    a grafted history rather than stopping against the default branch. Either
+    one names the ref as unread.
+
     What remains is qualified rather than filtered. An unmerged branch may be a
     live session or work nobody will ever merge, and only the date of its last
     commit separates the two - so that is carried into the report and left to
@@ -273,22 +314,38 @@ def branches_in_flight(
     # and a ref with no readable merge-base is one whose commits this checkout
     # simply does not have. Excluding `^base` from a walk that cannot reach
     # `base` would report the ref's whole visible history as its own work, so
-    # it is named as unread instead of answered wrongly.
+    # it is named as unread instead of answered wrongly. This is the first of
+    # two guards and not the sufficient one: a merge-base that resolves says
+    # the two share a commit this checkout can see, not that the walk below it
+    # is complete, which is what the second guard tests.
     #
     # The merge-base is the fork point the content test compares against, so
     # the read that decides whether a ref can be answered at all is the same
     # one that answers it - two calls asking git the same question could
     # disagree about which commit the branch left from.
     unlanded: list[str] = []
-    unreadable: list[str] = []
+    unreadable: set[str] = set()
     for name in candidates:
         fork_point = run(["merge-base", base, name], root).strip()
         if not fork_point:
-            unreadable.append(name)
+            unreadable.add(name)
         elif not _work_already_on_base(name, fork_point, base, root, run):
             unlanded.append(name)
 
-    last_commit, subject_ids = _unmerged_commits(unlanded, base, root, run)
+    # A resolvable merge-base answers only half of it. The walk that reads the
+    # ids has to be able to exclude the default branch's own commits, and in a
+    # truncated clone it cannot always reach them - so a ref whose walk ran off
+    # the end of the history joins the ones the merge-base could not answer
+    # rather than contributing what it appeared to say. The direction matters:
+    # an id wrongly reported here is removed from `docket next` under the words
+    # "do not start these again", so an unread ref is the cheaper error.
+    last_commit, subject_ids, unbounded = _unmerged_commits(unlanded, base, root, run)
+    if unbounded:
+        unreadable |= unbounded
+        unlanded = [name for name in unlanded if name not in unbounded]
+        subject_ids = {
+            identifier: name for identifier, name in subject_ids.items() if name not in unbounded
+        }
 
     # A local branch and its remote tracking ref are one piece of work, and so
     # are a branch named for an item and its own commits: the first ref that
@@ -309,7 +366,7 @@ def branches_in_flight(
 
     return FlightReport(
         branches=tuple(sorted(in_flight.values(), key=lambda branch: branch.item_id)),
-        unreadable=tuple(unreadable),
+        unreadable=tuple(name for name in candidates if name in unreadable),
         base=base,
     )
 

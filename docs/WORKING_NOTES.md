@@ -126,6 +126,26 @@ twenty-seven ids in flight, eighteen closed - was produced by
 gone, and reproducing `PL-MGNC` needs a ref that is genuinely unlanded *and* a
 clone truncated below its fork point.
 
+**`PL-MGNC` landed on its own too, 2026-08-31** (pull request 122), so the
+cluster is one. It also separated, the other way round: its fix is inside the
+walk - a walk must stop against a commit the default branch accounted for,
+never because the checkout ran out of history, and the commit with no parents
+such a walk ends on is the signature - while `PL-S1P1` is about the callers
+that never see the refs it declines. Neither needed the other's lines.
+
+The reproduction the note above asked for is `_shallow_pair` in
+`test_cli.py`: real git, the default branch fetched to a depth that leaves it
+grafted and the branch fetched past that graft, which one merge of the default
+branch into a branch is enough to reach round. That merge is the ordinary
+shape here, because resolving a conflict leaves one behind.
+
+`PL-S1P1` (the unread refs never reach `docket next`) is now worth more than
+it was, and that is `PL-MGNC`'s doing: `unreadable` has two ways of filling
+rather than one, so the half of the answer `in_flight_ids` discards is a
+larger half. `PL-YSXF` (a ref named as unread loses the id its own branch name
+carries) is the same hole seen from inside `branches_in_flight` and was
+captured in the same session; the two are one pass.
+
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 
 Not scoped yet. The performance blocker this waited on has landed: render
