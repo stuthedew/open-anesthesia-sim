@@ -68,3 +68,11 @@ Not admitted to v0.2.8's frozen list: it completes no entry on it, and
 that is neither new scope nor a completion to the queue. The hazard it
 describes was *created* by `PL-H7XN`'s fix landing only in `doc_check.py`, so
 it is worth doing early in the next release rather than late.
+
+**Admitted to v0.2.8's frozen list, 2026-08-31, reversing the paragraph
+above.** The reassessment that added it applied the scope test rather than the
+completion rule: `ROADMAP.md`'s "What the freeze closes" now says that a
+defect in machinery the release's goal names is inside the frozen scope
+however late it is found, and the lint gate is one of the six pieces that goal
+names. The paragraph above is kept rather than deleted because its reasoning
+was sound about the rule it was applying — the rule was the narrow one.

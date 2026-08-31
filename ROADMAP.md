@@ -45,7 +45,7 @@ capability-boundary rule above governs.
 | v0.2.5 | Completed | Licensing, documentation and planning release: the project is licensed Apache-2.0, v0.3.0 through the MVP is scoped onto one timeline with its debt gates, Phase 0 is retired in favour of the standing debt gate, and `docs/worker.md` states what a delegated worker decides for itself. No source file changed. |
 | v0.2.6 | Completed | Delegation and release-tooling release on the same model: work whose success a command can prove now has to name that command and have run it, `docket` computes the debt gate and the cadence beat instead of a session transcribing them, and the release path stopped leaving `uv.lock` stale, while drift between this table and the version file became something a check catches - caught, not prevented, since nothing writes the row. The one scientific item widened the splitting-error bound to the whole settings envelope. No equation, parameter, or numerical method changed. |
 | v0.2.7 | Completed / current baseline | Session-discipline and applicability-domain release on the same model: the simulation step now refuses inputs outside the operator split's stated applicability domain and the splitting-error bound is measured across setting changes rather than one held operating point, while ten process items closed the three channels by which product work leaked into discussions that were not about it, gave multi-step instructions a written standard, and cleared three live tooling defects. No equation or parameter changed, and the numerical method is unchanged - it is now guarded at the domain it was always specified for. |
-| v0.2.8 | Planned / scoped | The workflow works: nineteen entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the type-check and lint gates, and the instructions a session reads before it does anything. No simulator change, and no equation, parameter, numerical method or displayed value changes. |
+| v0.2.8 | Planned / scoped | The workflow works: twenty-nine entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the type-check and lint gates, and the instructions a session reads before it does anything. No simulator change, and no equation, parameter, numerical method or displayed value changes. |
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
@@ -300,7 +300,7 @@ before the debt gate existed, which is the exception recorded under
 "Versioning decision" above, and an exception rather than a pattern. Row 1
 is not a gate at all — v0.2.8's frozen list is its own scope, recorded under
 a gate heading because that subsection is what `bin/docket wave` reads, and
-eleven of its nineteen entries are new workflow capability rather than debt.
+eleven of its twenty-nine entries are new workflow capability rather than debt.
 Gates 1 onward hold one milestone's findings and ship inside the milestone
 they gate, which is why rows 4, 6 and 8 carry no version.
 
@@ -510,9 +510,10 @@ minor-version exception is not extended to it and is not needed.
 ### Debt gate: the frozen list
 
 **Frozen 2026-08-30, the day this release was scoped, at seventeen entries.**
-Five have been admitted since — four under the completion rule beneath this
-list, one at the project owner's direction — so the twenty-two entries below
-are its whole content. What the freeze does and does not close is set
+Twelve have been admitted since — four under the completion rule beneath this
+list, one at the project owner's direction, and seven on 2026-08-31 under the
+scope test beneath this list — so the twenty-nine entries below are its whole
+content. What the freeze does and does not close is set
 out beneath the list; an entry records its own outcome as it closes, per
 "The cadence" below.
 
@@ -533,7 +534,7 @@ the v0.4.0 section: a count written into a document goes stale the next time an
 item closes. `bin/docket wave` reads these entries against `docs/items/` and
 reports the split.
 
-*The loop is visibly broken without these — twelve entries:*
+*The loop is visibly broken without these — sixteen entries:*
 
 - PL-J786 (S) Require a green `checks` run before any merge into main
 - PL-64LS (S) Detect items stranded on an unmerged branch
@@ -571,8 +572,29 @@ reports the split.
   direction rather than under the completion rule: it is new scope, admitted
   because the staleness is paid by every session that opens as a discussion,
   which is how this project is normally worked.
+- PL-D2GW (S) The session digest offers a release whose version names a
+  milestone whose gate is still open, so the line every session reads first
+  tells it to cut v0.2.8 while entries of v0.2.8 are unfinished. Admitted
+  2026-08-31 under the scope test: the digest and the release script are both
+  machinery this release's goal names. It reopens on every later release that
+  records a gate — v0.3.0 shipping Gate 0 is the next — which is exactly the
+  run this release exists to protect.
+- PL-Q2BJ (S) The digest's `Top:` line still leads with work the current step
+  excludes, contradicting the beat printed two lines below it. Admitted
+  2026-08-31 under the scope test: it is `PL-1TPM`'s defect on the surface
+  every session reads whether it asked or not.
+- PL-CPSY (S) A squash-merged branch whose ref survives reports its items in
+  flight forever, so `docket next` withholds work that is finished and
+  startable. Admitted 2026-08-31 under the scope test: squash-merge is the
+  merge path `PL-S4M2` installed for this release, and the queue's ranking is
+  what reads it.
+- PL-S1P1 (S) The refs whose history could not be read are dropped before the
+  in-flight ids reach `docket next`, so a partial answer is presented as a
+  complete one everywhere except `docket flight`. Admitted 2026-08-31 under
+  the scope test, and worked with `PL-CPSY`: both are holes in one function's
+  answer and they collide on `touches`.
 
-*Stops new debt being introduced — ten entries:*
+*Stops new debt being introduced — thirteen entries:*
 
 - PL-ZQ9C (M) Record an item's pull request, so provenance survives
   squash-merge
@@ -601,6 +623,21 @@ reports the split.
   after the freeze because it completes PL-020 above: that entry's whole claim
   is that `subprojects/docket/src` is type-checked, and it was not, in the two
   outputs every session reads first. See the rule beneath this list.
+- PL-DL1X (S) `docket release` stamps every item file before it bumps the
+  version, so a failed bump leaves the store recording a release that did not
+  happen. Admitted 2026-08-31 under the scope test: the release script is
+  machinery this release's goal names, and the residue is a provenance error
+  of the kind the release path exists to prevent.
+- PL-921W (S) The formatter target applies to `tools/`, which must run under
+  bare `python3`, and nothing guards it the way `subprojects/docket/` is
+  guarded. Admitted 2026-08-31 under the scope test: the lint gate is named in
+  the goal, and this is the same second-site miss as `PL-J295`, one tool over.
+- PL-CMCB (S) All ten `type: ignore` directives sit under `tests/`, outside
+  `[tool.mypy] files`, so `warn_unused_ignores` has never evaluated one.
+  Admitted 2026-08-31 under the scope test: it is the mypy half of what
+  `PL-ZN0N` and `PL-69J3` did for `noqa`. The weakest of the seven — inert
+  reporting rather than a loop that misfires — and the first to drop if this
+  list needs shortening.
 
 **Two items on the approved list are not entries.** `PL-J3ZK` (restore the tag
 provenance) and `PL-20ZR` (the workflow-before-features ordering is
@@ -608,13 +645,14 @@ re-explained every session) were on the list the project owner approved and
 closed before it was written here. Recording a closed item as a frozen entry
 would make this release report a size it never had to clear.
 
-**Five of the twenty-two are marked `not-delegable`,** which is high for a
+**Six of the twenty-nine are marked `not-delegable`,** which is high for a
 release this size and is worth knowing before the work is planned: PL-J786 and
 PL-S4M2 change GitHub repository configuration that no session in this project
 can reach; PL-8HJ2 can only be proved by cutting a release; PL-ZQ9C leaves a
 migration choice open that rewrites the provenance of every closed item; and
 PL-H7XN's test is that no rule was lost, which is a reading of the file rather
-than a command.
+than a command; and PL-CMCB's deliverable is a verdict on ten suppressions
+rather than an exit code.
 
 **What the freeze closes, and what it does not** (project owner, 2026-08-30).
 The list is closed to new *scope*: new behavior, new capability, another
@@ -630,14 +668,43 @@ than a new rule: that section already says a finding which continues or
 completes an item inside the frozen list belongs to the same list. This
 paragraph said the opposite when the section was first written, and was wrong.
 
-A finding that is neither new scope nor the completion of an entry is captured
-in the queue and triaged there. A `safety`- or `science`-classed finding goes
-to Gate 0 rather than here — it is about the simulator, which this release does
-not touch. A `P0` is a hotfix on its own branch under the `docket` skill and joins
-no list.
+**The list is a scope, not a set of items** (project owner, 2026-08-31). That
+is what decides membership, and the completion rule above is one case of it
+rather than the test itself. This release's scope is the goal stated at the
+top of this section: a development loop reliable enough to run two long
+milestones through, across the machinery the goal names — the merge path, the
+release script, the queue's ranking, the session-start digest, the type-check
+and lint gates, and the instructions a session reads before it does anything.
+A finding that a *named* piece of that machinery misfires is inside this scope
+however late it is found and whatever entry it does or does not complete,
+because leaving it out ships a release titled "the workflow works" while the
+workflow it names does not.
 
-**Two entries have been added under this rule so far, PL-XCYB and PL-WFJ9,
-both above.** PL-XCYB is paired with PL-ZQ9C rather than queued behind it. It was found while handing
+So "new scope" means a different goal — a new workflow capability, a better
+tool nobody is blocked by, an idea raised because this release made someone
+think of it. It does not mean a newly discovered instance of the goal already
+frozen. A defect in already-named machinery is the third case, and it is
+admitted: this paragraph previously offered only "new scope" and "completes an
+entry", and nine findings triaged on 2026-08-31 were sent to the queue for
+being neither, when seven of them were defects in the digest, the release
+script, the merge path and the lint gate that this release exists to make
+reliable.
+
+Two limits keep that from reopening the list for everything. The finding must
+be a **defect** in machinery this section's goal names — not an improvement to
+it, and not machinery the goal is silent about; and it must be **workable
+here**, so a finding whose cause is outside this repository is captured and
+left out however well it fits, because an entry nothing in the tree can close
+would hold the gate open forever.
+
+A `safety`- or `science`-classed finding goes to Gate 0 rather than here — it
+is about the simulator, which this release does not touch. A `P0` is a hotfix
+on its own branch under the `docket` skill and joins no list.
+
+**Two entries were added under the completion rule, PL-XCYB and PL-WFJ9,
+both above.** Seven more were added on 2026-08-31 under the scope test rather
+than this one, and are marked as such in the list; the reasoning is beneath
+it. PL-XCYB is paired with PL-ZQ9C rather than queued behind it. It was found while handing
 PL-ZQ9C to a session, by checking whether that item's proposed migration was
 feasible, and it makes the difference between a provenance check that is right
 and one that fails loudly against correct data in the environment most sessions
@@ -694,10 +761,12 @@ built, so whoever picks it up does not build either half twice.
   `src/anesthesia_sim/app/`, and the scientific content of `docs/MODEL.md`. A
   release whose whole claim is that the loop is now reliable cannot also be
   the one that moves the model.
-- Workflow capability beyond the nineteen entries. The queue holds more
-  process items than this release ships, and they wait for the next one — the
-  list is frozen for the same reason a gate's is, and a release that absorbs
-  every workflow idea raised while it runs never ships.
+- Workflow capability beyond the twenty-nine entries — new tools, better
+  tools, an idea this release made someone think of. The queue holds more
+  process items than this release ships, and they wait for the next one. What
+  the scope test admits is a defect in machinery the goal already names, which
+  is not this; a release that absorbs every workflow idea raised while it runs
+  never ships.
 
 ## Next milestone: v0.3.0 - the foundation
 

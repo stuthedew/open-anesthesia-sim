@@ -66,6 +66,47 @@ appropriate, and its entry here should be deleted rather than left stale.
   Not yet decided whether to delete them or label them; tracked together as
   PL-004.
 
+## Open thread: the v0.2.8 gate's membership test - PL-MGNC, PL-H8MQ, PL-HXYY
+
+**What the gate's admission test actually is** (project owner, 2026-08-31).
+The frozen list is a *scope*, not a set of items: a finding is inside it if it
+contributes to the goal the release states — a low-friction workflow before
+the two long milestones are run through it — and outside it if it is a
+different goal. `ROADMAP.md`'s "What the freeze closes, and what it does not"
+now carries that test, with the two limits that keep it from reopening the
+list for everything: the finding must be a **defect** in machinery the goal
+names, and it must be **workable in this tree**.
+
+Why it needed writing down: the paragraph previously offered only two
+dispositions, "new scope" and "completes a frozen entry", and a finding that
+was neither went to the queue. The nine captures triaged on 2026-08-31 were
+all triaged that way and all excluded, each with a correct answer to the
+completion question. Seven of them were defects in the session-start digest,
+the release script, the merge path and the lint gate — the machinery the
+release's own goal enumerates — and are now entries. The reassessment did not
+change intent; it recorded a test that was being applied from memory in one
+place and from the written rule in another.
+
+**The two excluded, and why.** `PL-KKX4` (a web session started with no
+checkout) fails the workable-here limit: its cause is outside the repository
+and its own `not-delegable:` field says the only action available is to record
+a second sighting, so it would hold the gate open indefinitely. `PL-SRCP` was
+dropped at triage as a duplicate of `PL-3CBS`.
+
+**Open: whether `PL-MGNC` joins them.** Found while reassessing, and it passes
+the same test — a shallow clone's incomplete `^base` walk made the digest
+report twenty-seven ids in flight, eighteen of them closed and one of them
+`PL-NSN9`, an open entry of this gate. It is the strongest live instance of
+the `vcs.py` family, and it collides on `touches` with `PL-CPSY` and
+`PL-S1P1`, so the three want one session whatever is decided. Not admitted
+yet: the reassessment was asked about the nine, and adding a tenth found
+during it is the project owner's call.
+
+**Adjacent, same test, not part of the nine.** `PL-3CBS` (docket has no way to
+notice that an open item's work already landed on main) is a defect in the
+queue's ranking and would qualify on the same reading. It was not reassessed
+because it was not one of the nine.
+
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 
 Not scoped yet. The performance blocker this waited on has landed: render
