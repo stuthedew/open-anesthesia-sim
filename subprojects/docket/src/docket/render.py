@@ -15,7 +15,8 @@ from .checks import REQUIRED_BRIEF, Report
 from .concurrency import undeclared
 from .config import Config
 from .model import PRIORITIES, Item
-from .plan import Gate, effort_total
+from .plan import Feature, Gate, effort_total
+from .release import Readiness
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
 
 
@@ -103,7 +104,7 @@ def format_delegable(report: Report, in_flight: set[str], protected_paths: tuple
 def format_digest(
     report: Report,
     in_flight: set[str] | None = None,
-    ready: object = None,
+    ready: Readiness | None = None,
     plan: Wave | None = None,
 ) -> str:
     """The few lines injected into session context at startup.
@@ -151,15 +152,15 @@ def format_digest(
             f"  Grooming due: {_plural(len(report.advisories), 'advisory', 'advisories')} "
             "(`make docket` to see them)."
         )
-    if ready is not None and getattr(ready, "is_worth_cutting", False):
+    if ready is not None and ready.is_worth_cutting:
         completes = (
-            f", completing {', '.join(ready.completed_features)}"  # type: ignore[attr-defined]
-            if ready.completed_features  # type: ignore[attr-defined]
+            f", completing {', '.join(ready.completed_features)}"
+            if ready.completed_features
             else ""
         )
         lines.append(
-            f"  Releasable: {len(ready.shippable)} finished item(s) since "  # type: ignore[attr-defined]
-            f"{ready.current_version}{completes}. Offer {ready.suggested_version} "  # type: ignore[attr-defined]
+            f"  Releasable: {len(ready.shippable)} finished item(s) since "
+            f"{ready.current_version}{completes}. Offer {ready.suggested_version} "
             "before taking new work."
         )
     if plan is not None and plan.step is not None:
@@ -388,7 +389,9 @@ def format_priority_groups(items: list[Item]) -> str:
     return "\n".join(lines)
 
 
-def format_status(report: Report, ready: object = None, in_flight: set[str] | None = None) -> str:
+def format_status(
+    report: Report, ready: Readiness | None = None, in_flight: set[str] | None = None
+) -> str:
     """The whole project at feature altitude, which is the altitude decisions happen at.
 
     `format_list` answers "which item", and that is the wrong question to open
@@ -408,10 +411,9 @@ def format_status(report: Report, ready: object = None, in_flight: set[str] | No
     not_started = [f for f in grouped.values() if f.open_items and not f.done]
     complete = [f for f in grouped.values() if f.is_complete]
 
-    def next_in(feature: object) -> str:
+    def next_in(feature: Feature) -> str:
         candidates = sorted(
-            (i for i in feature.open_items if i.status != "blocked"),  # type: ignore[attr-defined]
-            key=lambda i: i.sort_key(),
+            (i for i in feature.open_items if i.status != "blocked"), key=lambda i: i.sort_key()
         )
         if not candidates:
             return "all remaining work is blocked"
@@ -448,18 +450,18 @@ def format_status(report: Report, ready: object = None, in_flight: set[str] | No
         lines.append("")
         lines.append(f"Finished: {', '.join(sorted(f.name for f in complete))}")
 
-    if ready is not None and getattr(ready, "shippable", None):
+    if ready is not None and ready.shippable:
         lines.append("")
         done_note = (
-            f", completing {', '.join(ready.completed_features)}"  # type: ignore[attr-defined]
-            if ready.completed_features  # type: ignore[attr-defined]
+            f", completing {', '.join(ready.completed_features)}"
+            if ready.completed_features
             else ", completing no feature yet"
         )
         lines.append(
-            f"Unreleased: {len(ready.shippable)} finished item(s) since "  # type: ignore[attr-defined]
-            f"{ready.current_version}{done_note}."  # type: ignore[attr-defined]
+            f"Unreleased: {len(ready.shippable)} finished item(s) since "
+            f"{ready.current_version}{done_note}."
         )
-        lines.append(f"  Next version would be {ready.suggested_version}.")  # type: ignore[attr-defined]
+        lines.append(f"  Next version would be {ready.suggested_version}.")
     return "\n".join(lines)
 
 
