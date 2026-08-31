@@ -1,9 +1,14 @@
 ---
 id: PL-S1P1
 title: The in-flight ids reach docket next without the refs that went unread
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
 feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-08-31
+verify: uv run pytest subprojects/docket/tests/test_vcs.py -k unread
 ---
 
 **Problem.** `branches_in_flight` returns a `FlightReport` that names both what
@@ -31,3 +36,24 @@ digest line in `render.format_digest`; `subprojects/docket/README.md`.
 **Done when.** A session whose checkout could not read a ref is told so where
 it reads the queue, not only when it runs `docket flight`, and a test covers
 the digest saying it.
+
+**Triaged 2026-08-31.** P3, `defect`/`infra`, `parallel-sessions` beside
+`PL-CPSY` (a squash-merged branch whose ref survives reports its items in
+flight forever) and `PL-KWC1` (read in-flight ids from the commits).
+
+P3 rather than P2, and the split from `PL-CPSY` is deliberate. Both are holes
+in the same function's answer, but `PL-CPSY` fires on a condition this project
+meets today - squash-merge has been the merge strategy since 2026-08-30 - while
+this one needs a ref that is fetched *and* truncated below its merge-base, which
+the container measured on 2026-08-31 did not have. It is a
+correctness-of-reporting hole with no observed instance, which is what the
+lower band is for. It should not be worked ahead of `PL-CPSY`; they collide on
+`vcs.py` anyway, so one session or a serialized pair.
+
+The `verify:` command keys on `unread`, matching the word the Problem uses for
+the dropped half of the `FlightReport`; nothing in `test_vcs.py` selects on it
+today.
+
+Not admitted to v0.2.8's frozen list: it completes no entry. `PL-KWC1` is an
+entry and is `done`; this is `in_flight_ids` discarding a field `PL-KWC1` did
+not add and does not depend on.

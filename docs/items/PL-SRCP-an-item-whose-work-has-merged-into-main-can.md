@@ -1,8 +1,10 @@
 ---
 id: PL-SRCP
 title: An item whose work has merged into main can stay open in the queue, and docket next then offers already-landed work
-status: untriaged
+status: dropped
 added: 2026-08-30
+closed: 2026-08-31
+reason: duplicate of PL-3CBS (docket has no way to notice that an open item's work already landed on main), which is the same finding a day earlier, already triaged P2/S and carrying a verify command. PL-3CBS also weighs this item's proposed signal - an item id at the head of a merged commit subject - against a measurement this item did not have, and rejects it: eleven of the thirteen ids leading a subject on main today are capture and triage commits, an 85% false-positive rate. The two further instances found here (PL-1TPM and PL-0RS6, merged by PR 92) and the note that PL-64LS asks the same question from the other side have been folded into PL-3CBS, so nothing is lost by closing this.
 ---
 
 **Problem.** Closing an item out is a manual edit in a separate commit from the
