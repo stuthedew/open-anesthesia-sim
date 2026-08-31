@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -673,3 +674,85 @@ def test_stranded_says_so_when_it_was_told_not_to_ask_git(
     assert _run("stranded", "--items", str(_store(tmp_path, READY))) == 0
 
     assert "branch detection is off" in capsys.readouterr().out
+
+
+def _flight_repo(tmp_path: Path, subject: str) -> Path:
+    """A repository whose one live branch is named the way the harness names one.
+
+    Real git, for the reason `_branched_repo` uses it: the injected-runner
+    tests in `test_vcs.py` assert the rules, and only a real checkout proves
+    that `--source`, `%cs` and the merge-base guard are spelled in a way git
+    accepts. The commit dates are fixed so the reported age is too.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-20T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
+    }
+
+    def git(*args: str, **kwargs: object) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, **kwargs)  # type: ignore[arg-type]
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base", env=dated)
+    git("checkout", "-qb", "roadmap-release-write-failure-nhsjwo")
+    (root / "items" / "scratch.txt").write_text("work in progress\n")
+    git("add", "-A")
+    git("commit", "-qm", subject, env=dated)
+    git("checkout", "-q", "main")
+    return root
+
+
+def test_flight_finds_work_on_a_branch_whose_name_carries_no_id(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The case the command exists for: a harness-named branch, mid-item."""
+    root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "flight"]) == 0
+
+    out = capsys.readouterr().out
+    assert "PL-K7QX  roadmap-release-write-failure-nhsjwo" in out
+    assert "last commit 3 days ago" in out
+
+
+def test_flight_does_not_read_a_mentioned_id_as_work_in_progress(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A false positive here makes `docket next` skip an item that is startable."""
+    root = _flight_repo(tmp_path, "Capture PL-K7QX, found while doing something else")
+
+    assert main(["--items", str(root / "items"), "flight"]) == 0
+
+    assert "No branch carries an item id" in capsys.readouterr().out
+
+
+def test_flight_names_a_ref_it_could_not_read_rather_than_ignoring_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The container an agent session runs in is a truncated clone.
+
+    History it simply lacks answers the same way genuinely unrelated history
+    does - no merge-base - and both must be named rather than contributing
+    silent nothing to a report that then reads as complete.
+    """
+    root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
+    for args in (["checkout", "-q", "--orphan", "unrelated"], ["commit", "-qm", "PL-9Y42 Other"]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+
+    assert main(["--items", str(root / "items"), "flight"]) == 0
+
+    out = capsys.readouterr().out
+    assert "1 ref shares no history with main" in out
+    assert "  unrelated" in out
+    assert "PL-9Y42" not in out

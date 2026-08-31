@@ -1,14 +1,17 @@
-"""Tests for deriving in-flight work from branch names.
+"""Tests for deriving in-flight work from the branches a checkout holds.
 
 Git is injected rather than invoked, so these run without a repository and
-assert the filtering rather than the plumbing.
+assert the filtering rather than the plumbing. That the commands are spelled
+in a way git accepts is proved against a real checkout in `test_cli.py`.
 """
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from docket.vcs import (
+    Branch,
     StrandedItem,
     StrandedReport,
     behind_remote,
@@ -21,21 +24,54 @@ from docket.vcs import (
 )
 
 ROOT = Path("/nowhere")
+BASE = "origin/main"
 
 
-def _runner(refs: list[str], merged: list[str] | None = None):
+def _runner(
+    refs: list[str],
+    merged: list[str] | None = None,
+    commits: dict[str, list[tuple[str, str]]] | None = None,
+    unrelated: tuple[str, ...] = (),
+):
+    """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
+
+    `unrelated` names the refs whose merge-base with the default branch does
+    not resolve - a truncated clone's missing history, which git answers with
+    a failure rather than an empty result.
+    """
+
     def run(args: list[str], root: Path) -> str:
-        if any(arg.startswith("--merged=") for arg in args):
-            return "\n".join(merged or [])
-        return "\n".join(refs)
+        if args[0] == "rev-parse":
+            return f"{BASE}\n" if args[-1] == BASE else ""
+        if args[0] == "for-each-ref":
+            if any(arg.startswith("--merged=") for arg in args):
+                return "\n".join(merged or [])
+            return "\n".join(refs)
+        if args[0] == "merge-base":
+            return "" if args[-1] in unrelated else "0123456789abcdef\n"
+        if args[0] == "log":
+            walked = [arg for arg in args[1:] if not arg.startswith(("-", "^"))]
+            return "\n".join(
+                f"{ref}\x1f{day}\x1f{subject}"
+                for ref in walked
+                for day, subject in (commits or {}).get(ref, [])
+            )
+        return ""
 
     return run
 
 
-def test_a_branch_naming_an_item_is_in_flight() -> None:
-    found = branches_in_flight(ROOT, runner=_runner(["claude/pl-k7qx-do-the-thing"]))
+def _in_flight(
+    refs: list[str],
+    merged: list[str] | None = None,
+    commits: dict[str, list[tuple[str, str]]] | None = None,
+    unrelated: tuple[str, ...] = (),
+) -> tuple[Branch, ...]:
+    return branches_in_flight(ROOT, runner=_runner(refs, merged, commits, unrelated)).branches
 
-    assert [b.item_id for b in found] == ["PL-K7QX"]
+
+def test_a_branch_naming_an_item_is_in_flight() -> None:
+    assert [b.item_id for b in _in_flight(["claude/pl-k7qx-do-the-thing"])] == ["PL-K7QX"]
 
 
 def test_historical_numeric_ids_are_recognized() -> None:
@@ -43,29 +79,119 @@ def test_historical_numeric_ids_are_recognized() -> None:
 
 
 def test_a_branch_naming_nothing_is_ignored() -> None:
-    assert branches_in_flight(ROOT, runner=_runner(["main", "claude/some-idea-abcd"])) == []
+    assert _in_flight(["main", "claude/some-idea-abcd"]) == ()
 
 
 def test_a_merged_branch_is_not_in_flight() -> None:
     """Deleting a remote branch leaves its tracking ref until someone prunes."""
     refs = ["origin/claude/pl-040-done", "origin/claude/pl-k7qx-live"]
-    found = branches_in_flight(ROOT, runner=_runner(refs, merged=["origin/claude/pl-040-done"]))
+    found = _in_flight(refs, merged=["origin/claude/pl-040-done"])
 
     assert [b.item_id for b in found] == ["PL-K7QX"]
+
+
+def test_a_merged_branch_carries_no_commits_into_the_answer() -> None:
+    """The commit read must honour the same exclusion the name read does."""
+    found = _in_flight(
+        ["origin/claude/shipped-abcdef"],
+        merged=["origin/claude/shipped-abcdef"],
+        commits={"origin/claude/shipped-abcdef": [("2026-08-20", "PL-K7QX Do the thing")]},
+    )
+
+    assert found == ()
 
 
 def test_a_local_branch_and_its_tracking_ref_are_one_piece_of_work() -> None:
     refs = ["claude/pl-k7qx-live", "origin/claude/pl-k7qx-live"]
 
-    assert len(branches_in_flight(ROOT, runner=_runner(refs))) == 1
+    assert len(_in_flight(refs)) == 1
 
 
 def test_a_random_suffix_is_not_read_as_an_id() -> None:
-    assert branches_in_flight(ROOT, runner=_runner(["claude/queue-redesign-wrqfwj"])) == []
+    assert _in_flight(["claude/queue-redesign-wrqfwj"]) == ()
 
 
 def test_no_git_means_no_claims_about_branches() -> None:
-    assert branches_in_flight(ROOT, runner=lambda args, root: "") == []
+    assert branches_in_flight(ROOT, runner=lambda args, root: "").branches == ()
+
+
+def test_a_harness_named_branch_is_found_by_what_it_committed() -> None:
+    """The case the mechanism exists for: the branch name carries no id at all.
+
+    A session names its own branch `claude/pl-k7qx-slug`; the web harness names
+    one from the opening prompt and it cannot be renamed afterwards. Reading
+    names alone left every such branch invisible, so `docket next` would offer
+    an item another session was already implementing.
+    """
+    refs = ["origin/claude/roadmap-release-write-failure-nhsjwo"]
+    found = _in_flight(
+        refs,
+        commits={
+            refs[0]: [
+                ("2026-08-30", "PL-M5FK Hold the roadmap's tag claims to git tag"),
+                ("2026-08-29", "PL-M5FK Read the release train from the version table"),
+            ]
+        },
+    )
+
+    assert [(b.item_id, b.name) for b in found] == [("PL-M5FK", refs[0])]
+
+
+def test_an_id_mentioned_mid_subject_does_not_put_that_item_in_flight() -> None:
+    """A capture names an item it is not implementing; the leading id is the work."""
+    refs = ["origin/claude/some-other-work-abcdef"]
+    found = _in_flight(
+        refs,
+        commits={
+            refs[0]: [("2026-08-31", "Capture PL-D2GW, found while answering what to work on next")]
+        },
+    )
+
+    assert found == ()
+
+
+def test_a_subject_leading_with_two_ids_puts_both_in_flight() -> None:
+    """One branch may carry two items, and both lead the subject."""
+    refs = ["origin/claude/paired-work-abcdef"]
+    found = _in_flight(
+        refs,
+        commits={refs[0]: [("2026-08-30", "PL-N7R9, PL-J295: the pull request stops being a")]},
+    )
+
+    assert [b.item_id for b in found] == ["PL-J295", "PL-N7R9"]
+
+
+def test_the_last_commit_is_dated_so_a_stale_branch_can_be_told_apart() -> None:
+    refs = ["origin/claude/harness-named-abcdef"]
+    found = _in_flight(
+        refs,
+        commits={
+            refs[0]: [
+                ("2026-08-30", "PL-K7QX Finish the thing"),
+                ("2026-07-04", "PL-K7QX Start the thing"),
+            ]
+        },
+    )
+
+    assert [b.last_commit for b in found] == [date(2026, 8, 30)]
+
+
+def test_a_branch_with_no_commits_of_its_own_is_dated_not_guessed() -> None:
+    assert _in_flight(["claude/pl-k7qx-just-created"])[0].last_commit is None
+
+
+def test_a_ref_with_no_readable_merge_base_is_reported_rather_than_walked() -> None:
+    """A truncated clone is missing history, not holding a branch of nothing.
+
+    Excluding `^origin/main` from a walk that cannot reach it would report the
+    ref's whole visible history as its own work, so the ref is named as unread.
+    """
+    refs = ["origin/claude/pl-k7qx-live", "origin/claude/beyond-the-horizon-abcdef"]
+    report = branches_in_flight(ROOT, runner=_runner(refs, unrelated=(refs[1],)))
+
+    assert report.unreadable == (refs[1],)
+    assert [b.item_id for b in report.branches] == ["PL-K7QX"]
+    assert report.base == BASE
 
 
 def test_tags_are_read_from_the_repository() -> None:
