@@ -56,6 +56,24 @@ branch_state() {
     "${fetch[@]}" >/dev/null 2>&1 || true
   fi
 
+  git -C "$root" rev-parse --verify --quiet origin/main >/dev/null 2>&1 || return 0
+
+  # `rev-list --left-right --count A...B` does not fail when A and B share no
+  # history: it prints the size of each side of an unrelated pair, which reads
+  # exactly like a real answer. That state is reachable - a `--depth` fetch
+  # re-truncates `origin/main`, and the truncation is recorded in
+  # `.git/shallow`, so a later ordinary fetch does not undo it - and a
+  # fabricated "98 ahead" tells a session it is carrying work it does not
+  # have, which argues against merging in the very case this line exists to
+  # catch. So the counts are printed only once the two refs are known to share
+  # history, and otherwise the clone says it cannot tell.
+  if ! git -C "$root" merge-base HEAD origin/main >/dev/null 2>&1; then
+    echo "Branch: $branch - this clone shares no readable history with origin/main,"
+    echo "  so its position cannot be counted. Something ran a \`--depth\` fetch;"
+    echo "  \`git fetch --deepen=100 origin\` restores the answer."
+    return 0
+  fi
+
   counts=$(git -C "$root" rev-list --left-right --count origin/main...HEAD 2>/dev/null) || return 0
   behind=${counts%%[[:space:]]*}
   ahead=${counts##*[[:space:]]}
