@@ -52,10 +52,10 @@ capability-boundary rule above governs.
 **Tags.** Every released version carries an annotated tag: v0.0.1, v0.0.2,
 v0.1.0, v0.2.0, v0.2.1, v0.2.2, v0.2.3, v0.2.4, v0.2.5, v0.2.6 and v0.2.7.
 `git describe --contains` therefore resolves for every commit up to and
-including the latest release - verified on 2026-08-30 across all 214 commits
-on `main`, where the only nine it does not resolve are the unreleased commits
-after v0.2.7, which the next tag will cover. That span is the provenance
-guarantee PL-J3ZK was opened to restore.
+including the latest release - verified on 2026-08-30 across the whole of
+`main`; the commits it does not resolve are the unreleased ones after the
+newest tag, which the next release's tag will cover. That span is the
+provenance guarantee PL-J3ZK was opened to restore.
 `bin/docket release` refuses to cut a release while the version it is
 releasing from is untagged, so the practice cannot lapse again.
 
