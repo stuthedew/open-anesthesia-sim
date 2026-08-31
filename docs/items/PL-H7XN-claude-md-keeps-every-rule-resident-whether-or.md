@@ -115,6 +115,79 @@ replaced by a check that enforces it. A rule that ends up in none of those four
 places has been lost, and losing one is a worse outcome than the file staying
 630 lines.
 
+**The routing decision, worked out 2026-08-31 and recorded so the pass can be
+executed without re-deriving it.** Line counts measured against `CLAUDE.md` at
+640 lines, after the behavior-change rule landed.
+
+| Section | Lines | Disposition |
+| --- | --- | --- |
+| Working with the project owner | 156 | Resident, less the ~50-line closing-block spec |
+| Architecture and development discipline | 13 | Resident, whole |
+| Session and tool-use efficiency | 59 | ~20 resident; ~20 owner-facing lines leave |
+| Prefer deterministic tooling | 49 | ~15 resident; worked examples leave |
+| The queue, and how the project owner works | 281 | ~90 resident; ~170 to the skill |
+| Safety-critical clinical-output standard | 33 | Resident, untouched |
+| Proactive expert review | 45 | ~10 resident; the rest path-scoped |
+
+The seven judgments behind that table, in the order they have to be made:
+
+  1. **The closing-block spec moves for coherence, not for context.** `CLAUDE.md`
+     declares `.claude/rules/instruction-writing.md` the authority on reply
+     shape and then spends fifty lines specifying reply shape. That is the
+     documented conflicting-instructions hazard, and consolidating removes it.
+     But an unscoped rules file loads at launch, so **this saves no resident
+     context and must not be reported as if it did.**
+  2. **Architecture and development discipline does not split.** Thirteen
+     lines, and the rule keeping simulation code independent of Flet has to
+     fire before a first *write* under `src/`. Path-scoped rules trigger on
+     reads, so scoping it would open a hole for exactly the session that
+     creates a new file without reading a neighbour first.
+  3. **The model-capability and `opusplan` paragraphs instruct the owner, not
+     the session** — a session cannot switch its own model. Twenty lines
+     charged to every session that direct nobody in it. They should leave
+     `CLAUDE.md`; where they land is open. Not `docs/worker.md`, which is
+     addressed to worker agents rather than the owner — a short maintainer
+     note under `docs/` is the recommendation, and the choice is the one
+     genuinely open question in this pass.
+  4. **Deterministic tooling stays resident but compresses.** It fires while
+     *deciding* whether to build a mechanism, which is before any path is
+     touched, so it cannot be path-scoped. Keep the four-tier rule and "do not
+     script the judgment"; the worked examples are illustration.
+  5. **The queue splits on whether the trigger is also the skill's trigger.**
+     Resident: the two modes, capture, the behavior-change and routing rule,
+     naming the work after the item, commit-and-push, capture-intent in short
+     form, compounding friction, the division of labour, and the pointer to
+     the skill — a session does all of these without ever having reason to
+     load `docket`. To the skill, whose own trigger is the moment each fires:
+     workflow-before-product, where an item's work happens, pairing a finding
+     with the item it completes, `P0` hotfixes, not starting an `L` from a
+     queue entry, clearing recorded debt, an idea arriving mid-task, closing
+     the loop back to the roadmap, answering "what next" from the roadmap
+     down, design-before-items, offering the release, pasting the tag
+     commands, reporting gate progress, and concurrency being ruled out rather
+     than certified.
+  6. **Two of them are not moves at all.** "Prefer finishing a feature to
+     advancing several" describes what `docket next` already ranks, so the
+     prose is enforced and one line survives. "Never write an item id bare in
+     a reply" restates `instruction-writing.md` rule 7, which already requires
+     a plain-language gloss at first use; fold its specifics into rule 7
+     rather than keeping both, since two statements of one rule is the
+     hazard named in judgment 1.
+  7. **`Proactive expert review` is the one place a mistake here is unsafe.**
+     The two-standards paragraph stays resident: it decides where effort goes,
+     before any file is read. The `core/` "reads like the domain" bar scopes
+     cleanly to `src/anesthesia_sim/core/**`, and the domain list to `src/**`
+     and `docs/**`. But the principles that are safety-adjacent — false
+     precision, modeled versus measured, misleading plots — **move into the
+     safety-critical section and stay resident**, never into a path-scoped
+     file. A safety rule that fails to load is the failure this whole item
+     exists to prevent, and it is the one outcome no amount of context saving
+     would justify.
+
+Execute in that dependency order: rules files first, then `CLAUDE.md`, then
+the skill, then the `doc_check.py` reporter, since each later step's content
+is decided by the earlier one.
+
 **Done when.** Every section remaining in `CLAUDE.md` can name why a session
 needs it before it would look anything up; everything else has moved to a
 skill, a path-scoped rule, or a check, with no rule lost; the safety-critical
