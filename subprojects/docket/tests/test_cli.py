@@ -315,6 +315,34 @@ def test_next_leads_with_what_the_current_step_names(
     assert "In scope for v0.4.0 — the teachable case" in out
 
 
+def test_the_verify_advisory_follows_the_plan_the_way_next_does(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`check` must resolve the same roadmap `next` does, from the repository root.
+
+    PL-B1B1 is `P3` and named by the current step; the three others are `P1`
+    and named nowhere, so they fill the offering on band alone. A `check` that
+    looked for ROADMAP.md beside the store instead of above it would find no
+    plan, rank by band, and advise about the wrong three.
+    """
+    store = _wave_project(
+        tmp_path,
+        READY.replace("priority: P1", "priority: P3"),
+        *(
+            READY.replace("PL-B1B1", other).replace("A ready item", "Named nowhere")
+            for other in ("PL-C2C2", "PL-D3D3", "PL-F4F4")
+        ),
+    )
+    (tmp_path / "docket.toml").write_text(
+        "[docket]\nverify_required_from = 2026-08-02\n", encoding="utf-8"
+    )
+
+    assert _run("check", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+    assert "PL-B1B1" in out
+    assert "3 of 4 ready item(s)" in out
+
+
 def test_wave_says_there_is_no_plan_rather_than_reporting_one(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

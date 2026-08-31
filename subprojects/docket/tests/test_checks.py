@@ -330,12 +330,61 @@ def test_an_item_still_being_decided_is_not_asked_for_one() -> None:
     assert not _has(analyze([item], TODAY, CUTOVER).errors, "verify")
 
 
+OLD = date(2026, 7, 31)
+
+
 def test_items_captured_before_the_cutover_are_advised_rather_than_failed() -> None:
     """47 errors on the day the rule lands is a checker nobody runs again."""
-    report = analyze([_item(added=date(2026, 7, 31))], TODAY, CUTOVER)
+    report = analyze([_item(added=OLD)], TODAY, CUTOVER, offered=frozenset({"PL-K7QX"}))
 
     assert report.errors == []
-    assert _has(report.advisories, "predate the `verify:` requirement")
+    assert _has(report.advisories, "names no `verify:` command")
+
+
+def test_a_grandfathered_item_nobody_is_about_to_be_offered_is_not_raised() -> None:
+    """An advisory naming the whole backlog cannot reach zero, so it gets skimmed.
+
+    The cost of that is not the items it names but the next advisory, which is
+    then read the same way; `docket check`'s advisories are grooming's only
+    channel.
+    """
+    report = analyze([_item(added=OLD)], TODAY, CUTOVER, offered=frozenset())
+
+    assert report.errors == []
+    assert report.advisories == []
+
+
+def test_the_advisory_carries_how_many_are_still_outstanding() -> None:
+    """Narrowing it must not hide the size of the set it is drawn from."""
+    backlog = [_item(f"PL-000{n}", added=OLD) for n in range(1, 4)]
+    report = analyze(backlog, TODAY, CUTOVER, offered=frozenset({"PL-0001"}))
+
+    assert _has(report.advisories, "PL-0001 is next to be offered")
+    assert _has(report.advisories, "1 of 3 ready item(s)")
+
+
+def test_the_advisory_reaches_zero_once_the_offered_items_name_a_command() -> None:
+    """The whole point: a normal day ends with nothing pending, backlog or not."""
+    backlog = [_item(f"PL-000{n}", added=OLD) for n in (2, 3)]
+    started = _item("PL-0001", added=OLD, verify="uv run pytest")
+    report = analyze([started, *backlog], TODAY, CUTOVER, offered=frozenset({"PL-0001"}))
+
+    assert report.advisories == []
+
+
+def test_an_offered_item_held_to_the_rule_is_left_to_the_error() -> None:
+    """A post-cutover item is already an error; advising as well would double it."""
+    item = _item(added=date(2026, 8, 2))
+    report = analyze([item], TODAY, CUTOVER, offered=frozenset({"PL-K7QX"}))
+
+    assert _has(report.errors, "names no `verify:` command")
+    assert report.advisories == []
+
+
+def test_an_offered_item_that_names_a_command_is_not_advised() -> None:
+    item = _item(added=OLD, verify="uv run pytest")
+
+    assert analyze([item], TODAY, CUTOVER, offered=frozenset({"PL-K7QX"})).advisories == []
 
 
 def test_a_project_that_has_not_adopted_the_rule_hears_nothing_about_it() -> None:

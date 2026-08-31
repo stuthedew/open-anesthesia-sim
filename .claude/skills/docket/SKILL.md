@@ -328,6 +328,16 @@ means cutting a release. Record that in `not-delegable:` rather than inventing
 a command to satisfy the checker. An item saying why it cannot be proven is
 better specified than one carrying a command nobody ran.
 
+**Items older than the rule are asked for one when they come up, not before.**
+A closed set of items reached `ready` before `verify_required_from`, and they
+carry no command. `docket check` raises an advisory for them only as `docket
+next` is about to offer them, naming those and the number still outstanding.
+So the answer on meeting one is to write its command — having run it — as part
+of starting it, which is the first moment there is any work to run it against.
+Do not treat the advisory as a backlog to clear in one pass: that would mean
+writing commands away from the work, which is how all six of the wrong ones
+above came to exist.
+
 ## Mode: freeze a milestone's debt gate
 
 Triggered by scoping a milestone — scoping is the act that freezes the list.

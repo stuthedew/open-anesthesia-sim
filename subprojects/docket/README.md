@@ -217,9 +217,14 @@ done, or a recorded reason why no command can. The gate sits at `ready` rather
 than at capture deliberately — demanding a command at the moment an idea occurs
 is the same tax as demanding a priority, and `ready` is the first point at
 which the question is answerable at all. `verify_required_from` is the date a
-project adopts the rule; items captured before it are counted in one grooming
-advisory rather than turned into an error each, so adopting the rule does not
-mean rewriting the whole store on the same day. Leaving that setting unset
+project adopts the rule; items captured before it raise a grooming advisory
+rather than an error each, so adopting the rule does not mean rewriting the
+whole store on the same day. The advisory names only the ones `next` is about
+to offer, and carries the number still outstanding: naming the whole backlog
+made it an advisory that could not reach zero, and the cost of one of those is
+not the items it names but the next advisory, which is then read the same way.
+It also puts the command where it can be run before it is written, since the
+moment an item is offered is the first moment there is anything to run. Leaving that setting unset
 leaves the requirement off, which is right for a project that does not delegate
 and therefore has nothing riding on the field.
 
