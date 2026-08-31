@@ -1,13 +1,16 @@
 ---
 id: PL-WFJ9
 title: render.py annotates three parameters `object` and pays for it with 12 `type: ignore[attr-defined]`
-status: ready
+status: done
 priority: P2
 effort: S
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py
 added: 2026-08-31
+closed: 2026-08-31
+commit: 807ad55
+pr: 104
 verify: uv run mypy && ! grep -n "type: ignore" subprojects/docket/src/docket/render.py && uv run pytest subprojects/docket/tests/test_release.py -k both_renderers
 ---
 
