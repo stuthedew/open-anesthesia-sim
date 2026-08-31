@@ -692,8 +692,8 @@ def _flight_repo(tmp_path: Path, subject: str) -> Path:
         "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
     }
 
-    def git(*args: str, **kwargs: object) -> None:
-        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, **kwargs)  # type: ignore[arg-type]
+    def git(*args: str, env: dict[str, str] | None = None) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=env)
 
     subprocess.run(
         ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
