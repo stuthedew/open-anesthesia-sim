@@ -35,12 +35,18 @@ def _runner(
     adds: dict[str, list[str]] | None = None,
     on_base: set[str] | None = None,
     log: list[list[str]] | None = None,
+    ran_out: tuple[str, ...] = (),
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
 
     `unrelated` names the refs whose merge-base with the default branch does
     not resolve - a truncated clone's missing history, which git answers with
     a failure rather than an empty result.
+
+    `ran_out` names the refs whose walk ends at a commit with no parents in
+    this checkout, which is what a walk that ran off the end of a truncated
+    history looks like: every other commit reports a parent, so a walk the
+    default branch stopped is told from one the history did.
 
     `adds` maps a ref to the blobs it introduces since its fork point and
     `on_base` names the blobs the default branch has held at some point, which
@@ -71,11 +77,14 @@ def _runner(
                 held = wanted[0].split("=", 1)[1] in (on_base or set())
                 return "fedcba9876543210\n" if held else ""
             walked = [arg for arg in args[1:] if not arg.startswith(("-", "^"))]
-            return "\n".join(
-                f"{ref}\x1f{day}\x1f{subject}"
-                for ref in walked
-                for day, subject in (commits or {}).get(ref, [])
-            )
+            lines = []
+            for ref in walked:
+                entries = (commits or {}).get(ref, [])
+                for position, (day, subject) in enumerate(entries):
+                    off_the_end = ref in ran_out and position == len(entries) - 1
+                    parent = "" if off_the_end else "0f1e2d3"
+                    lines.append(f"{ref}\x1f{day}\x1f{parent}\x1f{subject}")
+            return "\n".join(lines)
         return ""
 
     return run
@@ -88,8 +97,9 @@ def _in_flight(
     unrelated: tuple[str, ...] = (),
     adds: dict[str, list[str]] | None = None,
     on_base: set[str] | None = None,
+    ran_out: tuple[str, ...] = (),
 ) -> tuple[Branch, ...]:
-    runner = _runner(refs, merged, commits, unrelated, adds, on_base)
+    runner = _runner(refs, merged, commits, unrelated, adds, on_base, ran_out=ran_out)
     return branches_in_flight(ROOT, runner=runner).branches
 
 
@@ -285,6 +295,64 @@ def test_a_ref_with_no_readable_merge_base_is_reported_rather_than_walked() -> N
     assert report.unreadable == (refs[1],)
     assert [b.item_id for b in report.branches] == ["PL-K7QX"]
     assert report.base == BASE
+
+
+TRUNCATED = "origin/claude/merged-main-in-abcdef"
+
+# What the walk sees on such a ref: its own commit, then the default branch's
+# own commits reached round the graft, the oldest of them parentless because
+# the checkout holds no more history. `PL-M01` here stands for the eighteen
+# closed items the 2026-08-31 digest reported as work in progress.
+RAN_OFF_THE_END = [
+    ("2026-08-31", "PL-K7QX Do the thing"),
+    ("2026-08-20", "PL-M0J2 Something the default branch already carries"),
+]
+
+
+def test_ids_from_a_walk_that_cannot_prove_a_commit_is_contained_are_dropped() -> None:
+    """The defect: a merge-base resolves and the walk below it is still short.
+
+    `^base` excludes only what this checkout can reach from the default branch,
+    and a truncated clone's default branch ends at a grafted commit - so a ref
+    reaching round that graft has the default branch's own commits, and the ids
+    leading them, reported as its work. The digest prints those under "do not
+    start these again", which is why an unread ref is the cheaper error.
+    """
+    report = branches_in_flight(
+        ROOT,
+        runner=_runner([TRUNCATED], commits={TRUNCATED: RAN_OFF_THE_END}, ran_out=(TRUNCATED,)),
+    )
+
+    assert report.branches == ()
+    assert report.unreadable == (TRUNCATED,)
+
+
+def test_a_walk_that_proves_every_commit_is_contained_is_read_as_before() -> None:
+    """The guard must not cost the read it protects.
+
+    A walk that stops against a commit the default branch accounted for has
+    proved what it found, truncated clone or not - which is the ordinary case
+    in an agent session's container and must stay answered.
+    """
+    found = _in_flight([TRUNCATED], commits={TRUNCATED: RAN_OFF_THE_END})
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX", "PL-M0J2"]
+
+
+def test_a_ref_that_cannot_prove_what_is_contained_does_not_silence_the_others() -> None:
+    """One ref's missing history is not a reason to stop reading the rest."""
+    live = "origin/claude/pl-9y42-live"
+    report = branches_in_flight(
+        ROOT,
+        runner=_runner(
+            [TRUNCATED, live],
+            commits={TRUNCATED: RAN_OFF_THE_END, live: [("2026-08-31", "PL-9Y42 Wash-in")]},
+            ran_out=(TRUNCATED,),
+        ),
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-9Y42"]
+    assert report.unreadable == (TRUNCATED,)
 
 
 def test_tags_are_read_from_the_repository() -> None:
