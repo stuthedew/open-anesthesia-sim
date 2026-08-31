@@ -10,14 +10,15 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+from docket.checks import Report
 from docket.vcs import (
     Branch,
+    FlightReport,
     StrandedItem,
     StrandedReport,
     behind_remote,
     branches_in_flight,
     default_base,
-    in_flight_ids,
     merged_pull_requests,
     stranded,
     tags,
@@ -108,7 +109,7 @@ def test_a_branch_naming_an_item_is_in_flight() -> None:
 
 
 def test_historical_numeric_ids_are_recognized() -> None:
-    assert in_flight_ids(ROOT, runner=_runner(["claude/pl-013-something"])) == {"PL-013"}
+    assert branches_in_flight(ROOT, runner=_runner(["claude/pl-013-something"])).ids == {"PL-013"}
 
 
 def test_a_branch_naming_nothing_is_ignored() -> None:
@@ -615,12 +616,16 @@ added: 2026-08-01
 """
 
 
-def _digest(report: StrandedReport) -> str:
-    from docket.checks import Report
+def _store() -> Report:
     from docket.model import parse_item
+
+    return Report(items=[parse_item(DIGEST_ITEM)])
+
+
+def _digest(stranded: StrandedReport | None = None, flight: FlightReport | None = None) -> str:
     from docket.render import format_digest
 
-    return format_digest(Report(items=[parse_item(DIGEST_ITEM)]), set(), None, None, report)
+    return format_digest(_store(), flight, None, None, stranded)
 
 
 def test_the_digest_names_an_item_only_a_branch_holds() -> None:
@@ -644,3 +649,74 @@ def test_the_digest_names_an_item_only_a_branch_holds() -> None:
 def test_the_digest_stays_silent_when_nothing_is_only_on_a_branch() -> None:
     """It is resent on every turn, so it earns its line or does not take one."""
     assert "only on a branch" not in _digest(StrandedReport(refs_read=4))
+
+
+# A checkout that read one ref and could not read another - the container this
+# project's sessions run in, which on 2026-08-31 held exactly one such ref
+# (`origin/Review_articles`) while `docket next` said nothing about it.
+UNREAD = FlightReport(
+    branches=(Branch(name="origin/claude/pl-k7qx-live", item_id="PL-K7QX"),),
+    unreadable=("origin/claude/beyond-the-horizon-abcdef",),
+    base=BASE,
+)
+READ = FlightReport(branches=UNREAD.branches, base=BASE)
+
+
+def test_the_ids_a_caller_ranks_by_are_only_what_the_walk_could_prove() -> None:
+    """The unread ref contributes no id, and the report still carries that it exists."""
+    assert UNREAD.ids == {"PL-K7QX"}
+    assert UNREAD.unreadable == ("origin/claude/beyond-the-horizon-abcdef",)
+
+
+def test_the_digest_says_when_a_ref_went_unread() -> None:
+    """The defect in one line: every session reads the digest, few run `flight`.
+
+    Without it the digest names what is in flight and stays silent about the
+    ref that may be carrying more, which reads as "nothing else is in flight"
+    rather than as "one ref could not be asked".
+    """
+    stated = [
+        line for line in _digest(flight=UNREAD).splitlines() if "could not be compared" in line
+    ]
+
+    assert len(stated) == 1
+    assert "1 ref could not be compared with origin/main" in stated[0]
+    assert "bin/docket flight" in stated[0]
+
+
+def test_the_digest_stays_silent_when_every_ref_was_read() -> None:
+    """It is resent on every turn, so it earns its line or does not take one."""
+    assert "could not be compared" not in _digest(flight=READ)
+
+
+def test_the_queue_listing_says_when_a_ref_went_unread() -> None:
+    from docket.render import format_list
+
+    assert "1 ref could not be compared with origin/main" in format_list(_store(), UNREAD)
+    assert "could not be compared" not in format_list(_store(), READ)
+
+
+def test_the_status_view_says_when_a_ref_went_unread() -> None:
+    from docket.render import format_status
+
+    assert "1 ref could not be compared with origin/main" in format_status(_store(), None, UNREAD)
+    assert "could not be compared" not in format_status(_store(), None, READ)
+
+
+def test_the_delegable_list_says_when_a_ref_went_unread() -> None:
+    """Both halves of it: a worker handed a list, and a worker handed none."""
+    from docket.render import format_delegable
+
+    assert "1 ref could not be compared" in format_delegable(_store(), UNREAD, ())
+    assert "1 ref could not be compared" in format_delegable(Report(items=[]), UNREAD, ())
+    assert "could not be compared" not in format_delegable(_store(), READ, ())
+
+
+def test_the_unread_line_counts_the_refs_and_names_where_they_are_listed() -> None:
+    from docket.render import format_unread
+
+    both = FlightReport(unreadable=("origin/one", "origin/two"), base=BASE)
+
+    assert format_unread(both).startswith("2 refs could not be compared with origin/main")
+    assert format_unread(both).endswith("`bin/docket flight` names them.")
+    assert format_unread(FlightReport()) == ""

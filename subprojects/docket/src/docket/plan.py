@@ -15,6 +15,7 @@ from branch names, so it is checked rather than left to memory.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 
 from .model import EFFORTS, PRIORITIES, Item
@@ -158,7 +159,7 @@ class Recommendation:
 
 def recommend(
     items: list[Item],
-    in_flight: set[str] | None = None,
+    in_flight: Collection[str] | None = None,
     *,
     effort: str | None = None,
     limit: int = 3,

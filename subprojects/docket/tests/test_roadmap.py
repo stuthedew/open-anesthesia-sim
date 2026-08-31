@@ -402,7 +402,7 @@ added: 2026-08-01
 
 
 def _digest(plan: object = None) -> str:
-    return format_digest(Report(items=[parse_item(DIGEST_ITEM)]), set(), None, plan)
+    return format_digest(Report(items=[parse_item(DIGEST_ITEM)]), None, None, plan)
 
 
 def test_the_digest_carries_the_beat_so_a_session_need_not_ask() -> None:
