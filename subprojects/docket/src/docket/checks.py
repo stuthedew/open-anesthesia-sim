@@ -26,6 +26,7 @@ from datetime import date
 
 from .config import Config
 from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
+from .plan import OfferedReport
 from .release import SEMVER_RE, version_key
 from .store import ID_RE
 from .vcs import ClosureReport, PullRequestHistory
@@ -651,7 +652,7 @@ def analyze(
     today: date,
     config: Config | None = None,
     history: PullRequestHistory | None = None,
-    offered: frozenset[str] | None = None,
+    offered: OfferedReport | None = None,
     landed: LandedReport | None = None,
     closures: ClosureReport | None = None,
     version: str | None = None,
@@ -667,9 +668,12 @@ def analyze(
     `offered` is the ids `next` would suggest. It is supplied by the three
     commands that put advisories in front of a person - `check`, `digest` and
     `next` - and by nothing else, so no command reports a count another
-    command would contradict.
+    command would contradict. Like the other three it can decline: the ranking
+    reads what is in flight, and a checkout that could not walk every ref has
+    settled which items come next only as far as the refs it could read.
     """
     settings = config or Config()
+    ids = offered.ids if offered is not None else None
     report = Report(items=list(items))
     for item in report.items:
         _check_item(item, report, settings)
@@ -677,7 +681,15 @@ def analyze(
     _check_milestones(report, version)
     _check_provenance(report, history)
     _check_landed(report, landed)
-    _check_selects_nothing(report, landed, offered)
+    _check_selects_nothing(report, landed, ids)
     _check_closures(report, closures)
-    _groom(report, today, settings, offered)
+    _groom(report, today, settings, ids)
+    # Said once, for both advisories above that read `offered`, and said even
+    # where neither fired: an unread ref might carry the item that would have
+    # been named, so silence there is the same partial answer as a wrong name.
+    if offered is not None and offered.declined:
+        report.declined.append(
+            f"whether the grooming advisories name the items `next` will really "
+            f"offer: {offered.declined}"
+        )
     return report

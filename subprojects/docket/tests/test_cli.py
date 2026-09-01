@@ -1102,6 +1102,12 @@ def test_the_queue_commands_say_when_a_ref_went_unread(
         # same sentence: a mark drawn from refs that went unread is a partial
         # reading, and silence would present it as a complete one.
         ("show", "PL-0001"),
+        # `check` was the seventh reader and the one this test's own list left
+        # out (PL-3576): its grooming advisories name whichever item the
+        # ranking put first, and the ranking excludes what is in flight. It
+        # says so in the section it already keeps for checks that could not
+        # run, so the sentence arrives with a prefix the others have no use for.
+        ("check",),
     )
     for command in commands:
         assert main(["--items", store, *command]) == 0

@@ -3,12 +3,13 @@ id: PL-3576
 title: docket check's offered-advisory reads a flight answer that may be partial and says nothing about it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-31
-verify: uv run pytest subprojects/docket/tests/test_checks.py -k flight
+closed: 2026-09-01
+verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_cli.py && grep -q 'def test_an_offering_ranked_on_refs_that_went_unread_says_so' subprojects/docket/tests/test_checks.py
 ---
 **Problem.** `PL-S1P1` carried the unread refs to the six answers that rank or
 mark against in-flight work - `next`, `list`, `status`, `concurrent`,
@@ -49,3 +50,31 @@ seventh, left out as a placement question rather than because it was out of
 scope. The `verify:` command was run first and selects nothing today, so it
 exits 5 until the test exists; `-k check` and `-k declined` both select passing
 tests and would prove nothing.
+
+**Worked 2026-09-01.** The placement is the brief's - the `Not checked`
+section - and it reads `whether the grooming advisories name the items `next`
+will really offer:` followed by the same sentence the other six readers print,
+worded by `render.format_unread` so no second wording exists to drift.
+
+*The fix is wider than the brief's `Where`, and deliberately.* That section
+named `_offered` and `cmd_check`, which would have meant `cmd_check` appending
+to `report.declined` after `analyze` returned - a second author for a list
+`analyze` otherwise owns alone. The cause is one level up: `history`, `landed`
+and `closures` are all report types carrying their own `declined`, while
+`offered` was a bare `frozenset[str]`, which is exactly the shape that cannot
+say a ranking was partial. `FlightReport`'s own docstring makes this argument
+about its ids; this is the same collapse one layer above it. So `plan.py` gains
+`OfferedReport`, `analyze` takes it in place of the set, and the decline is
+recorded beside the other three. Cost: fourteen test call sites, mechanically
+updated behind a `_offering()` helper.
+
+*The seventh reader is now in the test that lists them.*
+`test_the_queue_commands_say_when_a_ref_went_unread` enumerated the six
+`PL-S1P1` fixed; `check` joins the list rather than getting a test of its own,
+because the list is what would have caught this omission.
+
+*Verified end to end on this checkout, which is genuinely truncated.* Before
+the change `docket check` reported one declined line here - shallow-clone
+provenance - while two refs went unread by the ranking; after it, both are
+reported. The `verify:` command was a bare `-k flight`, which selected no test
+and exited 5 before and after the work; it is now the paired shape.
