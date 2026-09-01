@@ -1047,6 +1047,7 @@ def test_growth_against_the_default_branch_is_an_advisory(tmp_path: Path) -> Non
     assert report.errors == []
     assert any("resident instructions grew 2 lines" in m for m in report.advisories)
     assert any("PL-H7XN" in m for m in report.advisories)
+    assert any("Never trim other resident text" in m for m in report.advisories)
 
 
 def test_shrinking_is_reported_but_is_not_an_advisory(tmp_path: Path) -> None:
@@ -1062,6 +1063,44 @@ def test_shrinking_is_reported_but_is_not_an_advisory(tmp_path: Path) -> None:
     assert report.resident.growth == -3
     assert report.advisories == []
     assert "3 fewer than main" in doc_check.format_check(report)
+
+
+def test_a_trim_that_pays_for_an_addition_is_an_advisory_at_net_zero(tmp_path: Path) -> None:
+    """The outcome a line limit would have forced, arriving without a limit.
+
+    Growth and shrinkage sum into one total, so resident text cut to make room
+    for an addition reports as no growth at all and the diff reads as free.
+    """
+    root = _instructed(_repo(tmp_path), always=UNSCOPED_RULE)
+    _git_init(root)
+    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
+    (root / "CLAUDE.md").write_text("# Rules\n\nOne.\nTwo.\nThree.\n", encoding="utf-8")
+    (root / ".claude" / "rules" / "always.md").write_text("# Unscoped\n", encoding="utf-8")
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.growth == 0
+    assert not any("grew 0 lines" in m for m in report.advisories)
+    assert any("both grew and shrank" in m for m in report.advisories)
+    assert any("PL-BKQW" in m for m in report.advisories)
+    assert report.errors == []
+
+
+def test_growth_alongside_a_trim_raises_both_advisories(tmp_path: Path) -> None:
+    """The trim is a finding on its own, not something the growth line covers."""
+    root = _instructed(_repo(tmp_path), always=UNSCOPED_RULE)
+    _git_init(root)
+    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
+    (root / "CLAUDE.md").write_text("# Rules\n\n" + "Line.\n" * 8, encoding="utf-8")
+    (root / ".claude" / "rules" / "always.md").write_text("# Unscoped\n", encoding="utf-8")
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.growth == 5
+    assert any("resident instructions grew 5 lines" in m for m in report.advisories)
+    assert any("both grew and shrank" in m for m in report.advisories)
 
 
 def test_an_unchanged_total_is_reported_as_unchanged(tmp_path: Path) -> None:

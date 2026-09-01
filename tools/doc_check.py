@@ -1548,6 +1548,16 @@ def check_resident_instructions(root: Path, report: Report) -> None:
     know which rules a session must see before it reads anything. Growth is a
     fact about the files; whether it is justified is not, so the judgment is
     left where `stranded` leaves its own.
+
+    A net total cannot see the outcome a limit would have caused, though, which
+    is why the second advisory exists. A change that adds resident text and
+    trims other resident text to pay for it sums to nothing here, so the trim
+    never appears as growth and the diff reads as free. That is the forbidden
+    outcome arriving without a limit to blame, and it is decidable without
+    judgment: growth and shrinkage in the same change, whatever they sum to.
+    A routing pass that only moves text out still shrinks alone, and is still
+    silent. `PL-BKQW` carries the reasoning; `PL-K6QR` records the project
+    owner asking for text to be added without other text suffering for it.
     """
     files = measure_resident(root)
     if not files:
@@ -1558,16 +1568,29 @@ def check_resident_instructions(root: Path, report: Report) -> None:
         baseline_ref=None if baseline is None else baseline[0],
         baseline_files=None if baseline is None else baseline[1],
     )
+    deltas = report.resident.deltas()
+    if not deltas:
+        return
+    rendered = ", ".join(f"{name} {count:+d}" for name, count in deltas)
+    ref = report.resident.baseline_ref
     growth = report.resident.growth
     if growth is not None and growth > 0:
-        deltas = ", ".join(f"{name} {count:+d}" for name, count in report.resident.deltas())
         report.advisories.append(
-            f"resident instructions grew {growth} lines against "
-            f"{report.resident.baseline_ref} ({deltas}); every session pays this before "
-            "it has read anything. Route the new rule to the cheapest thing that "
-            "delivers it when it is needed - a check, the `docket` skill, a "
-            "path-scoped rule - or say why a session could violate it before it "
-            "would look anything up. `PL-H7XN` carries the test."
+            f"resident instructions grew {growth} lines against {ref} ({rendered}); every "
+            "session loads this before it has read anything. Two answers, and there is no "
+            "third: route it to the cheapest thing that delivers it when it is needed - a "
+            "check, the `docket` skill, a path-scoped rule - or keep it and say why a "
+            "session could violate it before it would look anything up. Text the project "
+            "owner asked for is the second answer, already given. Never trim other "
+            "resident text to offset the number. `PL-H7XN` carries the test."
+        )
+    if any(count > 0 for _, count in deltas) and any(count < 0 for _, count in deltas):
+        report.advisories.append(
+            f"resident instructions both grew and shrank against {ref} ({rendered}); the "
+            "two net out in the total, so text cut to pay for an addition never shows up "
+            "as growth at all. Check that the removed lines were routed somewhere a "
+            "session still reads them, rather than cut to make room - making room is not "
+            "one of the two answers to the growth advisory. `PL-BKQW` carries the test."
         )
 
 
