@@ -386,31 +386,51 @@ unstarted one. `docket check` now runs every open item's command and raises an
 advisory for the ones that pass, so this is caught — but it is caught after the
 item is written, and the fix is still to see it fail first.
 
-**Watch it fail for the right reason.** `pytest -k <name>` where no test yet
-carries that name does not fail; it *selects nothing*, collects nothing and
-exits 5. Non-zero, so it looks like the command failing as intended, and it
-goes on looking that way after the work too unless the test the work adds
-happens to match. `docket verify` says so on the check line, and `docket check`
-reports it — separately from the commands that already pass — for the items
-`next` is about to offer, which is the first moment there is anybody to act on
-it. Reading one about your own item means: confirm the selector names
-something the work will actually create, and rename it if not. The sentence
-carries how many open items across the store are in the same state, which is
-context rather than a backlog to clear in one pass.
+**Watch it fail for the right reason, and never a bare `-k`.** `pytest -k
+<name>` where no test yet carries that name does not fail; it *selects
+nothing*, collects nothing and exits 5. Non-zero, so it looks like the command
+failing as intended, and it goes on looking that way after the work too unless
+the test the work adds happens to match. It also specifies only that some test
+somewhere comes to be called `<name>` — not that any behavior holds. Measured
+against a scratch file, which is why these are the codes and not a memory:
+
+| Written as | Before the work | Reads as |
+| --- | --- | --- |
+| `pytest <file> -k no_such_name` | 5 | a command that correctly fails |
+| `pytest <file>::test_no_such` | 4 | a usage error, same as a typo'd path |
+| `pytest <file>` | 0 | already passing, proves nothing |
+| `pytest <file> && grep -q 'def test_no_such' <file>` | 1 | an ordinary failure |
+
+So pair the file's whole suite with a `grep` for the test the work adds. That
+exits 1, the code a failing test gives, so no reader has to know a special
+case; the pytest half proves the file's suite healthy, which `-k` never did;
+and the `grep` names the exact test the work owes, which makes the command a
+specification rather than a bet on a name.
+
+`docket verify` says so on the check line where a command selects nothing, and
+`docket check` reports it — separately from the commands that already pass —
+for the items `next` is about to offer, which is the first moment there is
+anybody to act on it. Reading one about your own item means: replace the
+selector with the paired shape. The sentence carries how many open items across
+the store are in the same state, which is context rather than a backlog to
+clear in one pass — a command written away from its work is how every wrong one
+here came to exist, so each is repaired as its item is started.
 
 Copy one of these shapes rather than inventing one:
 
 | The item is | The command |
 | --- | --- |
 | Covering a module's untested paths | `uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100` |
-| A string, label, or single behavior | `uv run pytest tests/unit/test_simulation_view.py -k halted` (exits 5 until the work names a test `halted`) |
+| A string, label, or single behavior | `uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_halted' tests/unit/test_simulation_view.py` |
 | Documentation only | `python3 tools/doc_check.py check && grep -qF 'the sentence the item adds' docs/MODEL.md` |
 
-The last is the one that goes wrong quietly. `doc_check.py check` alone passes
-whenever the docs are internally consistent, which they are before the item is
-started too — five open items shared exactly that command and none of them
-proved anything. Pair it with a `grep` for the text the item adds or removes,
-which is the half that fails until the work exists.
+The last two are the same shape, and it is the one to reach for: something
+that runs and passes today, paired with a `grep` for what the work adds. Each
+half is doing a different job — the first proves the tree is healthy, the
+second is what fails until the work exists — and neither alone is a
+specification. `doc_check.py check` on its own passes whenever the docs are
+internally consistent, which they are before the item is started too; five
+open items shared exactly that command and none of them proved anything.
 
 The first is the one that goes wrong loudly. `--cov=` takes the **dotted module**
 (`anesthesia_sim.core.tissue`), never the path, and the run is the **whole
