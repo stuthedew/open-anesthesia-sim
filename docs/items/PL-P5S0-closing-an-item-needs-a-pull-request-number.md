@@ -3,11 +3,14 @@ id: PL-P5S0
 title: Closing an item needs a pull request number that does not exist until the pull request does, so the closure is always a second commit a fast merge can strand
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: public-history
 touches: subprojects/docket/src/docket/checks.py, .claude/skills/docket/SKILL.md, subprojects/docket/tests/test_checks.py
 added: 2026-09-01
+closed: 2026-09-01
+pr: 140
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'marked done on' subprojects/docket/src/docket/checks.py
 ---
 
 **Problem.** `docket check` errors on an item `marked done but records no
@@ -70,3 +73,65 @@ It is not free: an item can still reach `main` with an empty `pr`, and filling
 it in afterwards is a follow-up commit. That is strictly better than today,
 where the whole closure is stranded and the queue misreports an open gate, but
 it should be weighed rather than assumed.
+
+**Settled 2026-09-01 (project owner): error only on `main`.** `docket check`
+accepts a `done` item carrying no `pr` while its closure has not reached the
+default base, and raises the error only once it has. The closure then commits
+*with* the work, in one commit, before any pull request exists, so the window
+this item is about does not open at all. The residual cost is accepted: an item
+can still land on `main` with an empty `pr`, and filling it in is a follow-up
+commit - strictly better than today, where the whole closure strands and the
+queue misreports an open gate.
+
+**The primitive already exists.** `checks.py` imports `PullRequestHistory` from
+`vcs` and `LandedReport` from `verify`, so it already reasons about git state,
+and `vcs._items_at(ref, ...)` reads the item files as they stand at a ref. The
+question the new gate asks is exactly that: does this item read `status: done`
+at the default base? Absent from the base entirely means a new item, which is
+accepted.
+
+**It must decline rather than guess.** A shallow clone, a bare checkout, or no
+git at all cannot answer whether a closure has reached `main`, and a check that
+silently passes in that case is worse than none - it would accept every
+unfilled `pr` in CI. Report it as not-checked, the way `PL-XCYB` established
+for the provenance reader, rather than defaulting either way.
+
+**Verify.** Run before being written down: it exits 1 today, the suite half
+green (54 passed) and the `grep` half failing because the message does not
+exist yet. The command deliberately avoids `-k` (`PL-5QKT`) and carries no
+outer quotes (`PL-MZH2`).
+
+**Built 2026-09-01.** `vcs.ClosureReport` and `vcs.closures_on_base` read
+whether each closure in question already stands on the default base;
+`checks._check_closures` owes a `pr` only for those, and `cli`'s `check`
+command supplies it. The per-item unconditional error is gone.
+
+**It does not decline on a shallow clone,** which is the point that makes it
+usable: `merged_pull_requests` declines there because it needs history a
+shallow clone answers wrongly, but this needs one tree read, and `git show
+<ref>:<path>` is correct however truncated the history behind the ref is. An
+agent session normally runs in a shallow clone, so a reader that declined
+there would decline in exactly the case the rule exists for. It declines only
+when no default branch resolves at all.
+
+**Proven both ways against the real store** before the tests were written: a
+new item marked `done` with no `pr` reports 0 errors, and `PL-TH9V` with its
+`pr` stripped reports ``marked done on `origin/main` but records no `pr` ``.
+Five unit tests cover the four judgments plus the caller that does not ask.
+
+**One existing test asserted the old rule** and was rewritten rather than
+weakened: the `closed` date is answerable from the store and stays owed
+unconditionally, while the `pr` half moved to the landed case.
+
+**The skill was the other half of the fix.** `.claude/skills/docket/SKILL.md`
+told sessions the number "is known before the merge, so it goes in the same
+commit as the closure", which is what forced the second push. Close-out now
+says to commit the closure *with the work* and fill `pr` in afterwards.
+
+**Verify.** Refined while building: the recorded grep targeted the message
+text, which interpolates the base name, so it greps `marked done on` instead -
+absent at `HEAD`, present after. It avoids `-k` (`PL-5QKT`) and carries no
+outer quotes (`PL-MZH2`).
+
+**Closed under its own new rule,** with `pr` empty in the commit that carries
+the work - which is the shape this change exists to make legal.

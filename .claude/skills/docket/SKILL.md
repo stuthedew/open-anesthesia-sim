@@ -507,13 +507,26 @@ reconstruct three commands at the moment they are trying to do something else.
 
 ## Mode: close out an item
 
-1. Set `status: done`, record the `pr` — the pull request number, bare, no
-   `#` — and set `closed`. Record the `commit` too where it is to hand; it is
-   optional, because a squash-merge discards the branch commit while the pull
-   request number outlives it. The number is known before the merge, so it
-   goes in the same commit as the closure rather than in a later amend.
+1. Set `status: done` and `closed`, and commit that **with the work, in one
+   commit**. Record the `commit` too where it is to hand; it is optional,
+   because a squash-merge discards the branch commit while the pull request
+   number outlives it.
+
+   **Leave `pr` empty there and fill it in once the pull request exists.** The
+   number cannot be known before the pull request is open, and `docket check`
+   now owes a `pr` only on a closure that already stands on the default base —
+   so an unlanded closure carrying none is the expected shape rather than an
+   error. Push the `pr` as a second commit when you can; if a merge beats you
+   to it, the item lands with an empty `pr` and the next `docket check` says
+   so, which is a one-line follow-up rather than a stranded closure. Closing
+   in the same commit as the work is what removes the window: requiring the
+   number up front forced the closure into a second push, and a merge inside
+   that window took the work and left the closure on the branch — `main` had
+   the fix while the queue still called the item open and a debt gate still
+   counted it (`PL-D2GW`, then `PL-P5S0`).
 2. **Sweep the docs.** `make doc-check` decides the package-map,
-   provenance-table, dangling-citation and release-train questions outright, and
+   provenance-table, dangling-citation, math-rendering and release-train
+   questions outright, and
    `python3 tools/doc_check.py candidates --base <ref>` prints the
    documentation lines mentioning anything the diff touched.
 

@@ -512,11 +512,9 @@ unreachable. It also cannot be recorded by amending the commit it names,
 because amending changes the hash — so it is written after the fact, which is
 how a hash that resolves nowhere gets in.
 
-`pr` names the pull request, as a bare number written without the `#`. The
-number is allocated before the merge, so it can be recorded in the same commit
-as the closure rather than after it; it is unaffected by rebasing, squashing
-or amending; and GitHub writes it into the subject of whatever reaches the
-default branch — `Merge pull request #71 from owner/branch` for a merge commit,
+`pr` names the pull request, as a bare number written without the `#`. It is
+unaffected by rebasing, squashing or amending, and GitHub writes it into the
+subject of whatever reaches the default branch — `Merge pull request #71 from owner/branch` for a merge commit,
 `Title (#71)` for a squash — so the link back is free either way.
 
 So `check` holds a recorded pull request to one the default branch has
@@ -560,12 +558,40 @@ What is left is the case worth failing on — a number inside the range the
 default branch covers that no commit there names, which is a typo or an
 invention.
 
-So `done` requires `pr`, and `commit` is optional beside it. The requirement
-carries no cutover date, because there is nothing to cut over from: the store
-this grew in had every one of its 66 closed items backfilled in a single pass,
-each number derived from the commit on the default branch that first contained
-the recorded hash. A dated exemption is a leak that has to be remembered
-forever; a backfill is one commit.
+So a *landed* `done` requires `pr`, and `commit` is optional beside it. The
+requirement carries no cutover date, because there is nothing to cut over
+from: the store this grew in had every one of its 66 closed items backfilled
+in a single pass, each number derived from the commit on the default branch
+that first contained the recorded hash. A dated exemption is a leak that has
+to be remembered forever; a backfill is one commit.
+
+### When the `pr` is owed
+
+"Landed" is load-bearing, and it was learned the hard way. The number does not
+exist until the pull request is open, so an item cannot be closed in the same
+commit as the work it closes *and* carry it. Requiring it unconditionally
+forced the closure into a second push, and a merge arriving inside that window
+took the work and left the closure on the branch: the default branch had the
+fix while the store still called the item open and a debt gate still counted
+it. The window was 100 seconds wide the once it was measured, and it was open
+on every item.
+
+`closures_on_base` reads whether each closure in question already stands on
+the default base, and `check` owes a `pr` only for those. A closure that is
+`done` only in the working tree is still in flight, which is the expected
+shape rather than an error — so the closure travels in the same commit as its
+work and there is nothing left for a merge to strand.
+
+Unlike `merged_pull_requests`, this does **not** decline in a shallow clone.
+That reader needs history, which a truncated one answers confidently and
+wrongly; this needs a single tree read, and `git show <ref>:<path>` is correct
+however little history stands behind the ref. Since an agent session normally
+runs shallow, a reader that declined there would decline in exactly the case
+the rule exists for. It declines only when no default branch resolves at all.
+
+What is left over is accepted rather than solved: an item can still reach the
+default branch with an empty `pr`, and the next `check` reports it. That is a
+one-line follow-up instead of a stranded closure.
 
 ### An open item whose own command already passes
 

@@ -12,7 +12,7 @@ from datetime import date
 from docket.checks import analyze
 from docket.config import Config
 from docket.model import Item
-from docket.vcs import PullRequestHistory
+from docket.vcs import ClosureReport, PullRequestHistory
 from docket.verify import LandedReport
 
 TODAY = date(2026, 8, 24)
@@ -151,16 +151,22 @@ def test_safety_work_may_not_sit_in_a_low_band() -> None:
     assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
 
 
-def test_a_done_item_records_its_pull_request_and_date() -> None:
-    """The pull request rather than the commit: a squash discards the commit."""
+def test_a_done_item_records_its_date() -> None:
+    """The `closed` date is answerable from the store, so it is owed unconditionally.
+
+    Its `pr` is not: the number does not exist until the pull request is open,
+    so that half is owed only once the closure has landed and lives with the
+    `ClosureReport` tests below.
+    """
     messages = _errors(_item(status="done", priority="", effort="", added=None))
 
-    assert _has(messages, "records no `pr`")
     assert _has(messages, "records no `closed` date")
+    assert not _has(messages, "records no `pr`")
 
 
 def test_a_done_item_needs_no_commit() -> None:
-    """It is kept where it is to hand, but it is not what makes a closure traceable."""
+    """It is kept where it is to hand, but a squash discards it, so `pr` carries
+    the provenance instead - see the `ClosureReport` tests for when it is owed."""
     closed = _item(status="done", pr="48", closed=TODAY, added=None, priority="", effort="")
 
     assert _errors(closed) == []
@@ -497,3 +503,58 @@ def test_a_caller_that_did_not_ask_about_landed_work_is_told_nothing() -> None:
     report = analyze([_item()], TODAY, landed=None)
     assert report.advisories == []
     assert report.declined == []
+
+
+# --- a closure's `pr`, and when it is owed -----------------------------------
+#
+# The rule is not "a done item names a pull request" but "a done item that has
+# *landed* names one", because the number does not exist until the pull request
+# is open. `analyze` is pure here too - it is handed a `ClosureReport` - so what
+# these assert is the judgment, not the git reading behind it.
+
+
+def _closures(*landed: str, base: str = "origin/main", declined: str = "") -> ClosureReport:
+    return ClosureReport(base=base, landed=frozenset(landed), declined=declined)
+
+
+def test_a_closure_on_the_base_without_a_pr_is_an_error() -> None:
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX"))
+
+    assert any("marked done on `origin/main` but records no `pr`" in e for e in report.errors)
+
+
+def test_a_closure_not_yet_on_the_base_is_accepted() -> None:
+    """The window this rule used to hold open.
+
+    An item closed in the same commit as its work has no pull request number
+    yet, and demanding one forced the closure into a second push that a merge
+    could arrive inside - taking the work and stranding the closure.
+    """
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures())
+
+    assert report.errors == [] and report.declined == []
+
+
+def test_a_landed_closure_that_records_its_pr_is_accepted() -> None:
+    item = _item(status="done", pr="12", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX"))
+
+    assert report.errors == [] and report.declined == []
+
+
+def test_a_checkout_that_cannot_read_the_base_declines_rather_than_guessing() -> None:
+    """Neither erroring nor passing: the check did not run, and says so."""
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=ClosureReport(declined="no default branch here"))
+
+    assert report.errors == []
+    assert report.declined == ["closures recording no `pr`: no default branch here"]
+
+
+def test_a_caller_that_does_not_ask_is_not_told() -> None:
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY)
+
+    assert report.errors == [] and report.declined == []

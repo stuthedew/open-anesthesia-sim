@@ -37,6 +37,7 @@ from .vcs import (
     StrandedReport,
     branch_state,
     branches_in_flight,
+    closures_on_base,
     default_base,
     fetch_remote,
     merged_pull_requests,
@@ -152,6 +153,14 @@ def cmd_check(args: argparse.Namespace) -> int:
         # every session start, and this is the one question worth paying a
         # subprocess each to answer.
         landed=already_passing(root, items),
+        # Only the closures in question are asked about, because each costs a
+        # `git show`: an item is judged for a missing `pr` once its closure
+        # stands on the default base, and until then it is still in flight.
+        closures=closures_on_base(
+            root,
+            {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path},
+            items_dir=config.items_dir,
+        ),
     )
     print(render.format_check(report))
     return 1 if report.errors else 0
