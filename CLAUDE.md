@@ -220,7 +220,8 @@ correction rather than handing the question back.
   ideas arrive in clusters. Do not ask whether to record it — filing an item is
   not a decision the owner needs to make. Say in your reply that you did. Where
   a thread is still open when the session ends, update `docs/WORKING_NOTES.md`
-  too: the item records the work, that file records the narrative behind it.
+  too — but only for a thread spanning more than one item, outliving its item,
+  or having none. One item's own reasoning goes in that item, at any length.
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and

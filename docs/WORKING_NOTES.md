@@ -1,18 +1,34 @@
 # Working notes
 
 This file is a running, cross-session log of open threads, diagnoses, and
-rationale: the narrative context behind decisions, too long to fit in a
-queue item and not yet promoted into `ROADMAP.md` (version/milestone
-decisions) or `docs/MODEL.md` (scientific model specification). It exists so
-that a new conversation can pick up context without re-deriving it, and so
-that decisions made in one conversation are visible to another.
+rationale, not yet promoted into `ROADMAP.md` (version/milestone decisions)
+or `docs/MODEL.md` (scientific model specification). It exists so that a new
+conversation can pick up context without re-deriving it, and so that
+decisions made in one conversation are visible to another.
+
+**Scope decides what belongs here, not length.** An item file takes as much
+narrative as a thread needs — `PL-H7XN` runs to 15 KB — so "too long for a
+brief" places nothing here, and one item's own reasoning belongs in that
+item, where the session that starts it will read it without being sent
+anywhere. A thread belongs here when it is one of the three things no single
+item can hold:
+
+- **About more than one item.** Why a cluster is one design pass rather than
+  three, what closing each one revealed, and why a nearby finding was
+  excluded. No item is written from that vantage point.
+- **Outliving its item.** Measurements and reasoning still needed after the
+  item that produced them was dropped, or promoted into `ROADMAP.md` and
+  removed from the queue.
+- **Having no item at all.** Direction that is real but not yet workable, and
+  the record of a direction tried and shelved.
 
 It is not the task queue. Discrete, actionable work is tracked and
-prioritized in `docs/items/`; threads here that have a corresponding
-task cite its `PL-` id, and a queue item that needs more background
-than its brief allows points back here. The split is deliberate: the punch
-list stays short enough to read at the start of every session, and this file
-absorbs the depth.
+prioritized in `docs/items/`, and threads here cite the `PL-` ids they
+concern. A queue item that points back here for its own reasoning is the
+split applied wrongly: that reasoning belongs in the item. Anything outside
+this file that has to cite it should cite an item id rather than a section
+title — titles here are rewritten and deleted as threads resolve, so a
+citation by title decays silently.
 
 Any session working on this repository should read this file at the start
 of a task that touches one of its open threads, and update the relevant
