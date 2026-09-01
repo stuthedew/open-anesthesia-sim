@@ -6,6 +6,7 @@ effort: S
 status: ready
 classes: infra
 feature: dev-tooling
+touches: docs/items
 added: 2026-08-31
 not-delegable: the cause is outside this repository and no command here can reach it; the only action this queue can carry is to add a dated observation when it recurs, and the disposition - drop as a one-off, or escalate to the harness - is decidable only on a second sighting
 ---
