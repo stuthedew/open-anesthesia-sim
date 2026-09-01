@@ -91,6 +91,14 @@ select = ["E", "F", "I", "UP", "B", "RUF100"]
 # satisfy the framework's types is the most work in this repository for the
 # least return, because a wrongly typed fake fails the test that uses it.
 #
+# `tests/` being outside the gate does not leave its `type: ignore` directives
+# unread. `tools/ignore_check.py`, in `make check` directly below the gate,
+# runs mypy over both test trees separately and reads two things out of the
+# result: an inert directive, and an unresolved import - which would make live
+# directives look inert and so invalidates the answer rather than adding to it.
+# It is the `RUF100` guarantee above, for the other tool. `PL-J5NN` carries why
+# that shape rather than widening this list.
+#
 # Most of the 12 errors outside that file are the gate arguing with a
 # required practice rather than finding a defect: `test_alveolar.py` passes
 # `"not a number"` to a `float` parameter, and `test_parameters.py` builds a

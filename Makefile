@@ -9,6 +9,10 @@ check: sync
 # No paths: `[tool.mypy] files` in pyproject.toml names what the gate covers,
 # and says why `tests/` is not in it.
 	uv run mypy
+# Under `uv run`, unlike `doc_check.py` below: this one shells out to mypy, so
+# it needs the virtualenv the gate above runs in. It reads `warn_unused_ignores`
+# over the two test trees `files` excludes, which nothing else evaluates.
+	uv run python tools/ignore_check.py
 	uv run pytest
 	bin/docket check
 	python3 tools/doc_check.py check
