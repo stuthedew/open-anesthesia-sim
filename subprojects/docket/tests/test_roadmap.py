@@ -231,6 +231,46 @@ def test_a_clear_gate_at_its_own_milestone_is_implementation() -> None:
     assert plan.subject == "v0.4.0 — the teachable case"
 
 
+# The self-gating pair below stand on the same row of the same timeline with
+# the same gate clear, and differ only in whether that milestone records a
+# scope of its own. Removing the patch-track row is what puts the step on the
+# v0.4.0 milestone row rather than on the patch track between the two.
+_ON_THE_GATES_OWN_ROW = ROADMAP.replace(
+    "| — | **v0.3.x — a readability pass** | A patch, not a milestone. | — |\n", ""
+)
+_SELF_GATING = _ON_THE_GATES_OWN_ROW.replace(
+    "### Required scope\n\nA displayed clinical unit (queue item PL-MNPQ).",
+    "### What the list is\n\nThe frozen list above is the whole of this milestone.",
+)
+
+
+def test_a_self_gating_milestone_is_a_release_once_its_gate_clears() -> None:
+    """v0.2.8's shape: the frozen list is the milestone's own scope, so
+    clearing it finishes the milestone and the act due is to cut the release.
+
+    Distinct from Gate 0's exception above, where the gate ships as an earlier
+    version than the section recording it: here the two are the same version,
+    so version order alone cannot tell this from the implementation case.
+    """
+    plan = _wave("0.3.0", frozenset(GATE_IDS), roadmap=_SELF_GATING)
+    assert plan.step is not None and plan.step.label == "v0.4.0 — the teachable case"
+    assert plan.gate is not None and plan.gate.is_clear
+    assert plan.gate.milestone.version == plan.step.version
+    assert plan.beat == RELEASE
+    assert plan.subject == "v0.4.0 — the teachable case"
+
+
+def test_a_self_gating_milestone_with_scope_of_its_own_is_still_implementation() -> None:
+    """The same row, the same clear gate, and the opposite answer: a milestone
+    recording a gate *and* a required scope clears the gate in order to
+    implement that scope, which is the cadence's ordinary case."""
+    plan = _wave("0.3.0", frozenset(GATE_IDS), roadmap=_ON_THE_GATES_OWN_ROW)
+    assert plan.step is not None and plan.step.label == "v0.4.0 — the teachable case"
+    assert plan.gate is not None and plan.gate.milestone.version == plan.step.version
+    assert plan.beat == IMPLEMENT
+    assert plan.subject == "v0.4.0 — the teachable case"
+
+
 def test_a_scoped_milestone_with_no_gate_recorded_wants_its_list_frozen() -> None:
     """`ROADMAP.md`: a milestone whose gate has not been recorded has not been
     scoped, whatever else has been written about it."""

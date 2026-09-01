@@ -404,6 +404,20 @@ class MilestoneSection:
     def records_a_gate(self) -> bool:
         return bool(self.gate_entries)
 
+    @property
+    def records_its_own_scope(self) -> bool:
+        """Whether the section carries a `Required scope` of its own.
+
+        Structural, like `is_scoped`, and narrower: it asks for that one
+        subsection rather than all four, because one thing turns on it that
+        the others do not. A section recording a gate and no scope of its own
+        is a milestone whose frozen list *is* its content - `ROADMAP.md` says
+        exactly that of v0.2.8 - so clearing that list finishes the milestone
+        instead of unblocking work that follows it.
+        """
+        lowered = (title.lower() for title in self.subsections)
+        return any(title.startswith(SCOPE_SUBSECTION) for title in lowered)
+
 
 def _leading_ids(text: str) -> tuple[str, ...]:
     ids: list[str] = []
@@ -748,6 +762,36 @@ def _current_step(
     return following if following < len(steps) else None
 
 
+def _shipping_the_gate(step: TimelineStep | None, gate: GateStatus) -> bool:
+    """Whether a clear gate leaves a release to cut rather than work to start.
+
+    Two arrangements put the gate's work in the release the project is
+    standing on, and they are different shapes rather than one comparison
+    written loosely:
+
+    - the step is an *earlier* milestone than the section that recorded the
+      gate, so that gate earns a version of its own and ships before the
+      milestone it gates is implemented - Gate 0's exception, where the list
+      frozen under v0.4.0 ships as v0.3.0;
+    - the step *is* that section, and the section records no scope of its
+      own, so its frozen list is the whole of its content - `ROADMAP.md`'s
+      v0.2.8, whose list "is its own scope, recorded under a gate heading
+      because that subsection is what `bin/docket wave` reads". Clearing it
+      finishes the milestone, so the act due is to cut the release.
+
+    A milestone recording a gate *and* a scope of its own is neither: its gate
+    clears so that its scope can be implemented, which is the cadence's
+    ordinary case and stays an implementation. That is why the second
+    arrangement asks about the scope subsection and not only the version - the
+    two are indistinguishable by version order alone.
+    """
+    if step is None or step.kind != "milestone" or step.version is None:
+        return False
+    if step.version < gate.milestone.version:
+        return True
+    return step.version == gate.milestone.version and not gate.milestone.records_its_own_scope
+
+
 def wave(roadmap: str, version: str, closed_ids: frozenset[str], known_ids: frozenset[str]) -> Wave:
     """Read the plan and the store, and say which beat of the cadence is due.
 
@@ -757,9 +801,9 @@ def wave(roadmap: str, version: str, closed_ids: frozenset[str], known_ids: froz
       beat, because the cadence clears a gate before the milestone it gates is
       implemented;
     - a gate that is clear leaves either a release to cut, when the step the
-      project stands on is an earlier milestone than the one that recorded the
-      gate (Gate 0's exception: the gate work ships as v0.3.0), or the
-      milestone itself to implement;
+      project stands on is the milestone that carries the gate's work, or the
+      milestone that recorded the gate to implement - `_shipping_the_gate`
+      holds the two arrangements that make it a release;
     - with no gate recorded, the next milestone either has its four scoping
       subsections and wants its gate frozen, or does not and wants scoping.
 
@@ -791,14 +835,8 @@ def wave(roadmap: str, version: str, closed_ids: frozenset[str], known_ids: froz
     if gate is not None and not gate.is_clear:
         beat, milestone, subject = CLEAR, gate.milestone, gate.milestone.label
     elif gate is not None:
-        shipping_the_gate = (
-            step is not None
-            and step.kind == "milestone"
-            and step.version is not None
-            and step.version < gate.milestone.version
-        )
-        if shipping_the_gate:
-            assert step is not None  # narrowed by `shipping_the_gate`
+        if _shipping_the_gate(step, gate):
+            assert step is not None  # narrowed by `_shipping_the_gate`
             beat, milestone, subject = RELEASE, gate.milestone, step.label
         else:
             beat, milestone, subject = IMPLEMENT, gate.milestone, gate.milestone.label
