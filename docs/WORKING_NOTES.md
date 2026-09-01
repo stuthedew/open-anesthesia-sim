@@ -628,3 +628,48 @@ to rationalise past, so it is a hard count instead. Fowler's own test for
 whether this work is worth doing at all is met: "be aware of any time you feel
 discouraged from doing a small refactoring... Any such barrier is a smell that
 should prompt a conversation."
+
+## Open: the project's one-line self-description (PL-4MHK, PL-N092)
+
+The GitHub repository's "About" description is empty, and the project has no
+settled one-line statement of what it is. Three rounds of drafts were reviewed
+on 2026-09-01 and every one was rejected; the wording was deferred rather than
+decided, so nothing from that discussion is an approved form of words.
+
+**What was tried, and why each direction failed.** Recorded so the next
+attempt starts past these rather than at them.
+
+1. *Feature-dense.* Drafts naming the compartments, the three agents, and the
+   live-adjustable settings. Rejected as reading like a keyword list rather
+   than a sentence - the same failure `PL-N092` records for `README.md`,
+   arriving at one-sentence scale.
+2. *One plain sentence built on a verb*, following the vapor from the
+   vaporizer into the patient and back out again. Closer on register, rejected
+   on accuracy: it describes only what runs today, which frames the project as
+   a volatile-agent simulator when that is the current build rather than the
+   goal.
+3. *Destination plus current state* - naming anesthetic pharmacology broadly,
+   or the case-comparison MVP, with the volatile-only present marked as such.
+   Also rejected; no further reason was recorded.
+
+**Constraints any future draft has to meet.** None of these was the reason a
+draft was rejected, so they are floors rather than the unsolved part:
+
+- The educational-only limit belongs in the description itself, not one click
+  away in `README.md`. That field is often the only sentence read before an
+  impression forms, which puts it inside `CLAUDE.md`'s presentation-
+  correctness standard.
+- Anything claimed as planned must match `ROADMAP.md`. Intravenous agents are
+  planned-milestone item 13, sequenced after simulation forking and therefore
+  after the MVP, so "planned" is accurate and "soon" is not.
+- GitHub's field holds 350 characters. Every draft so far fit inside 270, so
+  length has never been the binding constraint.
+
+**Related, and the order to take them in.** `PL-N092` rewrites `README.md` as
+a human-readable introduction and settles the same register question at length
+and with room to get it right; a one-liner is easier to derive from a finished
+README than to invent alongside one. `PL-4MHK` carries the package-metadata
+half - `pyproject.toml`'s vague `description` and its absent `classifiers` -
+and says the same thing about sequencing. Repository topics were proposed in
+the same discussion and not applied; they are independent of the wording and
+can be set whenever.
