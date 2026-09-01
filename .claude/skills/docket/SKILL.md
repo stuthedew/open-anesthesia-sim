@@ -368,12 +368,21 @@ unstarted one. `docket check` now runs every open item's command and raises an
 advisory for the ones that pass, so this is caught — but it is caught after the
 item is written, and the fix is still to see it fail first.
 
+**Watch it fail for the right reason.** `pytest -k <name>` where no test yet
+carries that name does not fail; it *selects nothing*, collects nothing and
+exits 5. Non-zero, so it looks like the command failing as intended, and it
+goes on looking that way after the work too unless the test the work adds
+happens to match. `docket check` reports these separately from the ones that
+pass — "their `verify:` command selects no test" — and so does `docket verify`
+on the check line. Reading one about your own item means: confirm the selector
+names something the work will actually create, and rename it if not.
+
 Copy one of these shapes rather than inventing one:
 
 | The item is | The command |
 | --- | --- |
 | Covering a module's untested paths | `uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100` |
-| A string, label, or single behavior | `uv run pytest tests/unit/test_simulation_view.py -k halted` |
+| A string, label, or single behavior | `uv run pytest tests/unit/test_simulation_view.py -k halted` (exits 5 until the work names a test `halted`) |
 | Documentation only | `python3 tools/doc_check.py check && grep -qF 'the sentence the item adds' docs/MODEL.md` |
 
 The last is the one that goes wrong quietly. `doc_check.py check` alone passes
