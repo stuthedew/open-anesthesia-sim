@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: tests/unit/test_simulation_view.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_verify.py
 added: 2026-08-31
 closed: 2026-09-01
+pr: 168
 not-delegable: the deliverable is a verdict on ten suppressions, not an exit code - mypy over the test trees reports dozens of pre-existing errors either way, so "which of these ignores is inert" is read out of its output rather than returned by it, and the prose recording why a live one stays is a judgment
 ---
 
