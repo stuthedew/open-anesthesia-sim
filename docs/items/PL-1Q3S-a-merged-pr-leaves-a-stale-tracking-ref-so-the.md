@@ -66,3 +66,12 @@ re-diagnosing it.
 where a session will read it before it pushes, and the reason - that obeying
 the hook would recreate a dead branch - is stated alongside it, so a session
 does not "helpfully" push anyway.
+
+**Admitted to v0.2.8's frozen list, 2026-09-01, under the scope test.** The
+hook is outside the repository and the item is `not-delegable` for that reason,
+but the deliverable named in **Done when.** is a line in `CLAUDE.md` or
+`docs/worker.md` - the instructions a session reads before it does anything,
+which is one of the six pieces of machinery the release's goal names. The
+"workable here" limit in `ROADMAP.md` excludes a finding nothing in the tree can
+close, so it does not reach this one: the repository-side edit closes it, and
+what stays upstream is recorded above so nobody re-diagnoses it.

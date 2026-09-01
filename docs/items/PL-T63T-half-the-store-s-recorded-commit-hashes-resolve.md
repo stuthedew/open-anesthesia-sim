@@ -1,10 +1,14 @@
 ---
 id: PL-T63T
 title: "Half the store's recorded commit: hashes resolve nowhere, because the field names the branch commit a squash discards"
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: commit-provenance
+touches: subprojects/docket/README.md, .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/checks.py
 added: 2026-08-31
 ---
-
 **Problem.** A closed item records `commit:` as the hash on the branch that
 did the work. `PL-S4M2` made `main` squash-merge, so that commit never reaches
 the default branch and becomes unreachable the moment the head branch is
@@ -34,7 +38,7 @@ a `git show` on the recorded hash fails with nothing said about why.
 `docket check` rule, since reachability is decidable in a complete clone and
 must decline in a shallow one the way `merged_pull_requests` does.
 
-**Decision.** Three answers, and they are not equal. Keep recording the branch
+**Decision needed.** Three answers, and they are not equal. Keep recording the branch
 commit and accept the decay, since `pr:` is the durable pointer. Record the
 landing commit on the default branch instead, which is durable but unknowable
 until after the merge - so it would be written by a later pass, not by the
@@ -44,3 +48,11 @@ the smallest store that still answers the question.
 **Done when.** One of the three is chosen, the README states what the field
 means under a squash-merge policy, and the close-out procedure writes what the
 choice says - with a check where the choice makes one decidable.
+
+**Triaged 2026-09-01.** P2, `defect`/`infra`, `commit-provenance`. Left out of
+v0.2.8's frozen list on the precedent already recorded there for `PL-68XK`
+(hold a recorded `commit` hash to one that resolves): the `commit:` field
+predates the freeze and was excluded from the approved list deliberately. This
+item is the same field one step earlier - what should be written, rather than
+what should be checked - so the two are one decision and should be answered
+together, `PL-T63T` first.

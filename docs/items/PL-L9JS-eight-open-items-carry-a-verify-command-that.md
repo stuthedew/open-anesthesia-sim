@@ -1,10 +1,15 @@
 ---
 id: PL-L9JS
 title: "Eight open items carry a verify: command that passes without their work, so docket verify would accept a branch that did nothing"
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: docs/items
 added: 2026-09-01
+not-delegable: the command that would prove this is `bin/docket check` itself, which cannot be a `verify:` command because `docket check` runs every open item's `verify:` command - it would recurse. What is left is eight judgments about what would prove each item done, which no command makes.
 ---
-
 **Problem.** Found by running `PL-3CBS`'s new check against the store on
 2026-09-01. Of 29 open items carrying a `verify:` command, 8 pass on a tree
 where their work plainly does not exist:
@@ -50,3 +55,21 @@ each item's work understood well enough to say what would prove it done, so it
 is a grooming pass rather than a delegable batch - and per the skill it is
 cheapest done as each item is started, not in one campaign away from the work.
 Triage should weigh that against the delegation gate being open in the meantime.
+
+**Triaged 2026-09-01.** P2, `defect`/`infra`, `dev-tooling`. One correction to
+the table above, from `bin/docket check` on this branch: the advisory named
+nine, not eight, and the ninth - `PL-3CBS` - was the one genuine "work landed"
+case rather than a ninth bad command. It is closed in this change, so the
+advisory now names exactly the eight above.
+
+Left out of v0.2.8's frozen list: the machinery at fault is `docket verify`,
+the delegation gate, which that release's goal does not name. The list is
+`the merge path, the release script, the queue's ranking, the session-start
+digest, the type-check and lint gates, and the instructions a session reads`,
+and delegation is none of them.
+
+**Why no `verify:` command.** Recorded in `not-delegable:` above and worth the
+sentence: the natural proof is that `docket check`'s landed advisory names none
+of the nine, but a command that runs `docket check` is run *by* `docket check`,
+so it recurses without bound. That is a live constraint on what any item about
+the store's own commands may record, not a quirk of this one.

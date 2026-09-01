@@ -94,3 +94,24 @@ names, and the deferral it proposed — fix it before v0.3.0 is cut rather than
 before v0.2.8 — put the fix outside the release whose title claims the
 workflow works, on the strength of a window it also says "reopens
 permanently".
+
+**Re-measured 2026-09-01, from the duplicate capture `PL-Y08X` now dropped into
+this entry.** The digest still opens every session with the two contradicting
+lines, and the counts have moved rather than the defect:
+
+    Releasable: 34 finished item(s) since 0.2.7, completing parallel-sessions,
+    worker-instructions. Offer 0.2.8 before taking new work.
+    Plan: 0.2.7, step 1 of 10 (v0.2.8 - the workflow works). Beat: clear the
+    gate - 7 entries of 32 still open.
+
+Two things that capture added and this brief did not say. First, the exact
+seam: `Readiness.is_worth_cutting` (`release.py:202`) fires on
+`completed_features` or three shippable items and reads no gate, while the
+offer line in `render.format_digest` (`render.py:233-242`) has the plan in
+scope on the very next line and does not consult it. Second, the asymmetry of
+tone: `Readiness`'s own docstring says it is "deliberately advisory" and "does
+not decide that a release should happen", but the line it produces reads
+`Offer 0.2.8 before taking new work` - an instruction, and the only one of the
+two lines that tells the session to do anything. Suppressing the offer is
+therefore not the only fix available; making the sentence advisory in the same
+breath as the gate count would also close it.

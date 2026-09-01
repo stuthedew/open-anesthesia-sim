@@ -64,3 +64,12 @@ not; and tests cover both, including the two real cases above.
 **Triaged 2026-08-31, in the session that found it.** P3, `infra`,
 `dev-tooling`. The `verify:` command keys on `heading` rather than `brief`:
 `-k brief` already selects a passing test today and would prove nothing.
+
+**Admitted to v0.2.8's frozen list, 2026-09-01, under the scope test,**
+reversing the "not urgent" reading above rather than disputing it. Urgency is
+not the test; a misfire in machinery the goal names is, and this is a `docket
+check` misfire like `PL-5YK8`, on the gate that decides whether an item may
+reach `ready`. The empty-section half stopped being hypothetical on 2026-09-01:
+`PL-K2ZK` and `PL-W1LN` were both captured with the four-heading stub above
+their real briefs, and both would have passed this check at `ready` had the
+stub been all they carried. The stubs were removed by hand during that triage.
