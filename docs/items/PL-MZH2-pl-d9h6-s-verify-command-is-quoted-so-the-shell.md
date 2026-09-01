@@ -3,10 +3,13 @@ id: PL-MZH2
 title: "PL-D9H6's verify: command is quoted so the shell cannot run it, and exits 127 every time"
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: docs/items/PL-D9H6-quality-yml-runs-the-full-suite-twice-on-every.md
+closed: 2026-09-01
+pr: 138
+commit: 13b0c2e
 added: 2026-09-01
 verify: sh -c "$(sed -n 's/^verify: //p' docs/items/PL-D9H6-*.md)"; test $? -ne 127
 ---
@@ -54,3 +57,23 @@ this removes the store's only genuine 127, which is what `PL-3CBS`'s check
 relies on to distinguish "the toolchain is missing" from "one command is
 malformed" - so whoever takes it should read that threshold before changing the
 line.
+
+**Closed 2026-09-01, pull request 138**, alongside `PL-D9H6` (the doubled
+`quality.yml` run) rather than separately: the command is that item's own, and
+accepting its work means running it.
+
+The `PL-3CBS` threshold this warned about was read before the line changed.
+`report_landed` in `subprojects/docket/src/docket/verify.py` declines on
+`unavailable == len(candidates)` - *every* candidate returning 127, not any -
+so removing the store's one genuine 127 does not change what it decides, and
+`subprojects/docket/tests/test_verify.py` builds its own commands rather than
+reading this store. Nothing was left propped up; the threshold stands on the
+reasoning `PL-3CBS` recorded for it.
+
+The replacement command was widened past the minimum fix. Removing the outer
+quotes alone would have left `! grep -qF 'on: [push, pull_request]' ...`, which
+passes on any tree where that string is absent - including one where the `on:`
+key was deleted outright. It now also asserts the two lines the new trigger
+adds, so it discriminates the intended end state rather than the absence of the
+old one. Run on this tree both ways: exit 1 before the work, exit 0 after.
+

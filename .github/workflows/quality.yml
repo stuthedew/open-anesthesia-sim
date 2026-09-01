@@ -1,6 +1,15 @@
 name: quality
 
-on: [push, pull_request]
+# `push` is scoped to the default branch on purpose. Every branch here
+# becomes a pull request, and once one is open an unscoped `push` fires
+# alongside `pull_request`, running this job twice for the same commit. The
+# `pull_request` event is the one worth keeping for a branch: it tests the
+# merge result rather than the branch head, which is the question a reviewer
+# is actually asking. Pushes to `main` stay covered by the `push` trigger.
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 permissions:
   contents: read
