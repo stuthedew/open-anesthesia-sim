@@ -1,7 +1,12 @@
 ---
 id: PL-P5S0
 title: Closing an item needs a pull request number that does not exist until the pull request does, so the closure is always a second commit a fast merge can strand
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: public-history
+touches: subprojects/docket/src/docket/checks.py, .claude/skills/docket/SKILL.md, subprojects/docket/tests/test_checks.py
 added: 2026-09-01
 ---
 
@@ -40,3 +45,28 @@ is mechanical.
 
 **Done when.** Work that has merged cannot leave its item open because the
 number arrived a minute late, whichever of those routes is taken.
+
+**Decision needed.** Which of the three routes closes the window: fill the
+number from the merge in a later pass, accept a `done` item with no `pr` until
+its closure reaches `main`, or keep the order and make the recovery a command?
+The recommendation below is the second, and the answer decides whether the fix
+lands in `checks.py`, in `.claude/skills/docket/SKILL.md`, or in both.
+
+**Triaged 2026-09-01 to `needs-decision`,** because the item names three routes
+and the choice between them is the work. Grouped with `public-history`, which
+holds both halves of why the rule exists: `PL-S4M2` switched `main` to
+squash-merge, and `PL-ZQ9C` then required the `pr` field precisely because a
+squash discards the branch commit that would otherwise carry the provenance.
+
+**The recommendation, for whoever settles it: option two.** Accept a `done`
+item with no `pr` while its closure has not reached `main`, and error only once
+it has. That is the only one of the three that closes the window rather than
+moving it: the closure commits *with* the work, in one commit, before any pull
+request exists, so a fast merge has nothing left to strand. Option one still
+needs a later pass somebody has to remember to run, and option three does not
+prevent the stranding at all - it only shortens the rescue.
+
+It is not free: an item can still reach `main` with an empty `pr`, and filling
+it in afterwards is a follow-up commit. That is strictly better than today,
+where the whole closure is stranded and the queue misreports an open gate, but
+it should be weighed rather than assumed.
