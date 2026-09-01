@@ -12,6 +12,15 @@ the standards that apply to particular parts of the tree, and
 `docs/maintainer.md` for what only the project owner can act on. Nothing was
 dropped in that routing; adding to it follows the same test, below.
 
+## What this project is
+
+A solo hobby project. There is no deadline, no user waiting, and no
+commercial goal; the measure of success is that it is still being worked on
+and enjoyed in a year. The simulator is the point. The workflow apparatus
+exists to serve it and is at permanent risk of becoming the work instead —
+the failure this project is guarding against is a year of effort abandoned
+when the codebase becomes unmanageable, not a feature shipping late.
+
 ## Working with the project owner
 
 **The outcome is the requirement. An implementation sketched alongside it is
