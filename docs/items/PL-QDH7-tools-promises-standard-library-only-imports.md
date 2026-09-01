@@ -3,11 +3,12 @@ id: PL-QDH7
 title: tools/ promises standard-library-only imports and nothing guards it, the way the parse floor now is
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tests/unit/test_tools_portability.py
 added: 2026-09-01
+closed: 2026-09-01
 verify: uv run pytest tests/unit/test_tools_portability.py -k imports
 ---
 

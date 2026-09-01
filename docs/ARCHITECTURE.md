@@ -258,9 +258,12 @@ so a 3.14-targeted `ruff format` removes them and 3.11 can no longer parse the
 file — a break the test suite cannot see, because it runs under the project
 virtualenv and only the bare-`python3` invocation fails. The file extends the
 repository's rules and overrides `target-version` alone;
-`tests/unit/test_tools_portability.py` holds it to the declared floor and
-holds every file here to parsing at it, so a tool added later inherits the
-guard. `subprojects/docket/` carries the same pair for the same reason.
+`tests/unit/test_tools_portability.py` holds it to the declared floor, holds
+every file here to parsing at it, and holds every import here to the standard
+library plus in-tree `docket` — the same failure one step earlier, since a
+package resolvable only inside the project virtualenv is a `ModuleNotFoundError`
+under bare `python3`. A tool added later inherits all three.
+`subprojects/docket/` carries the same guards for the same reason.
 
 ## Tests (`tests/`)
 
