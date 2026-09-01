@@ -3,10 +3,12 @@
 The value of `wave` is entirely in being right about a project it is not
 looking at from the inside, so every beat has a fixture that produces it and
 an assertion on the answer. The fixture roadmap deliberately reproduces the
-two shapes this repository's own file has that a naive parser gets wrong: the
+shapes this repository's own file has that a naive parser gets wrong: the
 milestone *sections* are written with a plain hyphen while the timeline *rows*
-use an em dash, and the milestone whose whole content is a gate carries no
-"Required scope" of its own.
+use an em dash, the milestone whose whole content is a gate carries no
+"Required scope" of its own, and a section names ids it does not mean to claim
+- mid-entry, in a paragraph excluding one at length, and under "Explicitly out
+of scope".
 """
 
 from __future__ import annotations
@@ -93,8 +95,13 @@ which none were done on the day it was written down.
 - PL-001 (M) A first debt entry
 - PL-BCDF **and PL-GHJK** (S) — one problem, two ids, one entry
 - PL-KLMN (S) A third entry, wrapped across
-  two lines the way the real file wraps them
+  two lines the way the real file wraps them, and not to be confused with
+  PL-VWXY, which is prose about another item
 - Not an entry at all: a bullet that opens with prose, not an id.
+
+PL-STUV (a fourth problem) is a different case and is *not* admitted by this
+rule: it predates the freeze and was excluded from the approved list
+deliberately.
 
 **Cleared by v0.4.0 itself.** PL-MNPQ appears in Required scope below and is
 cleared by the milestone rather than before it.
@@ -109,7 +116,7 @@ The learner can run one case.
 
 ### Explicitly out of scope for v0.4.0
 
-Forking.
+Forking, and horizontal panning of the chart (queue item PL-Z7LY).
 
 ## Planned milestones
 
@@ -268,22 +275,57 @@ def _section(version: tuple[int, int, int]):
     return {section.version: section for section in parse_milestones(ROADMAP)}[version]
 
 
-def test_a_section_names_the_ids_it_covers_wherever_they_sit_in_the_prose() -> None:
-    """Scope is read differently from the gate list above it, and has to be.
+def test_a_section_places_the_ids_its_two_scope_structures_name() -> None:
+    """Two structures place an id, and each is read by its own grammar.
 
-    A gate entry is one bullet per problem, so it is read by the bullet's head.
-    A milestone names the items it covers in whatever grammar the sentence
-    wanted - mid-bullet as "(queue item PL-MNPQ)", or in the paragraph saying
-    which ones it clears itself - and reading only bullet heads misses both.
+    A gate entry is one bullet per problem, so it is read by the bullet's
+    head. `Required scope` is read whole - a milestone names what it covers in
+    whatever grammar the sentence wanted, mid-bullet as "(queue item
+    PL-MNPQ)" or in a paragraph, and the heading has already said that
+    everything under it is scope.
     """
-    assert set(_section((0, 4, 0)).item_ids) == {
+    assert set(_section((0, 4, 0)).scope_ids) == {
         "PL-001",
         "PL-BCDF",
         "PL-GHJK",
         "PL-KLMN",
         "PL-MNPQ",
     }
-    assert _section((0, 3, 0)).item_ids == ()
+    assert _section((0, 3, 0)).scope_ids == ()
+
+
+def test_an_id_named_for_exclusion_or_for_reference_is_placed_nowhere() -> None:
+    """Naming is not membership, or the more carefully a decision is written
+    down the more ids the reader mis-places (queue item PL-HDY6).
+
+    Three shapes, all of them in the real file: an id mentioned inside another
+    entry, a paragraph excluding one at length, and a queue item listed under
+    "Explicitly out of scope". The first would survive a rule that read the
+    section's lists and skipped its prose, which is why the frozen list is
+    read by its entries' heads rather than by its bullets.
+    """
+    placed = set(_section((0, 4, 0)).scope_ids)
+    scope = milestone_scope(parse_milestones(ROADMAP), _section((0, 4, 0)))
+
+    assert not placed & {"PL-VWXY", "PL-STUV", "PL-Z7LY"}
+    assert scope.placement("PL-STUV") == UNPLACED
+
+
+def test_an_exclusion_the_reader_cannot_see_is_silence_not_the_opposite() -> None:
+    """The cost of the rule above, stated where it is paid.
+
+    v0.4.0 lists PL-Z7LY under "Explicitly out of scope", and the reader says
+    nothing about it in either direction: it no longer claims the id as
+    v0.4.0's scope, and it does not report the exclusion either. `unplaced` is
+    the honest answer to a sentence it cannot read, and it is the safe one -
+    an unread mention makes no claim, where the over-read one it replaces told
+    a session that work a milestone excludes was work that milestone was
+    waiting on.
+    """
+    scope = milestone_scope(parse_milestones(ROADMAP), _section((0, 3, 0)))
+
+    assert scope.placement("PL-Z7LY") == UNPLACED
+    assert scope.milestone("PL-Z7LY") == ""
 
 
 def test_the_scope_places_an_id_by_the_milestone_whose_section_names_it() -> None:

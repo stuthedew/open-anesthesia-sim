@@ -282,27 +282,46 @@ pins `safety` and `science` items to `P1`, so the top band is product work by
 construction and a tie-breaker there would never fire in the case the rule
 exists for. `P0` sits above it: a hotfix outranks the phase.
 
-### What a milestone names, and what it does not
+### What a milestone places, and what it only mentions
 
-The scope above is read from one fact and no others: an item id printed in a
-milestone's own section of the roadmap. An id named in the milestone the
-current beat is about is work the step includes; an id named only in a later
-milestone's section is marked with that milestone (`scoped to v0.4.0, not this
-step`) and ranked below it; an id named in no section at all is neither: it
-carries no mark, and sits between the two in the ranking. That silence is deliberate — most of a queue is placed
+The scope above is read from two structures of a milestone's own section and
+nothing else: the entries of the frozen list it records, and its `Required
+scope`. An id one of those places, in the milestone the current beat is about,
+is work the step includes; an id only a *later* milestone places is marked
+with that milestone (`scoped to v0.4.0, not this step`) and ranked below it;
+an id neither places is neither: it carries no mark, and sits between the two
+in the ranking. That silence is deliberate — most of a queue is placed
 nowhere, and reading it as exclusion would be a verdict rather than a fact.
 
-Out-of-scope work is marked, never hidden, for the same reason. Whether an
-item is *really* out of scope is a judgment about the prose around its id, and
-the command reads ids rather than sentences.
+*Where* an id is written decides this, never the fact that it is written. A
+section names ids for at least four reasons — an entry of its frozen list,
+scope the milestone clears itself, commentary on an entry ("blocked by
+`PL-ZQ9C` above"), and an exclusion set out at length ("`PL-68XK` … is *not*
+admitted by this rule") — and only the first two are membership. Counting
+every mention read those exclusions as the opposite of what they said, so each
+structure is read by its own grammar instead:
+
+- the frozen list, by its entries' heads — an entry is one bullet per problem,
+  and an id later in the sentence is prose about another item;
+- `Required scope`, in full — a milestone names what it covers in whatever
+  grammar the sentence wanted, `(queue item PL-DHV7)` mid-bullet or a
+  paragraph, and the heading has already said that everything under it is
+  scope.
+
+Out-of-scope work is marked, never hidden. Whether an item is *really* out of
+scope is a judgment about the prose around its id, and the command reads
+structure rather than sentences.
 
 Three things follow, and they are limitations in the same way the concurrency
 answer below is:
 
-- A milestone that excludes something in prose alone excludes it invisibly
-  here. No id, no marking.
-- An id named in a later section for *any* reason reads as that milestone's
-  scope — including a sentence deferring the item *out* of it.
+- Scope recorded *only* in a section's prose is placed nowhere. Printing the
+  id inside `Required scope` is what places it.
+- An exclusion is invisible rather than reported, a milestone's own
+  `Explicitly out of scope` list included. Silence is the honest answer to a
+  sentence the command cannot read, and the safe one: an unread mention makes
+  no claim, where an over-read one told a session that work a milestone
+  excludes was the work that milestone was waiting on.
 - A released milestone's section places nothing. Its narrative records where a
   problem was raised, not what is current work.
 

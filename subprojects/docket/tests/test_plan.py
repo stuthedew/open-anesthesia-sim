@@ -11,7 +11,7 @@ from datetime import date
 
 from docket.model import Item
 from docket.plan import effort_total, features, gate, recommend
-from docket.roadmap import Scope
+from docket.roadmap import Scope, milestone_scope, parse_milestones
 
 
 def _item(
@@ -161,6 +161,47 @@ def test_next_leaves_an_item_unmarked_when_no_milestone_section_scopes_it() -> N
 
     assert pick.scoped_to == ""
     assert "scoped to" not in pick.describe()
+
+
+# The paragraph that found this, quoted from `ROADMAP.md`'s v0.2.8 section as
+# it stood on 2026-09-01, with one entry of the same frozen list above it.
+# Quoted here rather than read from the file, so the case outlives the release
+# that rewrites the section.
+EXCLUDING_ROADMAP = """# Roadmap
+
+## Next release: v0.2.8 - the workflow works
+
+### Debt gate: the frozen list
+
+- PL-1TPM (S) `docket next` ranks work the current milestone excludes, with no
+  sign that it does
+
+PL-68XK (check that a recorded commit hash resolves) is a different case and is
+*not* admitted by this rule: it predates the freeze and was excluded from the
+approved list deliberately.
+"""
+
+
+def test_next_claims_no_scope_for_an_id_the_step_names_for_its_exclusion() -> None:
+    """The whole path, because the reason string is what a session acts on.
+
+    Roadmap prose to parse to ranking to the printed reason, which is where
+    this went wrong: `docket next` on `main` ranked PL-68XK second under "In
+    scope for v0.2.8 — the workflow works", read out of the paragraph below
+    saying PL-68XK is not admitted. Above three genuine entries, with a reason
+    stating the opposite of its source.
+    """
+    (section,) = parse_milestones(EXCLUDING_ROADMAP)
+    scope = milestone_scope([section], section)
+
+    picks = {
+        pick.item.identifier: pick
+        for pick in recommend([_item("PL-68XK"), _item("PL-1TPM")], scope=scope)
+    }
+
+    assert f"In scope for {STEP}" in picks["PL-1TPM"].reason
+    assert "In scope" not in picks["PL-68XK"].reason
+    assert picks["PL-68XK"].scoped_to == ""
 
 
 def test_in_scope_work_outranks_out_of_scope_work_across_bands_not_within_one() -> None:
