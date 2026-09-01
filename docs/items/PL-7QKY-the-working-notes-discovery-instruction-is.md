@@ -3,10 +3,11 @@ id: PL-7QKY
 title: The working-notes discovery instruction is circular - a session must read the whole file to learn whether its task touches one of its threads
 priority: P2
 effort: M
-status: needs-decision
+status: ready
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_show_names_the_working_notes_thread' subprojects/docket/tests/test_cli.py
 classes: defect, session-cost
 feature: dev-tooling
-touches: docs/WORKING_NOTES.md, .claude/hooks, tools/doc_check.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docket.toml, docs/WORKING_NOTES.md
 added: 2026-09-01
 ---
 
@@ -37,22 +38,32 @@ already sound enough to key on. A digest or `bin/docket next` line naming the
 thread that concerns the item being started would deliver the pointer at the
 moment it is needed, at a cost of one line rather than 573.
 
-**Decision needed.** Where the pointer is delivered. Three candidates, and
-they differ in when they fire rather than in what they compute:
+**Decision (2026-09-01, project owner).** `bin/docket show <id>` carries the
+pointer. The reason is the one its own in-flight guard already rests on: an
+item named by the project owner skips `bin/docket next` entirely, so `show` is
+the path that otherwise has no check on it, and the `docket` skill already
+makes it the mandatory pre-start step. The two rejected alternatives, recorded
+so they are not re-argued:
 
-- **`bin/docket show <id>`** — fires when a session is about to start an item,
-  which is the moment the pointer is wanted, and the `docket` skill already
-  makes `show` the mandatory pre-start check. Misses a session that edits
-  without starting an item.
-- **The session-start digest** — fires once per session, unconditionally, so
-  nothing can miss it; but it must then name every open thread rather than the
-  one that is relevant, since at session start no item has been picked.
-- **`bin/docket next`** — fires only on the sessions that let `next` pick, and
-  the skill notes an item named by the owner skips `next` entirely.
+- *The session-start digest.* Fires unconditionally, so nothing can miss it —
+  but at session start no item has been picked, so it would have to name every
+  open thread rather than the relevant one. That is the 573-line read again,
+  shortened rather than removed.
+- *`bin/docket next`.* Fires only on the sessions that let `next` pick, which
+  is the subset `show` already covers and then some.
 
-Recommended: `show`, for the reason its own guard exists — naming an item is
-the path with no other check on it. Decide before implementing; the reading of
-the `##` headings is the same work under all three.
+**Where.** The reading is one pass over `docs/WORKING_NOTES.md`'s `##`
+headings, each of which already names the ids its thread concerns; every one
+of the 52 ids the file cites resolves to a real item file, so the mapping is
+sound enough to key on without parsing prose.
+
+**Do not hardcode the path.** `subprojects/docket/` is a standalone package
+with no dependency on this simulator, and it has no notion of a notes file
+today — `items_dir` reaches `cli.py` from `config`, and a notes path must
+arrive the same way, as a `docket.toml` key with an empty default so a project
+without such a file is unaffected. Hardcoding `docs/WORKING_NOTES.md` into the
+subproject would be the one change here that is hard to undo.
+
 
 **Watch for.** Do not solve this by making every session read the file. The
 thread-to-id mapping is the cheap half; deciding whether a thread is still

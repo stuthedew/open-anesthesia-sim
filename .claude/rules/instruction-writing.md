@@ -71,6 +71,10 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       exactly the friction the block exists to remove. Where the items are
       genuinely independent, order them by consequence and say in one clause
       that they can be done in any order.
+    - A line whose answer will produce a commit says so, and sorts as work
+      rather than as a question. Where that commit belongs in a branch another
+      line would merge or close, the decision line comes first — otherwise it
+      is answered alongside the merge and its answer is orphaned.
     - An action outside this session's reach carries its exact steps, not its
       intent. Anything they have to do somewhere the session cannot go — a
       repository or account setting, a tag, a plan change, a third-party
