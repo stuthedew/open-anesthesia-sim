@@ -25,7 +25,9 @@ project, and that separation is what keeps a bare checkout able to use it.
 
 from __future__ import annotations
 
+import os
 import subprocess
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -99,7 +101,14 @@ class Verification:
         return "\n".join(lines)
 
 
-def _run(args: list[str], root: Path, *, shell: bool = False) -> tuple[int, str]:
+def _run(
+    args: list[str],
+    root: Path,
+    *,
+    shell: bool = False,
+    timeout: float = 1800,
+    env: dict[str, str] | None = None,
+) -> tuple[int, str]:
     """Run a command, returning its exit status and combined output.
 
     Two kinds of command come through here, and both are meant to. Most
@@ -118,9 +127,10 @@ def _run(args: list[str], root: Path, *, shell: bool = False) -> tuple[int, str]
             cwd=root,
             capture_output=True,
             text=True,
-            timeout=1800,
+            timeout=timeout,
             check=False,
             shell=shell,
+            env=env,
         )
     except (OSError, subprocess.SubprocessError) as error:
         return 1, str(error)
@@ -385,3 +395,119 @@ def verify_batch(
         for report in outstanding:
             report.checks.append(shared)
     return reports
+
+
+# `docket check` runs the commands below, and open items carry `verify:`
+# commands ending in `bin/docket check`. Without a guard the outer run would
+# re-enter itself once per such candidate, and each re-entry would do it
+# again. The child is told not to ask, which is the whole fix: it still
+# validates the store, it just does not recurse into this one question.
+LANDED_GUARD = "DOCKET_SKIP_LANDED"
+
+# Long enough for a project's own suite, short enough that one wedged command
+# cannot hang `make check`. Measured against this store on 2026-09-01, the 29
+# candidate commands took 18s in total and 5.1s at worst.
+LANDED_TIMEOUT = 120.0
+
+# Statuses worth asking about. `done` and `dropped` are settled, and an
+# untriaged capture has not promised to do anything yet.
+LANDED_STATUSES = ("ready", "needs-decision")
+
+
+@dataclass(frozen=True)
+class LandedReport:
+    """Open items whose own `verify:` command already passes, or why that is unknown.
+
+    The question `verify` asks of a branch, asked of the store instead: not
+    "did this worker do what the item commissioned" but "does the item's own
+    evidence of doneness already hold, while the item is still open".
+
+    Passing proves less than it looks like it proves, and the type is shaped
+    around saying so. It is consistent with two different findings - the work
+    landed and nobody set `status: done`, or the command does not discriminate
+    and would have passed before the work too - and no reading of an exit
+    status can separate them. So this reports candidates and never a verdict,
+    which is why nothing here sets a status or raises an error.
+
+    `shared` is the part that *is* decidable. A command recorded against more
+    than one open item cannot be proving any single one of them done, whatever
+    it returns, so those candidates are the second reading with certainty
+    rather than a maybe - and their fix is to give each item a command of its
+    own, not to close anything.
+
+    `declined` carries the meaning it does everywhere else here: the check did
+    not run, and a caller must not read the empty `passing` as a clean result.
+    """
+
+    passing: tuple[str, ...] = ()
+    shared: tuple[str, ...] = ()
+    considered: int = 0
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def already_passing(
+    root: Path,
+    items: Sequence[Item],
+    *,
+    statuses: tuple[str, ...] = LANDED_STATUSES,
+    timeout: float = LANDED_TIMEOUT,
+) -> LandedReport:
+    """Run every open item's `verify:` command and report the ones that pass.
+
+    An item is closed by hand, so work that merges without its `status` being
+    set leaves the item `ready` forever: it keeps its place in `next`, it is
+    counted open by `wave` and `gate`, and the next session re-derives work
+    that is already on `main`. Four instances are known, and in all four the
+    item's own command passed on the merged tree while the file still read
+    `ready`.
+
+    Running the commands is the signal rather than reading commit subjects,
+    which was measured and rejected: of the thirteen open items whose id led a
+    commit subject on `main`, eleven were capture or triage commits, and an
+    advisory wrong five times in six is one every session learns to skim.
+
+    Two conditions decline rather than answer, both for the reason
+    `merged_pull_requests` declines on a shallow clone - an empty result that
+    means "could not look" must never render as "looked, found nothing":
+
+    - the guard is set, so this is a nested run and the outer one is asking;
+    - nothing could be executed at all, which is what a bare checkout with no
+      virtualenv looks like from here. Every command returning "not found" is
+      indistinguishable from a clean store unless it is reported as a refusal.
+    """
+    if os.environ.get(LANDED_GUARD):
+        return LandedReport(
+            declined="a `verify:` command re-entered `docket check`, which cannot "
+            "ask this question about itself"
+        )
+    candidates = [item for item in items if item.status in statuses and item.verify]
+    if not candidates:
+        return LandedReport()
+
+    child = {**os.environ, LANDED_GUARD: "1"}
+    passing: list[str] = []
+    unavailable = 0
+    for item in candidates:
+        status, _ = _run([item.verify], root, shell=True, timeout=timeout, env=child)
+        if status == 0:
+            passing.append(item.identifier)
+        elif status == 127:  # the shell could not find the command at all
+            unavailable += 1
+    if unavailable == len(candidates):
+        return LandedReport(
+            declined="no `verify:` command could be run here, so finding none passing "
+            "would say only that the toolchain is missing"
+        )
+
+    counts = Counter(item.verify for item in candidates)
+    named = set(passing)
+    shared = tuple(
+        item.identifier
+        for item in candidates
+        if item.identifier in named and counts[item.verify] > 1
+    )
+    return LandedReport(passing=tuple(passing), shared=shared, considered=len(candidates))

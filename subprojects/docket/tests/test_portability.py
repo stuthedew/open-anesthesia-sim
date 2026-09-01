@@ -31,6 +31,7 @@ ALLOWED_IMPORTS = {
     "collections.abc",
     "dataclasses",
     "datetime",
+    "os",
     "pathlib",
     "random",
     "re",

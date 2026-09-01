@@ -534,6 +534,61 @@ each number derived from the commit on the default branch that first contained
 the recorded hash. A dated exemption is a leak that has to be remembered
 forever; a backfill is one commit.
 
+### An open item whose own command already passes
+
+Closing an item is a hand edit, so work that merges without `status` being set
+leaves the item `ready` for good. Nothing notices: it keeps its place in
+`next`, `wave` and `gate` count it open, and the next session picks it up and
+re-derives what is already on `main` before finding out. Four instances are
+known — `PL-XCYB`, `PL-ZQ9C`, `PL-1TPM` and `PL-0RS6`, the last two squashed in
+one pull request — and every one was caught by a person rather than by a check.
+
+The obvious signal is an item id at the head of a commit subject on the default
+branch, and it was measured and rejected: of the thirteen open items whose id
+led such a subject, eleven were capture or triage commits ("PL-8HJ2 Capture
+that make release always ends in a red test") and two were implementations. An
+advisory wrong five times in six is one every session learns to skim past.
+
+So `check` runs each open item's own `verify:` command instead — the item's own
+statement of what would prove it done — and reports the ones that pass. Scoped
+to `ready` and `needs-decision`, and to `check` alone: it is the only check
+here that *executes* the project rather than reading it, and `next` and the
+digest are asked on every session start.
+
+**It names candidates, never a verdict**, because a passing command is
+consistent with two findings no exit status can separate:
+
+- the work landed and nobody set `status: done`; or
+- the command does not discriminate — it would have passed before the work
+  too, so it proves nothing and the item's commission is unprovable.
+
+Both want a person, and both close: the first by closing the item, the second
+by giving it a command that fails until its work exists. Run against this store
+on 2026-09-01 the second reading was every one of the eight it named, which is
+why the wording leads with the possibility rather than the conclusion.
+
+One part of that *is* decidable. A command recorded against more than one open
+item cannot be proving any single one of them done, whatever it returns, so
+those are named separately and with certainty — five of the eight shared
+`python3 tools/doc_check.py check`, which passes whenever the docs are
+internally consistent and says nothing about any particular item.
+
+Two conditions decline rather than answer, for the reason
+`merged_pull_requests` declines on a shallow clone — an empty result meaning
+"could not look" must never render as "looked, found nothing":
+
+- **A nested run.** Two open items record commands ending in `bin/docket
+  check`. Unguarded, the outer run would re-enter itself once per candidate and
+  each re-entry would do it again, so children are given `DOCKET_SKIP_LANDED`
+  and skip this one question while still validating the store.
+- **Nothing could be executed.** Every command returning "not found" is what a
+  bare checkout with no virtualenv looks like from here, and is indistinguish-
+  able from a clean store unless it is reported as a refusal.
+
+It costs what the commands cost: 29 candidates, about 17 seconds, on the store
+as it stood on 2026-09-01. Each command is capped at two minutes so one wedged
+run cannot hang `make check`.
+
 ### Delegation is derived, never granted
 
 Work that a cheaper model can finish should go to one; work whose correctness
@@ -614,11 +669,12 @@ sitting in a band it is not allowed to sit in, a `done` item recording a pull
 request the default branch has never seen. These are errors and they exit non-zero.
 
 Everything requiring judgment is left alone. The tool will tell you the top
-band has grown past what anyone can choose between at a glance, or that most
-of it is blocked on decisions nobody has made — but it will not tell you what
-to work on instead, and it does not try to decide whether an item is still
-worth doing. A tool that guessed at that would produce output that looks
-authoritative and is not.
+band has grown past what anyone can choose between at a glance, that most of
+it is blocked on decisions nobody has made, or that an open item's own
+`verify:` command already passes — but it will not tell you what to work on
+instead, it does not close the item whose command passed, and it does not try
+to decide whether an item is still worth doing. A tool that guessed at that
+would produce output that looks authoritative and is not.
 
 ## Configuration
 
