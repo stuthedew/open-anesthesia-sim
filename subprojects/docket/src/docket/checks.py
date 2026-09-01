@@ -26,6 +26,7 @@ from datetime import date
 
 from .config import Config
 from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
+from .release import SEMVER_RE, version_key
 from .store import ID_RE
 from .vcs import ClosureReport, PullRequestHistory
 from .verify import LandedReport
@@ -99,6 +100,19 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
     if item.status not in STATUSES:
         report.errors.append(f"{where}: status '{item.status}' is not one of {', '.join(STATUSES)}")
         return
+    # `milestone:` means one thing: the release an item shipped in. `docket
+    # release` stamps it on the work it is shipping, so work that is not
+    # finished cannot carry one. The other meaning it used to be hand-written
+    # for - "scoped to this release" - belongs to `ROADMAP.md`'s gate
+    # subsection, which `docket wave` reads and which is the only thing that
+    # decides membership.
+    if item.milestone and item.status != "done":
+        report.errors.append(
+            f"{where}: `milestone: {item.milestone}` on a '{item.status}' item, "
+            "which cannot have shipped; `milestone` records the release an item "
+            "went out in and is stamped by `docket release`. Membership of a "
+            "release being planned is recorded in the roadmap's gate list, not here"
+        )
     # Required only while an item is open. Items closed before this format
     # existed have no recorded capture date and cannot acquire one, and the
     # date has no use once the work is finished.
@@ -197,6 +211,43 @@ def _verify_required(item: Item, config: Config) -> bool:
     if config.verify_required_from is None:
         return False
     return item.added is not None and item.added >= config.verify_required_from
+
+
+def _check_milestones(report: Report, version: str | None) -> None:
+    """Refuse a `milestone:` naming a release that has not been cut.
+
+    The other half of the rule `_check_item` enforces, and the half that
+    caught the real case. A release stamps the items it ships and bumps the
+    version in the same run, so a stamp naming a version above the project's
+    current one is a release that has not happened - written by hand, or left
+    behind by a run that failed before it could bump.
+
+    Silence is what makes it worth failing on rather than noting.
+    `release.unreleased` selects finished work with **no** milestone, so a
+    stamped item is invisible to the release that actually ships it: it is
+    left out of the generated notes, and a tag makes that permanent. Ten items
+    were in exactly that state when this check was written, every one of them
+    scoped to the release they were omitted from.
+
+    A version that cannot be compared is not judged. `None` is a caller that
+    did not ask; an empty string is a project with no version file, which
+    `read_version` treats as a legitimate state; and a milestone or version
+    outside `major.minor.patch` is a naming scheme this rule cannot read.
+    """
+    if not version or SEMVER_RE.match(version.strip()) is None:
+        return
+    current = version_key(version)
+    for item in report.items:
+        if not item.milestone or SEMVER_RE.match(item.milestone.strip()) is None:
+            continue
+        if version_key(item.milestone) > current:
+            report.errors.append(
+                f"{_where(item)}: `milestone: {item.milestone}` names a release "
+                f"later than the current version ({version}), so it has not been "
+                "cut; `docket release` stamps this field when the release goes "
+                "out, and until then a stamped item is left out of that release's "
+                "own notes"
+            )
 
 
 def _check_provenance(report: Report, history: PullRequestHistory | None) -> None:
@@ -527,6 +578,7 @@ def analyze(
     offered: frozenset[str] | None = None,
     landed: LandedReport | None = None,
     closures: ClosureReport | None = None,
+    version: str | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -546,6 +598,7 @@ def analyze(
     for item in report.items:
         _check_item(item, report, settings)
     _check_references(report)
+    _check_milestones(report, version)
     _check_provenance(report, history)
     _check_landed(report, landed)
     _check_selects_nothing(report, landed, offered)

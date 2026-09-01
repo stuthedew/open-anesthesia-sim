@@ -9,7 +9,6 @@ feature: delegation
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-01
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'selects no test' subprojects/docket/src/docket/checks.py
-milestone: v0.2.8
 closed: 2026-09-01
 commit: 915c117
 pr: 146

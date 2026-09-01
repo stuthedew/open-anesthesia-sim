@@ -8,7 +8,6 @@ classes: docs, infra
 feature: delegation
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-01
-milestone: v0.2.8
 closed: 2026-09-01
 commit: 800b133
 pr: 153
