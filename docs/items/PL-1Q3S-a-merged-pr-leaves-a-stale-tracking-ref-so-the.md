@@ -109,3 +109,30 @@ against `~/.claude/stop-hook-git-check.sh` is unspecified, so it would race the
 very read it exists to correct, and it would pay a network round trip on every
 stop to fix a condition that arises a few times a release. The prose is the
 mechanism that fits the moment.
+
+**Confirmed end-to-end 2026-09-01, in the session that landed the rule** - the
+observation `not-delegable:` says no check can make beforehand. PR #132 merged
+at `c098636`; immediately afterwards, from the same container:
+
+    $ git ls-remote --heads origin claude/stale-tracking-ref-merge-8oyuen
+    (empty - GitHub deleted the branch)
+    $ git for-each-ref refs/remotes | grep stale-tracking
+    origin/claude/stale-tracking-ref-merge-8oyuen c3857c8   (the pre-merge tip)
+
+So the ref outlived the branch exactly as described, and
+`git rev-list origin/<branch>..origin/main` counted the squash commit as
+unpushed on a branch that would have been identical to `main`. One rather than
+the twenty-three of 2026-08-30, because the restart followed the merge
+immediately instead of trailing a run of other merges - same mechanism, same
+direction, and it grows with every merge that lands before the restart.
+
+`git branch -dr origin/<branch>` then removed it; `git rev-parse --verify
+origin/<branch>` stopped resolving, so the hook falls through to `origin/HEAD`
+and its `|| unpushed=0` guard; and `git checkout -B <branch> origin/main` left
+`HEAD` equal to `origin/main` with a clean tree. The rule works as written.
+
+One wrinkle the rule deliberately does not cover, recorded as `PL-FLZ4`: the
+restart leaves the branch's *upstream configuration* pointing at the deleted
+ref, so `git status` adds "the upstream is gone". That is separate from the
+tracking ref, the stop hook does not read it, and `git push -u origin <branch>`
+clears it on the next push.
