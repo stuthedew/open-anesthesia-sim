@@ -282,6 +282,14 @@ pins `safety` and `science` items to `P1`, so the top band is product work by
 construction and a tie-breaker there would never fire in the case the rule
 exists for. `P0` sits above it: a hotfix outranks the phase.
 
+The session digest's `Top:` line is that same answer, from the same ranking
+against the same plan, because the two lines a session reads first have to
+agree. It was a sort of the store by priority alone, which opened every
+session with v0.4.0 science work two lines above a beat saying clear v0.2.8's
+gate, and left the reader to work out which of them knew about the plan.
+Deriving it from the plan the digest already carries is what makes that
+disagreement unrepresentable rather than merely fixed.
+
 ### What a milestone places, and what it only mentions
 
 The scope above is read from two structures of a milestone's own section and

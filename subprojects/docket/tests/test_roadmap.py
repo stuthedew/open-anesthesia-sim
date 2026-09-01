@@ -468,6 +468,101 @@ def test_the_plan_costs_the_digest_exactly_one_line() -> None:
     assert len(_digest(plan).splitlines()) == len(_digest().splitlines()) + 1
 
 
+# The fixture roadmap ends at v0.4.0, so nothing it holds is *later* than the
+# milestone the beat is about. Giving v0.5.0 a section of its own is what makes
+# an out-of-scope id exist at all, and it reproduces this repository's own
+# shape: a step on v0.2.8's gate, and science work a later milestone places.
+SCOPED_ROADMAP = ROADMAP.replace(
+    "## Planned milestones",
+    """## Milestone after that: v0.5.0 - the case you can branch
+
+### Goal
+
+Branching, later.
+
+### Required scope
+
+Validation against a published measurement (queue item PL-WXYZ).
+
+### Definition of done
+
+The learner can branch a case.
+
+### Explicitly out of scope for v0.5.0
+
+Everything else.
+
+## Planned milestones""",
+)
+
+LATER_ITEM = """---
+id: PL-WXYZ
+title: Work a later milestone places
+priority: P1
+effort: S
+status: ready
+classes: science
+touches: b.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def _scoped_wave():
+    """A plan anchored on v0.4.0, with v0.5.0 placing `PL-WXYZ` beyond it."""
+    return wave(SCOPED_ROADMAP, "0.2.5", frozenset(), KNOWN | {"PL-WXYZ"})
+
+
+def _digest_of(*bodies: str, plan: object = None) -> str:
+    return format_digest(Report(items=[parse_item(body) for body in bodies]), None, None, plan)
+
+
+def test_the_digest_top_line_leads_with_work_the_current_step_scopes() -> None:
+    """PL-Q2BJ: the two lines sat in one block of output and disagreed.
+
+    `PL-WXYZ` outranks `PL-001` on priority and would lead a sort of the
+    store, exactly as `PL-9Y42` led every real session's digest while the
+    beat two lines below said clear v0.2.8's gate. The plan is what breaks
+    the tie, so the digest asks it rather than sorting.
+    """
+    top = next(
+        line
+        for line in _digest_of(DIGEST_ITEM, LATER_ITEM, plan=_scoped_wave()).splitlines()
+        if line.strip().startswith("Top:")
+    )
+
+    assert "PL-001" in top
+    assert "PL-WXYZ" not in top
+
+
+def test_the_digest_names_the_milestone_when_only_out_of_scope_work_is_ready() -> None:
+    """Hiding the item would be a verdict; saying which section places it is a fact."""
+    top = next(
+        line
+        for line in _digest_of(LATER_ITEM, plan=_scoped_wave()).splitlines()
+        if line.strip().startswith("Top:")
+    )
+
+    assert "PL-WXYZ" in top
+    assert "scoped to v0.5.0, not this step" in top
+
+
+def test_the_digest_top_line_still_answers_with_no_plan_to_scope_it() -> None:
+    """An absent or unreadable roadmap leaves the ranking where it was."""
+    top = next(
+        line
+        for line in _digest_of(DIGEST_ITEM, LATER_ITEM).splitlines()
+        if line.strip().startswith("Top:")
+    )
+
+    assert "PL-WXYZ" in top
+    assert "scoped to" not in top
+
+
 def test_a_timeline_that_does_not_parse_says_so_rather_than_stating_a_step() -> None:
     """A step read off a broken table is a plausible wrong answer, not an answer."""
     hyphenated = ROADMAP.replace("v0.3.0 —", "v0.3.0 -")
