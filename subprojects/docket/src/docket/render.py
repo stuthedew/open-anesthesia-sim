@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from datetime import date
 
-from .checks import REQUIRED_BRIEF, Report
+from .checks import DONE_WHEN, REQUIRED_BRIEF, Report, brief_gaps
 from .concurrency import undeclared
 from .config import Config
 from .model import PRIORITIES, Item
@@ -456,11 +456,11 @@ def format_triage(report: Report, config: Config) -> str:
     for item in sorted(report.untriaged, key=lambda i: i.sort_key()):
         lines.append(f"{item.identifier}  {item.title}")
         lines.append(f"  unset: {_unset(item)}")
-        missing = [
-            marker for marker in (*REQUIRED_BRIEF, "**Done when.**") if marker not in item.body
-        ]
+        missing, empty = brief_gaps(item.body)
         if missing:
             lines.append(f"  brief still missing: {', '.join(missing)}")
+        if empty:
+            lines.append(f"  brief has nothing under: {', '.join(empty)}")
         declared = _declared(item)
         if declared:
             lines.append(f"  declared: {declared}")
@@ -528,7 +528,9 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
         )
     rules.append(
         "a status past `untriaged` needs the full brief: "
-        f"{', '.join((*REQUIRED_BRIEF, '**Done when.**'))}."
+        f"{', '.join((*REQUIRED_BRIEF, DONE_WHEN))}. A heading may continue past "
+        "those words - `**Why it matters, and why it is not new.**` is the same "
+        "section - but it needs text under it."
     )
     return rules
 

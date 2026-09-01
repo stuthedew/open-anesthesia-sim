@@ -556,6 +556,38 @@ def test_triage_prints_the_body_and_what_is_still_unset(
     assert "**Why it matters.**" in output  # the brief sections still missing
 
 
+STUBBED = """---
+id: PL-U2U2
+title: An idea captured over the format's own headings
+status: untriaged
+added: 2026-08-20
+---
+
+**Problem.** The stub above a real brief, which is how `PL-RWZV` was written.
+
+**Why it matters.**
+
+**Done when.**
+"""
+
+
+def test_triage_reads_the_brief_exactly_as_the_checker_will(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-RWZV`: two readings of one rule, and the README promises there is one.
+
+    `triage` had its own literal-substring test, so it would have called this
+    brief complete a moment before `docket check` errored on it - and would
+    have demanded a section from an item whose heading merely continued past
+    the words. Both now come from `brief_gaps`.
+    """
+    _triage(tmp_path, STUBBED)
+    output = capsys.readouterr().out
+
+    assert "brief has nothing under: **Why it matters.**, **Done when.**" in output
+    assert "brief still missing" not in output
+
+
 def test_triage_states_the_rules_the_answers_must_satisfy(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -87,6 +87,15 @@ single "brief is missing" line naming both would send a reader to the wrong
 one. `_section_text` returns `None` for absent and `""` for present-but-empty
 to keep the two distinguishable at the call site.
 
+*The doc sweep found a second reader of the rule, and it had already drifted.*
+`render.py` printed `triage`'s own literal-substring reading of the same three
+markers, so after this change `triage` would have called a stubbed brief
+complete a moment before `docket check` errored on it - against the README's
+promise that those two cannot disagree. Both now call `brief_gaps`, the rule
+has one author, and `test_triage_reads_the_brief_exactly_as_the_checker_will`
+holds them together. The README's "a missing brief section" and its item-format
+section were updated to state the rule as it now stands.
+
 *Validated against the store before it was written.* The rule was prototyped
 over all 241 item files first: it flags this file's two empty sections and
 nothing else, and reports nothing newly missing, so no existing brief is

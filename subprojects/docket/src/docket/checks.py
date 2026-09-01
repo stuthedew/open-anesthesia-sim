@@ -75,6 +75,23 @@ def _section_text(body: str, marker: str) -> str | None:
     return body[start : end.start() if end else len(body)].strip()
 
 
+def brief_gaps(body: str, *, blocked: bool = False) -> tuple[list[str], list[str]]:
+    """The required sections a brief lacks, as absent ones and empty ones.
+
+    One author for the rule, because two had already drifted: `check` errored
+    on the sections an item was missing while `triage` printed its own reading
+    of the same three markers, and the README promises a reader those two
+    cannot disagree. A blocked item is not asked for `**Done when.**` - it
+    cannot state its closing condition until its blocker resolves.
+    """
+    required = list(REQUIRED_BRIEF) + ([] if blocked else [DONE_WHEN])
+    found = {marker: _section_text(body, marker) for marker in required}
+    return (
+        [marker for marker, text in found.items() if text is None],
+        [marker for marker, text in found.items() if text == ""],
+    )
+
+
 # A pull request number, as GitHub allocates them: a bare positive integer.
 # Written without the `#` so that the field holds the number and nothing else,
 # and so a typo like `pr: #71 (docket)` is refused rather than half-parsed.
@@ -174,12 +191,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             report.errors.append(f"{where}: no priority; expected one of {', '.join(PRIORITIES)}")
         if item.effort not in EFFORTS:
             report.errors.append(f"{where}: no effort; expected one of {', '.join(EFFORTS)}")
-        required = list(REQUIRED_BRIEF)
-        if item.status != "blocked":
-            required.append(DONE_WHEN)
-        found = {marker: _section_text(item.body, marker) for marker in required}
-        missing = [marker for marker, text in found.items() if text is None]
-        empty = [marker for marker, text in found.items() if text == ""]
+        missing, empty = brief_gaps(item.body, blocked=item.status == "blocked")
         if missing:
             report.errors.append(f"{where}: brief is missing {', '.join(missing)}")
         if empty:
