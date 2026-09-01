@@ -3,12 +3,14 @@ id: PL-H8MQ
 title: ROADMAP.md states the v0.2.8 entry count in four places and nothing holds them to the list
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-08-31
 verify: uv run pytest tests/unit/test_doc_check.py -k "gate and count"
+milestone: v0.2.8
+closed: 2026-09-01
 ---
 
 **Problem.** The number of entries on v0.2.8's frozen list is written in prose
@@ -55,3 +57,40 @@ eighteen, four paragraphs said thirty-one, and the frozen-list intro said
 thirty-two. Admitting four entries the same day required correcting all nine
 numbers by hand; admitting a fifth an hour later required correcting eight of
 them again. That is the tax this item describes, paid twice in one day.
+
+**Done 2026-09-01.** Both halves of the approach, because neither is enough
+alone. `check_gate_counts` in `tools/doc_check.py` holds every count a frozen
+list states about itself to the entries in it — each group heading against what
+follows it, the group counts against the list's length, the stated item-id
+count against the ids the entries hold, and the version- and timeline-table
+rows naming that release. The failure names both numbers, as the item asked:
+`ROADMAP.md:541: this group heading of v0.2.8's frozen list says 21 entries,
+but 22 follow it`. Watched it fail on three separately perturbed counts before
+it was written into the item.
+
+The prose half is the reason the check can be trusted. A checker cannot tell
+"the thirty-seven entries below are its whole content", a claim about today's
+list, from "frozen ... at seventeen entries", a dated fact that must never
+change — and guessing at that is the judgment half `CLAUDE.md` says not to
+script. So the counts are read only where their meaning is fixed by where they
+sit (a group heading over the entries it counts; a table row naming that
+release), and the six prose restatements were removed instead: the "Rows 1 and
+2" paragraph, the freeze paragraph's running tallies, the debt/capability
+split, the `not-delegable` sentence, the out-of-scope bullet, and the v0.3.0
+timeline row. `ROADMAP.md` now says beside the closed-count rule where a size
+may be stated. Five checked sites remain, down from nine hand-maintained
+numbers.
+
+**One stale count found and corrected.** The v0.3.0 section said its contents
+were "the fourteen listed under 'Debt gate: the frozen list' in the v0.4.0
+section" — fourteen was the freeze-day figure, and six entries had been added
+since, so the list has held twenty since 2026-08-30. A reader would have taken
+the foundation release to be six items smaller than it is. It is outside every
+site the check reads (prose, in a section that records no gate of its own), so
+it was de-numbered rather than corrected in place: the entries are the record.
+
+**Not covered, captured as `PL-GLBF`.** Counts of a *subset* of a list — seven
+entries `not-delegable`, three reaching into `src/` — state a property of the
+entries rather than the list's size and are still hand-maintained. The
+`not-delegable` one is decidable from the item files; the other two are not,
+and the item asks for that decision before any code.

@@ -1206,3 +1206,168 @@ def test_math_markdown_outside_the_documentation_globs_is_read(tmp_path: Path) -
 
     assert len(errors) == 2
     assert all("docs/items/PL-0000-demo.md" in error for error in errors)
+
+
+# --- frozen-list counts -----------------------------------------------------
+
+
+GATE_SECTION = """## Next milestone: v0.4.0 - the teachable case
+
+### Goal
+
+To be teachable.
+
+### Required scope
+
+- Something.
+
+### Debt gate: the frozen list
+
+**Frozen 2026-08-25, the day this milestone was scoped, at two entries.**
+
+Two entries were added later, per the note beneath this list.
+
+*The loop is visibly broken without these — two entries:*
+
+- PL-BBBB (S) The first thing
+- PL-CCCC (S) The second thing
+
+*Presentation safety — `safety`-classed, and the one entry that is not:*
+
+*Stops new debt being introduced — three entries:*
+
+- PL-DDDD (S) The third thing
+- PL-FFFF **and PL-GGGG** (S) One problem under two ids
+- PL-HHHH (S) The fifth thing
+
+### Definition of done
+
+- Everything above is done.
+
+"""
+
+GATE_ROADMAP = ROADMAP.replace("## Planned milestones", GATE_SECTION + "## Planned milestones")
+VERSIONED_GATE_ROADMAP = VERSIONED_ROADMAP.replace(
+    "## Planned milestones", GATE_SECTION + "## Planned milestones"
+)
+
+
+def _gate_errors(tmp_path: Path, roadmap: str = GATE_ROADMAP) -> list[str]:
+    return [error for error in _errors(_repo(tmp_path, roadmap=roadmap)) if "frozen list" in error]
+
+
+def test_the_gate_count_check_is_quiet_when_every_number_agrees(tmp_path: Path) -> None:
+    assert _gate_errors(tmp_path) == []
+
+
+def test_a_gate_group_heading_that_miscounts_the_entries_under_it_is_reported(
+    tmp_path: Path,
+) -> None:
+    """The failure has to name both numbers, or it cannot be acted on."""
+    roadmap = GATE_ROADMAP.replace("— three entries:*", "— four entries:*")
+
+    errors = _gate_errors(tmp_path, roadmap)
+
+    assert any("says 4 entries, but 3 follow it" in error for error in errors)
+
+
+def test_a_gate_whose_group_counts_do_not_sum_to_the_list_is_reported(tmp_path: Path) -> None:
+    """Every heading can be right about itself while the list has outgrown them.
+
+    An entry admitted above the first group heading belongs to no group, so
+    each heading still counts what follows it correctly and the total no
+    longer matches.
+    """
+    roadmap = GATE_ROADMAP.replace(
+        "*The loop is visibly broken without these — two entries:*",
+        "- PL-JJJJ (S) Admitted into no group\n\n"
+        "*The loop is visibly broken without these — two entries:*",
+    )
+
+    errors = _gate_errors(tmp_path, roadmap)
+
+    assert any("count 5 entries between them, but the list holds 6" in error for error in errors)
+
+
+def test_a_gate_heading_that_miscounts_item_ids_is_reported(tmp_path: Path) -> None:
+    """Entries and ids are different numbers: one entry may hold two ids."""
+    roadmap = GATE_ROADMAP.replace(
+        "*Stops new debt being introduced — three entries:*",
+        "*Stops new debt being introduced — three entries, three item ids:*",
+    )
+
+    errors = _gate_errors(tmp_path, roadmap)
+
+    assert any("says 3 item ids, but the entries under it hold 4" in error for error in errors)
+
+
+def test_a_stale_gate_count_in_the_version_table_is_reported(tmp_path: Path) -> None:
+    roadmap = VERSIONED_GATE_ROADMAP.replace(
+        "| v0.3.0 | Planned / scoped | Not out yet. |",
+        "| v0.3.0 | Planned / scoped | Not out yet. |\n"
+        "| v0.4.0 | Planned / scoped | Nine entries of teachable case. |",
+    )
+
+    errors = _gate_errors(tmp_path, roadmap)
+
+    assert any(
+        "the version table row for v0.4.0 says 9 entries, but its frozen list holds 5" in error
+        for error in errors
+    )
+
+
+def test_a_stale_gate_count_in_the_timeline_is_reported(tmp_path: Path) -> None:
+    roadmap = GATE_ROADMAP.replace(
+        "| 2 | **v0.4.0 — the teachable case** | Scoped below. | 5 M |",
+        "| 2 | **v0.4.0 — the teachable case** | Its own list of nine entries. | 5 M |",
+    )
+
+    errors = _gate_errors(tmp_path, roadmap)
+
+    assert any(
+        "the timeline row for v0.4.0 says 9 entries, but its frozen list holds 5" in error
+        for error in errors
+    )
+
+
+def test_a_table_row_naming_another_release_gate_count_is_left_alone(tmp_path: Path) -> None:
+    """A row may describe a list recorded under a different release.
+
+    v0.3.0's timeline row says what Gate 0 holds, and Gate 0 is recorded under
+    v0.4.0. Only the row's own naming cell decides which list it is claiming
+    something about, so the number here is not read as v0.3.0's - which
+    records no list at all - nor as v0.4.0's.
+    """
+    roadmap = GATE_ROADMAP.replace(
+        "| 1 | **v0.3.0 — the foundation** | Gate 0. | 2 M |",
+        "| 1 | **v0.3.0 — the foundation** | The nine entries of v0.4.0's gate. | 2 M |",
+    )
+
+    assert _gate_errors(tmp_path, roadmap) == []
+
+
+def test_prose_about_some_entries_is_not_read_as_a_gate_count_heading(tmp_path: Path) -> None:
+    """The count has to sit past the dash, where a heading puts it.
+
+    "Two entries were added later" is a sentence about the list, not a heading
+    over two of its entries, and reading it as one would report a list that is
+    correct.
+    """
+    assert not any("says 2 entries" in error for error in _gate_errors(tmp_path))
+
+
+def test_a_group_heading_stating_no_gate_count_is_passed_over(tmp_path: Path) -> None:
+    """Grouping the list without claiming a size is a shape the file uses."""
+    errors = _gate_errors(tmp_path)
+
+    assert errors == []
+    assert "Presentation safety" in GATE_ROADMAP
+
+
+def test_a_gate_count_written_in_digits_is_read(tmp_path: Path) -> None:
+    """The file writes counts both ways; which one was reached for means nothing."""
+    roadmap = GATE_ROADMAP.replace("— three entries:*", "— 4 entries:*")
+
+    errors = _gate_errors(tmp_path, roadmap)
+
+    assert any("says 4 entries, but 3 follow it" in error for error in errors)

@@ -281,7 +281,7 @@ adds no capability and exists to clear the ground they are built on:
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
 | 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-seven entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 35 S |
-| 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the 20 entries outside that milestone's own scope, released as a minor by deliberate exception. | 3 M, 17 S |
+| 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 3 M, 17 S |
 | — | **v0.3.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Placed here deliberately, ahead of the substance generalization that would otherwise force the vocabulary to be invented and restructured at once. Not yet scoped. | — |
 | 3 | **v0.4.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt the milestone clears itself. | 5 M, 6 S |
 | 4 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
@@ -300,7 +300,7 @@ before the debt gate existed, which is the exception recorded under
 "Versioning decision" above, and an exception rather than a pattern. Row 1
 is not a gate at all — v0.2.8's frozen list is its own scope, recorded under
 a gate heading because that subsection is what `bin/docket wave` reads, and
-fifteen of its thirty-seven entries are new workflow capability rather than
+the second of the two groups it lists is new workflow capability rather than
 debt.
 Gates 1 onward hold one milestone's findings and ship inside the milestone
 they gate, which is why rows 4, 6 and 8 carry no version.
@@ -511,16 +511,15 @@ minor-version exception is not extended to it and is not needed.
 ### Debt gate: the frozen list
 
 **Frozen 2026-08-30, the day this release was scoped, at seventeen entries.**
-Twenty have been admitted since — four under the completion rule beneath
-this list, one at the project owner's direction, and fifteen under the scope
-test beneath this list, ten on 2026-08-31 and five on 2026-09-01 — so the
-thirty-seven entries below are its whole content. What the freeze does and does not close is set
+More have been admitted since — under the completion rule and the scope test
+beneath this list, and one at the project owner's direction — so the entries
+below, rather than that original seventeen, are its whole content. What the freeze does and does not close is set
 out beneath the list; an entry records its own outcome as it closes, per
 "The cadence" below.
 
-**It is a frozen scope, not a fourth gate in the cadence.** Twenty-two of its
-entries are debt by "What counts" below, all classed `defect`, and the other
-fifteen are new workflow capability, which
+**It is a frozen scope, not a fourth gate in the cadence.** The first group
+below is debt by "What counts", all classed `defect`, and the second is new
+workflow capability, which
 that section says explicitly is *not* debt and does not hold a gate. The list
 is recorded under a heading named "Debt gate" because that subsection is what
 `bin/docket wave` reads: a release records a gate to say that it comes ahead
@@ -534,6 +533,10 @@ How many entries are closed is **not recorded here**, for the reason given in
 the v0.4.0 section: a count written into a document goes stale the next time an
 item closes. `bin/docket wave` reads these entries against `docs/items/` and
 reports the split.
+
+Nor is the list's *size* restated in prose here, for the same reason. It is
+stated in the group headings below and in the two table rows naming this
+release, and `tools/doc_check.py` holds those three to the entries.
 
 *The loop is visibly broken without these — twenty-two entries:*
 
@@ -719,7 +722,7 @@ re-explained every session) were on the list the project owner approved and
 closed before it was written here. Recording a closed item as a frozen entry
 would make this release report a size it never had to clear.
 
-**Seven of the thirty-seven are marked `not-delegable`,** which is high for a
+**Seven entries are marked `not-delegable`,** which is high for a
 release this size and is worth knowing before the work is planned: PL-J786 and
 PL-S4M2 change GitHub repository configuration that no session in this project
 can reach; PL-8HJ2 can only be proved by cutting a release; PL-ZQ9C leaves a
@@ -837,7 +840,7 @@ built, so whoever picks it up does not build either half twice.
   `src/anesthesia_sim/app/`, and the scientific content of `docs/MODEL.md`. A
   release whose whole claim is that the loop is now reliable cannot also be
   the one that moves the model.
-- Workflow capability beyond the thirty-seven entries — new tools, better
+- Workflow capability beyond the entries on that list — new tools, better
   tools, an idea this release made someone think of. The queue holds more
   process items than this release ships, and they wait for the next one. What
   the scope test admits is a defect in machinery the goal already names, which
@@ -855,7 +858,7 @@ its verification gate widened to the inputs the interface can actually reach
 and its failure path unable to leave partial state behind.
 
 Its contents are exactly Gate 0's items that fall outside the teachable
-case's own scope — the fourteen listed under "Debt gate: the frozen list" in
+case's own scope — those listed under "Debt gate: the frozen list" in
 the v0.4.0 section below. It has no scope of its own to specify, which is why
 this section is short: the frozen list *is* the specification, and nothing
 may be added to it (see "The gate is a snapshot, not a moving target").
