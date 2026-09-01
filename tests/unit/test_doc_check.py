@@ -1050,6 +1050,21 @@ def test_growth_against_the_default_branch_is_an_advisory(tmp_path: Path) -> Non
     assert any("Never trim other resident text" in m for m in report.advisories)
 
 
+def test_one_line_of_growth_is_reported_in_the_singular(tmp_path: Path) -> None:
+    """`_plural` sits two lines from this advisory and it did not use it."""
+    root = _instructed(_repo(tmp_path))
+    _git_init(root)
+    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
+    (root / "CLAUDE.md").write_text("# Rules\n\nOne.\nTwo.\n", encoding="utf-8")
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.growth == 1
+    assert any("grew 1 line against" in m for m in report.advisories)
+    assert not any("grew 1 lines" in m for m in report.advisories)
+
+
 def test_shrinking_is_reported_but_is_not_an_advisory(tmp_path: Path) -> None:
     """A routing pass that moves a rule out must not read as a finding."""
     root = _instructed(_repo(tmp_path), always=UNSCOPED_RULE)

@@ -82,8 +82,9 @@ make run
 ## Development
 
 ```bash
-make check       # ruff format --check, ruff check, mypy (strict), pytest,
-                 # then the docket and documentation checkers
+make check       # ruff format --check, ruff check, mypy (strict), the
+                 # type: ignore checker, pytest, then the docket and
+                 # documentation checkers
 make fix         # ruff format, ruff check --fix
 make test        # pytest only
 make docket      # validate docs/items/ and list anything untriaged
@@ -97,6 +98,15 @@ make doc-check   # validate the package map, provenance table, citations,
 `mypy` runs in strict mode over `src/`, `tools/` and
 `subprojects/docket/src/`. Those paths are named once, in `[tool.mypy] files`
 in `pyproject.toml`, which also records why `tests/` sits outside the gate.
+
+Sitting outside the gate does not leave the test trees' suppressions unread.
+`tools/ignore_check.py`, which `make check` runs immediately after, evaluates
+`warn_unused_ignores` over `tests/` and `subprojects/docket/tests/` and fails on
+a `type: ignore` that suppresses nothing — the guarantee `RUF100` gives for
+`noqa`, arriving through the other tool. It reports an unresolved import as
+"not checked" rather than as a clean run, because an unresolved module makes
+live directives look inert. It shells out to mypy, so unlike the two scripts
+below it needs the project virtualenv.
 
 The last two are stdlib-only scripts in `tools/`, so they run in a bare
 checkout. `tools/doc_check.py` also has a `candidates` mode that prints the
