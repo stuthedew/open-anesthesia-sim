@@ -1,7 +1,13 @@
 ---
 id: PL-BZCM
 title: docket status shows no plan placement, so the feature survey a session leads with cannot say which work the current step includes
-status: untriaged
+priority: P3
+effort: S
+classes: defect, infra
+feature: planning-cadence
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py -k "status and scope"
+status: ready
 added: 2026-09-01
 ---
 
@@ -49,3 +55,31 @@ call rather than a widening of the item that found it.
 
 **Done when.** A session reading `docket status` can tell which of the listed
 work the current step includes, without running a second command.
+
+**Triaged 2026-09-01, with the approach settled.** The project owner chose the
+narrower of the two options in **Where.** above: the mark goes on the `next:`
+item each feature row names, not on the row itself. A feature is placed by no
+structure the roadmap holds, so a per-feature mark would have to be inferred
+from its items and would claim more than `Scope` can prove; the `next:` item is
+one id, and `Scope.placement` answers about an id directly. Build that, and
+leave the row unmarked.
+
+Ordering is still out of scope here, per **Where.**: the `Underway` block keeps
+its `-progress` sort. Trading "finish what is nearly done" for "do what the
+step names" is a real decision and wants its own item.
+
+`P3` rather than `PL-Q2BJ`'s `P2`, and the brief above says why: this surface
+makes no project-altitude claim to contradict, so what is missing is a mark
+rather than a wrong answer. It sits with `PL-3576` and `PL-H8MQ`, the other
+`P3` process defects of this family.
+
+Not admitted to v0.2.8's frozen list. It was captured 2026-09-01, after the
+2026-08-31 freeze, and admitting it is a decision about the release's size
+rather than about the fix - `ROADMAP.md`'s "The gate is a snapshot, not a
+moving target" is the rule, and the two reversals already recorded there were
+written deliberately. Raise it for admission if v0.2.8 should carry the whole
+family; otherwise it clears at the next gate.
+
+The `verify:` selector matches no test today - `-k "status and scope"` exits 5
+against `test_roadmap.py` on 2026-09-01 - so the new tests have to carry both
+words, as `PL-Q2BJ`'s did.
