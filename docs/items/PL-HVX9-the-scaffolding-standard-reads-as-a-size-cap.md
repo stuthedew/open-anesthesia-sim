@@ -10,6 +10,8 @@ touches: CLAUDE.md
 verify: python3 tools/doc_check.py check && grep -qF 'staying streamlined' CLAUDE.md
 added: 2026-09-01
 closed: 2026-09-01
+commit: 22c4851
+pr: 143
 ---
 
 **Problem.** `CLAUDE.md`'s "Two standards, deliberately unequal" paragraph holds
