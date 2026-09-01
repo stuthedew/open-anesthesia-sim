@@ -9,7 +9,7 @@ feature: parallel-sessions
 touches: .claude/hooks/docket-branch-guard.sh, .claude/settings.json, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, tests/unit/test_docket_branch_guard.py, subprojects/docket/README.md
 added: 2026-09-01
 closed: 2026-09-01
-pr: 126
+pr: 127
 verify: uv run pytest -k branch_guard
 ---
 
