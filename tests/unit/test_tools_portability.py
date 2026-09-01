@@ -15,21 +15,34 @@ that target removes them, and 3.11 cannot parse the result.
 and, until this file, had the same exposure with the guard written for one file
 and one construct.
 
-Two halves, matching that subproject's: the formatter target agrees with the
-declared floor, and every file here parses at it. The pinned target is what
-removes the hazard; these tests are what notice if the pin is lost.
+Three checks, matching that subproject's: the formatter target agrees with the
+declared floor, every file here parses at it, and nothing here imports a
+package that exists only inside the project virtualenv. The pinned target is
+what removes the syntax hazard; these tests are what notice if the pin is lost,
+or if an import reaches past what a bare checkout holds.
 """
 
 from __future__ import annotations
 
 import ast
 import re
+import sys
 import tomllib
+from collections.abc import Iterator
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TOOLS_ROOT = REPO_ROOT / "tools"
 SOURCES = sorted(TOOLS_ROOT.rglob("*.py"))
+
+#: Importable here despite not being in the standard library, because a bare
+#: checkout carries it too. `tools/doc_check.py` reads the release-train
+#: grammar and the tag list from `docket`, in-tree under
+#: `subprojects/docket/src` and itself standard-library-only, by inserting that
+#: path rather than by installing anything. Anything else added to this set
+#: has to meet the same bar: present in a fresh clone, and no dependencies of
+#: its own outside the standard library.
+VENDORED = frozenset({"docket"})
 
 
 def _bare_python_floor() -> tuple[int, int]:
@@ -78,3 +91,52 @@ def test_every_tool_parses_under_the_interpreter_that_actually_runs_it() -> None
 
     for path in SOURCES:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path), feature_version=floor)
+
+
+def _imported_roots(tree: ast.Module) -> Iterator[str]:
+    """The top-level module name of every absolute import in `tree`.
+
+    `import a.b` and `from a.b import c` both reach `a`, which is the name that
+    has to be resolvable; the submodule cannot be present without it. Relative
+    imports are skipped: `tools/` is a directory of scripts with no package
+    around them, so a relative import there resolves to nothing and fails on
+    the first run rather than only in a bare checkout, which is the failure
+    this test exists to catch.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                yield alias.name.split(".")[0]
+        elif isinstance(node, ast.ImportFrom) and node.level == 0:
+            yield (node.module or "").split(".")[0]
+
+
+def test_no_tool_imports_outside_the_standard_library() -> None:
+    """The no-dependency promise is what lets a bare checkout run these.
+
+    `make check` ends with `python3 tools/doc_check.py check` under whatever
+    interpreter is on PATH, with no virtualenv and no install step, so an
+    import satisfied only by `uv sync` turns that line into a
+    `ModuleNotFoundError` in a file the whole suite has just passed - the
+    import twin of the `SyntaxError` above.
+
+    `sys.stdlib_module_names` rather than a hand-written allowlist: it is a
+    frozenset the interpreter maintains, so nothing here goes stale as the
+    standard library grows. Its one bound is that it answers for the
+    interpreter running this test - the project virtualenv, on the version
+    `pyproject.toml` pins - and not for the floor. A module added to the
+    standard library after the floor is therefore allowed here and absent
+    there; `annotationlib` and `compression` are the live examples at 3.14
+    against a 3.11 floor. That direction is narrow and the reverse fails
+    safe, but it is the gap this check does not close.
+    """
+    allowed = sys.stdlib_module_names | VENDORED
+
+    for path in SOURCES:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for root in _imported_roots(tree):
+            assert root in allowed, (
+                f"{path.relative_to(REPO_ROOT)} imports '{root}', which is neither in the "
+                f"standard library nor in-tree; `python3 {path.relative_to(REPO_ROOT)}` "
+                "cannot run in a checkout with no virtualenv"
+            )
