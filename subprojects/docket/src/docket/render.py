@@ -19,7 +19,7 @@ from .concurrency import undeclared
 from .config import Config
 from .model import PRIORITIES, Item
 from .plan import Feature, Gate, effort_total
-from .release import Readiness
+from .release import PLANNED, RESERVED, Readiness, release_offer
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
 from .vcs import CURRENT, PULL, RESTART, Branch, BranchState, FlightReport, StrandedReport
 
@@ -238,8 +238,7 @@ def format_digest(
         )
         lines.append(
             f"  Releasable: {len(ready.shippable)} finished item(s) since "
-            f"{ready.current_version}{completes}. Offer {ready.suggested_version} "
-            "before taking new work."
+            f"{ready.current_version}{completes}. {_release_advice(ready, plan)}"
         )
     if plan is not None and plan.step is not None:
         position = (
@@ -622,7 +621,10 @@ def format_priority_groups(items: list[Item]) -> str:
 
 
 def format_status(
-    report: Report, ready: Readiness | None = None, in_flight: FlightReport | None = None
+    report: Report,
+    ready: Readiness | None = None,
+    in_flight: FlightReport | None = None,
+    plan: Wave | None = None,
 ) -> str:
     """The whole project at feature altitude, which is the altitude decisions happen at.
 
@@ -693,7 +695,14 @@ def format_status(
             f"Unreleased: {len(ready.shippable)} finished item(s) since "
             f"{ready.current_version}{done_note}."
         )
-        lines.append(f"  Next version would be {ready.suggested_version}.")
+        offer = release_offer(ready, plan)
+        if offer.kind == RESERVED:
+            lines.append(
+                f"  Not {offer.version}: the roadmap gives that version to "
+                f'"{offer.milestone}", which is unfinished. `docket wave` for what is due.'
+            )
+        else:
+            lines.append(f"  Next version would be {offer.version}.")
     if unread := format_unread(flight):
         lines.append("")
         lines.append(unread)
@@ -741,6 +750,29 @@ def format_wave(plan: Wave) -> str:
         lines.append("The timeline table does not parse cleanly, so the step above may be wrong:")
         lines.extend(f"  {problem}" for problem in plan.problems)
     return "\n".join(lines)
+
+
+def _release_advice(ready: Readiness, plan: Wave | None) -> str:
+    """The digest's release sentence, once the roadmap has had its say.
+
+    The mood of it is the point. `Readiness` is advisory by its own docstring,
+    but this is the only line in the digest that tells a session to do
+    anything - so where the plan disagrees it stops instructing rather than
+    instructing more quietly, and hands the reader on to the beat printed
+    directly beneath it.
+    """
+    offer = release_offer(ready, plan)
+    if offer.kind == RESERVED:
+        return (
+            f"No release to offer: the roadmap gives {offer.version} to "
+            f'"{offer.milestone}", which is unfinished - the beat below is what is due.'
+        )
+    if offer.kind == PLANNED:
+        return (
+            f"Offer {offer.version} before taking new work - the version the plan names, "
+            f"not the {ready.suggested_version} a bump arrives at."
+        )
+    return f"Offer {offer.version} before taking new work."
 
 
 def _beat_line(plan: Wave) -> str:

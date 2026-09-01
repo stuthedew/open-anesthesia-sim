@@ -23,8 +23,12 @@ import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .model import Item
+
+if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
+    from .roadmap import Wave  # runtime import would close the cycle.
 
 VERSION_RE = re.compile(r'^(version\s*=\s*")([^"]+)(")', re.M)
 SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
@@ -230,6 +234,73 @@ def readiness(items: list[Item], current_version: str, minor_classes: tuple[str,
         current_version=current_version,
         suggested_version=suggest_version(current_version, shippable, minor_classes),
     )
+
+
+# What the plan says about the version a bump has arrived at, as three answers.
+# Two of them are the interesting ones, and they are opposite failures: the
+# number is spoken for, or the number is free but is not the one the plan is
+# waiting to cut.
+STANDS = "stands"
+PLANNED = "planned"
+RESERVED = "reserved"
+
+
+@dataclass(frozen=True)
+class ReleaseOffer:
+    """Whether a release may be recommended, and under which version.
+
+    `Readiness` reads the store and only the store. That is what makes it
+    honest about what is finished and blind to what a version *means*: the
+    number it suggests is arithmetic on the last one, and a project that plans
+    in versions has usually spent that number already. Where it has, cutting
+    the suggestion is not a smaller release than the plan's - it is the plan's
+    milestone going out under its own name with most of it missing, which a
+    tag makes permanent and a reader has no way to see through afterwards.
+
+    So this is the readiness answer with the plan folded in, as three
+    outcomes: the number is free (`STANDS`), the plan names a different one to
+    cut (`PLANNED`), or the plan has already given the number to a step it has
+    not finished (`RESERVED`, and there is nothing to offer).
+
+    Only the step the project is standing on is consulted, which is the whole
+    of the question. Every step above it has shipped, and no bump from the
+    current version can reach past the one immediately ahead.
+    """
+
+    kind: str
+    #: The version to cut. Under `RESERVED` it is the version *not* to cut:
+    #: the one the bump arrived at and the plan has spoken for.
+    version: str
+    #: The roadmap's own name for the step the answer turns on - "the workflow
+    #: works", not "v0.2.8". Empty under `STANDS`, where no step is involved.
+    milestone: str
+
+
+def release_offer(ready: Readiness, plan: Wave | None) -> ReleaseOffer:
+    """Reconcile the version a bump arrived at with the one the plan has planned.
+
+    The plan is allowed to be absent or unreadable - `wave` declines rather
+    than guesses, and a project with no roadmap is a legitimate state - and
+    the offer then stands, because there is no plan for it to contradict.
+    """
+    from .roadmap import RELEASE
+
+    suggested = ready.suggested_version.lstrip("v")
+    if plan is None or plan.step is None or plan.step.version is None:
+        return ReleaseOffer(STANDS, suggested, "")
+
+    planned = "{}.{}.{}".format(*plan.step.version)
+    if plan.beat == RELEASE:
+        # The plan is itself asking for a release, so the only thing left to
+        # disagree about is the number - and there the plan wins: it named the
+        # version when the milestone was scoped, the bump inferred one from a
+        # class label.
+        if planned == suggested:
+            return ReleaseOffer(STANDS, suggested, "")
+        return ReleaseOffer(PLANNED, planned, plan.step.name)
+    if planned == suggested:
+        return ReleaseOffer(RESERVED, suggested, plan.step.name)
+    return ReleaseOffer(STANDS, suggested, "")
 
 
 def stamp(items: list[Item], version: str) -> list[Item]:
