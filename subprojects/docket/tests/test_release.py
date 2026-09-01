@@ -9,6 +9,7 @@ import pytest
 
 from docket.model import Item
 from docket.release import (
+    Readiness,
     bump_version,
     is_untagged,
     milestones,
@@ -18,6 +19,7 @@ from docket.release import (
     suggest_version,
     version_key,
 )
+from docket.roadmap import Wave, wave
 
 TODAY = date(2026, 8, 24)
 
@@ -282,3 +284,199 @@ def test_a_roadmap_with_no_version_table_says_so_rather_than_listing_nothing() -
     owed = outstanding_roadmap_edits("# Roadmap\n\nNo table here.\n", "0.2.6")
 
     assert owed == ['there is no version table under "Versioning decision"']
+
+
+# --- the offer, once the roadmap has had its say -----------------------------
+
+# Two milestones that record a frozen list, and a third step between them whose
+# content is the second one's list. That middle row is what makes this fixture
+# worth its length: it is the shape the real roadmap uses for Gate 0, and it is
+# the only one in which the version to cut and the milestone recording the gate
+# are different numbers.
+PLAN_ROADMAP = """# Roadmap
+
+## The plan
+
+### The timeline
+
+| # | Step | What it is | Size |
+| --- | --- | --- | --- |
+| 1 | **v0.2.8 — the workflow works** | Scoped below. | 2 M |
+| 2 | **v0.3.0 — the foundation** | Gate 0's list, recorded under v0.4.0. | 3 M |
+| 3 | **v0.4.0 — the teachable case** | Scoped below. | 5 M |
+
+## Next release: v0.2.8 - the workflow works
+
+### Goal
+
+Fix the machinery before two long milestones are run through it.
+
+### Debt gate: the frozen list
+
+**Frozen 2026-08-31.** Two entries.
+
+- PL-DDDD (S) A first entry
+- PL-BBBB (S) A second entry
+
+### Required scope
+
+The frozen list above is the scope.
+
+### Definition of done
+
+Both entries closed.
+
+### Explicitly out of scope for v0.2.8
+
+The simulator.
+
+## Milestone after next: v0.4.0 - the teachable case
+
+### Goal
+
+Make the model teachable.
+
+### Debt gate: the frozen list
+
+**Frozen 2026-09-01.** One entry, released as v0.3.0 by the recorded exception.
+
+- PL-CCCC (M) Gate 0's only entry
+
+### Required scope
+
+One case.
+
+### Definition of done
+
+The learner can run it.
+
+### Explicitly out of scope for v0.4.0
+
+Forking.
+"""
+
+KNOWN_IDS = frozenset({"PL-DDDD", "PL-BBBB", "PL-CCCC"})
+
+
+def _plan(version: str, closed: frozenset[str] = frozenset()) -> Wave:
+    return wave(PLAN_ROADMAP, version, closed, KNOWN_IDS)
+
+
+def _ready(current: str, suggested: str) -> Readiness:
+    return Readiness(
+        shippable=[_item("PL-1111"), _item("PL-2222"), _item("PL-3333")],
+        completed_features=["alpha"],
+        partial_features=[],
+        current_version=current,
+        suggested_version=suggested,
+    )
+
+
+def test_the_offer_stands_when_no_plan_can_be_read() -> None:
+    """A project with no roadmap, or one `wave` declined to parse, is a real state."""
+    from docket.release import STANDS, release_offer
+
+    offer = release_offer(_ready("0.2.7", "0.2.8"), None)
+
+    assert (offer.kind, offer.version) == (STANDS, "0.2.8")
+
+
+def test_no_version_is_offered_while_the_roadmap_still_owns_it() -> None:
+    """PL-D2GW: the digest offered 0.2.8 above a beat saying v0.2.8 was unfinished.
+
+    Cutting it would have stamped the finished half of a thirty-seven entry
+    milestone with that milestone's own version and tagged it, which no later
+    release can take back.
+    """
+    from docket.release import RESERVED, release_offer
+
+    offer = release_offer(_ready("0.2.7", "0.2.8"), _plan("0.2.7"))
+
+    assert offer.kind == RESERVED
+    assert offer.version == "0.2.8"
+    assert offer.milestone == "the workflow works"
+
+
+def test_the_reservation_holds_where_the_gate_is_recorded_under_another_version() -> None:
+    """Gate 0's shape: the step to cut is v0.3.0, the gate sits under v0.4.0.
+
+    The collision is with the *step*, not with the section recording the gate,
+    so a test reading only the gate's own version would pass here and the
+    digest would still offer to ship a half-cleared Gate 0 as "the foundation".
+    """
+    from docket.release import RESERVED, release_offer
+
+    plan = _plan("0.2.8", frozenset({"PL-DDDD", "PL-BBBB"}))
+    offer = release_offer(_ready("0.2.8", "0.3.0"), plan)
+
+    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.3.0", "the foundation")
+
+
+def test_a_version_the_plan_has_not_claimed_is_offered_as_before() -> None:
+    """A patch of unrelated finished work is legitimate while a gate is open."""
+    from docket.release import STANDS, release_offer
+
+    offer = release_offer(_ready("0.2.7", "0.2.7.1"), _plan("0.2.7"))
+
+    assert offer.kind == STANDS
+
+
+def test_the_plan_names_the_version_when_it_is_the_one_asking_for_a_release() -> None:
+    """The opposite failure: the number is free, and is the wrong one to cut.
+
+    With Gate 0 clear the beat is "release v0.3.0", while a bump from 0.2.8
+    over defect-classed work arrives at 0.2.9. Offering that would ship the
+    gate's whole content as a patch and leave v0.3.0 with nothing in it.
+    """
+    from docket.release import PLANNED, release_offer
+
+    offer = release_offer(_ready("0.2.8", "0.2.9"), _plan("0.2.8", KNOWN_IDS))
+
+    assert (offer.kind, offer.version, offer.milestone) == (PLANNED, "0.3.0", "the foundation")
+
+
+def test_nothing_is_corrected_when_the_bump_already_agrees_with_the_plan() -> None:
+    from docket.release import STANDS, release_offer
+
+    offer = release_offer(_ready("0.2.8", "0.3.0"), _plan("0.2.8", KNOWN_IDS))
+
+    assert (offer.kind, offer.version) == (STANDS, "0.3.0")
+
+
+def test_the_digest_withholds_the_offer_and_says_which_step_owns_the_version() -> None:
+    """The two lines the item is about, read together off one render."""
+    from docket.checks import Report
+    from docket.render import format_digest
+
+    digest = format_digest(
+        Report(items=[_item("PL-4444")]), None, _ready("0.2.7", "0.2.8"), _plan("0.2.7")
+    )
+
+    assert "Offer 0.2.8" not in digest
+    assert 'No release to offer: the roadmap gives 0.2.8 to "the workflow works"' in digest
+    assert "Beat: clear the gate - 2 entries of 2 still open" in digest
+
+
+def test_the_digest_offers_the_planned_version_over_the_bumps_guess() -> None:
+    from docket.checks import Report
+    from docket.render import format_digest
+
+    digest = format_digest(
+        Report(items=[_item("PL-4444")]), None, _ready("0.2.8", "0.2.9"), _plan("0.2.8", KNOWN_IDS)
+    )
+
+    assert "Offer 0.3.0 before taking new work - the version the plan names" in digest
+    assert "not the 0.2.9 a bump arrives at" in digest
+
+
+def test_status_stops_predicting_a_version_the_roadmap_has_spent() -> None:
+    """The same wrong statement in the command the queue skill sends a reader to."""
+    from docket.checks import Report
+    from docket.render import format_status
+
+    status = format_status(
+        Report(items=[_item("PL-4444")]), _ready("0.2.7", "0.2.8"), None, _plan("0.2.7")
+    )
+
+    assert "Next version would be" not in status
+    assert 'Not 0.2.8: the roadmap gives that version to "the workflow works"' in status

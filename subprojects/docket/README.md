@@ -381,6 +381,20 @@ writes the notes from the items themselves, and stops short of tagging.
 Generated notes cannot claim something the items do not, and nothing shipped
 goes unmentioned because whoever wrote them forgot it.
 
+**The offer a session reads is reconciled with the plan before it is
+printed.** `readiness` reads the store and only the store, which is what
+makes it honest about what is finished and blind to what a number *means*:
+the version it arrives at is arithmetic on the last one, and a project that
+plans in versions has usually spent that number already. Cutting it then is
+not a smaller release than the plan's — it is the plan's milestone going out
+under its own name with most of it missing, which a tag makes permanent. So
+`release.release_offer` puts the suggestion beside `wave`'s current step:
+where the step already holds that version and is unfinished, the digest
+withholds the offer and names the step holding it; where the plan is itself
+asking for a release, the digest offers the version the roadmap named rather
+than the one a class label inferred. The digest's release line and its plan
+line can no longer recommend opposite actions.
+
 **What a release deliberately does not write is the roadmap.** A project that
 keeps a version table in a hand-maintained plan will find it left behind by
 every release — twice here, the second time one release after the first was
