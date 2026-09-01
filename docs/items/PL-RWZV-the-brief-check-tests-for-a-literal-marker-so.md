@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-08-31
 closed: 2026-09-01
+pr: 175
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_stub_above_a_real_brief_does_not_satisfy_the_check' subprojects/docket/tests/test_checks.py
 ---
 

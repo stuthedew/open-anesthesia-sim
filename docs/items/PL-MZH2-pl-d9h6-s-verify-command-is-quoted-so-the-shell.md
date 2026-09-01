@@ -6,13 +6,15 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.2.8
 touches: docs/items/PL-D9H6-quality-yml-runs-the-full-suite-twice-on-every.md
-closed: 2026-09-01
-pr: 138
-commit: 13b0c2e
 added: 2026-09-01
+closed: 2026-09-01
+commit: 13b0c2e
+pr: 138
 verify: sh -c "$(sed -n 's/^verify: //p' docs/items/PL-D9H6-*.md)"; test $? -ne 127
 ---
+
 **Problem.** `PL-D9H6` records:
 
 ```

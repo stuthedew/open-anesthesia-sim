@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.2.8
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-01
 closed: 2026-09-01
+pr: 172
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_trim_that_pays_for_an_addition_is_an_advisory_at_net_zero' tests/unit/test_doc_check.py
 ---
 

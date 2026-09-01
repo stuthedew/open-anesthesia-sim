@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, session-cost
 feature: dev-tooling
+milestone: v0.2.8
 touches: CLAUDE.md
 added: 2026-08-30
 closed: 2026-09-01

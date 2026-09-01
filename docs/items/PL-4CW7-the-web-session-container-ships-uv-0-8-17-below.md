@@ -6,11 +6,12 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
-added: 2026-08-30
+milestone: v0.2.8
 touches: docs/items/PL-4CW7-the-web-session-container-ships-uv-0-8-17-below.md
-not-delegable: the fix is a setting in the Claude Code environment, outside this repository, so no command run inside a checkout can prove it
-pr: 105
+added: 2026-08-30
 closed: 2026-08-31
+pr: 105
+not-delegable: the fix is a setting in the Claude Code environment, outside this repository, so no command run inside a checkout can prove it
 ---
 
 **Problem.** The Claude Code web environment's container image ships uv 0.8.17

@@ -6,11 +6,12 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.2.8
 touches: .github/workflows/quality.yml
-closed: 2026-09-01
-pr: 138
-commit: 13b0c2e
 added: 2026-08-31
+closed: 2026-09-01
+commit: 13b0c2e
+pr: 138
 verify: ! grep -qF 'on: [push, pull_request]' .github/workflows/quality.yml && grep -qF '    branches: [main]' .github/workflows/quality.yml && grep -qF '  pull_request:' .github/workflows/quality.yml
 ---
 

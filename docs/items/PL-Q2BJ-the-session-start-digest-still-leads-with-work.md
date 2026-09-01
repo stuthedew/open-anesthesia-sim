@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: planning-cadence
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md
 added: 2026-08-30
 closed: 2026-09-01

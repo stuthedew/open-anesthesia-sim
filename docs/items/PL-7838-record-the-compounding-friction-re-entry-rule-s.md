@@ -4,13 +4,14 @@ title: Record the compounding-friction re-entry rule's own first miss, so the pa
 priority: P2
 effort: S
 status: done
-closed: 2026-08-30
-pr: 91
-commit: 4cb9af5
 classes: session-cost, docs
 feature: planning-cadence
+milestone: v0.2.8
 touches: CLAUDE.md, ROADMAP.md
 added: 2026-08-30
+closed: 2026-08-30
+commit: 4cb9af5
+pr: 91
 verify: python3 tools/doc_check.py check
 ---
 

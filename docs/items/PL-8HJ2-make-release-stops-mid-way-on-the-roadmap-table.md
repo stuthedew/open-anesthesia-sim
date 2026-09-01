@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: release-roadmap-seam
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/release.py, Makefile, subprojects/docket/tests/test_release.py, ROADMAP.md
 added: 2026-08-30
 closed: 2026-08-31

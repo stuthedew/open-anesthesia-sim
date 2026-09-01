@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.2.8
 touches: CLAUDE.md
 added: 2026-09-01
 closed: 2026-09-01
+pr: 170
 not-delegable: the deliverable is a paragraph of the project owner's own framing placed where every session reads it; there is no command that passes after the work and fails before it beyond grepping for the text, and whether the placement is right is a judgment
 ---
 
