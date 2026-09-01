@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-08-31
 closed: 2026-09-01
+pr: 158
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def _check_milestones' subprojects/docket/src/docket/checks.py
 ---
 
