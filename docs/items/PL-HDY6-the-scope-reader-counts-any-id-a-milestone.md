@@ -3,11 +3,13 @@ id: PL-HDY6
 title: The scope reader counts any id a milestone section names, so docket next marks an id the section names to exclude as in scope
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-01
+closed: 2026-09-01
+pr: 131
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py subprojects/docket/tests/test_plan.py -k exclusion
 ---
 
@@ -71,3 +73,46 @@ project owner's agreement, on the same reading as the four admitted earlier
 that day. It is a defect in the queue's ranking - one of the six pieces of
 machinery the release's goal names - and unlike those four it is misdirecting
 `docket next` on `main` right now rather than costing a correction later.
+
+**Closed 2026-09-01 (pull request 131).** A section now places an id from two
+structures and nothing else, each read by its own grammar: the frozen list by
+its entries' heads, and `Required scope` in full. Everything else in the
+section - the goal, the definition of done, the commentary on an entry, the
+exclusions - is prose, and places nothing.
+
+Both candidate rules above were wrong as written, and in the same place. The
+list rule ("read the section's list structures and ignore its paragraphs") does
+not fix `PL-68XK`: that id is *also* named mid-entry inside the `PL-HDY6`
+bullet, so a bullet-wide read still counts it. Reading the frozen list by its
+entries' heads - the grammar `_gate_entries` already used - is what handles
+that, and taking the gate half of scope from the parsed entries rather than
+re-reading the bullets is what stops the ids a gate holds and the ids it places
+drifting apart. The marker rule was rejected outright: `doc_check` cannot tell
+an exclusion from a mention, so it could never hold a writer to the marker, and
+a convention with no check behind it fails silently in exactly the way this
+defect did.
+
+`Required scope` is read whole rather than by its bullets, because the heading
+has already declared that everything under it is scope, and because the fixture
+roadmap - like a section written in a hurry - states it as a paragraph.
+
+Measured against `ROADMAP.md` on the day: v0.2.8 places its 37 entries and no
+longer places `PL-68XK`, `PL-J3ZK` or `PL-20ZR`; v0.4.0 places its 21 gate ids
+plus its `Required scope` and no longer places `PL-Z7LY` or `PL-WB0X`.
+`bin/docket next` now leads with `PL-1Q3S`, `PL-921W` and `PL-D2GW`, all genuine
+entries.
+
+**What it cost, and who paid it.** Scope recorded only in a section's prose is
+now placed nowhere. That is the direction the brief's first candidate warned
+about, and it is the safe one: an unread mention makes no claim, where an
+over-read one told a session that work a milestone excludes was the work that
+milestone was waiting on. Three ids paid it immediately - v0.4.0's gate prose
+says `PL-VM40`, `PL-F52R` and `PL-ZRSP` "appear in Required scope above" and
+their ids did not, so those three bullets now print them in the convention four
+sibling bullets already use. Two findings were captured rather than fixed:
+`PL-6P9Y` (a milestone's own `Explicitly out of scope` list is read as silence
+where it could be read as exclusion) and `PL-D1ST` (v0.4.0's `Required scope`
+describes work whose queue id it never prints, `PL-SN2C` among it).
+
+`MilestoneSection.item_ids` is renamed `scope_ids`: a field named for every id
+in a section no longer holds them.

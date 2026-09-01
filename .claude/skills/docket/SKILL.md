@@ -233,11 +233,13 @@ homework. Drop to specific items once a direction is picked, or when
 something individually urgent outranks the grouping.
 
 `docket next` gives the ranking and the reason, already honoring `P0` first,
-then what the roadmap's current step names, then work that finishes a feature
+then what the roadmap's current step places, then work that finishes a feature
 already underway, then priority — and it excludes what is in flight on a
 branch. A suggestion the step has not reached stays in the list, marked with
-the milestone that names it, because hiding it would be a verdict the tool
-cannot support. Lead the reply with its answer. Add judgment the tool cannot
+the milestone that places it, because hiding it would be a verdict the tool
+cannot support. Placement is read from the frozen list a milestone records and
+its `Required scope`, never from a mention elsewhere in the section, so an id
+a section names only to exclude it is placed by nobody. Lead the reply with its answer. Add judgment the tool cannot
 have: whether the item is still real, whether the marking is right about a
 milestone whose prose it cannot read, and how it fits what the owner said
 they were trying to do.
@@ -253,7 +255,7 @@ What carries it instead is the roadmap's current step, which `docket next`
 ranks above everything but `P0` — so while the step names a workflow
 milestone, the gate leads the list on its own. That ranking reads ids out of
 milestone sections, not the standing decision, so **an item that neither
-section names is placed by neither**. Apply the rule by hand for those, and
+section places is placed by neither**. Apply the rule by hand for those, and
 say which side of it the work sits on. A product item taken as a test case for
 a workflow change is workflow work.
 

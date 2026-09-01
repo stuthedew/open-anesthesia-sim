@@ -1089,12 +1089,12 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
 
 ### Required scope
 
-- **Simulated time becomes an exact function of step count.**
-  `SimulationState.elapsed_s` accumulates `+= simulation_step_s` per step
-  today; derive it from an integer step counter instead, and fix the step at
-  0.1 s. The run loop advances a fixed number of steps per tick and never
-  catches up to the wall clock: a slow machine runs slower, it does not run
-  differently.
+- **Simulated time becomes an exact function of step count** (queue item
+  PL-VM40). `SimulationState.elapsed_s` accumulates `+= simulation_step_s`
+  per step today; derive it from an integer step counter instead, and fix the
+  step at 0.1 s. The run loop advances a fixed number of steps per tick and
+  never catches up to the wall clock: a slow machine runs slower, it does not
+  run differently.
 - **A playback multiplier**, implemented as steps per tick and never as a
   larger step, with the current rate visible beside the clock at all times.
 - **MAC multiples as a display unit** across every readout and both chart
@@ -1126,12 +1126,13 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   the MAC readout becomes a fold over it rather than a rewrite.
 - **Changing agent becomes an explicit new case** rather than a selector
   that silently discards the run and its history (queue item PL-R3KB).
-- **A MAC-awake reference band** on the chart: a cited population median for
-  return of responsiveness, drawn as a band and labelled as a population
-  reference, never as a per-patient time prediction.
-- **An F_A/F_I trace**, the ratio the uptake literature plots, with the
-  interpretive caveat that it means what the textbook curve means only while
-  inspired concentration is held constant.
+- **A MAC-awake reference band** on the chart (queue item PL-F52R): a cited
+  population median for return of responsiveness, drawn as a band and
+  labelled as a population reference, never as a per-patient time
+  prediction.
+- **An F_A/F_I trace** (queue item PL-ZRSP), the ratio the uptake literature
+  plots, with the interpretive caveat that it means what the textbook curve
+  means only while inspired concentration is held constant.
 - **A bounded concentration history** (queue item PL-011), which stops being
   optional once a four-hour run at 10 Hz records 144,000 samples.
 - **A documentation sweep**: `docs/MODEL.md`'s interface boundary, minimum
