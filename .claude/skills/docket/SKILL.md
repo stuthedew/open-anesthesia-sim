@@ -359,15 +359,28 @@ the suite read as uncovered and puts `--cov-fail-under=100` out of reach. An
 unrun command fails after a worker has done the work, which costs a round trip
 and the owner's attention.
 
+**Run it and watch it fail, not merely run it.** A command that passes on a
+tree without the work proves nothing: `docket verify` accepts a delegated
+branch that did none of it, and nothing distinguishes a finished item from an
+unstarted one. `docket check` now runs every open item's command and raises an
+advisory for the ones that pass, so this is caught — but it is caught after the
+item is written, and the fix is still to see it fail first.
+
 Copy one of these shapes rather than inventing one:
 
 | The item is | The command |
 | --- | --- |
 | Covering a module's untested paths | `uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100` |
 | A string, label, or single behavior | `uv run pytest tests/unit/test_simulation_view.py -k halted` |
-| Documentation only | `python3 tools/doc_check.py check` |
+| Documentation only | `python3 tools/doc_check.py check && grep -qF 'the sentence the item adds' docs/MODEL.md` |
 
-The first is the one that goes wrong. `--cov=` takes the **dotted module**
+The last is the one that goes wrong quietly. `doc_check.py check` alone passes
+whenever the docs are internally consistent, which they are before the item is
+started too — five open items shared exactly that command and none of them
+proved anything. Pair it with a `grep` for the text the item adds or removes,
+which is the half that fails until the work exists.
+
+The first is the one that goes wrong loudly. `--cov=` takes the **dotted module**
 (`anesthesia_sim.core.tissue`), never the path, and the run is the **whole
 suite** — no test file argument — because coverage of a module is the union of
 everything that exercises it.

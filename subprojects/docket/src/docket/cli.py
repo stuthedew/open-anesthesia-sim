@@ -42,7 +42,7 @@ from .vcs import (
     stranded,
     tags,
 )
-from .verify import verify_batch
+from .verify import already_passing, verify_batch
 
 CAPTURE_TEMPLATE = """**Problem.** {title}
 
@@ -145,6 +145,12 @@ def cmd_check(args: argparse.Namespace) -> int:
         config,
         history=merged_pull_requests(root),
         offered=_offered(root, items, config, args),
+        # Runs every open item's own `verify:` command, which is the only
+        # check here that executes the project rather than reading it. Kept
+        # to `check` for that reason: `next` and the digest are asked on
+        # every session start, and this is the one question worth paying a
+        # subprocess each to answer.
+        landed=already_passing(root, items),
     )
     print(render.format_check(report))
     return 1 if report.errors else 0
