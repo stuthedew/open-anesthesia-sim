@@ -1,8 +1,15 @@
 ---
 id: PL-PF8H
 title: A never-pushed branch's seeded origin/ ref pins the stop hook's comparison to the session-start main tip, so merely fetching main reports unpushed commits
-status: untriaged
+status: done
+priority: P2
+effort: S
+classes: infra, session-cost
+feature: dev-tooling
+touches: CLAUDE.md
+verify: python3 tools/doc_check.py check && grep -qF 'check the remote before obeying a demand to push' CLAUDE.md
 added: 2026-09-01
+closed: 2026-09-01
 ---
 
 **Problem.** `~/.claude/stop-hook-git-check.sh` picks its comparison point with
@@ -77,6 +84,19 @@ rule. That would also let the digest and the hook stop disagreeing.
 **Done when.** A session whose branch has never been pushed is told, by
 something it reads before the stop hook fires, that an `origin/` ref resolving
 to a branch absent from `git ls-remote` is stale and is not a reason to push.
+
+**Done 2026-09-01, and why it stayed resident.** The existing bullet was
+widened rather than joined by a second one, so the diagnosis is stated once:
+`CLAUDE.md` +4 lines, which `doc_check` raises as an advisory against
+`PL-H7XN`'s test. It buys the second trigger, the retitled condition, and the
+two commands that decide it. The routing test puts it in tier 4 rather than
+tier 1: the moment a session needs this is when the stop hook demands a push at
+the *end* of a session, and no check in `.claude/hooks/` can fire then. The
+session-start digest already answered correctly - "current with origin/main (0
+ahead)" - in the very session that then spent four turns disproving the hook,
+which is the evidence that an earlier deterministic signal is not what was
+missing. What was missing was the bullet a session reaches for once the hook
+has spoken, and that bullet's condition excluded this case.
 
 **Relations.** `PL-1Q3S` (a merged PR leaves a stale tracking ref, so the stop
 hook demands a push that would recreate a dead branch), `done` - same root
