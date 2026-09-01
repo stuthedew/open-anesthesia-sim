@@ -65,3 +65,9 @@ convention a writer has to remember and `doc_check` would have to hold.
 **Done when.** An id a milestone section names only to exclude it is not
 reported `in-scope`, an id named as a gate entry or as Required scope still
 is, and a test covers `PL-68XK`'s paragraph specifically.
+
+**Admitted to v0.2.8's frozen list, 2026-09-01, under the scope test,** at the
+project owner's agreement, on the same reading as the four admitted earlier
+that day. It is a defect in the queue's ranking - one of the six pieces of
+machinery the release's goal names - and unlike those four it is misdirecting
+`docket next` on `main` right now rather than costing a correction later.
