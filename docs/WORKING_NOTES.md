@@ -179,12 +179,22 @@ cluster's four fixes bears on it.
 
 **The membership test was applied to the whole open queue on 2026-09-01,** not
 only to new captures, which is what this thread was for. Eight untriaged items
-were triaged and every open item was read against the two limits. Four were
-admitted, taking the list to thirty-six entries with ten open: `PL-3576`
+were triaged and every open item was read against the two limits. Five were
+admitted, taking the list to thirty-seven entries with eleven open: `PL-3576`
 (`docket check`'s offered-item advisory reads a flight answer that may be
 partial), `PL-1Q3S` (a merged pull request's stale tracking ref makes the stop
-hook demand a push), `PL-RWZV` (the brief check passes an empty section) and
-`PL-H8MQ` (the entry count is stated in six places and held to none).
+hook demand a push), `PL-RWZV` (the brief check passes an empty section),
+`PL-H8MQ` (the entry count is stated in six places and held to none) and
+`PL-HDY6` (the scope reader counts a mention as membership).
+
+`PL-HDY6` was found *after* the first four had merged, while verifying the gate
+state on `origin/main` - `bin/docket next` ranked `PL-68XK` second with the
+reason "In scope for v0.2.8", read out of the paragraph in that section which
+says `PL-68XK` is not admitted. It is the only one of the five that was
+misdirecting the ranking on `main` rather than costing a correction later, and
+it is worth noticing that the pass which wrote the exclusions down is what made
+the reader mis-place them: the more carefully this project records why an item
+is *not* an entry, the more ids `Scope.placement` counts as one.
 
 Three exclusions are worth recording because each names a boundary the test
 draws:
