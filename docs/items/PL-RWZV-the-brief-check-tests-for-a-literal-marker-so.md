@@ -73,3 +73,17 @@ reach `ready`. The empty-section half stopped being hypothetical on 2026-09-01:
 `PL-K2ZK` and `PL-W1LN` were both captured with the four-heading stub above
 their real briefs, and both would have passed this check at `ready` had the
 stub been all they carried. The stubs were removed by hand during that triage.
+
+**This file is itself the empty-section case, 2026-09-01.** The four headings
+above the real brief - `**Problem.**` echoing the title, then `**Why it
+matters.**`, `**Where.**` and `**Done when.**` with nothing under them - are
+this item's own stub, and it is at `ready`. So the fix decides its own file's
+fate, and the session doing it must delete the stub in the same commit or
+`docket check` goes red on landing. It also forces the rule to be stated
+precisely: whether a required section counts as present on its *first*
+occurrence, on *all* of them, or on *any* one with text under it, is a choice
+the three-marker scan cannot dodge here. Recommended: judge the first
+occurrence, and delete the stub - "any occurrence with text" would let exactly
+this shape pass, which is the hole the item exists to close. The other three
+files carrying the stub (`PL-8MZN`, `PL-V5XM` dropped; `PL-WFJ9` done) are
+outside `OPEN_STATUSES` and the check never reads them.
