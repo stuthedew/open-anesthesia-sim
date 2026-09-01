@@ -435,6 +435,39 @@ def test_a_project_that_has_never_tagged_is_not_refused(tmp_path: Path) -> None:
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
 
 
+def test_a_version_file_the_bump_rejects_leaves_the_items_unstamped(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-DL1X: a release records all of itself or none of it.
+
+    Every item was stamped before the version moved, so a version file the
+    bump rejects left the store recording a release that never happened - and
+    the next run then reported nothing to release, because the work it would
+    have shipped claimed to have shipped already.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "pyproject.toml").write_text('[project]\nname = "x"\n', encoding="utf-8")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
+
+    assert "no version field to bump" in capsys.readouterr().out
+    assert "milestone:" not in (root / "items" / "done.md").read_text(encoding="utf-8")
+    assert not (root / "docs" / "releases").exists()
+
+
+def test_a_missing_version_file_leaves_the_items_unstamped(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The other way the bump fails, and the one a project adopting docket meets."""
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "pyproject.toml").unlink()
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
+
+    assert "Cannot bump pyproject.toml" in capsys.readouterr().out
+    assert "milestone:" not in (root / "items" / "done.md").read_text(encoding="utf-8")
+
+
 RELEASE_ROADMAP = """# Roadmap
 
 ## Versioning decision
