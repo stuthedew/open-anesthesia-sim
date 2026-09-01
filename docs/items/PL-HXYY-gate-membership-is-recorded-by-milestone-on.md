@@ -3,11 +3,13 @@ id: PL-HXYY
 title: Gate membership is recorded by milestone: on some open entries and not others
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: docs/items/PL-1CYR-nothing-re-checks-the-branch-against-main.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/check.py, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-08-31
+closed: 2026-09-01
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def _check_milestones' subprojects/docket/src/docket/checks.py
 ---
 
 **Problem.** `PL-1CYR` carries `milestone: v0.2.8` in its front matter while
@@ -60,3 +62,39 @@ that permanent.
 That moves the item off "which reading is tidier" and onto a defect with a
 deadline: it has to be settled before v0.2.8 is cut, not before the field is
 documented.
+
+**Decided by the project owner, 2026-09-01: `milestone:` means "shipped in
+this release".** It is what `docket release` stamps and the only meaning any
+code implements. Membership of a release still being assembled stays where it
+already was - the gate subsection of that milestone's `ROADMAP.md` section,
+which `bin/docket wave` parses. The field is not split in two, because nothing
+needed the second one: `wave` reported the same 33 cleared of 38 before and
+after the ten stamps were removed, so gate accounting never read the field at
+all.
+
+**Worked 2026-09-01.** Three parts.
+
+`docket check` now refuses both shapes of the wrong meaning. `_check_item`
+rejects a `milestone:` on an item that is not `done` - work that cannot have
+shipped - and a new `_check_milestones` rejects one naming a version above the
+project's current one, which is a release that has not been cut. The second
+needs a fact the store does not hold, so `analyze` takes `version` beside
+`history`, `landed` and `closures`, and `cmd_check` passes `read_version`'s
+answer. An absent version file, or a version or milestone outside
+`major.minor.patch`, leaves the comparison unmade rather than guessed - the
+same refusal-to-answer the provenance check makes on a shallow clone.
+
+The ten hand-stamped items are unstamped: `PL-1CYR`, `PL-5QKT`, `PL-921W`,
+`PL-DVPZ`, `PL-H8MQ`, `PL-J295`, `PL-JWXF`, `PL-KWC1`, `PL-QS72`, `PL-YSXF`.
+`bin/docket release 0.2.8 --dry-run` listed 46 items before and 56 after, so
+every one of them is now in the notes of the release it will ship in.
+
+`subprojects/docket/README.md` states the meaning under "The item format",
+with the omitted-from-its-own-notes consequence as the reason - the rule is
+enforceable in code, but why the field cannot carry both meanings is not.
+
+**Four tests in `test_checks.py`**, watched failing first: an unfinished item
+carrying a milestone, a `done` item stamped above the current version, a
+`done` item stamped at or below it, and the cases where the comparison cannot
+be made. Its `verify:` pairs the file's suite with a `grep` for the new
+function, so it exits 1 before the work rather than selecting nothing.

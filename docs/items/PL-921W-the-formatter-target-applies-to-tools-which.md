@@ -9,7 +9,6 @@ feature: dev-tooling
 touches: tools/ruff.toml, tests/unit/test_tools_portability.py, tests/unit/test_doc_check.py
 added: 2026-08-31
 verify: uv run pytest tests/unit -k portability
-milestone: v0.2.8
 closed: 2026-09-01
 commit: 64bcd1e
 pr: 141

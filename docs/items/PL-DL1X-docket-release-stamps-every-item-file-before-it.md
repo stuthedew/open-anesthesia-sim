@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-31
 closed: 2026-09-01
+commit: 81be1fc
 pr: 156
 verify: uv run pytest subprojects/docket/tests/test_cli.py -k unstamped
 ---
