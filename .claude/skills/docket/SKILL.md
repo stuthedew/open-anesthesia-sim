@@ -528,9 +528,14 @@ reconstruct three commands at the moment they are trying to do something else.
    number cannot be known before the pull request is open, and `docket check`
    now owes a `pr` only on a closure that already stands on the default base —
    so an unlanded closure carrying none is the expected shape rather than an
-   error. Push the `pr` as a second commit when you can; if a merge beats you
-   to it, the item lands with an empty `pr` and the next `docket check` says
-   so, which is a one-line follow-up rather than a stranded closure. Closing
+   error. **Do not split the closure out to get the number earlier** — pushing
+   the work first and adding the `pr` before the merge reopens the very window
+   below, and the merge can arrive between the two pushes. Let the item land
+   with an empty `pr`: `docket check` then raises an *advisory* naming the
+   number it recovered from the merge commit, so writing it in is a one-line
+   follow-up on whatever branch comes next, not a red store demanding its own
+   pull request. It is an error only where no commit on the base names a
+   number at all, which is provenance genuinely lost. Closing
    in the same commit as the work is what removes the window: requiring the
    number up front forced the closure into a second push, and a merge inside
    that window took the work and left the closure on the branch — `main` had

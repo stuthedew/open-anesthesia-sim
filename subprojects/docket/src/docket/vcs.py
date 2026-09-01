@@ -776,11 +776,19 @@ class ClosureReport:
 
     base: str = ""
     landed: frozenset[str] = frozenset()
+    #: The pull request each landed closure's own merge commit names, where
+    #: the base still holds that commit. Pairs rather than a mapping to keep
+    #: the type hashable like everything else here; `numbers` unpacks it.
+    derived: tuple[tuple[str, int], ...] = ()
     declined: str = ""
 
     @property
     def known(self) -> bool:
         return not self.declined
+
+    @property
+    def numbers(self) -> dict[str, int]:
+        return dict(self.derived)
 
 
 def closures_on_base(
@@ -802,6 +810,19 @@ def closures_on_base(
     the old path stops resolving. Both are accepted rather than reported, which
     is the safe direction: this rule's failure mode is blocking a closure that
     is already correct.
+
+    Each landed closure is also asked which pull request its own merge commit
+    names, which is the question that decides whether a missing `pr` is a gap
+    or a transcription still owed. It costs one history read for the whole
+    set, made only when something landed, and it reuses the two parsers that
+    already exist: the subject a squash merge writes carries the item ids it
+    opens with and the number in trailing parentheses.
+
+    Deriving nothing is a normal answer, not a failure. A truncated history
+    reaches back far enough for a closure that just merged, which is the case
+    this serves; an older one whose commit the checkout no longer holds simply
+    yields no number, and the caller treats that as it treated every missing
+    `pr` before.
     """
     run = runner or _run_git
     base = default_base(root, runner=run)
@@ -812,7 +833,35 @@ def closures_on_base(
         text = run(["show", f"{base}:{items_dir}/{name}"], root)
         if text and parse_item(text, name).status == "done":
             landed.add(identifier)
-    return ClosureReport(base=base, landed=frozenset(landed))
+    return ClosureReport(
+        base=base, landed=frozenset(landed), derived=_merges_naming(landed, base, root, run)
+    )
+
+
+def _merges_naming(
+    identifiers: set[str], base: str, root: Path, run: Runner
+) -> tuple[tuple[str, int], ...]:
+    """The pull request number each id's own merge commit on `base` names.
+
+    One commit can close two items - a subject may open with a run of ids -
+    so a single merge can answer for several, and each is recorded against the
+    same number. Only the newest such commit counts: an id that led an earlier
+    subject too, most often the capture that filed it, was not the merge that
+    landed its work.
+    """
+    if not identifiers:
+        return ()
+    found: dict[str, int] = {}
+    for subject in run(["log", "--format=%s", base], root).splitlines():
+        subject = subject.strip()
+        match = PR_SUBJECT_RE.search(subject)
+        if match is None:
+            continue
+        number = int(match.group(1) or match.group(2))
+        for identifier in _leading_ids(subject):
+            if identifier in identifiers:
+                found.setdefault(identifier, number)
+    return tuple(sorted(found.items()))
 
 
 # An item file is named `<id>-<slug>.md`, so the id can be read from a tree
