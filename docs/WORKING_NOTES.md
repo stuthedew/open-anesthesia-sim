@@ -223,6 +223,35 @@ the precedent `ROADMAP.md` already records for `PL-68XK`, and the two are one
 decision: what the field should mean under squash-merge, then what should check
 it.
 
+**`PL-HDY6` closed 2026-09-01 (pull request 131), and the rule it settled is
+worth writing down because every future milestone section is written against
+it.** A section places an id from two structures and nothing else: the frozen
+list, read by its *entries' heads*, and `Required scope`, read whole.
+Everything else - goal, definition of done, commentary on an entry, exclusion
+paragraph - is prose and places nothing.
+
+The brief's obvious candidate, "read the section's lists and ignore its
+paragraphs", does not fix the case that found the defect: `PL-68XK` is also
+named mid-entry inside the `PL-HDY6` bullet, so a bullet-wide read still counts
+it. Reading the list by its entries' heads is what handles that, and it costs
+nothing because `_gate_entries` already read it that way - the two halves are
+now the same parse rather than two that could drift. The other candidate, a
+marker a writer adds to an exclusion, was rejected because `doc_check` cannot
+tell an exclusion from a mention and so could never hold anyone to it: a
+convention with no check behind it fails in exactly the way the defect did.
+
+What follows for whoever writes the next section: **scope written only into
+prose is placed nowhere.** Print the id inside `Required scope` to place it.
+v0.4.0 was already paying that - its gate prose said `PL-VM40`, `PL-F52R` and
+`PL-ZRSP` "appear in Required scope above" and their ids did not, so those
+bullets now print them. `PL-D1ST` captures the rest of that subsection, where
+bullets describe queue items whose ids appear nowhere in the file at all
+(`PL-SN2C` is the clearest). `PL-6P9Y` captures the one exclusion that *is*
+decidable and is still read as silence: an `Explicitly out of scope` heading
+means exclusion as plainly as `Required scope` means membership. Both are queue
+work rather than gate entries - an improvement to correct behaviour, and
+roadmap content rather than machinery.
+
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 
 Not scoped yet. The performance blocker this waited on has landed: render

@@ -28,7 +28,7 @@ of "the rows under this heading" is a second thing to keep true.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 
 from .release import SEMVER_RE
@@ -307,9 +307,12 @@ SECTION_SEPARATORS = " -–—: "
 # The four subsections `ROADMAP.md`'s development rules require of a scoped
 # milestone, matched as prefixes because the last of them names its version
 # ("Explicitly out of scope for v0.4.0").
-REQUIRED_SUBSECTIONS = ("goal", "required scope", "definition of done", "explicitly out of scope")
-# Where a milestone records the debt list frozen when it was scoped.
+# Where a milestone records the debt list frozen when it was scoped, and where
+# it states the scope it clears itself. These two subsections are the whole of
+# what places an id; the reasoning is beneath `SECTION_ID_RE`.
 GATE_SUBSECTION = "debt gate"
+SCOPE_SUBSECTION = "required scope"
+REQUIRED_SUBSECTIONS = ("goal", SCOPE_SUBSECTION, "definition of done", "explicitly out of scope")
 
 # An item id at the head of a gate entry, possibly the second of a pair
 # ("PL-Z4GF **and PL-SWFM**"), possibly wrapped in emphasis. Only the head of
@@ -317,14 +320,33 @@ GATE_SUBSECTION = "debt gate"
 # another item, not a second thing the entry is waiting on.
 LEADING_ID_RE = re.compile(rf"^[*_\s]*(?:and[*_\s]+)?[*_\s]*(?P<id>{ID_PATTERN})")
 
-# An id named anywhere in a milestone's section, wherever it sits in the
-# sentence. The gate list above is read by the head of its bullets, because
-# what it records is one entry per problem; scope is read this way instead,
-# because a milestone names the items it covers in whatever grammar the prose
-# wanted - "(queue item PL-DHV7)" mid-bullet, or a closing paragraph listing
-# the six the milestone clears itself. Reading only bullet heads would miss
-# both. What this cannot do is read the sentence around the id, which is why
-# the marking built on it says where an id appears and never why.
+# An id wherever it sits in a sentence. Used only inside the two subsections
+# that record membership, because the sentence around an id is unreadable and
+# a section says far more about an id than "this is mine".
+#
+# Membership is read from *where* an id is written, never from the fact that
+# it is written. A milestone's section names ids for at least four reasons -
+# an entry of its frozen list, scope the milestone clears itself, commentary
+# on an entry ("blocked by PL-ZQ9C above"), and an exclusion set out at length
+# ("PL-68XK ... is *not* admitted by this rule") - and only the first two are
+# membership. Counting every mention read the exclusions as the opposite of
+# what they say, which is queue item PL-HDY6.
+#
+# So each of the two structures is read by its own grammar, and nothing else
+# in the section is read at all:
+#
+# - the frozen list, by its entries' heads, because an entry is one bullet per
+#   problem and an id later in the sentence is prose about another item;
+# - `Required scope`, in full, because a milestone names what it covers in
+#   whatever grammar the sentence wanted - "(queue item PL-DHV7)" mid-bullet,
+#   or a paragraph - and the heading has already declared that everything
+#   under it is scope.
+#
+# What this costs is stated rather than hidden: scope recorded *only* in the
+# section's prose is not read, so an id named nowhere but a paragraph is
+# placed nowhere. That is the safe direction to fail. An unread mention makes
+# no claim, where an over-read one tells a session that work the milestone
+# excludes is the work the milestone is waiting on.
 SECTION_ID_RE = re.compile(ID_PATTERN)
 
 
@@ -354,10 +376,10 @@ class MilestoneSection:
     gate_heading: str
     gate_line: int
     gate_entries: tuple[GateEntry, ...]
-    #: Every item id named anywhere in the section, in the order they appear.
-    #: What the milestone covers, as far as ids make it decidable - the prose
-    #: around each one is left unread, so this says "named here" and no more.
-    item_ids: tuple[str, ...]
+    #: The ids this section *places*: its frozen list's entries, then the ids
+    #: named under `Required scope`, in the order they appear. An id the
+    #: section merely mentions is absent, deliberately - see `SECTION_ID_RE`.
+    scope_ids: tuple[str, ...]
 
     @property
     def label(self) -> str:
@@ -394,12 +416,33 @@ def _leading_ids(text: str) -> tuple[str, ...]:
         rest = rest[match.end() :]
 
 
-def _section_ids(lines: Sequence[str], start: int, end: int) -> tuple[str, ...]:
-    """Every item id named between a section's heading and the next one."""
+def _subsection_ids(lines: Sequence[str], start: int) -> Iterator[str]:
+    """Every item id named under one `###` heading, in the order they appear.
+
+    `start` is the heading's line number, so reading begins on the line after
+    it and stops at the next heading of the same depth or shallower - the same
+    bound `_gate_entries` uses, for the same reason.
+    """
+    for index in range(start, len(lines)):
+        heading = HEADING_RE.match(lines[index])
+        if heading is not None and len(heading.group("hashes")) <= 3:
+            return
+        for match in SECTION_ID_RE.finditer(lines[index]):
+            yield match.group(0)
+
+
+def _scope_ids(entries: Sequence[GateEntry], scope_ids: Iterable[str]) -> tuple[str, ...]:
+    """The section's frozen entries and its own scope, deduplicated in order.
+
+    The gate half is taken from the parsed entries rather than re-read, so the
+    ids a gate holds and the ids it places cannot drift apart.
+    """
     seen: dict[str, None] = {}
-    for line in lines[start:end]:
-        for match in SECTION_ID_RE.finditer(line):
-            seen.setdefault(match.group(0), None)
+    for entry in entries:
+        for identifier in entry.ids:
+            seen.setdefault(identifier, None)
+    for identifier in scope_ids:
+        seen.setdefault(identifier, None)
     return tuple(seen)
 
 
@@ -452,11 +495,13 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
     name = ""
     subsections: list[str] = []
     gate: tuple[int, str] | None = None
+    scope: int | None = None
 
-    def flush(end: int) -> None:
+    def flush() -> None:
         if version is None:
             return
         heading_line, heading_title = gate or (0, "")
+        entries = _gate_entries(lines, heading_line) if gate else ()
         found.append(
             MilestoneSection(
                 line=line_number,
@@ -466,8 +511,8 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 subsections=tuple(subsections),
                 gate_heading=heading_title,
                 gate_line=heading_line,
-                gate_entries=_gate_entries(lines, heading_line) if gate else (),
-                item_ids=_section_ids(lines, line_number, end),
+                gate_entries=entries,
+                scope_ids=_scope_ids(entries, _subsection_ids(lines, scope) if scope else ()),
             )
         )
 
@@ -478,7 +523,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
         depth = len(heading.group("hashes"))
         heading_title = heading.group("title").strip()
         if depth <= 2:
-            flush(index - 1)
+            flush()
             match = SECTION_VERSION_RE.search(heading_title) if depth == 2 else None
             if match is None:
                 version = None
@@ -490,12 +535,14 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 int(match.group("patch")),
             )
             name = heading_title[match.end() :].strip(SECTION_SEPARATORS)
-            subsections, gate = [], None
+            subsections, gate, scope = [], None, None
         elif version is not None and depth == 3:
             subsections.append(heading_title)
             if heading_title.lower().startswith(GATE_SUBSECTION):
                 gate = (index, heading_title)
-    flush(len(lines))
+            elif heading_title.lower().startswith(SCOPE_SUBSECTION):
+                scope = index
+    flush()
 
     return sorted(found, key=lambda section: section.version)
 
@@ -544,12 +591,12 @@ OUT_OF_SCOPE = "out-of-scope"
 class Scope:
     """Where the plan places an item, relative to the beat now due.
 
-    Three answers, and the middle one is why there are three. An id named in
-    the milestone the current beat is about is work this step includes. An id
-    named only in a *later* milestone's section is work this step has not
-    reached. An id named in no section at all is neither: the roadmap places
-    most of the queue nowhere, and reading that silence as exclusion would be
-    a verdict rather than a fact.
+    Three answers, and the middle one is why there are three. An id the
+    milestone the current beat is about places is work this step includes. An
+    id only a *later* milestone places is work this step has not reached. An
+    id no section places is neither: the roadmap places most of the queue
+    nowhere, and reading that silence as exclusion would be a verdict rather
+    than a fact.
 
     A section *earlier* than the anchor places nothing either. A released
     milestone's narrative names the items it discussed, which records where a
@@ -557,19 +604,20 @@ class Scope:
     v0.2.7's release narrative and on v0.4.0's frozen gate list, and only the
     second of those says anything about what to do now.
 
-    Named ids are the whole of the evidence. A milestone that excludes
-    something in prose alone excludes it invisibly here, and an id named in a
-    later section for any reason at all - including one saying the item is
-    *deferred out* of that milestone - reads as that milestone's scope. Both
-    limitations are recorded in the README beside the concurrency one.
+    Two structures are the whole of the evidence, per `SECTION_ID_RE`: the
+    frozen list a section records, and its `Required scope`. So a milestone
+    that records scope in prose alone records it invisibly here - and one that
+    excludes something in prose alone excludes it invisibly too, which is the
+    same silence rather than its opposite. Both limitations are recorded in
+    the README beside the concurrency one.
     """
 
     #: The milestone the current beat is about, labelled as the roadmap does.
     #: Empty when there is no such milestone, which leaves every id unplaced.
     anchor: str
-    #: Ids named in that milestone's own section.
+    #: Ids that milestone's own section places.
     current: frozenset[str]
-    #: Ids named only in a later milestone, mapped to the earliest such one.
+    #: Ids only a later milestone places, mapped to the earliest such one.
     later: Mapping[str, str]
 
     def placement(self, identifier: str) -> str:
@@ -585,22 +633,22 @@ class Scope:
 
 
 def milestone_scope(sections: Sequence[MilestoneSection], anchor: MilestoneSection | None) -> Scope:
-    """Read each milestone section for the ids it names, against the anchor.
+    """Read each milestone section for the ids it places, against the anchor.
 
     `sections` is expected in version order, so the *earliest* later milestone
-    naming an id is the one reported: an item named in both v0.3.0 and v0.4.0
-    is v0.3.0's, and saying so is what stops the marking overstating how far
-    off the work is.
+    placing an id is the one reported: an item placed by both v0.3.0 and
+    v0.4.0 is v0.3.0's, and saying so is what stops the marking overstating
+    how far off the work is.
     """
     if anchor is None:
         return Scope(anchor="", current=frozenset(), later={})
-    current = frozenset(anchor.item_ids)
+    current = frozenset(anchor.scope_ids)
     later: dict[str, str] = {}
     for section in sections:
         if section.version <= anchor.version:
             continue
         label = "v{}.{}.{}".format(*section.version)
-        for identifier in section.item_ids:
+        for identifier in section.scope_ids:
             if identifier not in current:
                 later.setdefault(identifier, label)
     return Scope(anchor=anchor.label, current=current, later=later)
