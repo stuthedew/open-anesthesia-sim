@@ -18,7 +18,7 @@ from .concurrency import conflicts_for, parallel_batch
 from .config import Config
 from .config import load as load_config
 from .model import Item
-from .plan import features, gate, recommend
+from .plan import OfferedReport, features, gate, recommend
 from .release import (
     is_untagged,
     milestones,
@@ -172,7 +172,7 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 def _offered(
     root: Path, items: Sequence[Item], config: Config, args: argparse.Namespace
-) -> frozenset[str]:
+) -> OfferedReport:
     """The ids `next` would suggest, as the grooming advisories read them.
 
     Deliberately the default offering - the same limit for every caller,
@@ -180,12 +180,19 @@ def _offered(
     the flags of the command that happened to print it would report a
     different count in `check` than in `next`, and the count is the thing a
     session is being asked to act on.
+
+    The flight report comes back whole and its unread refs travel with the
+    ids, because the ranking is only as complete as the refs behind it. `check`
+    was the seventh reader of that answer and the one left out of `PL-S1P1`,
+    so its advisories named an item chosen from a partial reading with nothing
+    saying so. The sentence is `render`'s, the same one the other six print.
     """
     plan = _plan(root, items, config)
-    picks = recommend(
-        list(items), _flight(args).ids, scope=plan.scope if plan is not None else None
+    flight = _flight(args)
+    picks = recommend(list(items), flight.ids, scope=plan.scope if plan is not None else None)
+    return OfferedReport(
+        ids=frozenset(pick.item.identifier for pick in picks), declined=render.format_unread(flight)
     )
-    return frozenset(pick.item.identifier for pick in picks)
 
 
 def cmd_list(args: argparse.Namespace) -> int:

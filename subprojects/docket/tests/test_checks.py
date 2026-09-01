@@ -12,11 +12,17 @@ from datetime import date
 from docket.checks import analyze
 from docket.config import Config
 from docket.model import Item
+from docket.plan import OfferedReport
 from docket.vcs import ClosureReport, PullRequestHistory
 from docket.verify import LandedReport
 
 TODAY = date(2026, 8, 24)
 BRIEF = "**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
+
+
+def _offering(*ids: str, declined: str = "") -> OfferedReport:
+    """What `next` is about to offer, and how completely that was settled."""
+    return OfferedReport(frozenset(ids), declined)
 
 
 def _item(identifier: str = "PL-K7QX", **overrides: object) -> Item:
@@ -136,6 +142,59 @@ def test_an_open_item_needs_a_priority_and_an_effort() -> None:
 
 def test_an_open_item_needs_the_brief_a_stranger_would_read() -> None:
     assert _has(_errors(_item(body="**Problem.** only this\n")), "brief is missing")
+
+
+def test_a_heading_may_be_elaborated_past_the_words_the_check_looks_for() -> None:
+    """`PL-921W`, whose better heading the literal test rejected.
+
+    It was captured as `**Why it matters, and why it is not new.**`, reads as
+    the required section to anyone, and had to be flattened to satisfy the
+    check. Editing prose that was already right is not what this check is for.
+    """
+    elaborated = _item(
+        body=("**Problem.** x\n**Why it matters, and why it is not new.** y\n**Done when.** z\n")
+    )
+
+    assert _errors(elaborated) == []
+
+
+def test_a_required_heading_with_nothing_under_it_is_not_a_brief() -> None:
+    """The other direction, and the one that costs someone else's time."""
+    messages = _errors(_item(body="**Problem.** x\n\n**Why it matters.**\n\n**Done when.** z\n"))
+
+    assert _has(messages, "brief has nothing under **Why it matters.**")
+    assert not _has(messages, "brief is missing")
+
+
+def test_a_stub_above_a_real_brief_does_not_satisfy_the_check() -> None:
+    """`PL-RWZV`'s own shape, and why the *first* heading is the one judged.
+
+    Four empty headings echoing the format, with the real brief written under
+    a second set below them. Judging any occurrence with text under it would
+    pass exactly this, which is the hole rather than the fix.
+    """
+    messages = _errors(
+        _item(
+            body=(
+                "**Problem.** x\n\n"
+                "**Why it matters.**\n\n"
+                "**Done when.**\n\n"
+                "**Problem.** the real one\n\n"
+                "**Why it matters.** because\n\n"
+                "**Done when.** it holds\n"
+            )
+        )
+    )
+
+    assert _has(messages, "brief has nothing under **Why it matters.**, **Done when.**")
+
+
+def test_an_empty_section_is_reported_as_empty_rather_than_missing() -> None:
+    """Two failures, two messages: the fix for one is not the fix for the other."""
+    messages = _errors(_item(body="**Problem.**\n"))
+
+    assert _has(messages, "brief has nothing under **Problem.**")
+    assert _has(messages, "brief is missing **Why it matters.**, **Done when.**")
 
 
 def test_a_blocked_item_needs_no_done_when() -> None:
@@ -389,7 +448,7 @@ OLD = date(2026, 7, 31)
 
 def test_items_captured_before_the_cutover_are_advised_rather_than_failed() -> None:
     """47 errors on the day the rule lands is a checker nobody runs again."""
-    report = analyze([_item(added=OLD)], TODAY, CUTOVER, offered=frozenset({"PL-K7QX"}))
+    report = analyze([_item(added=OLD)], TODAY, CUTOVER, offered=_offering("PL-K7QX"))
 
     assert report.errors == []
     assert _has(report.advisories, "names no `verify:` command")
@@ -402,7 +461,7 @@ def test_a_grandfathered_item_nobody_is_about_to_be_offered_is_not_raised() -> N
     then read the same way; `docket check`'s advisories are grooming's only
     channel.
     """
-    report = analyze([_item(added=OLD)], TODAY, CUTOVER, offered=frozenset())
+    report = analyze([_item(added=OLD)], TODAY, CUTOVER, offered=_offering())
 
     assert report.errors == []
     assert report.advisories == []
@@ -411,7 +470,7 @@ def test_a_grandfathered_item_nobody_is_about_to_be_offered_is_not_raised() -> N
 def test_the_advisory_carries_how_many_are_still_outstanding() -> None:
     """Narrowing it must not hide the size of the set it is drawn from."""
     backlog = [_item(f"PL-000{n}", added=OLD) for n in range(1, 4)]
-    report = analyze(backlog, TODAY, CUTOVER, offered=frozenset({"PL-0001"}))
+    report = analyze(backlog, TODAY, CUTOVER, offered=_offering("PL-0001"))
 
     assert _has(report.advisories, "PL-0001 is next to be offered")
     assert _has(report.advisories, "1 of 3 ready item(s)")
@@ -421,7 +480,7 @@ def test_the_advisory_reaches_zero_once_the_offered_items_name_a_command() -> No
     """The whole point: a normal day ends with nothing pending, backlog or not."""
     backlog = [_item(f"PL-000{n}", added=OLD) for n in (2, 3)]
     started = _item("PL-0001", added=OLD, verify="uv run pytest")
-    report = analyze([started, *backlog], TODAY, CUTOVER, offered=frozenset({"PL-0001"}))
+    report = analyze([started, *backlog], TODAY, CUTOVER, offered=_offering("PL-0001"))
 
     assert report.advisories == []
 
@@ -429,7 +488,7 @@ def test_the_advisory_reaches_zero_once_the_offered_items_name_a_command() -> No
 def test_an_offered_item_held_to_the_rule_is_left_to_the_error() -> None:
     """A post-cutover item is already an error; advising as well would double it."""
     item = _item(added=date(2026, 8, 2))
-    report = analyze([item], TODAY, CUTOVER, offered=frozenset({"PL-K7QX"}))
+    report = analyze([item], TODAY, CUTOVER, offered=_offering("PL-K7QX"))
 
     assert _has(report.errors, "names no `verify:` command")
     assert report.advisories == []
@@ -438,7 +497,7 @@ def test_an_offered_item_held_to_the_rule_is_left_to_the_error() -> None:
 def test_an_offered_item_that_names_a_command_is_not_advised() -> None:
     item = _item(added=OLD, verify="uv run pytest")
 
-    assert analyze([item], TODAY, CUTOVER, offered=frozenset({"PL-K7QX"})).advisories == []
+    assert analyze([item], TODAY, CUTOVER, offered=_offering("PL-K7QX")).advisories == []
 
 
 def test_a_project_that_has_not_adopted_the_rule_hears_nothing_about_it() -> None:
@@ -497,6 +556,31 @@ def test_a_caller_that_did_not_ask_is_told_nothing_either_way() -> None:
     assert report.errors == [] and report.declined == []
 
 
+def test_an_offering_ranked_on_refs_that_went_unread_says_so() -> None:
+    """`PL-3576`: `check` was the seventh reader of the flight answer, left out.
+
+    The advisories below name whichever item the ranking put first, and the
+    ranking excludes work already in flight - so a ref this checkout could not
+    walk can move which item is named, or empty the advisory entirely.
+    """
+    partial = _offering("PL-K7QX", declined="1 ref could not be compared with origin/main")
+
+    report = analyze([_item()], TODAY, offered=partial)
+
+    assert report.errors == []
+    assert report.declined == [
+        "whether the grooming advisories name the items `next` will really offer: "
+        "1 ref could not be compared with origin/main"
+    ]
+
+
+def test_an_offering_that_read_every_ref_declines_nothing() -> None:
+    """The ordinary case, and the one a full clone is always in."""
+    report = analyze([_item()], TODAY, offered=_offering("PL-K7QX"))
+
+    assert report.declined == []
+
+
 # An open item whose own `verify:` command already passes. The advisory half
 # is pure - it is handed a `LandedReport` - so these assert what is said about
 # a given result; `test_verify.py` covers producing one by running commands.
@@ -517,7 +601,7 @@ def _advisories(landed: LandedReport | None) -> list[str]:
     return analyze([_item()], TODAY, landed=landed).advisories
 
 
-def _selects_nothing(landed: LandedReport, offered: frozenset[str]) -> list[str]:
+def _selects_nothing(landed: LandedReport, offered: OfferedReport) -> list[str]:
     """The selects-no-test advisory is scoped to what `next` would offer."""
     return analyze([_item()], TODAY, landed=landed, offered=offered).advisories
 
@@ -568,7 +652,7 @@ def test_a_caller_that_did_not_ask_about_landed_work_is_told_nothing() -> None:
 # one that correctly fails. `test_verify.py` covers reading the exit code.
 
 
-OFFERED = frozenset({"PL-K7QX"})
+OFFERED = _offering("PL-K7QX")
 
 
 def test_an_item_whose_command_selects_no_test_is_reported() -> None:

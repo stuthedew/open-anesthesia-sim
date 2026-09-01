@@ -157,6 +157,26 @@ class Recommendation:
         return f"{head} ({', '.join(marks)})\n    {self.reason}"
 
 
+@dataclass(frozen=True)
+class OfferedReport:
+    """Which ids `next` is about to offer, and whether that could be settled.
+
+    A type rather than the `frozenset[str]` this used to be, for the reason
+    `FlightReport` gives about its own ids: ranking reads in-flight work, a
+    ref whose commits this checkout cannot walk contributes nothing to that
+    reading, and a bare set is exactly the shape that cannot say so. The
+    advisories computed from it - which item is next and names no `verify:`
+    command - then rest on a partial answer with nothing saying they do.
+
+    `declined` is the sentence explaining what went unread, empty when the
+    ranking was whole. Worded by the caller, which is the one place that knows
+    what it could not read; this module only carries it to the checker.
+    """
+
+    ids: frozenset[str] = frozenset()
+    declined: str = ""
+
+
 def recommend(
     items: list[Item],
     in_flight: Collection[str] | None = None,
