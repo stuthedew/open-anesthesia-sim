@@ -1,7 +1,12 @@
 ---
 id: PL-YLZQ
 title: PL-026's brief sends a reader to docs/WORKING_NOTES.md for its own rejected options and reasoning, which the rewritten split calls backwards
-status: untriaged
+priority: P2
+effort: S
+status: ready
+verify: python3 tools/doc_check.py check && ! grep -q 'Decided, not yet implemented' docs/WORKING_NOTES.md && grep -q 'circuit_concentration_fraction' docs/items/PL-026-make-the-simulation-step-transactional-so-a.md
+classes: docs
+feature: dev-tooling
 touches: docs/items/PL-026-make-the-simulation-step-transactional-so-a.md, docs/WORKING_NOTES.md
 added: 2026-09-01
 ---

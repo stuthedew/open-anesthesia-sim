@@ -1,7 +1,12 @@
 ---
 id: PL-X2XX
 title: doc_check's citation check reads neither docs/items/*.md nor source docstrings, so nothing holds the queue's or the code's citations to the docs they name
-status: untriaged
+priority: P2
+effort: M
+status: ready
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_citation_in_an_item_brief' tests/unit/test_doc_check.py
+classes: defect, infra
+feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-01
 ---
