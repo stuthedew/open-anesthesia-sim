@@ -27,7 +27,7 @@ from datetime import date
 from .config import Config
 from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .store import ID_RE
-from .vcs import PullRequestHistory
+from .vcs import ClosureReport, PullRequestHistory
 from .verify import LandedReport
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
@@ -168,15 +168,8 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"{where}: names a `verify` command but declares no `touches`; a check "
             "with no declared scope cannot bound what the work may change"
         )
-    # `pr` rather than `commit`, because the pull request number is the half of
-    # an item's provenance that survives however the work reaches the default
-    # branch. `commit` stays legal and is still checked for shape where it
-    # appears; it is simply no longer what makes a closure traceable.
-    if item.status == "done" and not item.pr:
-        report.errors.append(
-            f"{where}: marked done but records no `pr`; without it there is no way "
-            "back from the closure to the work that made it"
-        )
+    # The `pr`-on-a-closure rule is not here: it needs to know whether the
+    # closure has landed, which is a git question. `_check_closures` has it.
     if item.pr and not PR_RE.match(item.pr):
         report.errors.append(
             f"{where}: `pr` is '{item.pr}'; it holds a pull request number and "
@@ -316,6 +309,42 @@ def _check_references(report: Report) -> None:
         report.errors.append(f"{identifier}: used by more than one file ({paths})")
 
 
+def _check_closures(report: Report, closures: ClosureReport | None) -> None:
+    """Hold a closure to its `pr`, but only once the closure has landed.
+
+    The number does not exist until the pull request is open, so an item
+    cannot be closed in the same commit as the work it closes *and* carry it.
+    Requiring it unconditionally forced the closure into a second push, and a
+    merge arriving inside that window took the work and left the closure on
+    the branch: `main` had the fix while the queue still called the item open
+    and a debt gate still counted it (`PL-D2GW`, then `PL-P5S0`). The window
+    was 100 seconds wide the once it was measured, and it is open on every
+    item.
+
+    So the rule moves to where the number is certainly available. An item that
+    reads `done` on the default base has had its pull request, and an empty
+    `pr` there is a real gap in the provenance. One that reads `done` only in
+    the working tree is a closure still in flight, which is now the expected
+    shape rather than an error - and is what lets the closure travel in the
+    same commit as its work, which is what closes the window rather than
+    moving it.
+
+    `commit` stays legal and is still checked for shape where it appears; it
+    is simply not what makes a closure traceable across a squash-merge.
+    """
+    if closures is None:  # a caller that did not ask; every command but `check`
+        return
+    if not closures.known:
+        report.declined.append(f"closures recording no `pr`: {closures.declined}")
+        return
+    for item in report.items:
+        if item.status == "done" and not item.pr and item.identifier in closures.landed:
+            report.errors.append(
+                f"{_where(item)}: marked done on `{closures.base}` but records no `pr`; "
+                "without it there is no way back from the closure to the work that made it"
+            )
+
+
 def _groom(report: Report, today: date, config: Config, offered: frozenset[str] | None) -> None:
     """Detect the conditions that make a grooming pass worth someone's time."""
     stale = [
@@ -412,12 +441,13 @@ def analyze(
     history: PullRequestHistory | None = None,
     offered: frozenset[str] | None = None,
     landed: LandedReport | None = None,
+    closures: ClosureReport | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
-    `history`, `offered` and `landed` are the inputs that cannot be read from
-    the store, so they are passed in rather than fetched here: this module
-    stays pure and testable, and the caller decides whether asking git,
+    `history`, `offered`, `landed` and `closures` are the inputs that cannot be
+    read from the store, so they are passed in rather than fetched here: this
+    module stays pure and testable, and the caller decides whether asking git,
     ranking the queue or running the items' own commands is worth it. Omitting
     any of them skips the check that needs it rather than failing it.
 
@@ -433,5 +463,6 @@ def analyze(
     _check_references(report)
     _check_provenance(report, history)
     _check_landed(report, landed)
+    _check_closures(report, closures)
     _groom(report, today, settings, offered)
     return report
