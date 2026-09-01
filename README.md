@@ -102,6 +102,13 @@ checkout. `tools/doc_check.py` also has a `candidates` mode that prints the
 documentation lines mentioning anything a diff changed, for the sweep a
 change needs before it is complete.
 
+Running in a bare checkout means running under whatever `python3` is on PATH,
+which is older than the 3.14 this project requires. `tools/ruff.toml` and
+`subprojects/docket/ruff.toml` therefore pin the formatter to that floor, so
+it cannot rewrite either tree into syntax the interpreter that actually runs
+it cannot parse; `tests/unit/test_tools_portability.py` and
+`subprojects/docket/tests/test_portability.py` hold them to it.
+
 `make check` mirrors the checks run in CI (`.github/workflows/quality.yml`)
 and must pass before a change is considered complete.
 
