@@ -12,13 +12,13 @@ verify: uv run pytest -k pulmonary_uptake_identity
 ---
 
 **Problem.** `docs/MODEL.md:358-361` specifies the pulmonary uptake rate as
-\(\dot M_{\mathrm{pulmonary}} = Q\lambda_{b:g}(F_A-F_v)\). That expression is
+$`\dot M_{\mathrm{pulmonary}} = Q\lambda_{b:g}(F_A-F_v)`$. That expression is
 never computed anywhere in `core/`. `core/respiratory_system.py:161-166` takes
 the *net change in the patient compartments* over the step and applies it to
 alveolar gas through `AlveolarCompartment.apply_blood_uptake` instead. The two
 agree through a telescoping identity — what the tissues and venous blood gained
 is what the blood carried away — which is correct, but no test asserts it, and
-the mixed-venous fraction \(F_v\) never enters the alveolar update as a term.
+the mixed-venous fraction $`F_v`$ never enters the alveolar update as a term.
 
 **Why it matters.** The consequence is a specific blind spot rather than a
 present error. Because the alveolar update is defined by the patient's own
@@ -34,7 +34,7 @@ reach.
 **Approach.** Recommended: assert the identity in a test across a range of
 states — several agents, several operating points, early wash-in through
 near-equilibrium — comparing the applied alveolar uptake against
-\(Q\lambda_{b:g}(F_A-F_v)\) evaluated at the step's own fixed arterial
+$`Q\lambda_{b:g}(F_A-F_v)`$ evaluated at the step's own fixed arterial
 fraction, to the tolerance the split allows. That closes the blind spot rather
 than documenting it.
 

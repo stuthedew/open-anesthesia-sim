@@ -25,7 +25,7 @@ review's own note deferred it, and the deferral has never been revisited.
 is available today:
 
 - The splitting error goes away rather than being bounded. `docs/MODEL.md`
-  § "Selected method (as implemented)" documents it as \(O(\Delta t)\), and two
+  § "Selected method (as implemented)" documents it as $`O(\Delta t)`$, and two
   release gates bound it empirically.
 - `MAXIMUM_SIMULATION_STEP_S` stops being a model-fidelity limit. The
   applicability domain in `docs/MODEL.md` § "Supported simulation step" exists
