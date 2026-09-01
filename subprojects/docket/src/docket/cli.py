@@ -32,6 +32,7 @@ from .release import (
 from .roadmap import Wave, wave
 from .store import find_item, new_id, read_items, write_item
 from .vcs import (
+    CURRENT,
     FlightReport,
     StrandedReport,
     branch_state,
@@ -696,10 +697,13 @@ def cmd_branch(args: argparse.Namespace) -> int:
     if not args.no_fetch:
         fetch_remote(root)
     state = branch_state(root, fetched=not args.no_fetch)
-    if args.brief and state.absent:
-        # Nothing to compare against, and the digest is resent on every turn of
-        # the session: a line explaining why there is no position is worth
-        # having when a person asks, and is noise when nobody did.
+    if state.absent and (args.brief or args.if_stale):
+        # Nothing to compare against, and both callers here are printing into
+        # something a session reads whether or not it asked: a line explaining
+        # why there is no position is worth having when a person asks, and is
+        # noise when nobody did.
+        return 0
+    if args.if_stale and state.disposition == CURRENT:
         return 0
     print(render.format_branch_state(state, None if args.brief else _flight(args)))
     return 0
@@ -779,6 +783,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="position and recovery command only, for a caller printing the rest itself",
+    )
+    branch_cmd.add_argument(
+        "--if-stale",
+        action="store_true",
+        default=False,
+        help="say nothing unless the branch is behind, for a caller that speaks unasked",
     )
     branch_cmd.set_defaults(func=cmd_branch)
     add("stranded", "items that exist only on a branch").set_defaults(func=cmd_stranded)
