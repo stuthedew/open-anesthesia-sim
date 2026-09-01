@@ -362,7 +362,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     report = analyze(items, args.today or date.today(), config)
     root = args.items.parent if args.items else find_root()
     ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
-    rendered = render.format_status(report, ready, _flight(args))
+    rendered = render.format_status(report, ready, _flight(args), _plan(root, items, config))
     print(rendered if rendered else "Nothing open.")
     return 0
 

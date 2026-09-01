@@ -438,6 +438,12 @@ worth raising, and the release itself takes no arguments: the store already
 knows what has shipped and what has not, so there is nothing for the owner to
 look up and asking them to is pure friction.
 
+Where the digest says `No release to offer` instead, the version a bump would
+arrive at is one `ROADMAP.md` has already given to a step it has not finished,
+and the line names that step. There is nothing to raise then: the beat printed
+under it is the work, and cutting the version anyway would ship a milestone
+under its own name with most of it missing.
+
 But the digest says it in *every* session, including the ones where it is
 beside the point. Offer it when the owner is choosing what to work on or has
 just finished something. Not in a design round, a question about one
