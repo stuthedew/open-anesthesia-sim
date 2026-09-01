@@ -489,7 +489,7 @@ def test_a_landed_candidate_is_offered_as_two_readings_not_a_verdict() -> None:
 
 
 def test_a_landed_candidate_sharing_a_command_is_named_as_proving_nothing() -> None:
-    messages = _advisories(_landed(passing=("PL-K7QX", "PL-A1B2"), shared=("PL-K7QX", "PL-A1B2")))
+    messages = _advisories(_landed(passing=("PL-K7QX", "PL-B1C2"), shared=("PL-K7QX", "PL-B1C2")))
     assert _has(messages, "share a command with another open item")
     assert _has(messages, "give each its own")
 
@@ -540,7 +540,7 @@ def test_a_selects_no_test_advisory_counts_the_queue_it_searched() -> None:
     # `PL-D2GW`'s was found by hand and nothing said it was the only one, so
     # the scale of the finding travels with the item that can be acted on.
     messages = _selects_nothing(
-        _landed(passing=(), vacuous=("PL-K7QX", "PL-A1B2"), considered=9), OFFERED
+        _landed(passing=(), vacuous=("PL-K7QX", "PL-B1C2"), considered=9), OFFERED
     )
     assert _has(messages, "1 of 2 open item(s) whose command selects nothing, 9 checked")
 
@@ -556,7 +556,7 @@ def test_a_selects_no_test_advisory_asks_rather_than_condemns() -> None:
 def test_an_item_that_both_passes_and_selects_nothing_cannot_happen_but_reads_apart() -> None:
     # Distinct populations, distinct sentences: one report carrying both must
     # produce two advisories, not one merged claim.
-    messages = _selects_nothing(_landed(passing=("PL-A1B2",), vacuous=("PL-K7QX",)), OFFERED)
+    messages = _selects_nothing(_landed(passing=("PL-B1C2",), vacuous=("PL-K7QX",)), OFFERED)
     assert len([m for m in messages if "already passes" in m]) == 1
     assert len([m for m in messages if "selects no test" in m]) == 1
 
@@ -569,7 +569,7 @@ def test_a_selects_no_test_item_nobody_is_about_to_start_is_not_named() -> None:
     # The whole of this item: eighteen of thirty-one open items select no test
     # because `-k <the name the work will add>` is the recommended shape, and
     # an advisory naming all of them cannot be discharged short of a campaign.
-    messages = _selects_nothing(_landed(passing=(), vacuous=("PL-A1B2",)), OFFERED)
+    messages = _selects_nothing(_landed(passing=(), vacuous=("PL-B1C2",)), OFFERED)
     assert messages == []
 
 
@@ -577,10 +577,10 @@ def test_the_store_wide_total_rides_along_with_the_item_that_is_due() -> None:
     # Narrowing must not lose the count. It is what `PL-5QKT` measured and the
     # reason the check exists, so it travels in the sentence rather than in a
     # line of its own that would fire on every run.
-    vacuous = ("PL-K7QX", "PL-A1B2", "PL-C3D4")
+    vacuous = ("PL-K7QX", "PL-B1C2", "PL-C3D4")
     messages = _selects_nothing(_landed(passing=(), vacuous=vacuous, considered=31), OFFERED)
     assert _has(messages, "1 of 3 open item(s)")
-    assert not _has(messages, "PL-A1B2")
+    assert not _has(messages, "PL-B1C2")
 
 
 def test_a_caller_that_asked_for_no_ranking_is_told_nothing_about_selectors() -> None:
@@ -607,15 +607,53 @@ def test_a_selects_no_test_check_that_could_not_run_says_so_once() -> None:
 # these assert is the judgment, not the git reading behind it.
 
 
-def _closures(*landed: str, base: str = "origin/main", declined: str = "") -> ClosureReport:
-    return ClosureReport(base=base, landed=frozenset(landed), declined=declined)
+def _closures(
+    *landed: str,
+    base: str = "origin/main",
+    declined: str = "",
+    derived: tuple[tuple[str, int], ...] = (),
+) -> ClosureReport:
+    return ClosureReport(base=base, landed=frozenset(landed), derived=derived, declined=declined)
 
 
 def test_a_closure_on_the_base_without_a_pr_is_an_error() -> None:
+    # No commit on the base names a number for it, so the way back from the
+    # closure to the work genuinely does not exist.
     item = _item(status="done", closed=TODAY)
     report = analyze([item], TODAY, closures=_closures("PL-K7QX"))
 
     assert any("marked done on `origin/main` but records no `pr`" in e for e in report.errors)
+
+
+def test_a_closure_whose_merge_commit_names_its_number_is_an_advisory_not_an_error() -> None:
+    # The normal shape of a successful merge. The closure travels in the same
+    # commit as its work, so it cannot carry a number that does not yet exist,
+    # and erroring here turned `main` red on the completion of every item.
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
+
+    assert report.errors == []
+    assert _has(report.advisories, "recoverable from its merge commit")
+
+
+def test_the_advisory_names_the_number_to_write_and_where() -> None:
+    # An advisory a reader has to go and look something up to act on is one
+    # they defer, so the exact line to write is in the sentence.
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
+
+    assert _has(report.advisories, "#148")
+    assert _has(report.advisories, "write `pr: 148` into the item")
+
+
+def test_a_derived_number_for_another_item_does_not_excuse_this_one() -> None:
+    # The mapping is per item; borrowing a neighbour's number would record
+    # provenance that leads to the wrong work, which is worse than none.
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-B1C2", 148),)))
+
+    assert report.advisories == []
+    assert any("records no `pr`" in e for e in report.errors)
 
 
 def test_a_closure_not_yet_on_the_base_is_accepted() -> None:

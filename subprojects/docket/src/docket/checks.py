@@ -396,17 +396,37 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
 
     `commit` stays legal and is still checked for shape where it appears; it
     is simply not what makes a closure traceable across a squash-merge.
+
+    What is left splits again, on whether the provenance is actually lost.
+    The number does not exist until the work is pushed and the pull request
+    opened, so a closure committed with its work - which is what closes the
+    window above - cannot carry it, and every merge would land red. Where the
+    merge commit's own subject names the number, nothing is lost: it is the
+    same parse this module already trusts for the provenance history, and the
+    way back exists in git. That is a transcription still owed, which is an
+    advisory naming the number to write. Where no commit on the base names
+    one, the way back genuinely does not exist, and that stays an error.
     """
     if closures is None:  # a caller that did not ask; every command but `check`
         return
     if not closures.known:
         report.declined.append(f"closures recording no `pr`: {closures.declined}")
         return
+    derived = closures.numbers
     for item in report.items:
-        if item.status == "done" and not item.pr and item.identifier in closures.landed:
+        if item.status != "done" or item.pr or item.identifier not in closures.landed:
+            continue
+        number = derived.get(item.identifier)
+        if number is None:
             report.errors.append(
                 f"{_where(item)}: marked done on `{closures.base}` but records no `pr`; "
                 "without it there is no way back from the closure to the work that made it"
+            )
+        else:
+            report.advisories.append(
+                f"{item.identifier}: marked done on `{closures.base}` and records no `pr`, "
+                f"but #{number} is recoverable from its merge commit; "
+                f"write `pr: {number}` into the item so the file carries it too"
             )
 
 
