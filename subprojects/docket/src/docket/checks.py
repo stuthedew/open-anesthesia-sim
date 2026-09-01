@@ -267,7 +267,7 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     if landed is None:  # a caller that did not ask; every command but `check`
         return
     if not landed.known:
-        report.declined.append(f"open items whose work may have landed: {landed.declined}")
+        report.declined.append(f"open items' own `verify:` commands: {landed.declined}")
         return
     if not landed.passing:
         return
@@ -285,6 +285,46 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
             "which cannot prove any one of them done - give each its own"
         )
     report.advisories.append(message)
+
+
+def _check_selects_nothing(report: Report, landed: LandedReport | None) -> None:
+    """Say when an open item's `verify:` command runs but selects no test.
+
+    The counterpart to the check above, and the harder of the two to see. That
+    one is about a command that returns 0 when it should not; this is about a
+    command that returns non-zero for the wrong reason. `-k` matched no test
+    name, so pytest deselected the file, collected nothing and exited 5 - and
+    5 is not 0, so every reader of an exit status, this module's own
+    already-passes check included, takes it for a command that correctly
+    fails. The item then looks exactly like one whose work is still to do, and
+    goes on looking like it after the work as well, unless a test name happens
+    to match. `PL-D2GW` carried one for its whole life; nothing noticed.
+
+    A verdict rather than a candidate, unlike the already-passes advisory,
+    because `verify.selects_no_test` reads pytest's own exit code and pytest
+    only returns 5 for the one reason. What the finding does not settle is
+    which repair it wants, and that is why it stays an advisory: a selector
+    naming a test the work has yet to write is the recommended shape here and
+    is behaving as intended, while one naming a test that will never exist is
+    a specification that can never be met. Only the item's author can say
+    which, so the sentence asks rather than tells.
+
+    A declined run says so once, in `_check_landed`: it is one execution of
+    one set of commands, and two lines reporting the same refusal would read
+    as two checks having failed to run.
+    """
+    if landed is None or not landed.known or not landed.vacuous:
+        return
+    one = len(landed.vacuous) == 1
+    report.advisories.append(
+        f"{', '.join(landed.vacuous)} {'is' if one else 'are'} open and "
+        f"{'its' if one else 'their'} `verify:` command selects no test "
+        f"({len(landed.vacuous)} of {landed.considered} checked): pytest collected "
+        "nothing and exited 5, which is not 0, so the command reads as one that "
+        "correctly fails and will read that way after the work too - check that the "
+        "name each selector matches is one the work will create, and replace the "
+        "selectors where it is not"
+    )
 
 
 def _check_references(report: Report) -> None:
@@ -463,6 +503,7 @@ def analyze(
     _check_references(report)
     _check_provenance(report, history)
     _check_landed(report, landed)
+    _check_selects_nothing(report, landed)
     _check_closures(report, closures)
     _groom(report, today, settings, offered)
     return report

@@ -13,6 +13,7 @@ mocked, because what is being tested is largely what git reports.
 from __future__ import annotations
 
 import subprocess
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from docket.verify import (
     already_passing,
     changed_paths,
     item_commits,
+    selects_no_test,
     verify,
     verify_batch,
 )
@@ -480,3 +482,130 @@ def test_one_missing_command_beside_a_real_one_still_reports_landed_work(tmp_pat
 def test_an_item_with_no_command_is_not_a_landed_candidate(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     assert already_passing(root, [_item(verify="")]).considered == 0
+
+
+# --- a command that selects no test, told apart from one that fails ----------
+#
+# The two arrive as the same thing at every reader of an exit status - non-zero
+# - and they mean opposite things. A failing command ran an assertion that did
+# not hold, which is what an unstarted item's command is meant to do. One that
+# selects no test asserted nothing, and will go on asserting nothing after the
+# work unless a test name happens to match.
+
+
+def _pytest(selector: str) -> str:
+    """A real pytest run against the scratch repository's one test.
+
+    Deliberately the real runner rather than a stub returning 5: the whole
+    claim rests on pytest returning 5 for an empty selection and 1 for a
+    failing test, and a stub would test the stub's author's memory of that.
+    `sys.executable` because the interpreter running this suite is the one
+    that certainly has pytest importable.
+    """
+    return f"{sys.executable} -m pytest tests/test_thing.py -k {selector} -q -p no:cacheprovider"
+
+
+def test_pytest_returns_five_for_a_selector_that_matches_nothing(tmp_path: Path) -> None:
+    # The reference case the discriminator is built on, asserted against
+    # pytest itself rather than against a remembered exit code.
+    root = _repo(tmp_path)
+    result = subprocess.run(
+        _pytest("no_such_test_name"), cwd=root, shell=True, capture_output=True, text=True
+    )
+    assert result.returncode == 5
+    assert "deselected" in result.stdout
+
+
+def test_a_selector_matching_a_real_test_is_not_read_as_selecting_nothing(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    result = subprocess.run(_pytest("test_a"), cwd=root, shell=True, capture_output=True, text=True)
+    assert result.returncode == 0
+    assert not selects_no_test(_pytest("test_a"), result.returncode)
+
+
+def test_a_failing_test_is_not_read_as_selecting_nothing() -> None:
+    # Exit 1 is the state a correctly written command is supposed to be in
+    # before the work, and must never be reported as an empty selection.
+    assert not selects_no_test("uv run pytest tests/test_thing.py -k test_a", 1)
+
+
+def test_exit_five_from_a_command_that_is_not_pytest_is_not_classified() -> None:
+    # Only pytest promises that 5 means "collected nothing". Reading another
+    # program's 5 that way would be the guess this check exists to prevent.
+    assert not selects_no_test("grep -qF 'the sentence' docs/MODEL.md", 5)
+    assert not selects_no_test("python3 tools/doc_check.py check", 5)
+
+
+def test_pytest_reached_through_a_runner_is_still_recognised() -> None:
+    # The three shapes the store actually records.
+    assert selects_no_test("pytest -k gate", 5)
+    assert selects_no_test("uv run pytest subprojects/docket/tests/test_release.py -k gate", 5)
+    assert selects_no_test("python -m pytest -k gate", 5)
+
+
+def test_a_path_containing_pytest_is_not_mistaken_for_the_runner() -> None:
+    assert not selects_no_test("uv run python tools/test_pytest_helpers.py", 5)
+
+
+def test_a_passing_command_is_never_read_as_selecting_nothing() -> None:
+    assert not selects_no_test("uv run pytest -k test_a", 0)
+
+
+def test_an_open_item_whose_command_selects_no_test_is_named(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(verify=_pytest("no_such_test_name"))])
+    assert report.known
+    assert report.vacuous == ("PL-K7QX",)
+    assert report.passing == ()
+    assert report.considered == 1
+
+
+def test_an_item_whose_command_genuinely_fails_is_not_named(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(verify="false")])
+    assert report.vacuous == ()
+
+
+def test_the_two_findings_are_separated_within_one_run(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-PASS", verify="true"),
+        _item(identifier="PL-NONE", verify=_pytest("no_such_test_name")),
+        _item(identifier="PL-FAIL", verify="false"),
+    ]
+    report = already_passing(root, items)
+    assert report.passing == ("PL-PASS",)
+    assert report.vacuous == ("PL-NONE",)
+    assert report.considered == 3
+
+
+def test_a_verify_report_says_a_command_selected_no_test_rather_than_failed(tmp_path: Path) -> None:
+    # The moment the defect bites hardest: a delegated branch is being
+    # reviewed, its command is non-zero, and "the work is missing" and "the
+    # command cannot tell you" look identical without this line.
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    report = verify(root, _item(verify=_pytest("no_such_test_name")), _config(), "HEAD~1")
+    assert not report.passed
+    command = next(c for c in report.checks if "`verify:` command" in c.name)
+    assert not command.passed
+    assert any("selects no test" in line for line in command.lines)
+
+
+def test_a_verify_report_of_a_real_failure_makes_no_such_claim(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\n\ndef test_c() -> None:\n    assert 3 == 3\n",
+    )
+    report = verify(root, _item(verify="false"), _config(), "HEAD~1")
+    command = next(c for c in report.checks if "`verify:` command" in c.name)
+    assert not command.passed
+    assert not any("selects no test" in line for line in command.lines)

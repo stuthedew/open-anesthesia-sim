@@ -26,6 +26,7 @@ project, and that separation is what keeps a bare checkout able to use it.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from collections import Counter
 from collections.abc import Sequence
@@ -49,6 +50,46 @@ RESIDUAL = (
     "or merely the value it currently produces. A test can exercise the right "
     "line and assert the wrong thing. Read the new test bodies."
 )
+
+# Pytest's own exit codes, which are what make "ran and matched nothing"
+# separable from "ran and something failed": 0 passed, 1 tests failed, 5 no
+# tests were collected. Only 5 is needed here, and only pytest promises it.
+NO_TESTS_COLLECTED = 5
+
+# Matched as text because the command is a shell line, not a parsed argv:
+# `pytest`, `uv run pytest`, `python -m pytest` and a compound command whose
+# last clause is one of those all reach here as a string. Word-bounded so that
+# a file named `test_pytest_helpers.py` in the arguments is not mistaken for
+# the runner - `_` is a word character, so no boundary falls before that
+# `pytest`.
+PYTEST_RE = re.compile(r"\bpytest\b")
+
+
+def selects_no_test(command: str, status: int) -> bool:
+    """Whether a command ran and matched no test, rather than failing.
+
+    The two are the same shell exit as far as anything reading a status is
+    concerned - non-zero - and they mean opposite things. A command that fails
+    ran an assertion and the assertion did not hold, which is what an unstarted
+    item's command is supposed to do. A command that selects no test asserted
+    nothing at all: `-k` matched no name, pytest deselected the file and
+    exited 5, and the same 5 comes back after the work as before it unless a
+    test name happens to match. Nothing distinguishes such an item from a
+    finished one, and nothing ever will on its own.
+
+    The claim is made only about a command that names pytest, because pytest
+    is what promises 5 means "collected nothing". A shell exit of 5 from
+    anything else means whatever that program decided it means, and reading it
+    as an empty selection would be guessing - the error this check exists to
+    stop, made by the check itself.
+
+    False negatives are accepted and are silent, which is the state today: a
+    suite invoked through a wrapper that does not spell `pytest`, or a
+    compound command whose last clause masks the status, is not classified.
+    A false positive would put a wrong sentence in front of a reader, so the
+    test is deliberately the narrow one.
+    """
+    return status == NO_TESTS_COLLECTED and bool(PYTEST_RE.search(command))
 
 
 @dataclass(frozen=True)
@@ -342,14 +383,17 @@ def verify_item(
     )
 
     status, output = _run([item.verify], root, shell=True)
-    report.checks.append(
-        Check(
-            "`verify:` command passes",
-            status == 0,
-            item.verify,
-            () if status == 0 else tuple(output.strip().splitlines()[-4:]),
-        )
-    )
+    lines = () if status == 0 else tuple(output.strip().splitlines()[-4:])
+    # A rejection either way, and for opposite reasons, so the report says
+    # which. "The command failed" sends a reviewer to look for the missing
+    # work; "the command selected no test" sends them to the command, which is
+    # where the fault is - the work may well be finished and unprovable.
+    if selects_no_test(item.verify, status):
+        lines = (
+            "this command selects no test (pytest exit 5, nothing collected), so it "
+            "proves neither that the work is done nor that it is missing",
+        ) + lines
+    report.checks.append(Check("`verify:` command passes", status == 0, item.verify, lines))
     return report
 
 
@@ -416,11 +460,20 @@ LANDED_STATUSES = ("ready", "needs-decision")
 
 @dataclass(frozen=True)
 class LandedReport:
-    """Open items whose own `verify:` command already passes, or why that is unknown.
+    """What running every open item's own `verify:` command found, or why nothing did.
 
     The question `verify` asks of a branch, asked of the store instead: not
     "did this worker do what the item commissioned" but "does the item's own
     evidence of doneness already hold, while the item is still open".
+
+    One run, two findings, because both are about a command that specifies
+    nothing and both are free once the commands have been executed. `passing`
+    is the command that already holds. `vacuous` is the command that never
+    ran an assertion at all - `-k` matched no test name, so pytest collected
+    nothing and exited 5. The second is invisible without asking, which is
+    the whole reason it is asked: 5 is not 0, so a command that selects
+    nothing reads to `passing` as one that correctly fails, and stays that
+    way for as long as the item is open.
 
     Passing proves less than it looks like it proves, and the type is shaped
     around saying so. It is consistent with two different findings - the work
@@ -436,11 +489,16 @@ class LandedReport:
     own, not to close anything.
 
     `declined` carries the meaning it does everywhere else here: the check did
-    not run, and a caller must not read the empty `passing` as a clean result.
+    not run, and a caller must not read the empty `passing` - or the empty
+    `vacuous` - as a clean result.
     """
 
     passing: tuple[str, ...] = ()
     shared: tuple[str, ...] = ()
+    #: Open items whose command matched no test, so it asserted nothing. Unlike
+    #: `passing` this is a verdict rather than a candidate: `selects_no_test`
+    #: only says so where pytest's own exit code says so.
+    vacuous: tuple[str, ...] = ()
     considered: int = 0
     declined: str = ""
 
@@ -456,7 +514,12 @@ def already_passing(
     statuses: tuple[str, ...] = LANDED_STATUSES,
     timeout: float = LANDED_TIMEOUT,
 ) -> LandedReport:
-    """Run every open item's `verify:` command and report the ones that pass.
+    """Run every open item's `verify:` command, and report what running it showed.
+
+    Two findings from the one run: the commands that already pass, and the
+    commands that selected no test and so asserted nothing. Both are ways an
+    item can be open while its own evidence of doneness proves nothing, and
+    neither is visible without executing the command.
 
     An item is closed by hand, so work that merges without its `status` being
     set leaves the item `ready` forever: it keeps its place in `next`, it is
@@ -490,6 +553,7 @@ def already_passing(
 
     child = {**os.environ, LANDED_GUARD: "1"}
     passing: list[str] = []
+    vacuous: list[str] = []
     unavailable = 0
     for item in candidates:
         status, _ = _run([item.verify], root, shell=True, timeout=timeout, env=child)
@@ -497,6 +561,8 @@ def already_passing(
             passing.append(item.identifier)
         elif status == 127:  # the shell could not find the command at all
             unavailable += 1
+        elif selects_no_test(item.verify, status):
+            vacuous.append(item.identifier)
     if unavailable == len(candidates):
         return LandedReport(
             declined="no `verify:` command could be run here, so finding none passing "
@@ -510,4 +576,6 @@ def already_passing(
         for item in candidates
         if item.identifier in named and counts[item.verify] > 1
     )
-    return LandedReport(passing=tuple(passing), shared=shared, considered=len(candidates))
+    return LandedReport(
+        passing=tuple(passing), shared=shared, vacuous=tuple(vacuous), considered=len(candidates)
+    )
