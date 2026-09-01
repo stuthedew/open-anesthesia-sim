@@ -1,7 +1,13 @@
 ---
 id: PL-1YDK
 title: Running uv inside subprojects/docket creates an untracked second uv.lock that nothing ignores
-status: untriaged
+priority: P3
+effort: S
+classes: infra
+feature: dev-tooling
+touches: .gitignore
+verify: git check-ignore -q subprojects/docket/uv.lock
+status: ready
 added: 2026-09-01
 ---
 
@@ -34,3 +40,20 @@ installable and separately pinned, which nothing currently wants.
 **Done when.** Running the docket test suite from inside `subprojects/docket`
 leaves `git status` clean, and the decision - ignore it, or track it
 deliberately - is recorded rather than implied.
+
+**Triaged 2026-09-01, with the approach settled.** The project owner chose the
+first of the two answers in **Where.** above: ignore the file. Nothing wants
+`subprojects/docket` separately installable or separately pinned, so a
+committed lock of its own would be a second thing to maintain for no gain. One
+`.gitignore` entry, and a comment beside it saying why the file appears at all.
+
+Classed `infra` and not `defect`, deliberately. Nothing here is broken: the
+repository simply has no ignore rule for a file its own tooling generates,
+which is a configuration gap rather than a wrong answer. That keeps it off the
+debt gate, which is the honest place for it - a missing `.gitignore` line is
+not something a milestone should wait on.
+
+The `verify:` command exits 1 on 2026-09-01 and exits 0 once the entry lands.
+It asks git rather than looking for text in the file, so it stays true however
+the pattern is written - a `subprojects/*/uv.lock` glob satisfies it as
+readily as the literal path.

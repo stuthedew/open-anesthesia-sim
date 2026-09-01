@@ -1,7 +1,12 @@
 ---
 id: PL-GLBF
 title: ROADMAP.md's subset counts - not-delegable, entries reaching into src/ - are still hand-maintained and unchecked
-status: untriaged
+priority: P3
+effort: S
+classes: defect, docs
+feature: dev-tooling
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
+status: needs-decision
 added: 2026-09-01
 ---
 
@@ -37,3 +42,28 @@ than no check.
 **Done when.** A subset count in `ROADMAP.md` either fails `make check` when it
 disagrees with the items, or has been removed from the prose because nothing
 can decide it.
+
+**Triaged 2026-09-01 to `needs-decision`, not to `ready`.** The fields are
+filled in - `P3`, `defect`/`docs`, `dev-tooling`, beside `PL-H8MQ`, whose work
+this continues - but the item cannot be started, because its own **Approach.**
+names a decision that has to come first and this triage pass deliberately did
+not make it.
+
+**Decision needed.** Whether the two counts that describe an entry's *work* -
+"the two entries that change repository configuration" and "three entries reach
+into `src/`" - come out of `ROADMAP.md`'s prose, or whether an item gains a
+field recording what its work touches so a checker can decide them. The
+`not-delegable` count needs no decision and is checkable either way.
+
+Stated at length: the `not-delegable`
+count is a query over fields `docket` already reads and can simply be checked.
+The other two - "the two entries that change repository configuration" and
+"three entries reach into `src/`" - describe what an entry's *work* touches,
+which no field records. So either those two numbers come out of the prose (per
+`PL-H8MQ`'s rule that a count nothing can decide should not be written down),
+or an item gains a field that records what its work touches at that
+granularity, which is a larger change and one that would need filling in
+across the gate.
+
+No `verify:` yet, and that is correct rather than missing: the command depends
+on which answer is taken, and `docket check` owes one only at `ready`.
