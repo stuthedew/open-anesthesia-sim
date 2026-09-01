@@ -8,6 +8,7 @@ classes: defect, docs
 touches: docs/MODEL.md, docs/WORKING_NOTES.md, docs/items, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-01
 closed: 2026-09-01
+pr: 136
 verify: python3 tools/doc_check.py check && uv run pytest tests/unit/test_doc_check.py -k math
 ---
 
@@ -73,9 +74,10 @@ math spans are blanked before either rule runs, so a quotation of the broken
 syntax — this item is full of them — is not a use of it.
 
 **Not done here.** The 46 surviving `$$` blocks are correct as written and were
-left alone. GitHub also accepts a ```` ```math ```` fence as an equivalent,
-which is worth preferring for *new* display math because a fence cannot be
-broken by rewrapping; converting the existing blocks was not part of this item.
+left alone. GitHub also accepts a ```` ```math ```` fence as an equivalent.
+Both forms put their delimiters on their own lines, so neither is exposed to
+the wrap defect the way an inline span is, and there is no case for converting
+the existing blocks — the fence is worth knowing about, not worth a pass.
 
 **Verified.** `python3 tools/doc_check.py check` is clean across all 227 tracked
 markdown files with no false positives; `make check` passes. Rendering itself is
