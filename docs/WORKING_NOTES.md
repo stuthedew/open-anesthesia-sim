@@ -571,3 +571,44 @@ separate from the Flet live chart, and - per the same presentation-
 correctness standard above - exported figures should carry the model
 name/version, parameter provenance, and units they were generated from,
 not just the plotted curve. Aspirational only; not scoped.
+
+## Open: when a session may fix a small finding instead of filing it (PL-3MJH)
+
+`CLAUDE.md`'s capture bullet exempts a finding "identified in a session **and
+not fixed in that same session**", but no instruction anywhere says when a
+session may enter that exemption. It is therefore dead text, and every session
+captures - so a two-line typo fix costs a `docket new`, a five-field triage
+slot, a hand edit to close, and a queue line read past until it closes. The
+design that closes this is worked out in full in `PL-3MJH` (three mechanical
+tests, a two-per-branch cap, the fix recorded as its own commit under the
+current item's id). It is not built: the project owner judged it too
+complicated to land now and deferred it.
+
+Two things from that discussion are worth having here rather than in the item,
+because they bear on decisions beyond it.
+
+**Gate placement, and the precedent it did not set.** The case was made that
+this belongs on v0.2.8's frozen list: a defect in machinery that release's Goal
+already names ("the instructions a session reads before it does anything
+else"), present before the 2026-08-30 freeze, and prose-only so it does not
+trip the "new tools, better tools" exclusion at `ROADMAP.md`'s "Explicitly out
+of scope for v0.2.8". The project owner declined, directing it to "the next
+gate or two" - Gate 0 (under v0.4.0) or Gate 1. The reasoning stands and the
+placement did not: a release 6 entries of 38 from done is the wrong place for a
+design still being argued, whatever the scope test permits. Future admissions
+to a nearly-cleared frozen list should weigh how settled the design is, not
+only whether the scope test admits it.
+
+**The narrow rule beat the cited source.** Martin Fowler's *Opportunistic
+Refactoring* (martinfowler.com/bliki/OpportunisticRefactoring.html, 1 Nov 2011)
+was supplied and read in full. It argues for a wider remit than `PL-3MJH`
+adopts - fix regardless of locality, add a test or two if needed, judge for
+yourself when to stop. `PL-3MJH` diverges on all three, deliberately, and
+records why: this project has a working queue, so Fowler's "another day often
+doesn't come" does not hold; `bin/docket verify` audits a diff against an
+item's declared `touches`, so ignoring locality corrupts the audit; and
+"knowing when to call it a day" is the judgement an agent session is likeliest
+to rationalise past, so it is a hard count instead. Fowler's own test for
+whether this work is worth doing at all is met: "be aware of any time you feel
+discouraged from doing a small refactoring... Any such barrier is a smell that
+should prompt a conversation."
