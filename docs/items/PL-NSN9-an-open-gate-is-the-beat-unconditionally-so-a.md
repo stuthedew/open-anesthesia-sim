@@ -10,6 +10,7 @@ feature: planning-cadence
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-08-30
 closed: 2026-09-01
+pr: 164
 ---
 
 **Problem.** `wave()`'s first branch is
