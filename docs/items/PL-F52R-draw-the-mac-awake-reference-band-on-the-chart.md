@@ -53,6 +53,48 @@ number. This protects against reading a correct number against the wrong
 compartment, which no amount of labelling the band as a population value
 addresses.
 
+
+**Appended 2026-09-01 — the primary source, and why it makes the trace choice
+decide the number.** The **First step.** above requires MAC-awake to be sourced
+from the primary literature rather than memory. An external review supplies it:
+
+> Katoh T, Suguro Y, Kimura T, Ikeda K. Cerebral awakening concentration of
+> sevoflurane and isoflurane predicted during slow and fast alveolar washout.
+> Anesth Analg. 1993;77(5):1012-7. PMID 8214700.
+> doi:10.1213/00000539-199311000-00024
+
+| Washout | Sevoflurane | Isoflurane |
+| --- | --- | --- |
+| Slow | 0.34 ± 0.05 | 0.31 ± 0.05 |
+| Fast | 0.22 ± 0.07 | 0.22 ± 0.05 |
+
+**This sharpens the "Required property" section above rather than repeating
+it.** That section already establishes that the band must be read against the
+vessel-rich trace, on the grounds that reading it against the alveolar trace
+teaches an early wake-up. Katoh adds the reason the two are not
+interchangeable *values*: the paper attributes the slow/fast difference to
+end-tidal-to-arterial and arterial-to-cerebral gradients — which is precisely
+what this simulator represents as the alveolar-to-vessel-rich difference. So
+the trace choice does not merely change how the band is interpreted; it
+changes which published number is the correct one to draw.
+
+0.34 is the value that belongs against the vessel-rich trace. 0.22 is the
+value that belongs against the alveolar trace during a fast washout. Drawing
+0.34 against the alveolar trace — the intuitive choice, since alveolar is the
+number a monitor shows — over-predicts time to wakefulness, the clinically
+wrong direction and the same failure the section above identifies, now with a
+magnitude attached.
+
+**A gap this source leaves.** Katoh covers sevoflurane and isoflurane only.
+The **First step.** asks whether one fraction of MAC covers all three agents;
+this source cannot answer that for desflurane, which still needs its own
+primary citation before the band is drawn for it. Do not extrapolate the
+sevoflurane fraction to desflurane.
+
+**Found.** External multi-domain review, relayed by the project owner
+2026-09-01; the bibliographic values are as that review verified them and were
+not re-derived here.
+
 **Done when.** Each agent's MAC-awake value is in its data file with a cited
 primary source, `docs/MODEL.md` records the provenance and states what the band does
 and does not assert, the chart draws it as a labelled population band with no
