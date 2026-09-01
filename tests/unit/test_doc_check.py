@@ -12,7 +12,6 @@ one data file, so a test names only the thing it breaks.
 
 from __future__ import annotations
 
-import ast
 import json
 import subprocess
 from pathlib import Path
@@ -1207,30 +1206,3 @@ def test_math_markdown_outside_the_documentation_globs_is_read(tmp_path: Path) -
 
     assert len(errors) == 2
     assert all("docs/items/PL-0000-demo.md" in error for error in errors)
-
-
-# --- portability ------------------------------------------------------------
-
-
-#: The oldest interpreter this tool must parse under. It is invoked as bare
-#: `python3` from `make check`, from CI and from a checkout with no virtualenv,
-#: so it cannot assume the version `pyproject.toml` requires — the same promise
-#: `subprojects/docket/` makes, where the floor is declared as 3.11.
-BARE_PYTHON_FLOOR = (3, 11)
-
-
-def test_the_tool_parses_under_the_interpreter_that_actually_runs_it() -> None:
-    """The repository's formatter targets a newer Python than this file may use.
-
-    Set to `py314`, `ruff format` rewrites a parenthesized multi-type `except`
-    into PEP 758's unparenthesized form, which an older interpreter cannot
-    parse. That break is silent: the suite runs under the project virtualenv
-    and passes, while `make check`'s own `python3 tools/doc_check.py check`
-    fails with a `SyntaxError`. `subprojects/docket/` was broken this way once
-    and guards it with `tests/test_portability.py`; this asserts the same
-    promise for the one tool outside that subproject which makes it.
-    """
-    source = Path(doc_check.__file__).resolve()
-    body = source.read_text(encoding="utf-8")
-
-    ast.parse(body, filename=str(source), feature_version=BARE_PYTHON_FLOOR)

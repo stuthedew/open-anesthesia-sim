@@ -1,0 +1,25 @@
+# Everything under `tools/` runs with whatever bare `python3` is on PATH.
+# `make check` invokes `python3 tools/doc_check.py check` directly, CI does the
+# same, and both have to work in a checkout with no virtualenv and no install
+# step - which is why these tools depend on nothing outside the standard
+# library.
+#
+# The repository around them targets 3.14, and formatting to that target is not
+# cosmetic: it rewrites the source into syntax older interpreters cannot parse.
+# PEP 758 (3.14) makes the parentheses in `except (OSError, TimeoutError):`
+# redundant, so a 3.14-targeted formatter removes them, and the result is a
+# SyntaxError on 3.11. That is not hypothetical here - `make fix` produced
+# exactly it in `tools/doc_check.py` on 2026-08-31, in a file the suite had
+# just passed, because the suite runs under the project virtualenv on 3.14 and
+# only the bare-`python3` invocation fails.
+#
+# The floor is 3.11, and it is not chosen here: `doc_check.py` imports
+# `docket.roadmap` for the release-train grammar, so the oldest interpreter
+# these tools can run under is the one `subprojects/docket/pyproject.toml`
+# declares in `requires-python`. `tests/unit/test_tools_portability.py` holds
+# the two to each other, and holds every file here to parsing at that floor.
+#
+# So: inherit the repository's rules, and override the one setting that decides
+# which syntax is emitted.
+extend = "../pyproject.toml"
+target-version = "py311"
