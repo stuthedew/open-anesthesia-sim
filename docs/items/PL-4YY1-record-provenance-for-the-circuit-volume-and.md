@@ -55,6 +55,33 @@ have caught this, and it stays on the decidable side of the line the tool is
 built around: it can see that a literal exists and is unlisted, and makes no
 attempt to judge whether the value is right.
 
+
+**Appended 2026-09-01 — an open class question for the owner's triage; not
+re-classed here.** This item is currently `classes: defect, docs` at `P2`. An
+external review argues it reads as `science`, and the argument is worth
+recording because the class is currently deciding something other than
+labelling.
+
+`circuit_volume_l = 6.0` is not an internal implementation constant. It
+appears in `docs/MODEL.md`'s Symbols table as $`V_C`$ (`:148`) and inside the
+breathing-circuit governing equation, and $`\tau_C = V_C / \dot V_F`$ sets the
+machine lag that a learner will attribute to uptake — 90 s at this project's
+defaults against 120 s at Gas Man's published 8 L. `docs/MODEL.md:662-664`
+states that no scientific parameter may be added without a full source
+citation. This one has none, which is the whole of the **Problem.** above.
+
+If that makes it a scientific parameter, `science` is the class, and the
+consequence is not cosmetic: `ROADMAP.md`'s debt-gate rules admit `P0`,
+`safety` and `science` findings into the *current* gate regardless of the
+presence presumption, while `defect` follows the ordinary rule. So the class
+on this item is deciding its gate membership as a side effect of a labelling
+choice nobody made deliberately. `docket check` would also pin a `science`
+item to `P1` or `P0`, so the priority moves with it.
+
+**This is flagged, not decided.** Re-classing it would move an item between
+gates on a session's judgment, which is the project owner's call. Nothing here
+is changed.
+
 **Done when.** Circuit volume and default fresh gas flow are loaded from a
 versioned, cited data file with provenance rows in `docs/MODEL.md`, the Gas Man
 8 L convention and the deliberate retention of 6.0 are recorded,
