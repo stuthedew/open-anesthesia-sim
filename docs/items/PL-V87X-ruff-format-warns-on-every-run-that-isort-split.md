@@ -1,7 +1,13 @@
 ---
 id: PL-V87X
 title: ruff format warns on every run that isort.split-on-trailing-comma conflicts with skip-magic-trailing-comma
-status: untriaged
+priority: P3
+effort: S
+classes: infra
+feature: dev-tooling
+touches: pyproject.toml
+verify: grep -qF 'split-on-trailing-comma = false' pyproject.toml && uv run ruff format --check .
+status: ready
 added: 2026-09-01
 ---
 
@@ -39,3 +45,15 @@ first: `uv run ruff format --diff .` after the edit should print nothing.
 
 **Done when.** `make check` and `make fix` run clean, and the choice is
 recorded beside the setting.
+
+**Triaged 2026-09-01.** Fields only - the **Approach.** above already names the
+resolution and how to check it, and nothing in it needs deciding first.
+
+`P3`, `infra`, beside the other quality-gate items in `dev-tooling`. It is
+process work by every class it carries, so the triage rule keeps it out of the
+top band whatever the annoyance.
+
+The `verify:` command exits 1 on 2026-09-01 and pairs the two halves the item
+owes: `grep` proves the setting landed, and `ruff format --check .` proves it
+changed no formatting. `grep` alone would pass on a tree where the setting was
+added and the code left unformatted; the format check alone passes today.
