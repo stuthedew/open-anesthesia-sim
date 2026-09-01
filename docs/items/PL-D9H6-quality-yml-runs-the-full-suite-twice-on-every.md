@@ -3,10 +3,13 @@ id: PL-D9H6
 title: quality.yml runs the full suite twice on every push to a branch with an open pull request
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
 touches: .github/workflows/quality.yml
+closed: 2026-09-01
+pr: 138
+commit: 13b0c2e
 added: 2026-08-31
 verify: ! grep -qF 'on: [push, pull_request]' .github/workflows/quality.yml && grep -qF '    branches: [main]' .github/workflows/quality.yml && grep -qF '  pull_request:' .github/workflows/quality.yml
 ---
