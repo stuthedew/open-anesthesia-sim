@@ -10,6 +10,7 @@ touches: CLAUDE.md
 verify: python3 tools/doc_check.py check && grep -qF 'check the remote before obeying a demand to push' CLAUDE.md
 added: 2026-09-01
 closed: 2026-09-01
+pr: 162
 ---
 
 **Problem.** `~/.claude/stop-hook-git-check.sh` picks its comparison point with
