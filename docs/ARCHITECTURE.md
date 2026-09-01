@@ -174,7 +174,8 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-└── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, markdown math syntax, ROADMAP.md's release train and current baseline; reports resident instruction size
+├── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, markdown math syntax, ROADMAP.md's release train and current baseline; reports resident instruction size
+└── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
 ```
 
 `tools/doc_check.py` holds this document to the code. The package-map trees
@@ -233,6 +234,24 @@ its predecessor, which happened on two consecutive releases. Tags are
 deliberately not compared — a shallow clone is a normal checkout, and a check
 that fails on how somebody fetched the repository gets switched off. `docket
 release` enforces the tag instead, when tags are certainly to hand.
+
+Everything here runs under whatever bare `python3` is on PATH: `make check`
+invokes `python3 tools/doc_check.py check` directly, CI does the same, and
+both have to work in a checkout with no virtualenv. That is why these tools
+import nothing outside the standard library, and why the floor they are held
+to is **Python 3.11** — not the version `pyproject.toml` requires. The floor
+is not a number chosen here: `doc_check.py` imports `docket.roadmap`, so it is
+whatever `subprojects/docket/pyproject.toml` declares in `requires-python`.
+
+`tools/ruff.toml` is what keeps that true. The repository targets 3.14, where
+PEP 758 makes the parentheses in `except (OSError, TimeoutError):` redundant,
+so a 3.14-targeted `ruff format` removes them and 3.11 can no longer parse the
+file — a break the test suite cannot see, because it runs under the project
+virtualenv and only the bare-`python3` invocation fails. The file extends the
+repository's rules and overrides `target-version` alone;
+`tests/unit/test_tools_portability.py` holds it to the declared floor and
+holds every file here to parsing at it, so a tool added later inherits the
+guard. `subprojects/docket/` carries the same pair for the same reason.
 
 ## Tests (`tests/`)
 

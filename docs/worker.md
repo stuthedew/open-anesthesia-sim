@@ -97,8 +97,11 @@ Breaking one silently is worse than not doing the item.
   `docs/MODEL.md`.** These produce clinical values. You may write tests
   *about* them; you may not change them. This holds even if you are certain
   one contains a bug — record it with `docket new` instead.
-- **Never edit the checks themselves**: `Makefile`, `pyproject.toml`,
-  `.github/workflows/`, `.claude/`, `docket.toml`.
+- **Never edit the checks themselves**: `Makefile`, `pyproject.toml`, any
+  `ruff.toml`, `.github/workflows/`, `.claude/`, `docket.toml`. The
+  `ruff.toml` files are how `tools/` and `subprojects/docket/` stay parseable
+  by the bare `python3` that runs them, so relaxing one to make a format
+  failure go away breaks the thing the check exists to protect.
 - **Never add a suppression** — `# type: ignore`, `noqa`, `xfail`, `skip` — to
   make a check pass.
 - **Never delete or weaken an existing assertion.** If an existing test fails

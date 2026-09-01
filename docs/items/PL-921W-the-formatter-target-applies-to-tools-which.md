@@ -3,12 +3,14 @@ id: PL-921W
 title: The formatter target applies to tools/, which must run under bare python3, and nothing guards it the way subprojects/docket/ is guarded
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tools/ruff.toml, tests/unit/test_tools_portability.py, tests/unit/test_doc_check.py
 added: 2026-08-31
 verify: uv run pytest tests/unit -k portability
+milestone: v0.2.8
+closed: 2026-09-01
 ---
 
 **Problem.** `pyproject.toml` sets `target-version = "py314"` for the whole
@@ -76,3 +78,35 @@ defect in machinery the release's goal names is inside the frozen scope
 however late it is found, and the lint gate is one of the six pieces that goal
 names. The paragraph above is kept rather than deleted because its reasoning
 was sound about the rule it was applying — the rule was the narrow one.
+
+**Done 2026-09-01.** `tools/ruff.toml` extends the repository's rules and
+overrides `target-version` to `py311`, the shape `subprojects/docket/ruff.toml`
+already uses, so the formatter can no longer emit syntax bare `python3`
+rejects for anything under `tools/`. Verified both ways before and after: at
+the repository's `py314` target `ruff format` rewrote a probe file's
+`except (OSError, subprocess.SubprocessError):` into PEP 758's unparenthesized
+form; with the pin in place it left the same file unchanged.
+
+The floor is no longer a number chosen in `tools/`. `doc_check.py` imports
+`docket.roadmap`, so the oldest interpreter these tools can run under is
+whatever `subprojects/docket/pyproject.toml` declares in `requires-python`, and
+`tests/unit/test_tools_portability.py` reads it from there rather than
+declaring a third copy - which is the drift that produced this item.
+
+That file carries the widened guard: the formatter target must equal the
+declared floor, `tools/` must be non-empty, and *every* file under it must
+parse at the floor, so a second tool inherits the guard without anybody
+remembering to extend it. `test_the_tool_parses_under_the_interpreter_that_actually_runs_it`
+and its `BARE_PYTHON_FLOOR` constant moved out of `tests/unit/test_doc_check.py`
+rather than being duplicated. Confirmed the widened assertion still fires: a
+probe file under `tools/` carrying the unparenthesized form failed
+`test_every_tool_parses_under_the_interpreter_that_actually_runs_it`.
+
+The floor is written down twice more, for the two readers who would look:
+`pyproject.toml` now says beside `target-version = "py314"` that two subtrees
+override it and why, and `docs/ARCHITECTURE.md`'s "Developer tooling" section
+states the 3.11 floor, where it comes from, and what enforces it.
+
+`GIT_UNAVAILABLE` and `UNREADABLE` in `doc_check.py` are left named. They are
+no longer load-bearing against the formatter, but the names read better than
+the tuples did and removing them would be an unrelated change.
