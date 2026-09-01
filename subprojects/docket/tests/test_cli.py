@@ -892,6 +892,32 @@ def test_branch_state_says_nothing_to_the_digest_with_nothing_to_compare(
     assert "no remote copy to compare with" in capsys.readouterr().out
 
 
+def test_the_branch_guard_flag_speaks_only_when_the_branch_is_stale(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`--if-stale` is for the caller that speaks unasked, so silence is the default.
+
+    The first-edit hook prints into a session that did not ask for it, and "your
+    base has not moved" is not worth interrupting an edit for.
+    """
+    root = _diverged_repo(tmp_path)
+    store = str(root / "items")
+    flags = ["branch", "--no-fetch", "--brief", "--if-stale"]
+
+    assert main(["--items", store, *flags]) == 0
+    assert "1 behind main and 1 ahead" in capsys.readouterr().out
+
+    subprocess.run(
+        ["git", "checkout", "-q", "-b", "claude/pl-9y42-fresh", "main"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+    assert main(["--items", store, *flags]) == 0
+    assert capsys.readouterr().out == ""
+
+
 def _shallow_pair(tmp_path: Path) -> Path:
     """A clone deep enough to resolve a merge-base and too shallow to walk past it.
 

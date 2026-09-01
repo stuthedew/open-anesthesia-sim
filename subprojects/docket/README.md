@@ -124,6 +124,17 @@ hook passes, and this text is resent on every turn of a session, so a line
 saying there is nothing to say is a line worth not printing. Asked directly,
 the command says why.
 
+**What asks it is the first edit.** A command nobody runs closes nothing, so a
+`PreToolUse` hook on `Edit`/`Write` runs `docket branch --brief --if-stale`
+once per session - at the moment a discussion becomes implementation, which is
+the moment the answer is wanted. `--if-stale` is why it is bearable: a hook
+that speaks unasked has to earn each line, and "your base has not moved" does
+not. Two properties of that hook are easy to get silently wrong and are held by
+tests: a `PreToolUse` hook's plain stdout reaches the debug log and nothing the
+session can read, so the line travels as `additionalContext` in the documented
+JSON form; and the JSON must not carry `permissionDecision`, which would
+auto-approve the very edit it is attached to.
+
 ### In flight is read from the commits, not from the branch name
 
 Two sessions may be running at once, so neither must start an item the other
