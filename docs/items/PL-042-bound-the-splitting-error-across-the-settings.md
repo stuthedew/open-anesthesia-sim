@@ -17,9 +17,9 @@ pr: 57
 first-order splitting coefficient at one operating point — 5% delivered,
 4 L/min fresh gas, default ventilation and cardiac output — while
 `docs/MODEL.md` § "Independent-solution test" presents the resulting
-\(C_{\max} = 5\times10^{-4}\ \mathrm{s^{-1}}\) as a bound on the split. It
+$`C_{\max} = 5\times10^{-4}\ \mathrm{s^{-1}}`$ as a bound on the split. It
 is not one: measured over the interface's own slider limits it reaches about
-\(1.2\times10^{-3}\ \mathrm{s^{-1}}\), in a configuration three sliders can
+$`1.2\times10^{-3}\ \mathrm{s^{-1}}`$, in a configuration three sliders can
 produce.
 **Why it matters.** The absolute error there is still small (0.012 percentage
 points), so no displayed value is wrong today. The gap is in the gate: a

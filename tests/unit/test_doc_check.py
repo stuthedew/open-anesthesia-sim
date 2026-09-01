@@ -1108,6 +1108,107 @@ def test_this_repository_reports_its_own_resident_total() -> None:
     assert ".claude/rules/instruction-writing.md" in dict(resident.files)
 
 
+# --- math delimiters --------------------------------------------------------
+
+
+def _math_errors(root: Path, name: str, body: str) -> list[str]:
+    """Errors from the math rules alone, for one markdown file added to a repo."""
+    path = root / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+    report = doc_check.Report()
+    doc_check.check_math_delimiters(root, report)
+    return report.errors
+
+
+def test_math_latex_inline_delimiters_are_reported(tmp_path: Path) -> None:
+    r"""`\(t\)` reaches a GitHub page as the literal text `(t)`.
+
+    CommonMark escapes the backslash before any math parser runs, so nothing
+    raises and nothing looks wrong in the source - the rendered page simply
+    shows parentheses where a symbol belongs.
+    """
+    errors = _math_errors(
+        tmp_path / "repo", "docs/NOTE.md", "The step \\(\\Delta t\\) is explicit.\n"
+    )
+
+    assert len(errors) == 2
+    assert all("docs/NOTE.md:1" in error for error in errors)
+    assert any("does not render" in error for error in errors)
+
+
+def test_math_latex_block_delimiters_are_reported(tmp_path: Path) -> None:
+    errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", "\\[F = 0.02\\]\n")
+
+    assert len(errors) == 2
+
+
+def test_math_github_inline_syntax_is_quiet(tmp_path: Path) -> None:
+    """The correct form must not fire: a checker that flags good writing gets disabled."""
+    body = "The step $`\\Delta t`$ is explicit, and $`F_D`$ is the dialed fraction.\n"
+
+    assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
+
+
+def test_math_expression_split_across_a_line_break_is_reported(tmp_path: Path) -> None:
+    """Inline math is parsed within a line, so a reflowed span renders as text.
+
+    This is the half of the defect that outlives the conversion: the delimiters
+    are right, and a later paragraph rewrap breaks the render silently.
+    """
+    body = "Arterial blood holds no independent state: $`F_a \\equiv\nF_A`$ here.\n"
+
+    errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", body)
+
+    assert len(errors) == 2
+    assert "docs/NOTE.md:1" in errors[0]
+    assert "docs/NOTE.md:2" in errors[1]
+    assert all("split across a line break" in error for error in errors)
+
+
+def test_math_broken_syntax_quoted_in_a_code_span_is_quiet(tmp_path: Path) -> None:
+    """Writing *about* the defect is not committing it.
+
+    The item recording this work quotes the broken delimiters a dozen times;
+    a rule that cannot tell a quotation from a use would have to be deleted.
+    """
+    body = "Markdown wrote inline math as `` `\\(...\\)` ``, which GitHub ignores.\n"
+
+    assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
+
+
+def test_math_fenced_sample_is_quiet(tmp_path: Path) -> None:
+    body = "Before:\n\n```text\n\\(F_A\\) and \\[F = 0.02\\]\n```\n"
+
+    assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
+
+
+def test_math_shell_snippet_is_not_an_unclosed_expression(tmp_path: Path) -> None:
+    """A backtick against a dollar is ordinary in shell, and common in the queue."""
+    body = 'Comparing `"$upstream..HEAD"` against a deleted tip overcounts.\n'
+
+    assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
+
+
+def test_math_display_fence_is_quiet(tmp_path: Path) -> None:
+    """`$$` blocks are the supported block syntax and must not be touched."""
+    body = "The circuit amount is:\n\n$$\nM_C = V_C F_C\n$$\n"
+
+    assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
+
+
+def test_math_markdown_outside_the_documentation_globs_is_read(tmp_path: Path) -> None:
+    """Rendering is not a claim held to the tree, so every markdown file counts.
+
+    Seven queue items had copied the broken delimiters out of `docs/MODEL.md`,
+    and `docs/items/` is not in `DOC_GLOBS`.
+    """
+    errors = _math_errors(tmp_path / "repo", "docs/items/PL-0000-demo.md", "Rate \\(Q_i\\).\n")
+
+    assert len(errors) == 2
+    assert all("docs/items/PL-0000-demo.md" in error for error in errors)
+
+
 # --- portability ------------------------------------------------------------
 
 

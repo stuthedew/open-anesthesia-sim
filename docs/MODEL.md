@@ -64,7 +64,7 @@ The modeled system contains:
 Arterial blood is not a separate mixing compartment. Pulmonary exchange is
 modeled as flow-limited: blood leaving the lungs is assumed to equilibrate
 instantaneously with alveolar gas, so the arterial partial-pressure-equivalent
-fraction is defined as \(F_a \equiv F_A\), with no arterial volume, mixing
+fraction is defined as $`F_a \equiv F_A`$, with no arterial volume, mixing
 delay, or independent state. This matches the flow-limited mammillary
 structure used by the Gas Man reference simulator that this project's
 sevoflurane and patient parameters are drawn from — Gas Man's computational
@@ -108,13 +108,7 @@ Wall-clock time may schedule interface updates, but it must never be used as sim
 
 All model concentrations are stored internally as dimensionless partial-pressure-equivalent fractions from 0 through 1.
 
-For example:
-
-$$
-F = 0.02
-$$
-
-represents a 2% gas-phase concentration.
+For example, $`F = 0.02`$ represents a 2% gas-phase concentration.
 
 The interface alone converts between fraction and percent:
 
@@ -134,13 +128,8 @@ Every compartment stores sevoflurane as an equivalent gas volume at one document
 
 The implementation must use the same reference conditions everywhere. It must not add gas fractions, dissolved blood concentrations, and tissue concentrations directly.
 
-Let:
-
-$$
-M_x
-$$
-
-denote the equivalent gas volume of sevoflurane stored in compartment \(x\).
+Let $`M_x`$ denote the equivalent gas volume of sevoflurane stored in
+compartment $`x`$.
 
 The unit used in code is liters of equivalent pure sevoflurane gas unless the implementation document explicitly selects another consistent unit.
 
@@ -148,28 +137,28 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 
 | Symbol | Meaning | Unit |
 | --- | --- | --- |
-| \(t\) | Explicit simulation time | s |
-| \(\Delta t\) | Simulation step | s |
-| \(F_D\) | Delivered fresh-gas sevoflurane fraction | dimensionless |
-| \(F_C\) | Breathing-circuit sevoflurane fraction | dimensionless |
-| \(F_A\) | Alveolar sevoflurane fraction | dimensionless |
-| \(F_a\) | Arterial partial-pressure-equivalent fraction (flow-limited: \(F_a \equiv F_A\); not an independent state) | dimensionless |
-| \(F_v\) | Venous blood partial-pressure-equivalent fraction | dimensionless |
-| \(F_i\) | Tissue group \(i\) partial-pressure-equivalent fraction | dimensionless |
-| \(V_C\) | Mixed breathing-circuit volume | L gas |
-| \(V_A\) | Modeled alveolar gas volume | L gas |
-| \(V_v\) | Venous blood-pool volume | L blood |
-| \(V_i\) | Volume of tissue group \(i\) | L tissue |
-| \(\dot V_F\) | Fresh gas flow | L gas/min |
-| \(\dot V_A\) | Alveolar ventilation | L gas/min |
-| \(Q\) | Cardiac output | L blood/min |
-| \(Q_i\) | Blood flow to tissue group \(i\) | L blood/min |
-| \(\lambda_{b:g}\) | Sevoflurane blood:gas partition coefficient | dimensionless |
-| \(\lambda_{i:b}\) | Tissue:blood partition coefficient for group \(i\) | dimensionless |
-| \(M_C\) | Sevoflurane stored in the breathing circuit | L equivalent gas |
-| \(M_A\) | Sevoflurane stored in alveolar gas | L equivalent gas |
-| \(M_v\) | Sevoflurane stored in venous blood | L equivalent gas |
-| \(M_i\) | Sevoflurane stored in tissue group \(i\) | L equivalent gas |
+| $`t`$ | Explicit simulation time | s |
+| $`\Delta t`$ | Simulation step | s |
+| $`F_D`$ | Delivered fresh-gas sevoflurane fraction | dimensionless |
+| $`F_C`$ | Breathing-circuit sevoflurane fraction | dimensionless |
+| $`F_A`$ | Alveolar sevoflurane fraction | dimensionless |
+| $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless |
+| $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless |
+| $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless |
+| $`V_C`$ | Mixed breathing-circuit volume | L gas |
+| $`V_A`$ | Modeled alveolar gas volume | L gas |
+| $`V_v`$ | Venous blood-pool volume | L blood |
+| $`V_i`$ | Volume of tissue group $`i`$ | L tissue |
+| $`\dot V_F`$ | Fresh gas flow | L gas/min |
+| $`\dot V_A`$ | Alveolar ventilation | L gas/min |
+| $`Q`$ | Cardiac output | L blood/min |
+| $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min |
+| $`\lambda_{b:g}`$ | Sevoflurane blood:gas partition coefficient | dimensionless |
+| $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$ | dimensionless |
+| $`M_C`$ | Sevoflurane stored in the breathing circuit | L equivalent gas |
+| $`M_A`$ | Sevoflurane stored in alveolar gas | L equivalent gas |
+| $`M_v`$ | Sevoflurane stored in venous blood | L equivalent gas |
+| $`M_i`$ | Sevoflurane stored in tissue group $`i`$ | L equivalent gas |
 
 ## Compartment capacities
 
@@ -203,7 +192,7 @@ $$
 
 The blood:gas partition coefficient relates dissolved blood concentration to an equilibrium gas-phase concentration.
 
-Arterial blood is flow-limited (see "Model boundary") and has no capacity or amount balance of its own: \(F_a \equiv F_A\) at every instant.
+Arterial blood is flow-limited (see "Model boundary") and has no capacity or amount balance of its own: $`F_a \equiv F_A`$ at every instant.
 
 Venous blood stores:
 
@@ -219,7 +208,7 @@ $$
 
 ### Tissue compartments
 
-For tissue group \(i\):
+For tissue group $`i`$:
 
 $$
 M_i = V_i \lambda_{i:b}\lambda_{b:g}F_i
@@ -256,12 +245,12 @@ Version v0.1.0 contains exactly three perfusion-limited tissue groups:
 
 Each group has:
 
-- a tissue volume \(V_i\);
-- a fraction of cardiac output \(f_i\);
-- a tissue blood flow \(Q_i\);
-- a sevoflurane tissue:blood partition coefficient \(\lambda_{i:b}\);
-- a stored sevoflurane amount \(M_i\); and
-- a derived partial-pressure-equivalent fraction \(F_i\).
+- a tissue volume $`V_i`$;
+- a fraction of cardiac output $`f_i`$;
+- a tissue blood flow $`Q_i`$;
+- a sevoflurane tissue:blood partition coefficient $`\lambda_{i:b}`$;
+- a stored sevoflurane amount $`M_i`$; and
+- a derived partial-pressure-equivalent fraction $`F_i`$.
 
 Tissue flow is:
 
@@ -269,19 +258,8 @@ $$
 Q_i = f_iQ
 $$
 
-The flow fractions must satisfy:
-
-$$
-f_i > 0
-$$
-
-and:
-
-$$
-\sum_i f_i = 1
-$$
-
-within a documented validation tolerance.
+The flow fractions must satisfy $`f_i > 0`$ and $`\sum_i f_i = 1`$ within a
+documented validation tolerance.
 
 Consequently:
 
@@ -295,7 +273,7 @@ All flow terms below must use liters per second after conversion from user-facin
 
 ### Breathing circuit
 
-Fresh gas enters at concentration \(F_D\). An equal fresh-gas volume leaves through the exhaust at the current mixed-circuit concentration \(F_C\).
+Fresh gas enters at concentration $`F_D`$. An equal fresh-gas volume leaves through the exhaust at the current mixed-circuit concentration $`F_C`$.
 
 Ventilation transfers gas between the breathing circuit and alveolar compartment.
 
@@ -335,7 +313,7 @@ The existing v0.0.2 analytic reference tests must continue to pass unchanged.
 
 Ventilation moves gas between the circuit and alveolar compartment.
 
-Pulmonary blood flow enters the lungs at venous concentration \(F_v\) and leaves in equilibrium with alveolar gas at \(F_A\).
+Pulmonary blood flow enters the lungs at venous concentration $`F_v`$ and leaves in equilibrium with alveolar gas at $`F_A`$.
 
 The alveolar amount balance is:
 
@@ -365,11 +343,11 @@ A positive value represents net uptake from alveolar gas into blood. A negative 
 
 ### Arterial blood
 
-Arterial blood is flow-limited: blood leaving the lungs equilibrates instantaneously with alveolar gas, so \(F_a \equiv F_A\) at every instant (see "Model boundary"). There is no separate arterial amount balance, capacity, or time constant. Every equation below that references \(F_a\) uses the current alveolar fraction \(F_A\) directly.
+Arterial blood is flow-limited: blood leaving the lungs equilibrates instantaneously with alveolar gas, so $`F_a \equiv F_A`$ at every instant (see "Model boundary"). There is no separate arterial amount balance, capacity, or time constant. Every equation below that references $`F_a`$ uses the current alveolar fraction $`F_A`$ directly.
 
 ### Tissue uptake and return
 
-For tissue group \(i\), arterial blood enters at \(F_a\) and venous blood leaves in equilibrium with the tissue at \(F_i\).
+For tissue group $`i`$, arterial blood enters at $`F_a`$ and venous blood leaves in equilibrium with the tissue at $`F_i`$.
 
 The tissue amount balance is:
 
@@ -404,7 +382,7 @@ The tissue amount must remain unchanged.
 
 ### Venous blood
 
-Blood leaving the tissue groups enters the venous pool. Venous blood leaves that pool for the lungs at \(F_v\).
+Blood leaving the tissue groups enters the venous pool. Venous blood leaves that pool for the lungs at $`F_v`$.
 
 The venous amount balance is:
 
@@ -430,13 +408,9 @@ $$
 F_{\mathrm{tissue\ return}} = \frac{\sum_i Q_iF_i}{Q}
 $$
 
-when:
+when $`Q>0`$.
 
-$$
-Q>0
-$$
-
-At zero cardiac output, pulmonary and tissue perfusion transfers are zero and no division by \(Q\) is performed.
+At zero cardiac output, pulmonary and tissue perfusion transfers are zero and no division by $`Q`$ is performed.
 
 ## Conservation of sevoflurane
 
@@ -468,13 +442,13 @@ Arterial blood contributes no separate term because it is flow-limited and holds
 
 ### Mass-balance identity
 
-For an initial stored amount \(M_{\mathrm{initial}}\):
+For an initial stored amount $`M_{\mathrm{initial}}`$:
 
 $$
 M_{\mathrm{initial}} + M_{\mathrm{delivered}} = M_{\mathrm{stored}} + M_{\mathrm{exhausted}} + \varepsilon_M
 $$
 
-where \(\varepsilon_M\) is the numerical mass-balance residual.
+where $`\varepsilon_M`$ is the numerical mass-balance residual.
 
 Equivalently:
 
@@ -494,7 +468,7 @@ $$
 \varepsilon_{\mathrm{relative}} = \frac{|\varepsilon_M|}{\max(M_{\mathrm{initial}}+M_{\mathrm{delivered}}, M_{\mathrm{scale}})}
 $$
 
-Here \(M_{\mathrm{scale}}\) is a documented small positive reference amount that prevents division by zero.
+Here $`M_{\mathrm{scale}}`$ is a documented small positive reference amount that prevents division by zero.
 
 The release tolerance, as implemented in `core/agent_simulation_validation.py`:
 
@@ -542,14 +516,14 @@ exchange, composed by first-order operator splitting rather than a generic
 numerical integrator:
 
 1. the circuit exchanges exactly with fresh gas (`BreathingCircuit.advance_fresh_gas`), holding ventilation fixed for the step;
-2. the circuit and alveolar compartments then exchange exactly with each other (`RespiratorySystem._exchange_circuit_and_alveoli`), a closed-form solution of the two-compartment linear exchange that conserves \(M_C+M_A\) exactly;
-3. each tissue group exchanges exactly with arterial blood (`TissueGroup.advance`), holding the arterial fraction (\(=F_A\)) fixed for the step;
+2. the circuit and alveolar compartments then exchange exactly with each other (`RespiratorySystem._exchange_circuit_and_alveoli`), a closed-form solution of the two-compartment linear exchange that conserves $`M_C+M_A`$ exactly;
+3. each tissue group exchanges exactly with arterial blood (`TissueGroup.advance`), holding the arterial fraction ($`=F_A`$) fixed for the step;
 4. venous blood mixes exactly with the flow-weighted tissue outflow (`VenousBloodCompartment.advance`); and
 5. the net patient uptake is applied back to alveolar gas (`AlveolarCompartment.apply_blood_uptake`).
 
 Because each sub-exchange is solved exactly while temporarily holding the
 other flows constant, this is a first-order (Lie/Godunov) operator split of
-the fully coupled system: the splitting error is \(O(\Delta t)\) relative to
+the fully coupled system: the splitting error is $`O(\Delta t)`$ relative to
 the true simultaneous solution, even though each individual sub-step is
 exact. Two release gates bound that error empirically, and they answer
 different questions. The step-refinement test
@@ -571,8 +545,8 @@ held constant across a step, the six-state system is linear and time-invariant
 it exactly — with no splitting error at any step size. Measured against the
 same from-scratch RK4 oracle at 5% delivered, over horizons of 60 s and
 3600 s, the exponential's worst disagreement across all six states is
-\(1.3\times10^{-16}\) to \(4.8\times10^{-14}\), against
-\(5.2\times10^{-6}\) to \(1.7\times10^{-5}\) for the shipped split.
+$`1.3\times10^{-16}`$ to $`4.8\times10^{-14}`$, against
+$`5.2\times10^{-6}`$ to $`1.7\times10^{-5}`$ for the shipped split.
 **The split is kept nonetheless** (project owner, 2026-08-30). Its error is
 not unknown but bounded — by the two release gates above across the settings
 envelope, and quantified in percentage points under "Displayed precision"
@@ -607,7 +581,7 @@ three agents:
 | --- | --- |
 | Every claim "Displayed precision" makes about the last displayed digit stays true | **0.1 s** |
 | The error stays within *one* count of the last displayed digit | 0.044 s |
-| The first-order coefficient \(C\) is still flat to about 1% | 0.6 s (isoflurane) to 2.5 s (the other two) |
+| The first-order coefficient $`C`$ is still flat to about 1% | 0.6 s (isoflurane) to 2.5 s (the other two) |
 | The compartment capacity guard fires | 12 s (isoflurane), 25 s (sevoflurane), 50 s (desflurane) |
 
 Only the first is a bound worth carrying, and the other three are each
@@ -625,14 +599,14 @@ step and lands 0.205 percentage points from the same run at 0.1 s, twenty
 times the resolution the interface displays, so the readout is wrong in its
 *first* decimal while presenting itself as a settled value.
 
-A **flat coefficient** is not reassurance either. \(C\) is flat because the
-error is first order, and the error is \(C\,\Delta t\): at a 5 s step
-\(C\) is within 2% of its value at 0.1 s while the alveolar error is 1.12
-percentage points, 112 counts of the last displayed digit. \(C\) also
-*falls* for desflurane beyond about 20 s — \(1.91\times10^{-3}\
-\mathrm{s^{-1}}\) at a 30 s step against \(2.29\times10^{-3}\) at 0.1 s —
-so a flat or falling coefficient does not even indicate that the step is
-still inside the regime the coefficient was measured in.
+A **flat coefficient** is not reassurance either. $`C`$ is flat because the
+error is first order, and the error is $`C\,\Delta t`$: at a 5 s step $`C`$ is
+within 2% of its value at 0.1 s while the alveolar error is 1.12 percentage
+points, 112 counts of the last displayed digit. $`C`$ also *falls* for
+desflurane beyond about 20 s — $`1.91\times10^{-3}\ \mathrm{s^{-1}}`$ at a
+30 s step against $`2.29\times10^{-3}`$ at 0.1 s — so a flat or falling
+coefficient does not even indicate that the step is still inside the regime
+the coefficient was measured in.
 
 **One count** of the last displayed digit is the intuitive criterion and is
 stricter than anything this model claims. "Displayed precision" states the
@@ -642,12 +616,13 @@ make the shipped 0.1 s step illegal against a claim the project does not
 make.
 
 **So the bound inverts "Displayed precision".** The split is first order, so
-its error is \(C\,\Delta t\) with \(C \leq 2.29\times10^{-3}\
-\mathrm{s^{-1}}\) over the reachable input domain, and every figure in that
-section — a fifth of a count of the last digit in ordinary use, half a count
-at a maximum dial setting, one count at the envelope corner, about two counts
-on the worst reachable trajectory — is that error at exactly
-\(\Delta t = 0.1\ \mathrm{s}\). Doubling the step doubles all four, and
+its error is $`C\,\Delta t`$ with
+$`C \leq 2.29\times10^{-3}\ \mathrm{s^{-1}}`$ over the reachable input domain,
+and every figure in that section — a fifth of a count of the last digit in
+ordinary use, half a count at a maximum dial setting, one count at the
+envelope corner, about two counts on the worst reachable trajectory — is that
+error at exactly $`\Delta t = 0.1\ \mathrm{s}`$. Doubling the step doubles all
+four, and
 each of them then reads false. `MAXIMUM_SIMULATION_STEP_S` is therefore the
 largest step at which what the interface shows is still what the model
 supports, and **the supported step and the shipped step are the same
@@ -869,69 +844,38 @@ using compatible time and flow units.
 
 ### Zero-agent test
 
-If all initial stores are zero and:
-
-$$
-F_D=0
-$$
-
-then every stored amount and concentration must remain zero.
+If all initial stores are zero and $`F_D=0`$, then every stored amount and
+concentration must remain zero.
 
 ### Zero-ventilation test
 
-If:
-
-$$
-\dot V_A=0
-$$
-
-the circuit may wash in, but the patient compartments must receive no new agent through ventilation.
+If $`\dot V_A=0`$, the circuit may wash in, but the patient compartments must receive no new agent through ventilation.
 
 ### Zero-cardiac-output test
 
-If:
-
-$$
-Q=0
-$$
-
-alveolar gas may change through ventilation, but arterial blood, venous blood, and tissue stores must not change through perfusion.
+If $`Q=0`$, alveolar gas may change through ventilation, but arterial blood, venous blood, and tissue stores must not change through perfusion.
 
 ### Zero-tissue-flow test
 
-For any tissue \(i\):
-
-$$
-Q_i=0
-$$
-
-must imply:
-
-$$
-\frac{dM_i}{dt}=0
-$$
+For any tissue $`i`$, $`Q_i=0`$ must imply $`\frac{dM_i}{dt}=0`$.
 
 ### Equilibrium test
 
-If all connected compartments have the same partial-pressure-equivalent fraction:
-
-$$
-F_C=F_A=F_a=F_v=F_i
-$$
-
-then all internal transfer rates must be zero.
+If all connected compartments have the same partial-pressure-equivalent
+fraction, $`F_C=F_A=F_a=F_v=F_i`$, then all internal transfer rates must be
+zero.
 
 ### Directional ventilation test
 
-With otherwise identical conditions, increasing alveolar ventilation must accelerate the approach of \(F_A\) toward \(F_C\).
+With otherwise identical conditions, increasing alveolar ventilation must accelerate the approach of $`F_A`$ toward $`F_C`$.
 
 ### Directional solubility test
 
-In controlled synthetic cases, increasing \(\lambda_{b:g}\) must increase blood capacity and slow the rise of \(F_A/F_C\).
+In controlled synthetic cases, increasing $`\lambda_{b:g}`$ must increase blood capacity and slow the rise of $`F_A/F_C`$.
 
 ### Directional tissue-capacity test
 
-Increasing either \(V_i\) or \(\lambda_{i:b}\), with flow held constant, must lengthen the tissue time constant:
+Increasing either $`V_i`$ or $`\lambda_{i:b}`$, with flow held constant, must lengthen the tissue time constant:
 
 $$
 \tau_i =
@@ -940,13 +884,8 @@ $$
 
 ### Washout test
 
-After loading the compartments, setting:
-
-$$
-F_D=0
-$$
-
-must produce finite, nonnegative washout without spontaneous increases in total system mass.
+After loading the compartments, setting $`F_D=0`$ must produce finite,
+nonnegative washout without spontaneous increases in total system mass.
 
 Individual tissue concentrations may temporarily rise through redistribution, so the test must not incorrectly require every compartment to decrease monotonically.
 
@@ -1056,18 +995,18 @@ trajectories, and the sweep is worth re-running rather than trusted.
 
 | Run | Worst coefficient |
 | --- | --- |
-| Reference point, worst of the three agents | \(3.1\times10^{-4}\ \mathrm{s^{-1}}\) |
-| Envelope corner, sevoflurane | \(7.0\times10^{-4}\ \mathrm{s^{-1}}\) |
-| Envelope corner, isoflurane | \(7.4\times10^{-4}\ \mathrm{s^{-1}}\) |
-| Envelope corner, desflurane | \(1.21\times10^{-3}\ \mathrm{s^{-1}}\) |
-| Ventilator start, sevoflurane | \(1.03\times10^{-3}\ \mathrm{s^{-1}}\) |
-| Ventilator start, isoflurane | \(1.11\times10^{-3}\ \mathrm{s^{-1}}\) |
-| Ventilator start, desflurane | \(1.52\times10^{-3}\ \mathrm{s^{-1}}\) |
-| Unperfused load then dial off, sevoflurane | \(1.34\times10^{-3}\ \mathrm{s^{-1}}\) |
-| Unperfused load then dial off, isoflurane | \(1.40\times10^{-3}\ \mathrm{s^{-1}}\) |
-| Unperfused load then dial off, desflurane | \(2.29\times10^{-3}\ \mathrm{s^{-1}}\) |
+| Reference point, worst of the three agents | $`3.1\times10^{-4}\ \mathrm{s^{-1}}`$ |
+| Envelope corner, sevoflurane | $`7.0\times10^{-4}\ \mathrm{s^{-1}}`$ |
+| Envelope corner, isoflurane | $`7.4\times10^{-4}\ \mathrm{s^{-1}}`$ |
+| Envelope corner, desflurane | $`1.21\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Ventilator start, sevoflurane | $`1.03\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Ventilator start, isoflurane | $`1.11\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Ventilator start, desflurane | $`1.52\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Unperfused load then dial off, sevoflurane | $`1.34\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Unperfused load then dial off, isoflurane | $`1.40\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Unperfused load then dial off, desflurane | $`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ |
 
-**\(C_{\max} = 2.29\times10^{-3}\ \mathrm{s^{-1}}\) is the worst measured
+**$`C_{\max} = 2.29\times10^{-3}\ \mathrm{s^{-1}}`$ is the worst measured
 coefficient over the whole reachable domain**, and is the figure any later
 work on step size should start from rather than re-deriving. The gate allows
 a factor of 1.22 over it. That margin is deliberately narrower than the
@@ -1079,9 +1018,9 @@ that the bound follows a measurement across the settings envelope *and*
 across setting changes.
 
 Domain variation is exactly what made each previous bound wrong, twice over,
-one dimension at a time. Set at \(5\times10^{-4}\ \mathrm{s^{-1}}\) from the
+one dimension at a time. Set at $`5\times10^{-4}\ \mathrm{s^{-1}}`$ from the
 reference point alone, it was exceeded by a factor of about 2.4 at settings
-three sliders could reach. Reset at \(1.5\times10^{-3}\ \mathrm{s^{-1}}\)
+three sliders could reach. Reset at $`1.5\times10^{-3}\ \mathrm{s^{-1}}`$
 from the envelope but still measured only on runs that hold one operating
 point, it was exceeded by a ventilator start at that same corner — a
 manoeuvre a user performs — and again by a factor of 1.5 at the worst
@@ -1089,7 +1028,7 @@ reachable trajectory. Neither gate ever failed, because nothing it drove
 ever went where the error was.
 
 Keeping the margin narrow also keeps the gate consistent with "Displayed
-precision" below: at the shipped 0.1 s step this bound is \(2.8\times10^{-4}\)
+precision" below: at the shipped 0.1 s step this bound is $`2.8\times10^{-4}`$
 in fraction, or 0.028 percentage points, against a displayed resolution of
 0.01. A much wider gate would let that section's claim — that the last
 displayed digit is uncertain by about two counts at the worst reachable
@@ -1123,7 +1062,7 @@ points — alveolar minus mixed venous, on the worst trajectory — against 0.02
 for the worst single reading. A gradient between two compartments is
 therefore the least accurate thing this interface displays, not the most.
 
-A companion test confirms that halving \(\Delta t\) halves the error, which
+A companion test confirms that halving $`\Delta t`$ halves the error, which
 is what makes a bound established at one step size a bound on the
 coefficient itself. The reference states are pinned in the test file: a
 change to the oracle or to a parameter file must be re-derived and reviewed
@@ -1202,7 +1141,7 @@ spans, endpoints included:
 reasons, and the third is the one that decides it:
 
 - The governing equations stay well posed. A zero flow removes a transfer
-  term rather than dividing by one: at \(Q=0\) the tissue and venous
+  term rather than dividing by one: at $`Q=0`$ the tissue and venous
   derivatives are zero and the alveolar equation loses its uptake term, and
   "Required tests" above already specifies that behavior in the
   zero-ventilation, zero-cardiac-output, and zero-tissue-flow tests.
@@ -1213,7 +1152,7 @@ reasons, and the third is the one that decides it:
   limit. Reducing cardiac output *accelerates* alveolar wash-in, because less
   agent is carried away from the lungs per unit time — one of the central
   results in uptake and distribution, and one this model reproduces. With
-  sevoflurane at 1 MAC and the reference adult's other defaults, \(F_A/F_I\)
+  sevoflurane at 1 MAC and the reference adult's other defaults, $`F_A/F_I`$
   at five minutes is 0.41 at 10 L/min, 0.49 at 5 L/min, 0.58 at 2.5 L/min,
   0.70 at 1 L/min, and 0.86 at zero. Refusing the last of those would
   truncate the demonstration one step before its clearest case. The same
@@ -1224,12 +1163,12 @@ transport and nothing else: uptake stops, so alveolar gas approaches inspired
 and the tissue stores hold whatever they already had. It is not a model of
 circulatory arrest, cardiopulmonary bypass, or ECMO — "Known limitations"
 excludes all three — and nothing about the patient's condition follows from
-it. A run at \(Q=0\) answers "where does the agent go when perfusion stops",
+it. A run at $`Q=0`$ answers "where does the agent go when perfusion stops",
 not "what is happening to this patient".
 
 **These ranges define the verification domain.** "Independent-solution test"
 above bounds the operator split's error over the trajectories these ranges
-can produce, and its worst case — \(2.29\times10^{-3}\ \mathrm{s^{-1}}\) — is
+can produce, and its worst case — $`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ — is
 reached on a trajectory that holds cardiac output at zero. Narrowing a range
 would take that worst case out of the reachable domain, and widening one
 would admit trajectories never measured; either way the bound must be
@@ -1323,14 +1262,14 @@ The interface must show:
 - total stored amount; and
 - mass-balance residual or status.
 
-Arterial concentration is deliberately **not** in this list. Arterial blood
-is flow-limited in this model and holds no independent state: $F_a \equiv
-F_A$ (see "Model boundary"). A separate arterial readout would therefore
-display the alveolar number a second time under a different name, which
-would present a definitional identity as though it were an independently
-modeled quantity. Earlier revisions of this document required an arterial
-readout; that requirement predates the arterial simplification being made
-explicit and is withdrawn rather than being satisfied by a duplicate label.
+Arterial concentration is deliberately **not** in this list. Arterial blood is
+flow-limited in this model and holds no independent state: $`F_a \equiv F_A`$
+(see "Model boundary"). A separate arterial readout would therefore display
+the alveolar number a second time under a different name, which would present
+a definitional identity as though it were an independently modeled quantity.
+Earlier revisions of this document required an arterial readout; that
+requirement predates the arterial simplification being made explicit and is
+withdrawn rather than being satisfied by a duplicate label.
 
 Showing which agent is running is a required output, not a convenience: a
 correct concentration attributed to the wrong agent is a presentation
@@ -1439,7 +1378,7 @@ row is the *unperfused load, then dial off* trajectory of
 
 The last row is the same measurement the release gate in
 "Independent-solution test" bounds, expressed in percentage points instead of
-as a coefficient: \(2.29\times10^{-3}\ \mathrm{s^{-1}}\) at the shipped 0.1 s
+as a coefficient: $`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ at the shipped 0.1 s
 step. **The two are coupled and must be revised together** — the resolution
 chosen here rests on that measured error, and the gate is set only 1.22 times
 above it precisely so that a change large enough to invalidate this section

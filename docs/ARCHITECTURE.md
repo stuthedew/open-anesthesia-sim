@@ -174,7 +174,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-└── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, ROADMAP.md's release train and current baseline; reports resident instruction size
+└── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, markdown math syntax, ROADMAP.md's release train and current baseline; reports resident instruction size
 ```
 
 `tools/doc_check.py` holds this document to the code. The package-map trees
@@ -186,6 +186,19 @@ is not expanded — no tree draws one today — and `__init__.py` is excluded
 throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
+
+It holds every markdown file in the checkout — not only the documentation
+proper — to the math syntax GitHub renders. Two failures, both silent:
+LaTeX's `\(...\)` and `\[...\]`, which CommonMark strips to bare
+parentheses before any math parser sees them, and an expression split across a
+source line break, which renders as literal text on both sides because inline
+math is parsed within a line. `docs/MODEL.md` carried 97 of the first and
+three of the second, its whole symbol table among them. Fences, code spans and
+well-formed expressions are blanked before either rule runs, so writing
+*about* the broken syntax is not writing it. Every markdown file is read
+because rendering is not a claim held to the tree: a queue item renders on
+GitHub like anything else, and seven of them had copied the broken form out of
+`docs/MODEL.md`.
 
 It also holds `ROADMAP.md`'s release-train table to a row grammar: each step
 is a milestone carrying a version, a patch track, a numbered gate, or an

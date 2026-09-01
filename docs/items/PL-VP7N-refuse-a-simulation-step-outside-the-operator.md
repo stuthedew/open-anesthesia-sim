@@ -106,8 +106,8 @@ must be derived from, and turned up a distinction the brief above does not
 draw. Line citations refreshed at the same time; the two in "Why it matters"
 had moved.
 
-**The coefficient is measured and recorded.** \(C_{\max} =
-2.29\times10^{-3}\ \mathrm{s^{-1}}\), in bold in `docs/MODEL.md`
+**The coefficient is measured and recorded.**
+$`C_{\max} = 2.29\times10^{-3}\ \mathrm{s^{-1}}`$, in bold in `docs/MODEL.md`
 § "Independent-solution test". Do not re-derive it. `docs/MODEL.md`
 § "Supported input ranges" now also defines the reachable input domain, which
 is the other half of "applicability domain" and was undocumented when this
