@@ -662,13 +662,23 @@ def _closures(
     base: str = "origin/main",
     declined: str = "",
     derived: tuple[tuple[str, int], ...] = (),
+    shallow: bool | None = False,
 ) -> ClosureReport:
-    return ClosureReport(base=base, landed=frozenset(landed), derived=derived, declined=declined)
+    """A closure report over a complete checkout unless a case says otherwise.
+
+    `shallow=False` rather than the type's own `None` default: most of these
+    cases are about the judgment on a history that *can* be read, and the
+    type defaults to claiming nothing, which is right for it and wrong here.
+    The cases that turn it on are the last two below.
+    """
+    return ClosureReport(
+        base=base, landed=frozenset(landed), derived=derived, shallow=shallow, declined=declined
+    )
 
 
 def test_a_closure_on_the_base_without_a_pr_is_an_error() -> None:
-    # No commit on the base names a number for it, so the way back from the
-    # closure to the work genuinely does not exist.
+    # A complete history that names no number is the one state where the way
+    # back from the closure to the work genuinely does not exist.
     item = _item(status="done", closed=TODAY)
     report = analyze([item], TODAY, closures=_closures("PL-K7QX"))
 
@@ -740,3 +750,47 @@ def test_a_caller_that_does_not_ask_is_not_told() -> None:
     report = analyze([item], TODAY)
 
     assert report.errors == [] and report.declined == []
+
+
+def test_a_missing_pr_declines_on_a_shallow_clone() -> None:
+    """The conflation that turned `main` red twice on 2026-09-01.
+
+    CI checked out at `fetch-depth: 1`, so a closure carrying no `pr` read as
+    an advisory on its own merge commit - the one commit present - and became
+    an error on the very next merge, when the commit naming its number
+    dropped out of the clone. Nothing about the provenance had changed; only
+    what the checkout could see had. `PL-99Y4`.
+    """
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX", shallow=True))
+
+    assert report.errors == []
+    assert _has(report.declined, "PL-K7QX")
+    assert _has(report.declined, "shallow clone")
+    assert _has(report.declined, "absence proves nothing")
+
+
+def test_a_missing_pr_declines_when_git_will_not_say_whether_the_clone_is_complete() -> None:
+    # `is_shallow` has three answers, and the third forbids inferring anything
+    # from absence just as firmly as the second does.
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX", shallow=None))
+
+    assert report.errors == []
+    assert _has(report.declined, "git cannot say whether this checkout is complete")
+
+
+def test_a_shallow_clone_still_advises_where_the_number_was_found() -> None:
+    """Truncation qualifies an absence, never a hit.
+
+    A derived number is proof the commit was there to read, so depth cannot
+    make it less true - and suppressing it would take the one line that says
+    which number to write.
+    """
+    item = _item(status="done", closed=TODAY)
+    report = analyze(
+        [item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),), shallow=True)
+    )
+
+    assert report.errors == [] and report.declined == []
+    assert _has(report.advisories, "write `pr: 148` into the item")
