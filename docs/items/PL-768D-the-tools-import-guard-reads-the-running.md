@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: tests/unit/test_tools_portability.py, .github/workflows/quality.yml
 added: 2026-09-01
 closed: 2026-09-01
+pr: 166
 verify: uv run pytest tests/unit/test_tools_portability.py && grep -q 'def test_the_ci_floor_job_pins_the_declared_floor' tests/unit/test_tools_portability.py
 ---
 
