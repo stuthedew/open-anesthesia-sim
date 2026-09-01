@@ -10,6 +10,7 @@ feature: worker-instructions
 touches: .claude/rules/instruction-writing.md
 added: 2026-09-01
 closed: 2026-09-01
+pr: 161
 ---
 
 **Problem.** Rule 14 of `.claude/rules/instruction-writing.md` already requires
