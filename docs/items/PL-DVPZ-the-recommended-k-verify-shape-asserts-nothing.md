@@ -10,6 +10,8 @@ touches: .claude/skills/docket/SKILL.md
 added: 2026-09-01
 milestone: v0.2.8
 closed: 2026-09-01
+commit: 800b133
+pr: 153
 verify: python3 tools/doc_check.py check && grep -qF 'never a bare `-k`' .claude/skills/docket/SKILL.md
 ---
 
