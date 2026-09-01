@@ -194,17 +194,21 @@ def _delegable_store(tmp_path: Path) -> Path:
     return items
 
 
-def test_delegable_lists_only_what_qualifies(tmp_path: Path, capsys: object) -> None:
+def test_delegable_lists_only_what_qualifies(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Three of the four items must not be offered, each for a different reason."""
     assert main(["--items", str(_delegable_store(tmp_path)), "--no-git", "delegable"]) == 0
-    out = capsys.readouterr().out  # type: ignore[attr-defined]
+    out = capsys.readouterr().out
     assert "PL-AAAA" in out
     assert "verify: pytest tests/test_a.py" in out
     for excluded in ("PL-BBBB", "PL-CCCC", "PL-DDDD"):
         assert excluded not in out
 
 
-def test_delegable_says_so_when_nothing_qualifies(tmp_path: Path, capsys: object) -> None:
+def test_delegable_says_so_when_nothing_qualifies(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     """An empty result must read as 'nothing to do', not as a broken command."""
     items = tmp_path / "docs" / "items"
     items.mkdir(parents=True)
@@ -215,7 +219,7 @@ def test_delegable_says_so_when_nothing_qualifies(tmp_path: Path, capsys: object
         encoding="utf-8",
     )
     assert main(["--items", str(items), "--no-git", "delegable"]) == 0
-    assert "Nothing is delegable" in capsys.readouterr().out  # type: ignore[attr-defined]
+    assert "Nothing is delegable" in capsys.readouterr().out
 
 
 def test_shared_options_work_on_either_side_of_the_subcommand() -> None:

@@ -3,11 +3,12 @@ id: PL-CMCB
 title: The ten type: ignore directives all sit in tests/, outside the mypy gate, so warn_unused_ignores never evaluates them
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
 touches: tests/unit/test_simulation_view.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_verify.py
 added: 2026-08-31
+closed: 2026-09-01
 not-delegable: the deliverable is a verdict on ten suppressions, not an exit code - mypy over the test trees reports dozens of pre-existing errors either way, so "which of these ignores is inert" is read out of its output rather than returned by it, and the prose recording why a live one stays is a judgment
 ---
 
@@ -96,3 +97,66 @@ is the mypy half of what `PL-ZN0N` and `PL-69J3` did for `noqa`. It is the
 weakest of the seven admitted that day and is recorded in the list as the
 first to drop if the release needs shortening — inert *reporting* is not a
 loop that misfires, which is also why it stays P3.
+
+**Audited 2026-09-01. All ten are live; none was inert.** The measurement the
+approach asked for, run with a cleared cache and `MYPYPATH` set so both trees
+resolve their imports:
+
+```
+MYPYPATH="subprojects/docket/src:tools" uv run mypy tests subprojects/docket/tests
+Found 54 errors in 11 files (checked 38 source files)   # 0 of them [unused-ignore]
+```
+
+`warn_unused_ignores` was confirmed live under this config against a scratch
+file first, so the zero is a negative result rather than a flag that was never
+on. Each site was then confirmed positively by stripping its directive and
+re-running: every one produced an error at that line carrying exactly the code
+the directive names.
+
+The ten are not quite the ten this item enumerated. It listed nine at 14:26 on
+2026-08-31 while its title said ten; `PL-3CBS` (#128) added
+`subprojects/docket/tests/test_checks.py:507` five hours later, which is the
+tenth as audited. That the set moved within a day of the item being written is
+the argument `PL-J5NN` carries.
+
+| Site | Code | Verdict |
+| --- | --- | --- |
+| `test_cli.py:200`, `:218` | `attr-defined` | live, and **removed** by fixing the cause |
+| `test_checks.py:41` (`Item`), `:507` (`LandedReport`) | `arg-type` | live, kept, reason added |
+| `test_plan.py:283` (`Item`) | `arg-type` | live, kept, reason added |
+| `test_verify.py:83` (`Item`), `:91` (`Config`) | `arg-type` | live, kept, reason added |
+| `test_model.py:36` (`Item`) | `arg-type` | live, kept, reason added |
+| `test_simulation_view.py:1000`, `:1146` | `method-assign` | live, kept, no prose |
+
+**The two `attr-defined` directives were live but should not have existed.**
+Both annotate `capsys` as `object` and then reach through it, which is the
+exact anti-pattern `PL-WFJ9` removed from `render.py` - a parameter typed
+`object` read through eleven `type: ignore[attr-defined]` and two `getattr`
+guards, with nothing exercising the coupling. They were also the outliers in
+their own file: 18 of the 20 `capsys` parameters in `test_cli.py` already say
+`pytest.CaptureFixture[str]`, and these two, added by `PL-H7XN` (#116), do not.
+Annotating them the way their 18 siblings are annotated makes both directives
+unnecessary rather than merely explained, so both are gone.
+
+**The six `arg-type` directives are irreducible and now say so.** Each splats a
+`dict[str, object]` of defaults-plus-overrides into a frozen dataclass, so mypy
+matches `object` against every field's type in turn. The only narrower
+alternatives are `dict[str, Any]`, which drops checking everywhere the dict is
+used, and an `Unpack[TypedDict]` restating all sixteen of `Item`'s fields in a
+test helper. A two-line note at each site records that, because the site is
+where the question is asked.
+
+**The two `method-assign` directives are left without prose, deliberately.**
+The line assigns a function to a bound method and mypy says `Cannot assign to a
+method`; a comment restating that is the "prose restating what a command
+already prints" `CLAUDE.md` calls bloat. The Done-when asks for prose only
+where the reason is not obvious, and here it is on the line.
+
+**The `[tool.mypy] files` decision is written down as `PL-J5NN`** rather than
+taken here, per the Done-when. It carries the three routes with the numbers
+measured, recommends the scoped `[unused-ignore]`-filtered run over widening
+`files`, and records the trap that makes the naive version of it unsound: run
+without `MYPYPATH`, `mypy subprojects/docket/tests` reports all six live splat
+directives as unused, because `docket` fails to resolve and the models degrade
+to `Any`. A runner built without that guard would have produced six false inert
+verdicts.

@@ -80,6 +80,9 @@ def _item(**overrides: object) -> Item:
         path="PL-K7QX-do-the-thing.md",
     )
     base.update(overrides)
+    # Splatting `dict[str, object]` matches `object` against every field's type; the
+    # alternatives are `dict[str, Any]` or an `Unpack[TypedDict]` restating all of
+    # `Item`'s fields, both wider than this line-scoped ignore.
     return Item(**base)  # type: ignore[arg-type]
 
 
@@ -88,6 +91,9 @@ def _config(**overrides: object) -> Config:
         protected_paths=("src",), gate_paths=("Makefile",), check_command="true"
     )
     settings.update(overrides)
+    # Splatting `dict[str, object]` matches `object` against every field's type; the
+    # alternatives are `dict[str, Any]` or an `Unpack[TypedDict]` restating all of
+    # `Config`'s fields, both wider than this line-scoped ignore.
     return Config(**settings)  # type: ignore[arg-type]
 
 
