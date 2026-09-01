@@ -16,9 +16,18 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from docket.config import Config
 from docket.model import Item
-from docket.verify import changed_paths, item_commits, verify, verify_batch
+from docket.verify import (
+    LANDED_GUARD,
+    already_passing,
+    changed_paths,
+    item_commits,
+    verify,
+    verify_batch,
+)
 
 KEPT = "def test_a() -> None:\n    assert 1 == 1\n"
 
@@ -358,3 +367,116 @@ def test_a_base_current_with_its_remote_says_nothing(tmp_path: Path) -> None:
     )
 
     assert verify(root, _item(), _config(), "main").base_note == ""
+
+
+# Finding an open item whose work already landed. Real commands rather than a
+# stubbed runner, for the same reason the rest of this file uses real git:
+# what is being tested is what a shell returns for a recorded command.
+
+
+@pytest.fixture(autouse=True)
+def _no_inherited_guard(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear the re-entry guard this suite may have inherited.
+
+    `docket check` sets `DOCKET_SKIP_LANDED` for every command it runs, and
+    one of those commands is the pytest invocation recorded as `PL-3CBS`'s own
+    `verify:`. Without this, the cases below read the declined report meant for
+    a nested run and the item's command fails under `check` while passing when
+    run by hand - which is exactly the environment-dependent result the check
+    itself exists to make visible.
+    """
+    monkeypatch.delenv(LANDED_GUARD, raising=False)
+
+
+def test_an_item_whose_work_has_landed_is_found_by_running_its_command(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(verify="true")])
+    assert report.known
+    assert report.passing == ("PL-K7QX",)
+    assert report.considered == 1
+
+
+def test_an_item_whose_command_still_fails_has_not_landed(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(verify="false")])
+    assert report.known
+    assert report.passing == ()
+    assert report.considered == 1
+
+
+def test_a_closed_item_is_not_asked_whether_it_landed(tmp_path: Path) -> None:
+    # `done` and `dropped` are settled, and an untriaged capture has promised
+    # nothing yet. Only an open commitment can be open by mistake.
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-DONE", status="done", verify="true"),
+        _item(identifier="PL-CAP", status="untriaged", verify="true"),
+    ]
+    assert already_passing(root, items).passing == ()
+
+
+def test_a_landed_command_shared_by_two_open_items_proves_neither(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-A1B2", verify="true")]
+    report = already_passing(root, items)
+    assert report.passing == ("PL-K7QX", "PL-A1B2")
+    assert report.shared == ("PL-K7QX", "PL-A1B2")
+
+
+def test_a_command_unique_to_one_landed_item_is_not_called_shared(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-K7QX", verify="true"),
+        _item(identifier="PL-A1B2", verify="false"),
+    ]
+    report = already_passing(root, items)
+    assert report.passing == ("PL-K7QX",)
+    assert report.shared == ()
+
+
+def test_the_landed_check_declines_rather_than_re_entering_docket_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Two open items on this store record `verify:` commands ending in
+    # `bin/docket check`. Unguarded, the outer run re-enters itself once per
+    # candidate and each re-entry does it again.
+    root = _repo(tmp_path)
+    monkeypatch.setenv(LANDED_GUARD, "1")
+    report = already_passing(root, [_item(verify="true")])
+    assert not report.known
+    assert report.passing == ()
+    assert "re-entered" in report.declined
+
+
+def test_a_nested_docket_check_is_told_not_to_ask_about_landed_work(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    probe = f'test -n "${LANDED_GUARD}"'
+    assert already_passing(root, [_item(verify=probe)]).passing == ("PL-K7QX",)
+
+
+def test_the_landed_check_declines_when_no_command_can_be_run(tmp_path: Path) -> None:
+    # What a bare checkout with no virtualenv looks like from here: every
+    # command "not found". Reporting none passing would say only that the
+    # toolchain is missing, which is the shape of wrong answer this package
+    # declines rather than gives.
+    root = _repo(tmp_path)
+    items = [_item(identifier="PL-K7QX", verify="docket-no-such-command-xyz")]
+    report = already_passing(root, items)
+    assert not report.known
+    assert "toolchain is missing" in report.declined
+
+
+def test_one_missing_command_beside_a_real_one_still_reports_landed_work(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-K7QX", verify="docket-no-such-command-xyz"),
+        _item(identifier="PL-A1B2", verify="true"),
+    ]
+    report = already_passing(root, items)
+    assert report.known
+    assert report.passing == ("PL-A1B2",)
+
+
+def test_an_item_with_no_command_is_not_a_landed_candidate(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    assert already_passing(root, [_item(verify="")]).considered == 0

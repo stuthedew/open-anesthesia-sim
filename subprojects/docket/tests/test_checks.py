@@ -13,6 +13,7 @@ from docket.checks import analyze
 from docket.config import Config
 from docket.model import Item
 from docket.vcs import PullRequestHistory
+from docket.verify import LandedReport
 
 TODAY = date(2026, 8, 24)
 BRIEF = "**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
@@ -441,3 +442,58 @@ def test_a_caller_that_did_not_ask_is_told_nothing_either_way() -> None:
     report = analyze([_item(status="done", pr="12", closed=TODAY)], TODAY)
 
     assert report.errors == [] and report.declined == []
+
+
+# An open item whose own `verify:` command already passes. The advisory half
+# is pure - it is handed a `LandedReport` - so these assert what is said about
+# a given result; `test_verify.py` covers producing one by running commands.
+
+
+def _landed(**overrides: object) -> LandedReport:
+    base: dict[str, object] = dict(passing=("PL-K7QX",), shared=(), considered=4, declined="")
+    base.update(overrides)
+    return LandedReport(**base)  # type: ignore[arg-type]
+
+
+def _advisories(landed: LandedReport | None) -> list[str]:
+    return analyze([_item()], TODAY, landed=landed).advisories
+
+
+def test_an_item_whose_work_has_landed_is_named_as_a_candidate() -> None:
+    messages = _advisories(_landed())
+    assert _has(messages, "PL-K7QX")
+    assert _has(messages, "already passes")
+
+
+def test_a_landed_candidate_is_offered_as_two_readings_not_a_verdict() -> None:
+    # The advisory must not claim the work landed. A passing command is also
+    # what a command that does not discriminate looks like, and on this store
+    # that was every instance found, so a report saying "landed" would be
+    # wrong eight times out of eight.
+    messages = _advisories(_landed())
+    assert _has(messages, "either the work landed")
+    assert _has(messages, "does not discriminate")
+
+
+def test_a_landed_candidate_sharing_a_command_is_named_as_proving_nothing() -> None:
+    messages = _advisories(_landed(passing=("PL-K7QX", "PL-A1B2"), shared=("PL-K7QX", "PL-A1B2")))
+    assert _has(messages, "share a command with another open item")
+    assert _has(messages, "give each its own")
+
+
+def test_nothing_is_said_when_no_open_item_has_landed() -> None:
+    assert _advisories(_landed(passing=(), shared=())) == []
+
+
+def test_a_landed_check_that_could_not_run_is_reported_as_not_checked() -> None:
+    # The failure this shares with the provenance check: an empty result that
+    # means "could not look" must never render as "looked, found nothing".
+    report = analyze([_item()], TODAY, landed=LandedReport(declined="no git here"))
+    assert report.advisories == []
+    assert _has(report.declined, "no git here")
+
+
+def test_a_caller_that_did_not_ask_about_landed_work_is_told_nothing() -> None:
+    report = analyze([_item()], TODAY, landed=None)
+    assert report.advisories == []
+    assert report.declined == []

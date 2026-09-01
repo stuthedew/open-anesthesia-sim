@@ -28,6 +28,7 @@ from .config import Config
 from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .store import ID_RE
 from .vcs import PullRequestHistory
+from .verify import LandedReport
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
 
@@ -247,6 +248,52 @@ def _check_provenance(report: Report, history: PullRequestHistory | None) -> Non
             )
 
 
+def _check_landed(report: Report, landed: LandedReport | None) -> None:
+    """Say when an open item's own evidence of doneness already holds.
+
+    An item is closed by hand, so nothing notices work that merges without its
+    `status` being set. It keeps its place in `next`, `wave` and `gate` count
+    it open, and a session picks it up and re-derives what is already on
+    `main` before finding out.
+
+    An advisory rather than an error, and it names candidates rather than
+    reaching a verdict, because a passing command is consistent with two
+    findings this cannot tell apart: the work landed, or the command does not
+    discriminate and would have passed before the work too. Both want a
+    person; neither is the checker's to decide. Measured against this store on
+    2026-09-01 the second was every one of the eight it named, which is the
+    reason the wording leads with the possibility rather than the conclusion.
+
+    Both readings do close, which is what keeps this from becoming an advisory
+    that fires forever and is skimmed past: the first is discharged by setting
+    `status: done`, the second by giving the item a command that fails until
+    its work exists. A command shared with another open item is the second
+    with certainty, so it is named separately - closing anything on that
+    evidence would be acting on a command that proves nothing.
+    """
+    if landed is None:  # a caller that did not ask; every command but `check`
+        return
+    if not landed.known:
+        report.declined.append(f"open items whose work may have landed: {landed.declined}")
+        return
+    if not landed.passing:
+        return
+    one = len(landed.passing) == 1
+    message = (
+        f"{', '.join(landed.passing)} {'is' if one else 'are'} open but "
+        f"{'its' if one else 'their'} `verify:` command already passes "
+        f"({len(landed.passing)} of {landed.considered} checked): either the work landed "
+        "and the item was never closed, or the command does not discriminate and "
+        "proves nothing"
+    )
+    if landed.shared:
+        message += (
+            f". {', '.join(landed.shared)} share a command with another open item, "
+            "which cannot prove any one of them done - give each its own"
+        )
+    report.advisories.append(message)
+
+
 def _check_references(report: Report) -> None:
     """Hold every cross-reference to an item that exists."""
     known = {item.identifier for item in report.items if item.identifier}
@@ -364,14 +411,15 @@ def analyze(
     config: Config | None = None,
     history: PullRequestHistory | None = None,
     offered: frozenset[str] | None = None,
+    landed: LandedReport | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
-    `history` and `offered` are the two inputs that cannot be read from the
-    store, so they are passed in rather than fetched here: this module stays
-    pure and testable, and the caller decides whether asking git or ranking
-    the queue is worth it. Omitting either skips the check that needs it
-    rather than failing it.
+    `history`, `offered` and `landed` are the inputs that cannot be read from
+    the store, so they are passed in rather than fetched here: this module
+    stays pure and testable, and the caller decides whether asking git,
+    ranking the queue or running the items' own commands is worth it. Omitting
+    any of them skips the check that needs it rather than failing it.
 
     `offered` is the ids `next` would suggest. It is supplied by the three
     commands that put advisories in front of a person - `check`, `digest` and
@@ -384,5 +432,6 @@ def analyze(
         _check_item(item, report, settings)
     _check_references(report)
     _check_provenance(report, history)
+    _check_landed(report, landed)
     _groom(report, today, settings, offered)
     return report

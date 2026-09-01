@@ -8,7 +8,7 @@ classes: defect, infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-08-30
-verify: uv run pytest subprojects/docket/tests/test_checks.py -k landed
+verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_verify.py -k landed
 ---
 
 **Problem.** An item is closed by hand, so an item whose work merges without
