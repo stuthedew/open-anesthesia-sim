@@ -53,4 +53,5 @@ counts beside them: the two group headings and the debt/capability split. On
 that date three different totals were live at once: the timeline row said
 eighteen, four paragraphs said thirty-one, and the frozen-list intro said
 thirty-two. Admitting four entries the same day required correcting all nine
-numbers by hand, which is the tax this item describes, paid again.
+numbers by hand; admitting a fifth an hour later required correcting eight of
+them again. That is the tax this item describes, paid twice in one day.
