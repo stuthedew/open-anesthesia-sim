@@ -11,6 +11,8 @@ added: 2026-08-31
 verify: uv run pytest tests/unit/test_doc_check.py -k "gate and count"
 milestone: v0.2.8
 closed: 2026-09-01
+commit: 1c6e6f5
+pr: 142
 ---
 
 **Problem.** The number of entries on v0.2.8's frozen list is written in prose
