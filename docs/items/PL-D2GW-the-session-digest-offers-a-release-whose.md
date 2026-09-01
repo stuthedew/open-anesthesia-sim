@@ -3,12 +3,14 @@ id: PL-D2GW
 title: The session digest offers a release whose version names a milestone whose gate is still open
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: release-roadmap-seam
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md
 added: 2026-08-31
-verify: uv run pytest subprojects/docket/tests/test_release.py -k gate
+closed: 2026-09-01
+pr: 134
+verify: uv run pytest subprojects/docket/tests/test_release.py -k offer
 ---
 
 **Problem.** The digest ends every session with
@@ -115,3 +117,32 @@ not decide that a release should happen", but the line it produces reads
 two lines that tells the session to do anything. Suppressing the offer is
 therefore not the only fix available; making the sentence advisory in the same
 breath as the gate count would also close it.
+
+**Closed 2026-09-01.** `release.release_offer` puts the bump's suggestion
+beside `wave`'s current step and returns one of three answers, which
+`render._release_advice` turns into the digest's sentence:
+
+- `RESERVED` — the step the project stands on already holds that version and
+  is unfinished, so nothing is offered. The digest now reads `No release to
+  offer: the roadmap gives 0.2.8 to "the workflow works", which is unfinished
+  - the beat below is what is due`, directly above the beat it defers to.
+- `PLANNED` — the plan is itself asking for a release and named a different
+  version than the bump arrived at, so the plan's is offered. This is the
+  other half of the same seam and the opposite failure: with Gate 0 clear the
+  beat is `release v0.3.0`, while a bump from 0.2.8 over defect-classed work
+  arrives at 0.2.9, and cutting that would ship the gate's whole content as a
+  patch and leave v0.3.0 empty.
+- `STANDS` — the version is free, or no plan could be read. The line is
+  unchanged.
+
+The collision is with the *step*, not with the section recording the gate:
+under Gate 0's shape the version to cut is v0.3.0 while the gate sits under
+v0.4.0, so reading only the gate's own version would have left the case the
+brief above says reopens permanently. `docket status` printed the same guess
+as `Next version would be 0.2.8`, a bare prediction rather than an
+instruction but the same false statement in the command the `docket` skill
+sends a reader to next, so it is reconciled the same way.
+
+`verify:` was `-k gate`, which selected no test and so exited 5 whatever the
+tree held. It is now `-k offer`, which selects the five new tests and was run
+against a tree without the work first: exit 5 before, 0 after.
