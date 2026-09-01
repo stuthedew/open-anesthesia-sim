@@ -7,8 +7,8 @@ conclusion from a correct number. That sweep is a grep over five documents
 and a judgment on every hit, run at the end of a session, by hand. It leaks:
 `weight_kg` sat out of the provenance table until someone noticed it.
 
-Four of the failure modes the sweep looks for need no judgment at all, so
-they are checked here and never left to a session to remember:
+The failure modes the sweep looks for that need no judgment at all are
+checked here, and never left to a session to remember:
 
 - **Package map.** Every module under `src/anesthesia_sim/` (and `tools/`)
   appears in the matching tree in `docs/ARCHITECTURE.md`, and every path
@@ -22,6 +22,12 @@ they are checked here and never left to a session to remember:
   grammar, and the milestones, gates and step numbers run in order. The table
   is the project's only statement of which milestone is current and which is
   next, so it has to stay readable by a tool and not only by a person.
+- **Frozen-list counts.** Every count a release's frozen list states about
+  itself - in a group heading over the entries it counts, or in the version
+  or timeline row naming that release - matches the entries below. The same
+  number reached six places in `ROADMAP.md` once, and admitting four entries
+  meant correcting nine numbers by hand. Prose counts are deliberately not
+  read; see `check_gate_counts` for why.
 - **Current baseline.** `ROADMAP.md`'s version table names each released
   version once, marks exactly one of them the current baseline, and its
   "Current baseline:" heading names that same version - which is the version
@@ -83,7 +89,9 @@ try:
         HEADING_RE,
         TIMELINE_HEADING,
         VERSION_TABLE_HEADING,
+        MilestoneSection,
         baseline_heading,
+        parse_milestones,
         parse_timeline,
         parse_version_table,
         table_rows,
@@ -737,6 +745,193 @@ def check_baseline(root: Path, report: Report) -> None:
         )
 
 
+# --- the counts a frozen list states about itself ---------------------------
+
+#: How `ROADMAP.md` writes a small number. Digits are read too, because the
+#: file uses both and which one a writer reached for says nothing about what
+#: the number means.
+_UNITS = (
+    "zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "eleven",
+    "twelve",
+    "thirteen",
+    "fourteen",
+    "fifteen",
+    "sixteen",
+    "seventeen",
+    "eighteen",
+    "nineteen",
+)
+_TENS = ("twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety")
+
+# A stated count of entries: `thirty-seven entries`, `20 entries`. The word
+# before `entries` is read as a number and the phrase is passed over when it is
+# not one, so "no entries" and "the remaining entries" state no count and are
+# left alone rather than reported.
+ENTRY_COUNT_RE = re.compile(r"(?P<count>[\w-]+)\s+entries\b")
+
+# A group heading inside a frozen list: an emphasized line whose label is
+# followed by a dash and then the count of what comes after it, as in
+# `*Stops new debt being introduced - fifteen entries:*`. The count has to sit
+# on the far side of the dash, where a heading puts it, which is what keeps a
+# paragraph *about* some entries - "Four entries added 2026-08-30 from an
+# outside review of the repository" - from being read as a heading over them.
+GATE_GROUP_RE = re.compile(
+    r"^\*{1,2}.*?(?:\u2014|\s-\s)\s*(?P<entries>[\w-]+)\s+entries\b"
+    r"(?:,\s*(?P<ids>[\w-]+)\s+item ids)?"
+)
+
+
+def _count_word(word: str) -> int | None:
+    """The number a count word states, or `None` where it states none."""
+    token = word.strip().casefold()
+    if token.isdigit():
+        return int(token)
+    if token in _UNITS:
+        return _UNITS.index(token)
+    tens, _, unit = token.partition("-")
+    if tens in _TENS:
+        base = (_TENS.index(tens) + 2) * 10
+        if not unit:
+            return base
+        if unit in _UNITS[1:10]:
+            return base + _UNITS.index(unit)
+    return None
+
+
+def _subsection_end(lines: Sequence[str], start: int) -> int:
+    """Where a gate subsection stops, read the way `_gate_entries` reads it."""
+    for index in range(start, len(lines)):
+        heading = HEADING_RE.match(lines[index])
+        if heading is not None and len(heading.group("hashes")) <= 3:
+            return index
+    return len(lines)
+
+
+def _gate_groups(
+    lines: Sequence[str], section: MilestoneSection
+) -> Iterator[tuple[int, int, int | None, int, int]]:
+    """Each count-carrying group heading of a frozen list, and what follows it.
+
+    Yields the heading's line, the counts it states, and the counts of the
+    entries between it and the next such heading. A heading stating no
+    readable count is not one of these and is passed over: it groups the list
+    without claiming a size, which is a shape the file already uses.
+    """
+    end = _subsection_end(lines, section.gate_line)
+    headings: list[tuple[int, int, int | None]] = []
+    for index in range(section.gate_line, end):
+        match = GATE_GROUP_RE.match(lines[index])
+        if match is None:
+            continue
+        stated = _count_word(match.group("entries"))
+        if stated is None:
+            continue
+        ids = match.group("ids")
+        headings.append((index + 1, stated, _count_word(ids) if ids else None))
+
+    for position, (line, stated, stated_ids) in enumerate(headings):
+        following = headings[position + 1][0] if position + 1 < len(headings) else end + 1
+        covered = [entry for entry in section.gate_entries if line < entry.line < following]
+        yield line, stated, stated_ids, len(covered), sum(len(entry.ids) for entry in covered)
+
+
+def _table_counts(text: str, section: MilestoneSection) -> Iterator[tuple[int, str, int]]:
+    """Every entry count the two tables state about one release's frozen list.
+
+    Only a row whose *own* naming cell is this release is read, so the v0.3.0
+    row saying what Gate 0 holds - a list recorded under v0.4.0 - is not read
+    as a claim about v0.3.0, which records no list at all.
+    """
+    rendered = "v{}.{}.{}".format(*section.version)
+    for where, heading, level, naming in (
+        ("version table", VERSION_TABLE_HEADING, 2, 0),
+        ("timeline", TIMELINE_HEADING, 3, 1),
+    ):
+        for line, cells in table_rows(text, heading, level=level):
+            if len(cells) <= naming or rendered not in cells[naming]:
+                continue
+            for cell in cells[naming + 1 :]:
+                for match in ENTRY_COUNT_RE.finditer(cell):
+                    stated = _count_word(match.group("count"))
+                    if stated is not None:
+                        yield line, where, stated
+
+
+def check_gate_counts(root: Path, report: Report) -> None:
+    """Hold every count a frozen list states about itself to the list.
+
+    `ROADMAP.md` states the size of a release's frozen list in its own group
+    headings and in the two tables that name the release, and the same number
+    reached six places once. On 2026-08-31 three of them said "nineteen" while
+    one said "twenty-two"; on 2026-09-01 the timeline said eighteen, four
+    paragraphs said thirty-one and the list's own intro said thirty-two, and
+    admitting four entries that day meant correcting nine numbers by hand -
+    then eight of them again an hour later, for a fifth entry.
+
+    The file already states the principle: "a count written into a document
+    goes stale the next time an item closes". It applies it to the *closed*
+    count, which is deliberately not recorded and read from `bin/docket wave`
+    instead. This applies the same rule to the total.
+
+    Only counts whose meaning is fixed by where they sit are read - a group
+    heading over the entries it counts, and a cell of the version or timeline
+    table naming that release. Prose is deliberately left alone: a checker
+    cannot tell "the thirty-seven entries below are its whole content", a
+    claim about today's list, from "frozen ... at seventeen entries", a dated
+    fact that must never change. Judging that is a reader's job, so the prose
+    restates no count instead of being guessed at.
+    """
+    roadmap = root / ROADMAP
+    if not roadmap.is_file():
+        return
+    text = roadmap.read_text(encoding="utf-8")
+    lines = text.splitlines()
+
+    for section in parse_milestones(text):
+        if not section.records_a_gate:
+            continue
+        rendered = "v{}.{}.{}".format(*section.version)
+        total = len(section.gate_entries)
+        groups = list(_gate_groups(lines, section))
+
+        for line, stated, stated_ids, entries, ids in groups:
+            if stated != entries:
+                report.errors.append(
+                    f"{ROADMAP}:{line}: this group heading of {rendered}'s frozen list "
+                    f"says {stated} entries, but {entries} follow it"
+                )
+            if stated_ids is not None and stated_ids != ids:
+                report.errors.append(
+                    f"{ROADMAP}:{line}: this group heading of {rendered}'s frozen list "
+                    f"says {stated_ids} item ids, but the entries under it hold {ids}"
+                )
+
+        summed = sum(stated for _, stated, _, _, _ in groups)
+        if groups and summed != total:
+            report.errors.append(
+                f"{ROADMAP}:{section.gate_line}: the group headings of {rendered}'s frozen "
+                f"list count {summed} entries between them, but the list holds {total}"
+            )
+
+        for line, where, stated in _table_counts(text, section):
+            if stated != total:
+                report.errors.append(
+                    f"{ROADMAP}:{line}: the {where} row for {rendered} says {stated} "
+                    f"entries, but its frozen list holds {total}"
+                )
+
+
 def _tags_region(text: str) -> tuple[int, str] | None:
     """The `**Tags.**` statement, and everything up to the next section heading.
 
@@ -1388,6 +1583,7 @@ def analyze(root: Path) -> Report:
     check_citations(root, documents, report)
     check_timeline(root, report)
     check_baseline(root, report)
+    check_gate_counts(root, report)
     check_tags(root, report)
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)

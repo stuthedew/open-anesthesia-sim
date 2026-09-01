@@ -1,8 +1,14 @@
 ---
 id: PL-QDH7
 title: tools/ promises standard-library-only imports and nothing guards it, the way the parse floor now is
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: tests/unit/test_tools_portability.py
 added: 2026-09-01
+verify: uv run pytest tests/unit/test_tools_portability.py -k imports
 ---
 
 **Problem.** `tools/doc_check.py`'s module docstring promises "standard
@@ -37,3 +43,15 @@ is unnecessary.
 
 **Done when.** A test fails if any file under `tools/` imports a module that is
 neither in the standard library nor `docket`.
+
+**Triaged and admitted to v0.2.8's frozen list, 2026-09-01.** P2,
+`defect`/`infra`, `dev-tooling`, beside `PL-921W` in the "stops new debt being
+introduced" group. Admitted under the scope test rather than the completion
+rule: `PL-921W` is closed and shipped, and this is not what that entry needed
+in order to be finished — it is the second half of the same promise, and the
+lint gate is one of the pieces of machinery this release's goal names.
+
+`verify:` was run before it was written down, and watched to fail: with no
+matching test, `uv run pytest tests/unit/test_tools_portability.py -k imports`
+deselects all three tests and exits 5, which is a failure. It passes once the
+import test exists.

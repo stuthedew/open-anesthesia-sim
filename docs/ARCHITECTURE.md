@@ -174,7 +174,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-├── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, markdown math syntax, ROADMAP.md's release train and current baseline; reports resident instruction size
+├── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
 ```
 
@@ -224,6 +224,15 @@ error. A threshold would be met by deleting a rule to reach a number, and no
 number the tool could hold would know which rules a session must see before it
 reads anything; where each rule belongs stays with the reader, the way
 `docket stranded` leaves its own judgment.
+
+It also holds every count a frozen list states about itself to the entries in
+it. `ROADMAP.md` states a release's list size in its group headings and in the
+two table rows naming the release, and the same number reached six places
+once; admitting four entries on 2026-09-01 meant correcting nine numbers by
+hand, then eight of them again an hour later. Counts written in prose are
+deliberately not read, because a checker cannot tell a claim about today's
+list from a dated fact about the day it was frozen — so the prose states no
+count, and the number lives only where its meaning is fixed by where it sits.
 
 The same module reads `ROADMAP.md`'s *version* table, and `doc_check` holds
 the three statements of the current version to each other: one row per
