@@ -46,3 +46,17 @@ that cannot have shipped cannot carry it (or the field is split in two), and
 **Note.** Found 2026-08-31 while reassessing the v0.2.8 gate. Not fixed there:
 which meaning is right is a decision, and the wrong one silently rewrites the
 provenance of every closed item.
+
+**Measured 2026-09-01, while closing `PL-DL1X`.** The ambiguity has a
+consequence the note above does not name: `release.unreleased` selects `done`
+items with **no** `milestone`, so a hand-stamped one is invisible to the
+release that actually ships it. `bin/docket release 0.2.8 --dry-run` lists 46
+items and omits all ten that carry `milestone: v0.2.8` in front matter -
+`PL-1CYR`, `PL-5QKT`, `PL-921W`, `PL-DVPZ`, `PL-H8MQ`, `PL-J295`, `PL-JWXF`,
+`PL-KWC1`, `PL-QS72`, `PL-YSXF`. Every one of them is gate work, so the notes
+for "the workflow works" would omit most of the workflow work, and a tag makes
+that permanent.
+
+That moves the item off "which reading is tidier" and onto a defect with a
+deadline: it has to be settled before v0.2.8 is cut, not before the field is
+documented.

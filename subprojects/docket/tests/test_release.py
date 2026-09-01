@@ -10,10 +10,10 @@ import pytest
 from docket.model import Item
 from docket.release import (
     Readiness,
-    bump_version,
     is_untagged,
     milestones,
     outstanding_roadmap_edits,
+    prepare_bump,
     read_version,
     release_notes,
     suggest_version,
@@ -84,11 +84,15 @@ def test_a_major_bump_is_never_inferred() -> None:
     )
 
 
-def test_bump_rewrites_the_single_source(tmp_path: Path) -> None:
+def test_bump_rewrites_the_single_source_and_not_before_it_is_written(tmp_path: Path) -> None:
+    """Preparing proves the bump; nothing reaches the file until it is written."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text('[project]\nname = "x"\nversion = "0.2.2"\n', encoding="utf-8")
 
-    assert bump_version(pyproject, "0.3.0") == "0.2.2"
+    prepared = prepare_bump(pyproject, "0.3.0")
+    assert read_version(pyproject) == "0.2.2"
+
+    assert prepared.write() == "0.2.2"
     assert read_version(pyproject) == "0.3.0"
 
 
@@ -187,7 +191,9 @@ def test_bumping_a_missing_version_still_fails_loudly(tmp_path: Path) -> None:
     target.write_text('[project]\nname = "x"\n', encoding="utf-8")
 
     with pytest.raises(ValueError):
-        bump_version(target, "0.3.0")
+        prepare_bump(target, "0.3.0")
+    with pytest.raises(OSError):
+        prepare_bump(tmp_path / "absent.toml", "0.3.0")
 
 
 def test_a_shipped_version_with_no_tag_is_reported() -> None:

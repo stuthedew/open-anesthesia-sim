@@ -10,6 +10,8 @@ verify: uv run pytest subprojects/docket/tests/test_cli.py -k "show and flight"
 status: done
 added: 2026-09-01
 closed: 2026-09-01
+commit: 074a3da
+pr: 152
 ---
 
 **Problem.** `plan.recommend` excludes in-flight ids outright, and its docstring

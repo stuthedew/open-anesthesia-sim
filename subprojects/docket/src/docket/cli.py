@@ -20,10 +20,10 @@ from .config import load as load_config
 from .model import Item
 from .plan import features, gate, recommend
 from .release import (
-    bump_version,
     is_untagged,
     milestones,
     outstanding_roadmap_edits,
+    prepare_bump,
     read_version,
     readiness,
     release_notes,
@@ -555,10 +555,21 @@ def cmd_release(args: argparse.Namespace) -> int:
         print("Dry run: nothing was changed.")
         return 0
 
+    # Prove the bump before writing anything: a release records all of itself
+    # or none of it. Stamping first and bumping afterwards meant a version file
+    # the bump rejects left the store claiming a release that never happened,
+    # with nothing recording which stamps to unpick.
+    try:
+        bump = prepare_bump(root / config.version_file, version)
+    except (OSError, ValueError) as error:
+        print(f"Cannot bump {config.version_file}, so nothing was stamped and nothing was written:")
+        print(f"  {error}")
+        return 1
+
     for item in stamp(ready.shippable, name):
         original = next(i for i in items if i.identifier == item.identifier)
         write_item(directory, item, replace=directory / original.path)
-    previous = bump_version(root / config.version_file, version)
+    previous = bump.write()
     notes_path = root / "docs" / "releases" / f"{name}.md"
     notes_path.parent.mkdir(parents=True, exist_ok=True)
     notes_path.write_text(notes, encoding="utf-8")
