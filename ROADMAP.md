@@ -45,7 +45,7 @@ capability-boundary rule above governs.
 | v0.2.5 | Completed | Licensing, documentation and planning release: the project is licensed Apache-2.0, v0.3.0 through the MVP is scoped onto one timeline with its debt gates, Phase 0 is retired in favour of the standing debt gate, and `docs/worker.md` states what a delegated worker decides for itself. No source file changed. |
 | v0.2.6 | Completed | Delegation and release-tooling release on the same model: work whose success a command can prove now has to name that command and have run it, `docket` computes the debt gate and the cadence beat instead of a session transcribing them, and the release path stopped leaving `uv.lock` stale, while drift between this table and the version file became something a check catches - caught, not prevented, since nothing writes the row. The one scientific item widened the splitting-error bound to the whole settings envelope. No equation, parameter, or numerical method changed. |
 | v0.2.7 | Completed / current baseline | Session-discipline and applicability-domain release on the same model: the simulation step now refuses inputs outside the operator split's stated applicability domain and the splitting-error bound is measured across setting changes rather than one held operating point, while ten process items closed the three channels by which product work leaked into discussions that were not about it, gave multi-step instructions a written standard, and cleared three live tooling defects. No equation or parameter changed, and the numerical method is unchanged - it is now guarded at the domain it was always specified for. |
-| v0.2.8 | Planned / scoped | The workflow works: thirty-seven entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the type-check and lint gates, and the instructions a session reads before it does anything. No simulator change, and no equation, parameter, numerical method or displayed value changes. |
+| v0.2.8 | Planned / scoped | The workflow works: thirty-eight entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the type-check and lint gates, and the instructions a session reads before it does anything. No simulator change, and no equation, parameter, numerical method or displayed value changes. |
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
@@ -280,7 +280,7 @@ adds no capability and exists to clear the ground they are built on:
 
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
-| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-seven entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 35 S |
+| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 35 S |
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 3 M, 17 S |
 | — | **v0.3.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Placed here deliberately, ahead of the substance generalization that would otherwise force the vocabulary to be invented and restructured at once. Not yet scoped. | — |
 | 3 | **v0.4.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt the milestone clears itself. | 5 M, 6 S |
@@ -658,7 +658,7 @@ release, and `tools/doc_check.py` holds those three to the entries.
   Required scope rather than as gate entries, and those are in scope - so the
   item carries both candidate rules and what each costs.
 
-*Stops new debt being introduced — fifteen entries:*
+*Stops new debt being introduced — sixteen entries:*
 
 - PL-ZQ9C (M) Record an item's pull request, so provenance survives
   squash-merge
@@ -696,6 +696,10 @@ release, and `tools/doc_check.py` holds those three to the entries.
   bare `python3`, and nothing guards it the way `subprojects/docket/` is
   guarded. Admitted 2026-08-31 under the scope test: the lint gate is named in
   the goal, and this is the same second-site miss as `PL-J295`, one tool over.
+- PL-QDH7 (S) `tools/` promises standard-library-only imports and nothing
+  guards it, the way the parse floor now is. Admitted 2026-09-01 under the
+  scope test: the lint gate is named in the goal, and this is the other half
+  of `PL-921W`'s promise, left unguarded where that item guarded the first.
 - PL-CMCB (S) All ten `type: ignore` directives sit under `tests/`, outside
   `[tool.mypy] files`, so `warn_unused_ignores` has never evaluated one.
   Admitted 2026-08-31 under the scope test: it is the mypy half of what
@@ -781,9 +785,9 @@ is about the simulator, which this release does not touch. A `P0` is a hotfix
 on its own branch under the `docket` skill and joins no list.
 
 **Four entries were added under the completion rule — PL-J295, PL-KWC1,
-PL-XCYB and PL-WFJ9, all above.** Fifteen more were added under the scope test
-rather than this one, ten on 2026-08-31 and five on 2026-09-01, and are marked
-as such in the list; the reasoning is beneath it. PL-XCYB is paired with PL-ZQ9C rather than queued behind it. It was found while handing
+PL-XCYB and PL-WFJ9, all above.** The rest were added under the scope test
+rather than this one, each marked as such in the list with the date and the
+reasoning; that test is beneath it. PL-XCYB is paired with PL-ZQ9C rather than queued behind it. It was found while handing
 PL-ZQ9C to a session, by checking whether that item's proposed migration was
 feasible, and it makes the difference between a provenance check that is right
 and one that fails loudly against correct data in the environment most sessions
