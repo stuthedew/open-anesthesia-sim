@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import re
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -759,6 +759,60 @@ def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullReq
         if match is not None:
             found.add(int(match.group(1) or match.group(2)))
     return PullRequestHistory(numbers=frozenset(found))
+
+
+@dataclass(frozen=True)
+class ClosureReport:
+    """Which item closures already stand on the default base, or why that is unknown.
+
+    Deliberately not gated on `is_shallow`, unlike `merged_pull_requests`.
+    That reader needs history, which a shallow clone answers confidently and
+    wrongly; this one needs a single tree read, which `git show <ref>:<path>`
+    answers correctly however truncated the history behind the ref is. The
+    distinction earns its own type: a shallow clone is the normal state of an
+    agent session, so a reader that declined there would decline in exactly
+    the case this exists to cover.
+    """
+
+    base: str = ""
+    landed: frozenset[str] = frozenset()
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def closures_on_base(
+    root: Path,
+    closures: Mapping[str, str],
+    *,
+    items_dir: str = "docs/items",
+    runner: Runner | None = None,
+) -> ClosureReport:
+    """Which of `closures` already read `status: done` on the default base.
+
+    `closures` maps an item id to the file name that holds it, and is expected
+    to carry only the items whose closure is in question: each one costs a
+    `git show`, and the caller is the one that knows which those are.
+
+    An item absent from the base is a closure that has not landed, which is
+    the whole point rather than a failure to read it. So is one whose file is
+    there under another name, because retitling an item renames its file and
+    the old path stops resolving. Both are accepted rather than reported, which
+    is the safe direction: this rule's failure mode is blocking a closure that
+    is already correct.
+    """
+    run = runner or _run_git
+    base = default_base(root, runner=run)
+    if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
+        return ClosureReport(declined="no default branch this checkout can read")
+    landed: set[str] = set()
+    for identifier, name in closures.items():
+        text = run(["show", f"{base}:{items_dir}/{name}"], root)
+        if text and parse_item(text, name).status == "done":
+            landed.add(identifier)
+    return ClosureReport(base=base, landed=frozenset(landed))
 
 
 # An item file is named `<id>-<slug>.md`, so the id can be read from a tree
