@@ -456,7 +456,9 @@ def test_a_caller_that_did_not_ask_is_told_nothing_either_way() -> None:
 
 
 def _landed(**overrides: object) -> LandedReport:
-    base: dict[str, object] = dict(passing=("PL-K7QX",), shared=(), considered=4, declined="")
+    base: dict[str, object] = dict(
+        passing=("PL-K7QX",), shared=(), vacuous=(), considered=4, declined=""
+    )
     base.update(overrides)
     return LandedReport(**base)  # type: ignore[arg-type]
 
@@ -503,6 +505,63 @@ def test_a_caller_that_did_not_ask_about_landed_work_is_told_nothing() -> None:
     report = analyze([_item()], TODAY, landed=None)
     assert report.advisories == []
     assert report.declined == []
+
+
+# An open item whose own `verify:` command selects no test. The counterpart to
+# the block above and the reason it is needed: pytest exits 5 having collected
+# nothing, 5 is not 0, and so the already-passes check reads such a command as
+# one that correctly fails. `test_verify.py` covers reading the exit code.
+
+
+def test_an_item_whose_command_selects_no_test_is_reported() -> None:
+    messages = _advisories(_landed(passing=(), vacuous=("PL-K7QX",)))
+    assert _has(messages, "PL-K7QX")
+    assert _has(messages, "selects no test")
+
+
+def test_a_selects_no_test_advisory_is_distinct_from_one_that_fails() -> None:
+    # The whole finding: a command that ran nothing must not read as one that
+    # failed. The two share an exit status and mean opposite things, so the
+    # sentence has to name pytest's own code as the evidence.
+    messages = _advisories(_landed(passing=(), vacuous=("PL-K7QX",)))
+    assert _has(messages, "exited 5, which is not 0")
+    assert not _has(messages, "already passes")
+
+
+def test_a_selects_no_test_advisory_counts_the_queue_it_searched() -> None:
+    # `PL-D2GW`'s was found by hand and nothing said it was the only one, so
+    # the scale of the finding travels with it.
+    messages = _advisories(_landed(passing=(), vacuous=("PL-K7QX", "PL-A1B2"), considered=9))
+    assert _has(messages, "2 of 9 checked")
+
+
+def test_a_selects_no_test_advisory_asks_rather_than_condemns() -> None:
+    # A selector naming a test the work has yet to write is the shape the
+    # docket skill recommends. Only the item's author can tell that from a
+    # selector no work will ever satisfy, so the advisory must not decide it.
+    messages = _advisories(_landed(passing=(), vacuous=("PL-K7QX",)))
+    assert _has(messages, "check that the name each selector matches")
+
+
+def test_an_item_that_both_passes_and_selects_nothing_cannot_happen_but_reads_apart() -> None:
+    # Distinct populations, distinct sentences: one report carrying both must
+    # produce two advisories, not one merged claim.
+    messages = _advisories(_landed(passing=("PL-K7QX",), vacuous=("PL-A1B2",)))
+    assert len([m for m in messages if "already passes" in m]) == 1
+    assert len([m for m in messages if "selects no test" in m]) == 1
+
+
+def test_nothing_is_said_when_no_open_item_selects_no_test() -> None:
+    assert _advisories(_landed(passing=(), vacuous=())) == []
+
+
+def test_a_selects_no_test_check_that_could_not_run_says_so_once() -> None:
+    # One execution of one set of commands, so one refusal. Two lines would
+    # read as two checks having failed to run.
+    report = analyze([_item()], TODAY, landed=LandedReport(declined="no toolchain here"))
+    assert report.advisories == []
+    assert len(report.declined) == 1
+    assert _has(report.declined, "no toolchain here")
 
 
 # --- a closure's `pr`, and when it is owed -----------------------------------
