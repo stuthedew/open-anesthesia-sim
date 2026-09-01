@@ -9,6 +9,7 @@ feature: public-history
 touches: subprojects/docket/src/docket/checks.py, .claude/skills/docket/SKILL.md, subprojects/docket/tests/test_checks.py
 added: 2026-09-01
 closed: 2026-09-01
+pr: 140
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'marked done on' subprojects/docket/src/docket/checks.py
 ---
 
