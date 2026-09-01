@@ -270,6 +270,18 @@ correction rather than handing the question back.
   where the **web harness says not to open one unless the owner explicitly
   asks**, this bullet is that ask, standing rather than per pull request, so a
   session reading both proceeds rather than stalls.
+- **A merged pull request leaves a stale tracking ref; drop it before
+  restarting the branch.** GitHub deletes the head branch on merge, but the
+  local `origin/<branch>` survives, and the stop hook picks its comparison
+  point by whether that ref *resolves locally*, not by whether the branch
+  still exists — so it reports everything `main` has gained since as unpushed,
+  and obeying it recreates a dead branch identical to `main`, with no content
+  and no pull request. Restart with `git branch -dr origin/<branch> && git
+  fetch origin main && git checkout -B <branch> origin/main`. **Not `git fetch
+  --prune`**: such a ref can be the only surviving copy of an item captured on
+  a branch nobody merged, which is why `fetch_remote` declines to prune and
+  what `bin/docket stranded` recovers. `PL-1Q3S` carries the diagnosis and the
+  upstream half.
 - **Capture intent, and route it by how ready it is.** A **specific change** is
   a queue item, written now. A **feature wanted but not yet ready to build** is
   one unscoped line of intent in `ROADMAP.md`'s "Planned milestones" — filing it

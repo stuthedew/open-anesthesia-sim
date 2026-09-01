@@ -3,11 +3,13 @@ id: PL-1Q3S
 title: A merged PR leaves a stale tracking ref, so the stop hook demands a push that would recreate a dead branch
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, session-cost
 feature: dev-tooling
-touches: CLAUDE.md, docs/worker.md
+touches: CLAUDE.md
 added: 2026-08-30
+closed: 2026-09-01
+pr: 132
 not-delegable: the hook itself is `~/.claude/stop-hook-git-check.sh`, outside the repository and outside any session's reach. Only the repo-side habit can be fixed here, and confirming the hook then passes means ending a session, which no check can run beforehand.
 ---
 
@@ -75,3 +77,35 @@ which is one of the six pieces of machinery the release's goal names. The
 "workable here" limit in `ROADMAP.md` excludes a finding nothing in the tree can
 close, so it does not reach this one: the repository-side edit closes it, and
 what stays upstream is recorded above so nobody re-diagnoses it.
+
+**Done 2026-09-01, with the stated fix narrowed.** The rule is a bullet in
+`CLAUDE.md`'s queue section, immediately after the commit-and-push bullet it
+qualifies - which is the moment it fires, and the reason it is resident rather
+than routed: a session meets this after a merge, before it would open any file
+a path-scoped rule could match, and the hook that would otherwise catch it is
+outside the repository.
+
+**The blanket prune the brief names would trade this defect for a worse one.**
+`git fetch --prune origin`, which the *Fix.* paragraph above proposes, is not
+what the rule says. A tracking ref for a branch the remote no longer has can
+be the only surviving copy of an item captured on a branch nobody merged -
+`fetch_remote` in
+`subprojects/docket/src/docket/vcs.py` declines `--prune` for exactly that
+reason, in as many words, and `stranded` exists to recover what such a ref
+holds. A blanket prune drops those refs along with the merged branch's. The
+rule therefore names `git branch -dr origin/<branch>`, which removes the one
+ref whose branch just merged and leaves every other stale ref for `stranded` to
+read. Verified in this session against a probe ref: `git branch -dr` deletes
+the named remote-tracking ref and nothing else.
+
+**Why no deterministic half.** `CLAUDE.md`'s routing test asks for a check or a
+hook before resident prose, and there is none available here. The stale ref
+comes into existence *mid-session*, at the moment the pull request merges: the
+session-start digest and the `PreToolUse` branch guard have both already run
+and neither fires again, and a container is a fresh clone, so a later session
+never holds the ref at all. A project-side `Stop` hook running the prune is the
+only repo-side trigger at the right moment, and it is not one: hook ordering
+against `~/.claude/stop-hook-git-check.sh` is unspecified, so it would race the
+very read it exists to correct, and it would pay a network round trip on every
+stop to fix a condition that arises a few times a release. The prose is the
+mechanism that fits the moment.
