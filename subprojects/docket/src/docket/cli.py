@@ -161,6 +161,10 @@ def cmd_check(args: argparse.Namespace) -> int:
             {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path},
             items_dir=config.items_dir,
         ),
+        # Read rather than asked of git: a stamped `milestone:` is judged
+        # against the version the project is actually on, and an absent
+        # version file leaves the question unasked rather than answered.
+        version=read_version(root / config.version_file),
     )
     print(render.format_check(report))
     return 1 if report.errors else 0

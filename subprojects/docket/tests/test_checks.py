@@ -60,6 +60,50 @@ def test_a_missing_id_is_an_error() -> None:
     assert _has(_errors(_item(identifier="")), "no `id`")
 
 
+def _shipped(**overrides: object) -> Item:
+    """A closed item, which is the only kind that may carry a milestone."""
+    base: dict[str, object] = dict(status="done", closed=date(2026, 8, 30), commit="abc1234")
+    base.update(overrides)
+    return _item(**base)
+
+
+def test_a_milestone_on_unfinished_work_is_an_error() -> None:
+    """`milestone:` records the release an item went out in, so it cannot precede one."""
+    assert _has(_errors(_item(status="ready", milestone="v0.2.8")), "cannot have shipped")
+    assert _has(_errors(_item(status="needs-decision", milestone="v0.2.8")), "cannot have shipped")
+
+
+def test_a_milestone_naming_a_release_that_has_not_been_cut_is_an_error() -> None:
+    """PL-HXYY: ten items carried `milestone: v0.2.8` while the project was on 0.2.7.
+
+    `release.unreleased` selects finished work with no milestone, so each was
+    invisible to the release that would have shipped it - omitted from its own
+    notes, which a tag then makes permanent.
+    """
+    report = analyze([_shipped(milestone="v0.2.8")], TODAY, version="0.2.7")
+
+    assert _has(report.errors, "names a release later than the current version (0.2.7)")
+
+
+def test_a_milestone_naming_a_release_already_cut_is_not() -> None:
+    """The state every stamped item is in after `docket release` has run."""
+    assert analyze([_shipped(milestone="v0.2.7")], TODAY, version="0.2.7").errors == []
+    assert analyze([_shipped(milestone="v0.2.7")], TODAY, version="0.3.0").errors == []
+
+
+def test_a_milestone_is_not_judged_where_the_comparison_cannot_be_made() -> None:
+    """A version this rule cannot read is left alone rather than failed.
+
+    `None` is a caller that did not ask, an empty string is a project with no
+    version file, and anything outside `major.minor.patch` - on either side of
+    the comparison - is a naming scheme the rule has no opinion about.
+    """
+    assert analyze([_shipped(milestone="v9.9.9")], TODAY).errors == []
+    assert analyze([_shipped(milestone="v9.9.9")], TODAY, version="").errors == []
+    assert analyze([_shipped(milestone="v9.9.9")], TODAY, version="2026.08").errors == []
+    assert analyze([_shipped(milestone="2026.08")], TODAY, version="0.2.7").errors == []
+
+
 def test_a_malformed_id_is_an_error() -> None:
     assert _has(_errors(_item(identifier="PL-1")), "not a valid item id")
 
