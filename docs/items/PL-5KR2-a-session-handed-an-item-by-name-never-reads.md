@@ -5,10 +5,11 @@ priority: P2
 effort: S
 classes: defect, infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/SKILL.md
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/SKILL.md, subprojects/docket/README.md
 verify: uv run pytest subprojects/docket/tests/test_cli.py -k "show and flight"
-status: ready
+status: done
 added: 2026-09-01
+closed: 2026-09-01
 ---
 
 **Problem.** `plan.recommend` excludes in-flight ids outright, and its docstring

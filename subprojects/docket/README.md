@@ -218,9 +218,9 @@ would be *removed* from `docket next`, so believing a walk that cannot be
 checked hides startable work, while naming the ref costs a line of output.
 
 **And the naming reaches wherever the queue is read**, not only `docket
-flight`. The six answers that rank or mark against in-flight work — `next`,
-`list`, `status`, `concurrent`, `delegable` and the session digest — took the
-ids alone, and a `set[str]` cannot carry "and one ref went unread": the same
+flight`. The seven answers that rank or mark against in-flight work — `next`,
+`list`, `status`, `concurrent`, `delegable`, `show` and the session digest —
+took the ids alone, and a `set[str]` cannot carry "and one ref went unread": the same
 checkout that told `flight` it could not read a ref told `next` that the queue
 was fully known. So they take the whole `FlightReport` and read `ids` off it,
 which keeps the gap in the caller's hands and puts one sentence under every
@@ -231,6 +231,20 @@ answer:
 holds, so any item its commits carry is missing here; `bin/docket flight`
 names it.
 ```
+
+`show` is the newest of the seven and arrived last for a reason worth
+recording: the exclusion itself lives in `plan.recommend`, so it reached a
+session only through `next`. An item named by the project owner skips `next`,
+and `triage`, `check` and reading the file directly all said nothing — so the
+guard against two sessions doing one item was applied only on the path where a
+person had *not* chosen the work. Marking it in `show` is the smaller half of
+that repair; the larger half is prose, in the `docket` skill, because a session
+handed an item is not obliged to run any command at all.
+
+Neither half reaches the network. Only `docket branch` calls `fetch_remote`, so
+`flight` and `show` answer from the refs this checkout already holds — which is
+what lets them answer in a bare or offline tree, and what makes a fetch the
+caller's business before the question is worth asking.
 
 It still reports rather than refuses, for the reason the rest of this read
 does: a ref past a truncated clone's horizon is the ordinary state of an agent
