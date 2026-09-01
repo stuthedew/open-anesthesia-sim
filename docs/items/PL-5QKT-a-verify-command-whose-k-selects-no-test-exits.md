@@ -3,12 +3,14 @@ id: PL-5QKT
 title: A verify command whose -k selects no test exits 5, so it reads as discriminating forever
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: delegation
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-01
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'selects no test' subprojects/docket/src/docket/checks.py
+milestone: v0.2.8
+closed: 2026-09-01
 ---
 
 **Problem.** `PL-D2GW` carried `verify: uv run pytest
@@ -67,3 +69,44 @@ before being written down: it exits 1 today.
 bound), which is a different defect in the same two files. Both change how
 `checks.py` treats the commands it runs, so they contend and should be worked
 together or in sequence rather than in parallel.
+
+**Worked 2026-09-01.** `verify.selects_no_test(command, status)` is the
+discriminator: pytest's exit 5 *and* a command that names pytest. Both halves
+are load-bearing. 5 alone would misread any other program's fifth exit code as
+an empty selection, which is the guess this check exists to stop, made by the
+check itself; the pytest test alone has no status to read. `already_passing`
+records the ids on `LandedReport.vacuous` in the same run that finds the
+passing ones - no second execution of 33 commands - and `checks._check_selects_nothing`
+writes the sentence beside `_check_landed`, which is where the item asked for
+it. `verify_item` says it too, on the check line, because the review of a
+delegated branch is where the confusion costs most: "the command failed" sends
+a reviewer to look for missing work, "the command selected no test" sends them
+to the command.
+
+Left an advisory rather than an error deliberately. `-k` naming a test the
+work has yet to write is the shape `.claude/skills/docket/SKILL.md` recommends
+and is behaving as intended before the work; `-k` naming a test no work will
+ever create is a specification that can never be met. The exit code cannot
+separate those two and only the item's author can, so the sentence asks
+instead of condemning.
+
+Tests for the exit code run pytest itself rather than stubbing a 5: the whole
+claim rests on what pytest returns for an empty selection, and a stub would
+test the author's memory of it.
+
+**The count, which the item asked for: 20 of 33.** Not one instance but the
+majority, and every one of them the `-k <name the work will add>` shape the
+skill recommends - `PL-0MLQ`, `PL-10MX`, `PL-20CQ`, `PL-3576`, `PL-6P9Y`,
+`PL-8JY7`, `PL-DL1X`, `PL-GMM7`, `PL-GVC0`, `PL-GVXP`, `PL-H8MQ`, `PL-NSN9`,
+`PL-NV9W`, `PL-Q2BJ`, `PL-RWZV`, `PL-S2L4`, `PL-S5YM`, `PL-TG60`, `PL-W1LN`,
+`PL-Y5BV`. That is a larger finding than the item was written against and it
+is not settled here: an advisory naming twenty items every run is the shape
+`_groom` already learned cannot reach zero. `PL-DVPZ` carries the question of
+what the convention should be and `PL-JWXF` the narrower lever - scoping this
+advisory to what `next` is about to offer, which is the repair `_groom` already
+made to the same shape of finding.
+
+**`touches` gained `subprojects/docket/tests/test_verify.py`.** The item
+scoped the running half to `verify.py` and its message to `checks.py` but
+listed only `test_checks.py`, so the tests for reading the exit code had
+nowhere declared to go.
