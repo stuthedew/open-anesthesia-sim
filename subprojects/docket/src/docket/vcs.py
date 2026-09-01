@@ -765,13 +765,24 @@ def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullReq
 class ClosureReport:
     """Which item closures already stand on the default base, or why that is unknown.
 
-    Deliberately not gated on `is_shallow`, unlike `merged_pull_requests`.
-    That reader needs history, which a shallow clone answers confidently and
-    wrongly; this one needs a single tree read, which `git show <ref>:<path>`
-    answers correctly however truncated the history behind the ref is. The
-    distinction earns its own type: a shallow clone is the normal state of an
-    agent session, so a reader that declined there would decline in exactly
-    the case this exists to cover.
+    Reading *whether* a closure landed is deliberately not gated on
+    `is_shallow`, unlike `merged_pull_requests`. That reader needs history,
+    which a shallow clone answers confidently and wrongly; this one needs a
+    single tree read, which `git show <ref>:<path>` answers correctly however
+    truncated the history behind the ref is. The distinction earns its own
+    type: a shallow clone is the normal state of an agent session, so a reader
+    that declined there would decline in exactly the case this exists to cover.
+
+    Reading *which pull request* landed it is the other kind of question, and
+    `shallow` is what keeps the two apart. A derived number is trustworthy at
+    any depth - the commit was found, and finding it is proof enough. Its
+    absence is not: at `fetch-depth: 1` there is one commit to search, so
+    every closure but the newest yields nothing, and a caller that read that
+    as "no commit names a number" would call correct provenance lost. It did:
+    `main` was red on 97573ae and 3b37a75 for a `pr` recoverable from a commit
+    the clone no longer held (`PL-99Y4`). So the emptiness is reported with
+    the depth that produced it, and the caller decides - the rule `PL-J295`
+    already set for `tags`, applied to the question beside it.
     """
 
     base: str = ""
@@ -780,6 +791,11 @@ class ClosureReport:
     #: the base still holds that commit. Pairs rather than a mapping to keep
     #: the type hashable like everything else here; `numbers` unpacks it.
     derived: tuple[tuple[str, int], ...] = ()
+    #: Whether the history behind `base` is truncated, or `None` where git
+    #: will not say - straight from `is_shallow`, and read only to qualify
+    #: what a *missing* `derived` entry is allowed to mean. Defaults to `None`
+    #: so that a report built without it claims nothing.
+    shallow: bool | None = None
     declined: str = ""
 
     @property
@@ -818,11 +834,11 @@ def closures_on_base(
     already exist: the subject a squash merge writes carries the item ids it
     opens with and the number in trailing parentheses.
 
-    Deriving nothing is a normal answer, not a failure. A truncated history
-    reaches back far enough for a closure that just merged, which is the case
-    this serves; an older one whose commit the checkout no longer holds simply
-    yields no number, and the caller treats that as it treated every missing
-    `pr` before.
+    Deriving nothing is a normal answer, not a failure, and `shallow` is
+    recorded alongside so the caller can tell which kind of nothing it is. A
+    complete history that names no number means none exists; a truncated one
+    means the commit may simply be outside it, which at `fetch-depth: 1` is
+    true of every closure but the newest.
     """
     run = runner or _run_git
     base = default_base(root, runner=run)
@@ -834,7 +850,10 @@ def closures_on_base(
         if text and parse_item(text, name).status == "done":
             landed.add(identifier)
     return ClosureReport(
-        base=base, landed=frozenset(landed), derived=_merges_naming(landed, base, root, run)
+        base=base,
+        landed=frozenset(landed),
+        derived=_merges_naming(landed, base, root, run),
+        shallow=is_shallow(root, runner=run),
     )
 
 

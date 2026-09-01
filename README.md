@@ -122,6 +122,13 @@ commands under whatever `python3` is on your PATH rather than under a pinned
 interpreter, so on a machine already at 3.14 the `floor` job is the only place
 they meet the older one.
 
+Both CI jobs check out the full history (`fetch-depth: 0`), which a local
+clone usually does not have. Three checks need it and say so rather than
+guessing when they lack it — the release-tag read in `tools/doc_check.py`,
+and the recorded- and missing-pull-request reads in `bin/docket check`. So a
+shallow checkout that reports them as not checked is working correctly, and
+CI is where they actually run.
+
 ## Documentation
 
 - [`ROADMAP.md`](ROADMAP.md) — authoritative version and milestone map.

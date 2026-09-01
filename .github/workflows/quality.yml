@@ -19,7 +19,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # `fetch-depth: 0` rather than the action's default of 1, because three
+      # checks here need history and were silently not running without it.
+      # `bin/docket check` declines the recorded-pull-request read on a
+      # truncated clone, `tools/doc_check.py` declines the release-tag read,
+      # and the missing-`pr` read - which does not decline - reported correct
+      # provenance as lost, turning `main` red on 97573ae and 3b37a75 for a
+      # number recoverable from a commit the depth-1 clone no longer held.
+      # `PL-99Y4` fixed that conflation at the source; this is the other half,
+      # giving the checks somewhere they can actually answer. Measured on the
+      # full history first: all three go from "not checked" to passing, so
+      # this adds coverage rather than failures. 0 fetches tags too, which is
+      # what the release-tag read wants.
       - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
 
       # No `python-version:` input on purpose. It sets UV_PYTHON, which
       # overrides `.python-version`, so CI would resolve its own interpreter
@@ -65,7 +79,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # `fetch-depth: 0` rather than the action's default of 1, because three
+      # checks here need history and were silently not running without it.
+      # `bin/docket check` declines the recorded-pull-request read on a
+      # truncated clone, `tools/doc_check.py` declines the release-tag read,
+      # and the missing-`pr` read - which does not decline - reported correct
+      # provenance as lost, turning `main` red on 97573ae and 3b37a75 for a
+      # number recoverable from a commit the depth-1 clone no longer held.
+      # `PL-99Y4` fixed that conflation at the source; this is the other half,
+      # giving the checks somewhere they can actually answer. Measured on the
+      # full history first: all three go from "not checked" to passing, so
+      # this adds coverage rather than failures. 0 fetches tags too, which is
+      # what the release-tag read wants.
       - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
 
       # `python-version:` is set here rather than inherited, which is the
       # opposite of the choice above and for the same reason. Left unset, the

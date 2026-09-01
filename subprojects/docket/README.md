@@ -641,12 +641,16 @@ the default base, and `check` owes a `pr` only for those. A closure that is
 shape rather than an error — so the closure travels in the same commit as its
 work and there is nothing left for a merge to strand.
 
-Unlike `merged_pull_requests`, this does **not** decline in a shallow clone.
-That reader needs history, which a truncated one answers confidently and
-wrongly; this needs a single tree read, and `git show <ref>:<path>` is correct
-however little history stands behind the ref. Since an agent session normally
-runs shallow, a reader that declined there would decline in exactly the case
-the rule exists for. It declines only when no default branch resolves at all.
+Whether a closure *landed* does **not** decline in a shallow clone, unlike
+`merged_pull_requests`. That reader needs history, which a truncated one
+answers confidently and wrongly; this needs a single tree read, and `git show
+<ref>:<path>` is correct however little history stands behind the ref. Since an
+agent session normally runs shallow, a reader that declined there would decline
+in exactly the case the rule exists for. It declines only when no default
+branch resolves at all.
+
+Which pull request landed it is the other kind of question, and the depth does
+bear on it — see below.
 
 What is left over is not a gap. An item reaching the default branch with an
 empty `pr` is the *normal* shape of a successful merge, not an exception:
@@ -663,13 +667,24 @@ capture that filed it.
 
 - **The number is recoverable** → an advisory naming it and the line to
   write. Nothing is lost; the way back exists in git, and the field is a
-  transcription still owed so the item file carries it too.
-- **No commit names one** → the error it always was. That is provenance
-  genuinely lost.
+  transcription still owed so the item file carries it too. True at any
+  depth: finding the commit is proof it was there to find.
+- **No commit names one, in a checkout that says it is complete** → the error
+  it always was. That is provenance genuinely lost.
+- **No commit names one, in a truncated checkout** → a decline naming the
+  ids. The commit may simply be out of reach, and at `fetch-depth: 1` that is
+  true of every closure but the newest, so absence proves nothing. `is_shallow`
+  answering neither way is treated the same, per the rule `PL-J295` set for
+  `tags`.
 
 Erroring on the first case meant `main` went red on the completion of every
 item, which trains a reader to treat a red store check as routine — the
-opposite of what the loudest signal here is for.
+opposite of what the loudest signal here is for. Erroring on the third meant
+it went red one merge *later* instead, which is worse: nothing about the
+provenance had changed between the green run and the red one, only what the
+clone could see, so the failure pointed at an item that was not at fault
+(`PL-99Y4`). The check therefore runs for real only where the history is
+whole, which is what `fetch-depth: 0` in a CI checkout is for.
 
 ### An open item whose own command already passes
 

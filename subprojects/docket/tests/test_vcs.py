@@ -945,14 +945,25 @@ CLOSED = "---\nid: {id}\ntitle: T\nstatus: done\n---\n"
 
 
 def _closure_runner(
-    on_base: dict[str, str], subjects: tuple[str, ...] = (), log: list[list[str]] | None = None
+    on_base: dict[str, str],
+    subjects: tuple[str, ...] = (),
+    log: list[list[str]] | None = None,
+    shallow: str = "",
 ):
-    """A git holding `on_base` (file name to text) and a default branch of `subjects`."""
+    """A git holding `on_base` (file name to text) and a default branch of `subjects`.
+
+    `shallow` is what `rev-parse --is-shallow-repository` answers - "true",
+    "false", or the empty string for a git that will not say, which is the
+    default because most cases here are about reading the base rather than
+    about depth.
+    """
 
     def run(args: list[str], root: Path) -> str:
         if log is not None:
             log.append(args)
         if args[0] == "rev-parse":
+            if args[-1] == "--is-shallow-repository":
+                return f"{shallow}\n" if shallow else ""
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "for-each-ref":
             return f"{BASE}\n"
@@ -1041,3 +1052,24 @@ def test_a_number_belonging_to_another_item_is_not_borrowed() -> None:
         {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}, ("PL-ZZZZ A different item entirely (#149)",)
     )
     assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
+
+
+def test_a_closure_report_records_whether_the_checkout_is_truncated() -> None:
+    """The depth travels with the answer, because it qualifies what a gap means.
+
+    `checks.py` errors on a missing `pr` only where the history is complete;
+    without this field it cannot tell "no commit names a number" from "no
+    commit was in reach", and reporting the second as the first is what turned
+    `main` red (`PL-99Y4`).
+    """
+    for answer, expected in (("true", True), ("false", False), ("", None)):
+        run = _closure_runner(
+            {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+            ("PL-K7QX Do the thing (#148)",),
+            shallow=answer,
+        )
+        report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
+
+        assert report.shallow is expected, answer
+        # Depth qualifies an absence, never a hit: the number is still derived.
+        assert report.numbers == {"PL-K7QX": 148}

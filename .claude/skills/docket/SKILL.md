@@ -573,7 +573,9 @@ reconstruct three commands at the moment they are trying to do something else.
    number it recovered from the merge commit, so writing it in is a one-line
    follow-up on whatever branch comes next, not a red store demanding its own
    pull request. It is an error only where no commit on the base names a
-   number at all, which is provenance genuinely lost. Closing
+   number at all **and** the checkout says it is complete, which is provenance
+   genuinely lost; a truncated checkout declines instead, because the commit
+   may be outside it (`PL-99Y4`). Closing
    in the same commit as the work is what removes the window: requiring the
    number up front forced the closure into a second push, and a merge inside
    that window took the work and left the closure on the branch — `main` had

@@ -455,8 +455,19 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
     merge commit's own subject names the number, nothing is lost: it is the
     same parse this module already trusts for the provenance history, and the
     way back exists in git. That is a transcription still owed, which is an
-    advisory naming the number to write. Where no commit on the base names
-    one, the way back genuinely does not exist, and that stays an error.
+    advisory naming the number to write.
+
+    Where no commit on the base names one, the answer depends on whether the
+    checkout could have seen it. Only a complete history makes "no commit
+    names a number" mean the way back is gone; a truncated one makes it mean
+    the commit is out of reach, which is not the same claim and must not be
+    reported as one. `main` went red twice on that conflation (`PL-99Y4`):
+    CI checked out at `fetch-depth: 1`, so a closure stayed an advisory on its
+    own merge commit and became an error one merge later, when nothing about
+    the provenance had changed. So the error is reserved for a checkout that
+    says outright it is complete, and truncation - or a git that will not say -
+    declines with the ids, which is this module's standing answer to a question
+    the tree cannot support.
     """
     if closures is None:  # a caller that did not ask; every command but `check`
         return
@@ -464,21 +475,36 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
         report.declined.append(f"closures recording no `pr`: {closures.declined}")
         return
     derived = closures.numbers
+    unreadable: list[str] = []
     for item in report.items:
         if item.status != "done" or item.pr or item.identifier not in closures.landed:
             continue
         number = derived.get(item.identifier)
-        if number is None:
-            report.errors.append(
-                f"{_where(item)}: marked done on `{closures.base}` but records no `pr`; "
-                "without it there is no way back from the closure to the work that made it"
-            )
-        else:
+        if number is not None:
             report.advisories.append(
                 f"{item.identifier}: marked done on `{closures.base}` and records no `pr`, "
                 f"but #{number} is recoverable from its merge commit; "
                 f"write `pr: {number}` into the item so the file carries it too"
             )
+        elif closures.shallow is False:
+            report.errors.append(
+                f"{_where(item)}: marked done on `{closures.base}` but records no `pr`; "
+                "without it there is no way back from the closure to the work that made it"
+            )
+        else:
+            unreadable.append(item.identifier)
+
+    if unreadable:
+        depth = (
+            "the checkout is a shallow clone"
+            if closures.shallow
+            else "git cannot say whether this checkout is complete"
+        )
+        report.declined.append(
+            f"whether {', '.join(sorted(unreadable))} lost provenance by recording no `pr`: "
+            f"{depth}, so the merge commit naming each number can lie outside it and its "
+            f"absence proves nothing; a full-history checkout answers"
+        )
 
 
 def _groom(report: Report, today: date, config: Config, offered: frozenset[str] | None) -> None:
