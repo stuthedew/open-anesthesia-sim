@@ -1576,7 +1576,8 @@ def check_resident_instructions(root: Path, report: Report) -> None:
     growth = report.resident.growth
     if growth is not None and growth > 0:
         report.advisories.append(
-            f"resident instructions grew {growth} lines against {ref} ({rendered}); every "
+            f"resident instructions grew {_plural(growth, 'line', 'lines')} against {ref} "
+            f"({rendered}); every "
             "session loads this before it has read anything. Two answers, and there is no "
             "third: route it to the cheapest thing that delivers it when it is needed - a "
             "check, the `docket` skill, a path-scoped rule - or keep it and say why a "
