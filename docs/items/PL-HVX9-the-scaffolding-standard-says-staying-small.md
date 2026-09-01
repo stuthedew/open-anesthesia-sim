@@ -6,12 +6,13 @@ effort: S
 status: done
 classes: session-cost, infra
 feature: worker-instructions
+milestone: v0.2.8
 touches: CLAUDE.md
-verify: python3 tools/doc_check.py check && grep -qF 'staying streamlined' CLAUDE.md
 added: 2026-09-01
 closed: 2026-09-01
 commit: 22c4851
 pr: 143
+verify: python3 tools/doc_check.py check && grep -qF 'staying streamlined' CLAUDE.md
 ---
 
 **Problem.** `CLAUDE.md`'s "Two standards, deliberately unequal" paragraph holds

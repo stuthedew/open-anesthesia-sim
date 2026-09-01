@@ -6,11 +6,14 @@ effort: S
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-31
 closed: 2026-09-01
+pr: 175
 verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_cli.py && grep -q 'def test_an_offering_ranked_on_refs_that_went_unread_says_so' subprojects/docket/tests/test_checks.py
 ---
+
 **Problem.** `PL-S1P1` carried the unread refs to the six answers that rank or
 mark against in-flight work - `next`, `list`, `status`, `concurrent`,
 `delegable` and the digest. `check` is the seventh reader and was left out:

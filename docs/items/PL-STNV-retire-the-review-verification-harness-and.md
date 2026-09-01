@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.2.8
 touches: tools/review-verification, tests/reference/test_coupled_dynamics.py, docs/WORKING_NOTES.md
 added: 2026-08-30
 closed: 2026-08-30

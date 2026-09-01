@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: delegation
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-01
 closed: 2026-09-01

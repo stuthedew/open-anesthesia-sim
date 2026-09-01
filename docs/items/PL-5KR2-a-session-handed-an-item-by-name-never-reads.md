@@ -3,15 +3,16 @@ id: PL-5KR2
 title: A session handed an item by name never reads the in-flight answer, because docket next is the only surface that applies it
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/SKILL.md, subprojects/docket/README.md
-verify: uv run pytest subprojects/docket/tests/test_cli.py -k "show and flight"
-status: done
 added: 2026-09-01
 closed: 2026-09-01
 commit: 074a3da
 pr: 152
+verify: uv run pytest subprojects/docket/tests/test_cli.py -k "show and flight"
 ---
 
 **Problem.** `plan.recommend` excludes in-flight ids outright, and its docstring

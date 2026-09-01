@@ -4,13 +4,14 @@ title: The 'what should we work on next' rule answers at feature altitude, one l
 priority: P3
 effort: S
 status: done
-verify: python3 tools/doc_check.py check
 classes: infra
 feature: planning-cadence
+milestone: v0.2.8
 touches: CLAUDE.md
 added: 2026-08-26
 closed: 2026-08-31
 pr: 110
+verify: python3 tools/doc_check.py check
 ---
 
 **Problem.** `CLAUDE.md`'s rule reads: "Answer 'what should we work on next?'

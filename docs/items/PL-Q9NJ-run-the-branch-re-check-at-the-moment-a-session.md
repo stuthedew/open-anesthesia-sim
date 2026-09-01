@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.2.8
 touches: .claude/hooks/docket-branch-guard.sh, .claude/settings.json, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, tests/unit/test_docket_branch_guard.py, subprojects/docket/README.md
 added: 2026-09-01
 closed: 2026-09-01

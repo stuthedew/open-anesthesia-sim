@@ -4,13 +4,14 @@ title: A closing-block line putting a decision to the project owner does not dis
 priority: P2
 effort: S
 status: done
-verify: python3 tools/doc_check.py check && grep -q 'sorts as work' .claude/rules/instruction-writing.md
 classes: defect, docs
 feature: worker-instructions
+milestone: v0.2.8
 touches: .claude/rules/instruction-writing.md
 added: 2026-09-01
 closed: 2026-09-01
 pr: 161
+verify: python3 tools/doc_check.py check && grep -q 'sorts as work' .claude/rules/instruction-writing.md
 ---
 
 **Problem.** Rule 14 of `.claude/rules/instruction-writing.md` already requires

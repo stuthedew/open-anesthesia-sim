@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, session-cost
 feature: dev-tooling
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/checks.py, docket.toml, .claude/skills/docket/SKILL.md
 added: 2026-08-30
 closed: 2026-08-31

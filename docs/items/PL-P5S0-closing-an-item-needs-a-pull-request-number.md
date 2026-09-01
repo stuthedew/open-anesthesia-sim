@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: public-history
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/checks.py, .claude/skills/docket/SKILL.md, subprojects/docket/tests/test_checks.py
 added: 2026-09-01
 closed: 2026-09-01

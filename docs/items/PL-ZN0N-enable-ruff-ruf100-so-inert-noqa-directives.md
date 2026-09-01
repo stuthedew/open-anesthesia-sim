@@ -6,10 +6,11 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.2.8
 touches: pyproject.toml
 added: 2026-08-25
-pr: 105
 closed: 2026-08-31
+pr: 105
 ---
 
 **Problem.** `pyproject.toml` sets ruff's `select = ["E", "F", "I", "UP", "B"]`.

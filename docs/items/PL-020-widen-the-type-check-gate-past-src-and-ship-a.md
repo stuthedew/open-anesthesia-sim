@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.2.8
 touches: pyproject.toml, Makefile, README.md, .github/workflows/quality.yml, src/anesthesia_sim/py.typed, subprojects/docket/src/docket/roadmap.py, tests/unit/test_bootstrap.py
 added: 2026-08-24
 closed: 2026-08-31

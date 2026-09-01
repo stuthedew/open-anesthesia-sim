@@ -4,13 +4,14 @@ title: docket next ranks work the current milestone excludes, with no sign that 
 priority: P2
 effort: S
 status: done
-closed: 2026-08-30
-pr: 92
-commit: 1c75693
 classes: defect, infra
 feature: planning-cadence
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_plan.py
 added: 2026-08-30
+closed: 2026-08-30
+commit: 1c75693
+pr: 92
 verify: uv run pytest subprojects/docket/tests -k "next and scope"
 ---
 

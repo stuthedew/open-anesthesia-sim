@@ -4,14 +4,15 @@ title: docket next will still lead with out-of-scope work after PL-1TPM, because
 priority: P2
 effort: S
 status: done
-closed: 2026-08-30
-pr: 92
-commit: dc7de31
 classes: defect, infra
-verify: uv run pytest subprojects/docket/tests/test_plan.py -k in_scope
 feature: planning-cadence
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
 added: 2026-08-30
+closed: 2026-08-30
+commit: dc7de31
+pr: 92
+verify: uv run pytest subprojects/docket/tests/test_plan.py -k in_scope
 ---
 
 **Problem.** `PL-1TPM` makes `docket next` *mark* a suggestion whose id appears
