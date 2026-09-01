@@ -730,6 +730,36 @@ def test_flight_finds_work_on_a_branch_whose_name_carries_no_id(
     assert "last commit 3 days ago" in out
 
 
+def test_show_marks_an_item_a_branch_has_in_flight(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-5KR2: the guard against two sessions doing one item reaches `show`.
+
+    `plan.recommend` excludes in-flight ids, so a session that arrived through
+    `next` is covered. One handed an item by name never calls `next`, and
+    `triage`, `check` and `show` all said nothing - so the path where a person
+    chose the work was the path with no check.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+
+    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert "IN FLIGHT on a branch - do not start PL-0001 again." in out
+    assert "PL-0001" in out.splitlines()[0]
+
+
+def test_show_leaves_an_item_no_branch_carries_out_of_flight(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The mark is a claim about this id, not about the branch existing."""
+    root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
+
+    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+
+    assert "IN FLIGHT" not in capsys.readouterr().out
+
+
 def test_flight_does_not_read_a_mentioned_id_as_work_in_progress(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1024,8 +1054,20 @@ def test_the_queue_commands_say_when_a_ref_went_unread(
     work = _shallow_pair(tmp_path)
     store = str(work / "items")
 
-    for command in ("next", "list", "status", "digest", "delegable", "concurrent"):
-        assert main(["--items", store, command]) == 0
+    commands: tuple[tuple[str, ...], ...] = (
+        ("next",),
+        ("list",),
+        ("status",),
+        ("digest",),
+        ("delegable",),
+        ("concurrent",),
+        # `show` marks against the in-flight ids too (PL-5KR2), so it owes the
+        # same sentence: a mark drawn from refs that went unread is a partial
+        # reading, and silence would present it as a complete one.
+        ("show", "PL-0001"),
+    )
+    for command in commands:
+        assert main(["--items", store, *command]) == 0
         out = capsys.readouterr().out
         assert "1 ref could not be compared with origin/main" in out, command
         assert "bin/docket flight" in out, command

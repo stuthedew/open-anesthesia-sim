@@ -292,7 +292,25 @@ safe — fill its `touches` in instead.
 
 ## Mode: start an item
 
-Decide where the work happens and act on it — do not ask. Continue here when
+**First, ask whether anybody else is already on it: `git fetch origin` and
+then `bin/docket show <id>`, which marks it `IN FLIGHT` and names the refs it
+could not read.** This is the one step with no other guard. `docket next`
+excludes in-flight work, so a session that got here through `next` is already
+covered — but an item named by the project owner skips `next` entirely, and
+`triage`, `check` and reading the file with `cat` all say nothing. That is
+backwards: naming an item is the higher-confidence path and was the one with
+no check.
+
+**The fetch is not optional, and it is the half that was missed.** Only
+`docket branch` refreshes; `flight` and `show` read the refs this checkout
+already holds, deliberately, so that they answer in a bare or offline
+checkout. Without a fetch the answer is as old as the clone. Observed
+2026-09-01: a session checked, was told nothing was in flight, and a branch
+carrying the item was pushed four minutes later — the owner caught it, not the
+tooling. Even fetched, the answer is bounded to what has been *pushed*, so
+read a clean result as "nothing visible", never "nothing".
+
+Then decide where the work happens and act on it — do not ask. Continue here when
 this session's context is an asset (short, already about this item, just
 diagnosed it). Start fresh when it is a liability (already completed
 something else, long, or the item wants a model this session is not running).
