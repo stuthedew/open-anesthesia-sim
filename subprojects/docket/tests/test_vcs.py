@@ -20,6 +20,7 @@ from docket.vcs import (
     behind_remote,
     branch_state,
     branches_in_flight,
+    closures_on_base,
     default_base,
     merged_pull_requests,
     stranded,
@@ -930,3 +931,113 @@ def test_the_branch_state_line_says_when_nothing_refreshed_the_base() -> None:
 
     assert "nothing refreshed origin/main" in stale
     assert "nothing refreshed" not in fresh
+
+
+# --- which pull request a landed closure's own merge commit names ------------
+#
+# The number does not exist when the closure is committed - it travels with its
+# work, which is what stops a merge taking the fix and leaving the item open -
+# so a closure that reaches the default base carrying no `pr` is the normal
+# shape of a successful merge, not a gap. Whether the provenance is actually
+# lost is decided by whether the merge commit still names the number.
+
+CLOSED = "---\nid: {id}\ntitle: T\nstatus: done\n---\n"
+
+
+def _closure_runner(
+    on_base: dict[str, str], subjects: tuple[str, ...] = (), log: list[list[str]] | None = None
+):
+    """A git holding `on_base` (file name to text) and a default branch of `subjects`."""
+
+    def run(args: list[str], root: Path) -> str:
+        if log is not None:
+            log.append(args)
+        if args[0] == "rev-parse":
+            return f"{BASE}\n" if args[-1] == BASE else ""
+        if args[0] == "for-each-ref":
+            return f"{BASE}\n"
+        if args[0] == "show":
+            name = args[-1].split("/")[-1]
+            return on_base.get(name, "")
+        if args[0] == "log":
+            return "\n".join(subjects)
+        return ""
+
+    return run
+
+
+def test_a_landed_closure_reports_the_pull_request_its_merge_commit_names() -> None:
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+        ("PL-K7QX Do the thing (#148)", "PL-B1C2 Something earlier (#140)"),
+    )
+    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
+
+    assert report.landed == frozenset({"PL-K7QX"})
+    assert report.numbers == {"PL-K7QX": 148}
+
+
+def test_one_merge_closing_two_items_answers_for_both() -> None:
+    # A subject may open with a run of ids, because one branch may carry two
+    # items. Both closed in the same pull request, so both name it.
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX"), "PL-B1C2-b.md": CLOSED.format(id="PL-B1C2")},
+        ("PL-K7QX, PL-B1C2: two items at once (#151)",),
+    )
+    report = closures_on_base(
+        ROOT, {"PL-K7QX": "PL-K7QX-a.md", "PL-B1C2": "PL-B1C2-b.md"}, runner=run
+    )
+
+    assert report.numbers == {"PL-K7QX": 151, "PL-B1C2": 151}
+
+
+def test_the_merge_that_landed_the_work_wins_over_the_commit_that_filed_it() -> None:
+    # An id leads more than one subject in a healthy history: the capture that
+    # filed the item, then the merge that landed it. Newest first from `git
+    # log`, so the merge is what is recorded.
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+        ("PL-K7QX Do the thing (#148)", "PL-K7QX Capture the idea (#131)"),
+    )
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
+        "PL-K7QX": 148
+    }
+
+
+def test_a_merge_naming_no_pull_request_derives_nothing() -> None:
+    # A repository merging without pull requests, or a subject written by
+    # hand. Deriving nothing is an answer, and the caller keeps its error.
+    run = _closure_runner({"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}, ("PL-K7QX Do the thing",))
+    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
+
+    assert report.landed == frozenset({"PL-K7QX"})
+    assert report.numbers == {}
+
+
+def test_a_merge_the_truncated_history_no_longer_holds_derives_nothing() -> None:
+    run = _closure_runner({"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}, ())
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
+
+
+def test_a_closure_that_has_not_landed_is_asked_nothing_about_its_number() -> None:
+    run = _closure_runner({}, ("PL-K7QX Do the thing (#148)",))
+    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
+
+    assert report.landed == frozenset()
+    assert report.numbers == {}
+
+
+def test_no_closure_in_question_costs_no_history_read() -> None:
+    # The walk is the one added cost, so it is not paid where there is nothing
+    # to answer for - which is every run on a store with no closure in flight.
+    log: list[list[str]] = []
+    closures_on_base(ROOT, {}, runner=_closure_runner({}, (), log))
+
+    assert not [args for args in log if args[0] == "log"]
+
+
+def test_a_number_belonging_to_another_item_is_not_borrowed() -> None:
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}, ("PL-ZZZZ A different item entirely (#149)",)
+    )
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}

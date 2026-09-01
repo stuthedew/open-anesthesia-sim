@@ -597,9 +597,28 @@ however little history stands behind the ref. Since an agent session normally
 runs shallow, a reader that declined there would decline in exactly the case
 the rule exists for. It declines only when no default branch resolves at all.
 
-What is left over is accepted rather than solved: an item can still reach the
-default branch with an empty `pr`, and the next `check` reports it. That is a
-one-line follow-up instead of a stranded closure.
+What is left over is not a gap. An item reaching the default branch with an
+empty `pr` is the *normal* shape of a successful merge, not an exception:
+the closure travels with its work, and the number does not exist when that
+commit is written. So `check` asks a second question before deciding what it
+has found — does any commit on the base name a number for this item?
+
+`closures_on_base` answers it from the subject a squash merge writes,
+`PL-JWXF Scope the selects-no-test advisory ... (#148)`, using the two
+parsers already here: the run of ids a subject opens with, and the number in
+trailing parentheses. One history read for the whole set, taken only when
+something landed, and the newest such commit wins — an id also leads the
+capture that filed it.
+
+- **The number is recoverable** → an advisory naming it and the line to
+  write. Nothing is lost; the way back exists in git, and the field is a
+  transcription still owed so the item file carries it too.
+- **No commit names one** → the error it always was. That is provenance
+  genuinely lost.
+
+Erroring on the first case meant `main` went red on the completion of every
+item, which trains a reader to treat a red store check as routine — the
+opposite of what the loudest signal here is for.
 
 ### An open item whose own command already passes
 
