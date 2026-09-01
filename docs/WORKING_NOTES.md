@@ -94,7 +94,7 @@ a second sighting, so it would hold the gate open indefinitely. `PL-SRCP` was
 dropped at triage as a duplicate of `PL-3CBS`.
 
 **Two more admitted on the same reading, 2026-08-31,** bringing the list to
-thirty-one entries with eleven open. `PL-MGNC` was found while reassessing: a
+thirty-two entries with eleven open. `PL-MGNC` was found while reassessing: a
 shallow clone's incomplete `^base` walk made the digest report twenty-seven
 ids in flight, eighteen of them closed and one of them `PL-NSN9`, an open
 entry of this gate. `PL-3CBS` (docket has no way to notice that an open item's
@@ -176,6 +176,42 @@ signature of every shape observed, not a proof that a walk is complete), which
 is a different question: the guards decide *whether* to believe a walk, and
 that one asks whether the signature they key on is sufficient. Nothing in the
 cluster's four fixes bears on it.
+
+**The membership test was applied to the whole open queue on 2026-09-01,** not
+only to new captures, which is what this thread was for. Eight untriaged items
+were triaged and every open item was read against the two limits. Four were
+admitted, taking the list to thirty-six entries with ten open: `PL-3576`
+(`docket check`'s offered-item advisory reads a flight answer that may be
+partial), `PL-1Q3S` (a merged pull request's stale tracking ref makes the stop
+hook demand a push), `PL-RWZV` (the brief check passes an empty section) and
+`PL-H8MQ` (the entry count is stated in six places and held to none).
+
+Three exclusions are worth recording because each names a boundary the test
+draws:
+
+- **The delegation gate is not named machinery.** `PL-L9JS` (eight open items
+  carry a `verify:` command that passes without their work) and `PL-MZH2`
+  (`PL-D9H6`'s command is quoted so a shell cannot run it) are both real
+  defects in `docket verify`, and `docket verify` is not one of the six pieces
+  the goal enumerates. They are queue work, not gate work, and `PL-L9JS` is
+  cheapest paid per item as each is started.
+- **An improvement to correct behaviour is not a defect in it.** `PL-K2ZK`
+  (deepen the clone so the in-flight read answers) and `PL-01CK` (the content
+  test's walk cost) both ask machinery that works to work better. `PL-MGNC`
+  made the declining answer correct deliberately.
+- **A recorded limit is not an observed misfire.** `PL-W1LN` stays out: its
+  own **Done when.** allows the answer that the topology cannot be produced
+  here, and an entry that may turn out to be undemonstrable cannot be one a
+  release waits on.
+
+`PL-Y08X` was dropped as a duplicate of `PL-D2GW`, its measurement folded in.
+`PL-3CBS` was closed: its work merged as pull request 128 and the status was
+never set, so the gate had been reporting seven entries open when it was six -
+found by the check `PL-3CBS` itself added, on its first run against the store.
+`PL-T63T` (half the recorded `commit:` hashes resolve nowhere) is excluded on
+the precedent `ROADMAP.md` already records for `PL-68XK`, and the two are one
+decision: what the field should mean under squash-merge, then what should check
+it.
 
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 

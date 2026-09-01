@@ -44,3 +44,13 @@ spelling them out.
 
 **Done when.** A count in `ROADMAP.md` that disagrees with the frozen list
 fails `make check`, and the failure names both numbers.
+
+**Re-measured 2026-09-01, and admitted to v0.2.8's frozen list under the scope
+test.** The count is stated in six places, not four - the version table row,
+the timeline table row, the "Rows 1 and 2" paragraph, the frozen-list intro,
+the `not-delegable` paragraph and the out-of-scope bullet - with three further
+counts beside them: the two group headings and the debt/capability split. On
+that date three different totals were live at once: the timeline row said
+eighteen, four paragraphs said thirty-one, and the frozen-list intro said
+thirty-two. Admitting four entries the same day required correcting all nine
+numbers by hand, which is the tax this item describes, paid again.

@@ -3,11 +3,14 @@ id: PL-3CBS
 title: docket has no way to notice that an open item's work already landed on main
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-08-30
+closed: 2026-09-01
+pr: 128
+commit: 36c24d7
 verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_verify.py -k landed
 ---
 
@@ -100,3 +103,12 @@ project owner's agreement.
 Also note the gate has grown since this brief was written: the sixteen above
 is thirty-one entries now, of which eleven are open. The arithmetic in "Why it
 matters" holds — the point is that the count is wrong, not what it was.
+
+**Closed 2026-09-01 (pull request 128).** `docket check` now runs every open
+item's `verify:` command and raises a grooming advisory for the ones that pass
+on a tree without their work, separating the two findings it cannot tell apart -
+the work landed and nobody closed the item, or the command does not
+discriminate. It found this item: the work merged as pull request 128 and the
+status stayed `ready`, so `bin/docket wave` reported v0.2.8's gate as seven
+entries open when it was six. Closed during the triage pass of 2026-09-01,
+which is the first thing the new check caught.

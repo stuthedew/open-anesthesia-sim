@@ -1,18 +1,14 @@
 ---
 id: PL-K2ZK
 title: The session-start digest could deepen the clone once so the in-flight read answers instead of declining
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: infra, session-cost
+feature: parallel-sessions
+touches: .claude/hooks/docket-digest.sh, subprojects/docket/README.md
 added: 2026-08-31
 ---
-
-**Problem.** The session-start digest could deepen the clone once so the in-flight read answers instead of declining
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
-
 **Problem.** `PL-MGNC` stops `branches_in_flight` believing a walk the
 checkout's history cannot support, which is right and is not the whole
 opportunity: the answer it declines to give is one a single `git fetch` makes
@@ -43,3 +39,14 @@ latency and this is dropped with that number.
 **Not a substitute for the guard.** A session with no network, or one whose
 fetch fails, still gets a truncated history, and the guard is what stops that
 answering wrongly.
+
+**Decision needed.** Is a session-start fetch worth its latency? The measurement
+that answers it is the added wall-clock of deepening this container's checkout
+far enough for the in-flight walk to complete, against how often the walk
+currently declines. Either the hook deepens the checkout and fails silently
+without network, or the number says no and this is dropped with it.
+
+**Triaged 2026-09-01.** P3, `infra`/`session-cost`, `parallel-sessions`. Left
+out of v0.2.8's frozen list: `PL-MGNC` made the declining behaviour correct on
+purpose, so this asks the digest to answer a question it currently refuses to
+answer wrongly - new capability, not a misfire.

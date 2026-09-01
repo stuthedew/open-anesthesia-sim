@@ -1,10 +1,11 @@
 ---
 id: PL-Y08X
 title: The session digest offers a release the same digest's plan line says is not ready
-status: untriaged
+status: dropped
 added: 2026-09-01
+closed: 2026-09-01
+reason: duplicate of PL-D2GW, an open entry on v0.2.8's frozen list: both are the digest offering a release whose gate is still open, in the same two functions. The 2026-09-01 measurement captured here has been folded into PL-D2GW's brief so nothing is lost.
 ---
-
 **Problem.** Every session opens with two lines that contradict each other.
 The digest measured on 2026-09-01 printed:
 
@@ -47,3 +48,12 @@ does not consult it.
 not instruct the session to offer that release - it either suppresses the
 offer or states the gate is open in the same sentence - and a test covers a
 digest built from a store with an open gate saying so.
+
+**Dropped 2026-09-01, as a duplicate.** `PL-D2GW` (the session digest offers a
+release whose version names a milestone whose gate is still open) was captured
+2026-08-31 and admitted to v0.2.8's frozen list the same day. It names the same
+two functions - `Readiness.is_worth_cutting` in `release.py` and the offer line
+in `render.format_digest` - and its **Done when.** is the same suppress-or-say
+condition. The measurement recorded above, and the observation that the offer
+line is written as an instruction while `Readiness`'s own docstring calls it
+advisory, are folded into that item rather than kept here.

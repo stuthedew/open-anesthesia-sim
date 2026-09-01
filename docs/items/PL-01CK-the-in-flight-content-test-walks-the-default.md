@@ -1,10 +1,14 @@
 ---
 id: PL-01CK
 title: The in-flight content test walks the default branch's history once per blob a candidate branch adds
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: perf, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-08-31
 ---
-
 **Problem.** `_work_already_on_base` (added by `PL-CPSY`) asks `git log -1
 --find-object=<blob> <base>` once per blob a candidate ref adds to the tree it
 forked from. Each call is a full history walk with a diff at every commit, and
@@ -35,3 +39,13 @@ back the fix for exactly the large branches the cap fires on.
 **Done when.** Either the walk is narrowed with a measurement showing the
 saving on a history where it matters, or the cost is measured and recorded as
 acceptable and this is dropped with that number in its reason.
+
+**Decision needed.** Narrow the walk, or accept the cost and drop this? Nothing
+in this repository forces the question: `bin/docket flight` answers in 116 ms
+end to end, interpreter start included, measured 2026-09-01. The decision wants
+the walk count on a history where it matters, which this project cannot produce
+yet, so the honest answer today may be to drop it with that number.
+
+**Triaged 2026-09-01.** P3, `perf`/`infra`, `parallel-sessions`. Left out of
+v0.2.8's frozen list: the walk is slow in a shape nobody has observed, which is
+an improvement to named machinery rather than a defect in it.
