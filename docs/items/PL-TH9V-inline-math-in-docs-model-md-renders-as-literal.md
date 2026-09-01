@@ -39,26 +39,55 @@ copied out of `docs/MODEL.md`; they are internal and not part of this fix, but
 whatever convention this item settles is the one they should follow when next
 edited.
 
-**Approach.** GitHub renders inline math from `$...$`, and from `` $`...` ``
-for expressions that would otherwise be mangled by the surrounding markdown —
-anything containing `$`, or a `_` pair that markdown would read as emphasis.
-`F_D` and `\lambda_{b:g}` are in that second category, so `` $`...` `` is the
-safer default here and is what the conversion should use unless a check of
-GitHub's current syntax documentation says otherwise. That check was not
-possible in the capturing session: `docs.github.com` is blocked by this
-environment's egress proxy, so confirm the delimiters against the source before
-converting 97 sites.
+**Approach — verified against GitHub's "Writing mathematical expressions",
+2026-09-01.** GitHub renders LaTeX through MathJax and documents exactly two
+inline delimiters: `$...$`, and `` $`...` `` — "useful when the expression you
+are writing contains characters that overlap with markdown syntax". `\(...\)`
+appears nowhere in the page; it is not a supported delimiter, which is the
+defect above.
+
+**Convert to `` $`...` ``, not to `$...$`.** The subscripts are the reason. The
+symbol-table row for `F_a` (`docs/MODEL.md` line 156) already carries two
+expressions on one line — the symbol itself and the parenthetical
+`F_a \equiv F_A` — so under bare `$` that row would hold four delimiters and
+three `_` characters, and the text between the middle pair is precisely what
+markdown reads as emphasis. That is the overlap case the documentation names.
+The backtick form costs two characters per site and takes the ambiguity out.
+
+**One site is already on the other syntax and is also wrong.**
+`docs/MODEL.md` lines 1327-1328 read `$F_a \equiv\nF_A$` — correct delimiters,
+but wrapped across a source line break by the paragraph reflow. Inline math is
+parsed within a line, so this does not render either. Any conversion must keep
+each expression on one source line, which constrains how the file may be
+rewrapped; a `` $`...` `` span split by a future `fmt` pass fails the same way.
+
+**Display math needs no change, but note the alternative.** The 58 `$$` blocks
+are correct as written. The documentation also offers a ```` ```math ````
+fenced block as an equivalent, which is worth preferring for any *new* block
+because a fence cannot be silently broken by rewrapping. Converting the
+existing 58 is not part of this item.
+
+**No stray dollar signs to escape.** Every `$` in `docs/MODEL.md` today is
+either a `$$` fence or part of the line-1327 expression, so introducing `$`-
+delimited inline math cannot collide with prose. The documentation's `\$` and
+`<span>$</span>` escapes are therefore not needed here — but the doc_check rule
+below should be the thing that keeps that true.
 
 **Then make it decidable.** The conversion is worth nothing if the next edit
 reintroduces `\(`. `tools/doc_check.py` should refuse a markdown file under
 `docs/` containing `\(` or `\[`, which is a whole-file substring test with no
 judgment in it, and it costs the session nothing once wired into `make check`.
-Add that in the same change, not as a follow-up.
+Add that in the same change, not as a follow-up. A second rule is worth the
+same few lines: an odd count of unescaped `` ` ``-delimited math spans on a
+line, or a `$`/`` $` `` span left unclosed at end of line, catches the
+line-1327 wrap defect and any future reflow that reintroduces it.
 
 **Done when.** No `\(` or `\[` remains in `docs/MODEL.md` or
-`docs/WORKING_NOTES.md`; every symbol-table row and inline symbol renders as
-math on GitHub; the mid-sentence single-symbol `$$` blocks are inline again;
-and `tools/doc_check.py` fails on a reintroduced `\(`.
+`docs/WORKING_NOTES.md`; every inline expression sits on one source line,
+including the currently-wrapped one at lines 1327-1328; every symbol-table row
+and inline symbol renders as math on GitHub; the mid-sentence single-symbol
+`$$` blocks are inline again; and `tools/doc_check.py` fails on both a
+reintroduced `\(` and a math span split across a line break.
 
 **Verify.** `python3 tools/doc_check.py check && ! grep -rqF '\(' docs/MODEL.md
 docs/WORKING_NOTES.md` — run it and watch it fail before writing it in.
