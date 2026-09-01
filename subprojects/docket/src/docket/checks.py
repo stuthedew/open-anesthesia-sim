@@ -287,8 +287,10 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     report.advisories.append(message)
 
 
-def _check_selects_nothing(report: Report, landed: LandedReport | None) -> None:
-    """Say when an open item's `verify:` command runs but selects no test.
+def _check_selects_nothing(
+    report: Report, landed: LandedReport | None, offered: frozenset[str] | None
+) -> None:
+    """Say when an item about to be offered has a `verify:` command that selects no test.
 
     The counterpart to the check above, and the harder of the two to see. That
     one is about a command that returns 0 when it should not; this is about a
@@ -309,21 +311,44 @@ def _check_selects_nothing(report: Report, landed: LandedReport | None) -> None:
     a specification that can never be met. Only the item's author can say
     which, so the sentence asks rather than tells.
 
+    Reported against what is about to be offered rather than against the whole
+    backlog, for the reason `_groom` states in the same words a few functions
+    below: the recommended shape here is `-k` naming the test the work will
+    add, so every unstarted item using it selects nothing until its work
+    lands, and naming all of them fired on every run against eighteen of
+    thirty-one open items. That is the advisory that cannot reach zero, and
+    its cost is not the items it names but the next advisory, which gets read
+    the same way.
+
+    Narrowing rather than softening. The moment an item is offered is the
+    first moment its selector can be held against work somebody is about to
+    do; before that there is nobody to act on it. The store-wide total rides
+    along in the sentence so the scale of the finding is not lost - it is what
+    `PL-5QKT` measured and the reason this check exists.
+
+    A caller that supplied no `offered` names nothing: an advisory that
+    depends on ranking the queue is not owed by one that did not ask for a
+    ranking.
+
     A declined run says so once, in `_check_landed`: it is one execution of
     one set of commands, and two lines reporting the same refusal would read
     as two checks having failed to run.
     """
     if landed is None or not landed.known or not landed.vacuous:
         return
-    one = len(landed.vacuous) == 1
+    due = [identifier for identifier in landed.vacuous if identifier in (offered or frozenset())]
+    if not due:
+        return
+    one = len(due) == 1
     report.advisories.append(
-        f"{', '.join(landed.vacuous)} {'is' if one else 'are'} open and "
+        f"{', '.join(due)} {'is' if one else 'are'} next to be offered and "
         f"{'its' if one else 'their'} `verify:` command selects no test "
-        f"({len(landed.vacuous)} of {landed.considered} checked): pytest collected "
-        "nothing and exited 5, which is not 0, so the command reads as one that "
-        "correctly fails and will read that way after the work too - check that the "
-        "name each selector matches is one the work will create, and replace the "
-        "selectors where it is not"
+        f"({len(due)} of {len(landed.vacuous)} open item(s) "
+        f"whose command selects nothing, {landed.considered} checked): "
+        "pytest collected nothing and exited 5, "
+        "which is not 0, so the command reads as one that correctly fails and will read "
+        "that way after the work too - check that the name each selector matches is one "
+        "the work will create, and replace the selectors where it is not"
     )
 
 
@@ -503,7 +528,7 @@ def analyze(
     _check_references(report)
     _check_provenance(report, history)
     _check_landed(report, landed)
-    _check_selects_nothing(report, landed)
+    _check_selects_nothing(report, landed, offered)
     _check_closures(report, closures)
     _groom(report, today, settings, offered)
     return report
