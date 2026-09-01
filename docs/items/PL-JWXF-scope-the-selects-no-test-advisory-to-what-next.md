@@ -10,6 +10,8 @@ touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_
 added: 2026-09-01
 milestone: v0.2.8
 closed: 2026-09-01
+commit: 44ede6c
+pr: 148
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'whose command selects nothing' subprojects/docket/src/docket/checks.py
 ---
 
