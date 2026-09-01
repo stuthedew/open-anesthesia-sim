@@ -143,20 +143,53 @@ def read_version(pyproject: Path) -> str:
     return match.group(2) if match else ""
 
 
-def bump_version(pyproject: Path, version: str) -> str:
-    """Rewrite the single source of the project version.
+@dataclass(frozen=True)
+class PreparedBump:
+    """A version bump proved possible, holding the bytes it has yet to write.
+
+    Cutting a release writes two things - the `milestone:` stamp on every
+    item going out, and the version - and neither order is safe while the
+    bump can still fail on the file it is about to rewrite. Stamping first
+    left the store recording a release that never happened, with nothing
+    saying which stamps to unpick; bumping first would leave a version
+    claiming items it had not stamped.
+
+    Separating the proof from the write removes the choice. Everything the
+    bump can reject - an absent file, a file carrying no version field - is
+    settled here, before the first stamp is written, and what survives is a
+    path and the text to put at it.
+    """
+
+    path: Path
+    previous: str
+    text: str
+
+    def write(self) -> str:
+        """Put the prepared text in place, returning the version it replaced."""
+        self.path.write_text(self.text, encoding="utf-8")
+        return self.previous
+
+
+def prepare_bump(pyproject: Path, version: str) -> PreparedBump:
+    """Read and validate the single source of the project version.
 
     One string in one file. A project that resolves its displayed version
     from package metadata has nothing else to update; a second hard-coded
     copy somewhere else is a second thing to forget.
+
+    Raises on a file that is absent or carries no version field. `read_version`
+    tolerates both, because a store may be consulted away from any project;
+    bumping is the operation that requires a version to exist.
     """
     text = pyproject.read_text(encoding="utf-8")
     match = VERSION_RE.search(text)
     if match is None:
         raise ValueError(f"{pyproject}: no version field to bump")
-    previous = match.group(2)
-    pyproject.write_text(VERSION_RE.sub(rf"\g<1>{version}\g<3>", text, count=1), encoding="utf-8")
-    return previous
+    return PreparedBump(
+        path=pyproject,
+        previous=match.group(2),
+        text=VERSION_RE.sub(rf"\g<1>{version}\g<3>", text, count=1),
+    )
 
 
 def release_notes(milestone: Milestone, today: date) -> str:

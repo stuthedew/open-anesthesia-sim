@@ -403,6 +403,18 @@ writes the notes from the items themselves, and stops short of tagging.
 Generated notes cannot claim something the items do not, and nothing shipped
 goes unmentioned because whoever wrote them forgot it.
 
+**A release writes all of itself or none of it.** Two things reach disk — the
+`milestone:` stamp on every item going out, and the version — and neither
+order is safe while the bump can still fail on the file it is about to
+rewrite. Stamping first left the store recording a release that never
+happened, with nothing saying which stamps to unpick; the next run then
+reported nothing to release, because the work it would have shipped claimed to
+have shipped already. So `prepare_bump` settles everything the bump can reject
+— an absent version file, one carrying no version field — before the first
+stamp is written, and hands back the text to put there. What a rejected file
+costs is then an exit code and a message naming it, rather than a half-written
+store.
+
 **The offer a session reads is reconciled with the plan before it is
 printed.** `readiness` reads the store and only the store, which is what
 makes it honest about what is finished and blind to what a number *means*:

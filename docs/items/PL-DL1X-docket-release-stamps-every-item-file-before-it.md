@@ -3,11 +3,12 @@ id: PL-DL1X
 title: docket release stamps every item file before it bumps the version, so a failure in the bump leaves the store recording a release that did not happen
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-31
+closed: 2026-09-01
 verify: uv run pytest subprojects/docket/tests/test_cli.py -k unstamped
 ---
 
@@ -63,3 +64,31 @@ closes": the release script is machinery the release's goal names, so a defect
 in it is inside the frozen scope whether or not `PL-8HJ2`'s own claim survives
 without the fix. The paragraph above answers the completion question
 correctly; that is no longer the question.
+
+
+**Worked 2026-09-01.** The proof and the write are now separate operations.
+`bump_version` is replaced by `prepare_bump`, which reads the version file,
+raises on everything it can reject - absent, or carrying no version field -
+and returns a `PreparedBump` holding the path and the exact text to put there.
+`cmd_release` prepares before the stamping loop and calls `bump.write()` after
+it, so a rejected version file returns 1 with nothing written and the failure
+named, instead of a traceback out of a half-written store.
+
+The order the Done-when specifies, then, with the validation and the write
+unable to disagree: a separate `check_bumpable` would have put the rule that
+decides bumpability in two places, and the one that runs first would not be
+the one that writes. What remains after preparing is an I/O failure on the
+write itself, which no ordering inside one process removes.
+
+**Two tests, both keyed `unstamped`** and both watched failing against the old
+code first: a version file with no version field, and no version file at all -
+the second being the state a project adopting docket meets. Each asserts exit
+1, the failure named in the output, `milestone:` absent from the item file,
+and (for the first) that no release notes were written.
+
+**No `milestone:` stamped on this item by hand,** deliberately, and this is
+the item that makes the case: `unreleased()` selects `done` items with no
+`milestone`, so a hand-stamped one is skipped by the release that actually
+ships it. Leaving the field empty is what lets `docket release` stamp it when
+v0.2.8 is cut - which is the semantics this fix exists to defend. `PL-HXYY`
+(what `milestone:` means on an open gate entry) carries the general question.
