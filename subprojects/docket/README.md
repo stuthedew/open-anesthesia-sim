@@ -499,6 +499,15 @@ added: 2026-08-24
 **Done when.** The observable condition that closes it.
 ```
 
+`**Problem.**`, `**Why it matters.**` and `**Done when.**` are required once
+an item leaves `untriaged`; the others are conventions. A heading is matched
+by the words it opens with and may continue past them — `**Why it matters, and
+why it is not new.**` is the same section, and a check that made an author
+flatten a better heading would be editing prose rather than checking it. What
+it does require is text under the heading: a required section with nothing
+below it is an error, because presence of a heading is not what makes an item
+startable by a stranger.
+
 Two further fields govern whether the work may be handed to a cheaper model:
 `verify`, a single-line command that proves the item done, and `not-delegable`,
 holding the reason an otherwise-qualifying item is withheld. See *Delegation is
@@ -816,7 +825,8 @@ would be worse than no tool.
 ## What is checked, and what is left alone
 
 Everything mechanically decidable is decided by code: a duplicate id, a
-blocker that is not an item, a missing brief section, a safety-classed item
+blocker that is not an item, a brief section that is missing or that has
+nothing written under its heading, a safety-classed item
 sitting in a band it is not allowed to sit in, a `done` item recording a pull
 request the default branch has never seen. These are errors and they exit non-zero.
 

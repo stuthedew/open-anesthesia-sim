@@ -26,12 +26,71 @@ from datetime import date
 
 from .config import Config
 from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
+from .plan import OfferedReport
 from .release import SEMVER_RE, version_key
 from .store import ID_RE
 from .vcs import ClosureReport, PullRequestHistory
 from .verify import LandedReport
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
+DONE_WHEN = "**Done when.**"
+
+# A heading, as the item format writes one: `**` at the start of a line. Used
+# to find where one section stops rather than to validate the heading itself,
+# so bold text inside a paragraph does not end a section and a bold-opened
+# paragraph does.
+BRIEF_HEADING = re.compile(r"^\*\*", re.MULTILINE)
+
+
+def _section_text(body: str, marker: str) -> str | None:
+    """What a brief holds under `marker`, or `None` when it holds no such heading.
+
+    Presence of the literal marker used to be the whole test, and it was wrong
+    in both directions: `**Why it matters, and why it is not new.**` is a
+    better heading than the bare one and was rejected, while a heading with
+    nothing under it was accepted. So a heading is matched by its opening
+    words - everything up to the `.**` the constants above carry for the error
+    message - and what follows it, up to the next heading-opened line, is what
+    the item actually says. An empty string is a section with no text under
+    it, which is a different failure from a missing one and reads as one.
+
+    The first matching heading is the one judged, deliberately. The stub this
+    check was written for - four headings echoing the format, above the real
+    brief - would pass a rule that accepted any occurrence with text, which is
+    the hole rather than the fix.
+
+    Deciding whether a section has content, never whether the content is any
+    good: `CLAUDE.md`'s line between what a tool may decide and what it may not.
+    """
+    heading = re.search(rf"^{re.escape(marker.removesuffix('.**'))}", body, re.MULTILINE)
+    if heading is None:
+        return None
+    # Past the heading's own closing `**`, so that an elaborated heading is not
+    # mistaken for the text under itself. A heading that never closes has
+    # nothing under it by this reading, which is the answer that heading
+    # deserves.
+    close = body.find("**", heading.end())
+    start = len(body) if close == -1 else close + 2
+    end = BRIEF_HEADING.search(body, start)
+    return body[start : end.start() if end else len(body)].strip()
+
+
+def brief_gaps(body: str, *, blocked: bool = False) -> tuple[list[str], list[str]]:
+    """The required sections a brief lacks, as absent ones and empty ones.
+
+    One author for the rule, because two had already drifted: `check` errored
+    on the sections an item was missing while `triage` printed its own reading
+    of the same three markers, and the README promises a reader those two
+    cannot disagree. A blocked item is not asked for `**Done when.**` - it
+    cannot state its closing condition until its blocker resolves.
+    """
+    required = list(REQUIRED_BRIEF) + ([] if blocked else [DONE_WHEN])
+    found = {marker: _section_text(body, marker) for marker in required}
+    return (
+        [marker for marker, text in found.items() if text is None],
+        [marker for marker, text in found.items() if text == ""],
+    )
+
 
 # A pull request number, as GitHub allocates them: a bare positive integer.
 # Written without the `#` so that the field holds the number and nothing else,
@@ -132,11 +191,15 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             report.errors.append(f"{where}: no priority; expected one of {', '.join(PRIORITIES)}")
         if item.effort not in EFFORTS:
             report.errors.append(f"{where}: no effort; expected one of {', '.join(EFFORTS)}")
-        missing = [marker for marker in REQUIRED_BRIEF if marker not in item.body]
-        if item.status != "blocked" and "**Done when.**" not in item.body:
-            missing.append("**Done when.**")
+        missing, empty = brief_gaps(item.body, blocked=item.status == "blocked")
         if missing:
             report.errors.append(f"{where}: brief is missing {', '.join(missing)}")
+        if empty:
+            report.errors.append(
+                f"{where}: brief has nothing under {', '.join(empty)}; the heading "
+                "is there and the section is not, which is what the brief exists "
+                "to prevent"
+            )
 
     # The `verify:` gate sits at `ready` rather than at capture, and the
     # placement is the whole of the rule. Demanding a command at the moment an
@@ -601,7 +664,7 @@ def analyze(
     today: date,
     config: Config | None = None,
     history: PullRequestHistory | None = None,
-    offered: frozenset[str] | None = None,
+    offered: OfferedReport | None = None,
     landed: LandedReport | None = None,
     closures: ClosureReport | None = None,
     version: str | None = None,
@@ -617,9 +680,12 @@ def analyze(
     `offered` is the ids `next` would suggest. It is supplied by the three
     commands that put advisories in front of a person - `check`, `digest` and
     `next` - and by nothing else, so no command reports a count another
-    command would contradict.
+    command would contradict. Like the other three it can decline: the ranking
+    reads what is in flight, and a checkout that could not walk every ref has
+    settled which items come next only as far as the refs it could read.
     """
     settings = config or Config()
+    ids = offered.ids if offered is not None else None
     report = Report(items=list(items))
     for item in report.items:
         _check_item(item, report, settings)
@@ -627,7 +693,15 @@ def analyze(
     _check_milestones(report, version)
     _check_provenance(report, history)
     _check_landed(report, landed)
-    _check_selects_nothing(report, landed, offered)
+    _check_selects_nothing(report, landed, ids)
     _check_closures(report, closures)
-    _groom(report, today, settings, offered)
+    _groom(report, today, settings, ids)
+    # Said once, for both advisories above that read `offered`, and said even
+    # where neither fired: an unread ref might carry the item that would have
+    # been named, so silence there is the same partial answer as a wrong name.
+    if offered is not None and offered.declined:
+        report.declined.append(
+            f"whether the grooming advisories name the items `next` will really "
+            f"offer: {offered.declined}"
+        )
     return report

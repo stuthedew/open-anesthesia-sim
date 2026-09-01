@@ -3,21 +3,14 @@ id: PL-RWZV
 title: The brief check tests for a literal marker, so an elaborated heading fails and an empty one passes
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-08-31
-verify: uv run pytest subprojects/docket/tests/test_checks.py -k heading
+closed: 2026-09-01
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_stub_above_a_real_brief_does_not_satisfy_the_check' subprojects/docket/tests/test_checks.py
 ---
-
-**Problem.** The brief check tests for a literal marker, so an elaborated heading fails and an empty one passes
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `checks.py` tests brief completeness with `marker not in
 item.body` against the literal strings in `REQUIRED_BRIEF` plus
@@ -73,3 +66,39 @@ reach `ready`. The empty-section half stopped being hypothetical on 2026-09-01:
 `PL-K2ZK` and `PL-W1LN` were both captured with the four-heading stub above
 their real briefs, and both would have passed this check at `ready` had the
 stub been all they carried. The stubs were removed by hand during that triage.
+
+**Worked 2026-09-01.** The approach the brief proposed, with two things it did
+not specify decided here.
+
+*The first matching heading is the one judged.* This file was itself the
+empty-section case - four headings echoing the format, empty, above the real
+brief, at `ready` - so the rule had to say which occurrence it reads. "Any
+occurrence with text under it" would have passed exactly this shape, which is
+the hole rather than the fix; "all occurrences" would reject a brief that
+legitimately returns to a heading later. The stub was deleted in this commit,
+and `test_a_stub_above_a_real_brief_does_not_satisfy_the_check` holds the
+shape so it cannot come back. The three other files carrying it - `PL-8MZN`
+and `PL-V5XM` dropped, `PL-WFJ9` done - sit outside `OPEN_STATUSES` and the
+check never reads them.
+
+*An empty section and a missing one are now two messages, not one.* The fix
+for each is different - write the section, against add the heading - and a
+single "brief is missing" line naming both would send a reader to the wrong
+one. `_section_text` returns `None` for absent and `""` for present-but-empty
+to keep the two distinguishable at the call site.
+
+*The doc sweep found a second reader of the rule, and it had already drifted.*
+`render.py` printed `triage`'s own literal-substring reading of the same three
+markers, so after this change `triage` would have called a stubbed brief
+complete a moment before `docket check` errored on it - against the README's
+promise that those two cannot disagree. Both now call `brief_gaps`, the rule
+has one author, and `test_triage_reads_the_brief_exactly_as_the_checker_will`
+holds them together. The README's "a missing brief section" and its item-format
+section were updated to state the rule as it now stands.
+
+*Validated against the store before it was written.* The rule was prototyped
+over all 241 item files first: it flags this file's two empty sections and
+nothing else, and reports nothing newly missing, so no existing brief is
+rejected by the change. The `verify:` command was replaced at the same time -
+it was a bare `-k heading`, which selected no test and exited 5 both before
+and after the work.

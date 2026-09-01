@@ -556,6 +556,38 @@ def test_triage_prints_the_body_and_what_is_still_unset(
     assert "**Why it matters.**" in output  # the brief sections still missing
 
 
+STUBBED = """---
+id: PL-U2U2
+title: An idea captured over the format's own headings
+status: untriaged
+added: 2026-08-20
+---
+
+**Problem.** The stub above a real brief, which is how `PL-RWZV` was written.
+
+**Why it matters.**
+
+**Done when.**
+"""
+
+
+def test_triage_reads_the_brief_exactly_as_the_checker_will(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-RWZV`: two readings of one rule, and the README promises there is one.
+
+    `triage` had its own literal-substring test, so it would have called this
+    brief complete a moment before `docket check` errored on it - and would
+    have demanded a section from an item whose heading merely continued past
+    the words. Both now come from `brief_gaps`.
+    """
+    _triage(tmp_path, STUBBED)
+    output = capsys.readouterr().out
+
+    assert "brief has nothing under: **Why it matters.**, **Done when.**" in output
+    assert "brief still missing" not in output
+
+
 def test_triage_states_the_rules_the_answers_must_satisfy(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1102,6 +1134,12 @@ def test_the_queue_commands_say_when_a_ref_went_unread(
         # same sentence: a mark drawn from refs that went unread is a partial
         # reading, and silence would present it as a complete one.
         ("show", "PL-0001"),
+        # `check` was the seventh reader and the one this test's own list left
+        # out (PL-3576): its grooming advisories name whichever item the
+        # ranking put first, and the ranking excludes what is in flight. It
+        # says so in the section it already keeps for checks that could not
+        # run, so the sentence arrives with a prefix the others have no use for.
+        ("check",),
     )
     for command in commands:
         assert main(["--items", store, *command]) == 0
