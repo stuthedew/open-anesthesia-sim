@@ -3,11 +3,13 @@ id: PL-768D
 title: The tools/ import guard reads the running interpreter's stdlib, not the floor's
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tests/unit/test_tools_portability.py, .github/workflows/quality.yml
 added: 2026-09-01
+closed: 2026-09-01
+verify: uv run pytest tests/unit/test_tools_portability.py && grep -q 'def test_the_ci_floor_job_pins_the_declared_floor' tests/unit/test_tools_portability.py
 ---
 
 **Problem.** `tests/unit/test_tools_portability.py`'s import guard, added by
@@ -58,14 +60,6 @@ lacks without a check failing, and no test docstring records the gap as still
 open. Stated as the outcome rather than as a mechanism because the mechanism is
 the open decision below.
 
-**Decision needed.** Which mechanism closes it - and whether the fix is the
-test or CI? The four routes are below with a recommendation, and the choice is
-not a detail of implementation: routes 1-3 edit an assertion in
-`tests/unit/test_tools_portability.py`, route 4 leaves that assertion as it is
-and adds a CI job that makes it non-load-bearing. They rewrite **Done when**
-differently and touch different files. No measurement is outstanding; what the
-answer needs is on the record here.
-
 **Options.** The standard library carries no versioned module index, so nothing
 derives the floor's set the way `sys.stdlib_module_names` derives the running
 one. Three routes were recorded at capture; a fourth surfaced at triage and is
@@ -83,7 +77,8 @@ the recommendation.
    CI where that interpreter is not the floor either.
 3. **Accept the bound and drop this with a reason.** Defensible on the module
    set alone; not once the CI gap above is counted.
-4. **Run both trees at the floor in CI - recommended.** A second job in
+4. **Run both trees at the floor in CI - chosen by the project owner,
+   2026-09-01, and built.** A second job in
    `.github/workflows/quality.yml`: `actions/checkout`, `actions/setup-python`
    at 3.11, then `python3 tools/doc_check.py check` and `bin/docket check`.
    That tests the promise rather than approximating it - imports, syntax and
@@ -102,9 +97,29 @@ the recommendation.
    item's docstring paragraph go.
 
 **Triaged 2026-09-01.** P2, `defect`/`infra`, `dev-tooling`, beside `PL-QDH7`
-which created the guard. `needs-decision` rather than `ready`, so `bin/docket
-next` does not offer it and no `verify:` is owed until the mechanism is settled
-- it differs per route, and the rule is to run one and watch it fail before
-writing it down. `touches` names both candidate files, which is the
-conservative answer for concurrency while the route is open. Captured after
-v0.2.8's gate was frozen, so it belongs to the next gate rather than this one.
+which created the guard. Set `needs-decision` because the four routes touched
+different files and rewrote **Done when** differently. Captured after v0.2.8's
+gate was frozen, so it belonged to the next gate rather than that one.
+
+**Done 2026-09-01, route 4.** `.github/workflows/quality.yml` gains a `floor`
+job: `actions/checkout`, `actions/setup-python@v7.0.0` at 3.11, then
+`python3 tools/doc_check.py check` and `bin/docket check`. Both were run at
+3.11.15 in the development container - which is the same invocation the job
+makes - and exit 0, so it landed green as a guard rather than as a fix.
+
+`python-version:` is set explicitly rather than inherited: unset, the action
+reads `.python-version`, which pins 3.14.7 - the one interpreter this job
+exists not to test. That pin is held to `requires-python` by
+`test_the_ci_floor_job_pins_the_declared_floor`, which also asserts the
+workflow carries exactly one such pin, so the `checks` job's deliberate absence
+of one cannot be lost silently. Both failure modes were watched: a pin bumped
+to 3.12 fails on `'3.12' == '3.11'`, and a second pin fails naming both.
+
+The three docstrings that recorded the approximation as an open gap now record
+it as a bound with the real check named. The suites were kept rather than
+replaced: they run before a push, they name the offending file and import where
+a CI traceback would not, and they reach a file or a lazily-imported branch the
+job's two commands never touch.
+`subprojects/docket/tests/test_portability.py` needed no edit - its
+hand-maintained `ALLOWED_IMPORTS` is backstopped by the same job running
+`bin/docket check` at the floor.

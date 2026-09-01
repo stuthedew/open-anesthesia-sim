@@ -39,3 +39,44 @@ jobs:
       - run: uv run pytest
       - run: bin/docket check
       - run: uv run python tools/doc_check.py check
+
+  # The other half of what `checks` proves, and the half that was missing.
+  # Everything above runs under the virtualenv on the interpreter
+  # `.python-version` pins. But `tools/` and `subprojects/docket/` promise to
+  # run under a bare `python3` with no virtualenv and no install step - that is
+  # why they depend on nothing outside the standard library, and `make check`'s
+  # last two lines are exactly that invocation. Nothing here exercised it:
+  # `checks` reaches doc_check through `uv run python`, and `bin/docket check`
+  # through whatever system python the runner image happens to ship, neither of
+  # them the declared floor.
+  #
+  # So both portability suites were approximating a run CI never performed -
+  # `tests/unit/test_tools_portability.py` gating syntax through
+  # `ast.parse(feature_version=...)` and reading the wrong interpreter's
+  # `sys.stdlib_module_names`, `subprojects/docket/tests/test_portability.py`
+  # keeping an import allowlist by hand. This job performs the run instead,
+  # which settles imports, syntax and runtime behavior together and needs no
+  # list kept current as the standard library moves.
+  #
+  # The suites stay. They run before a push, they name the offending file and
+  # import where a traceback here would not, and they reach a file or a
+  # lazily-imported branch these two commands never touch.
+  floor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # `python-version:` is set here rather than inherited, which is the
+      # opposite of the choice above and for the same reason. Left unset, the
+      # action reads `.python-version` - the project interpreter, the one
+      # version this job exists not to test. The floor itself is not chosen
+      # here either: it is what `subprojects/docket/pyproject.toml` declares in
+      # `requires-python`, and `tests/unit/test_tools_portability.py` holds
+      # this pin to it so the two cannot drift.
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      - run: python3 tools/doc_check.py check
+      - run: bin/docket check
