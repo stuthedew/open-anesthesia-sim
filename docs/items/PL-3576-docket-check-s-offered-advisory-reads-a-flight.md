@@ -1,10 +1,15 @@
 ---
 id: PL-3576
 title: docket check's offered-advisory reads a flight answer that may be partial and says nothing about it
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-08-31
+verify: uv run pytest subprojects/docket/tests/test_checks.py -k flight
 ---
-
 **Problem.** `PL-S1P1` carried the unread refs to the six answers that rank or
 mark against in-flight work - `next`, `list`, `status`, `concurrent`,
 `delegable` and the digest. `check` is the seventh reader and was left out:
@@ -36,3 +41,11 @@ section that already exists for checks that could not run.
 refs that went unread) is the same hole in the other six readers, done
 2026-08-31. `PL-YSXF` (a ref named as unread loses the id its own branch name
 carries) narrows the gap itself and is the more valuable of the two remaining.
+
+**Triaged 2026-09-01.** P3, `defect`/`infra`, `parallel-sessions`, and
+**admitted to v0.2.8's frozen list** under the scope test: `PL-S1P1` fixed six
+of the seven readers of the flight answer as a frozen entry, and this is the
+seventh, left out as a placement question rather than because it was out of
+scope. The `verify:` command was run first and selects nothing today, so it
+exits 5 until the test exists; `-k check` and `-k declined` both select passing
+tests and would prove nothing.
