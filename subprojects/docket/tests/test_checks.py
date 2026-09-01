@@ -138,6 +138,59 @@ def test_an_open_item_needs_the_brief_a_stranger_would_read() -> None:
     assert _has(_errors(_item(body="**Problem.** only this\n")), "brief is missing")
 
 
+def test_a_heading_may_be_elaborated_past_the_words_the_check_looks_for() -> None:
+    """`PL-921W`, whose better heading the literal test rejected.
+
+    It was captured as `**Why it matters, and why it is not new.**`, reads as
+    the required section to anyone, and had to be flattened to satisfy the
+    check. Editing prose that was already right is not what this check is for.
+    """
+    elaborated = _item(
+        body=("**Problem.** x\n**Why it matters, and why it is not new.** y\n**Done when.** z\n")
+    )
+
+    assert _errors(elaborated) == []
+
+
+def test_a_required_heading_with_nothing_under_it_is_not_a_brief() -> None:
+    """The other direction, and the one that costs someone else's time."""
+    messages = _errors(_item(body="**Problem.** x\n\n**Why it matters.**\n\n**Done when.** z\n"))
+
+    assert _has(messages, "brief has nothing under **Why it matters.**")
+    assert not _has(messages, "brief is missing")
+
+
+def test_a_stub_above_a_real_brief_does_not_satisfy_the_check() -> None:
+    """`PL-RWZV`'s own shape, and why the *first* heading is the one judged.
+
+    Four empty headings echoing the format, with the real brief written under
+    a second set below them. Judging any occurrence with text under it would
+    pass exactly this, which is the hole rather than the fix.
+    """
+    messages = _errors(
+        _item(
+            body=(
+                "**Problem.** x\n\n"
+                "**Why it matters.**\n\n"
+                "**Done when.**\n\n"
+                "**Problem.** the real one\n\n"
+                "**Why it matters.** because\n\n"
+                "**Done when.** it holds\n"
+            )
+        )
+    )
+
+    assert _has(messages, "brief has nothing under **Why it matters.**, **Done when.**")
+
+
+def test_an_empty_section_is_reported_as_empty_rather_than_missing() -> None:
+    """Two failures, two messages: the fix for one is not the fix for the other."""
+    messages = _errors(_item(body="**Problem.**\n"))
+
+    assert _has(messages, "brief has nothing under **Problem.**")
+    assert _has(messages, "brief is missing **Why it matters.**, **Done when.**")
+
+
 def test_a_blocked_item_needs_no_done_when() -> None:
     """It cannot state its closing condition until its blocker resolves."""
     blocker = _item("PL-B1B1")

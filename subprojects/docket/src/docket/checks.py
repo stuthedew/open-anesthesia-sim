@@ -32,6 +32,47 @@ from .vcs import ClosureReport, PullRequestHistory
 from .verify import LandedReport
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
+DONE_WHEN = "**Done when.**"
+
+# A heading, as the item format writes one: `**` at the start of a line. Used
+# to find where one section stops rather than to validate the heading itself,
+# so bold text inside a paragraph does not end a section and a bold-opened
+# paragraph does.
+BRIEF_HEADING = re.compile(r"^\*\*", re.MULTILINE)
+
+
+def _section_text(body: str, marker: str) -> str | None:
+    """What a brief holds under `marker`, or `None` when it holds no such heading.
+
+    Presence of the literal marker used to be the whole test, and it was wrong
+    in both directions: `**Why it matters, and why it is not new.**` is a
+    better heading than the bare one and was rejected, while a heading with
+    nothing under it was accepted. So a heading is matched by its opening
+    words - everything up to the `.**` the constants above carry for the error
+    message - and what follows it, up to the next heading-opened line, is what
+    the item actually says. An empty string is a section with no text under
+    it, which is a different failure from a missing one and reads as one.
+
+    The first matching heading is the one judged, deliberately. The stub this
+    check was written for - four headings echoing the format, above the real
+    brief - would pass a rule that accepted any occurrence with text, which is
+    the hole rather than the fix.
+
+    Deciding whether a section has content, never whether the content is any
+    good: `CLAUDE.md`'s line between what a tool may decide and what it may not.
+    """
+    heading = re.search(rf"^{re.escape(marker.removesuffix('.**'))}", body, re.MULTILINE)
+    if heading is None:
+        return None
+    # Past the heading's own closing `**`, so that an elaborated heading is not
+    # mistaken for the text under itself. A heading that never closes has
+    # nothing under it by this reading, which is the answer that heading
+    # deserves.
+    close = body.find("**", heading.end())
+    start = len(body) if close == -1 else close + 2
+    end = BRIEF_HEADING.search(body, start)
+    return body[start : end.start() if end else len(body)].strip()
+
 
 # A pull request number, as GitHub allocates them: a bare positive integer.
 # Written without the `#` so that the field holds the number and nothing else,
@@ -132,11 +173,20 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             report.errors.append(f"{where}: no priority; expected one of {', '.join(PRIORITIES)}")
         if item.effort not in EFFORTS:
             report.errors.append(f"{where}: no effort; expected one of {', '.join(EFFORTS)}")
-        missing = [marker for marker in REQUIRED_BRIEF if marker not in item.body]
-        if item.status != "blocked" and "**Done when.**" not in item.body:
-            missing.append("**Done when.**")
+        required = list(REQUIRED_BRIEF)
+        if item.status != "blocked":
+            required.append(DONE_WHEN)
+        found = {marker: _section_text(item.body, marker) for marker in required}
+        missing = [marker for marker, text in found.items() if text is None]
+        empty = [marker for marker, text in found.items() if text == ""]
         if missing:
             report.errors.append(f"{where}: brief is missing {', '.join(missing)}")
+        if empty:
+            report.errors.append(
+                f"{where}: brief has nothing under {', '.join(empty)}; the heading "
+                "is there and the section is not, which is what the brief exists "
+                "to prevent"
+            )
 
     # The `verify:` gate sits at `ready` rather than at capture, and the
     # placement is the whole of the rule. Demanding a command at the moment an

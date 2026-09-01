@@ -3,21 +3,14 @@ id: PL-RWZV
 title: The brief check tests for a literal marker, so an elaborated heading fails and an empty one passes
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-08-31
-verify: uv run pytest subprojects/docket/tests/test_checks.py -k heading
+closed: 2026-09-01
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_stub_above_a_real_brief_does_not_satisfy_the_check' subprojects/docket/tests/test_checks.py
 ---
-
-**Problem.** The brief check tests for a literal marker, so an elaborated heading fails and an empty one passes
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `checks.py` tests brief completeness with `marker not in
 item.body` against the literal strings in `REQUIRED_BRIEF` plus
@@ -74,16 +67,29 @@ reach `ready`. The empty-section half stopped being hypothetical on 2026-09-01:
 their real briefs, and both would have passed this check at `ready` had the
 stub been all they carried. The stubs were removed by hand during that triage.
 
-**This file is itself the empty-section case, 2026-09-01.** The four headings
-above the real brief - `**Problem.**` echoing the title, then `**Why it
-matters.**`, `**Where.**` and `**Done when.**` with nothing under them - are
-this item's own stub, and it is at `ready`. So the fix decides its own file's
-fate, and the session doing it must delete the stub in the same commit or
-`docket check` goes red on landing. It also forces the rule to be stated
-precisely: whether a required section counts as present on its *first*
-occurrence, on *all* of them, or on *any* one with text under it, is a choice
-the three-marker scan cannot dodge here. Recommended: judge the first
-occurrence, and delete the stub - "any occurrence with text" would let exactly
-this shape pass, which is the hole the item exists to close. The other three
-files carrying the stub (`PL-8MZN`, `PL-V5XM` dropped; `PL-WFJ9` done) are
-outside `OPEN_STATUSES` and the check never reads them.
+**Worked 2026-09-01.** The approach the brief proposed, with two things it did
+not specify decided here.
+
+*The first matching heading is the one judged.* This file was itself the
+empty-section case - four headings echoing the format, empty, above the real
+brief, at `ready` - so the rule had to say which occurrence it reads. "Any
+occurrence with text under it" would have passed exactly this shape, which is
+the hole rather than the fix; "all occurrences" would reject a brief that
+legitimately returns to a heading later. The stub was deleted in this commit,
+and `test_a_stub_above_a_real_brief_does_not_satisfy_the_check` holds the
+shape so it cannot come back. The three other files carrying it - `PL-8MZN`
+and `PL-V5XM` dropped, `PL-WFJ9` done - sit outside `OPEN_STATUSES` and the
+check never reads them.
+
+*An empty section and a missing one are now two messages, not one.* The fix
+for each is different - write the section, against add the heading - and a
+single "brief is missing" line naming both would send a reader to the wrong
+one. `_section_text` returns `None` for absent and `""` for present-but-empty
+to keep the two distinguishable at the call site.
+
+*Validated against the store before it was written.* The rule was prototyped
+over all 241 item files first: it flags this file's two empty sections and
+nothing else, and reports nothing newly missing, so no existing brief is
+rejected by the change. The `verify:` command was replaced at the same time -
+it was a bare `-k heading`, which selected no test and exited 5 both before
+and after the work.
