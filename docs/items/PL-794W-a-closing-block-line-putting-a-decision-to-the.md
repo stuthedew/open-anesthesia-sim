@@ -1,9 +1,15 @@
 ---
 id: PL-794W
 title: A closing-block line putting a decision to the project owner does not disclose that its answer will produce a commit, so it can be ordered after a line that merges the branch the commit belongs in
-status: untriaged
+priority: P2
+effort: S
+status: done
+verify: python3 tools/doc_check.py check && grep -q 'sorts as work' .claude/rules/instruction-writing.md
+classes: defect, docs
+feature: worker-instructions
 touches: .claude/rules/instruction-writing.md
 added: 2026-09-01
+closed: 2026-09-01
 ---
 
 **Problem.** Rule 14 of `.claude/rules/instruction-writing.md` already requires
@@ -39,7 +45,7 @@ was meant", so the reader is entitled to act on the numbering, and did.
 
 **Where.** `.claude/rules/instruction-writing.md`, rule 14. Prose only.
 
-**Proposed rule, put to the owner 2026-09-01 and not yet approved.** One
+**The rule, approved by the project owner 2026-09-01 and now in rule 14.** One
 clause: a closing-block line whose answer will produce a commit says so, and
 sorts as work rather than as a question. Where that commit belongs in a branch
 another line would merge or close, the decision line comes first —
