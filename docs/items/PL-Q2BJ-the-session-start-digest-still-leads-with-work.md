@@ -3,11 +3,12 @@ id: PL-Q2BJ
 title: The session-start digest still leads with work the current step excludes
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: planning-cadence
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md
 added: 2026-08-30
+closed: 2026-09-01
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py -k "digest and scope"
 ---
 

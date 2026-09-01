@@ -18,7 +18,7 @@ from .checks import REQUIRED_BRIEF, Report
 from .concurrency import undeclared
 from .config import Config
 from .model import PRIORITIES, Item
-from .plan import Feature, Gate, effort_total
+from .plan import Feature, Gate, effort_total, recommend
 from .release import PLANNED, RESERVED, Readiness, release_offer
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
 from .vcs import CURRENT, PULL, RESTART, Branch, BranchState, FlightReport, StrandedReport
@@ -185,6 +185,22 @@ def format_digest(
     other line here, because all of them read the store in this checkout - so
     the digest is the only place a session can be told the queue it is reading
     is not all of it.
+
+    The `Top:` line goes through `recommend` for the same reason `next` does,
+    and one sharper: the two lines sit in one block of output, so ranking them
+    by different rules made them contradict each other where a reader could
+    see both at once. Sorting the store by priority alone opened every session
+    with `PL-9Y42` - v0.4.0 science scope - two lines above a beat that said
+    clear v0.2.8's gate, and left the reader to work out which of them knew
+    about the plan (queue item PL-Q2BJ). Deriving the line from the `plan`
+    already passed here is what makes that disagreement unrepresentable rather
+    than merely fixed.
+
+    Where the ranking still surfaces work the step excludes - because nothing
+    it includes is startable - the line names the milestone that places the id
+    instead of dropping it. That is `recommend`'s own rule: which section
+    names an id is a fact, and whether the plan is wrong about it is a verdict
+    this cannot support.
     """
     flight = in_flight or FlightReport()
     if not report.items:
@@ -199,9 +215,15 @@ def format_digest(
             f"{item.identifier} {item.title} ({_marks(item, flight.ids)})"
         )
 
-    top = next((i for i in sorted(report.open_items, key=lambda i: i.sort_key())), None)
-    if top is not None and top.priority != "P0":
-        lines.append(f"  Top: {top.identifier} {top.title} ({_marks(top, flight.ids)})")
+    picks = recommend(
+        list(report.items), flight.ids, limit=1, scope=plan.scope if plan is not None else None
+    )
+    top = picks[0] if picks else None
+    if top is not None and top.item.priority != "P0":
+        marks = _marks(top.item, flight.ids)
+        if top.scoped_to:
+            marks += f", scoped to {top.scoped_to}, not this step"
+        lines.append(f"  Top: {top.item.identifier} {top.item.title} ({marks})")
 
     if flight.ids:
         lines.append(
