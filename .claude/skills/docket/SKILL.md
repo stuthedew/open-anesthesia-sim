@@ -372,10 +372,13 @@ item is written, and the fix is still to see it fail first.
 carries that name does not fail; it *selects nothing*, collects nothing and
 exits 5. Non-zero, so it looks like the command failing as intended, and it
 goes on looking that way after the work too unless the test the work adds
-happens to match. `docket check` reports these separately from the ones that
-pass — "their `verify:` command selects no test" — and so does `docket verify`
-on the check line. Reading one about your own item means: confirm the selector
-names something the work will actually create, and rename it if not.
+happens to match. `docket verify` says so on the check line, and `docket check`
+reports it — separately from the commands that already pass — for the items
+`next` is about to offer, which is the first moment there is anybody to act on
+it. Reading one about your own item means: confirm the selector names
+something the work will actually create, and rename it if not. The sentence
+carries how many open items across the store are in the same state, which is
+context rather than a backlog to clear in one pass.
 
 Copy one of these shapes rather than inventing one:
 
