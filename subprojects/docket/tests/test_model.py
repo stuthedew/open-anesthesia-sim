@@ -33,6 +33,9 @@ def _item(**overrides: object) -> Item:
         body=BRIEF,
     )
     base.update(overrides)
+    # Splatting `dict[str, object]` matches `object` against every field's type; the
+    # alternatives are `dict[str, Any]` or an `Unpack[TypedDict]` restating all of
+    # `Item`'s fields, both wider than this line-scoped ignore.
     return Item(**base)  # type: ignore[arg-type]
 
 

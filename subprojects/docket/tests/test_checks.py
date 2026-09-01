@@ -38,6 +38,9 @@ def _item(identifier: str = "PL-K7QX", **overrides: object) -> Item:
         body=BRIEF,
     )
     base.update(overrides)
+    # Splatting `dict[str, object]` matches `object` against every field's type; the
+    # alternatives are `dict[str, Any]` or an `Unpack[TypedDict]` restating all of
+    # `Item`'s fields, both wider than this line-scoped ignore.
     return Item(**base)  # type: ignore[arg-type]
 
 
@@ -504,6 +507,9 @@ def _landed(**overrides: object) -> LandedReport:
         passing=("PL-K7QX",), shared=(), vacuous=(), considered=4, declined=""
     )
     base.update(overrides)
+    # Splatting `dict[str, object]` matches `object` against every field's type; the
+    # alternatives are `dict[str, Any]` or an `Unpack[TypedDict]` restating all of
+    # `LandedReport`'s fields, both wider than this line-scoped ignore.
     return LandedReport(**base)  # type: ignore[arg-type]
 
 
