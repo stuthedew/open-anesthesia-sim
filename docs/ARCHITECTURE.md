@@ -265,6 +265,17 @@ package resolvable only inside the project virtualenv is a `ModuleNotFoundError`
 under bare `python3`. A tool added later inherits all three.
 `subprojects/docket/` carries the same guards for the same reason.
 
+All of those are approximations run under the project virtualenv — a syntax
+gate rather than an older parser, and the wrong interpreter's
+`sys.stdlib_module_names`. `.github/workflows/quality.yml`'s `floor` job
+performs the run they stand in for: `actions/setup-python` at the declared
+floor, then `python3 tools/doc_check.py check` and `bin/docket check` under it.
+That decides syntax, imports and runtime behavior at once, with no list to keep
+current. A fourth test holds the job's pinned version to `requires-python`, so
+raising the floor cannot leave CI exercising an interpreter the project no
+longer supports. The approximations stay because they name the offending file
+and import, run before a push, and reach what those two commands never do.
+
 ## Tests (`tests/`)
 
 - **`tests/unit/`** — one module's behavior in isolation (a compartment, a
