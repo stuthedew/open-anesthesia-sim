@@ -533,6 +533,31 @@ keep their files — `done` records where the work landed, `dropped` records the
 reason, because a finding dropped without one gets raised again by the next
 person who notices it.
 
+### `milestone:` records where work went out, never where it is planned
+
+`docket release` stamps `milestone:` onto the items it ships, and that is the
+whole of what the field means. Nothing else writes it. An item carrying one
+before its release is cut claims to have shipped in a release that has not
+happened — and worse, silently: `release.unreleased` selects finished work
+with **no** milestone, so a stamped item is invisible to the release that
+would actually ship it and is left out of that release's generated notes. Ten
+items in the project this grew in were in exactly that state, hand-stamped for
+a release still being assembled, every one of them scoped to the release its
+own notes would have omitted it from.
+
+The other thing the field is tempting to record — *this item is scoped to the
+next release* — has a home already: the gate subsection of that milestone's
+section in the roadmap, which `docket wave` parses and which is the only thing
+deciding membership. One field cannot carry both meanings, because they demand
+opposite timing. Shipped-in must be absent until the release is cut;
+scoped-to must be present from the moment the list is frozen.
+
+So `docket check` refuses both shapes of the wrong one: a `milestone:` on an
+item that is not `done`, and a `milestone:` naming a version above the
+project's current one. Where either side is not `major.minor.patch` — a
+project versioning by date, a release named `v1.0-rc1` — the comparison is not
+made rather than guessed at.
+
 ### Provenance survives the merge strategy
 
 A closed item's whole traceability is the pointer from it to the work: it is

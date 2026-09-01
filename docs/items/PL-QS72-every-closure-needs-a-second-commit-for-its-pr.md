@@ -8,7 +8,6 @@ classes: defect, infra
 feature: delegation
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-01
-milestone: v0.2.8
 closed: 2026-09-01
 commit: b07d059
 pr: 151
