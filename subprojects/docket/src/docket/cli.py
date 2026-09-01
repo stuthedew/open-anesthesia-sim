@@ -293,19 +293,39 @@ def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namesp
 
 
 def cmd_show(args: argparse.Namespace) -> int:
+    """One item in full, and whether anybody else is already doing it.
+
+    The in-flight exclusion lives in `plan.recommend`, so until now it reached
+    a session only through `next`. Naming an item - the documented way to start
+    one, and the form the `docket` skill's fresh-session line recommends -
+    skipped it, and so did `triage`, `check` and this command. The one guard
+    against two sessions doing the same work was applied only on the path where
+    a person had *not* chosen the work, which is backwards (queue item PL-5KR2).
+
+    So the mark is here, where a session reading an item it was handed will
+    meet it. `format_unread` comes with it rather than as a nicety: the answer
+    is bounded by the refs this checkout could read, and every other command
+    that marks against in-flight ids says so. A mark without that line presents
+    a partial reading as a complete one, which is the collapse `FlightReport`
+    exists to prevent.
+    """
     _, items, _ = _load(args)
     item = find_item(items, args.item)
     if item is None:
         print(f"no item matching '{args.item}'")
         return 1
+    flight = _flight(args)
     print(f"{item.identifier} {item.title}")
     print(f"  {item.priority or '-'} · {item.effort or '-'} · {item.status}")
     if item.touches:
         print(f"  touches: {', '.join(item.touches)}")
     if item.milestone:
         print(f"  milestone: {item.milestone}")
+    if item.identifier in flight.ids:
+        print(f"  IN FLIGHT on a branch - do not start {item.identifier} again.")
     print()
     print(item.body.strip())
+    _say_unread(flight)
     return 0
 
 
