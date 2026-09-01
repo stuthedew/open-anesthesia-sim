@@ -8,7 +8,7 @@ classes: infra
 feature: dev-tooling
 touches: .github/workflows/quality.yml
 added: 2026-08-31
-verify: "! grep -qF 'on: [push, pull_request]' .github/workflows/quality.yml"
+verify: ! grep -qF 'on: [push, pull_request]' .github/workflows/quality.yml && grep -qF '    branches: [main]' .github/workflows/quality.yml && grep -qF '  pull_request:' .github/workflows/quality.yml
 ---
 
 **Problem.** `.github/workflows/quality.yml` is triggered by
