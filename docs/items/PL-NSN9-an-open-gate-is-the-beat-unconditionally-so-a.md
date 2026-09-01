@@ -3,12 +3,13 @@ id: PL-NSN9
 title: A milestone that gates itself reports 'implement' when its gate clears, not 'release'
 priority: P3
 effort: S
-status: ready
-verify: uv run pytest subprojects/docket/tests/test_roadmap.py -k self_gating
+status: done
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_self_gating_milestone_is_a_release_once_its_gate_clears' subprojects/docket/tests/test_roadmap.py
 classes: infra, session-cost
 feature: planning-cadence
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-08-30
+closed: 2026-09-01
 ---
 
 **Problem.** `wave()`'s first branch is
@@ -144,3 +145,41 @@ collision with `PL-51T3` (scope v0.2.8 and freeze its gate), which does edit
 `ROADMAP.md`, and would have serialized two items that do not touch each other.
 An instance of `PL-8JY7` (a declared `touches` path is never checked against
 the tree, so it goes stale).
+
+---
+
+**Closed 2026-09-01.** `wave()`'s release test moved out into
+`_shipping_the_gate`, which now answers yes in two arrangements rather than
+one: the step is an *earlier* milestone than the section recording the gate
+(Gate 0's exception, unchanged), or the step *is* that section and the section
+records no `Required scope` of its own - so its frozen list is the whole of its
+content and clearing it finishes the milestone.
+
+**Why the version comparison could not simply be widened to `<=`.** A
+milestone may record a gate *and* a scope of its own; v0.4.0 is that shape.
+Standing on such a milestone with its gate clear, `step.version ==
+gate.milestone.version` holds, and the act due is to implement the scope, not
+to cut a release. So the second arrangement asks `MilestoneSection.
+records_its_own_scope` - a structural test for the one subsection, added
+beside `is_scoped` - and the two cases are told apart by what the section
+contains rather than by version order, which cannot separate them.
+
+Two tests stand on the same row of the same timeline with the same gate clear
+and differ only in that subsection:
+`test_a_self_gating_milestone_is_a_release_once_its_gate_clears` (RELEASE) and
+`test_a_self_gating_milestone_with_scope_of_its_own_is_still_implementation`
+(IMPLEMENT). The first fails on the pre-change tree, reporting `implement`;
+the second passes on both, which is what it is for.
+`test_an_open_gate_is_the_beat_whatever_else_is_written` and
+`test_a_clear_gate_below_the_milestone_that_recorded_it_is_a_release` are
+untouched and still pass, so what the gate binds is unchanged.
+
+**Also fixed by the same change, from the release side.** `release_offer`
+reads `plan.beat == RELEASE`. With the beat stuck on `implement`, a cleared
+v0.2.8 hit the `RESERVED` branch - "the plan has already given this number to
+a step it has not finished" - and withheld the offer for the very release that
+was due. It now offers 0.2.8. Verified against the real `ROADMAP.md` across
+the lifecycle: gate open -> `clear the gate`; gate clear -> `release v0.2.8 -
+the workflow works - its gate is clear`; v0.2.8 released -> `clear the gate -
+20 entries of 20 still open` with the step back on v0.3.0; Gate 0 clear ->
+`release v0.3.0 - the foundation`.
