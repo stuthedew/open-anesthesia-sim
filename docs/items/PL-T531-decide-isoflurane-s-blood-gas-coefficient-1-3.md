@@ -11,7 +11,7 @@ added: 2026-09-01
 
 **Problem.** `data/agents/isoflurane.json` carries
 `blood_gas_partition_coefficient: 1.3`, sourced to the Gas Man parameter set
-(Stadler et al. 2012, Table 1), alongside tissue:gas coefficients 2.1 / 4.5 /
+(De Wolf et al. 2012, Table 1), alongside tissue:gas coefficients 2.1 / 4.5 /
 70.0 taken from the same table. Standard US textbooks give isoflurane's
 blood:gas coefficient as 1.4. A resident running this simulator beside Miller
 or Barash meets a number that does not match the one in front of them, and
