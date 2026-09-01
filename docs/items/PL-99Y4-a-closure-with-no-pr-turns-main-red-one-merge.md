@@ -1,8 +1,15 @@
 ---
 id: PL-99Y4
 title: A closure with no pr: turns main red one merge later, because CI's shallow clone cannot recover the number
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+feature: public-history
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_vcs.py, .github/workflows/quality.yml
 added: 2026-09-01
+closed: 2026-09-01
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_missing_pr_declines_on_a_shallow_clone' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `main` was red for two consecutive pushes today, 2026-09-01, and
@@ -69,6 +76,40 @@ and the fix is not "always remember the follow-up".
    already does. This is the one that removes the false failure at the source;
    option 1 only moves the horizon.
 
-Recommend both: 2 because a check that reports a wrong verdict is worse than
-one that reports nothing, and 1 because the extra history buys back two checks
-CI is currently skipping.
+**Triaged and done 2026-09-01, both options, on the project owner's approval.**
+P2, `defect`/`infra`, `public-history` beside `PL-P5S0`, which set the rule
+this corrects.
+
+Option 2 is the source fix. `ClosureReport` gains `shallow`, straight from
+`is_shallow`, and `_check_closures` errors only where it is `False`. A derived
+number stays an advisory at any depth - finding the commit is proof it was
+there to find - so truncation qualifies an absence and never a hit. Truncation
+or an unanswerable `is_shallow` declines, naming the ids, which is the answer
+`PL-J295` already established for `tags` and `merged_pull_requests`.
+
+Option 1 is the other half, and measuring it first changed how much it was
+worth: on the full history `bin/docket check` and `tools/doc_check.py` both
+lose their "not checked" section entirely. Three checks CI was silently not
+running - release tags, recorded pull requests, and now the missing-`pr` read -
+go from declined to passing. So it adds coverage rather than risk, and 498
+commits is nothing to clone.
+
+**Reproduced before and after, not argued.** A `--depth 1` clone whose HEAD is
+`3b37a75` - one of the two commits where `main` actually went red - run under
+the code as it stood on `main`: 1 error, exit 1, naming `PL-PF8H`. The same
+clone with the two changed modules copied in: 0 errors, exit 0, and
+
+```
+Not checked (this checkout cannot answer; nothing is claimed):
+  whether PL-PF8H lost provenance by recording no `pr`: the checkout is a
+  shallow clone, so the merge commit naming each number can lie outside it
+  and its absence proves nothing; a full-history checkout answers
+```
+
+**Documentation corrected, not merely swept.** Two statements were falsified by
+this change rather than made vague by it: `subprojects/docket/README.md`'s
+"this does **not** decline in a shallow clone ... only when no default branch
+resolves at all", and its "**No commit names one** -> the error it always was".
+`.claude/skills/docket/SKILL.md` carried the second in miniature. All three now
+state the three-way split. `README.md` gains what CI's full checkout buys and
+why a local shallow checkout reporting those three as not checked is correct.
