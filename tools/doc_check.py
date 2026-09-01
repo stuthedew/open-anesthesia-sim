@@ -139,6 +139,11 @@ PATHS_KEY_RE = re.compile(r"paths\s*:")
 # exposure and no such guard. A name is not rewritten.
 GIT_UNAVAILABLE = (OSError, subprocess.SubprocessError)
 
+# Named for the same reason: a file that cannot be read is not a finding, and
+# the two ways it can fail must not be written as a tuple in the `except`
+# clause itself.
+UNREADABLE = (OSError, UnicodeDecodeError)
+
 # Where the package map lives, and where the provenance table lives.
 ARCHITECTURE = Path("docs/ARCHITECTURE.md")
 MODEL = Path("docs/MODEL.md")
@@ -267,6 +272,37 @@ MAKE_MENTION_RE = re.compile(r"\bmake\s+(?P<name>[a-z][\w.-]*)")
 
 # Where CI's commands live. A workflow step names repository scripts by path
 # exactly as the documentation does, and nothing was holding it to them.
+# GitHub renders inline math from `$`...`$` (or `$...$`) and block math from a
+# `$$` fence. It does not recognise LaTeX's `\(...\)` or `\[...\]`: `(` and
+# `)` are ASCII punctuation, so CommonMark consumes the backslash as a
+# character escape before any math parser runs, and `\(t\)` reaches the page
+# as the literal text `(t)`. `docs/MODEL.md` carried 97 of them, its entire
+# symbol table among them, and seven queue items had copied the form out of it
+# (`PL-TH9V`).
+TEX_DELIMITER_RE = re.compile(r"\\[()\[\]]")
+
+# A well-formed inline expression, `$`...`$`, allowing the longer backtick runs
+# CommonMark permits.
+MATH_SPAN_RE = re.compile(r"\$(`+)(?:(?!\1).)*\1\$")
+
+# The two halves of one that is not well-formed. Inline math is parsed within a
+# line, so an expression split by a line break renders as literal text on both
+# sides. Four in this repository were split that way, one of them already on
+# the correct delimiters and broken only by a paragraph reflow - which is why
+# the rule is worth keeping after the conversion rather than only during it.
+MATH_EDGE_RE = re.compile(r"\$`|`\$")
+
+# A backtick run that is code rather than math. Blanked before either rule
+# runs: `\(` inside a code span is a quotation of the broken syntax rather than
+# a use of it, and a shell snippet like `"$upstream..HEAD"` is not an unclosed
+# expression.
+BACKTICK_RUN_RE = re.compile(r"(`+)(?:(?!\1).)*\1")
+
+# Any fence, including an indented one. `FENCE_RE` is anchored at column zero
+# and matches only backticks, which is right for the package-map reader but
+# would leave an indented or tilde-fenced sample exposed to the rules below.
+ANY_FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
+
 WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 
 # `run:` opens a step's shell, either inline or as a block scalar whose body
@@ -1150,6 +1186,63 @@ def check_workflow_paths(root: Path, report: Report) -> None:
                     report.errors.append(f"{relative}:{line}: runs `{token}`, which does not exist")
 
 
+def _without_code(text: str) -> list[str]:
+    """Every line with its code blanked, so only prose reaches the math rules.
+
+    Blanking rather than deleting keeps the line numbering true. Well-formed
+    math spans are blanked too: they are correct by construction, and what the
+    rules look for is the debris a malformed one leaves behind.
+    """
+    lines: list[str] = []
+    fenced = False
+    for line in text.splitlines():
+        if ANY_FENCE_RE.match(line):
+            fenced = not fenced
+            lines.append("")
+            continue
+        if fenced:
+            lines.append("")
+            continue
+        blank = MATH_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
+        lines.append(BACKTICK_RUN_RE.sub(lambda m: " " * len(m.group(0)), blank))
+    return lines
+
+
+def check_math_delimiters(root: Path, report: Report) -> None:
+    """Hold every markdown file to the math syntax GitHub actually renders.
+
+    Two failures, both silent: the wrong delimiters render as literal text, and
+    a correct expression split across a source line break renders as literal
+    text on both sides. Neither raises anything anywhere - the page simply
+    shows `(F_D)` where it should show a symbol, which is a traceability
+    failure in a document whose symbol table is how a reader maps a displayed
+    clinical value back to the equation that produced it.
+
+    Every markdown file is read, not only `DOC_GLOBS`: this is a question about
+    rendering rather than about claims held to the tree, and a queue item
+    renders on GitHub like anything else.
+    """
+    for path in _walk(root):
+        if path.suffix != ".md":
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UNREADABLE:
+            continue
+        relative = path.relative_to(root)
+        for number, line in enumerate(_without_code(text), 1):
+            for match in TEX_DELIMITER_RE.finditer(line):
+                report.errors.append(
+                    f"{relative}:{number} writes math as `{match.group(0)}`, which GitHub "
+                    "does not render; use `$`...`$` inline or a `$$` fence for a block"
+                )
+            for match in MATH_EDGE_RE.finditer(line):
+                report.errors.append(
+                    f"{relative}:{number} leaves `{match.group(0)}` unpaired, so an inline "
+                    "expression is split across a line break and renders as literal text"
+                )
+
+
 def _frontmatter(text: str) -> list[str] | None:
     """The YAML frontmatter block's lines, or `None` if the file has none."""
     lines = text.splitlines()
@@ -1298,6 +1391,7 @@ def analyze(root: Path) -> Report:
     check_tags(root, report)
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)
+    check_math_delimiters(root, report)
     check_resident_instructions(root, report)
     return report
 

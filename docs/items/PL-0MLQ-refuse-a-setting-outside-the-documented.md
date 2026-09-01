@@ -23,7 +23,7 @@ verification gates cover.
 
 **Why it matters.** This is PL-VP7N's defect one axis over, and the same
 argument applies to it: the splitting-error bound
-(\(C_{\max} = 2.29\times10^{-3}\ \mathrm{s^{-1}}\)) and everything derived
+($`C_{\max} = 2.29\times10^{-3}\ \mathrm{s^{-1}}`$) and everything derived
 from it — the displayed resolution, the supported step — are measured over
 the trajectories *these ranges* produce. A caller outside them gets a number
 with no measured bound, and `docs/MODEL.md` says the ranges "define the

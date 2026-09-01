@@ -15,7 +15,7 @@ added: 2026-08-23
 at line 53 and written at line 240) has had no display widget since the
 v0.1.0 UI rewrite; its only other mention is a test helper that supplies a
 dummy because the dataclass requires the field.
-`AlveolarCompartment.time_constant_s` — \(60 V_A / \dot{V}_A\), 37.5 s at the
+`AlveolarCompartment.time_constant_s` — $`60 V_A / \dot{V}_A`$, 37.5 s at the
 reference adult — lost its only consumer when PL-022 deleted
 `advance_ventilation`, and `AlveolarCompartment` now has no `advance` at all.
 Both are unit-tested; neither is read by shipped code.
@@ -25,7 +25,7 @@ second uncalled value and stated that `docs/MODEL.md` defines neither. Both
 claims were wrong, and the correction is what shaped the decision below: that
 property is the analytic integrator's own constant, read twice inside
 `advance()` (`core/circuit.py`, lines 182 and 194), relied on by
-`tests/reference/test_circuit_wash_in.py`, and documented as \(\tau_C\) in
+`tests/reference/test_circuit_wash_in.py`, and documented as $`\tau_C`$ in
 `docs/MODEL.md` under "Preserved circuit reference tests". It is load-bearing
 and is not in scope here.
 
@@ -52,7 +52,7 @@ the failure mode this item identifies.
 
 Deleting the code need not delete the knowledge. `docs/MODEL.md` is the
 authoritative specification, and an entry recording that the ventilation-only
-alveolar turnover is \(60 V_A / \dot{V}_A\) (37.5 s at reference) *and* that
+alveolar turnover is $`60 V_A / \dot{V}_A`$ (37.5 s at reference) *and* that
 the shipped coupled system does not relax with that constant — because
 alveolar gas exchanges with circuit and blood simultaneously — tells a future
 reader strictly more than the docstring did, in the document they consult to

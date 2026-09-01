@@ -326,7 +326,7 @@ t= 120 s   pooled 0.00482   near-instant 0.00582    -17.2%
 **PL-6GS0 - the exact-step question.** The review's central architectural
 recommendation was that the coupled system is linear and time-invariant within
 a step, so one matrix exponential is exact where the pairwise split is
-\(O(\Delta t)\). The review itself deferred it in favour of promoting the RK4
+$`O(\Delta t)`$. The review itself deferred it in favour of promoting the RK4
 oracle into CI, which landed as `tests/reference/test_coupled_dynamics.py`. The
 deferral was never revisited, and the measured comparison it rests on is
 carried in the item rather than here, since the harness that produced it is

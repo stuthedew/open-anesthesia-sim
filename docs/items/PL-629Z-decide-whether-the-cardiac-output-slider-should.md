@@ -65,7 +65,7 @@ the endpoint of a continuous axis and a floor above it would be an arbitrary
 boundary inside the valid domain; and the low end of the axis is where the
 teaching is. That last one is the operative reason and it is measured, not
 asserted: reducing cardiac output accelerates alveolar wash-in, and in this
-model \(F_A/F_I\) at five minutes for sevoflurane at 1 MAC is 0.41 at
+model $`F_A/F_I`$ at five minutes for sevoflurane at 1 MAC is 0.41 at
 10 L/min, 0.49 at 5, 0.58 at 2.5, 0.70 at 1, and 0.86 at zero. Zero is that
 demonstration's clearest case.
 

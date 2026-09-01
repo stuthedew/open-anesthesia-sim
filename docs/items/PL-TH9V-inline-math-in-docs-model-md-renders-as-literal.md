@@ -1,95 +1,83 @@
 ---
 id: PL-TH9V
 title: Inline math in docs/MODEL.md renders as literal parentheses on GitHub
-status: untriaged
-touches: docs/MODEL.md, docs/WORKING_NOTES.md, tools/doc_check.py
+priority: P2
+effort: S
+status: done
+classes: defect, docs
+touches: docs/MODEL.md, docs/WORKING_NOTES.md, docs/items, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-01
+closed: 2026-09-01
+verify: python3 tools/doc_check.py check && uv run pytest tests/unit/test_doc_check.py -k math
 ---
 
-**Problem.** `docs/MODEL.md` writes inline math with LaTeX's `\(...\)`
-delimiters, which GitHub's markdown does not recognise. `(` and `)` are ASCII
-punctuation, so CommonMark consumes the backslashes as ordinary character
-escapes before any math parser runs: `\(t\)` reaches the page as the literal
-text `(t)`, and `\(\Delta t\)` as `(\Delta t)` — the `\D` survives only because
-`D` is not escapable. The symbol table under "Symbols" is where it is most
-visible; every row of it is affected. 97 occurrences in `docs/MODEL.md`, 1 in
-`docs/WORKING_NOTES.md`.
+**Problem.** Markdown across the repository wrote inline math with LaTeX's
+`` `\(...\)` `` delimiters, which GitHub does not recognise. `(` and `)` are
+ASCII punctuation, so CommonMark consumes the backslash as an ordinary
+character escape before any math parser runs: `` `\(t\)` `` reached the page as
+the literal text `(t)`, and `` `\(\Delta t\)` `` as `(\Delta t)` — the `\D`
+surviving only because `D` is not escapable. The symbol table in
+`docs/MODEL.md` was the most visible casualty; every row of it was affected.
 
-Display math is unaffected: the 58 `$$` blocks render correctly. The second
-half of the defect follows from the first — because inline math does not work,
-single symbols have been set as display blocks mid-sentence. `docs/MODEL.md`
-line 141 is the clearest case: "Let:", then `M_x` centred on its own line, then
-"denote the equivalent gas volume of sevoflurane stored in compartment \(x\)."
-One sentence broken across a centred equation, ending in an unrendered symbol.
-Lines 115, 123, 129, 276, 282, 437 and 876 are the same shape. Once inline math
-works, those collapse back into their sentences.
-
-**Why it matters.** `docs/MODEL.md` is the authoritative specification for the
-implemented model, and the symbol table is the key a reader uses to map a
+**Why it mattered.** `docs/MODEL.md` is the authoritative specification for the
+implemented model, and its symbol table is the key a reader uses to map a
 displayed clinical value back to the equation and units that produced it. A key
-whose left-hand column is unreadable is a traceability failure, not a cosmetic
-one: `\lambda_{b:g}` shown raw does not tell a reader it is the blood:gas
-partition coefficient, and the rows that do render — `(F_a)`, `(F_A)` — differ
-only in a subscript's case, which is exactly the distinction the missing
-formatting is supposed to carry.
+whose left-hand column does not render is a traceability failure rather than a
+cosmetic one: `\lambda_{b:g}` shown raw does not tell a reader it is the
+blood:gas partition coefficient, and the rows that did render — `(F_a)` and
+`(F_A)` — differed only in a subscript's case, which is exactly the distinction
+the missing formatting was carrying.
 
-**Where.** `docs/MODEL.md` (97 occurrences of `\(`, plus the short `$$` blocks
-listed above), `docs/WORKING_NOTES.md` (1). Nine queue items also carry `\(`
-copied out of `docs/MODEL.md`; they are internal and not part of this fix, but
-whatever convention this item settles is the one they should follow when next
-edited.
+**Scope, as found.** 111 broken spans across 9 files: 98 in `docs/MODEL.md`, 1
+in `docs/WORKING_NOTES.md`, and 12 across seven queue items that had copied the
+form out of `docs/MODEL.md` (`PL-004`, `PL-042`, `PL-0MLQ`, `PL-629Z`,
+`PL-6GS0`, `PL-VP7N`, `PL-Y5BV`). No occurrence anywhere sat inside a code
+fence or code span, so the conversion could not corrupt a code sample.
+
+**A second, independent failure.** Four expressions were split across a source
+line break by paragraph reflow — `docs/MODEL.md` lines 632, 645 and 1327, and
+`PL-VP7N` line 109. Inline math is parsed within a line, so a split expression
+renders as literal text on both sides. The one at line 1327 was already on the
+correct `$...$` delimiters and broken only by the wrap, which is why this half
+of the defect outlives the conversion and needed a check of its own.
 
 **Approach — verified against GitHub's "Writing mathematical expressions",
 2026-09-01.** GitHub renders LaTeX through MathJax and documents exactly two
-inline delimiters: `$...$`, and `` $`...` `` — "useful when the expression you
-are writing contains characters that overlap with markdown syntax". `\(...\)`
-appears nowhere in the page; it is not a supported delimiter, which is the
-defect above.
+inline delimiters, `$...$` and `` $`...`$ ``, the latter "useful when the
+expression you are writing contains characters that overlap with markdown
+syntax". `` `\(...\)` `` appears nowhere on the page.
 
-**Convert to `` $`...` ``, not to `$...$`.** The subscripts are the reason. The
-symbol-table row for `F_a` (`docs/MODEL.md` line 156) already carries two
-expressions on one line — the symbol itself and the parenthetical
-`F_a \equiv F_A` — so under bare `$` that row would hold four delimiters and
-three `_` characters, and the text between the middle pair is precisely what
-markdown reads as emphasis. That is the overlap case the documentation names.
-The backtick form costs two characters per site and takes the ambiguity out.
+The conversion targeted `` $`...`$ `` rather than bare `$...$`. The `F_a`
+symbol-table row carries two expressions on one line, so under bare `$` it
+would hold four delimiters and three `_` characters, with the text between the
+middle pair sitting exactly where markdown reads emphasis — the overlap case
+the documentation names the backtick form for. The choice also happens to be
+length-neutral (`` `\(x\)` `` and `` $`x`$ `` are both five characters), so no
+paragraph needed rewrapping beyond the four repairs above.
 
-**One site is already on the other syntax and is also wrong.**
-`docs/MODEL.md` lines 1327-1328 read `$F_a \equiv\nF_A$` — correct delimiters,
-but wrapped across a source line break by the paragraph reflow. Inline math is
-parsed within a line, so this does not render either. Any conversion must keep
-each expression on one source line, which constrains how the file may be
-rewrapped; a `` $`...` `` span split by a future `fmt` pass fails the same way.
+**Ten display blocks were splitting a sentence.** Because inline math did not
+work, single symbols had been set as `$$` blocks mid-sentence — "Let:", then
+`M_x` centred on its own line, then "denote the equivalent gas volume …". Those
+are collapsed back inline. The rule applied, and worth keeping: **collapse a
+block when the prose after it continues the same sentence; leave it when the
+sentence ends at the block**, which is ordinary mathematical typesetting and
+reads correctly. 46 display blocks remain on that rule, down from 58.
 
-**Display math needs no change, but note the alternative.** The 58 `$$` blocks
-are correct as written. The documentation also offers a ```` ```math ````
-fenced block as an equivalent, which is worth preferring for any *new* block
-because a fence cannot be silently broken by rewrapping. Converting the
-existing 58 is not part of this item.
+**Made decidable.** `check_math_delimiters` in `tools/doc_check.py` refuses any
+markdown file carrying `` `\(` ``, `` `\)` ``, `` `\[` `` or `` `\]` `` outside
+code, and refuses an unpaired `` `$` ``-backtick edge, which is what a
+line-split expression leaves behind. It reads every markdown file rather than
+`DOC_GLOBS`, because rendering is not a claim held to the tree and a queue item
+renders on GitHub like anything else. Code fences, code spans and well-formed
+math spans are blanked before either rule runs, so a quotation of the broken
+syntax — this item is full of them — is not a use of it.
 
-**No stray dollar signs to escape.** Every `$` in `docs/MODEL.md` today is
-either a `$$` fence or part of the line-1327 expression, so introducing `$`-
-delimited inline math cannot collide with prose. The documentation's `\$` and
-`<span>$</span>` escapes are therefore not needed here — but the doc_check rule
-below should be the thing that keeps that true.
+**Not done here.** The 46 surviving `$$` blocks are correct as written and were
+left alone. GitHub also accepts a ```` ```math ```` fence as an equivalent,
+which is worth preferring for *new* display math because a fence cannot be
+broken by rewrapping; converting the existing blocks was not part of this item.
 
-**Then make it decidable.** The conversion is worth nothing if the next edit
-reintroduces `\(`. `tools/doc_check.py` should refuse a markdown file under
-`docs/` containing `\(` or `\[`, which is a whole-file substring test with no
-judgment in it, and it costs the session nothing once wired into `make check`.
-Add that in the same change, not as a follow-up. A second rule is worth the
-same few lines: an odd count of unescaped `` ` ``-delimited math spans on a
-line, or a `$`/`` $` `` span left unclosed at end of line, catches the
-line-1327 wrap defect and any future reflow that reintroduces it.
-
-**Done when.** No `\(` or `\[` remains in `docs/MODEL.md` or
-`docs/WORKING_NOTES.md`; every inline expression sits on one source line,
-including the currently-wrapped one at lines 1327-1328; every symbol-table row
-and inline symbol renders as math on GitHub; the mid-sentence single-symbol
-`$$` blocks are inline again; and `tools/doc_check.py` fails on both a
-reintroduced `\(` and a math span split across a line break.
-
-**Verify.** `python3 tools/doc_check.py check && ! grep -rqF '\(' docs/MODEL.md
-docs/WORKING_NOTES.md` — run it and watch it fail before writing it in.
-Rendering itself is not machine-checkable here; confirm it by eye on the pushed
-branch's GitHub view of `docs/MODEL.md`.
+**Verified.** `python3 tools/doc_check.py check` is clean across all 227 tracked
+markdown files with no false positives; `make check` passes. Rendering itself is
+not machine-checkable from a session — it was confirmed by eye on the pushed
+branch.
