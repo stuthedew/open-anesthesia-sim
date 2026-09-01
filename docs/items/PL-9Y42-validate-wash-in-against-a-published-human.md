@@ -63,6 +63,54 @@ known-correct before it is shown. PL-ZRSP also establishes that F_I is the
 modelled circuit concentration rather than the vaporizer dial, which is the
 definition this test's measurement uses.
 
+
+**Appended 2026-09-01 — how independent this validation actually is.** An
+external review re-ran the shipped core (`RespiratorySystem.for_agent`, fresh
+gas flow 10 L/min so circuit ≈ inspired, delivered fraction 0.01,
+reference-adult defaults V_A 4.0 L/min and Q 5.0 L/min, dt 0.1 s, 1800 s) and
+reproduced the **Measured.** figures above. Expressed as distance from the
+published mean, computed from the review's own numbers:
+
+| Agent | Model | Published (mean ± SD) | Distance |
+| --- | --- | --- | --- |
+| Sevoflurane | 0.853 | 0.850 ± 0.018 | +0.17 SD |
+| Isoflurane | 0.741 | 0.733 ± 0.027 | +0.30 SD |
+| Desflurane | 0.908 | 0.900 ± 0.010 | +0.80 SD |
+
+The ventilation sensitivity the **Approach.** already asserts now has numbers
+on both sides: at V_A 5.0 the model reads 0.879 / 0.783 / 0.925 (+1.6, +1.9,
++2.5 SD) and at V_A 3.0 it reads 0.812 / 0.680 / 0.880 (−2.1, −2.0, −2.0 SD).
+The window that holds is narrow, and 4.0 L/min is the data file's own cited
+default rather than a value fitted to make this pass — which is the fact that
+makes the agreement worth anything.
+
+**Two caveats the test and its `docs/MODEL.md` entry must carry.** Both bear
+on how strongly the result may be stated, and neither is currently anywhere in
+this item:
+
+1. **The published subjects were breathing nitrous oxide.** Yasuda's protocols
+   administered 65–70% N₂O concurrently, so the measured F_A/F_I curves
+   include a second-gas effect this model cannot reproduce — its alveolus is
+   fixed-volume and single-gas. The comparison is therefore not perfectly
+   matched, and in a direction that is not obviously conservative.
+2. **These are Gas Man parameters, derived to reproduce Eger's data.** The
+   partition coefficients under test come from the same lineage as the
+   measurements being tested against, so passing shows that this
+   implementation reproduces its parameter set's intent — not that the
+   parameter set is independently right. It could still have failed, which is
+   why the test is worth having; it is weaker than "validated against a human
+   measurement" and the wording must not claim more.
+
+Both caveats belong in the test's docstring and in the `docs/MODEL.md`
+"Required tests" entry, beside the existing verification-versus-validation
+distinction. Overstating independence here would be a documentation defect of
+exactly the kind that section exists to prevent.
+
+Citations for the two papers, with DOIs, for the record the item already
+carries by PMID: Anesth Analg 1991;72:316-24, PMID 1994760,
+doi:10.1213/00000539-199103000-00007 (n=7); Anesthesiology 1991;74:489-98,
+PMID 2001028, doi:10.1097/00000542-199103000-00017 (n=8).
+
 **Done when.** `tests/reference/test_published_wash_in.py` pins the three
 30-minute F_A/F_I values against the published means and SDs with the
 ventilation point and its sensitivity documented in the test,
