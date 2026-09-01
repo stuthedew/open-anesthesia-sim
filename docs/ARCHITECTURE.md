@@ -175,6 +175,7 @@ Outside the packaged application, and not imported by it:
 ```text
 tools/
 ├── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
+├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
 ```
 
@@ -187,6 +188,17 @@ is not expanded — no tree draws one today — and `__init__.py` is excluded
 throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
+
+`tools/ignore_check.py` covers what the type-check gate cannot. `[tool.mypy]
+files` names `src`, `tools` and `subprojects/docket/src`, and every
+`type: ignore` in the repository sits outside that set, so `strict = true`'s
+`warn_unused_ignores` never read one. It runs mypy over `tests/` and
+`subprojects/docket/tests/` separately and takes two things from the output: an
+inert directive, and an unresolved import — which makes live directives look
+inert, so it invalidates the answer rather than adding to it. The several dozen
+type errors those trees report, which are why the gate excludes them, pass
+unread. It is the guarantee `RUF100` gives for `noqa`, arriving through the
+other tool.
 
 It holds every markdown file in the checkout — not only the documentation
 proper — to the math syntax GitHub renders. Two failures, both silent:

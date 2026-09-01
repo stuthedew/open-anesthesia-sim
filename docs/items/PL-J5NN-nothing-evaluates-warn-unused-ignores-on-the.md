@@ -1,10 +1,15 @@
 ---
 id: PL-J5NN
 title: Nothing evaluates warn_unused_ignores on the test trees, so a new inert type: ignore is invisible again the moment PL-CMCB's audit is taken
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
 feature: dev-tooling
-touches: Makefile, pyproject.toml
+touches: Makefile, pyproject.toml, tools/ignore_check.py, tests/unit/test_ignore_check.py
 added: 2026-09-01
+closed: 2026-09-01
+verify: uv run pytest tests/unit/test_ignore_check.py && uv run python tools/ignore_check.py
 ---
 
 **Problem.** `PL-CMCB` audited the ten `type: ignore` directives under `tests/`
@@ -73,3 +78,46 @@ here should clear the cache or run out of tree.
 inert verdict when an import fails to resolve, and the comment above
 `[tool.mypy] files` says which of the two mechanisms now covers the test trees
 so the next reader does not re-derive the 40-vs-54 measurement.
+
+**Closed 2026-09-01. Route 2, approved by the project owner.** `make check` now
+runs `tools/ignore_check.py` directly below the gate. It reports
+`type: ignore directives: 8 evaluated, 0 inert` on a clean tree, and fails
+naming the file and line when one goes inert.
+
+**Route 1 is not merely blunt, it is unsound, and this was measured rather than
+argued.** The surgical form - add `tests` to `[tool.mypy] files` and silence the
+noisy codes per module - cannot work at all:
+
+```
+mypy --disable-error-code=arg-type subprojects/docket/tests
+→ 6 × Unused "type: ignore" comment  [unused-ignore]
+```
+
+Disabling the code a directive names makes that directive suppress nothing, so
+all six live splat directives report as unused. It is the same false-verdict
+failure as the missing `MYPYPATH`, arriving by a second route, and it would have
+been discovered only after someone deleted six live suppressions. Recorded here
+because the argument against route 1 in this item was about *cost*, and the real
+objection is *correctness*.
+
+**The cold-run compromise.** Running every check with `--no-incremental` costs
+12.2s against 0.5s warm, on every `make check`, to defend against a staleness
+case nobody has characterised - three rapid edit-and-check cycles failed to
+reproduce it. Running always-warm risks the one error that matters, a false
+inert verdict, which invites deleting a live suppression. So the cache is used
+and an *accusation* is confirmed without it: a finding re-runs cold before it
+is reported. Clean stays 0.5s; only a finding pays the 12s, and only while there
+is a finding to pay for.
+
+**What the tool refuses to call clean.** An unresolved import, a mypy crash, and
+mypy missing entirely all report "not checked" rather than "0 inert", and an
+unresolved import outranks an inert finding - with imports broken, that finding
+is precisely what cannot be trusted. A check that cannot tell "nothing is inert"
+from "nothing was read" is the failure this tool exists to avoid.
+
+Directives are found by tokenizing rather than grepping, so the marker in
+`verify.py`'s `SUPPRESSIONS` tuple, the one named in `test_release.py`'s prose,
+and the one `test_verify.py` writes into a fixture file as a string literal are
+not counted as directives. A test pins that against the live tree and fails if
+the string-literal occurrence ever disappears, since it would then prove
+nothing.
