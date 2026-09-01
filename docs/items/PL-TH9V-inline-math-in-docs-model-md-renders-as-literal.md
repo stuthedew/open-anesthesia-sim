@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, docs
+milestone: v0.2.8
 touches: docs/MODEL.md, docs/WORKING_NOTES.md, docs/items, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-01
 closed: 2026-09-01

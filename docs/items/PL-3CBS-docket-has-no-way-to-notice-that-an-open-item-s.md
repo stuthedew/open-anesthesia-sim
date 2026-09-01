@@ -6,11 +6,12 @@ effort: S
 status: done
 classes: defect, infra
 feature: planning-cadence
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-08-30
 closed: 2026-09-01
-pr: 128
 commit: 36c24d7
+pr: 128
 verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_verify.py -k landed
 ---
 

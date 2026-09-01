@@ -6,12 +6,13 @@ effort: S
 status: done
 classes: defect, docs
 feature: dev-tooling
+milestone: v0.2.8
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-08-31
-verify: uv run pytest tests/unit/test_doc_check.py -k "gate and count"
 closed: 2026-09-01
 commit: 1c6e6f5
 pr: 142
+verify: uv run pytest tests/unit/test_doc_check.py -k "gate and count"
 ---
 
 **Problem.** The number of entries on v0.2.8's frozen list is written in prose

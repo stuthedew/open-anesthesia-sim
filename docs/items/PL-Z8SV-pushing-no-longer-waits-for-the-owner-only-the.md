@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: planning-cadence
+milestone: v0.2.8
 touches: CLAUDE.md
 added: 2026-08-30
 closed: 2026-08-30

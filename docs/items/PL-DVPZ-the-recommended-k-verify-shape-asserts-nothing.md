@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: delegation
+milestone: v0.2.8
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-01
 closed: 2026-09-01

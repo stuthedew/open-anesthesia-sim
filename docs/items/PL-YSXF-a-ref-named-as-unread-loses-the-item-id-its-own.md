@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-08-31
 closed: 2026-08-31

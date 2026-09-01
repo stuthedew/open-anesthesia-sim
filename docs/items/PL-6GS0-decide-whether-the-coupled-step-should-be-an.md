@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: numerical-domain
+milestone: v0.2.8
 touches: docs/MODEL.md, ROADMAP.md, src/anesthesia_sim/core/respiratory_system.py
 added: 2026-08-30
 closed: 2026-08-30

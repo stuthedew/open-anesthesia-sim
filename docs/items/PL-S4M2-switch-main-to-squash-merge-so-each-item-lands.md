@@ -6,11 +6,12 @@ effort: S
 status: done
 classes: infra
 feature: public-history
+milestone: v0.2.8
 blocked-by: PL-ZQ9C
 added: 2026-08-30
-not-delegable: the two settings live in GitHub repository configuration, not in the tree, and no MCP tool in this session exposes them. A session can confirm the result on a throwaway pull request but cannot make the change.
-pr: 106
 closed: 2026-08-31
+pr: 106
+not-delegable: the two settings live in GitHub repository configuration, not in the tree, and no MCP tool in this session exposes them. A session can confirm the result on a throwaway pull request but cannot make the change.
 ---
 
 **Problem.** Main carries 59 merge commits whose subjects are branch names

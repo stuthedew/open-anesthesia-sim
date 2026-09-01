@@ -5,12 +5,13 @@ priority: P2
 effort: M
 status: done
 classes: session-cost, infra
-not-delegable: the test is that no rule was lost, that each one still fires at the moment it is needed, and that the safety-critical standard still loads in every session. That is a reading of the file against the routing test below, not a command. Anything decidable here is being built into `doc_check.py` by this item rather than checked by a worker.
 feature: worker-instructions
+milestone: v0.2.8
 touches: CLAUDE.md, .claude/rules, .claude/skills/docket/SKILL.md, tools/doc_check.py
 added: 2026-08-30
 closed: 2026-08-31
 pr: 116
+not-delegable: the test is that no rule was lost, that each one still fires at the moment it is needed, and that the safety-critical standard still loads in every session. That is a reading of the file against the routing test below, not a command. Anything decidable here is being built into `doc_check.py` by this item rather than checked by a worker.
 ---
 
 **Problem.** The whole of this project's working agreement with its agents is

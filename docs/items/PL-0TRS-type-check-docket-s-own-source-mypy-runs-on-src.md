@@ -2,6 +2,7 @@
 id: PL-0TRS
 title: Type-check docket's own source: mypy runs on src only, so subprojects/docket/src is unchecked by make check and CI
 status: done
+milestone: v0.2.8
 added: 2026-08-30
 closed: 2026-08-31
 commit: 685cbd5

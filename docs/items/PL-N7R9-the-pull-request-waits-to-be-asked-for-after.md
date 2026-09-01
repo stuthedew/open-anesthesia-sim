@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: parallel-sessions
+milestone: v0.2.8
 touches: CLAUDE.md
 added: 2026-08-31
 closed: 2026-08-31

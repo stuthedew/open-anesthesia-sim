@@ -6,11 +6,12 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.2.8
 touches: pyproject.toml, .python-version, uv.lock, .github/workflows/quality.yml, README.md
 added: 2026-08-30
 closed: 2026-08-30
-pr: 96
 commit: fb81597
+pr: 96
 verify: uv run python -c "import sys; assert sys.version_info.releaselevel == 'final', sys.version"
 ---
 

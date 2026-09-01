@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: public-history
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests, .claude/skills/docket/SKILL.md, subprojects/docket/README.md, ROADMAP.md, docs/items
 added: 2026-08-30
 closed: 2026-08-30

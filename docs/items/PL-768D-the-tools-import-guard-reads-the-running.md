@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.2.8
 touches: tests/unit/test_tools_portability.py, .github/workflows/quality.yml
 added: 2026-09-01
 closed: 2026-09-01

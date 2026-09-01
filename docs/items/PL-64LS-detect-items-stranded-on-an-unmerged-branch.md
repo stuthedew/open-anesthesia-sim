@@ -6,12 +6,13 @@ effort: S
 status: done
 classes: session-cost
 feature: dev-tooling
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, .claude/hooks/docket-digest.sh
 added: 2026-08-24
-verify: uv run pytest subprojects/docket/tests/test_vcs.py subprojects/docket/tests/test_cli.py
 closed: 2026-08-31
-pr: 108
 commit: 97ed318
+pr: 108
+verify: uv run pytest subprojects/docket/tests/test_vcs.py subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** An item is committed on whatever branch the capturing session was

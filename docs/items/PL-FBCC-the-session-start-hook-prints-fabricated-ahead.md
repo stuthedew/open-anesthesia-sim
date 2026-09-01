@@ -6,11 +6,12 @@ effort: S
 status: done
 classes: defect
 feature: dev-tooling
+milestone: v0.2.8
 touches: .claude/hooks/docket-digest.sh, tests/unit/test_docket_digest_hook.py
 added: 2026-08-31
-verify: uv run pytest tests/unit/test_docket_digest_hook.py
 closed: 2026-08-31
 pr: 109
+verify: uv run pytest tests/unit/test_docket_digest_hook.py
 ---
 
 **Problem.** `branch_state()` prints whatever `git rev-list --left-right

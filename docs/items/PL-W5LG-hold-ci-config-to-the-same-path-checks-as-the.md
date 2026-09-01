@@ -6,11 +6,12 @@ effort: S
 status: done
 classes: infra, session-cost
 feature: dev-tooling
+milestone: v0.2.8
 touches: tools/doc_check.py, .github/workflows/quality.yml, tests/unit/test_doc_check.py
-verify: uv run pytest tests/unit/test_doc_check.py
 added: 2026-08-24
-pr: 106
 closed: 2026-08-31
+pr: 106
+verify: uv run pytest tests/unit/test_doc_check.py
 ---
 
 **Problem.** `tools/doc_check.py` resolves every path cited in the

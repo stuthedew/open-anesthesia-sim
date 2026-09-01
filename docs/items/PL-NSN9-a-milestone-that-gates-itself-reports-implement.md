@@ -4,13 +4,14 @@ title: A milestone that gates itself reports 'implement' when its gate clears, n
 priority: P3
 effort: S
 status: done
-verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_self_gating_milestone_is_a_release_once_its_gate_clears' subprojects/docket/tests/test_roadmap.py
 classes: infra, session-cost
 feature: planning-cadence
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-08-30
 closed: 2026-09-01
 pr: 164
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_self_gating_milestone_is_a_release_once_its_gate_clears' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** `wave()`'s first branch is

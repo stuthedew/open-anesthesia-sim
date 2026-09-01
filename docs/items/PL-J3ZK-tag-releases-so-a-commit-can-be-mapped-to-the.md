@@ -4,13 +4,14 @@ title: Tag releases so a commit can be mapped to the version it shipped in
 priority: P2
 effort: S
 status: done
+classes: infra, session-cost
+feature: dev-tooling
+milestone: v0.2.8
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/SKILL.md, ROADMAP.md, subprojects/docket/tests
+added: 2026-08-25
 closed: 2026-08-30
 commit: 6c6a8af
 pr: 82
-classes: infra, session-cost
-feature: dev-tooling
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/SKILL.md, ROADMAP.md, subprojects/docket/tests
-added: 2026-08-25
 verify: uv run pytest subprojects/docket/tests -k tag
 ---
 

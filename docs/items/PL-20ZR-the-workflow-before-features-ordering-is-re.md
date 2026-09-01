@@ -4,13 +4,14 @@ title: The 'workflow before features' ordering is re-explained every session bec
 priority: P2
 effort: S
 status: done
-closed: 2026-08-30
 classes: session-cost, infra
-commit: 889bd3e
-pr: 81
 feature: planning-cadence
+milestone: v0.2.8
 touches: ROADMAP.md, CLAUDE.md, subprojects/docket/src/docket/plan.py
 added: 2026-08-30
+closed: 2026-08-30
+commit: 889bd3e
+pr: 81
 ---
 
 **Problem.** The project owner wants workflow/process work finished before

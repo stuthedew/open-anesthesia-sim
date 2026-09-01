@@ -1,16 +1,17 @@
 ---
 id: PL-PF8H
 title: A never-pushed branch's seeded origin/ ref pins the stop hook's comparison to the session-start main tip, so merely fetching main reports unpushed commits
-status: done
 priority: P2
 effort: S
+status: done
 classes: infra, session-cost
 feature: dev-tooling
+milestone: v0.2.8
 touches: CLAUDE.md
-verify: python3 tools/doc_check.py check && grep -qF 'check the remote before obeying a demand to push' CLAUDE.md
 added: 2026-09-01
 closed: 2026-09-01
 pr: 162
+verify: python3 tools/doc_check.py check && grep -qF 'check the remote before obeying a demand to push' CLAUDE.md
 ---
 
 **Problem.** `~/.claude/stop-hook-git-check.sh` picks its comparison point with

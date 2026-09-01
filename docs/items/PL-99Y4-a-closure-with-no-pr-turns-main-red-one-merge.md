@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: public-history
+milestone: v0.2.8
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_vcs.py, .github/workflows/quality.yml
 added: 2026-09-01
 closed: 2026-09-01
+pr: 169
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_missing_pr_declines_on_a_shallow_clone' subprojects/docket/tests/test_checks.py
 ---
 
