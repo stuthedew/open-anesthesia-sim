@@ -1,7 +1,12 @@
 ---
 id: PL-8B1K
 title: Two citations into docs/WORKING_NOTES.md name sections that no longer exist
-status: untriaged
+priority: P3
+effort: S
+status: ready
+verify: python3 tools/doc_check.py check && ! grep -q 'near-term to-dos' src/anesthesia_sim/core/respiratory_system.py && ! grep -q 'Splitting error outside' docs/items/PL-042-bound-the-splitting-error-across-the-settings.md
+classes: docs
+feature: dev-tooling
 touches: src/anesthesia_sim/core/respiratory_system.py, docs/items/PL-042-bound-the-splitting-error-across-the-settings.md
 added: 2026-09-01
 ---

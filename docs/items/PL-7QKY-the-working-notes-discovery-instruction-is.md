@@ -1,7 +1,11 @@
 ---
 id: PL-7QKY
 title: The working-notes discovery instruction is circular - a session must read the whole file to learn whether its task touches one of its threads
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect, session-cost
+feature: dev-tooling
 touches: docs/WORKING_NOTES.md, .claude/hooks, tools/doc_check.py
 added: 2026-09-01
 ---
@@ -32,6 +36,23 @@ the 52 ids the file cites resolves to a real item file, so the mapping is
 already sound enough to key on. A digest or `bin/docket next` line naming the
 thread that concerns the item being started would deliver the pointer at the
 moment it is needed, at a cost of one line rather than 573.
+
+**Decision needed.** Where the pointer is delivered. Three candidates, and
+they differ in when they fire rather than in what they compute:
+
+- **`bin/docket show <id>`** — fires when a session is about to start an item,
+  which is the moment the pointer is wanted, and the `docket` skill already
+  makes `show` the mandatory pre-start check. Misses a session that edits
+  without starting an item.
+- **The session-start digest** — fires once per session, unconditionally, so
+  nothing can miss it; but it must then name every open thread rather than the
+  one that is relevant, since at session start no item has been picked.
+- **`bin/docket next`** — fires only on the sessions that let `next` pick, and
+  the skill notes an item named by the owner skips `next` entirely.
+
+Recommended: `show`, for the reason its own guard exists — naming an item is
+the path with no other check on it. Decide before implementing; the reading of
+the `##` headings is the same work under all three.
 
 **Watch for.** Do not solve this by making every session read the file. The
 thread-to-id mapping is the cheap half; deciding whether a thread is still
