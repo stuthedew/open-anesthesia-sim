@@ -213,6 +213,31 @@ CODE_SPAN_RE = re.compile(r"`([^`\n]+)`")
 LINK_RE = re.compile(r"\[[^\]\n]*\]\((?P<target>[^)\s]+)\)")
 NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 
+# A prose value that restates a data-file constant declares which one, so it
+# can be held to the file the way the provenance table already is. The
+# declaration is an HTML comment, so it is invisible in the rendered document
+# and the sentence still reads as prose.
+#
+# **Two kinds, because they are different claims.** `provenance:` says the
+# number written beside it *is* this key's value, so both halves are checkable
+# - the key against the file, and the value against the prose. `derived:` says
+# the figure it names was *computed from* these keys, which no file holds: the
+# inputs are checked against the files and the figure is not, because
+# recomputing it is judgment about rounding and units that a tool guessing at
+# it would get authoritative-looking and wrong. What the tool decides is "the
+# inputs this figure was computed from have moved"; what it never decides is
+# what the new figure should be.
+#
+# A bare scan for numerals was rejected and cannot be revived: `2.5` appears in
+# `docs/MODEL.md` as an alveolar volume, a solver tolerance in seconds and a
+# fresh-gas flow, and `4 L/min` appears as both the reference adult's alveolar
+# ventilation and an unrelated fresh-gas rate. A check that bound those to a
+# key would be confidently wrong in exactly the places a reader trusts most.
+PROSE_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived):\s*(?P<body>.+?)\s*-->$")
+DERIVED_FROM_RE = re.compile(r"^(?P<figure>.+?)\s+from\s+(?P<rest>\S+\.json\s.+)$")
+MARKER_SOURCE_RE = re.compile(r"^(?P<relative>\S+\.json)\s+(?P<assertions>.+)$")
+ASSERTION_RE = re.compile(r"^(?P<key>[A-Za-z_][\w.]*)\s*=\s*(?P<value>[-+]?\d+(?:\.\d+)?)$")
+
 BRACE_RE = re.compile(r"\{([^{}]*)\}")
 
 # A quoted phrase is read as a section citation only in the two forms this
@@ -660,6 +685,173 @@ def check_provenance(root: Path, report: Report) -> None:
                     f"{MODEL}: no provenance row for {relative} {key_path} = {value:g}; "
                     "every constant a clinician could read belongs in the table"
                 )
+
+
+def _marked_block(lines: list[str], index: int) -> str:
+    """The run of prose a marker sits under, blank lines between them allowed.
+
+    Attaching to what *precedes* the marker rather than what follows it is what
+    lets the marker be added without moving the sentence it is about, and it
+    reads the way a footnote does.
+    """
+
+    def is_marker(text: str) -> bool:
+        return PROSE_MARKER_RE.match(text.strip()) is not None
+
+    # Back over blank lines *and* over sibling markers: one paragraph often
+    # restates values from several data files, which is several markers, and
+    # stopping at the first would hand every marker but the nearest an empty
+    # block to check against - passing silently, which is the one failure this
+    # check may not have.
+    end = index
+    while end > 0 and (not lines[end - 1].strip() or is_marker(lines[end - 1])):
+        end -= 1
+    start = end
+    while start > 0 and lines[start - 1].strip() and not is_marker(lines[start - 1]):
+        start -= 1
+    return "\n".join(lines[start:end])
+
+
+def _marker_assertions(
+    body: str, where: str, root: Path, report: Report
+) -> list[tuple[str, str, float, float]] | None:
+    """Each `key = value` a marker states, paired with what the file holds.
+
+    `None` where the marker itself could not be read, which is reported as an
+    error rather than skipped: a marker nobody can parse is a claim nobody is
+    checking, and silence about it would leave the prose looking guarded.
+    """
+    source = MARKER_SOURCE_RE.match(body)
+    if source is None:
+        report.errors.append(
+            f"{where}: expected `<data file>.json <key> = <value>, ...`, found {body!r}"
+        )
+        return None
+
+    relative = source.group("relative")
+    data_path = root / PACKAGE_ROOT / relative
+    if not data_path.is_file():
+        report.errors.append(f"{where}: cites {relative}, which does not exist")
+        return None
+    document = json.loads(data_path.read_text(encoding="utf-8"))
+
+    resolved: list[tuple[str, str, float, float]] = []
+    for clause in source.group("assertions").split(","):
+        assertion = ASSERTION_RE.match(clause.strip())
+        if assertion is None:
+            report.errors.append(f"{where}: expected `<key> = <value>`, found {clause.strip()!r}")
+            return None
+        key_path = assertion.group("key")
+        stated = float(assertion.group("value"))
+        stored = _lookup(document, key_path)
+        if stored is None:
+            report.errors.append(
+                f"{where}: names key {key_path!r}, which {relative} does not hold as a number"
+            )
+            return None
+        resolved.append((relative, key_path, stated, stored))
+    return resolved
+
+
+def check_prose_provenance(root: Path, report: Report) -> None:
+    """Hold `docs/MODEL.md`'s *prose* values to the data files, as the table is.
+
+    `check_provenance` reads only the provenance table. The same constants are
+    restated in the surrounding prose - the reference adult's alveolar volume
+    and ventilation, each agent's blood:gas coefficient, vaporizer maximum and
+    MAC - and editing a data file updated the table, which the check forces,
+    while leaving those sentences quietly wrong (`PL-1BPV`).
+
+    That is a safety failure rather than untidiness, by this project's own
+    standard: a reader who trusts "37.5 s for the reference adult" is reading a
+    number for a patient the simulator may no longer ship, and the polish of
+    the surrounding document is what makes it credible.
+
+    Every marker's keys are checked against the file. A `provenance:` marker is
+    additionally held to the prose it sits under, so the two can drift from
+    neither side: the data file moving trips the first check, and the sentence
+    being reworded without the marker trips the second. A `derived:` marker
+    states the inputs a computed figure came from, and moving any of them
+    reports that the figure needs recomputing - by a person, which is where
+    the line between the decidable half and the judgment half falls.
+    """
+    path = root / MODEL
+    if not path.is_file():
+        return  # `check_provenance` has already reported the missing document.
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    markers = 0
+    fenced = False
+    for index, line in enumerate(lines):
+        # A marker inside a code fence is the format being *shown*, not a claim
+        # being made - the section below documents the convention by printing
+        # one. Reading it as a claim would force every example to be
+        # coincidentally true of the shipped data.
+        if ANY_FENCE_RE.match(line):
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
+        match = PROSE_MARKER_RE.match(line.strip())
+        if match is None:
+            continue
+        markers += 1
+        where = f"{MODEL} (line {index + 1})"
+        kind, body = match.group("kind"), match.group("body")
+
+        figure = ""
+        if kind == "derived":
+            derived = DERIVED_FROM_RE.match(body)
+            if derived is None:
+                report.errors.append(
+                    f"{where}: a `derived:` marker reads `<figure> from <data file>.json "
+                    f"<key> = <value>, ...`; this one is {body!r}"
+                )
+                continue
+            figure, body = derived.group("figure"), derived.group("rest")
+
+        resolved = _marker_assertions(body, where, root, report)
+        if resolved is None:
+            continue
+
+        block = _marked_block(lines, index)
+        in_prose = {float(number) for number in NUMBER_RE.findall(block)}
+
+        for relative, key_path, stated, stored in resolved:
+            if stated != stored:
+                if kind == "derived":
+                    report.errors.append(
+                        f"{where}: {figure} was computed from {relative} {key_path} = {stated:g}, "
+                        f"but the file now holds {stored:g}; recompute the figure and update "
+                        "both it and this marker"
+                    )
+                else:
+                    report.errors.append(
+                        f"{where}: states {key_path} = {stated:g} but {relative} holds "
+                        f"{stored:g}; update the prose above and this marker together"
+                    )
+                continue
+            if kind == "provenance" and stated not in in_prose:
+                report.errors.append(
+                    f"{where}: claims the prose above restates {relative} {key_path} = "
+                    f"{stated:g}, and that number is not in it; the sentence was reworded "
+                    "without its marker, or the marker is attached to the wrong paragraph"
+                )
+
+        if kind == "derived":
+            wanted = [float(number) for number in NUMBER_RE.findall(figure)]
+            if wanted and wanted[0] not in in_prose:
+                report.errors.append(
+                    f"{where}: names the derived figure {figure!r}, which is not in the prose "
+                    "above; the marker is attached to the wrong paragraph"
+                )
+
+    if not markers:
+        report.errors.append(
+            f"{MODEL}: no `<!-- provenance: ... -->` or `<!-- derived: ... -->` markers found; "
+            "either every marked value was removed or the format changed and this check has "
+            "gone blind"
+        )
 
 
 def check_timeline(root: Path, report: Report) -> None:
@@ -1604,6 +1796,7 @@ def analyze(root: Path) -> Report:
         return report
     check_package_maps(root, report)
     check_provenance(root, report)
+    check_prose_provenance(root, report)
     check_citations(root, documents, report)
     check_timeline(root, report)
     check_baseline(root, report)
