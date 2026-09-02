@@ -1,0 +1,145 @@
+name: drift
+
+# Does this project still build and pass on a toolchain nobody pinned?
+#
+# `quality.yml` answers the opposite question, and answers it well: it runs
+# `uv sync --locked` on the interpreter `.python-version` names, so it proves
+# the tree works on the toolchain that was current when the pins were written.
+# That is what a gate should do. It also means every constraint in
+# `pyproject.toml` goes untested against the world moving past it, and this
+# project is on a multi-year horizon, which makes that drift a certainty rather
+# than a risk (`PL-QSWS`).
+#
+# The failure this exists to prevent is not a stale pin. It is returning after
+# a gap to a tree that no longer builds, where the upgrade that would fix it is
+# now several versions wide and the cost of coming back exceeds what a hobby
+# project will pay. Finding the break while the delta is one version wide is
+# the whole value.
+#
+# **It reports; it does not gate.** It runs on a schedule and never on a pull
+# request, so a red result here never blocks work in progress. That is
+# deliberate: the versions it resolves are outside anyone's control, so gating
+# on them would mean an unrelated upstream release could stop this project's
+# own work, which is the tail wagging the dog.
+#
+# **If it goes red routinely and nobody acts, retire it.** `CLAUDE.md`'s
+# retirement test applies here as much as anywhere: a check that fires every
+# run without changing a decision is a defect in the check. A red result should
+# be news. If it becomes weather, this file is the thing to delete, not the
+# thing to work around.
+on:
+  schedule:
+    # 06:00 UTC on the first of the month. Monthly rather than weekly because
+    # the signal is "something moved", and at a weekly cadence most runs would
+    # say nothing while still costing a look. CPython ships annually and the
+    # libraries here move in weeks, so a month is short enough that a break is
+    # still one version wide when it is found.
+    - cron: '0 6 1 * *'
+  # So the owner can run it on demand - before a long gap, on returning from
+  # one, or to confirm a change to this file actually works.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Do the newest releases of our own declared dependencies still work?
+  #
+  # No constraint is edited here: `uv sync --upgrade` resolves the newest
+  # version each bound in `pyproject.toml` allows. So this answers the question
+  # inside the project's own stated policy, and a failure means a dependency
+  # broke us within a range we already said we accept - which makes it
+  # actionable without any judgment about whether to widen a bound.
+  dependencies:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v9.0.0
+
+      # `--upgrade` rather than `--locked`: ignore uv.lock and re-resolve.
+      - run: uv sync --upgrade --dev
+
+      # What it actually resolved, so a red run below can be read without
+      # re-running anything. `uv pip list` is the record of what was tested.
+      - name: resolved versions
+        run: uv pip list
+
+      - run: uv run pytest
+      - run: uv run mypy
+
+      # Never fails, and that is the point. It reports what exists *beyond*
+      # the upper bounds in `pyproject.toml` - the flet 1.0 or pydantic 3 that
+      # `--upgrade` cannot reach because this project excludes it. Crossing a
+      # major bound is a deliberate migration rather than something CI should
+      # attempt, so this surfaces the option and stops. Without it, nothing
+      # would ever mention that the migration had become available.
+      - name: newer releases outside our declared bounds
+        continue-on-error: true
+        run: uv pip list --outdated
+
+  # Does the tree work on a CPython newer than the one it pins?
+  #
+  # `pyproject.toml` pins `requires-python = ">=3.14,<3.15"` - a single minor
+  # version - and repeats that number in `[tool.ruff] target-version`,
+  # `[tool.mypy] python_version` and `.python-version`. CPython ships a minor
+  # release a year, so this pin is wrong within twelve months and several times
+  # over this project's horizon.
+  #
+  # The upper bound has to be relaxed in the runner for the question to be
+  # asked at all: uv refuses an interpreter outside `requires-python`, which is
+  # correct for every other job here and is exactly what this one needs to see
+  # past. The edit is confined to the runner's checkout and is never committed.
+  interpreter:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      # '3.x' resolves to the newest stable CPython the runner image offers,
+      # which is the version this job exists to try. Deliberately not read from
+      # `.python-version` - that names the pinned interpreter, the one version
+      # this job is not testing.
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.x'
+
+      - uses: astral-sh/setup-uv@v9.0.0
+
+      - name: relax the interpreter pin for this run only
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, re
+          p = pathlib.Path("pyproject.toml")
+          t = p.read_text(encoding="utf-8")
+          new, n = re.subn(
+              r'^requires-python = "[^"]*"$',
+              'requires-python = ">=3.14"',
+              t,
+              count=1,
+              flags=re.M,
+          )
+          if n != 1:
+              raise SystemExit(
+                  "requires-python not found in the expected shape; this job's "
+                  "assumption about pyproject.toml has gone stale - fix it here "
+                  "rather than letting the job silently test the pinned version"
+              )
+          p.write_text(new, encoding="utf-8")
+          PY
+          # `.python-version` would otherwise win over the interpreter above.
+          rm -f .python-version
+          python3 --version
+
+      - run: uv sync --upgrade --dev --python "$(which python3)"
+
+      - name: resolved versions
+        run: uv pip list
+
+      - run: uv run pytest

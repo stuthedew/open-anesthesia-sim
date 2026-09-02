@@ -1,9 +1,14 @@
 ---
 id: PL-QSWS
 title: No item or roadmap entry covers dependency and toolchain drift, which a multi-year horizon makes a certainty rather than a risk
-status: untriaged
+priority: P2
+effort: S
+status: done
+closed: 2026-09-02
+classes: infra, docs
 feature: dev-tooling
-touches: pyproject.toml, .github/workflows/quality.yml
+touches: pyproject.toml, .github/workflows/drift.yml, ROADMAP.md
+verify: test -f .github/workflows/drift.yml && grep -q 'uv sync --upgrade' .github/workflows/drift.yml && grep -q 'Keeping the toolchain current' ROADMAP.md
 added: 2026-09-02
 ---
 
@@ -86,3 +91,47 @@ horizon adds and the shorter one hides.
 **Done when.** `ROADMAP.md` or `CLAUDE.md` states what this project does when a
 dependency or the interpreter moves, the answer names who or what notices, and
 any mechanism built to support it reports rather than gates.
+
+**Decided 2026-09-02 (project owner).** The recommended option: a periodic
+scheduled run against the latest interpreter with dependencies unpinned,
+reporting rather than gating. The other two were declined - "nothing scheduled,
+fix on breakage" leaves the delta to grow to whatever width a gap produces, and
+automated dependency pull requests are the broad automation the evidence this
+project cites says accumulates noise until it is routed around (`PL-ZBJ0`).
+
+**What landed.** `ROADMAP.md` gains "Keeping the toolchain current", stating the
+policy, what notices, what deliberately does not happen, why it reports rather
+than gates, and the condition for retiring it.
+`.github/workflows/drift.yml` implements it as two monthly jobs plus
+`workflow_dispatch`:
+
+- `dependencies` — `uv sync --upgrade`, so the newest release every bound in
+  `pyproject.toml` already allows. No constraint is edited, so a failure means
+  a dependency broke us inside a range this project has already accepted.
+- `interpreter` — newest stable CPython, with `requires-python`'s upper bound
+  relaxed *in the runner only*. uv refuses an interpreter outside
+  `requires-python`, which is right everywhere else and is the thing this job
+  has to see past. The relaxation is a scripted edit that fails loudly if
+  `pyproject.toml`'s shape changes, rather than silently re-testing the pinned
+  version.
+
+**The bound-crossing half is reported, not attempted.** `uv pip list
+--outdated` runs with `continue-on-error`, so a Flet 1.0 or a pydantic 3 shows
+up as available without turning the run red or being auto-adopted. Crossing a
+major bound is a deliberate migration. Without this step nothing would ever
+mention that the migration had become possible, which was the largest gap in
+the original finding.
+
+**Ordering note, recorded rather than hidden.** The `verify:` command here was
+written *after* the work, which is the opposite of what the `docket` skill
+requires and what `PL-L9JS` exists to enforce. It was checked against
+`origin/main` in a scratch checkout before being recorded - exit 1 without the
+work, 0 with it - so it discriminates, but that is a weaker guarantee than
+having watched it fail first.
+
+**Not verified end to end.** `drift.yml` has valid YAML and its steps use the
+same actions and pinned versions as `quality.yml`, but a scheduled workflow
+cannot be exercised from a pull request. `workflow_dispatch` is on it so the
+first real run can be triggered by hand; until that has happened once, treat
+the job as untested rather than working.
+
