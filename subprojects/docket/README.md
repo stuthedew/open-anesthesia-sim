@@ -772,6 +772,21 @@ which is worth knowing before writing a `verify:`: one full-suite `pytest
 second costs 3.5 s on top of it. Each command is capped at two minutes so one
 wedged run cannot hang `make check`.
 
+**So a command far enough above the typical one is named, with what it cost.**
+The person who writes a heavy `verify:` is the only one placed to reconsider
+it, and was the one person told nothing — the cost arrived in one step and was
+then paid by every later session's `make check`. The advisory closes either
+way: narrow the command, or accept a cost you have now seen.
+
+The line is a ratio against the median command rather than a number of
+seconds, so it needs no re-tuning as the suite grows: measured on this store
+2026-09-02, a healthy store's slowest command was 14x its median, and adding
+one full-suite `--cov` put a command at 88x in the same pool. It sits at 30x,
+with a one-second floor under it so that a store of trivial commands cannot
+turn process-startup jitter into a finding. Durations are measured under the
+pool's own contention, because the wall clock a session waits through is the
+question.
+
 ### Delegation is derived, never granted
 
 Work that a cheaper model can finish should go to one; work whose correctness
