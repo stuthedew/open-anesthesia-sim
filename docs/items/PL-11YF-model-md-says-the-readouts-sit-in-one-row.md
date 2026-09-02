@@ -1,8 +1,14 @@
 ---
 id: PL-11YF
 title: MODEL.md says the readouts sit in one row without saying above what width
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs, defect
+feature: model-spec-accuracy
+touches: docs/MODEL.md
 added: 2026-09-02
+verify: python3 tools/doc_check.py check && grep -q 'METRIC_GRID_COLUMNS' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md` § "Displayed precision" states twice, without
@@ -28,7 +34,10 @@ displays, so an unconditional statement there is read as a commitment.
 paragraphs beginning "The comparison the interface actually invites" and "Why
 the resolution is uniform rather than per-compartment";
 `METRIC_GRID_COLUMNS` in `src/anesthesia_sim/app/simulation_view.py` holds the
-thresholds.
+thresholds. A third instance sits outside that section, in § "Independent-
+solution test" ("The six readouts are placed in one row to be read
+comparatively"), carrying the same argument about a difference between two
+readings; it needs the same qualification.
 
 **Done when.** The specification states the width above which the readouts sit
 in one row, and says what the reflow below it means for the ordinal-reading and
