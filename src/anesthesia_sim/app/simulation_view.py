@@ -47,7 +47,7 @@ from anesthesia_sim.core.supported_ranges import (
 
 # The step each simulation tick advances by. What range of steps is *supported*
 # is `core/`'s to declare and no longer this module's: the operator split's
-# applicability domain is `core.respiratory_system.MAXIMUM_SIMULATION_STEP_S`,
+# applicability domain is `core.uptake_system.MAXIMUM_SIMULATION_STEP_S`,
 # and a step above it is refused there rather than displayed here. This is a
 # cadence choice inside that domain, and it sits at the domain's ceiling
 # deliberately - docs/MODEL.md § "Displayed precision" derives the two-decimal

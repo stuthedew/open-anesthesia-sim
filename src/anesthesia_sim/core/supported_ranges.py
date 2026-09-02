@@ -9,7 +9,7 @@ instead of relying on the interface's sliders to stay inside the domain.
 **Why the model declares these and not the interface.** The sliders' maxima
 look like presentation choices, and they were: until this module existed the
 only statement of the supported range was `app/simulation_view.py`, and
-`RespiratorySystem.set_cardiac_output(1000.0)` was accepted and simulated.
+`AgentUptakeSystem.set_cardiac_output(1000.0)` was accepted and simulated.
 What makes them the model's own is that the shipped operator split is first
 order, so its error is `C * dt` with the coefficient `C` measured over the
 trajectories *these* ranges produce, and every claim `docs/MODEL.md` makes

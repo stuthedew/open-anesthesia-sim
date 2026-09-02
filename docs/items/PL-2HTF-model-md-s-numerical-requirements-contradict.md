@@ -18,7 +18,7 @@ paragraphs below, `:532-534` describes the first-order operator split actually
 used, in which each sub-step sees the state the previous sub-step left.
 Concretely:
 
-- `core/respiratory_system.py:157-166` reads the *post-fresh-gas* circuit
+- `core/uptake_system.py:157-166` reads the *post-fresh-gas* circuit
   fraction for the circuit/alveolar exchange, and hands the *post-ventilation*
   alveolar fraction to the tissues;
 - `core/patient.py:129-135` evaluates `tissue_return_fraction` after the tissue
@@ -37,7 +37,7 @@ in `tests/reference/test_coupled_dynamics.py` is the error *of*, so a reader
 cannot reason about that bound without it.
 
 **Where.** `docs/MODEL.md:514-522` (the requirement list) and `:532-534` (the
-implemented split); `core/respiratory_system.py:157-166`;
+implemented split); `core/uptake_system.py:157-166`;
 `core/patient.py:129-135`.
 
 **Approach.** Rewrite the requirement list to describe the split actually used,

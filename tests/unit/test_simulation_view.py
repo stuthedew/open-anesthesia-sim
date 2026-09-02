@@ -45,7 +45,6 @@ from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import SimulationNumericalError
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S, RespiratorySystem
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -54,6 +53,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
 )
+from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
 
 
 class _FakePage:
@@ -1126,13 +1126,13 @@ def _real_step_failure() -> SimulationNumericalError:
     breakdown is reached the way a future parameter set could reach it -
     a compartment whose capacity one supported step overdraws - rather
     than by asking for a step nothing would grant.
-    `tests/unit/test_respiratory_system_failure.py` carries the same
+    `tests/unit/test_uptake_system_failure.py` carries the same
     construction and the reasoning behind its numbers.
     """
 
     agent = load_agent_parameters("isoflurane")
     patient_parameters = load_reference_adult_parameters()
-    system = RespiratorySystem(
+    system = AgentUptakeSystem(
         circuit=BreathingCircuit(
             delivered_concentration_fraction=(agent.mac_percent / 100.0),
             max_delivered_concentration_fraction=(

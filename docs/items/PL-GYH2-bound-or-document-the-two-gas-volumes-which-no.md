@@ -21,7 +21,7 @@ measurement in `docs/MODEL.md` holds both at their data-file values. But the
 splitting error depends on both — the circuit-to-alveolar exchange rate is
 $`\dot{V}_A(1/V_C + 1/V_A)`$, so a small alveolar volume raises it the way a
 large ventilation does — and
-`tests/unit/test_respiratory_system_failure.py` already builds a 0.005 L lung
+`tests/unit/test_uptake_system_failure.py` already builds a 0.005 L lung
 precisely because a volume that small breaks the split at a supported step.
 That construction is a deliberate test fixture; nothing distinguishes it from
 a caller who means it.

@@ -3,10 +3,10 @@ import dataclasses
 import pytest
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.core import respiratory_system
+from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
-from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
 
 
 def _advance_for(controller: SimulationController, duration_s: float) -> None:
@@ -107,18 +107,18 @@ def test_patient_defaults_come_from_the_data_file() -> None:
     so any correction to the cited values would silently not take effect.
     """
 
-    original = respiratory_system.load_reference_adult_parameters
+    original = uptake_system.load_reference_adult_parameters
     edited = dataclasses.replace(
         load_reference_adult_parameters(),
         default_alveolar_ventilation_l_min=5.5,
         default_cardiac_output_l_min=6.5,
     )
-    respiratory_system.load_reference_adult_parameters = lambda: edited
+    uptake_system.load_reference_adult_parameters = lambda: edited
 
     try:
         snapshot = SimulationController().snapshot()
     finally:
-        respiratory_system.load_reference_adult_parameters = original
+        uptake_system.load_reference_adult_parameters = original
 
     assert snapshot.alveolar_ventilation_l_min == pytest.approx(5.5)
     assert snapshot.cardiac_output_l_min == pytest.approx(6.5)

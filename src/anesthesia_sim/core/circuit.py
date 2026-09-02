@@ -42,7 +42,7 @@ class BreathingCircuit:
     device limit declared", which is only appropriate for a circuit built
     without an agent (a bare unit test of circuit physics). Every
     agent-aware path builds the circuit through
-    `RespiratorySystem.for_agent()`, which sets the real limit from the
+    `AgentUptakeSystem.for_agent()`, which sets the real limit from the
     agent data file.
     """
 
@@ -102,8 +102,38 @@ class BreathingCircuit:
         return SECONDS_PER_MINUTE * self.circuit_volume_l / self.fresh_gas_flow_l_min
 
     def set_circuit_volume(self, circuit_volume_l: float) -> None:
+        """Change the circuit's volume while conserving the agent in it.
+
+        Agent is held as a fraction of the volume, so moving the volume alone
+        scales `agent_amount_l` with it. Measured on the shipped code before
+        this guard existed: a sevoflurane system stepped 60 s held 0.048288200 L
+        in the circuit, `set_circuit_volume(3.0)` left 0.024144100 L - 24.1 mL
+        of equivalent agent gas destroyed by a setter - and the next
+        `advance(0.1)` raised `AgentSimulationValidationError`, blaming the
+        numerics for a setter's defect.
+
+        Conserving here rather than in the caller is the point (PL-006).
+        `docs/MODEL.md`'s required invariants - "no compartment creates agent
+        spontaneously" and "changing a setting does not reset stored state" -
+        then hold for every caller of the public primitive, instead of only
+        for one that knew to read the amount out and put it back.
+
+        Raises:
+            SimulationConfigurationError: the volume is not positive and
+                finite, or is too small to hold the agent already in the
+                circuit. Both are checked before anything changes, so a
+                refused volume leaves the circuit exactly as it was.
+        """
+
         require_positive_finite("circuit_volume_l", circuit_volume_l)
+
+        stored_agent_l = self.agent_amount_l
+
+        if stored_agent_l > circuit_volume_l:
+            raise SimulationConfigurationError("circuit_volume_l is smaller than stored agent")
+
         self.circuit_volume_l = circuit_volume_l
+        self.circuit_concentration_fraction = stored_agent_l / circuit_volume_l
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
         """Set fresh gas flow, rejecting a flow outside the supported range."""

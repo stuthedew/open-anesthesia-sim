@@ -498,13 +498,13 @@ The implementation must:
 Two constants describe the step, and they are different kinds of statement:
 
 ```text
-MAXIMUM_SIMULATION_STEP_S = 0.1   # core/respiratory_system.py
+MAXIMUM_SIMULATION_STEP_S = 0.1   # core/uptake_system.py
 SIMULATION_STEP_S         = 0.1   # app/simulation_view.py
 ```
 
 `MAXIMUM_SIMULATION_STEP_S` is the model's supported domain, closed at its
 endpoint: any positive step at or below it is supported, and both
-`RespiratorySystem.advance()` and `SimulationState.advance()` refuse a larger
+`AgentUptakeSystem.advance()` and `SimulationState.advance()` refuse a larger
 one. `SIMULATION_STEP_S` is the interface's own tick cadence, which sits at
 that ceiling deliberately. "Supported simulation step" below derives the
 bound and says why the two coincide.
@@ -516,7 +516,7 @@ exchange, composed by first-order operator splitting rather than a generic
 numerical integrator:
 
 1. the circuit exchanges exactly with fresh gas (`BreathingCircuit.advance_fresh_gas`), holding ventilation fixed for the step;
-2. the circuit and alveolar compartments then exchange exactly with each other (`RespiratorySystem._exchange_circuit_and_alveoli`), a closed-form solution of the two-compartment linear exchange that conserves $`M_C+M_A`$ exactly;
+2. the circuit and alveolar compartments then exchange exactly with each other (`AgentUptakeSystem._exchange_circuit_and_alveoli`), a closed-form solution of the two-compartment linear exchange that conserves $`M_C+M_A`$ exactly;
 3. each tissue group exchanges exactly with arterial blood (`TissueGroup.advance`), holding the arterial fraction ($`=F_A`$) fixed for the step;
 4. venous blood mixes exactly with the flow-weighted tissue outflow (`VenousBloodCompartment.advance`); and
 5. the net patient uptake is applied back to alveolar gas (`AlveolarCompartment.apply_blood_uptake`).
@@ -635,7 +635,7 @@ coefficient, re-derive the displayed resolution with it, and revise both
 sections together.
 
 **The capacity guard remains, and reports something else.** Where a supported
-step still drives an amount negative, `RespiratorySystem.advance()` reports
+step still drives an amount negative, `AgentUptakeSystem.advance()` reports
 `SimulationNumericalError`: the step is abandoned, simulation time does not
 advance, and the caller must stop the run rather than read the partially
 applied state as a result. No supported step reaches that on the reference
@@ -758,7 +758,7 @@ it.
 agent's real vaporizer can deliver (sevoflurane 8%, isoflurane 5%,
 desflurane 18%). It is the upper bound of the delivered-concentration
 control, and it is enforced in the core: `BreathingCircuit` carries the
-limit for the agent in use (set by `RespiratorySystem.for_agent()`) and
+limit for the agent in use (set by `AgentUptakeSystem.for_agent()`) and
 **must reject** any delivered concentration above it, at construction and
 at every later change, rather than clamping to it. A clamp would run,
 display, and chart a dial position the caller never requested, which is
@@ -772,7 +772,7 @@ appropriate for a patient.
 `mac_percent` is 1 MAC for a 40-year-old adult. It is used for exactly one
 thing: choosing the starting position of the delivered-concentration control
 when a run begins, so that a new run starts from a recognizable clinical
-anchor rather than an arbitrary number. `RespiratorySystem.for_agent()`
+anchor rather than an arbitrary number. `AgentUptakeSystem.for_agent()`
 applies it, so the starting dial position is agent-specific in the core
 rather than in the controller, and every agent file **must** declare a
 `mac_percent` its own vaporizer can deliver — a cross-field check in
@@ -1242,14 +1242,14 @@ setting outside it is refused rather than simulated:
 **The ranges are the model's, not the interface's** (PL-0MLQ). Until v0.2.10
 the first three were declared only as slider limits in
 `app/simulation_view.py` and enforced nowhere:
-`RespiratorySystem.set_cardiac_output(1000.0)` was accepted and simulated,
+`AgentUptakeSystem.set_cardiac_output(1000.0)` was accepted and simulated,
 as were a fresh gas flow of 500 L/min and an alveolar ventilation of
 200 L/min, because the compartment setters checked only that the value was
 nonnegative and finite. The sliders were the sole thing keeping a run inside
 the domain the verification gates cover, so every other caller of `core/` —
 a headless run, a notebook, a test — could leave it. `core/supported_ranges.py`
 declares the three intervals now, each compartment refuses a value outside
-its own, and every `RespiratorySystem` setter forwards to that compartment;
+its own, and every `AgentUptakeSystem` setter forwards to that compartment;
 `app/` imports the same constants for its sliders rather than restating them.
 
 **Refused, not clamped**, for the reason the vaporizer maximum is: a silently
@@ -1265,7 +1265,7 @@ opposite of where `MAXIMUM_SIMULATION_STEP_S` sits, and for a reason the two
 cases do not share. A step is an argument to one call, and a compartment
 advanced alone is exact at any step, so guarding a compartment there would
 refuse an exact calculation. A flow is persistent state, reachable through
-`RespiratorySystem`, through the compartment it belongs to, and through that
+`AgentUptakeSystem`, through the compartment it belongs to, and through that
 compartment's constructor; the compartment is the only point all three pass
 through.
 

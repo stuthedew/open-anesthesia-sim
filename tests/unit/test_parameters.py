@@ -261,7 +261,7 @@ def test_mac_cross_check_is_a_model_validator_not_a_field_validator() -> None:
     `max_delivered_concentration_percent` only because that field happened
     to be declared first. Reordering the two fields turned it into a
     silent no-op, so a file declaring 40% MAC on a 5% vaporizer would load
-    clean — and `RespiratorySystem.for_agent()` starts every run at 1 MAC.
+    clean — and `AgentUptakeSystem.for_agent()` starts every run at 1 MAC.
     A model validator runs after every field is populated, so declaration
     order cannot reach it.
     """

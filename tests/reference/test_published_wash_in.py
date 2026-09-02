@@ -93,7 +93,7 @@ from functools import cache
 import pytest
 
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
-from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S, RespiratorySystem
+from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
 
 # The measurement's own horizon: both studies administered the potent agent
 # for 30 minutes and report F_A/F_I at the end of it.
@@ -231,7 +231,7 @@ def _wash_in_ratio(
     """
 
     patient_parameters = load_reference_adult_parameters()
-    system = RespiratorySystem.for_agent(agent_id)
+    system = AgentUptakeSystem.for_agent(agent_id)
 
     system.set_fresh_gas_flow(fresh_gas_flow_l_min)
     system.set_delivered_concentration(delivered_fraction)

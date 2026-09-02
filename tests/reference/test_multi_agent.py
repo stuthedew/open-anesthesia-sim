@@ -4,12 +4,12 @@ from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.respiratory_system import RespiratorySystem
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
 
-def _run_for(system: RespiratorySystem, duration_s: float, simulation_step_s: float) -> None:
+def _run_for(system: AgentUptakeSystem, duration_s: float, simulation_step_s: float) -> None:
     """Advance a system for an exact number of fixed steps."""
 
     step_count = round(duration_s / simulation_step_s)
@@ -18,7 +18,7 @@ def _run_for(system: RespiratorySystem, duration_s: float, simulation_step_s: fl
         system.advance(simulation_step_s)
 
 
-def _build_system_for_agent(agent_id: str) -> RespiratorySystem:
+def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
     """Build a patient system for a named built-in agent.
 
     Proves the v0.1.0 core is agent-generic: only the agent parameters
@@ -28,7 +28,7 @@ def _build_system_for_agent(agent_id: str) -> RespiratorySystem:
     agent = load_agent_parameters(agent_id)
     patient_parameters = load_reference_adult_parameters()
 
-    return RespiratorySystem(
+    return AgentUptakeSystem(
         circuit=BreathingCircuit(),
         alveoli=AlveolarCompartment(
             gas_volume_l=patient_parameters.alveolar_gas_volume_l,
