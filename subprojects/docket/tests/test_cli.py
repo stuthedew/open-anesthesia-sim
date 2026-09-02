@@ -823,6 +823,62 @@ def test_show_marks_an_item_a_branch_has_in_flight(
     assert "PL-0001" in out.splitlines()[0]
 
 
+def test_triage_names_an_item_already_in_flight(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-PRHN: two sessions triaged one pair of items and collided at merge.
+
+    Triage is the more exposed entry point rather than the less. `show` guards
+    the path where a session has *chosen* an item; triage is what a session
+    runs straight off a digest that reports the untriaged count and nothing
+    about who is holding those items. The branch is named, not merely the fact
+    of one, because the reader has to be able to tell another session's work
+    from its own without leaving the output.
+    """
+    # A valid id, which `UNTRIAGED`'s own `PL-U1U1` is not: the alphabet drops
+    # the vowels, so a subject leading with that one carries no id at all.
+    root = _flight_repo(tmp_path, "PL-N3W1 Triage it")
+    (root / "items" / "PL-N3W1-untriaged.md").write_text(
+        UNTRIAGED.replace("PL-U1U1", "PL-N3W1"), encoding="utf-8"
+    )
+
+    assert main(["--items", str(root / "items"), "triage"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"IN FLIGHT on {BRANCH} - triaging it here as well collides at merge." in out
+    # Reported, not withheld: the mark is bounded by what has been pushed, so
+    # it advises and the item stays answerable underneath it.
+    assert "induction curve looks wrong" in out
+
+
+def test_triage_names_the_refs_that_bound_its_in_flight_answer(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An unmarked item means "no ref proved it", never "no ref carries it".
+
+    Silence about a ref the checkout could not read presents a partial reading
+    as a complete one - which is the collapse that makes the mark trusted in
+    exactly the case it is least entitled to be.
+    """
+    root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
+    for args in (
+        ["checkout", "-q", "--orphan", "unrelated"],
+        ["commit", "-qm", "PL-N3W1 Triage it"],
+    ):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+    (root / "items" / "PL-N3W1-untriaged.md").write_text(
+        UNTRIAGED.replace("PL-U1U1", "PL-N3W1"), encoding="utf-8"
+    )
+
+    assert main(["--items", str(root / "items"), "triage"]) == 0
+
+    out = capsys.readouterr().out
+    assert "1 ref could not be compared with main" in out
+    assert "`bin/docket flight` names it." in out
+    assert "IN FLIGHT" not in out
+
+
 def test_show_leaves_an_item_no_branch_carries_out_of_flight(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

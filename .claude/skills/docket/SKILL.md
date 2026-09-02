@@ -323,8 +323,25 @@ because one looked busy costs almost nothing against a queue this size, while
 two sessions on one item costs a session and a merge conflict (`PL-PRHN`).
 
 This shrinks the window rather than closing it: two sessions starting in the
-same minute still race, because both answers come from refs. `PL-SK88` carries
-the harder half.
+same minute still race, because both answers come from refs.
+
+**So read the session list too, which sees what no ref can.** `list_sessions`
+from the `claude-code-remote` MCP server (`mine: true`) returns every session's
+title and its branch, including a session that has committed nothing at all —
+the window the two rules above leave open. Scan the live ones for the id
+(`session_status` `RUNNING` or `IDLE`; archived and completed ones are finished
+work), in the title and in `external_metadata.current_branches` both, because
+either can carry it and neither reliably does.
+
+**It adds a warning and never a clean bill of health.** It rests on the rename
+rule below, which is followed about three times in four: measured 2026-09-02
+over a twenty-session window, nine titles carried an id and at least three
+sessions demonstrably working one item had never been renamed. A session
+working an item under a generic title is indistinguishable from one working no
+item at all — so unlike `show`, which names the refs it could not compare, this
+read cannot name its own gaps. Finding nothing here means nothing; finding
+something is decisive. It is also this harness only: `docket` knows nothing
+about it and must not (`PL-SK88` records why).
 
 Then decide where the work happens and act on it — do not ask. Continue here when
 this session's context is an asset (short, already about this item, just
@@ -369,6 +386,13 @@ sections still missing, and the rules the answers must satisfy — read from
 `docket.toml` and the checker, so they are what `docket check` will hold you
 to rather than what this file remembers. Do not read the store for this, and
 do not re-derive the rules from here.
+
+**An item marked `IN FLIGHT` is one a branch already carries — skip it.** A
+second answer here is a second resolution of the same file, and the merge keeps
+one of them. The mark names the branch, so another session's work is
+distinguishable from this one's. It is bounded by what has been pushed, so an
+*unmarked* item means "no ref proved it" rather than "no branch has it" — which
+is why the output also names the refs it could not read.
 
 Fill in what capture deliberately skipped:
 `priority`, `effort`, `classes`, `touches`, and `feature` when it belongs
