@@ -25,28 +25,29 @@ process-classed, so the advisory is silent. Below it, 13 open `P2` and 17 open
 `P3` items carry `session-cost`, `docs` and `infra` and nothing else — 30
 items the advisory is blind to by construction.
 
-**Why it matters.** `CLAUDE.md` names the failure this project is guarding
-against: the workflow apparatus "is at permanent risk of becoming the work
-instead". This advisory is the only automated instrument pointed at that risk,
-and it is aimed at the one band the risk cannot appear in.
+**Why it matters.** `CLAUDE.md` names the apparatus "at permanent risk of
+becoming the work instead", and this advisory is the only automated instrument
+pointed at that risk. It is aimed at the one band where the risk cannot appear.
 
-The scale it is missing, measured 2026-09-02:
+The point is that the balance is *unreportable*, not that today's balance is
+wrong. Measured 2026-09-02, and none of it visible from any command: 177 of 311
+items ever created carry an apparatus `feature` against 84 carrying a product
+one; 53 of 109 open items are apparatus; `git diff --shortstat` from the root
+commit gives 41,183 apparatus insertions against 16,517 product; and
+`subprojects/docket/src` is 7,013 lines against `src/`'s 3,992.
 
-- 177 of 311 items ever created (57%) carry a workflow-apparatus `feature`
-  (`dev-tooling`, `planning-cadence`, `parallel-sessions`,
-  `worker-instructions`, `delegation`, `public-history`,
-  `release-roadmap-seam`, `docket`, `commit-provenance`) against 84 (27%)
-  carrying a product feature.
-- 53 of 109 open items (49%) are apparatus.
-- `git diff --shortstat` from the root commit: 41,183 insertions across
-  `subprojects/`, `tools/`, `.claude/`, `docs/items/`, `CLAUDE.md` against
-  16,517 across `src/`, `tests/`, `docs/MODEL.md`, `README.md` — 2.5:1.
-- `subprojects/docket/src` is 7,013 lines against `src/`'s 3,992 and
-  `src/anesthesia_sim/core/`'s ~1,834. The queue tool is 1.8x the application
-  it manages and 3.8x its scientific core.
+Whether that is the right balance for a solo project whose measure of success
+is that it is still enjoyed in a year is the owner's judgment and nobody
+else's - building the apparatus is legitimately part of the fun, and this item
+takes no position on the numbers. What it fixes is that a session reads `0
+errors` and a band-size advisory and has no way to raise the question at all.
 
-None of that is visible from any command. A session reads `0 errors` and a
-grooming advisory about band size, and infers the apparatus is in proportion.
+Structural health is measured and is not the concern here: `docket`'s modules
+form an acyclic layering (`model`/`config` -> `store`/`release`/`concurrency`
+-> `vcs`/`roadmap` -> `plan`/`verify` -> `checks` -> `render` -> `cli`) with a
+median function length of 13 lines across 217 functions. The apparatus is
+large and well-factored. This advisory is about proportion, which only the
+owner can rule on, so it must report and never gate.
 
 **Where.** `subprojects/docket/src/docket/checks.py:773-794` (`_groom`), which
 already holds `config.process_classes`. `_top_band` at `checks.py:797` is read,
