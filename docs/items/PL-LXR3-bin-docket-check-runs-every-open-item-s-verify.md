@@ -3,11 +3,12 @@ id: PL-LXR3
 title: bin/docket check runs every open item's verify command serially on every make check, costing 50 s and growing with the queue
 priority: P2
 effort: S
-status: ready
+status: done
 classes: perf, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-02
+closed: 2026-09-02
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -rq 'def test_verify_commands_run_concurrently' subprojects/docket/tests
 ---
 
@@ -78,3 +79,46 @@ paying in every `make check`, and pinning it here would add that cost to every
 run until the work lands. `test_checks.py` is 0.7 s and covers the caller that
 collects the results; the recursive `grep` names the test the work owes
 wherever it comes to live.
+
+**Worked.** A thread pool over the candidate subprocesses in
+`already_passing`, which is where `make check` pays. Measured on this
+checkout, 48 candidate commands, four cores, the same tree before and after:
+
+| | `bin/docket check` |
+| --- | --- |
+| Serial | **34.9 s** |
+| Concurrent | **10.1 s** |
+
+The two runs' output is byte-identical, which is the property that made
+concurrency the right candidate: every command still runs, in the working
+tree, against the current state, so the answer cannot move - only the wall
+clock. Command execution alone was 33.9 s of the serial total across 49
+candidates on the pre-restart store, 10.8 s at four workers and 10.1 s at
+eight, so the knee is the core count and the pool doubles it to overlap the
+interpreter startup that dominates the small commands. `landed_workers()`
+carries that measurement and caps at eight.
+
+The saving grows rather than holding: the serial number is the sum of the
+commands, so every item triaged to `ready` adds its own runtime permanently,
+while the concurrent number rises at roughly a quarter of that rate. Of the
+33.9 s, four commands were 19.1 s and the other 45 were 14.8 s of `uv run`
+plus collection startup - so the tail that grows with the queue is exactly
+the part concurrency removes.
+
+Two things were added beyond running them at once, both to keep the answer
+identical rather than merely fast. `ThreadPoolExecutor.map` yields in the
+order it was given, so the findings still follow the store's order rather
+than whichever shell finished first - otherwise an unchanged store would
+print a differently-ordered advisory each run. And each child gets its own
+`COVERAGE_FILE`: coverage reads its data file back to decide
+`--cov-fail-under`, so two `--cov` commands sharing the tree's default
+`.coverage` could race and one fail on data the other truncated, which would
+be a wrong answer introduced by this change. No open item carries a `--cov`
+command today; eight closed ones do, so the guard is for the next one rather
+than for a live fault.
+
+Neither of the other two candidates was taken. "Run fewer" would drop the
+already-passes advisory, which names nine real candidates on this store for
+work that landed while its item stayed `ready`; caching stays rejected while
+a cheaper option exists, because a stale cache reports an item done that is
+not.

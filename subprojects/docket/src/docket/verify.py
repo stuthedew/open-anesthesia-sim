@@ -28,8 +28,10 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import tempfile
 from collections import Counter
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -453,6 +455,24 @@ LANDED_GUARD = "DOCKET_SKIP_LANDED"
 # candidate commands took 18s in total and 5.1s at worst.
 LANDED_TIMEOUT = 120.0
 
+
+def landed_workers() -> int:
+    """How many candidate commands to run at once.
+
+    Each is a subprocess that spends most of its life on interpreter startup
+    and imports rather than on the CPU, so more of them than there are cores
+    is the right shape. Measured against this store on 2026-09-02, 49
+    candidates on a four-core box: 33.9 s serially, 10.8 s at four workers,
+    10.1 s at eight. The knee is at the core count and the tail beyond it is
+    the startup overlap, which is why this doubles rather than matching.
+
+    Capped because the win is already spent by then and an uncapped pool on a
+    large machine would put dozens of pytest processes on one working tree for
+    no measured gain.
+    """
+    return min(8, (os.cpu_count() or 1) * 2)
+
+
 # Statuses worth asking about. `done` and `dropped` are settled, and an
 # untriaged capture has not promised to do anything yet.
 LANDED_STATUSES = ("ready", "needs-decision")
@@ -513,6 +533,7 @@ def already_passing(
     *,
     statuses: tuple[str, ...] = LANDED_STATUSES,
     timeout: float = LANDED_TIMEOUT,
+    workers: int | None = None,
 ) -> LandedReport:
     """Run every open item's `verify:` command, and report what running it showed.
 
@@ -533,6 +554,13 @@ def already_passing(
     commit subject on `main`, eleven were capture or triage commits, and an
     advisory wrong five times in six is one every session learns to skim.
 
+    The commands run concurrently, because `make check` pays this and the bill
+    grows with the queue: every item triaged to `ready` adds its command's
+    runtime permanently, so the serial cost rises as the store gets healthier.
+    Nothing about the answer changes - each command still runs, in the working
+    tree, against the current state - so this is wall clock only, which is why
+    it was preferred to caching a result or asking fewer items (`PL-LXR3`).
+
     Two conditions decline rather than answer, both for the reason
     `merged_pull_requests` declines on a shallow clone - an empty result that
     means "could not look" must never render as "looked, found nothing":
@@ -552,11 +580,33 @@ def already_passing(
         return LandedReport()
 
     child = {**os.environ, LANDED_GUARD: "1"}
+
+    with tempfile.TemporaryDirectory(prefix="docket-landed-") as scratch:
+
+        def probe(item: Item) -> int:
+            # Coverage keeps its data in one file per run and reads it back to
+            # decide `--cov-fail-under`, so two `--cov` commands sharing the
+            # tree's default `.coverage` would race and one could fail on data
+            # the other truncated - a wrong answer introduced by running them
+            # at once rather than found by it. A path per child removes that by
+            # construction, and stops these probe runs overwriting the coverage
+            # data the tree's own suite wrote. Pytest's cache is left shared:
+            # it is only read by selectors no recorded command uses, so a lost
+            # entry cannot change an exit status.
+            env = {**child, "COVERAGE_FILE": str(Path(scratch) / f"coverage.{item.identifier}")}
+            status, _ = _run([item.verify], root, shell=True, timeout=timeout, env=env)
+            return status
+
+        # `map` yields in the order it was given, which the findings below rely
+        # on: they are reported as lists of ids, and an order that varied run to
+        # run would make a stable store look like a changing one.
+        with ThreadPoolExecutor(max_workers=workers or landed_workers()) as pool:
+            results = list(pool.map(probe, candidates))
+
     passing: list[str] = []
     vacuous: list[str] = []
     unavailable = 0
-    for item in candidates:
-        status, _ = _run([item.verify], root, shell=True, timeout=timeout, env=child)
+    for item, status in zip(candidates, results, strict=True):
         if status == 0:
             passing.append(item.identifier)
         elif status == 127:  # the shell could not find the command at all
