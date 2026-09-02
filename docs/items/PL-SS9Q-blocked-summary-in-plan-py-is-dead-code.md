@@ -3,9 +3,10 @@ id: PL-SS9Q
 title: blocked_summary() in plan.py is dead code duplicating what docket list already prints
 priority: P3
 effort: S
-classes: infra
 status: done
+classes: infra
 feature: dev-tooling
+milestone: v0.3.0
 touches: subprojects/docket
 added: 2026-09-02
 closed: 2026-09-02
