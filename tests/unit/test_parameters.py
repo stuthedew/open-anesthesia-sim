@@ -419,6 +419,34 @@ def test_rejects_unknown_key_inside_a_tissue_group() -> None:
         parse_reference_adult_parameters(payload)
 
 
+def test_every_payload_model_documents_why_it_exists() -> None:
+    """The pair reads as duplication until something says it is not (PL-007).
+
+    Each `_...Payload` is paired with a public, Pydantic-independent
+    dataclass, and the design is correct: it is what keeps the validation
+    library out of the rest of `core/`, and the two shapes differ - the
+    payload mirrors the file's nesting, the public type is flat. A reader who
+    does not find that written down is liable to "simplify" the pair away,
+    which would couple the compartments to Pydantic and let the JSON layout
+    dictate the type the simulation reads.
+
+    Walked rather than listed, for the reason the strictness test above is
+    walked: the seventh payload model added later should arrive documented by
+    default rather than by being remembered. What the docstring *says* is not
+    checkable and is not checked here; that it exists is.
+    """
+
+    strict_base = parameters_module._StrictPayload
+
+    assert strict_base.__doc__, "the base carries the rationale the subclasses point at"
+
+    for model in strict_base.__subclasses__():
+        assert model.__doc__, (
+            f"{model.__name__} has no docstring: a reader landing on it cannot tell "
+            "why it exists beside its public dataclass"
+        )
+
+
 def test_every_payload_model_forbids_unknown_keys() -> None:
     """Strictness must hold for models added later, not just today's six.
 
