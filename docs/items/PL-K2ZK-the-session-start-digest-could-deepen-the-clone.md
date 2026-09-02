@@ -3,11 +3,13 @@ id: PL-K2ZK
 title: The session-start digest could deepen the clone once so the in-flight read answers instead of declining
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: infra, session-cost
 feature: parallel-sessions
-touches: .claude/hooks/docket-digest.sh, subprojects/docket/README.md
+touches: .claude/hooks/docket-digest.sh, subprojects/docket/README.md, tests/unit/test_docket_digest_hook.py
 added: 2026-08-31
+closed: 2026-09-02
+verify: uv run pytest tests/unit/test_docket_digest_hook.py && grep -q 'def test_a_shallow_checkout_is_deepened_once_at_session_start' tests/unit/test_docket_digest_hook.py
 ---
 **Problem.** `PL-MGNC` stops `branches_in_flight` believing a walk the
 checkout's history cannot support, which is right and is not the whole
@@ -64,6 +66,32 @@ history and is cheap only because this repository is small; `--deepen=N` is
 the bounded alternative if that stops being true. And the fetch must fail
 silently — a container with no network must still start, per the guard
 `PL-MGNC` put in, which this does not replace.
+
+**Decided 2026-09-02 (project owner): yes, the fetch is worth its latency.**
+3.4 s once per container against an answer declined in every session of that
+container is not a close call, and the declined answer is one `docket next`
+cannot see it declined (`PL-S1P1`), so the cost was being paid as items offered
+twice.
+
+**Built as specified.** `.claude/hooks/docket-digest.sh` runs `git fetch
+--quiet --unshallow origin` before `docket branch --brief`, so the deepening
+lands before anything reads a ref. Three guards, each held by a test rather
+than by the comment beside it: the fetch runs only when `git rev-parse
+--is-shallow-repository` says the checkout is shallow, so it is a no-op in
+every session after the first; it is wrapped in `timeout 60` where `timeout`
+exists, so a hanging remote costs seconds rather than the session; and its
+failure is silent, leaving the checkout as truncated as it was and the
+`PL-MGNC` guard's deepen-me line as the remedy a person is given.
+
+`--unshallow` over a bounded `--deepen=100` because 2.2 MB of history is
+cheaper to reason about than a depth that is right until it is not. The bound
+is one word away if this repository stops being small, and the comment in the
+hook says so.
+
+**What it does not change.** `vcs.py` still never fetches: `docket check` runs
+from a bare offline tree, and the rule that a read must work there is why
+`fetch_remote` is the module's one deliberate exception. This is the hook,
+which has a network and runs once — the split `PL-K2ZK` argued for, unchanged.
 
 **Triaged 2026-09-01.** P3, `infra`/`session-cost`, `parallel-sessions`. Left
 out of v0.2.8's frozen list: `PL-MGNC` made the declining behaviour correct on
