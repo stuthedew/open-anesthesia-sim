@@ -1,10 +1,14 @@
 ---
 id: PL-CP74
 title: Unfiled housekeeping work carries no item id, so every in-flight guard is structurally blind to it
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: infra
 feature: parallel-sessions
-touches: .claude/skills/docket/SKILL.md, CLAUDE.md
+touches: .claude/skills/docket/SKILL.md, CLAUDE.md, .claude/hooks/docket-branch-guard.sh
 added: 2026-09-02
+verify: python3 tools/doc_check.py check && grep -qF 'file the item first' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** `docket flight`, `show`, `triage`, `next` and the session-start

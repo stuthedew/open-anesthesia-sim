@@ -1,10 +1,14 @@
 ---
 id: PL-YHD3
 title: Two sessions that discover they are on the same work have no rule for which one yields
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: infra
 feature: parallel-sessions
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-02
+verify: python3 tools/doc_check.py check && grep -qF 'which session yields' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** Everything the project has built for parallel sessions is

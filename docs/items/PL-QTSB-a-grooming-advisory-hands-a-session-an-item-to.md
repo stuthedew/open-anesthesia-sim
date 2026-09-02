@@ -1,10 +1,14 @@
 ---
 id: PL-QTSB
 title: A grooming advisory hands a session an item to edit with no in-flight check, which is the PL-5KR2 gap on a third surface
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: parallel-sessions
-touches: .claude/skills/docket/SKILL.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, .claude/skills/docket/SKILL.md
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_advisory_names_an_item_in_flight' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `PL-5KR2` found that `plan.recommend` excludes in-flight ids, but

@@ -1,8 +1,12 @@
 ---
 id: PL-D4MZ
 title: Nothing reserves work at the moment it is recommended, so two sessions handed the same closing recommendation both start it
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: infra
 feature: parallel-sessions
+touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/plan.py
 added: 2026-09-02
 ---
 
@@ -72,3 +76,24 @@ either implemented or split into the items that implement it. A session that
 closes with a recommendation, and a session that acts on one, both have a
 documented answer to "is anybody else about to do this?" that does not depend
 on the other session having pushed first.
+
+**Decision needed.** Which of the four directions under **Where** does this
+project take, and is any mechanism warranted at all?
+
+The choice is not free in either direction. A reservation store is a second
+piece of state to keep honest in an ephemeral container, and this project has
+already paid for one such mechanism (`bin/docket stranded`) to recover what
+another leaves behind. Doing nothing costs the duplicated minutes before two
+sessions notice each other, which `PL-YHD3` (which of two sessions yields)
+bounds independently of whatever is decided here.
+
+**Recommended: decide this against `PL-CP74`, `PL-MC8Z` and `PL-QTSB` rather
+than on its own.** Those three are the cheap, already-shaped parts of the
+same reported problem - file housekeeping under an id, the file-overlap
+question in the start-an-item guard, and an in-flight mark on a `docket
+check` advisory - and each removes a slice of the collisions this item would
+otherwise have to catch. What is left over after all three have landed is the
+real size of the problem a reservation mechanism would be built for, and it
+may be small enough that direction four is the answer. That sequencing is
+itself the recommendation; the design round is worth having only once the
+remainder is known.

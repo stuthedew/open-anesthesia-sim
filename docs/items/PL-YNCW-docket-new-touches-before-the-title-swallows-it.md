@@ -1,10 +1,14 @@
 ---
 id: PL-YNCW
 title: docket new --touches before the title swallows it, because nargs='*' is greedy and the error names the title instead
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: dev-tooling
-touches: subprojects/docket/src/docket/cli.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_cli.py -k new_captures && grep -q 'def test_touches_before_title' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `bin/docket new --feature parallel-sessions --touches path "Some
@@ -13,7 +17,7 @@ is declared `nargs="*"`, so argparse consumes the title into it and then
 reports the title as missing. The message names the one thing that was
 supplied.
 
-**Observed 2026-09-02**, capturing `PL-MC8Z`. Cost one retry, which is small —
+**Why it matters. Observed 2026-09-02**, capturing `PL-MC8Z`. Cost one retry, which is small —
 but the capture path is the one place in this project that is meant to be
 frictionless, because `CLAUDE.md` requires capture to happen even when usage
 is nearly spent and a thought is one interruption from gone. A capture command

@@ -1,10 +1,14 @@
 ---
 id: PL-MGF9
 title: The process-work grooming advisory only examines the top band, so it cannot fire for the P2 and P3 bands where all the process work actually sits
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/checks.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_process_majority_is_measured_over_the_open_queue' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `_groom` in `subprojects/docket/src/docket/checks.py:773` builds
