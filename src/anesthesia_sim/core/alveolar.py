@@ -4,7 +4,6 @@ pulmonary blood (uptake), sitting between `circuit.py` and `patient.py`.
 """
 
 from dataclasses import dataclass
-from math import inf
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import require_supported_alveolar_ventilation
@@ -13,8 +12,6 @@ from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
     require_positive_finite,
 )
-
-SECONDS_PER_MINUTE = 60.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,15 +48,6 @@ class AlveolarCompartment:
         """Return the current alveolar concentration fraction."""
 
         return self.agent_amount_l / self.gas_volume_l
-
-    @property
-    def time_constant_s(self) -> float:
-        """Return the ventilation-only alveolar time constant."""
-
-        if self.alveolar_ventilation_l_min == 0.0:
-            return inf
-
-        return SECONDS_PER_MINUTE * self.gas_volume_l / self.alveolar_ventilation_l_min
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
         """Change ventilation without changing stored alveolar agent.
