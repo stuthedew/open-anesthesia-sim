@@ -316,13 +316,6 @@ correction rather than handing the question back.
   queue. The test is arithmetic, not enthusiasm — name the per-item saving and
   multiply by the items remaining. Work that is merely valuable, cleaner or more
   interesting makes no remaining item cheaper and waits for the roadmap.
-- **Workflow work comes before product work until the workflow is settled.**
-  Standing decision, 2026-08-30. Friction in how the work is organized is paid
-  by every future session, so an item that removes it, or stops new debt being
-  introduced, outranks one that adds capability — whatever the priority bands
-  say. No arrangement of the queue shows this and the `docket` skill carries
-  why, so say which side of the rule a piece of work sits on. Retire this
-  bullet when the workflow release ships: it is a phase, not a policy.
 
 **Sweep the docs before calling an item done.** Landing a change is not
 finishing it. `make check` runs `tools/doc_check.py`, which decides the

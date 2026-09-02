@@ -1,0 +1,97 @@
+---
+id: PL-Y4Q4
+title: PL-0MLQ is safety-classed and predates the freeze, but is absent from Gate 0's frozen list, so wave reports the gate one entry short
+priority: P2
+effort: S
+status: done
+classes: defect, docs
+feature: planning-cadence
+touches: ROADMAP.md
+added: 2026-09-01
+closed: 2026-09-02
+pr: 178
+verify: bin/docket wave | grep -q "21 entries, 22 ids"
+---
+
+**Problem.** `PL-0MLQ` (refuse a setting outside the documented supported
+input range) is classed `safety` at `P1`. `ROADMAP.md`'s "The gate is a
+snapshot, not a moving target" re-enters anything classed `safety` or
+`science` into the current gate "regardless of presence", and its presence
+qualifies independently: the four compartment setters have never enforced
+`docs/MODEL.md` § "Supported input ranges", so the problem was in the tree on
+2026-08-25 when Gate 0 was frozen. It is nonetheless named nowhere in
+`ROADMAP.md` — not in the frozen list under "Milestone after next: v0.4.0",
+not in v0.3.0's out-of-scope list, and not among the ten review findings
+deferred to Gate 1. It was captured 2026-08-30, the same day four other
+findings from that review were admitted to the gate by exactly this rule
+(`PL-VP7N`, `PL-SLHS`, `PL-9Y42`, `PL-NV9W`), and it was found while
+implementing `PL-VP7N`, which is itself a frozen-list entry.
+
+**Why it matters.** The frozen list is v0.3.0's whole specification — that
+release "has no scope of its own to specify", and its definition of done is
+that every entry on the list is `done` or `dropped`. An entry that is not on
+the list is not in that definition, so v0.3.0 can ship its claim that the
+ground is solid while `core/` still accepts a cardiac output of 1000 L/min,
+a fresh gas flow of 500 L/min, and an alveolar ventilation of 200 L/min —
+values outside the domain the splitting-error bound
+($`C_{\max} = 2.29\times10^{-3}\ \mathrm{s^{-1}}`$), the displayed
+resolution, and the supported step were all measured over. That is the same
+argument the roadmap makes for admitting `PL-VP7N`, one axis over.
+
+It is also invisible to the tool. `bin/docket wave` computes the gate split
+by reading the recorded entries against `docs/items/`, so an unrecorded entry
+cannot be counted: the gate reports clear when it is not. Recording is what
+makes the mechanism work — "a gate nobody wrote down is a gate that gets
+renegotiated" — and this is the failure mode that sentence describes,
+arriving through omission rather than argument.
+
+The pairing rule ("worked with the entry it completes, not after it") cannot
+be satisfied here: `PL-VP7N`, the entry `PL-0MLQ` continues, shipped in
+v0.2.7. It therefore stands as its own Gate 0 entry rather than joining a
+branch, and that is worth stating in the list so a later reader does not read
+the omission as a deliberate deferral.
+
+**Where.** `ROADMAP.md`, "Debt gate: the frozen list" under "Milestone after
+next: v0.4.0 - the teachable case" — the *Core correctness* group, beside
+`PL-VP7N` and `PL-SLHS`. The paragraph beneath the list that records the four
+2026-08-30 additions needs the fifth added to it with its own grounds, and the
+entry and id counts in the list's header sentence move from 20/21 to 21/22.
+The timeline row for step 2 (`v0.3.0 — the foundation`, sized `3 M, 17 S`)
+carries a size that this changes.
+
+**Alternative disposition.** Defer to Gate 1 and say why, which "Presence is a
+presumption, not an absolute rule" permits for a presence-qualifying finding.
+It does not obviously apply: the two stated reasons for deferring are that the
+finding has no real connection to frozen scope, or that pulling it in recreates
+the refilling-queue problem — and this one continues a frozen entry directly.
+The `safety` class is the harder obstacle, since that exception is written as
+not deferrable at all.
+
+**Done when.** `ROADMAP.md` either lists `PL-0MLQ` as a Gate 0 entry with its
+grounds recorded, or states in the frozen list's own text why a `safety`-classed
+finding that continues `PL-VP7N` defers to Gate 1 — and the entry counts, the
+step-2 size, and v0.3.0's definition of done agree with whichever was chosen.
+
+**Closed 2026-09-02.** The project owner took the first of the two dispositions
+this brief set out: `PL-0MLQ` is listed as a Gate 0 entry with its grounds
+recorded, rather than `ROADMAP.md` arguing a `safety`-classed continuation of
+`PL-VP7N` down to Gate 1.
+
+Four edits, all in `ROADMAP.md`. The entry itself joins the *Core correctness*
+group beside `PL-VP7N` and `PL-SLHS`, marked added after the freeze. The frozen
+list's header sentence moves from "20 entries, 21 item ids" to "21 entries, 22
+item ids" and from six later additions across two notes to seven across three.
+A third note records the grounds — presence at the freeze, since the four
+compartment setters have never enforced `docs/MODEL.md` § "Supported input
+ranges", and the `safety` class, which re-enters regardless of presence — and
+states plainly that the omission was an oversight rather than a deferral, which
+is what this brief asked for so a later reader does not read the absence as a
+decision. It also records that the pairing rule cannot apply, `PL-VP7N` having
+shipped in v0.2.7. "The timeline"'s step-2 size moves from `3 M, 17 S` to
+`4 M, 17 S`.
+
+**Confirmed by the tool.** `bin/docket wave` now computes the gate at 21
+entries, 22 ids, 12 cleared and 9 open — the count it could not previously
+reach, because it reads the recorded entries against `docs/items/` and an entry
+nobody wrote down cannot be counted. That is the half of this defect that was
+invisible, and the `verify:` command above is the check that it stays fixed.
