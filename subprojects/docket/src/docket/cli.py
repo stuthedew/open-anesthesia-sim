@@ -40,6 +40,7 @@ from .vcs import (
     closures_on_base,
     default_base,
     fetch_remote,
+    lost,
     merged_pull_requests,
     stranded,
     tags,
@@ -161,6 +162,11 @@ def cmd_check(args: argparse.Namespace) -> int:
             {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path},
             items_dir=config.items_dir,
         ),
+        # Asked of the branch rather than of the default branch, and that is
+        # the whole point: a squash merge makes the branch's commits ancestors
+        # of nothing, so the objects proving what it carried stop being
+        # reachable. Run here, on a pull request, the evidence is still intact.
+        lost=lost(root, items_dir=config.items_dir),
         # Read rather than asked of git: a stamped `milestone:` is judged
         # against the version the project is actually on, and an absent
         # version file leaves the question unasked rather than answered.

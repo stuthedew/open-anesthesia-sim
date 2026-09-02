@@ -29,7 +29,7 @@ from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .plan import OfferedReport
 from .release import SEMVER_RE, version_key
 from .store import ID_RE
-from .vcs import ClosureReport, PullRequestHistory
+from .vcs import ClosureReport, LostReport, PullRequestHistory
 from .verify import LandedReport
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
@@ -803,6 +803,39 @@ def _top_band(report: Report) -> list[Item]:
     return []
 
 
+def _check_lost(report: Report, lost: LostReport | None) -> None:
+    """An item file the history holds and the tree does not.
+
+    An error rather than an advisory, and the only git-derived check here that
+    is one. Everything else this module asks git about is provenance - a
+    recorded number, a stale mark - where being wrong costs a lookup. This is
+    the capture rule itself: `CLAUDE.md` guarantees that a finding raised in a
+    session is not lost, and a merge resolution that removes an item file
+    breaks that guarantee silently, in the one place nobody reviews. `PL-P0QT`
+    records the instance that prompted it.
+
+    A loss found in a truncated clone is still a loss, so the items are always
+    reported. Only a *clean* answer from one is qualified: there the check saw
+    part of the history and cannot claim the rest.
+    """
+    if lost is None:
+        return
+    if lost.declined:
+        report.declined.append(f"items a merge removed: {lost.declined}")
+        return
+    for item in lost.items:
+        report.errors.append(
+            f"{item.path}: {item.identifier} is in {lost.ref}'s history and absent from its "
+            f"tree, with no `dropped` record left behind - no commit deletes it, so a merge "
+            f"resolution did. Recover it with `git cat-file -p {item.blob}`"
+        )
+    if lost.truncated and not lost.items:
+        report.declined.append(
+            "items a merge removed: this clone's history is truncated, so the walk read only "
+            "the commits it holds"
+        )
+
+
 def analyze(
     items: list[Item],
     today: date,
@@ -811,6 +844,7 @@ def analyze(
     offered: OfferedReport | None = None,
     landed: LandedReport | None = None,
     closures: ClosureReport | None = None,
+    lost: LostReport | None = None,
     version: str | None = None,
 ) -> Report:
     """Validate and groom in one pass.
@@ -840,6 +874,7 @@ def analyze(
     _check_selects_nothing(report, landed, ids)
     _check_slow_commands(report, landed)
     _check_closures(report, closures)
+    _check_lost(report, lost)
     _groom(report, today, settings, ids)
     # Said once, for both advisories above that read `offered`, and said even
     # where neither fired: an unread ref might carry the item that would have

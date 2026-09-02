@@ -1073,3 +1073,101 @@ def stranded(
         for identifier, (path, branches) in sorted(elsewhere.items())
     ]
     return StrandedReport(items=tuple(found), refs_read=len(refs))
+
+
+@dataclass(frozen=True)
+class LostItem:
+    """An item file this ref's history held, and its tree no longer does.
+
+    `blob` rather than the commit that held it, for two reasons. It is what
+    recovers the content - `git cat-file -p <blob>` works for as long as any
+    checkout holds the object, and keeps working after the branch is deleted,
+    which a `git show <commit>:<path>` recovery does not. And finding the
+    commit would cost a `--find-object` history walk per blob, which is the
+    expense `PL-01CK` measures against exactly this kind of read.
+    """
+
+    identifier: str
+    path: str
+    blob: str
+
+
+@dataclass(frozen=True)
+class LostReport:
+    """Items removed from the tree without any commit deleting them.
+
+    `truncated` carries the same honesty `StrandedReport.refs_read` does: a
+    clean answer from a clone holding twenty commits and a clean answer from
+    one holding the whole history are different claims, and only one of them
+    means the store is sound.
+
+    `declined` means the check could not run, reported as such rather than as
+    a clean result.
+    """
+
+    items: tuple[LostItem, ...] = ()
+    ref: str = ""
+    truncated: bool = False
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def lost(
+    root: Path, *, ref: str = "HEAD", items_dir: str = "docs/items", runner: Runner | None = None
+) -> LostReport:
+    """Item ids this ref's history holds a file for, and its tree does not.
+
+    **Why the object walk rather than a diff.** A conflict resolution deletes
+    the file in the *merge's own tree*, and a merge is not diffed against
+    either parent by default, so `git log --diff-filter=D -- docs/items/`
+    returns nothing for the case this exists to catch. Reproduced 2026-09-02
+    against a scratch repository: the deletion is invisible to the diff walk
+    and plainly visible in the object walk, which lists every blob reachable
+    from the ref with the path it was stored under.
+
+    **Why it must be asked of a branch, not of the default branch.** After a
+    squash merge the branch's commits are not ancestors of anything, so its
+    objects stop being reachable and the evidence is gone. Measured on this
+    repository: `PL-Q8QX` was captured on the v0.3.0 release branch, dropped
+    by a merge resolution, and is reachable from no commit `main` holds - a
+    check run on `main` reports it clean and is wrong to. So this runs on the
+    branch, in CI, on the pull request, before the squash collapses the
+    history. It still catches an ordinary merge on the default branch; it
+    cannot catch a squashed one, and nothing run there can.
+
+    **Comparison is by id, never by path.** An item file is renamed whenever
+    its title changes, which adds one path and removes another. By path that
+    reads as a loss; by id it reads as what it is.
+    """
+    run = runner or _run_git
+    present = _items_at(ref, root, items_dir, run)
+    if not present:
+        # The same guard `stranded` keeps: an unreadable store makes every id
+        # in the history look lost, which is the one output worse than none.
+        return LostReport(
+            ref=ref, declined=f"no items found on {ref}, so its whole history would read as lost"
+        )
+
+    prefix = items_dir.rstrip("/") + "/"
+    ever: dict[str, tuple[str, str]] = {}
+    for line in run(["rev-list", "--objects", ref], root).splitlines():
+        blob, _, path = line.partition(" ")
+        path = path.strip()
+        if not path.startswith(prefix):
+            continue
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
+        if match is not None:
+            # `rev-list` walks newest commit first, so the first blob seen for
+            # an id is the last content it had. That is the version worth
+            # handing back for recovery.
+            ever.setdefault(match.group(1), (blob.strip(), path))
+
+    gone = tuple(
+        LostItem(identifier=identifier, path=path, blob=blob)
+        for identifier, (blob, path) in sorted(ever.items())
+        if identifier not in present
+    )
+    return LostReport(items=gone, ref=ref, truncated=is_shallow(root, runner=run) is not False)

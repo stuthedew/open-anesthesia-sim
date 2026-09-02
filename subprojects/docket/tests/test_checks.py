@@ -13,7 +13,7 @@ from docket.checks import analyze
 from docket.config import Config
 from docket.model import Item
 from docket.plan import OfferedReport
-from docket.vcs import ClosureReport, PullRequestHistory
+from docket.vcs import ClosureReport, LostItem, LostReport, PullRequestHistory
 from docket.verify import LandedReport, SlowCommand
 
 TODAY = date(2026, 8, 24)
@@ -1091,3 +1091,45 @@ def test_a_shallow_clone_still_advises_where_the_number_was_found() -> None:
 
     assert report.errors == [] and report.declined == []
     assert _has(report.advisories, "write `pr: 148` into the item")
+
+
+def test_an_item_a_merge_removed_is_an_error_carrying_the_command_that_recovers_it() -> None:
+    """Data loss, so it fails the store rather than asking a person to notice a note."""
+    report = analyze(
+        [_item()],
+        TODAY,
+        lost=LostReport(
+            items=(
+                LostItem(
+                    identifier="PL-K7QX",
+                    path="docs/items/PL-K7QX-a-lost-capture.md",
+                    blob="1a2b3c4d",
+                ),
+            ),
+            ref="HEAD",
+        ),
+    )
+
+    assert any("PL-K7QX is in HEAD's history and absent from its tree" in e for e in report.errors)
+    assert any("git cat-file -p 1a2b3c4d" in e for e in report.errors)
+
+
+def test_a_clean_lost_answer_from_a_truncated_clone_is_not_claimed_as_clean() -> None:
+    report = analyze([_item()], TODAY, lost=LostReport(ref="HEAD", truncated=True))
+
+    assert report.errors == []
+    assert any("history is truncated" in d for d in report.declined)
+
+
+def test_a_clean_lost_answer_from_a_full_clone_says_nothing() -> None:
+    report = analyze([_item()], TODAY, lost=LostReport(ref="HEAD"))
+
+    assert report.errors == []
+    assert report.declined == []
+
+
+def test_a_lost_check_that_could_not_run_is_reported_as_unasked() -> None:
+    report = analyze([_item()], TODAY, lost=LostReport(declined="no items found on HEAD"))
+
+    assert report.errors == []
+    assert any("items a merge removed: no items found on HEAD" in d for d in report.declined)

@@ -76,6 +76,31 @@ branch is safe to delete: a branch named nowhere in it carries no item the
 default branch lacks. That claim is about items only. It says nothing about
 code on the branch, which is not what it read.
 
+### The other loss: a merge that deletes an item nothing deleted
+
+`stranded` answers for a branch that never merged. The opposite case is a
+branch that *did* merge and whose item did not come with it: a conflict
+resolution removes the file in the merge's own tree, and since a merge is not
+diffed against either parent, `git log --diff-filter=D` over the store returns
+nothing. Nobody reviewing the merge sees a deletion, because there is not one
+to see. `PL-Q8QX` was lost exactly this way and survived only because one
+container still held a stale ref.
+
+`docket check` now walks the objects instead: every blob path reachable from
+the ref, against the ids its tree currently holds. Anything the history held
+and the tree does not is an **error**, with the `git cat-file -p <blob>` line
+that recovers the file as it last stood. It is an error rather than an
+advisory because this is the capture rule itself failing, and the id
+comparison keeps a renamed file from reading as a loss.
+
+**It has to run on the branch, and that is not a preference.** After a squash
+merge the branch's commits are ancestors of nothing, so the objects proving
+what it carried are unreachable — `PL-Q8QX`'s blob is reachable from no commit
+`main` holds. Asked on the default branch the walk answers "clean" and is
+wrong to; asked on a pull request, before the squash, the evidence is intact.
+CI runs it there at `fetch-depth: 0`. A clean answer from a truncated clone
+says so rather than claiming the history it could not read.
+
 ### The branch's position is a question, not a session-start fact
 
 `docket branch` reports where the working branch stands against the default

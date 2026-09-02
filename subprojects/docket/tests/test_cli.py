@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from docket.cli import build_parser, main, merge_shared
+from docket.vcs import lost
 
 READY = """---
 id: PL-B1B1
@@ -1207,3 +1208,119 @@ def test_the_queue_commands_say_when_a_ref_went_unread(
         out = capsys.readouterr().out
         assert "1 ref could not be compared with origin/main" in out, command
         assert "bin/docket flight" in out, command
+
+
+def _merge_deleting_an_item(tmp_path: Path) -> Path:
+    """A repository whose merge resolution removed an item nothing else deleted.
+
+    Real git, because the whole finding is about what git's *diff* walk does
+    not show: `git log --diff-filter=D` over the store returns nothing here,
+    and only a real merge commit reproduces that. An injected runner would be
+    asserting the reproduction rather than the behaviour.
+    """
+    root = tmp_path / "merged"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
+
+    subprocess.run(["git", "checkout", "-qb", "feature"], cwd=root, check=True, capture_output=True)
+    (root / "items" / "PL-K7QX-captured-here.md").write_text(READY.replace("PL-B1B1", "PL-K7QX"))
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "PL-K7QX: capture"], cwd=root, check=True, capture_output=True
+    )
+
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(
+        READY.replace("PL-B1B1", "PL-0001").replace("A ready item", "A ready item, edited")
+    )
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "main moves"], cwd=root, check=True, capture_output=True
+    )
+
+    subprocess.run(["git", "checkout", "-q", "feature"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "merge", "-q", "main", "-m", "merge main into feature"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    # The resolution: the merge's own tree loses the item. Amending folds it
+    # into the merge commit, which is what a conflict resolution produces.
+    subprocess.run(
+        ["git", "rm", "-q", "items/PL-K7QX-captured-here.md"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-q", "--amend", "--no-edit"], cwd=root, check=True, capture_output=True
+    )
+    return root
+
+
+def test_a_merge_resolution_deleting_an_item_is_invisible_to_the_diff_walk(tmp_path: Path) -> None:
+    """The premise of `PL-P0QT`, asserted rather than assumed.
+
+    If this ever starts failing, the object walk `lost` pays for is no longer
+    needed and the cheaper `--diff-filter=D` read would do.
+    """
+    root = _merge_deleting_an_item(tmp_path)
+
+    deletions = subprocess.run(
+        ["git", "log", "--diff-filter=D", "--name-only", "--format=", "--", "items/"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+
+    assert "PL-K7QX" not in deletions
+
+
+def test_lost_finds_the_item_a_merge_resolution_removed(tmp_path: Path) -> None:
+    root = _merge_deleting_an_item(tmp_path)
+
+    report = lost(root, items_dir="items")
+
+    assert report.known
+    assert [item.identifier for item in report.items] == ["PL-K7QX"]
+    assert report.items[0].path == "items/PL-K7QX-captured-here.md"
+    recovered = subprocess.run(
+        ["git", "cat-file", "-p", report.items[0].blob],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "PL-K7QX" in recovered
+
+
+def test_lost_reports_nothing_when_the_merge_kept_every_item(tmp_path: Path) -> None:
+    """The same repository without the deletion, so a clean answer is proved clean."""
+    root = _merge_deleting_an_item(tmp_path)
+    subprocess.run(
+        ["git", "revert", "-q", "--no-edit", "-m", "1", "HEAD"],
+        cwd=root,
+        check=False,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-q", "HEAD~1", "--", "items/"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "restore"], cwd=root, check=True, capture_output=True)
+
+    assert lost(root, items_dir="items").items == ()
