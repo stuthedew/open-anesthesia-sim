@@ -1,8 +1,14 @@
 ---
 id: PL-CQRL
 title: Record how to drive this app in a browser from a container session
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs, infra
+feature: dev-tooling
+touches: .claude/skills, docs/WORKING_NOTES.md
 added: 2026-09-02
+verify: python3 tools/doc_check.py check && grep -rqF 'FLET_WEB_NO_CDN' .claude/skills/
 ---
 
 **Problem.** PL-010 was gated on confirming that a live Flet client repaints

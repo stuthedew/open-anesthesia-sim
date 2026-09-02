@@ -1,7 +1,10 @@
 ---
 id: PL-5WFS
 title: docket next cannot see a brief's stated prerequisite, so it offers PL-F52R ahead of the PL-WB0X extraction that gates it
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/plan.py, docs/items/
 added: 2026-09-02
@@ -52,3 +55,29 @@ the same change had just written into `PL-WB0X`.
 field `docket next` reads, so the ranking matches the briefs; or the item is
 `dropped` with the reason that one instance does not earn a mechanism, leaving
 this brief as the record and the prose as the only statement.
+
+**Decision needed.** Does a stated prerequisite get a field `docket next`
+reads, and if so which one?
+
+1. **Nothing new: use `blocked-by` on the two v0.4.0 items.** `status:
+   blocked` with `blocked-by:` already removes an item from the ranking, and
+   `PL-B9PY` uses it. Setting it on `PL-DHV7` (express concentrations in MAC
+   multiples) and `PL-F52R` (draw the MAC-awake reference band) costs two
+   field edits and no code, and fixes the live instance today. Its cost is
+   that "blocked" overstates the case - these are startable, just not first -
+   and a milestone worked strictly in dependency order shows most of itself
+   as blocked, which degrades what `blocked` means everywhere else.
+2. **A weaker `after:` field** that reorders inside a band without excluding.
+   Says the true thing, and is new surface in `plan.py` and the item schema
+   for a problem with one recorded instance.
+3. **Drop it.** Leave the prerequisites as prose, on the ground that one
+   instance does not earn a mechanism, and let this brief stand as the record
+   so the second instance can be counted against it.
+
+**Recommended: 1 now, and re-raise 2 only if a second instance appears.** The
+cost of `blocked` overstating the case is a word; the cost of the ranking
+disagreeing with the briefs is a session that rewrites formatters `PL-WB0X`
+(split `simulation_view.py`) is about to move. Whichever is chosen, the
+v0.4.0 sequencing edit is the deliverable - `PL-WB0X` first, then `PL-DHV7`,
+then `PL-F52R` - and it is worth making before the milestone's first item
+starts rather than after.
