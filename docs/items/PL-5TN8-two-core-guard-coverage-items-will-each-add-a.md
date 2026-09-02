@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: docs/items/, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py
 added: 2026-09-02
 closed: 2026-09-02
+pr: 195
 ---
 
 **Problem.** `PL-NC2P` and `PL-YMY7` are open, `ready`, in
