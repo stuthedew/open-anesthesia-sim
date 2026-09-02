@@ -58,9 +58,11 @@ recovering a pull request number from a squash subject, which is how
 
 **On `PL-Q8QX` itself.** It is not restored here. Its content is a duplicate of
 `PL-2XTF`, which carries the same `#220` incident with a fuller brief, and
-re-filing it would repeat the duplication `#224` cleared. Its text is quoted
-in the v0.3.0 close-out's readout 4 discussion and recoverable from `d7d5272`
-while any checkout holds that ref.
+re-filing it would repeat the duplication `#224` cleared. Its finding is
+described in the v0.3.0 close-out's readout 4 discussion, and its file is
+recoverable with `git show d7d5272:docs/items/PL-Q8QX-docket-check-cannot-recover-a-pull-request.md`
+for as long as a checkout holds that ref — which is the fragility this item is
+about, not a substitute for fixing it.
 
 **Done when.** A check reports an item id that existed on a branch now merged
 into the default branch and is absent from it with no `dropped` record, with a
