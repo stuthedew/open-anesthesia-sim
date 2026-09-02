@@ -588,7 +588,13 @@ def test_an_offering_that_read_every_ref_declines_nothing() -> None:
 
 def _landed(**overrides: object) -> LandedReport:
     base: dict[str, object] = dict(
-        passing=("PL-K7QX",), shared=(), vacuous=(), considered=4, declined=""
+        passing=("PL-K7QX",),
+        shared=(),
+        vacuous=(),
+        timed_out=(),
+        unavailable=(),
+        considered=4,
+        declined="",
     )
     base.update(overrides)
     # Splatting `dict[str, object]` matches `object` against every field's type; the
@@ -643,6 +649,59 @@ def test_a_landed_check_that_could_not_run_is_reported_as_not_checked() -> None:
 def test_a_caller_that_did_not_ask_about_landed_work_is_told_nothing() -> None:
     report = analyze([_item()], TODAY, landed=None)
     assert report.advisories == []
+    assert report.declined == []
+
+
+# An item whose command could not answer. Reported under "not checked" rather
+# than as an advisory, because the run was stopped rather than having found
+# something - the per-item form of the refusal `declined` makes for a whole run.
+
+
+def test_an_item_whose_command_was_killed_is_reported_as_not_checked() -> None:
+    report = analyze(
+        [_item()], TODAY, landed=_landed(passing=(), timed_out=("PL-K7QX",), limit=120.0)
+    )
+
+    assert report.advisories == []
+    assert _has(report.declined, "PL-K7QX")
+    assert _has(report.declined, "killed at the 120s limit")
+
+
+def test_a_killed_command_is_reported_even_when_nothing_else_passed() -> None:
+    # The ordering that matters: the report is owed whether or not some other
+    # item happened to pass, so it cannot sit behind the `passing` guard.
+    report = analyze([_item()], TODAY, landed=_landed(passing=(), timed_out=("PL-K7QX",)))
+
+    assert _has(report.declined, "PL-K7QX")
+
+
+def test_a_killed_command_names_the_limit_the_run_actually_used() -> None:
+    # Not the module default: a reader is being told which number to change.
+    report = analyze(
+        [_item()], TODAY, landed=_landed(passing=(), timed_out=("PL-K7QX",), limit=30.0)
+    )
+
+    assert _has(report.declined, "30s limit")
+
+
+def test_a_killed_command_offers_both_readings_rather_than_a_verdict() -> None:
+    report = analyze([_item()], TODAY, landed=_landed(passing=(), timed_out=("PL-K7QX",)))
+
+    assert _has(report.declined, "too slow")
+    assert _has(report.declined, "hangs")
+
+
+def test_an_item_whose_command_was_not_found_is_reported_as_not_checked() -> None:
+    report = analyze([_item()], TODAY, landed=_landed(passing=(), unavailable=("PL-K7QX",)))
+
+    assert report.advisories == []
+    assert _has(report.declined, "PL-K7QX")
+    assert _has(report.declined, "not found by the shell")
+
+
+def test_nothing_is_said_about_not_checked_items_when_every_command_answered() -> None:
+    report = analyze([_item()], TODAY, landed=_landed(timed_out=(), unavailable=()))
+
     assert report.declined == []
 
 

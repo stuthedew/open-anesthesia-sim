@@ -58,6 +58,18 @@ RESIDUAL = (
 # tests were collected. Only 5 is needed here, and only pytest promises it.
 NO_TESTS_COLLECTED = 5
 
+# A status no process can return, so a caller can tell a command killed at the
+# timeout from one that ran and failed. A shell reports an exit status in
+# 0-255 and a signal death as a small negative number, so a value outside both
+# collides with neither.
+#
+# It needs a status of its own because 1 is what a failing test returns.
+# Without one, a command killed part-way through is indistinguishable from one
+# that ran its assertions and correctly failed, and `already_passing` reports
+# that reading to a reader as fact - the "could not look" rendered as "looked,
+# found nothing" that the rest of this module exists to refuse (`PL-T940`).
+TIMED_OUT = 1000
+
 # Matched as text because the command is a shell line, not a parsed argv:
 # `pytest`, `uv run pytest`, `python -m pytest` and a compound command whose
 # last clause is one of those all reach here as a string. Word-bounded so that
@@ -175,6 +187,11 @@ def _run(
             shell=shell,
             env=env,
         )
+    except subprocess.TimeoutExpired as error:
+        # Ahead of the clause below rather than folded into it: `TimeoutExpired`
+        # is a `SubprocessError`, so the ordering is the whole of what keeps a
+        # killed command distinguishable from a failed one.
+        return TIMED_OUT, str(error)
     except (OSError, subprocess.SubprocessError) as error:
         return 1, str(error)
     return result.returncode, (result.stdout or "") + (result.stderr or "")
@@ -515,6 +532,14 @@ class LandedReport:
     `declined` carries the meaning it does everywhere else here: the check did
     not run, and a caller must not read the empty `passing` - or the empty
     `vacuous` - as a clean result.
+
+    `timed_out` and `unavailable` are the same refusal made per item rather
+    than for the whole run. A command killed at the limit, or one the shell
+    could not find, produced no evidence about its item, so it appears in
+    neither finding above and is left out of `considered` - which is rendered
+    to a reader as "checked", and would otherwise count a command that was
+    not. They are reported rather than merely subtracted: an item that
+    silently left the count would be the same failure in a quieter form.
     """
 
     passing: tuple[str, ...] = ()
@@ -523,7 +548,16 @@ class LandedReport:
     #: `passing` this is a verdict rather than a candidate: `selects_no_test`
     #: only says so where pytest's own exit code says so.
     vacuous: tuple[str, ...] = ()
+    #: Open items whose command was killed at `limit` before it could answer.
+    timed_out: tuple[str, ...] = ()
+    #: Open items whose command the shell could not find, where others could be
+    #: run. Where none could, the whole run declines instead.
+    unavailable: tuple[str, ...] = ()
+    #: Candidates whose command ran to completion - not how many were offered.
     considered: int = 0
+    #: The per-command limit these results were produced under, so a report can
+    #: name the number a reader would have to change.
+    limit: float = LANDED_TIMEOUT
     declined: str = ""
 
     @property
@@ -570,9 +604,14 @@ def already_passing(
     means "could not look" must never render as "looked, found nothing":
 
     - the guard is set, so this is a nested run and the outer one is asking;
-    - nothing could be executed at all, which is what a bare checkout with no
-      virtualenv looks like from here. Every command returning "not found" is
-      indistinguishable from a clean store unless it is reported as a refusal.
+    - nothing ran to completion, which is what a bare checkout with no
+      virtualenv looks like from here, and what a box too loaded to finish a
+      command inside the limit looks like too. Every command returning "not
+      found", or every one killed at the limit, is indistinguishable from a
+      clean store unless it is reported as a refusal.
+
+    Where only some commands could not answer the run still reports, and names
+    them in `timed_out` and `unavailable` rather than counting them checked.
     """
     if os.environ.get(LANDED_GUARD):
         return LandedReport(
@@ -609,18 +648,36 @@ def already_passing(
 
     passing: list[str] = []
     vacuous: list[str] = []
-    unavailable = 0
+    timed_out: list[str] = []
+    unavailable: list[str] = []
     for item, status in zip(candidates, results, strict=True):
-        if status == 0:
-            passing.append(item.identifier)
+        # The two statuses that mean "no answer" are taken first, because both
+        # are otherwise read as one: 127 is not 0 and neither is `TIMED_OUT`,
+        # so either would fall through to `selects_no_test` and then out of
+        # every finding, leaving the item counted as checked and nothing said.
+        if status == TIMED_OUT:
+            timed_out.append(item.identifier)
         elif status == 127:  # the shell could not find the command at all
-            unavailable += 1
+            unavailable.append(item.identifier)
+        elif status == 0:
+            passing.append(item.identifier)
         elif selects_no_test(item.verify, status):
             vacuous.append(item.identifier)
-    if unavailable == len(candidates):
+
+    checked = len(candidates) - len(timed_out) - len(unavailable)
+    if not checked:
+        # Nothing ran to completion, so an empty `passing` is a fact about this
+        # machine rather than about the store - a bare checkout with no
+        # virtualenv, or a box too loaded to finish anything inside the limit.
+        # Both are the refusal the class docstring describes, and the counts go
+        # in the sentence because the two want different repairs.
+        why = [f"{len(unavailable)} not found by the shell"] if unavailable else []
+        if timed_out:
+            why.append(f"{len(timed_out)} killed at the {timeout:g}s limit")
         return LandedReport(
-            declined="no `verify:` command could be run here, so finding none passing "
-            "would say only that the toolchain is missing"
+            declined="no `verify:` command ran to completion here "
+            f"({', '.join(why)}), so finding none passing would say only that the "
+            "toolchain is missing or the limit too low"
         )
 
     counts = Counter(item.verify for item in candidates)
@@ -631,5 +688,11 @@ def already_passing(
         if item.identifier in named and counts[item.verify] > 1
     )
     return LandedReport(
-        passing=tuple(passing), shared=shared, vacuous=tuple(vacuous), considered=len(candidates)
+        passing=tuple(passing),
+        shared=shared,
+        vacuous=tuple(vacuous),
+        timed_out=tuple(timed_out),
+        unavailable=tuple(unavailable),
+        considered=checked,
+        limit=timeout,
     )

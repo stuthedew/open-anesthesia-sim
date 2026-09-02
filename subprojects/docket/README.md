@@ -742,13 +742,35 @@ Two conditions decline rather than answer, for the reason
   check`. Unguarded, the outer run would re-enter itself once per candidate and
   each re-entry would do it again, so children are given `DOCKET_SKIP_LANDED`
   and skip this one question while still validating the store.
-- **Nothing could be executed.** Every command returning "not found" is what a
-  bare checkout with no virtualenv looks like from here, and is indistinguish-
-  able from a clean store unless it is reported as a refusal.
+- **Nothing ran to completion.** Every command returning "not found" is what a
+  bare checkout with no virtualenv looks like from here; every one killed at
+  the time limit is what a box too loaded to finish anything looks like. Either
+  is indistinguishable from a clean store unless it is reported as a refusal,
+  and the two want different repairs, so the sentence says which happened.
 
-It costs what the commands cost: 29 candidates, about 17 seconds, on the store
-as it stood on 2026-09-01. Each command is capped at two minutes so one wedged
-run cannot hang `make check`.
+**Where only some commands could not answer, the run still reports and names
+them** — among the not-checked lines, beside the runs that declined whole.
+This is the same refusal made per item rather than for the whole run, and it
+is what keeps the `N of M checked` in the findings above honest: a command
+that was killed, or that the shell could not find, produced no evidence about
+its item and is left out of that M rather than counted in it.
+
+It has to be said rather than merely subtracted, and a status of its own is
+what makes saying it possible. A killed command used to come back as exit 1 —
+which is what a failing test returns — so it fell out of every finding while
+still counting as checked, and the report stayed clean (`PL-T940`).
+
+The commands run concurrently, at twice the core count and capped at eight,
+which changes no answer — each still runs in the working tree against the
+current state — and only the wall clock (`PL-LXR3`). Measured on this store
+2026-09-02, 47 candidates: **34.9 s serially, 10.1 s concurrently**, with the
+two runs' output byte-identical.
+
+That makes the cost the slowest single command rather than the number of them,
+which is worth knowing before writing a `verify:`: one full-suite `pytest
+--cov` run at ~56 s takes the whole check from 10 s to 59 s on its own, while a
+second costs 3.5 s on top of it. Each command is capped at two minutes so one
+wedged run cannot hang `make check`.
 
 ### Delegation is derived, never granted
 
