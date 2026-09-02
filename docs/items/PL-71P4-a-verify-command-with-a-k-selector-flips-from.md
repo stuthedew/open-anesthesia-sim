@@ -3,12 +3,13 @@ id: PL-71P4
 title: "A verify: command with a -k selector flips from correctly failing to falsely passing when unrelated work adds a matching test name, so the already-passes set grows on its own"
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-02
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, docket.toml, subprojects/docket/tests/test_checks.py
 added: 2026-09-02
-verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_ready_item_whose_command_passes_is_an_error_after_the_cutoff' subprojects/docket/tests/test_checks.py
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_an_item_whose_work_has_landed_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `PL-L9JS` records eight open items whose `verify:` command passes
@@ -117,3 +118,40 @@ re-entering the checker. The command was run before being written down, per
 the `docket` skill: the pytest half exits 0 (85 tests, 0.19s) and the `grep`
 half exits 1 for the test the work has yet to add, so the pair exits 1 - an
 ordinary failure, not the 5 an empty `-k` selection returns.
+
+**Closed 2026-09-02. The cheaper mechanism held.** The sequencing note above
+left the choice to the implementing session: repair first and the rule needs
+no dated cutoff. `PL-L9JS` was done first in the same session, `bin/docket
+check` then named zero items, and the rule went in as a plain error - no
+`verify_must_fail_from`, no grandfathered set, and no second dated policy
+beside `verify_required_from` for a reader to tell apart.
+
+**What landed.** `_check_landed` in `subprojects/docket/src/docket/checks.py`
+appends to `report.errors` rather than `report.advisories`, and its message
+names both readings and both repairs: close the item if the work landed, or
+rewrite a command that does not discriminate. It also names the consequence
+that makes it an error rather than advice - `docket verify` returning ACCEPT on
+a branch that did none of the work.
+
+**Left as an advisory beside it, deliberately.** `_check_selects_nothing` is
+unchanged. A selector matching no test is the *recommended* shape for an item
+whose work has yet to write the test, so the finding cannot say which repair it
+wants and only the item's author can. That distinction is now the difference
+between the two sections rather than a paragraph asking a reader to hold both.
+
+**The transient case, and why it does not need handling.** A session that runs
+`make check` after landing work and before setting `status: done` will see this
+error. That window closes in the commit the close-out procedure already
+requires - status and work travel together - and when it fires the named repair
+is the one that was about to happen anyway.
+
+**This item's own `verify:` was retargeted on closing.** It named
+`test_a_ready_item_whose_command_passes_is_an_error_after_the_cutoff`, a test
+belonging to the cutoff design this item explicitly left open and which the
+ordering made unnecessary. It now names
+`test_an_item_whose_work_has_landed_is_an_error`, which the chosen design
+produced. Recorded rather than quietly swapped, because a `verify:` rewritten
+to match what was built is the exact shape `PL-L9JS` exists to catch - the
+difference here is that the command was run and seen to fail before the work
+and to pass after it.
+

@@ -466,22 +466,33 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
             "misspelled"
         )
 
+    # An error rather than an advisory since `PL-71P4`, and the ordering is what
+    # made that affordable: `PL-L9JS` repaired the seven items that passed on a
+    # clean tree first, so the rule needed no cutover date, no grandfathered set
+    # and no second dated policy beside `verify_required_from`. Both states it
+    # reports are actionable and neither may sit - a command that passes without
+    # its work is the delegation gate open, and one whose work landed is an item
+    # that should have closed. The transient case, a session that ran the work
+    # before editing its item, resolves in the same commit the skill already
+    # requires: `status: done` travels with the work.
     if not landed.passing:
         return
     one = len(landed.passing) == 1
     message = (
         f"{', '.join(landed.passing)} {'is' if one else 'are'} open but "
         f"{'its' if one else 'their'} `verify:` command already passes "
-        f"({len(landed.passing)} of {landed.considered} checked): either the work landed "
-        "and the item was never closed, or the command does not discriminate and "
-        "proves nothing"
+        f"({len(landed.passing)} of {landed.considered} checked). Either the work landed "
+        "and the item was never closed - close it - or the command does not "
+        "discriminate and proves nothing, in which case `docket verify` would ACCEPT a "
+        "branch that did none of the work: rewrite it to name something only the work "
+        "creates, and run it and see it fail before recording it"
     )
     if landed.shared:
         message += (
             f". {', '.join(landed.shared)} share a command with another open item, "
             "which cannot prove any one of them done - give each its own"
         )
-    report.advisories.append(message)
+    report.errors.append(message)
 
 
 def _check_selects_nothing(

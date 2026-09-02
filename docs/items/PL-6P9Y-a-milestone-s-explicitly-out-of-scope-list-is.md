@@ -8,7 +8,7 @@ classes: infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-01
-verify: uv run pytest subprojects/docket/tests/test_roadmap.py -k out_of_scope
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py -q && grep -rq 'def test_an_out_of_scope_id_is_reported_excluded' subprojects/docket/tests
 ---
 
 **Problem.** `PL-HDY6` made a milestone section place an id only from the two

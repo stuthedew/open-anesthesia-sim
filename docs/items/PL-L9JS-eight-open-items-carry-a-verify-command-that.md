@@ -3,7 +3,8 @@ id: PL-L9JS
 title: "Eight open items carry a verify: command that passes without their work, so docket verify would accept a branch that did nothing"
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-02
 classes: defect, infra
 feature: dev-tooling
 touches: docs/items
@@ -89,3 +90,30 @@ The count in the table above is eight; the advisory named nine on 2026-09-02,
 the ninth being `PL-6P9Y`. Checked on that date: none of the nine is landed
 work - all nine are non-discriminating commands, so the table's conclusion holds
 for the larger set.
+
+**Closed 2026-09-02.** Seven items, not the eight or nine earlier counts: the
+set moves as commands flip, which is the whole of `PL-71P4`. Each was given a
+command naming something only its own work creates, and each was run and seen
+to fail with exit 1 before being recorded - an ordinary failure, not the 5 an
+empty `-k` selection returns:
+
+| Item | Now proves itself by |
+| --- | --- |
+| `PL-2HTF` | `grep -q 'tissue-then-venous' docs/MODEL.md` - the sub-step ordering its "Done when" requires MODEL.md to name |
+| `PL-4YY1` | `grep -rq 'circuit_volume_l' src/anesthesia_sim/data/` - the constants moving out of `circuit.py` into a cited data file |
+| `PL-6P9Y` | the named out-of-scope test existing, not `-k out_of_scope` |
+| `PL-M58K` | the named frozen-scope test existing, not the whole roadmap file |
+| `PL-MS54` | MODEL.md quoting `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L` and no longer `MASS_BALANCE_ABSOLUTE_TOLERANCE`, which is exactly the defect |
+| `PL-TH7P` | the named duplicate-candidates test existing, not `-k duplicate` |
+| `PL-XH1D` | `test -f CONTRIBUTING.md`, which its "Done when" requires and which does not exist |
+
+**Full test names rather than `-k` substrings, deliberately.** `PL-71P4` is
+the argument: a `-k` selector matches whatever the test suite happens to
+contain, so it converts on its own when unrelated work adds a name that
+matches. `grep -q 'def test_<exact name>'` names one thing that either exists
+or does not.
+
+Four of the seven shared `python3 tools/doc_check.py check`, a whole-project
+check that passes whenever the docs are internally consistent and so could
+never have proved any one of them done. That group is gone.
+
