@@ -498,6 +498,53 @@ def _check_selects_nothing(
     )
 
 
+def _check_slow_commands(report: Report, landed: LandedReport | None) -> None:
+    """Say when one item's `verify:` command is what this check spends its time on.
+
+    The other findings here are about whether a command *proves* anything. This
+    one is about what it costs, and it exists because nothing else says. Since
+    the commands began running concurrently the wall clock is set by the
+    slowest single member rather than by how many there are (`PL-LXR3`), so one
+    heavy command is worth more attention than twenty light ones - and the
+    figure moves in one step, on the day somebody writes it. Measured on this
+    store: 10.1 s with none, 59.1 s with one full-suite `pytest --cov`, 62.6 s
+    with two.
+
+    That cost is then paid by every `make check` in every later session, while
+    the only person placed to reconsider the command is the one who wrote it,
+    in the session that wrote it. This is the sentence that reaches them.
+
+    An advisory rather than an error, because the answer is a judgment: some
+    commands are worth their cost and a coverage item's genuinely cannot be
+    narrowed - coverage of a module is the union of everything that exercises
+    it, so it is a full-suite run by necessity (`PL-5TN8`). Accepting a known
+    cost is a valid outcome; not knowing it is what this removes.
+
+    It names every command over the line rather than only the worst, because
+    two heavy commands overlap in the pool and narrowing one of them changes
+    nothing - the floor is wherever the second one is.
+
+    Reported against the whole run rather than scoped to what `next` will
+    offer, unlike `_check_selects_nothing`. The reasoning there was that its
+    finding held for eighteen of thirty-one open items and so could never reach
+    zero; this one held for none of forty-six on a healthy store, and the
+    threshold is set against that measurement to keep it that way. An advisory
+    that fires only when something arrived is one that still gets read.
+    """
+    if landed is None or not landed.known or not landed.slow:
+        return
+    one = len(landed.slow) == 1
+    named = ", ".join(f"{command.identifier} ({command.seconds:.0f}s)" for command in landed.slow)
+    report.advisories.append(
+        f"{named} {'is' if one else 'are'} what this check waits for: "
+        f"{'that command' if one else 'those commands'} against a {landed.typical:.1f}s "
+        f"median and {landed.elapsed:.0f}s for the whole run. A pool cannot finish before "
+        f"its slowest member, so {'this' if one else 'each of these'} sets the floor for "
+        "every `make check` until the item closes - narrow the command if it can be "
+        "narrowed, or accept the cost knowing what it is"
+    )
+
+
 def _check_references(report: Report) -> None:
     """Hold every cross-reference to an item that exists."""
     known = {item.identifier for item in report.items if item.identifier}
@@ -726,6 +773,7 @@ def analyze(
     _check_provenance(report, history)
     _check_landed(report, landed)
     _check_selects_nothing(report, landed, ids)
+    _check_slow_commands(report, landed)
     _check_closures(report, closures)
     _groom(report, today, settings, ids)
     # Said once, for both advisories above that read `offered`, and said even

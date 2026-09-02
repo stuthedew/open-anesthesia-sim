@@ -14,7 +14,7 @@ from docket.config import Config
 from docket.model import Item
 from docket.plan import OfferedReport
 from docket.vcs import ClosureReport, PullRequestHistory
-from docket.verify import LandedReport
+from docket.verify import LandedReport, SlowCommand
 
 TODAY = date(2026, 8, 24)
 BRIEF = "**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
@@ -594,6 +594,9 @@ def _landed(**overrides: object) -> LandedReport:
         timed_out=(),
         unavailable=(),
         considered=4,
+        slow=(),
+        typical=0.5,
+        elapsed=10.0,
         declined="",
     )
     base.update(overrides)
@@ -703,6 +706,77 @@ def test_nothing_is_said_about_not_checked_items_when_every_command_answered() -
     report = analyze([_item()], TODAY, landed=_landed(timed_out=(), unavailable=()))
 
     assert report.declined == []
+
+
+# What a command cost. The pool's wall clock is its slowest member, so one
+# heavy `verify:` sets the floor for every `make check` from the day it is
+# written, and only the session that wrote it can reconsider it (`PL-VG7G`).
+
+
+def _slow(landed: LandedReport) -> list[str]:
+    return analyze([_item()], TODAY, landed=landed).advisories
+
+
+def test_a_command_that_dominates_the_run_is_named() -> None:
+    messages = _slow(
+        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),), typical=0.7, elapsed=63.2)
+    )
+
+    assert _has(messages, "PL-K7QX")
+    assert _has(messages, "59s")
+
+
+def test_the_cost_is_given_against_what_normal_looks_like() -> None:
+    # A bare duration cannot be read. The median and the run's own total are
+    # what turn it into a number somebody can act on.
+    messages = _slow(
+        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),), typical=0.7, elapsed=63.2)
+    )
+
+    assert _has(messages, "0.7s median")
+    assert _has(messages, "63s for the whole run")
+
+
+def test_the_advisory_says_why_one_command_sets_the_floor() -> None:
+    messages = _slow(_landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),)))
+
+    assert _has(messages, "cannot finish before its slowest member")
+
+
+def test_the_advisory_offers_both_outcomes_rather_than_demanding_one() -> None:
+    # A coverage item's command is a full-suite run by necessity, so "narrow
+    # it" is not always available and accepting a known cost is a real answer.
+    messages = _slow(_landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),)))
+
+    assert _has(messages, "narrow the command")
+    assert _has(messages, "accept the cost")
+
+
+def test_every_dominating_command_is_named_not_only_the_worst() -> None:
+    # Narrowing one of two heavy commands changes nothing: the floor is
+    # wherever the other one is.
+    messages = _slow(
+        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3), SlowCommand("PL-B1C2", 55.0)))
+    )
+
+    assert _has(messages, "PL-K7QX")
+    assert _has(messages, "PL-B1C2")
+
+
+def test_nothing_is_said_when_no_command_dominates() -> None:
+    assert _slow(_landed(passing=(), slow=())) == []
+
+
+def test_a_run_that_could_not_execute_says_nothing_about_cost() -> None:
+    # Durations from a run that declined would be about the machine, not the
+    # store, and the same refusal covers them as covers the findings.
+    report = analyze([_item()], TODAY, landed=LandedReport(declined="no toolchain here"))
+
+    assert report.advisories == []
+
+
+def test_a_caller_that_did_not_ask_is_told_nothing_about_cost() -> None:
+    assert analyze([_item()], TODAY, landed=None).advisories == []
 
 
 # An open item whose own `verify:` command selects no test. The counterpart to
