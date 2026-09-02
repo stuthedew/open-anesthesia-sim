@@ -30,6 +30,35 @@ root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}
 [ -x "$root/bin/docket" ] || exit 0
 [ -d "$root/docs/items" ] || exit 0
 
+# Deepen a shallow checkout once, before anything below reads a ref (PL-K2ZK).
+#
+# A container clones shallow, and `branches_in_flight` cannot find a merge base
+# for a ref whose history was truncated - so it declines to answer, correctly,
+# and goes on declining in every session for the life of that container. The
+# answer it declines to give is one a single fetch makes available: measured
+# 2026-09-02, 3.4 s for 52 commits to 542 and `.git` 8.8 MB to 11 MB, after
+# which the decline is gone.
+#
+# Three properties matter and are held by tests rather than by this comment.
+# It is guarded on the checkout actually being shallow, so it runs once per
+# container and is a no-op every session after. It is bounded by `timeout`
+# where that exists, so a hanging remote costs a session start seconds rather
+# than holding it open. And it fails silently: no network, no remote, or no
+# git leaves the checkout exactly as shallow as it was, and the deepen-me line
+# `docket branch` prints is then still the remedy a person is given.
+#
+# `--unshallow` rather than a bounded `--deepen` because this repository is
+# small enough to make the whole history the cheaper thing to reason about. If
+# that stops being true, `--deepen=100` is the same guard with a bound.
+if command -v git >/dev/null 2>&1 &&
+  [ "$(git -C "$root" rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+  bound=""
+  command -v timeout >/dev/null 2>&1 && bound="timeout 60"
+  # Unquoted on purpose: empty when `timeout` is absent, two words when not.
+  # shellcheck disable=SC2086
+  $bound git -C "$root" fetch --quiet --unshallow origin >/dev/null 2>&1 || true
+fi
+
 # `--brief` because the digest below prints what is in flight, and printing it
 # twice in text that is resent on every turn is the one cost this file is
 # careful about.

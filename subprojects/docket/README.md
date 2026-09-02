@@ -110,6 +110,20 @@ later ordinary fetch does not undo it - and a fabricated "98 ahead" argues
 against merging in the very case the line exists to catch. So a clone that
 cannot see the fork point is told to deepen instead of being given a number.
 
+**The session-start hook deepens it first, so that line is a fallback rather
+than the normal case** (`PL-K2ZK`). Every environment this runs in clones
+shallow, so the decline above used to fire in every session for the life of a
+container - and the answer it declined to give is one a single fetch makes
+available: 3.4 s to take this repository from 52 commits to 542, measured
+2026-09-02, after which `branches_in_flight` answers instead of declining.
+`.claude/hooks/docket-digest.sh` therefore runs `git fetch --unshallow origin`
+once, before anything reads a ref, guarded on the checkout actually being
+shallow and bounded by `timeout` where that exists. It is allowed to fail: no
+network leaves the checkout as truncated as it was, and the deepen-me line is
+then what a person is given. The library still does not fetch - this is the
+hook, which has a network and runs once, and `vcs.py`'s rule that a read must
+work from a bare offline tree is untouched.
+
 **The command fetches; the function does not.** `branch_state` reads only what
 the checkout holds, because the rule the rest of `vcs.py` follows is that a
 read must work from a bare checkout with no network. A command whose one
