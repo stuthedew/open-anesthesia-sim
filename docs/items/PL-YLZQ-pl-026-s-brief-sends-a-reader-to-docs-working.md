@@ -10,6 +10,7 @@ feature: dev-tooling
 touches: docs/items/PL-026-make-the-simulation-step-transactional-so-a.md, docs/WORKING_NOTES.md
 added: 2026-09-01
 closed: 2026-09-02
+pr: 204
 ---
 
 **Problem.** `docs/items/PL-026-make-the-simulation-step-transactional-so-a.md:30`
