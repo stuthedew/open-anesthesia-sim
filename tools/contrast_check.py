@@ -106,7 +106,7 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the application title in the page header (simulation_view.py:376-381)",
+        "the application title in the page header (simulation_view.py:410-415)",
     ),
     Requirement(
         "INK",

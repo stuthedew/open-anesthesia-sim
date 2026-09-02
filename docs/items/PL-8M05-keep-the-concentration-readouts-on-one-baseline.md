@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tools/contrast_check.py
 added: 2026-09-02
 closed: 2026-09-02
+pr: 196
 verify: uv run pytest tests/unit/test_simulation_view.py -k qualifier_line
 ---
 
