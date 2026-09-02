@@ -9,6 +9,7 @@ feature: chart-readout
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py
 added: 2026-08-23
 closed: 2026-09-02
+pr: 219
 verify: uv run pytest tests/integration tests/unit/test_simulation_view.py && grep -q 'def test_a_frame_of_moved_points_reaches_the_client' tests/integration/test_chart_patching.py
 ---
 
