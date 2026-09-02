@@ -10,6 +10,7 @@ milestone: v0.2.8
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-01
 closed: 2026-09-01
+pr: 173
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_one_line_of_growth_is_reported_in_the_singular' tests/unit/test_doc_check.py
 ---
 

@@ -1,19 +1,15 @@
 ---
 id: PL-G1MF
 title: docket next says 'Finishes <feature>' for any item in an underway feature, and contradicts itself in the same sentence with the count still open
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-01
+verify: uv run pytest subprojects/docket/tests/test_plan.py && grep -q 'def test_an_item_with_others_open_does_not_claim_to_finish_the_feature' subprojects/docket/tests/test_plan.py
 ---
-
-**Problem.** docket next says 'Finishes <feature>' for any item in an underway feature, and contradicts itself in the same sentence with the count still open
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `plan.py:194-197` builds `underway` from *every* open item in a
 feature that is underway, and `plan.py:229-233` prints

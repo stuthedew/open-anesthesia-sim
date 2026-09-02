@@ -1,9 +1,14 @@
 ---
 id: PL-0NQ1
 title: The reference patient's cited sources disagree on vessel-rich perfusion
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
+feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-01
-verify: python3 tools/doc_check.py check && grep -qF '75.8' src/anesthesia_sim/data/patients/reference_adult.json
+verify: uv run pytest tests/unit/test_parameters.py && grep -q '75.8' src/anesthesia_sim/data/patients/reference_adult.json
 ---
 
 **Problem.** `src/anesthesia_sim/data/patients/reference_adult.json` stores

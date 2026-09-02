@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 closed: 2026-09-02
+pr: 179
 verify: uv run pytest subprojects/docket/tests -k "current_step or gate_shipping or own_gate or outside_a_gate or whole_scope"
 feature: planning-cadence
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py
