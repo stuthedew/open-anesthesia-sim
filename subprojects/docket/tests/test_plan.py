@@ -133,8 +133,20 @@ def test_nothing_startable_yields_no_recommendations() -> None:
 STEP = "v0.2.8 — the workflow works"
 
 
-def _scope(*, current: tuple[str, ...] = (), later: dict[str, str] | None = None) -> Scope:
-    return Scope(anchor=STEP, current=frozenset(current), later=later or {})
+def _scope(
+    *,
+    current: tuple[str, ...] = (),
+    later: dict[str, str] | None = None,
+    step_label: str = "",
+    clearing: bool = False,
+) -> Scope:
+    return Scope(
+        anchor=STEP,
+        current=frozenset(current),
+        later=later or {},
+        step_label=step_label,
+        clearing=clearing,
+    )
 
 
 def test_next_marks_a_suggestion_scoped_to_a_milestone_this_step_has_not_reached() -> None:
@@ -238,6 +250,43 @@ def test_out_of_scope_work_is_still_offered_when_no_in_scope_work_is_ready() -> 
 
     assert [p.item.identifier for p in picks] == ["PL-1111", "PL-2222"]
     assert all(p.scoped_to == "v0.4.0" for p in picks)
+
+
+def test_a_gate_shipping_as_another_version_is_not_called_the_current_step() -> None:
+    """PL-1J0P: `next` said "the step the project is on" of the milestone that
+    *records* the gate, while `wave` named a different step in the same
+    session. The two commands a session reads at its start contradicted each
+    other about which release the project was working on, for every entry of
+    the release."""
+    scope = _scope(current=("PL-1111",), step_label="v0.3.0 — the foundation", clearing=True)
+
+    (pick,) = recommend([_item("PL-1111")], scope=scope, limit=1)
+
+    assert f"On the debt gate recorded under {STEP}" in pick.reason
+    assert "v0.3.0 — the foundation clears it" in pick.reason
+    assert "the step the project is on" not in pick.reason
+
+
+def test_a_milestone_clearing_its_own_gate_still_reads_as_the_current_step() -> None:
+    """The self-gating arrangement, where the two labels really are the same
+    milestone and there is nothing to distinguish."""
+    scope = _scope(current=("PL-1111",), clearing=True)
+
+    (pick,) = recommend([_item("PL-1111")], scope=scope, limit=1)
+
+    assert f"On {STEP}'s frozen list, the step the project is on" in pick.reason
+
+
+def test_in_scope_work_outside_a_gate_never_claims_a_step_it_is_not() -> None:
+    """The third arrangement: the gate is clear, so the anchor's own scope is
+    current work, but the row the project stands on is still an earlier one."""
+    scope = _scope(current=("PL-1111",), step_label="v0.3.0 — the foundation")
+
+    (pick,) = recommend([_item("PL-1111")], scope=scope, limit=1)
+
+    assert f"In scope for {STEP}" in pick.reason
+    assert "v0.3.0 — the foundation) comes before" in pick.reason
+    assert "debt gate" not in pick.reason
 
 
 def test_p0_outranks_in_scope_work_because_a_hotfix_outranks_the_phase() -> None:
