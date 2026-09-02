@@ -14,12 +14,17 @@ dropped in that routing; adding to it follows the same test, below.
 
 ## What this project is
 
-A solo hobby project. There is no deadline, no user waiting, and no
-commercial goal; the measure of success is that it is still being worked on
-and enjoyed in a year. The simulator is the point. The workflow apparatus
-exists to serve it and is at permanent risk of becoming the work instead —
-the failure this project is guarding against is a year of effort abandoned
-when the codebase becomes unmanageable, not a feature shipping late.
+A solo hobby project on a multi-year horizon. There is no deadline, no user
+waiting, and no commercial goal; the measure of success is that it is still
+being worked on and enjoyed years from now. The simulator is the point. The
+workflow apparatus exists to serve it and is at permanent risk of becoming the
+work instead — the failure this project is guarding against is years of effort
+abandoned when the codebase becomes unmanageable, not a feature shipping late.
+The horizon is load-bearing rather than colour: it puts the project well above
+the design-payoff line, so internal quality that a one-year project could
+rationally trade for speed is worth paying for here, and slow accumulations
+that a year would not surface — dependency drift, a file nobody wants to open
+— have time to become the thing that ends it.
 
 ## Working with the project owner
 
