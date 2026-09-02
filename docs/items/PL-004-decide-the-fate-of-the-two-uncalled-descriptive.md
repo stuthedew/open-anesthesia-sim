@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, refactor
 feature: core-boundaries
+milestone: v0.2.12
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/alveolar.py, docs/MODEL.md, docs/WORKING_NOTES.md, tests/unit/test_alveolar.py, tests/unit/test_simulation_view.py
 added: 2026-08-23
 closed: 2026-09-02

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, refactor
 feature: core-boundaries
+milestone: v0.2.12
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py
 added: 2026-08-23
 closed: 2026-09-02
