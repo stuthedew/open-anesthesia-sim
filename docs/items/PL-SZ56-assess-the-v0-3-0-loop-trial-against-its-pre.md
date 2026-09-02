@@ -52,12 +52,45 @@ tag; the v0.2.8 window is `v0.2.7`..`v0.2.8`, 2026-08-30 to 2026-09-01.
    so a lower number is partly expected and the comparison is weak in v0.3.0's
    favour. Say so in the close-out rather than claiming the improvement.
 3. **Escaped defects.** An item classed `defect` filed during the v0.3.0
-   window whose `touches` names a file an *already-closed* v0.3.0 entry
-   changed — i.e. the gates passed work that was wrong.
+   window that a *closed* v0.3.0 entry caused — i.e. the gates passed work
+   that was wrong.
    *Threshold:* zero against a `safety`-classed entry (`PL-026`, `PL-0MLQ`,
    `PL-NV9W`). One is a finding that the gates did not do their job on exactly
    the class they exist for. No v0.2.8 baseline was computed; this readout is
    absolute rather than comparative, and that is a limitation to state.
+
+   *Causation (amended 2026-09-02, see below):* an entry caused a defect when
+   either the defect's own brief attributes it to that entry's change, or the
+   defect reproduces at that entry's merge commit and not at its parent. File
+   overlap alone is not causation and does not count.
+
+   *Why it was amended, and why later than readout 4's amendment.* As first
+   written this readout counted any `defect` filed in the window whose
+   `touches` named a file an already-closed entry had changed. Scored
+   literally on 2026-09-02 that rule returns seven hits — `PL-11YF`,
+   `PL-30P6`, `PL-8PZ1`, `PL-KGNF`, `PL-W8DQ`, `PL-X0RG`, `PL-Y4Q4` — and
+   none of the seven is caused by `PL-026`, `PL-0MLQ` or `PL-NV9W`. The rule
+   fails for two structural reasons rather than by bad luck. `docs/MODEL.md`
+   and `src/anesthesia_sim/app/simulation_view.py` appear in most items'
+   `touches`, so overlap on them carries no causal signal at all; and `added:`
+   and `closed:` are day-granular, so "filed after the entry closed" is
+   undecidable when both fall on the same day — which is every one of the
+   seven. An instrument that cannot separate a regression from a coincidence
+   of file names measures nothing, and the amendment narrows what counts
+   rather than relaxing it.
+
+   *State this plainly at close-out rather than burying it.* Unlike readout
+   4's amendment this one was made **after** seven of the nine open frozen
+   entries had closed, with `PL-019` and `PL-010` still open — it is not a
+   pre-outcome change, and the literal old rule scores fail (seven) where the
+   amended rule scores pass (zero). That is exactly the retrofit this item
+   exists to prevent, so it is mitigated rather than waved through: the seven
+   hits are named above, the causal test is written down before the remaining
+   two entries close, and any reader may re-score the readout under either
+   rule from the ids given. `PL-8M05` is the worked example of the
+   distinction — filed in the window against a file `PL-NV9W` changed, its
+   brief records the check that it *predated* that change, which is the test
+   the amended wording now requires of every hit.
 4. **Stranded items.** `bin/docket stranded`. **t=0 is 0**, and that is a
    number this session created: it was 3 on the morning of 2026-09-02
    (`PL-D1ZY`, `PL-N092`, `PL-Y4Q4`), each on a branch with no open pull
