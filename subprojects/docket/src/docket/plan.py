@@ -316,8 +316,3 @@ def recommend(
         ranked.append(Recommendation(item, reason, scoped_to))
 
     return ranked[:limit]
-
-
-def blocked_summary(items: list[Item]) -> list[tuple[Item, list[str]]]:
-    """Blocked items and what they are waiting on, for a grooming pass."""
-    return [(item, list(item.blocked_by)) for item in items if item.status == "blocked"]
