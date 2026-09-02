@@ -1,10 +1,14 @@
 ---
 id: PL-MC8Z
 title: The start-an-item guard checks who is on the item but never what files it touches, so overlap is found at merge
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: infra
 feature: parallel-sessions
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-02
+verify: python3 tools/doc_check.py check && grep -qF 'is another session in these files' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** The `docket` skill's "Mode: start an item" is a three-step guard —

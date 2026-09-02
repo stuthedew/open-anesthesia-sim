@@ -1,10 +1,15 @@
 ---
 id: PL-ZBJ0
 title: Nothing creates counter-pressure to retire a check that has stopped earning its place, so the gate can only accumulate
-status: untriaged
+priority: P3
+effort: S
+status: dropped
+classes: infra
 feature: dev-tooling
 touches: CLAUDE.md, tools/doc_check.py, subprojects/docket/src/docket/checks.py
 added: 2026-09-02
+closed: 2026-09-02
+reason: both halves of its Done when are satisfied by other work - CLAUDE.md:183 now states the retirement test beside the build test, and PL-V87X was fixed outright (pr 236) rather than re-banded - and its own brief argues against the remaining decidable half
 ---
 
 **Problem.** Every rule this project holds pushes one way: add a check.
