@@ -55,6 +55,20 @@ jobs:
       - run: uv run python tools/doc_check.py check
       - run: uv run python tools/contrast_check.py
 
+      # Only on a pull request, because the title is the thing being checked
+      # and a push to `main` has none. The title reaches the script through the
+      # environment rather than a `${{ }}` interpolation inside the `run:`
+      # line: it is attacker-controlled text on a fork pull request, and
+      # pasting it into a shell command is the standard Actions script-
+      # injection hole. `PR_BASE` names the merge target, which the script
+      # compares against `HEAD` to find what this branch actually closes.
+      - name: pull request title names the items it closes
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BASE: origin/${{ github.event.pull_request.base.ref }}
+        run: uv run python tools/pr_title_check.py
+
   # The other half of what `checks` proves, and the half that was missing.
   # Everything above runs under the virtualenv on the interpreter
   # `.python-version` pins. But `tools/` and `subprojects/docket/` promise to

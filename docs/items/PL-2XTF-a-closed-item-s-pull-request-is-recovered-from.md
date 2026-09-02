@@ -4,7 +4,8 @@ title: A closed item's pull request is recovered from the commit subject, which 
 priority: P2
 effort: S
 classes: defect, infra
-status: needs-decision
+status: done
+closed: 2026-09-02
 feature: dev-tooling
 touches: subprojects/docket
 added: 2026-09-02
@@ -118,6 +119,42 @@ the prevention half.
    this session already did. It races the merge, as above, so it lowers the
    rate without closing the hole.
 
+**Decided (2026-09-02, project owner): options 1 and 3 together — recover from
+the `(#N)` suffix, and add the CI check on the pull request title.** Recovery
+alone leaves the wrong subject on `main` for good and only repairs after the
+damage; the check alone leaks whenever a merger retypes the subject in the
+squash dialog, which GitHub allows and no check on a title can see. Option 2,
+searching the commit body, stays rejected: the body carries ids of items a
+pull request merely *mentions*, and a false provenance record is worse than a
+missing one.
+
+**Done, both halves.**
+
+- **Recovery.** `_merges_naming` keeps its subject scan as the cheap first
+  pass, then falls back per unanswered id to the commit on the base that wrote
+  `status: done` into that item's own file, reading `(#N)` from its subject.
+  The parent tree is compared so a *later* edit — a `pr` backfill, a corrected
+  brief — cannot be mistaken for the closure and record a false number. Four
+  tests, including that the fallback is not paid for when the subject already
+  answered. Verified against the incident: all three of `PL-YHF1`, `PL-P909`
+  and `PL-SS9Q` now resolve to `#220` from their files alone.
+- **Prevention.** `tools/pr_title_check.py`, wired into `.github/workflows/
+  quality.yml` on `pull_request` only, refuses a title that does not lead with
+  the ids its branch closes. It compares the closed sets at both ends rather
+  than reading the diff, so a closure arriving through a merge of the base is
+  not blamed on this branch. Eight tests. Verified against the incident: run
+  over `92a8e55^..92a8e55` with `#220`'s real title, it fails and names all
+  three ids.
+
+The title reaches the script through the environment rather than a `${{ }}`
+interpolation in the `run:` line, because a fork's pull request title is
+attacker-controlled text and pasting it into a shell command is the standard
+Actions script-injection hole.
+
+**Not done, filed instead.** `vcs.leading_ids` was made public so the new tool
+could reuse it rather than spell the grammar a third time. `roadmap.py` still
+holds a second spelling of it — `PL-SVRW`.
+
 **Done when.** A closed item's pull request survives a squash merge whose
-subject names no id, or the decision to keep recovering from the subject is
-recorded here with its reasoning.
+subject names no id, and a title that would land such a subject is refused
+while it can still be edited.
