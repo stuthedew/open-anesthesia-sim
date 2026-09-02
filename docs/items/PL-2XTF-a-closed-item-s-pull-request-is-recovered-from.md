@@ -6,6 +6,7 @@ effort: S
 classes: defect, infra
 status: done
 closed: 2026-09-02
+pr: 227
 feature: dev-tooling
 touches: subprojects/docket
 added: 2026-09-02
