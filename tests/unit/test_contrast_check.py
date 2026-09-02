@@ -257,7 +257,7 @@ def test_the_run_status_text_is_checked_against_the_page_background() -> None:
         for requirement in contrast_check.REQUIREMENTS
     }
 
-    for foreground in ("MUTED", "ACCENT", "WARNING"):
+    for foreground in ("MUTED", "ACCENT_TEXT", "WARNING"):
         assert (foreground, "BACKGROUND") in declared, (
             f"{foreground} is a run-status color drawn on the page background; "
             "a requirement naming only PANEL checks a pair that is not on screen"

@@ -1464,7 +1464,22 @@ Two criteria carry most of the weight:
   4.28:1 on the panel and 3.98:1 on the page, and only the second is what a
   reader of the run-status word actually sees.
 - **SC 1.4.11, Non-text Contrast** — 3:1 for graphical objects. Each chart trace
-  against the panel it is drawn on, and each agent swatch read as a shape.
+  against the panel it is drawn on, each agent swatch read as a shape, and the
+  active track of each parameter slider, which is how a control shows where its
+  value sits in its range.
+
+**A color that carries meaning as text and as a graphic needs two values, not
+one.** The two minima differ by half again, so a single constant serving both
+roles fails one of them. This interface has one such case, and it is recorded
+here because the roles are not obvious from the constant's name: `ACCENT` is
+graphical — the alveolar chart trace and the sliders' active track — while
+`ACCENT_TEXT` is the same hue darkened until it is legible as text, and it
+carries the affirmative status words "Running" and "Valid" whose counterpart is
+the warning color. Distinguishing a running from a halted run is safety-critical
+for the reason given above, so the word announcing it is held to the text
+minimum on the surface it is actually drawn on, and is never the only cue: the
+words themselves differ, so a reader who cannot separate the colors still reads
+the state.
 
 Held **above** AA in two places:
 

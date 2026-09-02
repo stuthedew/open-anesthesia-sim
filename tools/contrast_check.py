@@ -133,18 +133,28 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "agent-accounting detail line (simulation_view.py:532, :556, :595)",
     ),
     Requirement(
-        "ACCENT",
+        "ACCENT_TEXT",
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the run-status word while running (simulation_view.py:681)",
+        "the run-status word while running (simulation_view.py:682)",
+    ),
+    Requirement(
+        "ACCENT_TEXT",
+        "PANEL",
+        AA_TEXT,
+        "1.4.3",
+        "the agent-accounting status word when conservation holds. Rendered at "
+        "20px bold, which is large text, so SC 1.4.3's 3:1 would suffice - the "
+        "stricter bar is applied deliberately (simulation_view.py:208, :731)",
     ),
     Requirement(
         "ACCENT",
         "PANEL",
-        AA_TEXT,
-        "1.4.3",
-        "the agent-accounting status word when conservation holds (simulation_view.py:730)",
+        AA_NON_TEXT,
+        "1.4.11",
+        "the active track and thumb of all four parameter sliders, which is how "
+        "each control shows its current value (simulation_view.py:320, :336, :346, :356)",
     ),
     Requirement(
         "WARNING",
@@ -217,14 +227,19 @@ REQUIREMENTS: tuple[Requirement, ...] = (
 #: that closes it. Not a suppression list: an entry here that starts passing is
 #: reported as an error, so a fix cannot leave its excuse behind.
 #:
+#: `ACCENT` appears twice below with the same measured value and two different
+#: owners, which is not duplication: the alveolar trace and the slider track are
+#: separate on-screen elements that happen to share one constant. That sharing
+#: is itself the defect each item describes, and listing them separately is what
+#: makes it visible.
+#:
 #: The sevoflurane entry is a limitation of this tool rather than of the
 #: interface. That swatch carries a border in its own foreground color, which
 #: is 10.70:1 against the page - so it is perceivable, by a channel a
 #: single-pair requirement cannot express. `PL-GNN1` adds the requirement kind
 #: that says "fill or border" and removes this entry.
 KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {
-    ("ACCENT", "BACKGROUND"): "PL-30P6",
-    ("ACCENT", "PANEL"): "PL-30P6",
+    ("ACCENT", "PANEL"): "PL-W8DQ",
     ("sevoflurane.fill", "BACKGROUND"): "PL-GNN1",
     ("ALVEOLAR_COLOR", "PANEL"): "PL-GVXP",
 }
