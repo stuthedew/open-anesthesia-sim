@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, ux
 feature: presentation-safety
+milestone: v0.2.10
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tools/contrast_check.py
 added: 2026-09-02
 closed: 2026-09-02

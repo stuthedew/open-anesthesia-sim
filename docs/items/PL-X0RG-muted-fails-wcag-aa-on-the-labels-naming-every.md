@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: presentation-safety
+milestone: v0.2.10
 touches: src/anesthesia_sim/app/theme.py, tools/contrast_check.py, tests/unit/test_contrast_check.py, docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-02

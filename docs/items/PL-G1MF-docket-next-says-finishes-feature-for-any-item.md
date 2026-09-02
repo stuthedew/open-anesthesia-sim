@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.2.10
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-01
 closed: 2026-09-02
