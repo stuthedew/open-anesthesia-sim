@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 closed: 2026-09-02
+pr: 236
 classes: defect, infra
 feature: dev-tooling
 touches: docs/items

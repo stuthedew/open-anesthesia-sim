@@ -3,7 +3,8 @@ id: PL-BR4G
 title: parse_front_matter silently keeps the last of a duplicate front-matter key, so two branches writing the same field merge into a corrupt item that docket check passes
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-02
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py
@@ -74,3 +75,15 @@ where every instance so far has come from.
 key, naming the key; a test pins that a duplicate is reported rather than
 silently resolved; and the error text says which value was kept, so a reader
 fixing it knows what the parser had been using.
+
+**Closed 2026-09-02.** `parse_front_matter` now delegates to
+`_front_matter_pairs`, which returns the front matter as `(key, value)` pairs
+in file order. The dict collapse stays where it was - a dict is what callers
+want - and `repeated_front_matter_keys` reads the same list to find what the
+collapse would have hidden. `Item.duplicate_fields` carries the result and
+`_check_item` errors on it, beside the existing unknown-field error it mirrors.
+
+Kept last-wins rather than switching to first-wins, deliberately: either choice
+picks a winner, and picking one silently was the defect. The docstring says so,
+so the next reader does not "fix" it back.
+

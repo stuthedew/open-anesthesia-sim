@@ -1160,7 +1160,7 @@ def test_a_lost_check_that_could_not_run_is_reported_as_unasked() -> None:
     assert any("items a merge removed: no items found on HEAD" in d for d in report.declined)
 
 
-def test_a_duplicate_front_matter_key_is_an_error() -> None:
+def test_a_repeated_front_matter_key_is_an_error() -> None:
     """`PL-BR4G`: the parser keeps the last, so nobody chose the surviving value."""
     errors = _errors(_item(duplicate_fields=("pr",)))
 
@@ -1171,7 +1171,7 @@ def test_no_duplicate_key_error_on_a_clean_item() -> None:
     assert not any("appear more than once" in e for e in _errors(_item()))
 
 
-def test_a_class_outside_the_vocabulary_is_an_error() -> None:
+def test_a_class_outside_the_declared_vocabulary_is_an_error() -> None:
     """`PL-MVC2`: `classes` fails open, so an unknown label matches no rule."""
     errors = _errors(_item(classes=("safey",)))
 
