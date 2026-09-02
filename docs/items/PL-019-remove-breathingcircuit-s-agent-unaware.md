@@ -9,6 +9,8 @@ feature: core-boundaries
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, tests/reference/test_multi_agent.py, tests/reference/test_sevo_patient.py, tests/unit/test_circuit.py, tests/unit/test_uptake_system_failure.py
 added: 2026-08-24
 closed: 2026-09-02
+commit: 3d1e71c
+pr: 218
 verify: uv run pytest tests/unit/test_circuit.py tests/unit/test_uptake_system_failure.py tests/reference/test_multi_agent.py tests/reference/test_sevo_patient.py -q && ! grep -rq 'BreathingCircuit()' tests/reference
 ---
 
