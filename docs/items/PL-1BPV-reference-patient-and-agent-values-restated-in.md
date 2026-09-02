@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: tools/doc_check.py, docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-02
+pr: 215
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def check_prose_provenance' tools/doc_check.py
 ---
 
