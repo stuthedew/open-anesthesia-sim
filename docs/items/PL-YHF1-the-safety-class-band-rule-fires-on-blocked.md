@@ -3,9 +3,10 @@ id: PL-YHF1
 title: The safety-class band rule fires on blocked items, so an unworkable safety item gets re-classed to satisfy the checker
 priority: P1
 effort: S
-classes: safety, infra
 status: done
+classes: safety, infra
 feature: dev-tooling
+milestone: v0.3.0
 touches: subprojects/docket
 added: 2026-09-02
 closed: 2026-09-02

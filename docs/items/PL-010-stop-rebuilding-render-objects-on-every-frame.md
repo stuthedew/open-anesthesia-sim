@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: perf
 feature: chart-readout
+milestone: v0.3.0
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py
 added: 2026-08-23
 closed: 2026-09-02
