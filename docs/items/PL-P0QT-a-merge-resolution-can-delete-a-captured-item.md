@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/, tools/
 added: 2026-09-02
 closed: 2026-09-02
+pr: 228
 verify: uv run pytest subprojects/docket/tests/test_vcs.py subprojects/docket/tests/test_cli.py && grep -q 'def test_lost_finds_the_item_a_merge_resolution_removed' subprojects/docket/tests/test_cli.py
 ---
 
