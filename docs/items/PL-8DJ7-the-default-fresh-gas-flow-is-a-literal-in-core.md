@@ -3,11 +3,12 @@ id: PL-8DJ7
 title: The default fresh gas flow is a literal in core/circuit.py, so MODEL.md restates it twice outside both the provenance table and the new prose markers
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/data, docs/MODEL.md, tools/doc_check.py
 added: 2026-09-02
+closed: 2026-09-02
 ---
 
 **Problem.** `BreathingCircuit.fresh_gas_flow_l_min` defaults to `4.0` as a
@@ -50,6 +51,31 @@ the gap closes by the mechanism `PL-1BPV` already built.
 Check for siblings while there: any other numeric default in `core/` that
 `docs/MODEL.md` restates has the same problem, and the answer should cover the
 class rather than this one constant.
+
+**Decision (2026-09-02, project owner): wait for the anesthesia-machine
+abstraction; do not invent a home now.** A fresh gas flow is a machine setting,
+not a patient or agent property. Putting it in `reference_adult.json` today
+would be quick and would close the provenance gap, but it files a machine
+setting under the patient and creates a home that moves again within a
+milestone or two — so the citation, the schema and every reference to it get
+written twice, and the intervening state says something false about what kind
+of quantity it is.
+
+**The intent is routed rather than dropped.** `ROADMAP.md`'s planned milestone 1
+— the modular anesthesia-machine abstraction — now names this constant in its
+own line, so scoping that milestone picks it up. That is `CLAUDE.md`'s rule for
+a change wanted but not yet ready to build: one line of intent on the roadmap,
+not a queue item that sits there being read past. This item closes on the
+second branch of its own Done-when, the decision recorded with its reasoning.
+
+**What is accepted in the meantime.** The value stays a literal, the two
+`docs/MODEL.md` restatements stay unmarked, and the accuracy table's "default
+flows" column keeps tracing to code rather than to a cited file. That is a real
+gap and it is being carried deliberately, not overlooked. It is bounded: the
+value is correct today, `PL-1BPV`'s markers cover every other number in the
+same passages, and a change to it would be a change to `core/` — a protected
+path no delegated worker may edit, and one no session reaches without reading
+the file.
 
 **Done when.** The default fresh gas flow is sourced from a versioned data
 file with a provenance row, both `docs/MODEL.md` restatements carry markers,
