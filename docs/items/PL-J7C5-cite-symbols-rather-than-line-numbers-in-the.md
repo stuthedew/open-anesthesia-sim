@@ -1,8 +1,14 @@
 ---
 id: PL-J7C5
 title: Cite symbols rather than line numbers in the contrast table's reasons
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-02
+verify: uv run pytest tests/unit/test_contrast_check.py && ! grep -qE '[.]py:[0-9]' tools/contrast_check.py
 ---
 
 **Problem.** Each `Requirement` in `tools/contrast_check.py`'s `REQUIREMENTS`

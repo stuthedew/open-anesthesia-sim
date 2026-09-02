@@ -1,7 +1,12 @@
 ---
 id: PL-HK75
 title: Decide the application's display name, which still reads "Working Title"
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: ux
+feature: project-introduction
+touches: src/anesthesia_sim/app_metadata.py
 added: 2026-09-02
 ---
 
@@ -22,6 +27,13 @@ placeholder is now the odd one out rather than a consistent stand-in.
 `src/anesthesia_sim/app/simulation_view.py` `mount()` and by
 `src/anesthesia_sim/app/main.py` as the window title.
 
-**Done when.** The name is the project owner's decision, not a session's:
-this item is a decision to put to them, and the code change behind it is one
-line.
+**Decision needed.** What `APP_DISPLAY_NAME` should read. The rest of
+`app_metadata.py` has already settled on a name in two other forms -
+`APP_BUNDLE_ID` is `org.openanesthesia.simulator` and `APP_AUTHOR` is
+"Open Anesthesia Simulator contributors" - so "Open Anesthesia Simulator" is
+the answer the file already implies, and the decision is whether to take it or
+name the product something else. It is the project owner's call, not a
+session's.
+
+**Done when.** `APP_DISPLAY_NAME` holds the chosen name and the window title
+and page header show it. The code change behind the decision is one line.

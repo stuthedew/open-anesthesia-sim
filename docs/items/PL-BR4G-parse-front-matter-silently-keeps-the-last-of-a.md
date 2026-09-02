@@ -1,8 +1,14 @@
 ---
 id: PL-BR4G
 title: parse_front_matter silently keeps the last of a duplicate front-matter key, so two branches writing the same field merge into a corrupt item that docket check passes
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_repeated_front_matter_key_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `parse_front_matter` in `subprojects/docket/src/docket/model.py`
