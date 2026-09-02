@@ -3,7 +3,8 @@ id: PL-MVC2
 title: "Nothing checks `classes:` and `feature:` against a declared vocabulary, so a misspelled class escapes the safety-class pin and a misspelled feature silently splits the group docket next ranks by"
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-02
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/checks.py, docket.toml, subprojects/docket/tests/test_checks.py
@@ -68,3 +69,30 @@ carries the singleton advisory instead, with the choice recorded; `bug` and
 `docket` are corrected to `defect` and `dev-tooling` on the two closed items
 that carry them; and a test pins that an unknown class is reported rather
 than accepted.
+
+**Closed 2026-09-02.** `docket.toml` declares `known_classes`;
+`Config.vocabulary()` falls back to the union of `safety_classes`,
+`process_classes`, `debt_classes`, `minor_classes` and `BRANCHED_ON` where a
+project declares nothing, so the check is never comparing against an empty set
+and silently passing everything - which would be this check carrying the defect
+it exists to catch. `_check_item` errors before the safety pin reads the field.
+
+`BRANCHED_ON` exists for `anticipated`, which the pin reads to let a concern
+whose feature does not exist yet wait at its blocker's band, and which no
+config list names.
+
+**The feature half was scoped down, and the reasoning matters more than the
+code.** Only mechanical variants are decided - case, and `_` or a space where
+`-` was meant. Whether `docket` and `dev-tooling` name one group is the
+judgment half, and a tool guessing at it would merge two features somebody
+meant to keep apart. The measured instance was fixed by hand instead:
+`PL-3QGR` and `PL-YNCW` moved to `dev-tooling`, and `bug` on `PL-T940` became
+`defect`.
+
+**Closed late, by its own new machinery.** The work landed several commits
+before this line was written, and the item was caught still `ready` only
+because its `verify:` named `test_a_class_outside_the_declared_vocabulary_is_an_error`
+and the test had been written under a near-synonym. The test was renamed to the
+commissioned name rather than the command rewritten to match what was built -
+which is the distinction `PL-L9JS` exists to hold.
+
