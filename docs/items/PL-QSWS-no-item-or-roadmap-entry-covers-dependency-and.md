@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 closed: 2026-09-02
+pr: 239
 classes: infra, docs
 feature: dev-tooling
 touches: pyproject.toml, .github/workflows/drift.yml, ROADMAP.md
