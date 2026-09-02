@@ -3,11 +3,12 @@ id: PL-9Y42
 title: Validate wash-in against a published human measurement
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science
 feature: numerical-domain
 touches: tests/reference/test_published_wash_in.py, docs/MODEL.md, README.md
 added: 2026-08-30
+closed: 2026-09-02
 verify: uv run pytest tests/reference/test_published_wash_in.py
 ---
 
