@@ -977,6 +977,100 @@ def _closure_runner(
     return run
 
 
+OPEN_ITEM = "---\nid: {id}\ntitle: T\nstatus: ready\n---\n"
+
+
+def _recovery_runner(history: tuple[tuple[str, str], ...], done_at: set[str], name: str):
+    """A git whose base subjects name no id, so only the file's history answers.
+
+    `history` is the file's own log, newest first, as (revision, subject).
+    `done_at` names the revisions whose tree has the item closed - written as
+    revisions rather than derived, so a test can say exactly where the status
+    flipped, including at a parent the walk has to look at.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "rev-parse":
+            return "" if args[-1] == "--is-shallow-repository" else f"{BASE}\n"
+        if args[0] == "for-each-ref":
+            return f"{BASE}\n"
+        if args[0] == "show":
+            revision, _, _path = args[-1].partition(":")
+            if revision == BASE:
+                return CLOSED.format(id="PL-K7QX")
+            return (
+                CLOSED.format(id="PL-K7QX")
+                if revision in done_at
+                else OPEN_ITEM.format(id="PL-K7QX")
+            )
+        if args[0] == "log":
+            if "--" in args:
+                return "\n".join(f"{revision}\x1f{subject}" for revision, subject in history)
+            # The base's own subjects, naming no id - the case this recovers.
+            return "Design the thing and fix the checks (#220)"
+        return ""
+
+    return run
+
+
+def test_a_squash_subject_naming_no_id_is_recovered_from_the_item_s_file() -> None:
+    # PL-2XTF: #220 was created from the UI, closed three items, and its title
+    # led with no id. The subject scan finds nothing; the file's own history is
+    # what still knows, because the commit that wrote `status: done` is the
+    # closure and carries `(#N)` like every other squash.
+    run = _recovery_runner(
+        history=(("aaa111", "Design the thing and fix the checks (#220)"),),
+        done_at={"aaa111"},
+        name="PL-K7QX-a.md",
+    )
+
+    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
+
+    assert report.landed == frozenset({"PL-K7QX"})
+    assert report.numbers == {"PL-K7QX": 220}
+
+
+def test_a_later_edit_to_a_closed_item_does_not_steal_the_attribution() -> None:
+    # Backfilling a `pr`, or correcting a brief, touches the file long after
+    # the work landed and carries its own number. Recording one of those would
+    # be a false provenance, which is worse than the missing one.
+    run = _recovery_runner(
+        history=(
+            ("ccc333", "Correct the brief (#226)"),
+            ("aaa111", "Design the thing and fix the checks (#220)"),
+        ),
+        done_at={"ccc333", "ccc333^", "aaa111"},
+        name="PL-K7QX-a.md",
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
+        "PL-K7QX": 220
+    }
+
+
+def test_an_item_whose_file_history_names_no_number_still_reports_nothing() -> None:
+    run = _recovery_runner(
+        history=(("aaa111", "no number here"),), done_at={"aaa111"}, name="PL-K7QX-a.md"
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
+
+
+def test_the_file_history_is_not_read_when_a_subject_already_answered() -> None:
+    # The subject scan is one history read for the whole set; the fallback is
+    # one per unanswered id. Paying for it when nothing is missing would make
+    # the cheap path cost the same as the expensive one.
+    log: list[list[str]] = []
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}, ("PL-K7QX Do the thing (#148)",), log
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
+        "PL-K7QX": 148
+    }
+    assert not [args for args in log if args[0] == "log" and "--" in args]
+
+
 def test_a_landed_closure_reports_the_pull_request_its_merge_commit_names() -> None:
     run = _closure_runner(
         {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
