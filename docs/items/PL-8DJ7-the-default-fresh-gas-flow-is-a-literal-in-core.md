@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/data, docs/MODEL.md, tools/doc_check.py
 added: 2026-09-02
 closed: 2026-09-02
+pr: 216
 ---
 
 **Problem.** `BreathingCircuit.fresh_gas_flow_l_min` defaults to `4.0` as a
