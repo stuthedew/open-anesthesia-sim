@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-02
 closed: 2026-09-02
+pr: 211
 ---
 
 **Problem.** `bin/docket flight`, `show` and `next` answer "is anybody already
