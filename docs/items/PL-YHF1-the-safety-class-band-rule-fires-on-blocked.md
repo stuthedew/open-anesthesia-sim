@@ -35,14 +35,18 @@ under-classing safety work is a safety defect in the queue, not a tooling nit.
 **Where.** `subprojects/docket/src/docket/checks.py`, the `safety` band rule;
 `subprojects/docket/tests/test_checks.py`.
 
-**Fixed.** The rule skips `status: blocked`. The exemption does not become a
-parking space: unblocking re-fires it, so the band is decided at the moment
-the work becomes workable, by the checker rather than by recall. Two tests
-cover both directions — a blocked safety item at P3 passes, and the same item
-set to `ready` is refused.
+**Fixed.** A blocked item may sit outside the top band. The exemption does not
+become a parking space: unblocking re-fires the rule, so the band is decided
+at the moment the work becomes workable, by the checker rather than by recall.
 
-`PL-WZVZ` is now classed `safety, ux` at P3 while blocked, which is what it
-actually is.
+The first cut inferred the exemption from the *absence* of a `defect` class,
+which made forgetting to write one the way to obtain it. `PL-P909` corrected
+that in the same branch: the exemption is now claimed with an explicit
+`anticipated` class and fails closed, so an omission or a misspelling leaves
+the strict band in force.
+
+`PL-WZVZ` is classed `safety, anticipated, ux` at P3 while blocked, which is
+what it actually is.
 
 **Done when.** A blocked safety item may sit outside the top band, unblocking
 it is refused until the band is set, and both directions have a test.

@@ -3,7 +3,7 @@ id: PL-WZVZ
 title: 'Make an inter-machine difference attributable: which parameter differs, and what it does to the result'
 priority: P3
 effort: M
-classes: safety, ux
+classes: safety, anticipated, ux
 blocked-by: PL-FG9D
 status: blocked
 feature: anesthesia-machine
@@ -54,6 +54,12 @@ two real machines differ. One standing sentence on the surface saying exactly
 that, once — not a per-machine list of what is not modelled. PL-4DCG's
 rule-out bucket is written once for the survey and is a scope boundary for the
 work, not display copy: it does not become rows here.
+
+**Classed `anticipated`** because the concern does not exist until
+planned-milestone item 1 is built: there is no machine to pick today, so
+nothing is currently misattributing anything. That class is what lets a
+`safety` item wait outside the top band (`PL-P909`), and the band is owed
+again the moment the item is unblocked.
 
 **Depends on** PL-4DCG for the rows and PL-FG9D for which parameters are
 per-machine at all. Neither the table nor the labelling can be built before a

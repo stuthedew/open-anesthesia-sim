@@ -257,23 +257,84 @@ def test_safety_work_may_not_sit_in_a_low_band() -> None:
     assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
 
 
-def test_blocked_safety_work_may_sit_anywhere() -> None:
+def test_blocked_anticipated_safety_work_may_sit_anywhere() -> None:
     """A blocked item is not in the set `next` chooses from, so a band is a claim
     about work nobody can start. Forcing one here is what drives an item to be
     re-classed out of `safety` to satisfy the checker, which is the failure the
     rule exists to prevent."""
-    blocked = _item(classes=("safety",), priority="P3", status="blocked", blocked_by=("PL-0001",))
+    blocked = _item(
+        classes=("safety", "anticipated"), priority="P3", status="blocked", blocked_by=("PL-0001",)
+    )
 
     assert not _has(_errors(blocked), "starts at P0 or P1")
 
 
+def test_the_exemption_is_claimed_rather_than_inferred() -> None:
+    """Fail closed. Reading a *missing* class as the anticipated case would make
+    forgetting to write one the way to obtain the exemption, so a blocked safety
+    item that claims nothing keeps the strict band - and is told how to claim."""
+    silent = _item(classes=("safety",), priority="P3", status="blocked", blocked_by=("PL-0001",))
+    messages = _errors(silent)
+
+    assert _has(messages, "starts at P0 or P1")
+    assert _has(messages, "class it `anticipated`")
+
+
+def test_a_misspelled_exemption_fails_closed() -> None:
+    """The same property under PL-MVC2's undeclared vocabulary: a typo cannot
+    buy the exemption, because only the exact class grants it."""
+    typo = _item(
+        classes=("safety", "anticpated"), priority="P3", status="blocked", blocked_by=("PL-0001",)
+    )
+
+    assert _has(_errors(typo), "starts at P0 or P1")
+
+
+def test_a_live_blocked_safety_defect_keeps_its_band() -> None:
+    """The case the exemption must not swallow: something is wrong now and the
+    blocker is only sequencing, so the band still stands."""
+    live = _item(
+        classes=("safety", "defect"), priority="P3", status="blocked", blocked_by=("PL-0001",)
+    )
+
+    assert _has(_errors(live), "starts at P0 or P1")
+
+
 def test_unblocking_safety_work_re_fires_the_band_rule() -> None:
-    """The exemption above must not become a way to park safety work at P3
-    forever: the moment the item is workable, the band is owed again, and the
-    checker asks rather than anyone having to remember."""
-    unblocked = _item(classes=("safety",), priority="P3", status="ready", verify="pytest")
+    """The exemption must not become a way to park safety work at P3 forever:
+    the moment the item is workable, the band is owed again, and the checker
+    asks rather than anyone having to remember."""
+    unblocked = _item(
+        classes=("safety", "anticipated"), priority="P3", status="ready", verify="pytest"
+    )
 
     assert _has(_errors(unblocked), "starts at P0 or P1")
+
+
+def test_a_blocked_item_may_not_outrank_its_blocker() -> None:
+    """A P1 waiting on a P3 promises a schedule the blocker does not keep, and is
+    how a live safety defect goes quiet while passing every other rule."""
+    blocked = _item("PL-AAAA", priority="P1", status="blocked", blocked_by=("PL-BBBB",))
+    blocker = _item("PL-BBBB", priority="P3", verify="pytest")
+
+    assert _has(_errors(blocked, blocker), "raise PL-BBBB to P1 or above")
+
+
+def test_waiting_on_equal_or_higher_rank_is_fine() -> None:
+    blocked = _item("PL-AAAA", priority="P2", status="blocked", blocked_by=("PL-BBBB",))
+    blocker = _item("PL-BBBB", priority="P1", verify="pytest")
+
+    assert not _has(_errors(blocked, blocker), "or above")
+
+
+def test_a_closed_blocker_holds_nothing_up() -> None:
+    """It is already done, and a done item's priority is often cleared outright."""
+    blocked = _item("PL-AAAA", priority="P1", status="blocked", blocked_by=("PL-BBBB",))
+    closed = _item(
+        "PL-BBBB", priority="", effort="", status="done", closed=TODAY, pr="7", added=None
+    )
+
+    assert not _has(_errors(blocked, closed), "or above")
 
 
 def test_a_done_item_records_its_date() -> None:

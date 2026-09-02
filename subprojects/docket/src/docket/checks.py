@@ -221,19 +221,40 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             )
 
     # A safety class forces the top band, because that is where work able to
-    # reach a wrong clinical value belongs. `blocked` is the one exception: a
-    # blocked item is not in the set `next` chooses from at all, so its band is
-    # a claim about work nobody can start, and forcing one buys nothing at the
+    # reach a wrong clinical value belongs. `blocked` earns a narrow exception:
+    # a blocked item is not in the set `next` chooses from, so its band is a
+    # claim about work nobody can start, and forcing one buys nothing at the
     # price of the failure this rule exists to prevent - an item quietly
     # re-classed out of `safety` to satisfy the checker, which corrupts the
     # class for every other reader of it and leaves the correction to someone's
     # memory. Unblocking re-fires this, which is the point: the band is decided
     # when the work becomes workable, by the checker rather than by recall.
+    #
+    # The exception is only for work whose safety concern does not exist yet -
+    # the feature it guards has not been built. A blocked item where something
+    # is already wrong is the opposite case: the blocker is only sequencing, so
+    # the band still stands, and `_outranks_its_blocker` below drags the blocker
+    # up to meet it rather than letting a live defect park at P3 behind
+    # something nobody will pick.
+    #
+    # Which case it is cannot be decided from the store, so it is claimed, not
+    # inferred - and the claim fails closed. `anticipated` must be present to
+    # earn the exemption; absence, omission, or a misspelling of it all leave
+    # the strict rule in force. Inferring the exemption from a *missing* class
+    # would have made forgetting to write one the way to obtain it, which is
+    # the wrong default for the one class where a wrong default is expensive.
     safety = tuple(c for c in item.classes if c in config.safety_classes)
-    if safety and item.status != "blocked" and item.priority in ("P2", "P3"):
+    exempt = item.status == "blocked" and "anticipated" in item.classes
+    if safety and not exempt and item.priority in ("P2", "P3"):
+        blocked_hint = (
+            "; if the concern does not exist until a later feature is built, class it "
+            "`anticipated` and the band waits with it"
+            if item.status == "blocked"
+            else ""
+        )
         report.errors.append(
             f"{where}: class '{', '.join(safety)}' sits at {item.priority}; "
-            "safety-critical work starts at P0 or P1"
+            f"safety-critical work starts at P0 or P1{blocked_hint}"
         )
     if item.status == "blocked" and not item.blocked_by:
         report.errors.append(f"{where}: marked blocked but names no blocking item")
@@ -564,6 +585,8 @@ def _check_references(report: Report) -> None:
             elif blocker not in known:
                 report.errors.append(f"{_where(item)}: blocked by {blocker}, which is not an item")
 
+    _outranks_its_blocker(report, known_items={i.identifier: i for i in report.items})
+
     duplicates = [
         identifier
         for identifier, count in Counter(
@@ -574,6 +597,39 @@ def _check_references(report: Report) -> None:
     for identifier in sorted(duplicates):
         paths = ", ".join(sorted(i.path for i in report.items if i.identifier == identifier))
         report.errors.append(f"{identifier}: used by more than one file ({paths})")
+
+
+def _outranks_its_blocker(report: Report, known_items: dict[str, Item]) -> None:
+    """Refuse an item that ranks above the work it is waiting on.
+
+    A blocked item cannot be started, so its band is a promise about when it
+    will be - and that promise is only as good as the blocker's. A P1 waiting
+    on a P3 says the queue will reach it soon while ranking the one thing in
+    the way below fifty other items, which is not a schedule but a hiding
+    place. It is the mechanism by which a live safety defect goes quiet: it
+    keeps its band, passes every other rule, and never comes up.
+
+    The fix is always the same and always the blocker's - raise it to meet what
+    it holds up - so the error names that rather than offering a choice.
+    Lowering the blocked item instead is available and is not suggested, since
+    on a safety item that is the re-classing this checker exists to prevent.
+
+    Only open blockers are compared: a closed one holds nothing up, and a done
+    item's priority is often cleared outright.
+    """
+    for item in report.items:
+        if item.status != "blocked" or item.priority not in PRIORITIES:
+            continue
+        for identifier in item.blocked_by:
+            blocker = known_items.get(identifier)
+            if blocker is None or not blocker.is_open or blocker.priority not in PRIORITIES:
+                continue
+            if PRIORITIES.index(item.priority) < PRIORITIES.index(blocker.priority):
+                report.errors.append(
+                    f"{_where(item)}: is {item.priority} but waits on {identifier} at "
+                    f"{blocker.priority}; raise {identifier} to {item.priority} or above, "
+                    "because nothing here can start before it does"
+                )
 
 
 def _check_closures(report: Report, closures: ClosureReport | None) -> None:
