@@ -243,12 +243,12 @@ def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
 
     A compartment advanced alone is solved exactly at any step, so there is
     no splitting error to bound and nothing to refuse; `tests/unit/
-    test_circuit.py` steps a bare circuit 60 s and compares it against the
-    analytic solution. Putting the guard on a compartment would break that
-    test and would also misstate where the error comes from.
+    test_circuit.py` steps a circuit on its own 60 s and compares it against
+    the analytic solution. Putting the guard on a compartment would break
+    that test and would also misstate where the error comes from.
     """
 
-    circuit = BreathingCircuit()
+    circuit = BreathingCircuit(delivered_concentration_fraction=1.0)
     step_s = 60.0
 
     assert step_s > MAXIMUM_SIMULATION_STEP_S

@@ -151,8 +151,9 @@ class AgentUptakeSystem:
         """Build a system for any built-in agent (see `AGENT_DATA_FILENAMES`).
 
         The circuit carries that agent's own vaporizer maximum, and starts
-        at its own 1 MAC rather than at `BreathingCircuit`'s agent-unaware
-        default, so a system built here can never begin at a dial position
+        at that agent's own 1 MAC rather than with the vaporizer off, which
+        is all `BreathingCircuit` can default to without knowing which agent
+        is in use. So a system built here can never begin at a dial position
         the corresponding real device does not have. The MAC start is
         guaranteed to be within the maximum by the cross-field check in
         `core/parameters.py`.

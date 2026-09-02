@@ -8,6 +8,19 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
+# The dial every system below runs at. Both agents run at the same one, so
+# the only thing differing between two systems is the agent's own parameters,
+# which is the claim these gates make. 4% is inside both calibrated ranges -
+# isoflurane's 5% maximum is the lower of the two, desflurane reaches 18% -
+# and each circuit carries its own agent's maximum, so construction refuses
+# this value if it ever stops being deliverable.
+#
+# Deliberately not the 0.05 the equilibrium test fills every compartment to:
+# at that dial the circuit would already sit at its own delivered
+# concentration, and that test's `set_fresh_gas_flow(0.0)` would stop being
+# load-bearing - it would pass at any flow, testing less than it reads as.
+DELIVERED_CONCENTRATION_FRACTION = 0.04
+
 
 def _run_for(system: AgentUptakeSystem, duration_s: float, simulation_step_s: float) -> None:
     """Advance a system for an exact number of fixed steps."""
@@ -23,13 +36,23 @@ def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
 
     Proves the v0.1.0 core is agent-generic: only the agent parameters
     change here, not any governing equation or compartment structure.
+
+    Built by hand rather than through `AgentUptakeSystem.for_agent()`
+    precisely to keep that true of the circuit as well: `for_agent()`
+    starts each agent at its own 1 MAC, which would leave the two systems
+    below differing in two things at once.
     """
 
     agent = load_agent_parameters(agent_id)
     patient_parameters = load_reference_adult_parameters()
 
     return AgentUptakeSystem(
-        circuit=BreathingCircuit(),
+        circuit=BreathingCircuit(
+            delivered_concentration_fraction=DELIVERED_CONCENTRATION_FRACTION,
+            max_delivered_concentration_fraction=(
+                agent.max_delivered_concentration_percent / 100.0
+            ),
+        ),
         alveoli=AlveolarCompartment(
             gas_volume_l=patient_parameters.alveolar_gas_volume_l,
             alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
