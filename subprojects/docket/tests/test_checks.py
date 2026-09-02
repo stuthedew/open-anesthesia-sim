@@ -661,9 +661,10 @@ def test_an_offering_that_read_every_ref_declines_nothing() -> None:
     assert report.declined == []
 
 
-# An open item whose own `verify:` command already passes. The advisory half
+# An open item whose own `verify:` command already passes. The reporting half
 # is pure - it is handed a `LandedReport` - so these assert what is said about
 # a given result; `test_verify.py` covers producing one by running commands.
+# An error rather than an advisory since `PL-71P4`.
 
 
 def _landed(**overrides: object) -> LandedReport:
@@ -690,35 +691,50 @@ def _advisories(landed: LandedReport | None) -> list[str]:
     return analyze([_item()], TODAY, landed=landed).advisories
 
 
+def _landed_errors(landed: LandedReport | None) -> list[str]:
+    return analyze([_item()], TODAY, landed=landed).errors
+
+
 def _selects_nothing(landed: LandedReport, offered: OfferedReport) -> list[str]:
     """The selects-no-test advisory is scoped to what `next` would offer."""
     return analyze([_item()], TODAY, landed=landed, offered=offered).advisories
 
 
-def test_an_item_whose_work_has_landed_is_named_as_a_candidate() -> None:
-    messages = _advisories(_landed())
+def test_an_item_whose_work_has_landed_is_an_error() -> None:
+    """`PL-71P4`: a plain error, affordable because `PL-L9JS` cleaned the store first."""
+    messages = _landed_errors(_landed())
     assert _has(messages, "PL-K7QX")
     assert _has(messages, "already passes")
+    assert not _has(_advisories(_landed()), "already passes")
 
 
-def test_a_landed_candidate_is_offered_as_two_readings_not_a_verdict() -> None:
-    # The advisory must not claim the work landed. A passing command is also
-    # what a command that does not discriminate looks like, and on this store
-    # that was every instance found, so a report saying "landed" would be
-    # wrong eight times out of eight.
-    messages = _advisories(_landed())
-    assert _has(messages, "either the work landed")
+def test_a_landed_item_is_reported_as_two_readings_not_a_verdict() -> None:
+    # It must not claim the work landed. A passing command is also what a
+    # command that does not discriminate looks like, and on this store that
+    # was every instance found, so a report saying "landed" would have been
+    # wrong seven times out of seven. Being an error changes the force of the
+    # sentence, not its honesty: both readings are named, and both are work.
+    messages = _landed_errors(_landed())
+    assert _has(messages, "Either the work landed")
     assert _has(messages, "does not discriminate")
 
 
-def test_a_landed_candidate_sharing_a_command_is_named_as_proving_nothing() -> None:
-    messages = _advisories(_landed(passing=("PL-K7QX", "PL-B1C2"), shared=("PL-K7QX", "PL-B1C2")))
+def test_a_landed_item_names_the_delegation_gate_it_leaves_open() -> None:
+    """The consequence is what makes this an error: `docket verify` says ACCEPT."""
+    assert _has(_landed_errors(_landed()), "ACCEPT")
+
+
+def test_a_landed_item_sharing_a_command_is_named_as_proving_nothing() -> None:
+    messages = _landed_errors(
+        _landed(passing=("PL-K7QX", "PL-B1C2"), shared=("PL-K7QX", "PL-B1C2"))
+    )
     assert _has(messages, "share a command with another open item")
     assert _has(messages, "give each its own")
 
 
 def test_nothing_is_said_when_no_open_item_has_landed() -> None:
     assert _advisories(_landed(passing=(), shared=())) == []
+    assert not _has(_landed_errors(_landed(passing=(), shared=())), "already passes")
 
 
 def test_a_landed_check_that_could_not_run_is_reported_as_not_checked() -> None:
@@ -902,10 +918,19 @@ def test_a_selects_no_test_advisory_asks_rather_than_condemns() -> None:
 
 def test_an_item_that_both_passes_and_selects_nothing_cannot_happen_but_reads_apart() -> None:
     # Distinct populations, distinct sentences: one report carrying both must
-    # produce two advisories, not one merged claim.
-    messages = _selects_nothing(_landed(passing=("PL-B1C2",), vacuous=("PL-K7QX",)), OFFERED)
-    assert len([m for m in messages if "already passes" in m]) == 1
-    assert len([m for m in messages if "selects no test" in m]) == 1
+    # produce two findings, not one merged claim. They now land in different
+    # sections - a passing command is an error since `PL-71P4`, a selector
+    # matching nothing stays an advisory because only the item's author can
+    # say which repair it wants - which separates them further rather than
+    # merging them.
+    report = analyze(
+        [_item()],
+        TODAY,
+        landed=_landed(passing=("PL-B1C2",), vacuous=("PL-K7QX",)),
+        offered=OFFERED,
+    )
+    assert len([m for m in report.errors if "already passes" in m]) == 1
+    assert len([m for m in report.advisories if "selects no test" in m]) == 1
 
 
 def test_nothing_is_said_when_no_open_item_selects_no_test() -> None:
@@ -1133,3 +1158,78 @@ def test_a_lost_check_that_could_not_run_is_reported_as_unasked() -> None:
 
     assert report.errors == []
     assert any("items a merge removed: no items found on HEAD" in d for d in report.declined)
+
+
+def test_a_duplicate_front_matter_key_is_an_error() -> None:
+    """`PL-BR4G`: the parser keeps the last, so nobody chose the surviving value."""
+    errors = _errors(_item(duplicate_fields=("pr",)))
+
+    assert any("appear more than once" in e and "pr" in e for e in errors)
+
+
+def test_no_duplicate_key_error_on_a_clean_item() -> None:
+    assert not any("appear more than once" in e for e in _errors(_item()))
+
+
+def test_a_class_outside_the_vocabulary_is_an_error() -> None:
+    """`PL-MVC2`: `classes` fails open, so an unknown label matches no rule."""
+    errors = _errors(_item(classes=("safey",)))
+
+    assert any("not in the declared vocabulary" in e and "safey" in e for e in errors)
+
+
+def test_a_misspelled_safety_class_is_caught_even_though_the_pin_cannot_fire() -> None:
+    """The case the check exists for, asserted end to end.
+
+    `safey` is not in `safety_classes`, so the pin refusing to seat
+    safety-critical work below P1 does not fire and cannot. Before this check
+    the item sat at P3 with zero errors reported.
+    """
+    errors = _errors(_item(priority="P3", classes=("safey",)))
+
+    assert any("not in the declared vocabulary" in e for e in errors)
+    assert not any("safety-critical work starts at" in e for e in errors)
+
+
+def test_a_correctly_spelled_safety_class_still_reaches_the_pin() -> None:
+    errors = _errors(_item(priority="P3", classes=("safety",)))
+
+    assert not any("not in the declared vocabulary" in e for e in errors)
+    assert any("safety-critical work starts at" in e for e in errors)
+
+
+def test_the_derived_vocabulary_covers_every_class_the_checker_branches_on() -> None:
+    """`anticipated` is read by the safety-band exemption and named by no list."""
+    assert "anticipated" in Config().vocabulary()
+    errors = _errors(
+        _item(status="blocked", blocked_by=("PL-BBB2",), classes=("safety", "anticipated")),
+        _item("PL-BBB2"),
+    )
+
+    assert not any("not in the declared vocabulary" in e for e in errors)
+    assert not any("safety-critical work starts at" in e for e in errors)
+
+
+def test_a_declared_vocabulary_replaces_the_derived_one() -> None:
+    config = Config(known_classes=("perf",))
+
+    assert config.vocabulary() == {"perf"}
+    assert any(
+        "not in the declared vocabulary" in e
+        for e in analyze([_item(classes=("safety",), priority="P1")], TODAY, config).errors
+    )
+
+
+def test_one_feature_spelled_two_ways_is_an_error() -> None:
+    """`PL-MVC2`: `docket next` groups on the literal string."""
+    errors = _errors(
+        _item("PL-K7QX", feature="dev-tooling"), _item("PL-BBB2", feature="Dev_Tooling")
+    )
+
+    assert any("differ only in case or separator" in e for e in errors)
+
+
+def test_genuinely_different_features_are_left_alone() -> None:
+    errors = _errors(_item("PL-K7QX", feature="dev-tooling"), _item("PL-BBB2", feature="docket"))
+
+    assert not any("differ only in case or separator" in e for e in errors)

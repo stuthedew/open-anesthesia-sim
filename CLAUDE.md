@@ -180,6 +180,14 @@ context in every session that needs it. `tools/doc_check.py` and
   recurs and the answer is deterministic. Not for a one-off, not around what a
   linter already does, and not where upkeep would cost more than the passes it
   saves. Where the benefit is unclear, the answer is no.
+- **A check earns its place every run, or it is retired.** The gate above
+  decides whether to build one; this decides whether to keep it. A check that
+  fires every run without changing a decision is a defect in the check — it
+  costs attention forever and trains a session to skim the output where a real
+  advisory also appears. Removing one is a legitimate outcome of a workflow
+  pass, not a loss of coverage. Reserve hard failure for exact rules; a signal
+  needing context is an advisory, and an advisory nobody acts on is a candidate
+  for retirement rather than promotion. `PL-ZBJ0` carries the evidence.
 
 New tools use the standard library only, so a hook or a bare checkout can run
 them without the project virtualenv. A script also answers identically every
@@ -311,15 +319,17 @@ correction rather than handing the question back.
   already ranks this way within a priority band; do not override it toward
   novelty.
 - **Friction that compounds is recommended the moment it is found, not filed.**
-  Some process findings are paid again by every remaining piece of work: a tool
-  that answers the wrong question, a check that cries wolf, a command that ends
-  red on success. Their cost is the per-item cost times the items left, so
-  deferring one is a decision to pay it N more times. Say so in the reply that
-  finds it — with the arithmetic, and a recommendation to do it first. Recording
-  it and moving on is not enough: the owner cannot act on what only reached the
-  queue. The test is arithmetic, not enthusiasm — name the per-item saving and
-  multiply by the items remaining. Work that is merely valuable, cleaner or more
-  interesting makes no remaining item cheaper and waits for the roadmap.
+  Some process findings are paid again by every remaining piece of work. Say so
+  in the reply that finds it, with a recommendation to do it first — recording
+  it and moving on is not enough, because the owner cannot act on what only
+  reached the queue. A finding earns that interruption on any one of three
+  tests and on nothing else: it **gives a wrong answer silently**, so a check
+  passes while the guarantee it stands for is void; it **is being routed
+  around**, a warning or advisory firing so routinely that nobody reads it; or
+  it **sits upstream of everything**, in the store or the gate that every other
+  command reads from. The tests are properties, not enthusiasm: work that is
+  merely valuable, cleaner or more interesting makes no remaining item cheaper
+  and waits for the roadmap.
 
 **Sweep the docs before calling an item done.** Landing a change is not
 finishing it. `make check` runs `tools/doc_check.py`, which decides the

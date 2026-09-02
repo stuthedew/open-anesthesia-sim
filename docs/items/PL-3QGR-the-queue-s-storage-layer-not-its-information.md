@@ -3,7 +3,7 @@ id: PL-3QGR
 title: The queue's storage layer, not its information model, is what blocks concurrent work
 status: done
 classes: session-cost
-feature: docket
+feature: dev-tooling
 milestone: v0.2.3
 added: 2026-08-24
 closed: 2026-08-24

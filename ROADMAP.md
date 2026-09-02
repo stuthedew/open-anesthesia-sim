@@ -1035,14 +1035,14 @@ PL-68XK (check that a recorded commit hash resolves) is a different case and is
 *not* admitted by this rule: it predates the freeze and was excluded from the
 approved list deliberately. It was nonetheless entangled with PL-ZQ9C, so its
 brief has been refreshed rather than worked - and what the refresh had to say
-changed once PL-ZQ9C landed. `commit:` was not replaced: `pr:` sits beside it
-and `commit:` became optional, so PL-68XK is no longer "validate the field that
-makes a closure traceable" - `docket check` already holds every recorded `pr`
-to a pull request the default branch names. It is now the narrower job of
-holding a `commit` that is *present* to one that resolves, because a hash
-leading nowhere reads as provenance whether or not a number sits beside it.
-Its brief carries that scope, and the shallow-checkout discipline PL-XCYB
-built, so whoever picks it up does not build either half twice.
+changed once PL-ZQ9C landed, and then closed entirely. `pr:` sat beside
+`commit:` and made it optional, narrowing PL-68XK from "validate the field that
+makes a closure traceable" to the smaller job of holding a present `commit` to
+one that resolves. PL-T63T then answered the question one step upstream - what
+the field should record at all - and the project owner chose to retire it, since
+21 of the 42 hashes that could be checked resolved nowhere. PL-68XK was dropped
+with it: there is no longer a field for it to validate. The shallow-checkout
+discipline PL-XCYB built is unaffected and still serves the `pr:` check.
 
 ### Definition of done
 

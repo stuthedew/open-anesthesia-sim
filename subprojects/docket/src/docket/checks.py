@@ -153,6 +153,14 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"{where}: unrecognized field(s) {', '.join(item.unknown_fields)}; "
             "a misspelled field is silently ignored, so it is rejected here"
         )
+    if item.duplicate_fields:
+        report.errors.append(
+            f"{where}: front-matter key(s) {', '.join(item.duplicate_fields)} appear more "
+            "than once; the parser keeps the last and drops the rest, so the surviving "
+            "value is decided by line order rather than by anyone. Two branches inserting "
+            "the same field at different positions merge cleanly into this - delete the "
+            "wrong line by hand after checking which value is right"
+        )
     if not item.status:
         report.errors.append(f"{where}: no `status`; expected one of {', '.join(STATUSES)}")
         return
@@ -243,6 +251,19 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
     # the strict rule in force. Inferring the exemption from a *missing* class
     # would have made forgetting to write one the way to obtain it, which is
     # the wrong default for the one class where a wrong default is expensive.
+    # Before the pin reads `classes`, establish that it can. Every use of the
+    # field below is a membership test against a configured list, so a class
+    # outside the vocabulary is not an unknown label - it is a label that
+    # silently satisfies no rule. The pin is the expensive one: `classes:
+    # safey` leaves safety-critical work seatable at P3 with nothing said.
+    unknown = tuple(c for c in item.classes if c not in config.vocabulary())
+    if unknown:
+        report.errors.append(
+            f"{where}: class '{', '.join(unknown)}' is not in the declared vocabulary "
+            f"({', '.join(sorted(config.vocabulary()))}); a class the tool does not know "
+            "matches no rule, so a misspelled `safety` seats safety-critical work in a "
+            "band that is meant to exclude it"
+        )
     safety = tuple(c for c in item.classes if c in config.safety_classes)
     exempt = item.status == "blocked" and "anticipated" in item.classes
     if safety and not exempt and item.priority in ("P2", "P3"):
@@ -445,22 +466,33 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
             "misspelled"
         )
 
+    # An error rather than an advisory since `PL-71P4`, and the ordering is what
+    # made that affordable: `PL-L9JS` repaired the seven items that passed on a
+    # clean tree first, so the rule needed no cutover date, no grandfathered set
+    # and no second dated policy beside `verify_required_from`. Both states it
+    # reports are actionable and neither may sit - a command that passes without
+    # its work is the delegation gate open, and one whose work landed is an item
+    # that should have closed. The transient case, a session that ran the work
+    # before editing its item, resolves in the same commit the skill already
+    # requires: `status: done` travels with the work.
     if not landed.passing:
         return
     one = len(landed.passing) == 1
     message = (
         f"{', '.join(landed.passing)} {'is' if one else 'are'} open but "
         f"{'its' if one else 'their'} `verify:` command already passes "
-        f"({len(landed.passing)} of {landed.considered} checked): either the work landed "
-        "and the item was never closed, or the command does not discriminate and "
-        "proves nothing"
+        f"({len(landed.passing)} of {landed.considered} checked). Either the work landed "
+        "and the item was never closed - close it - or the command does not "
+        "discriminate and proves nothing, in which case `docket verify` would ACCEPT a "
+        "branch that did none of the work: rewrite it to name something only the work "
+        "creates, and run it and see it fail before recording it"
     )
     if landed.shared:
         message += (
             f". {', '.join(landed.shared)} share a command with another open item, "
             "which cannot prove any one of them done - give each its own"
         )
-    report.advisories.append(message)
+    report.errors.append(message)
 
 
 def _check_selects_nothing(
@@ -836,6 +868,38 @@ def _check_lost(report: Report, lost: LostReport | None) -> None:
         )
 
 
+def _normalized_feature(name: str) -> str:
+    """A feature name with the differences that are never meaningful removed."""
+    return name.strip().lower().replace("_", "-").replace(" ", "-")
+
+
+def _check_feature_spellings(report: Report) -> None:
+    """Two spellings of one feature name, which split the group `next` ranks by.
+
+    `docket next` prefers work in a feature already underway, nearest-finishing
+    first, so a group split in two makes that ranking wrong in a way that reads
+    as a correct answer: the half nobody can see counts as unstarted work.
+
+    Only mechanical variants are decided here - case, and `_` or a space where
+    `-` was meant. Whether `docket` and `dev-tooling` are the same group is the
+    judgment half and is left alone; a tool guessing at that would merge two
+    features somebody meant to keep apart. `PL-MVC2` carries the reasoning and
+    the measurement.
+    """
+    spellings: dict[str, set[str]] = {}
+    for item in report.items:
+        if item.feature:
+            spellings.setdefault(_normalized_feature(item.feature), set()).add(item.feature)
+    for variants in spellings.values():
+        if len(variants) > 1:
+            names = ", ".join(sorted(variants))
+            report.errors.append(
+                f"feature '{names}' is spelled {len(variants)} ways that differ only in case "
+                "or separator; `docket next` groups on the literal string, so this is one "
+                "feature the ranking sees as several - settle on one spelling"
+            )
+
+
 def analyze(
     items: list[Item],
     today: date,
@@ -868,6 +932,7 @@ def analyze(
     for item in report.items:
         _check_item(item, report, settings)
     _check_references(report)
+    _check_feature_spellings(report)
     _check_milestones(report, version)
     _check_provenance(report, history)
     _check_landed(report, landed)

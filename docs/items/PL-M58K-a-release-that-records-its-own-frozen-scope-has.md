@@ -8,7 +8,7 @@ classes: docs, infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/roadmap.py, ROADMAP.md
 added: 2026-08-30
-verify: uv run pytest subprojects/docket/tests/test_roadmap.py -q && bin/docket wave
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py -q && grep -rq 'def test_a_frozen_scope_heading_is_followed_like_a_debt_gate' subprojects/docket/tests
 ---
 
 **Problem.** `GATE_SUBSECTION = "debt gate"` in

@@ -4,7 +4,7 @@ title: A verify: command that exceeds LANDED_TIMEOUT returns 1 and reads as one 
 priority: P2
 effort: S
 status: done
-classes: bug, infra
+classes: defect, infra
 feature: dev-tooling
 milestone: v0.2.10
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py

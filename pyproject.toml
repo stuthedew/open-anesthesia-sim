@@ -78,6 +78,22 @@ skip-magic-trailing-comma = true
 # latter replaces this list, so every directive naming a rule other than
 # RUF100 is reported "non-enabled" and a live suppression looks inert.
 select = ["E", "F", "I", "UP", "B", "RUF100"]
+
+# `I` puts the import sorter in the lint selection while `[tool.ruff.format]`
+# sets `skip-magic-trailing-comma = true`, and ruff's defaults make those two
+# disagree: isort would split an import on a magic trailing comma that the
+# formatter then joins, so the pair has no fixpoint. Ruff warns about it on
+# every `format` run, which is worse than the behaviour - a warning printed on
+# every `make check` and `make fix` is one nobody reads, and it trains a
+# session to skim the output where a real advisory also appears (`PL-V87X`).
+#
+# Resolved toward the formatter rather than away from it: the magic trailing
+# comma is deliberately not honoured here, so the sorter is told the same
+# thing. Setting `skip-magic-trailing-comma = false` instead would silence the
+# warning by reversing a formatting decision nobody asked to revisit.
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+
 # The type-check gate, and the single source of truth for what it covers:
 # `make check` and CI both run a bare `uv run mypy`, so widening it is one
 # edit here rather than three. `subprojects/docket/src` is listed rather than

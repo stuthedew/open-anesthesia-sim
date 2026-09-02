@@ -7,7 +7,7 @@ status: ready
 classes: session-cost, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/concurrency.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
-verify: uv run pytest subprojects/docket/tests -k duplicate
+verify: uv run pytest subprojects/docket/tests/test_cli.py -q && grep -rq 'def test_new_prints_candidate_duplicates' subprojects/docket/tests
 added: 2026-08-30
 ---
 
