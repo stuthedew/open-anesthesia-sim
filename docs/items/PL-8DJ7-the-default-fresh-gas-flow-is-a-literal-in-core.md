@@ -1,7 +1,11 @@
 ---
 id: PL-8DJ7
 title: The default fresh gas flow is a literal in core/circuit.py, so MODEL.md restates it twice outside both the provenance table and the new prose markers
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect, docs
+feature: model-spec-accuracy
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/data, docs/MODEL.md, tools/doc_check.py
 added: 2026-09-02
 ---
@@ -33,7 +37,7 @@ gate's reference-point list and the defaults note beneath the accuracy table;
 `src/anesthesia_sim/data/` for wherever it should live;
 `tools/doc_check.py` if the provenance table gains a row for it.
 
-**Approach.** Decide where it belongs first. It is not an agent property and
+**Decision needed.** Where does the default fresh gas flow belong? It is not an agent property and
 not obviously a patient property either - it is a machine setting, and the
 roadmap's planned anesthesia-machine abstraction is the natural home, which
 may be a reason to wait rather than to invent a file now. The cheap

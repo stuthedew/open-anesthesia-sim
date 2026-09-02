@@ -1,10 +1,14 @@
 ---
 id: PL-21GS
 title: "Readout 4's zeros were measured on a blind instrument: stranded could not read the refs a shallow clone truncated"
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
 feature: planning-cadence
-touches: docs/items/
+touches: docs/items/, docs/releases/
 added: 2026-09-02
+verify: python3 tools/doc_check.py check && grep -q 'bounded by the refs a shallow checkout held' docs/items/PL-SZ56-assess-the-v0-3-0-loop-trial-against-its-pre.md
 ---
 
 **Problem.** `PL-SZ56`'s readout 4 is `bin/docket stranded`, and its t=0 value
@@ -42,6 +46,12 @@ threshold is unchanged and should stay unchanged: this narrows nothing and
 relaxes nothing, it only says what the instrument could see when each reading
 was taken. Recording it as a confound is the honest disposition; changing the
 readout again, twice in one day, on a pre-registered assessment, is not.
+
+
+**On the `verify:` command.** It greps `PL-SZ56` rather than
+`docs/releases/v0.3.0.md`, because that close-out does not exist yet and this
+brief names the item as an acceptable home. If the sentence lands in the
+close-out instead, move the command with it.
 
 **Done when.** The close-out states that readout 4's pre-`PL-K2ZK` readings
 were bounded by the refs a shallow checkout held, names the 6-to-7 ref change

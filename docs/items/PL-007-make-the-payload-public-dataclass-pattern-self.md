@@ -9,6 +9,7 @@ feature: core-boundaries
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py
 added: 2026-08-23
 closed: 2026-09-02
+pr: 208
 verify: uv run pytest tests/unit/test_parameters.py -k documents_why_it_exists
 ---
 
