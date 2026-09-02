@@ -341,8 +341,12 @@ $$
 $$
 
 using compatible time and flow units, which is 37.5 s for the reference adult, where $`V_A = 2.5`$ L and $`\dot V_A = 4`$ L/min.
+<!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
+<!-- derived: 37.5 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
 
 That quantity is not the time constant of the coupled system, and it is recorded here — as a limitation of any single-mechanism description of alveolar kinetics — rather than exposed as a derived output, because two things separate it from what a run exhibits. First, blood uptake is a second exchange term acting on the same compartment: holding $`F_C`$ and $`F_v`$ fixed, $`F_A`$ relaxes with $`V_A/(\dot V_A + Q\lambda_{b:g})`$, which is 20.7 s for the reference adult on sevoflurane rather than 37.5 s. Second, $`F_C`$ and $`F_v`$ are not fixed — they are state variables of the same system — so the alveolar trajectory is a sum of exponentials over all six modeled compartments and no single constant describes it. A $`\tau_A^{\mathrm{vent}}`$ presented as "the alveolar time constant" would be a plausible number for a rate the simulation does not exhibit.
+<!-- derived: 20.7 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5 -->
+<!-- derived: 20.7 s from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 
 The pulmonary uptake rate is:
 
@@ -734,6 +738,43 @@ value alongside the derived one — the tissue:blood coefficients are computed
 at load time from the tissue:gas and blood:gas values, so their rows name the
 stored tissue:gas key and show the division.
 
+The table is not the only place these values appear. Where the prose restates
+one — the reference adult's alveolar volume and ventilation, each agent's
+blood:gas coefficient, vaporizer maximum and MAC — the sentence carries a
+marker naming the file and key it restates, written as an HTML comment so it
+is invisible in the rendered document:
+
+```text
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+```
+
+`doc_check.py` holds both halves of that: the key against the data file, and
+the stated value against the paragraph the marker sits under. So neither the
+file nor the sentence can move without the other, which is the failure the
+markers exist for — before them, editing a data file updated this table, which
+the checker forces, and left the surrounding prose quietly wrong.
+
+A figure *derived* from several stored values — no file holds it — carries a
+`derived:` marker naming its inputs instead, and one figure may carry several
+where its inputs span more than one file:
+
+```text
+<!-- derived: 20.7 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5 -->
+```
+
+When an input moves, the checker reports that the figure must be recomputed
+and names it. It never recomputes the figure: the rounding and the units are
+judgment, and a plausible wrong number in this document is worse than none.
+
+**Rewording a marked sentence is expected to fail the check.** That is the
+marker asking to be moved or updated with the sentence, not a false alarm. A
+number a data file does not hold — a solver tolerance, a flow-sweep point, a
+worked example — carries no marker and is not checked here, which is why the
+markers are explicit rather than a scan for numerals: `2.5` appears in this
+document as an alveolar volume in litres, a tolerance in seconds and a flow in
+litres per minute, and binding all three to one key would be confidently wrong
+in the places a reader trusts most.
+
 | Parameter | Selected value | Unit | Source (data file · key path) |
 | --- | ---: | --- | --- |
 | Blood:gas partition coefficient | 0.65 | dimensionless | `data/agents/sevoflurane.json` · `blood_gas_partition_coefficient` |
@@ -795,6 +836,9 @@ any equation: lower solubility only means faster equilibration through the
 same closed-form solutions, which `tests/reference/test_multi_agent.py`
 checks directly by comparing simulated alveolar/circuit ratios rather than
 only comparing the static coefficient values.
+<!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+<!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
 
 ### Delivery-limit and MAC parameters
 
@@ -818,6 +862,9 @@ keep the simulator from offering a dial position that does not exist on the
 corresponding real device. It is a device limit, not a physiologic or
 safety limit: it says nothing about whether a given concentration is
 appropriate for a patient.
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+<!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
 `mac_percent` is 1 MAC for a 40-year-old adult. It is used for exactly one
 thing: choosing the starting position of the delivered-concentration control
@@ -1213,6 +1260,9 @@ every other parameter shipped:
 | Sevoflurane | 0.65 | −14% / +21% | −14% / +6% |
 | Isoflurane | 1.3 | −12% / +24% | −12% / +13% |
 | Desflurane | 0.42 | −4% / +30% | −4% / +11% |
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+<!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
+<!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
 
 This is a coarse gate. At the reference point alone a solubility error of a
 fifth survives for two of the three agents — wider than the spread between
@@ -1510,6 +1560,8 @@ correct concentration attributed to the wrong agent is a presentation
 failure, and the same number means a different clinical depth for each agent
 (2% is about 1 MAC of sevoflurane but roughly a third of a MAC of
 desflurane).
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- derived: a third of a MAC of desflurane from data/agents/desflurane.json mac_percent = 6 -->
 
 The agent selector and header reinforce that written name with the
 agent-identification color specified by ISO 5360:2016 Table 2 ("Dimensions and

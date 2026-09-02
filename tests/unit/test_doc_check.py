@@ -41,6 +41,7 @@ tools/
 
 FAT_KEY = "tissue_gas_partition_coefficients.fat"
 ROW = "| {} | {} | dimensionless | `data/agents/demo.json` · `{}` |"
+MARKER = "<!-- provenance: data/agents/demo.json blood_gas_partition_coefficient = {} -->"
 
 MODEL = "\n".join(
     [
@@ -56,6 +57,12 @@ MODEL = "\n".join(
         "## Known limitations",
         "",
         "Nothing yet.",
+        "",
+        # A marked prose value, so the clean fixture is clean by the prose
+        # check too - and so that every test overriding `model=` starts from
+        # documentation that satisfies it.
+        "The demo agent's blood:gas coefficient is 0.5.",
+        MARKER.format("0.5"),
         "",
     ]
 )
@@ -258,6 +265,118 @@ def test_schema_version_is_not_treated_as_a_parameter(tmp_path: Path) -> None:
 def test_a_model_with_no_table_at_all_fails_rather_than_passing_silently(tmp_path: Path) -> None:
     root = _repo(tmp_path, model="# Model\n\n## Parameter provenance\n\nNone yet.\n")
     assert any("no provenance table found" in e for e in _errors(root))
+
+
+# --- prose provenance -------------------------------------------------------
+
+DERIVED = "<!-- derived: {} from data/agents/demo.json blood_gas_partition_coefficient = {} -->"
+
+
+def _model_with(*prose: str) -> str:
+    """`MODEL`, with one more marked paragraph under "Known limitations"."""
+    return MODEL + "\n" + "\n".join(prose) + "\n"
+
+
+def test_a_prose_value_that_disagrees_with_its_data_file_is_an_error(tmp_path: Path) -> None:
+    """The failure the check exists for: the table was updated and prose was not."""
+    root = _repo(tmp_path, model=_model_with("The coefficient is 0.9.", MARKER.format("0.9")))
+
+    assert any(
+        "states blood_gas_partition_coefficient = 0.9" in error and "holds 0.5" in error
+        for error in _errors(root)
+    )
+
+
+def test_prose_reworded_without_its_marker_is_an_error(tmp_path: Path) -> None:
+    """The other direction: the data file is fine and the sentence moved away.
+
+    Without this the marker degrades into a comment nobody has to keep true,
+    and the check would go on passing while pointing at a paragraph that no
+    longer restates anything.
+    """
+    root = _repo(tmp_path, model=_model_with("The coefficient is 0.9.", MARKER.format("0.5")))
+
+    assert any("is not in it" in error for error in _errors(root))
+
+
+def test_a_derived_figure_says_to_recompute_when_an_input_moves(tmp_path: Path) -> None:
+    """The half no single-key search would surface, and the reason for two kinds.
+
+    Nothing holds the derived figure, so the check reports that what it was
+    computed from has moved and stops there. Recomputing it is judgment about
+    units and rounding, and a tool guessing at that would be confidently wrong
+    in a document a clinician reads.
+    """
+    root = _repo(
+        tmp_path,
+        model=_model_with("Equilibration takes 4.0 units.", DERIVED.format("4.0 units", "0.9")),
+    )
+
+    assert any(
+        "4.0 units was computed from" in error and "recompute" in error for error in _errors(root)
+    )
+
+
+def test_a_correct_derived_figure_is_left_alone(tmp_path: Path) -> None:
+    root = _repo(
+        tmp_path,
+        model=_model_with("Equilibration takes 12.5 units.", DERIVED.format("12.5 units", "0.5")),
+    )
+
+    assert _errors(root) == []
+
+
+def test_a_marker_shown_inside_a_code_fence_is_not_read_as_a_claim(tmp_path: Path) -> None:
+    """The document explains the convention by printing one; that is not a claim.
+
+    Reading an example as a claim would force every marker in the prose that
+    documents the format to be coincidentally true of the shipped data.
+    """
+    root = _repo(
+        tmp_path,
+        model=_model_with("A marker looks like this:", "", "```text", MARKER.format("0.9"), "```"),
+    )
+
+    assert _errors(root) == []
+
+
+def test_a_marker_naming_a_key_the_file_does_not_hold_is_an_error(tmp_path: Path) -> None:
+    root = _repo(
+        tmp_path,
+        model=_model_with(
+            "The coefficient is 0.5.",
+            "<!-- provenance: data/agents/demo.json no_such_key = 0.5 -->",
+        ),
+    )
+
+    assert any("does not hold as a number" in error for error in _errors(root))
+
+
+def test_a_model_with_no_markers_at_all_is_an_error(tmp_path: Path) -> None:
+    """Silence from a check with nothing to check reads exactly like a pass."""
+    root = _repo(tmp_path, model=MODEL.replace(MARKER.format("0.5"), ""))
+
+    assert any("this check has gone blind" in error for error in _errors(root))
+
+
+def test_each_of_several_markers_on_one_paragraph_reads_that_paragraph(tmp_path: Path) -> None:
+    """One sentence often restates values from several files, so markers stack.
+
+    Walking back only to the nearest one handed every marker above it an empty
+    paragraph, which contains no numbers and so reported the prose as missing
+    the value - or, had the comparison been the other way, passed silently.
+    """
+    root = _repo(
+        tmp_path,
+        model=_model_with(
+            "The coefficient is 0.5 and the fat coefficient is 2.0.",
+            MARKER.format("0.5"),
+            "<!-- provenance: data/agents/demo.json "
+            "tissue_gas_partition_coefficients.fat = 2.0 -->",
+        ),
+    )
+
+    assert _errors(root) == []
 
 
 # --- citations --------------------------------------------------------------

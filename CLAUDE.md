@@ -323,8 +323,8 @@ correction rather than handing the question back.
 
 **Sweep the docs before calling an item done.** Landing a change is not
 finishing it. `make check` runs `tools/doc_check.py`, which decides the
-package-map, provenance-table, dangling-citation, math-rendering and
-release-train questions outright, and `python3 tools/doc_check.py candidates --base <ref>` prints the
+package-map, provenance-table, marked-prose-value, dangling-citation,
+math-rendering and release-train questions outright, and `python3 tools/doc_check.py candidates --base <ref>` prints the
 documentation lines mentioning anything the diff touched. Spend the judgment on
 what neither can decide: whether each statement is still *true*. Stale
 documentation is a safety issue here, not tidiness — a reader who trusts a

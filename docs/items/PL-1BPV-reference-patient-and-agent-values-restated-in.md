@@ -3,11 +3,13 @@ id: PL-1BPV
 title: Reference-patient and agent values restated in MODEL.md prose are outside the provenance check
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: infra, docs
 feature: model-spec-accuracy
 touches: tools/doc_check.py, docs/MODEL.md
 added: 2026-09-02
+closed: 2026-09-02
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def check_prose_provenance' tools/doc_check.py
 ---
 
 **Problem.** `tools/doc_check.py`'s `check_provenance` holds `docs/MODEL.md`'s
@@ -65,6 +67,46 @@ the provenance table instead. That costs the reader a jump and makes the
 alveolar limitation at line 345 much less concrete, which is most of why it
 persuades, so it is probably the wrong trade; but it is the cheapest option
 and should be rejected explicitly rather than by omission.
+
+**Decision (2026-09-02, project owner): option 1, the explicit marker; option
+3 rejected outright.** Cross-referencing the table instead of restating values
+would cost the reader a jump and make the alveolar limitation much less
+concrete, which is most of why that passage persuades.
+
+**The derived-value disposition, which the owner did not settle and which
+neither of the two candidates in this brief got right.** Marking a formula for
+the tool to evaluate needs a safe arithmetic evaluator in `tools/`, which is a
+mechanism larger than its job; leaving derived figures to hand-checking at
+review time leaves nothing to prompt the check. The answer taken is neither:
+a `derived:` marker **records the input values the figure was computed from**,
+and the tool holds those to the data files. When an input moves, it reports
+that the figure needs recomputing and names it; it never computes the new
+figure. That is `CLAUDE.md`'s line between the decidable half and the judgment
+half, and it needs no evaluator - one marker grammar serves both kinds.
+
+**Two things this brief got wrong about its own scope, found while marking.**
+
+- **Lines 1009 and 1685 are not restatements and must not be marked.** Both
+  read "4 L/min fresh gas", and fresh gas flow is not
+  `default_alveolar_ventilation_l_min`; no data file holds it. The reference
+  adult's ventilation is 4 L/min too, so binding those to that key would have
+  attached a marker to a coincidence - which is precisely the failure a
+  numeral-scanning check would have made, and the strongest argument for
+  markers over a scan.
+- **The list was short by four sites.** Also restated, and now marked: the
+  solubility ordering (`blood:gas 0.42 < 0.65 < 1.3`, three agent files), the
+  vaporizer maxima (`sevoflurane 8%, isoflurane 5%, desflurane 18%`), the
+  solubility-sensitivity table's coefficient column, and `2% is about 1 MAC of
+  sevoflurane`.
+
+**Built.** `check_prose_provenance` in `tools/doc_check.py`, registered in
+`analyze`. Every marker's keys are held to the file; a `provenance:` marker is
+additionally held to the prose it sits under, so neither side can drift alone.
+A document with no markers at all is an error, because silence from a check
+with nothing to check reads exactly like a pass. Seven tests in
+`tests/unit/test_doc_check.py`, including one pinning that stacked markers each
+read the paragraph rather than the nearest marker - that walk was wrong when
+first written and passed silently.
 
 **Done when.** Either `make check` fails on a `docs/MODEL.md` prose value that
 disagrees with the data file it restates, or the item is dropped with the

@@ -625,8 +625,8 @@ reconstruct three commands at the moment they are trying to do something else.
    the fix while the queue still called the item open and a debt gate still
    counted it (`PL-D2GW`, then `PL-P5S0`).
 2. **Sweep the docs.** `make doc-check` decides the package-map,
-   provenance-table, dangling-citation, math-rendering and release-train
-   questions outright, and
+   provenance-table, marked-prose-value, dangling-citation, math-rendering and
+   release-train questions outright, and
    `python3 tools/doc_check.py candidates --base <ref>` prints the
    documentation lines mentioning anything the diff touched.
 
