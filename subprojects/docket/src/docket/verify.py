@@ -29,11 +29,13 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 from collections import Counter
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
+from statistics import median
 
 from . import vcs
 from .config import Config
@@ -498,6 +500,47 @@ def landed_workers() -> int:
 # untriaged capture has not promised to do anything yet.
 LANDED_STATUSES = ("ready", "needs-decision")
 
+# How far above the typical command one has to be before it is worth naming.
+#
+# Measured against this store on 2026-09-02, 46 commands at the configured pool
+# width on four cores: a healthy store's slowest command was 8.95 s against a
+# 0.65 s median, **14x**, and adding one full-suite `pytest --cov` put a 59.3 s
+# command in the same pool at **88x**. So 14x is what a store already looks
+# like when nothing is wrong, and this sits between the two with roughly twice
+# the margin above that - about 20 s on today's median, which is where one
+# command doubles a 9.5 s check rather than merely sitting at its floor. Move
+# it knowing those two numbers; they are why it is 30 and not 10 or 100.
+#
+# A ratio against the median rather than an absolute number of seconds,
+# because the general cost level rises as the suite grows and an absolute
+# threshold would then fire on everything. The median is the right denominator
+# specifically because it cannot collapse: every command here pays interpreter
+# and `uv run` startup, so the typical one has a floor - it measured 0.65 s and
+# 0.67 s across the two runs above, the second with a 59 s command in it.
+SLOW_COMMAND_RATIO = 30.0
+
+# And a floor under the ratio, because a ratio against a near-zero median is
+# meaningless. Where every command is trivial the median falls to a few
+# milliseconds, ordinary process-startup jitter is then tens of times it, and
+# the rule above would name a command that took 100 ms as the thing the check
+# waits for. That is the false positive this whole advisory exists to avoid
+# becoming: a sentence nobody can act on, printed with the same weight as one
+# they can.
+#
+# A second is the bar for "long enough that a person waited", and on a real
+# store it decides nothing - the median there is 0.65 s, so the ratio gate
+# stands at ~20 s and is what actually fires. It only bites where the pool is
+# small and fast, which is every test in this suite and no real run.
+SLOW_COMMAND_FLOOR = 1.0
+
+
+@dataclass(frozen=True)
+class SlowCommand:
+    """One item's `verify:` command, and what it cost the run that executed it."""
+
+    identifier: str
+    seconds: float
+
 
 @dataclass(frozen=True)
 class LandedReport:
@@ -558,6 +601,15 @@ class LandedReport:
     #: The per-command limit these results were produced under, so a report can
     #: name the number a reader would have to change.
     limit: float = LANDED_TIMEOUT
+    #: Commands far enough above the typical one to set this check's floor, and
+    #: what each cost. A pool cannot finish before its slowest member, so these
+    #: are what every `make check` waits through.
+    slow: tuple[SlowCommand, ...] = ()
+    #: The median command's cost, and the pool's own wall clock. Carried so a
+    #: report can say what normal looks like and what the run came to, rather
+    #: than a bare number nobody can scale.
+    typical: float = 0.0
+    elapsed: float = 0.0
     declined: str = ""
 
     @property
@@ -612,6 +664,14 @@ def already_passing(
 
     Where only some commands could not answer the run still reports, and names
     them in `timed_out` and `unavailable` rather than counting them checked.
+
+    `slow` is the third finding, and the only one about cost rather than
+    correctness. The pool cannot finish before its slowest member, so a single
+    heavy `verify:` sets the floor for every `make check` from the moment it is
+    written - measured at 10 s to 59 s for one full-suite `pytest --cov`
+    (`PL-VG7G`). The session that writes such a command is the only one placed
+    to reconsider it and was the one session told nothing, so a command far
+    enough above the typical one is named with what it cost.
     """
     if os.environ.get(LANDED_GUARD):
         return LandedReport(
@@ -626,7 +686,7 @@ def already_passing(
 
     with tempfile.TemporaryDirectory(prefix="docket-landed-") as scratch:
 
-        def probe(item: Item) -> int:
+        def probe(item: Item) -> tuple[int, float]:
             # Coverage keeps its data in one file per run and reads it back to
             # decide `--cov-fail-under`, so two `--cov` commands sharing the
             # tree's default `.coverage` would race and one could fail on data
@@ -637,20 +697,28 @@ def already_passing(
             # it is only read by selectors no recorded command uses, so a lost
             # entry cannot change an exit status.
             env = {**child, "COVERAGE_FILE": str(Path(scratch) / f"coverage.{item.identifier}")}
+            started = time.monotonic()
             status, _ = _run([item.verify], root, shell=True, timeout=timeout, env=env)
-            return status
+            # Wall clock rather than CPU: what a session waits through is the
+            # question, and it is measured under the pool's own contention
+            # rather than standalone for the same reason. `dominant` reads the
+            # ratio between these rather than any one of them, which is what
+            # makes contention cancel instead of having to be corrected for.
+            return status, time.monotonic() - started
 
         # `map` yields in the order it was given, which the findings below rely
         # on: they are reported as lists of ids, and an order that varied run to
         # run would make a stable store look like a changing one.
+        started = time.monotonic()
         with ThreadPoolExecutor(max_workers=workers or landed_workers()) as pool:
             results = list(pool.map(probe, candidates))
+        elapsed = time.monotonic() - started
 
     passing: list[str] = []
     vacuous: list[str] = []
     timed_out: list[str] = []
     unavailable: list[str] = []
-    for item, status in zip(candidates, results, strict=True):
+    for item, (status, _) in zip(candidates, results, strict=True):
         # The two statuses that mean "no answer" are taken first, because both
         # are otherwise read as one: 127 is not 0 and neither is `TIMED_OUT`,
         # so either would fall through to `selects_no_test` and then out of
@@ -680,6 +748,29 @@ def already_passing(
             "toolchain is missing or the limit too low"
         )
 
+    # Only the commands that ran to completion. A killed one did not take its
+    # duration - it was stopped at the limit - and one the shell could not find
+    # returns instantly, so either would move the median without having cost
+    # what it appears to.
+    answered = [
+        (item, seconds)
+        for (item, (_, seconds)) in zip(candidates, results, strict=True)
+        if item.identifier not in timed_out and item.identifier not in unavailable
+    ]
+    typical = median(seconds for _, seconds in answered) if answered else 0.0
+    slow = (
+        tuple(
+            SlowCommand(item.identifier, seconds)
+            for item, seconds in sorted(answered, key=lambda pair: -pair[1])
+            if seconds >= max(typical * SLOW_COMMAND_RATIO, SLOW_COMMAND_FLOOR)
+        )
+        # A median of zero admits no ratio, and a pool of one or two commands
+        # cannot contain an outlier by this test in any case: with two values
+        # the larger is under twice their median by construction.
+        if typical > 0
+        else ()
+    )
+
     counts = Counter(item.verify for item in candidates)
     named = set(passing)
     shared = tuple(
@@ -695,4 +786,7 @@ def already_passing(
         unavailable=tuple(unavailable),
         considered=checked,
         limit=timeout,
+        slow=slow,
+        typical=typical,
+        elapsed=elapsed,
     )

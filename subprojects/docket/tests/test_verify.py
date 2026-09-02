@@ -573,6 +573,80 @@ def test_the_limit_the_results_were_produced_under_is_carried(tmp_path: Path) ->
     assert already_passing(root, [_item()], timeout=7.5).limit == 7.5
 
 
+# What a command cost, not only what it returned. The pool's wall clock is its
+# slowest member, so one heavy `verify:` sets the floor for every `make check`
+# from the day it is written, and nothing used to say so (`PL-VG7G`).
+
+
+def test_a_command_far_above_the_typical_one_is_named_with_its_cost(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
+    items.append(_item(identifier="PL-SLOW", verify="sleep 2"))
+    report = already_passing(root, items, workers=8)
+
+    assert [command.identifier for command in report.slow] == ["PL-SLOW"]
+    assert report.slow[0].seconds >= 2
+
+
+def test_a_store_of_comparable_commands_names_none(tmp_path: Path) -> None:
+    # The property that keeps this from firing on every run. A healthy store
+    # measured 14x on 2026-09-02, against a threshold of 30x. Here it is the
+    # floor that decides: these commands take milliseconds, where a ratio
+    # against the median would be reading process-startup jitter.
+    root = _repo(tmp_path)
+    items = [_item(identifier=f"PL-000{n}") for n in range(6)]
+
+    assert already_passing(root, items, workers=8).slow == ()
+
+
+def test_two_heavy_commands_are_both_named(tmp_path: Path) -> None:
+    # Narrowing one of them changes nothing: the floor is wherever the other
+    # is, so a report naming only the worst would be advice that does not work.
+    root = _repo(tmp_path)
+    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
+    items += [
+        _item(identifier="PL-SLW1", verify="sleep 2"),
+        _item(identifier="PL-SLW2", verify="sleep 2"),
+    ]
+    report = already_passing(root, items, workers=8)
+
+    assert sorted(command.identifier for command in report.slow) == ["PL-SLW1", "PL-SLW2"]
+
+
+def test_the_named_commands_come_worst_first(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
+    items += [
+        _item(identifier="PL-SLW1", verify="sleep 2"),
+        _item(identifier="PL-SLW2", verify="sleep 4"),
+    ]
+    report = already_passing(root, items, workers=8)
+
+    assert [command.identifier for command in report.slow] == ["PL-SLW2", "PL-SLW1"]
+
+
+def test_a_killed_command_does_not_move_the_typical_cost(tmp_path: Path) -> None:
+    # It did not take its duration - it was stopped at the limit - so counting
+    # it would report a median the run never paid.
+    root = _repo(tmp_path)
+    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
+    items.append(_item(identifier="PL-KILL", verify="sleep 30"))
+    report = already_passing(root, items, timeout=0.3, workers=8)
+
+    assert report.timed_out == ("PL-KILL",)
+    assert [command.identifier for command in report.slow] == []
+
+
+def test_the_run_carries_what_normal_looked_like(tmp_path: Path) -> None:
+    # So a report can scale the number it prints rather than showing a bare
+    # duration nobody can read.
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(identifier=f"PL-000{n}") for n in range(4)], workers=8)
+
+    assert report.typical > 0
+    assert report.elapsed > 0
+
+
 # --- running them at once -----------------------------------------------------
 #
 # `make check` pays this, and the bill grows with the queue: every item triaged

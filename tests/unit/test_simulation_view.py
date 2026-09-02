@@ -39,6 +39,7 @@ from anesthesia_sim.app.simulation_view import (
     SimulationView,
 )
 from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, MUTED, WARNING
+from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import SimulationNumericalError
@@ -499,6 +500,25 @@ def test_the_alveolar_readout_is_labelled_end_tidal_equivalent() -> None:
     # alternative names for one quantity, which is the confusion the split
     # exists to remove.
     assert qualifier.size < name.size
+
+
+def test_the_header_shows_the_application_name_from_app_metadata() -> None:
+    """The page header must name the application, not a copy of its name.
+
+    `app_metadata.APP_DISPLAY_NAME` is the single place the name is declared,
+    and `app/main.py` also sets it as the window title. A literal in the view
+    would leave those two disagreeing after a rename, in the largest text on
+    the screen. This suite has caught the same class of bug once already, in
+    the delivered-concentration label that was hardcoded to one agent.
+
+    Asserted against the mounted tree rather than the import, so a header
+    rebuilt from a literal fails here even while the import still resolves.
+    """
+
+    page = _FakePage()
+    view = SimulationView(page=page, controller=_FakeController(_snapshot()))
+
+    assert APP_DISPLAY_NAME in _mounted_interface_strings(view, page)
 
 
 def test_every_readout_reserves_a_qualifier_line_and_an_equal_column() -> None:
