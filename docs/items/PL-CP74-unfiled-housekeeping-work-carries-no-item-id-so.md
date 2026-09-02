@@ -48,3 +48,32 @@ a log, which is worse than the collisions it prevents.
 **Done when.** A session about to do unfiled repository housekeeping has a
 stated rule telling it to file the item first and work under its id, and
 something deterministic catches the case where it did not.
+
+**Measured while this item was being captured, 2026-09-02.** A session titled
+"Anesthesia machine market evaluation" was working `PL-2XTF` and `PL-SVRW` —
+pull request title validation, a CI check, and changes to
+`subprojects/docket/src/docket/vcs.py`. Its title named no id and matched no
+part of what it was doing, and at the moment it was found its branch existed
+on no remote, so `docket flight`, `show`, `triage` and `next` could all see
+nothing.
+
+Three things follow, and they belong to three different items:
+
+- The ref-based guards were blind, exactly as described above — not through
+  any fault, but because there was no id and no pushed ref to match on.
+- The `list_sessions` scan the `docket` skill added for `PL-SK88` is what
+  found it, from a `task_summary` rather than the title. That is the scan
+  earning its place, and also its documented weakness: a session whose title
+  carries no id is invisible to a title read.
+- The collision was not duplicate work. Both branches touched `vcs.py` and
+  `test_vcs.py` for unrelated items, which is a merge conflict rather than a
+  wasted session — the case `PL-YHD3` (which of two sessions yields) does not
+  cover, because neither should yield. Naming the work would not have
+  prevented it; it would have made it visible before both branches were
+  written.
+
+So the rule this item proposes is worth having for visibility, and should not
+be sold as collision prevention. What would have helped here is `docket
+concurrent`, which already answers this — it lists `PL-2XTF` as unable to run
+alongside `PL-P0QT` — and which nothing prompts a session to run when the
+owner names the work directly.
