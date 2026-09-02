@@ -84,6 +84,48 @@ def test_finishing_a_started_feature_beats_equal_priority_new_work() -> None:
     assert "Finishes 'alpha'" in picks[0].reason
 
 
+def test_the_feature_nearest_completion_outranks_a_smaller_item() -> None:
+    """The case that exposed PL-B0YN, in the shape it was observed.
+
+    Two ready items of equal band, each in an underway feature, and the
+    *smaller* one is in the feature with further to go. Before the fix the tie
+    fell through to effort, so `alpha` at one item from done lost to `beta`
+    with three left - while the rationale line printed beside the winner was
+    the argument for the loser.
+    """
+    items = [
+        _item("PL-1111", feature="alpha", status="done"),
+        _item("PL-2222", feature="alpha", effort="M"),
+        _item("PL-3333", feature="beta", status="done"),
+        _item("PL-4444", feature="beta", effort="S"),
+        _item("PL-5555", feature="beta", effort="S"),
+        _item("PL-6666", feature="beta", effort="S"),
+    ]
+
+    assert recommend(items)[0].item.identifier == "PL-2222"
+
+
+def test_an_item_with_others_open_does_not_claim_to_finish_the_feature() -> None:
+    """PL-G1MF: a sentence may not assert and then withdraw the same claim."""
+    items = [
+        _item("PL-1111", feature="alpha", status="done"),
+        _item("PL-2222", feature="alpha"),
+        _item("PL-3333", feature="alpha"),
+    ]
+    (reason,) = {p.reason for p in recommend(items) if p.item.identifier == "PL-2222"}
+
+    assert "Finishes" not in reason
+    assert "Advances 'alpha'" in reason
+    assert "2 items left" in reason
+
+
+def test_the_last_open_item_is_still_described_as_finishing_its_feature() -> None:
+    items = [_item("PL-1111", feature="alpha", status="done"), _item("PL-2222", feature="alpha")]
+    (pick,) = recommend(items, limit=1)
+
+    assert "Finishes 'alpha' - its last open item." in pick.reason
+
+
 def test_priority_still_wins_over_feature_progress() -> None:
     """Finishing things matters, but not more than the band does."""
     items = [
