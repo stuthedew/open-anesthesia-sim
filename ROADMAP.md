@@ -1531,6 +1531,58 @@ v0.4.0 is complete only when:
   scoped release — or in `docs/items/` when they are a task rather
   than a release.
 
+## Keeping the toolchain current
+
+**When a dependency or the interpreter moves, a scheduled run notices and the
+owner decides. Nothing upgrades on a schedule, and nothing gates on it.**
+
+This is a multi-year project, so every version constraint in `pyproject.toml`
+will be wrong eventually — `requires-python` pins a single CPython minor and
+CPython ships one a year; Flet is pre-1.0 and its 1.0 is excluded by an upper
+bound; the dev tools are unbounded floors whose behaviour changes underneath
+the gate. The failure being guarded against is not a stale pin. It is returning
+after a gap to a tree that no longer builds, where the upgrade that would fix
+it is several versions wide and the cost of coming back exceeds what a hobby
+project will pay.
+
+It is not hypothetical here. `pyproject.toml` records the instance: pydantic
+2.12.4 began passing `prefer_fwd_module=` to `typing._eval_type`, a keyword
+CPython added between 3.14.0rc2 and 3.14.0 final, and parameter loading in the
+scientific core stopped working. One dependency, one patch version, one
+interpreter build.
+
+**What notices.** `.github/workflows/drift.yml`, monthly and on demand. Two
+questions, both of which `quality.yml` is right not to ask:
+
+- *`dependencies`* — the newest release each bound in `pyproject.toml` already
+  allows, resolved with `uv sync --upgrade`. A failure means a dependency broke
+  us inside a range this project has already said it accepts.
+- *`interpreter`* — the newest stable CPython, with the upper bound on
+  `requires-python` relaxed in the runner only. A failure means the next
+  interpreter is not ready for this tree, or this tree is not ready for it.
+
+It also prints what exists *beyond* the declared bounds without failing on it,
+because crossing a major bound is a deliberate migration and not something CI
+should attempt. That step is how the availability of a Flet 1.0 or a pydantic 3
+reaches anyone at all.
+
+**What does not happen.** No automated dependency pull requests, and no
+version-bump campaign. The current pins are correct today; the point is knowing
+when one stops being correct, not raising numbers on a schedule. Automated
+bumps were considered and rejected on the evidence this project already cites
+about narrow versus broad automation: broad automation accumulates noise until
+it is routed around, which is the failure `PL-ZBJ0` records.
+
+**Why it reports rather than gates.** The versions it resolves are outside
+anyone's control here, so gating would let an unrelated upstream release block
+this project's own work. A red run is news to act on when convenient, not a
+stop signal.
+
+**And it is retired if it stops being news.** `CLAUDE.md`'s retirement test
+applies: a check that fires every run without changing a decision is a defect
+in the check. If this becomes weather, delete the workflow rather than working
+around it.
+
 ## The debt gate
 
 **Recorded technical debt is cleared before a new milestone begins.** Phase 0
