@@ -48,11 +48,36 @@ recurring cost while the UI button is used, and a small one otherwise.
 plus `PL-9GCV` on `claude/v0-3-0-workflow-metrics-nzzhsi` (a bare stub) and
 `PL-Q8QX` on `claude/breathing-circuit-default-tckz8n` (a full brief reaching
 the same recommendation). Keep one and drop the other two rather than
-triaging three entries for one defect; `PL-9GCV` is dropped as a duplicate of this
-item, which now carries its prevention angle as an option. `PL-Q8QX` never merged: the
-v0.3.0 release branch carrying it deleted it unmerged when this item reached
-it, rather than land a knowing duplicate, since everything it contributes —
-the recovery approach, and the mechanism correction below — is already here.
+triaging three entries for one defect. `PL-9GCV` is dropped as a duplicate of
+this item, which now carries its prevention angle as an option.
+
+`PL-Q8QX` never reached `main`, and **an earlier revision of this paragraph
+said it was dropped on purpose. That was wrong.** It was lost. `PL-P0QT` has
+the forensics and they check out against the objects this container still
+holds:
+
+- `git cat-file -e ce090b4:docs/items/PL-Q8QX-…md` — present.
+- the same at `d7d5272` — present.
+- the same at `24cbed1` — **absent**. That commit is
+  `Merge origin/main into the v0.3.0 release branch`, joining `d7d5272`
+  (which has the file) with `73c4f4a` (which never did).
+- `git log --all --diff-filter=D -- <path>` — empty. No commit deletes it.
+
+A file added on one side of a merge and absent from the other is kept by
+default, so its absence from that tree is the conflict resolution removing it,
+inside the merge commit's own tree rather than as a deletion any later reader
+would find. Nothing recorded that it happened.
+
+The distinction is the whole point. Recorded as a deliberate drop, `PL-P0QT`
+reads as a non-issue and gets closed; recorded as what it was, it is a live
+breach of `CLAUDE.md`'s capture guarantee — a session's finding disappearing
+with nothing to detect it. `PL-P0QT` is the item for the mechanism and is
+being worked on `claude/v0-3-0-workflow-metrics-nzzhsi`; do not fold it into
+this one.
+
+Nothing of substance died with `PL-Q8QX` — its recovery approach and the
+mechanism correction below are both already here — which is precisely why the
+loss was so easy to rationalize after the fact.
 
 `PL-Q8QX` states the mechanism wrongly, though, and the difference decides
 whether prevention is possible. It reports that `#220` was *titled* with three
