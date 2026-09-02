@@ -6,10 +6,12 @@ effort: M
 status: done
 classes: defect, docs
 feature: model-spec-accuracy
+milestone: v0.3.0
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/data, docs/MODEL.md, tools/doc_check.py
 added: 2026-09-02
 closed: 2026-09-02
-pr: 216
+commit: 9cc972c
+pr: 217
 ---
 
 **Problem.** `BreathingCircuit.fresh_gas_flow_l_min` defaults to `4.0` as a

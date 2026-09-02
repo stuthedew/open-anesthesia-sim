@@ -3,9 +3,10 @@ id: PL-P909
 title: A blocked item may outrank its blocker, and the blocked exemption lets a live safety defect sit outside the top band
 priority: P1
 effort: S
-classes: safety, infra
 status: done
+classes: safety, infra
 feature: dev-tooling
+milestone: v0.3.0
 touches: subprojects/docket
 added: 2026-09-02
 closed: 2026-09-02
