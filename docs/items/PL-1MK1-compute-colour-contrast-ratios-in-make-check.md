@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: presentation-safety
+milestone: v0.2.9
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py, Makefile, .github/workflows/quality.yml, docs/ARCHITECTURE.md, README.md
 added: 2026-09-02
 closed: 2026-09-02

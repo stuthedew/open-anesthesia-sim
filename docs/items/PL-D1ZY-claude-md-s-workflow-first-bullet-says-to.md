@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs, session-cost
 feature: worker-instructions
+milestone: v0.2.9
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-02
 closed: 2026-09-02
