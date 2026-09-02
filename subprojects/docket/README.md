@@ -239,7 +239,8 @@ and `triage`, `check` and reading the file directly all said nothing — so the
 guard against two sessions doing one item was applied only on the path where a
 person had *not* chosen the work. Marking it in `show` is the smaller half of
 that repair; the larger half is prose, in the `docket` skill, because a session
-handed an item is not obliged to run any command at all.
+handed an item is not obliged to run any command at all. `triage` carries the
+same mark now, for a collision it went on to hit itself — below.
 
 Neither half reaches the network. Only `docket branch` calls `fetch_remote`, so
 `flight` and `show` answer from the refs this checkout already holds — which is
@@ -281,6 +282,19 @@ What an item is worth, how big it is and what it belongs with are not computed
 and never will be. Triage is the judgment; what the command removes is having
 to recall the rules from memory and find out afterwards whether the recall was
 right.
+
+It names, per item, whether a branch already carries that id — and which refs
+it could not read to answer that. Triage is the more exposed of the two entry
+points rather than the less: `show` guards the path where a session has
+already *chosen* an item, while triage is what a session runs straight off a
+digest that reports the untriaged count and nothing about who is holding those
+items. Two sessions answered the same pair of items on one afternoon and the
+merge discarded most of one answer, the reasoning behind it included. The mark
+names the branch rather than the fact of one, so a session can tell another
+session's work from its own; and it advises rather than refuses, because the
+answer is bounded by what has been pushed and a lock built on that would
+sooner or later block the session whose own branch is the one holding the
+item.
 
 ### Choosing is answered, not browsed
 

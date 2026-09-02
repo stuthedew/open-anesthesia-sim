@@ -350,6 +350,13 @@ sections still missing, and the rules the answers must satisfy — read from
 to rather than what this file remembers. Do not read the store for this, and
 do not re-derive the rules from here.
 
+**An item marked `IN FLIGHT` is one a branch already carries — skip it.** A
+second answer here is a second resolution of the same file, and the merge keeps
+one of them. The mark names the branch, so another session's work is
+distinguishable from this one's. It is bounded by what has been pushed, so an
+*unmarked* item means "no ref proved it" rather than "no branch has it" — which
+is why the output also names the refs it could not read.
+
 Fill in what capture deliberately skipped:
 `priority`, `effort`, `classes`, `touches`, and `feature` when it belongs
 with related work. Safety-critical work starts at `P0` or `P1`; the checker
