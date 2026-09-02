@@ -3,11 +3,13 @@ id: PL-2SVR
 title: The sevoflurane identification swatch is invisible as a shape against the panel
 priority: P3
 effort: S
-status: needs-decision
+status: dropped
 classes: ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-09-02
+closed: 2026-09-02
+reason: Written from the colour constants without reading the widget that uses them, and wrong in both of its claims. The swatch is on the page background, not the panel (1.27:1, not 1.37:1), and the border this item proposes adding already exists and predates the item - `simulation_view.py` builds the badge with `border=ft.Border.all(1, foreground)` under a comment already citing the figure. Every agent swatch is perceivable today: sevoflurane by its border at 10.70:1, isoflurane and desflurane by their fills at 6.60 and 6.06. What is genuinely wrong is that the checker cannot express "perceivable by either channel" and so reports a false shortfall, which is `PL-GNN1`. The one thing neither covers - whether isoflurane's and desflurane's inert white borders should be removed - is cosmetic, and filing it would put a styling preference in a queue that is meant to hold defects.
 ---
 
 > **Read this first (2026-09-02).** Most of what follows is wrong, and the item
