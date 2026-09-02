@@ -8,6 +8,7 @@ classes: safety, ux
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-08-24
 closed: 2026-09-02
+pr: 204
 ---
 
 **Problem.** PL-018 made a failed step halt the run and warn that "the values
