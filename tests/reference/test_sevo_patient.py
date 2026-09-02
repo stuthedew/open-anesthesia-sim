@@ -65,11 +65,24 @@ def _synthetic_agent(blood_gas_partition_coefficient: float) -> AgentParameters:
 def _build_system_with_blood_gas_coefficient(
     blood_gas_partition_coefficient: float,
 ) -> AgentUptakeSystem:
+    """Build a synthetic-agent system, differing only in blood:gas solubility.
+
+    The circuit starts at the synthetic agent's own 1 MAC under its own
+    vaporizer maximum, the same convention `AgentUptakeSystem.for_agent()`
+    uses for the built-in agents. `_synthetic_agent()` holds both of those
+    fixed, so the two systems compared below run at one identical dial.
+    """
+
     agent = _synthetic_agent(blood_gas_partition_coefficient)
     patient_parameters = load_reference_adult_parameters()
 
     return AgentUptakeSystem(
-        circuit=BreathingCircuit(),
+        circuit=BreathingCircuit(
+            delivered_concentration_fraction=(agent.mac_percent / 100.0),
+            max_delivered_concentration_fraction=(
+                agent.max_delivered_concentration_percent / 100.0
+            ),
+        ),
         alveoli=AlveolarCompartment(
             gas_volume_l=patient_parameters.alveolar_gas_volume_l,
             alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
