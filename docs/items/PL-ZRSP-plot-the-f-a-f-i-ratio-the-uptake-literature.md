@@ -3,11 +3,12 @@ id: PL-ZRSP
 title: Plot the F_A/F_I ratio the uptake literature plots
 priority: P1
 effort: S
-status: ready
+status: blocked
 classes: science, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
 added: 2026-08-25
+blocked-by: PL-WB0X
 ---
 **Problem.** The wash-in curve every textbook and every uptake lecture shows is
 F_A/F_I against time - the ratio that makes agents comparable and that the
@@ -34,3 +35,14 @@ vaporizer setting.
 clear it is a dimensionless ratio against inspired rather than against the dial,
 `docs/MODEL.md` states the constant-F_I caveat, and the trace is readable against
 the published wash-in curves for the three agents.
+
+**Blocked on `PL-WB0X` (2026-09-02, project owner).** Not a stated
+prerequisite in this brief - it is file contention that `bin/docket concurrent
+PL-WB0X` reports and nothing else would have surfaced. `PL-WB0X` moves the
+formatters and the chart-series assembly out of `simulation_view.py` into
+`app/formatting.py`, and this item edits both in their current location. Doing
+it first means doing that part of it twice, and the second time inside a file
+that has since moved.
+
+The block is sequencing only: nothing here is wrong today, and the band stands
+on this item's own classes rather than on the blocker's.

@@ -114,6 +114,11 @@ jobs:
       - name: relax the interpreter pin for this run only
         run: |
           set -euo pipefail
+          # Recorded before `.python-version` is deleted, so the step after the
+          # sync can say whether this run actually reached past the pin. Without
+          # it the job reports success identically whether it tested the next
+          # CPython or the current one (`PL-CGSS`).
+          echo "PINNED_MINOR=$(cut -d. -f1,2 < .python-version)" >> "$GITHUB_ENV"
           python3 - <<'PY'
           import pathlib, re
           p = pathlib.Path("pyproject.toml")
@@ -141,5 +146,27 @@ jobs:
 
       - name: resolved versions
         run: uv pip list
+
+      # The job's green is meaningless without this. `3.x` asks for the newest
+      # stable CPython, which for most of a release cycle *is* the pinned minor,
+      # so a passing run proves the pin still works rather than that the next
+      # interpreter does - and nothing in the output said which. Measured on the
+      # first real run: `3.x` resolved to 3.14.7 against a pinned 3.14.7.
+      #
+      # Reported, never failed. "Nothing newer exists" is the expected state for
+      # most of the year, and failing on it would leave the job red for months,
+      # which is the routed-around outcome the retirement test forbids.
+      - name: did this run reach past the pin?
+        run: |
+          set -euo pipefail
+          resolved="$(uv run python -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+          full="$(uv run python -c 'import sys; print(sys.version.split()[0])')"
+          if [ "$resolved" = "$PINNED_MINOR" ]; then
+            line="No newer CPython exists yet. Tested ${full}, which is the pinned ${PINNED_MINOR} series. This run confirms the pin still works and is not evidence about the next interpreter."
+          else
+            line="Tested past the pin: resolved ${full} against a pinned ${PINNED_MINOR}. Green here is evidence that requires-python's upper bound can move; red is the next interpreter breaking this tree."
+          fi
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
 
       - run: uv run pytest
