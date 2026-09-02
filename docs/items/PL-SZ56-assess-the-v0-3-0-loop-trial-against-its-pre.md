@@ -62,9 +62,23 @@ tag; the v0.2.8 window is `v0.2.7`..`v0.2.8`, 2026-08-30 to 2026-09-01.
    number this session created: it was 3 on the morning of 2026-09-02
    (`PL-D1ZY`, `PL-N092`, `PL-Y4Q4`), each on a branch with no open pull
    request and one deletion from lost.
-   *Threshold:* 0 at every check during v0.3.0. Any non-zero means the
-   branch-and-merge path still loses work, and this morning is the evidence
-   that it does.
+   *Threshold (amended 2026-09-02, before v0.3.0's first entry):* zero items
+   stranded on a branch with **no open pull request and no commit in the last
+   48 hours**. A live session's branch appearing in `stranded` is expected and
+   is not a finding — the command says so itself, and `bin/docket flight` adds
+   that "a live session and a branch nobody will merge look the same here; the
+   age is what separates them". The failure is a branch nobody will merge,
+   which is what the three recovered this morning were.
+
+   *Why it was amended rather than left frozen.* As first written the
+   threshold was "0 at every check", which fires on normal parallel work: a
+   second session had an open triage branch within the hour, and the original
+   wording scored that a failure. An instrument that fires on ordinary
+   operation measures nothing, and the amendment narrows what counts rather
+   than relaxing it. It is recorded here with its date and reason, and made
+   before the first entry started, because an assessment criterion changed
+   *after* seeing the outcome is the retrofit this whole item exists to
+   prevent. Any further amendment gets the same treatment or it is not one.
 5. **Digest self-reported blindness.** The session-start digest's "N refs
    could not be compared with origin/main on the history this checkout holds"
    line. **t=0: firing in every session**, naming 2 refs on 2026-09-02, which
