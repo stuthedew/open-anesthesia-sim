@@ -2,7 +2,7 @@
 
 Regression cover for PL-0MLQ: `docs/MODEL.md` declared a closed supported
 interval for each control, and only the delivered concentration's was
-enforced. `RespiratorySystem.set_cardiac_output(1000.0)` was accepted and
+enforced. `AgentUptakeSystem.set_cardiac_output(1000.0)` was accepted and
 simulated, and the interface's sliders were the only thing keeping a run
 inside the domain the verification gates cover.
 

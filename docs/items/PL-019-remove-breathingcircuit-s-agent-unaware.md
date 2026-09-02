@@ -17,7 +17,7 @@ agents. Since PL-015 the circuit also carries a vaporizer maximum, so
 the caller remembers to pass a deliverable concentration too.
 **Why it matters.** Not a defect: the raise is the intended fail-closed
 behavior, and every agent-aware path goes through
-`RespiratorySystem.for_agent()`, which sets both values from the data file.
+`AgentUptakeSystem.for_agent()`, which sets both values from the data file.
 It is a rough edge for a direct core caller, and one more agent-unaware
 literal of the kind PL-017 removed from the controller.
 **Where.** `core/circuit.py`, `tests/unit/test_circuit.py`,

@@ -1,6 +1,6 @@
 """What `capture_state()` covers, checked against the compartments themselves.
 
-PL-026 made `RespiratorySystem.advance()` transactional by capturing every
+PL-026 made `AgentUptakeSystem.advance()` transactional by capturing every
 dynamic value before the step and restoring it on failure. `docs/
 WORKING_NOTES.md` records the one real risk in that design: a snapshot that
 silently stops covering everything. A field added to a compartment later,
@@ -39,8 +39,8 @@ from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.patient import PatientCompartmentsState
-from anesthesia_sim.core.respiratory_system import RespiratorySystem, RespiratorySystemState
 from anesthesia_sim.core.tissue import TissueGroup
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem, AgentUptakeSystemState
 
 
 @dataclass(frozen=True)
@@ -266,7 +266,7 @@ def _capturable_field_names(composite: Any) -> frozenset[str]:
 def test_the_patient_state_covers_every_patient_compartment() -> None:
     """A fourth tissue group would have to be captured to be added."""
 
-    patient = RespiratorySystem.for_agent("sevoflurane").patient
+    patient = AgentUptakeSystem.for_agent("sevoflurane").patient
 
     assert {f.name for f in fields(patient)} == {
         "cardiac_output_l_min",
@@ -286,9 +286,9 @@ def test_the_patient_state_covers_every_patient_compartment() -> None:
 def test_the_system_state_covers_every_part_of_the_system() -> None:
     """Same guard one level up, where a sixth compartment would be added."""
 
-    system = RespiratorySystem.for_agent("sevoflurane")
+    system = AgentUptakeSystem.for_agent("sevoflurane")
 
-    assert {f.name for f in fields(RespiratorySystemState)} == _capturable_field_names(system)
+    assert {f.name for f in fields(AgentUptakeSystemState)} == _capturable_field_names(system)
     assert {f.name for f in fields(system)} == _capturable_field_names(system)
 
 
@@ -301,7 +301,7 @@ def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:
     consulting a guard that could reject it.
     """
 
-    system = RespiratorySystem.for_agent("sevoflurane")
+    system = AgentUptakeSystem.for_agent("sevoflurane")
 
     for _ in range(10):
         system.advance(0.1)

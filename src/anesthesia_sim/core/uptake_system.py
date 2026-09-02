@@ -2,11 +2,17 @@
 compartments into one steppable system, and builds that system from agent
 and reference-patient parameter files via `for_agent()`.
 
-This class currently also re-exposes some patient- and machine-level
-setters (e.g. cardiac output, delivered concentration) that arguably
-belong on the compartments they forward to rather than here; see the
-"near-term to-dos" open thread in docs/WORKING_NOTES.md for a scoped
-cleanup of this class's boundaries.
+Named for uptake rather than for anatomy. What this module owns is agent
+moving from the circuit through the alveoli into blood and tissue, which is
+what "uptake" names in inhaled-anesthetic pharmacology. Only `alveoli` is
+respiratory in the clinical sense: `circuit` is anesthesia-machine equipment,
+and `patient` holds the vessel-rich, muscle and fat compartments.
+
+The distinction is not cosmetic. `total_stored_agent_l` sums all of them and
+feeds the conservation check that can halt a run, and at steady state most of
+that agent is in fat and muscle - so a reader who took the previous name
+"RespiratorySystem" at face value would read that quantity as agent in the
+lungs, and be wrong by a large factor on an accounting quantity (PL-006).
 """
 
 from __future__ import annotations
@@ -78,7 +84,7 @@ def require_supported_simulation_step(simulation_step_s: float) -> None:
 
 
 @dataclass(frozen=True, slots=True)
-class RespiratoryStepResult:
+class UptakeStepResult:
     """Validation and transfer results from one complete step."""
 
     fresh_gas_exchange: FreshGasExchange
@@ -88,10 +94,10 @@ class RespiratoryStepResult:
 
 
 @dataclass(frozen=True, slots=True)
-class RespiratorySystemState:
+class AgentUptakeSystemState:
     """Every dynamic value one simulation step can change.
 
-    The counterpart of `RespiratoryStepResult`: that reports what a step
+    The counterpart of `UptakeStepResult`: that reports what a step
     did, this records what it would have to undo. Each entry is captured by
     the compartment that owns it rather than read out of it here, so that a
     dynamic field added to a compartment later without a matching capture
@@ -106,8 +112,23 @@ class RespiratorySystemState:
 
 
 @dataclass(slots=True)
-class RespiratorySystem:
-    """Coupled circuit, alveolar gas, and patient compartments."""
+class AgentUptakeSystem:
+    """Coupled circuit, alveolar gas, and patient compartments.
+
+    The four forwarding setters below are this system's control surface, and
+    what defines the set is that they are the live user-controllable inputs:
+    fresh gas flow and delivered concentration are machine controls, alveolar
+    ventilation and cardiac output are patient state, and the four are
+    exactly the sliders the interface exposes. They forward rather than
+    validate - each compartment keeps its own guard - so what they add is one
+    place a caller can reach every setting that may change during a run
+    without having to know which compartment holds it.
+
+    A setting outside that set is reached through the compartment that owns
+    it. Circuit volume is `system.circuit.set_circuit_volume()`, because it
+    is a property of the rig rather than something a clinician turns mid-run,
+    and adding it here would make this set mean nothing in particular.
+    """
 
     circuit: BreathingCircuit
     alveoli: AlveolarCompartment
@@ -120,13 +141,13 @@ class RespiratorySystem:
         self.agent_simulation_validator.reset(initial_agent_l=self.total_stored_agent_l)
 
     @classmethod
-    def default(cls) -> RespiratorySystem:
+    def default(cls) -> AgentUptakeSystem:
         """Build the default v0.1.0 sevoflurane system."""
 
         return cls.for_agent("sevoflurane")
 
     @classmethod
-    def for_agent(cls, agent_id: str) -> RespiratorySystem:
+    def for_agent(cls, agent_id: str) -> AgentUptakeSystem:
         """Build a system for any built-in agent (see `AGENT_DATA_FILENAMES`).
 
         The circuit carries that agent's own vaporizer maximum, and starts
@@ -184,7 +205,7 @@ class RespiratorySystem:
     def set_cardiac_output(self, cardiac_output_l_min: float) -> None:
         self.patient.set_cardiac_output(cardiac_output_l_min)
 
-    def advance(self, simulation_step_s: float) -> RespiratoryStepResult:
+    def advance(self, simulation_step_s: float) -> UptakeStepResult:
         """Advance one conservative, validated simulation step, or none.
 
         The step is all-or-nothing. `_advance_step()` applies five
@@ -257,17 +278,17 @@ class RespiratorySystem:
 
             raise
 
-    def capture_state(self) -> RespiratorySystemState:
+    def capture_state(self) -> AgentUptakeSystemState:
         """Record every dynamic value, for `advance()` to roll back to."""
 
-        return RespiratorySystemState(
+        return AgentUptakeSystemState(
             circuit=self.circuit.capture_state(),
             alveoli=self.alveoli.capture_state(),
             patient=self.patient.capture_state(),
             agent_simulation_validator=(self.agent_simulation_validator.capture_state()),
         )
 
-    def restore_state(self, state: RespiratorySystemState) -> None:
+    def restore_state(self, state: AgentUptakeSystemState) -> None:
         """Restore state previously captured by `capture_state()`.
 
         Every compartment restores by direct field assignment, so this
@@ -282,7 +303,7 @@ class RespiratorySystem:
         self.patient.restore_state(state.patient)
         self.agent_simulation_validator.restore_state(state.agent_simulation_validator)
 
-    def _advance_step(self, simulation_step_s: float) -> RespiratoryStepResult:
+    def _advance_step(self, simulation_step_s: float) -> UptakeStepResult:
         """Apply one step's transfers, assuming the step size is valid.
 
         Writes each compartment as it goes and does not clean up after
@@ -310,7 +331,7 @@ class RespiratorySystem:
 
         self.agent_simulation_validator.require_valid_agent_accounting(accounting_check)
 
-        return RespiratoryStepResult(
+        return UptakeStepResult(
             fresh_gas_exchange=fresh_gas_exchange,
             circuit_to_alveolar_agent_l=(circuit_to_alveolar_agent_l),
             patient_agent_change_l=(patient_agent_change_l),

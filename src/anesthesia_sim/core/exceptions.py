@@ -23,7 +23,7 @@ difference is what the interface acts on:
   did not take effect, and the run (if any) is still trustworthy.
 - `SimulationExecutionError` — a step that had already begun could not be
   completed, and the run must stop rather than continue. What the model
-  holds is the last completed step: `RespiratorySystem.advance()` rolls
+  holds is the last completed step: `AgentUptakeSystem.advance()` rolls
   the failed step back before raising, so the values are a real solution
   of the model rather than an artifact of how far into the step the
   operators got. Stopping is required all the same — the model reached a
@@ -50,7 +50,7 @@ class SimulationExecutionError(AnesthesiaSimulationError):
 
     A step that had begun could not be completed, or a caller asked a
     halted run to continue. Where a step is what failed,
-    `RespiratorySystem.advance()` rolls it back before raising, so the
+    `AgentUptakeSystem.advance()` rolls it back before raising, so the
     state left behind is the last completed step rather than a partly
     applied one; the run still has to stop.
     """
@@ -63,7 +63,7 @@ class SimulationNumericalError(SimulationExecutionError):
     valid: it is the step itself that produced a state the model cannot
     represent — a negative compartment amount, a fraction outside zero
     through one — typically because the step was too large for the
-    operator split in `RespiratorySystem.advance()`.
+    operator split in `AgentUptakeSystem.advance()`.
     """
 
 

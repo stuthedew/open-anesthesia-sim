@@ -5,7 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: safety, ux
-touches: src/anesthesia_sim/core/respiratory_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-08-24
 closed: 2026-09-02
 ---
@@ -13,7 +13,7 @@ closed: 2026-09-02
 **Problem.** PL-018 made a failed step halt the run and warn that "the values
 shown may not reflect a completed step", but the metrics and chart traces are
 still drawn at whatever value the abandoned step left them:
-`RespiratorySystem.advance()` applies five sub-exchanges in sequence and a
+`AgentUptakeSystem.advance()` applies five sub-exchanges in sequence and a
 guard can reject the fifth after the first four have mutated state.
 
 **Why it matters.** `CLAUDE.md` prefers an obvious failure state to a
@@ -60,11 +60,11 @@ which step size, and where a reader can act on it.
 **The one real risk in rollback** is a snapshot that silently stops covering
 everything: a field added to a compartment later, with no matching capture,
 would leave a partial restore that looks like a complete one. That is why
-capture belongs on each compartment rather than in `RespiratorySystem` — a
+capture belongs on each compartment rather than in `AgentUptakeSystem` — a
 missing field is then a local, reviewable omission — and why the regression
 test asserts bit-identical state rather than approximate agreement.
 
-**Where.** `src/anesthesia_sim/core/respiratory_system.py` (`advance`,
+**Where.** `src/anesthesia_sim/core/uptake_system.py` (`advance`,
 `_advance_step`) and the five classes holding dynamic state:
 `src/anesthesia_sim/core/circuit.py`, `src/anesthesia_sim/core/alveolar.py`,
 `src/anesthesia_sim/core/tissue.py`, `src/anesthesia_sim/core/blood.py`,
@@ -73,7 +73,7 @@ test asserts bit-identical state rather than approximate agreement.
 
 **First step.** Give each compartment `capture_state()` / `restore_state()`
 over its own dynamic fields, rather than reaching into them from
-`RespiratorySystem`. A field added later without its capture then fails
+`AgentUptakeSystem`. A field added later without its capture then fails
 locally and visibly instead of leaving a partial restore that looks complete.
 
 **Done when.** A failed step leaves every dynamic value bit-identical to its
@@ -84,7 +84,7 @@ partial state.
 
 **Outcome (2026-09-02).** Built as decided. Each of the five classes carries
 `capture_state()` / `restore_state()` over a frozen state record of its own
-(`BreathingCircuitState` and so on); `RespiratorySystem.capture_state()`
+(`BreathingCircuitState` and so on); `AgentUptakeSystem.capture_state()`
 composes them, and `advance()` captures before the step and restores on any
 failure, so the rollback is wider than the guard it was written for — an
 accounting failure or a `TypeError` from a later refactor leaves the same

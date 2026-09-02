@@ -19,7 +19,7 @@ yet implemented'". `docs/WORKING_NOTES.md`'s "Decided, not yet implemented"
 section is about `PL-026` and nothing else: the eight-float state table, the two
 rejected display treatments and why the partial numbers have no teaching value,
 and the argument for putting capture on each compartment rather than in
-`RespiratorySystem`.
+`AgentUptakeSystem`.
 
 That is one item's own reasoning held in a second file. The rewritten split in
 `docs/WORKING_NOTES.md`'s header and in `CLAUDE.md`'s capture bullet (both

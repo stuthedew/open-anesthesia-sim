@@ -15,8 +15,8 @@ closed: 2026-09-02
 **Problem.** `docs/MODEL.md:564-566` says that when a step fails, "the step is
 abandoned, simulation time does not advance, and the caller must stop the run
 rather than read the partially applied state as a result". Only the second
-clause is true. `RespiratorySystem.advance`'s own docstring
-(`core/respiratory_system.py:132-135`) says the opposite of the first:
+clause is true. `AgentUptakeSystem.advance`'s own docstring
+(`core/uptake_system.py:132-135`) says the opposite of the first:
 "Compartment state is left partway through the step and must not be read as a
 simulation result." Time is not advanced; the compartments are.
 
@@ -26,7 +26,7 @@ document and the docstring disagree on the one point that determines what a
 caller may safely do after a halt, and the document is the one a reader of the
 model reaches first.
 
-**Where.** `docs/MODEL.md:564-566`; `core/respiratory_system.py:132-135`.
+**Where.** `docs/MODEL.md:564-566`; `core/uptake_system.py:132-135`.
 
 **Approach.** Correct the document to match the docstring: the step is
 *abandoned as a result* — time does not advance and the state must not be read
@@ -48,7 +48,7 @@ This item planned to weaken the document to match the code — "the step is
 abandoned *as a result*, while compartment state is left partway through" —
 and to cite `PL-026` as the work that would make the original wording true.
 `PL-026` landed first, so the document was corrected upward instead:
-`RespiratorySystem.advance()` now captures every dynamic value before the step
+`AgentUptakeSystem.advance()` now captures every dynamic value before the step
 and restores it on failure, and the paragraph says the step is rolled back in
 full and the caller is left holding the last completed step. There is no
 weaker guarantee left to record, and nothing to cite `PL-026` as future work

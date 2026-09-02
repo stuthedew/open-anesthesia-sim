@@ -46,9 +46,9 @@ src/anesthesia_sim/
 │   ├── blood.py                   # venous blood compartment
 │   ├── tissue.py                  # one perfusion-limited tissue group
 │   ├── patient.py                 # PatientCompartments: VRG + muscle + fat + venous blood
-│   ├── respiratory_system.py      # couples circuit + alveoli + patient; advances one step
+│   ├── uptake_system.py      # couples circuit + alveoli + patient; advances one step
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
-│   └── simulation.py              # SimulationState: explicit elapsed time + RespiratorySystem
+│   └── simulation.py              # SimulationState: explicit elapsed time + AgentUptakeSystem
 ├── app/                  # Flet user interface
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic
@@ -70,7 +70,7 @@ data/patients/reference_adult.json ─┴─> core/parameters.py
                                         (parse + validate schema, units, ranges)
                                         │
                                         ▼
-                          RespiratorySystem.default()
+                          AgentUptakeSystem.default()
                           (circuit + alveoli + patient compartments)
                                         │
                                         ▼
@@ -88,12 +88,12 @@ a key the schema does not declare fails the load rather than being silently
 discarded, so a data file cannot document one model while the app runs
 another. Nothing downstream re-reads or re-derives these values from disk.
 
-**Each simulation step**, `RespiratorySystem.advance()` runs a fixed sequence
+**Each simulation step**, `AgentUptakeSystem.advance()` runs a fixed sequence
 of exact analytic solutions (operator splitting — see `docs/MODEL.md` for the
 equations) rather than a generic numerical integrator:
 
 1. circuit ⇄ fresh gas exchange (`BreathingCircuit.advance_fresh_gas`);
-2. circuit ⇄ alveolar gas exchange (`RespiratorySystem._exchange_circuit_and_alveoli`);
+2. circuit ⇄ alveolar gas exchange (`AgentUptakeSystem._exchange_circuit_and_alveoli`);
 3. patient uptake/return (`PatientCompartments.advance`), driven by the
    current alveolar fraction;
 4. alveolar gas absorbs the resulting blood uptake
@@ -106,10 +106,14 @@ equations) rather than a generic numerical integrator:
 `SimulationState`, exposes `start()` / `pause()` / `reset()` / per-parameter
 setters, and produces an immutable `SimulationSnapshot` on request. It holds
 no default values and no bounds of its own: every unspecified setting comes
-from what `RespiratorySystem.for_agent()` built from the data files, and a
+from what `AgentUptakeSystem.for_agent()` built from the data files, and a
 setting the core rejects — a delivered concentration above the agent's
 vaporizer maximum, say — raises out of the core rather than being clamped or
-defaulted at this boundary. The
+defaulted at this boundary. Conservation is core's on the same terms: until
+PL-006 the controller read the circuit's stored agent out and put it back
+around `set_circuit_volume`, which left `core/` exposing an unconserving
+primitive publicly and the invariant holding only for the caller that knew
+to compensate. The setter conserves, and the controller forwards. The
 snapshot carries the complete `SimulationHistorySample` record of the run:
 one sample per simulation step, not trimmed (see `docs/items/`).
 `app/simulation_view.py` reads only from that snapshot — it formats
@@ -131,7 +135,7 @@ different treatment:
 - `SimulationExecutionError` (and its `SimulationNumericalError` /
   `AgentSimulationValidationError` subclasses) — a step began and could
   not be completed, so the run must stop.
-  `RespiratorySystem.advance()` is what makes this distinction: it checks
+  `AgentUptakeSystem.advance()` is what makes this distinction: it checks
   its own arguments first, then restates any guard reached during the step
   as a `SimulationNumericalError`, keeping the original as `__cause__`.
   It is also what makes the step atomic — it captures every dynamic value
@@ -314,7 +318,7 @@ and import, run before a push, and reach what those two commands never do.
 - **`tests/unit/`** — one module's behavior in isolation (a compartment, a
   validator, a parameter loader, the controller, the view's formatting).
 - **`tests/integration/`** — components wired together as the app assembles
-  them (e.g. controller driving a full `RespiratorySystem`).
+  them (e.g. controller driving a full `AgentUptakeSystem`).
 - **`tests/reference/`** — analytic/independent reference cases the
   implementation must reproduce (e.g. the closed-form circuit wash-in
   solution, the sevoflurane patient reference scenario, and the from-scratch

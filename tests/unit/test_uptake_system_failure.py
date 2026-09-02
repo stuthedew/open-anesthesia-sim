@@ -13,7 +13,7 @@ in the first digit the interface displays.
 
 PL-0MLQ applies the same distinction to the four controls a user sets. A
 setting outside `core/supported_ranges.py` is refused by the compartment it
-belongs to, which is what every `RespiratorySystem` setter forwards to, and
+belongs to, which is what every `AgentUptakeSystem` setter forwards to, and
 the run in progress stays trustworthy.
 
 PL-026 closes what PL-018 left: the step is now transactional, so a failure
@@ -22,6 +22,10 @@ partway through the five sub-exchanges. The rollback tests below assert
 `==` rather than `pytest.approx` deliberately — the claim is that nothing
 was written and then undone approximately, but that nothing survives the
 failed step at all.
+
+PL-006 adds the case where the distinction had been drawn in the wrong
+place: `set_circuit_volume` destroyed agent and the *next* step failed for
+it, reporting a numerical error for what was a setter's defect.
 """
 
 from math import inf, nan
@@ -42,9 +46,9 @@ from anesthesia_sim.core.exceptions import (
 )
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S, RespiratorySystem
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.supported_ranges import MAXIMUM_CARDIAC_OUTPUT_L_MIN
+from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
 
 # An alveolar gas volume no patient has, and that is the point: after PL-VP7N
 # no supported step can break the split on the reference adult, so the only
@@ -62,16 +66,16 @@ from anesthesia_sim.core.supported_ranges import MAXIMUM_CARDIAC_OUTPUT_L_MIN
 BREAKDOWN_ALVEOLAR_GAS_VOLUME_L = 0.005
 
 
-def _sevoflurane_at_one_mac() -> RespiratorySystem:
-    return RespiratorySystem.for_agent("sevoflurane")
+def _sevoflurane_at_one_mac() -> AgentUptakeSystem:
+    return AgentUptakeSystem.for_agent("sevoflurane")
 
 
-def _lungs_too_small_for_one_supported_step() -> RespiratorySystem:
+def _lungs_too_small_for_one_supported_step() -> AgentUptakeSystem:
     """A system whose alveolar store one supported step would overdraw."""
 
     agent = load_agent_parameters("isoflurane")
     patient_parameters = load_reference_adult_parameters()
-    system = RespiratorySystem(
+    system = AgentUptakeSystem(
         circuit=BreathingCircuit(
             delivered_concentration_fraction=(agent.mac_percent / 100.0),
             max_delivered_concentration_fraction=(
@@ -102,12 +106,12 @@ ROLLBACK_ALVEOLAR_GAS_VOLUME_L = 0.015
 ROLLBACK_STEPS_BEFORE_FAILURE = 600
 
 
-def _a_run_that_breaks_down_when_cardiac_output_is_raised() -> RespiratorySystem:
+def _a_run_that_breaks_down_when_cardiac_output_is_raised() -> AgentUptakeSystem:
     """A system 60 s into a valid run, one raised setting from breaking down."""
 
     agent = load_agent_parameters("isoflurane")
     patient_parameters = load_reference_adult_parameters()
-    system = RespiratorySystem(
+    system = AgentUptakeSystem(
         circuit=BreathingCircuit(
             delivered_concentration_fraction=(agent.mac_percent / 100.0),
             max_delivered_concentration_fraction=(
@@ -150,12 +154,12 @@ class _AccountingCheckThatFailsOnce(AgentSimulationValidator):
         super().require_valid_agent_accounting(check)
 
 
-def _sevoflurane_with(validator: AgentSimulationValidator) -> RespiratorySystem:
+def _sevoflurane_with(validator: AgentSimulationValidator) -> AgentUptakeSystem:
     """The reference sevoflurane system, accounting to a chosen validator."""
 
-    built = RespiratorySystem.for_agent("sevoflurane")
+    built = AgentUptakeSystem.for_agent("sevoflurane")
 
-    return RespiratorySystem(
+    return AgentUptakeSystem(
         circuit=built.circuit,
         alveoli=built.alveoli,
         patient=built.patient,
@@ -309,7 +313,7 @@ def test_a_setting_outside_the_supported_range_is_refused_by_the_system(
 ) -> None:
     """The three values PL-0MLQ found accepted, refused at the coupled system.
 
-    `RespiratorySystem` forwards each of these to the compartment that owns
+    `AgentUptakeSystem` forwards each of these to the compartment that owns
     the setting, so this is cover for the forwarding rather than a second
     guard: what it holds is that no supported entry point into `core/` can
     put the model outside the domain its error bound is measured over.
@@ -450,9 +454,7 @@ def test_simulation_time_does_not_advance_through_a_failed_step() -> None:
     not would report a state at a time the model never produced.
     """
 
-    state = SimulationState(
-        respiratory_system=(_a_run_that_breaks_down_when_cardiac_output_is_raised())
-    )
+    state = SimulationState(uptake_system=(_a_run_that_breaks_down_when_cardiac_output_is_raised()))
     elapsed_before_s = state.elapsed_s
 
     with pytest.raises(SimulationNumericalError):
@@ -533,3 +535,44 @@ def test_a_rolled_back_run_can_still_be_read_and_reset() -> None:
     system.reset()
 
     assert system.total_stored_agent_l == 0.0
+
+
+def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
+    """Regression test for the defect PL-006 part 3 fixes.
+
+    Reproduced against the shipped code before the fix, and the numbers here
+    are that measurement rather than values read off the corrected run: a
+    sevoflurane system stepped 60 s held 0.048288200 L of agent in the
+    circuit, `set_circuit_volume(3.0)` left 0.024144100 L of it - 24.1 mL of
+    equivalent agent gas destroyed by a setter - and the next `advance(0.1)`
+    raised `AgentSimulationValidationError`.
+
+    That failure mode is the reason this belongs with the other failure
+    tests rather than only with the circuit's unit tests. The step that
+    failed was correct; what was wrong happened before it, so the run was
+    halted and the numerics blamed for a setter's defect. A conserving setter
+    is what makes the two distinguishable again.
+
+    `app/controller.py` compensated, so the shipped application never showed
+    this. That is what made it worth fixing rather than leaving: the
+    invariant held only for the one caller who knew to go the long way round.
+    """
+
+    system = _sevoflurane_at_one_mac()
+
+    for _ in range(600):
+        system.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    circuit_agent_before_l = system.circuit.agent_amount_l
+    total_agent_before_l = system.total_stored_agent_l
+
+    assert circuit_agent_before_l == pytest.approx(0.048288200)
+
+    system.circuit.set_circuit_volume(3.0)
+
+    assert system.circuit.agent_amount_l == pytest.approx(circuit_agent_before_l)
+    assert system.total_stored_agent_l == pytest.approx(total_agent_before_l)
+
+    result = system.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    assert result.agent_accounting.passes_validation

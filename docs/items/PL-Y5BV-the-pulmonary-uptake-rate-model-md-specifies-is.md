@@ -13,7 +13,7 @@ verify: uv run pytest -k pulmonary_uptake_identity
 
 **Problem.** `docs/MODEL.md:358-361` specifies the pulmonary uptake rate as
 $`\dot M_{\mathrm{pulmonary}} = Q\lambda_{b:g}(F_A-F_v)`$. That expression is
-never computed anywhere in `core/`. `core/respiratory_system.py:161-166` takes
+never computed anywhere in `core/`. `core/uptake_system.py:161-166` takes
 the *net change in the patient compartments* over the step and applies it to
 alveolar gas through `AlveolarCompartment.apply_blood_uptake` instead. The two
 agree through a telescoping identity — what the tissues and venous blood gained
@@ -28,7 +28,7 @@ of the guards this project relies on would stay green while the value that
 governs uptake was wrong. The document names an equation the tests do not
 reach.
 
-**Where.** `docs/MODEL.md:358-361`; `core/respiratory_system.py:161-166`;
+**Where.** `docs/MODEL.md:358-361`; `core/uptake_system.py:161-166`;
 `core/patient.py:127-137`.
 
 **Approach.** Recommended: assert the identity in a test across a range of
