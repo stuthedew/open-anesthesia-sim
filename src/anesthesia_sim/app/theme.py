@@ -8,7 +8,15 @@ PANEL = "#FFFFFF"
 PRIMARY = "#176B87"
 ACCENT = "#18A999"
 INK = "#243B53"
-MUTED = "#627D98"
+# Darkened from #627D98 (PL-X0RG), which reached only 4.28:1 on the panel and
+# 3.98:1 on the page background - below WCAG 2.2 SC 1.4.3's 4.5:1 for text, and
+# this is the color of the label naming every readout, of the run-status word,
+# and of the chart's axis description. The page background is the binding
+# surface, not the panel: the run-status text sits in the top-level column, so
+# BACKGROUND shows through behind it. Now 5.00:1 on PANEL and 4.65:1 on
+# BACKGROUND. The hue and saturation are unchanged (210 deg, 0.355) so the
+# label/value hierarchy against INK reads as it did.
+MUTED = "#59728A"
 WARNING = "#8A4B08"
 PAGE_PADDING = 24
 PANEL_PADDING = 20
