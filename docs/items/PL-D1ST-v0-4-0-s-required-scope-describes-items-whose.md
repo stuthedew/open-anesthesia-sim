@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: ROADMAP.md
 added: 2026-09-01
 closed: 2026-09-02
+pr: 231
 verify: grep -qF 'PL-SN2C' ROADMAP.md
 ---
 
