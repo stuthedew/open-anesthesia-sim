@@ -5,6 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: safety, ux
+milestone: v0.2.11
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-08-24
 closed: 2026-09-02

@@ -6,11 +6,12 @@ effort: S
 status: done
 classes: docs
 feature: model-spec-accuracy
+milestone: v0.2.11
 touches: docs/MODEL.md
 added: 2026-08-30
-verify: python3 tools/doc_check.py check
 closed: 2026-09-02
 pr: 204
+verify: python3 tools/doc_check.py check
 ---
 
 **Problem.** `docs/MODEL.md:564-566` says that when a step fails, "the step is
