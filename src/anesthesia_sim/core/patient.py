@@ -7,14 +7,29 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from anesthesia_sim.core.blood import VenousBloodCompartment
+from anesthesia_sim.core.blood import VenousBloodCompartment, VenousBloodCompartmentState
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AgentParameters, ReferenceAdultParameters
 from anesthesia_sim.core.supported_ranges import require_supported_cardiac_output
-from anesthesia_sim.core.tissue import TissueGroup
+from anesthesia_sim.core.tissue import TissueGroup, TissueGroupState
 from anesthesia_sim.core.validation import require_concentration_fraction, require_positive_finite
 
 FLOW_FRACTION_TOLERANCE = 1e-12
+
+
+@dataclass(frozen=True, slots=True)
+class PatientCompartmentsState:
+    """The patient side's run state, one entry per compartment.
+
+    Named per compartment rather than held as a tuple, so that restoring
+    cannot silently pair a snapshot with the wrong tissue group; cardiac
+    output is absent because it is a setting, not trajectory.
+    """
+
+    vessel_rich: TissueGroupState
+    muscle: TissueGroupState
+    fat: TissueGroupState
+    venous_blood: VenousBloodCompartmentState
 
 
 @dataclass(slots=True)
@@ -136,6 +151,24 @@ class PatientCompartments:
         )
 
         return self.total_agent_amount_l - initial_amount_l
+
+    def capture_state(self) -> PatientCompartmentsState:
+        """Record run state so a failed step can be rolled back."""
+
+        return PatientCompartmentsState(
+            vessel_rich=self.vessel_rich.capture_state(),
+            muscle=self.muscle.capture_state(),
+            fat=self.fat.capture_state(),
+            venous_blood=self.venous_blood.capture_state(),
+        )
+
+    def restore_state(self, state: PatientCompartmentsState) -> None:
+        """Restore run state previously captured by `capture_state()`."""
+
+        self.vessel_rich.restore_state(state.vessel_rich)
+        self.muscle.restore_state(state.muscle)
+        self.fat.restore_state(state.fat)
+        self.venous_blood.restore_state(state.venous_blood)
 
     def reset(self) -> None:
         """Clear all patient agent while preserving settings."""

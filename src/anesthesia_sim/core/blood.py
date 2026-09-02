@@ -16,6 +16,17 @@ from anesthesia_sim.core.validation import (
 SECONDS_PER_MINUTE = 60.0
 
 
+@dataclass(frozen=True, slots=True)
+class VenousBloodCompartmentState:
+    """The venous pool's run state: what a step can change.
+
+    Volume, partition coefficient and blood flow are absent for the reason
+    given on `TissueGroupState`.
+    """
+
+    agent_amount_l: float
+
+
 @dataclass(slots=True)
 class VenousBloodCompartment:
     """One ideal, well-mixed venous blood compartment."""
@@ -93,6 +104,20 @@ class VenousBloodCompartment:
         self.agent_amount_l = self.capacity_l * next_fraction
 
         return self.agent_amount_l - initial_amount_l
+
+    def capture_state(self) -> VenousBloodCompartmentState:
+        """Record run state so a failed step can be rolled back."""
+
+        return VenousBloodCompartmentState(agent_amount_l=self.agent_amount_l)
+
+    def restore_state(self, state: VenousBloodCompartmentState) -> None:
+        """Restore run state previously captured by `capture_state()`.
+
+        Assigns the field directly, so that rolling back cannot itself
+        raise; see `BreathingCircuit.restore_state()`.
+        """
+
+        self.agent_amount_l = state.agent_amount_l
 
     def reset(self) -> None:
         """Clear venous agent while preserving parameters."""
