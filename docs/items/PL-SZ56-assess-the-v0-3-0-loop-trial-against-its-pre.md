@@ -3,11 +3,14 @@ id: PL-SZ56
 title: Assess the v0.3.0 loop trial against its pre-registered readouts
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: planning-cadence
 touches: docs/releases/v0.3.0.md, ROADMAP.md
 added: 2026-09-02
+closed: 2026-09-02
+milestone: v0.3.0
+pr: 225
 verify: grep -q "Loop trial" docs/releases/v0.3.0.md
 ---
 
