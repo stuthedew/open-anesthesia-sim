@@ -4,14 +4,19 @@ These tests exercise formatting, unit conversion, and controller-wiring
 without a live Flet client. Flet's individual controls (Text, Slider,
 Event, chart series, ...) can be constructed and inspected as plain Python
 objects; only a live Page/Session is needed to actually flush updates to a
-browser. `_FakePage` stands in for exactly the two Page behaviors
-SimulationView touches outside of `mount()` and `start_simulation_timer()`
-(which this suite does not call and does not claim to cover): the
-`padding` attribute and the `update()` call.
+browser. `_FakePage` stands in for the three Page behaviors SimulationView
+touches outside of `start_simulation_timer()` (which this suite does not call
+and does not claim to cover): the `padding` attribute, the `update()` call,
+and the `add()` that `mount()` hands the assembled control tree to. Mounting
+is covered only to the extent of what the assembled tree *says* - the label
+tests below read strings out of it - not of what a live client would draw
+from it.
 """
 
 import asyncio
 import contextlib
+import dataclasses
+import re
 
 import flet as ft
 import flet_charts as fch
@@ -50,11 +55,17 @@ from anesthesia_sim.core.supported_ranges import (
 
 
 class _FakePage:
-    """Stand-in exposing only what SimulationView uses outside of mount()."""
+    """Stand-in exposing only the Page surface SimulationView uses."""
 
     def __init__(self) -> None:
         self.padding: int | None = None
         self.update_calls = 0
+        # What `mount()` handed over, kept so a test can read the assembled
+        # tree back. A real Page renders these; this one only holds them.
+        self.controls: list[object] = []
+
+    def add(self, *controls: object) -> None:
+        self.controls.extend(controls)
 
     def update(self) -> None:
         self.update_calls += 1
@@ -378,6 +389,140 @@ def test_metric_placeholders_match_the_formatter_before_a_run() -> None:
         view._fat_concentration_text,
     ):
         assert text.value == empty
+
+
+# The exact string the alveolar readout must carry, restated here rather than
+# imported from `simulation_view.py`. An import would move both sides of the
+# assertion together, which is precisely the edit these tests exist to catch:
+# `docs/MODEL.md` requires "alveolar or end-tidal-equivalent concentration",
+# and the hedge is the requirement rather than decoration.
+_ALVEOLAR_METRIC_LABEL = "Alveolar / end-tidal-equivalent"
+
+# Any spelling of the measurement's name that is not the hedged form. The
+# lookahead is what distinguishes the two: "end-tidal-equivalent" is the
+# required label, "end-tidal" on its own is the claim MODEL.md forbids.
+_UNHEDGED_END_TIDAL = re.compile(r"end[\s-]?tidal(?!-equivalent)", re.IGNORECASE)
+
+
+def _metric_label_above(view: SimulationView, value_text: ft.Text) -> str:
+    """Return the label the metric grid displays above `value_text`.
+
+    Reads the assembled grid rather than a constant, so the pairing of a
+    label with the reading underneath it is part of what gets asserted: the
+    right number under the wrong label is the presentation-safety failure
+    `CLAUDE.md` names, and it would survive any assertion made on the label
+    string alone.
+    """
+
+    for panel in view._build_concentration_metrics().controls:
+        label_control, panel_value_text = panel.content.controls
+        if panel_value_text is value_text:
+            return label_control.value
+
+    raise AssertionError("no metric panel in the grid displays that value control")
+
+
+def _mounted_interface_strings(view: SimulationView, page: _FakePage) -> set[str]:
+    """Return every string reachable in the mounted control tree.
+
+    Flet controls are dataclasses, so the whole assembled interface can be
+    walked generically: labels, headings, axis captions, legend entries,
+    dropdown options and button text all come back without this helper
+    needing to know where any of them live. That is the point — a claim about
+    what the interface does *not* say has to be made against all of it, not
+    against the handful of controls a test remembered to look at.
+
+    Visited objects are held rather than only their ids, because CPython
+    reuses the id of an object it has collected and a reused id would make
+    the walk skip a live control.
+    """
+
+    view.mount()
+
+    strings: set[str] = set()
+    visited: dict[int, object] = {}
+
+    def visit(node: object) -> None:
+        if id(node) in visited:
+            return
+        visited[id(node)] = node
+
+        if isinstance(node, str):
+            strings.add(node)
+        elif isinstance(node, (list, tuple, set)):
+            for item in node:
+                visit(item)
+        elif isinstance(node, dict):
+            for item in node.values():
+                visit(item)
+        elif dataclasses.is_dataclass(node) and not isinstance(node, type):
+            for field in dataclasses.fields(node):
+                # Flet keeps its bookkeeping (`_values`, `_dirty`, the parent
+                # back-reference) in underscored fields; the public ones are
+                # the interface.
+                if not field.name.startswith("_"):
+                    visit(getattr(node, field.name, None))
+
+    visit(page.controls)
+    return strings
+
+
+def test_the_alveolar_readout_is_labelled_end_tidal_equivalent() -> None:
+    """The hedge is a safety requirement, not a wording preference.
+
+    `docs/MODEL.md` § "Minimum displayed outputs" requires "alveolar or
+    end-tidal-equivalent concentration", and states the reason in terms: the
+    phrase "must not imply that airway sampling dynamics, dead space, or
+    capnography are modeled". None of them are — dead space, airway sampling
+    delay, shunt and V/Q mismatch are all in "Known limitations" — so what
+    this readout holds is the gas fraction of one perfectly-mixed alveolar
+    compartment, and it is not end-tidal in any patient. End-tidal is the
+    name of a measurement; presenting a modeled value under it is the
+    modeled-versus-measured confusion `CLAUDE.md` forbids, on the one readout
+    a clinician would most readily set beside a real agent monitor.
+
+    Regression test: the interface shipped `"Alveolar / end-tidal"` from
+    `74bec83` until PL-NV9W.
+    """
+
+    view, _ = _build_view(_snapshot())
+
+    label = _metric_label_above(view, view._alveolar_concentration_text)
+
+    assert label == _ALVEOLAR_METRIC_LABEL
+
+
+def test_no_interface_string_drops_the_end_tidal_equivalent_hedge() -> None:
+    """The whole interface, not only the metric panel, has to hold the hedge.
+
+    A chart legend entry, an axis caption or a future readout would carry the
+    same claim to the same reader, so the assertion is made against every
+    string the mounted tree contains rather than against the one control the
+    defect was found in.
+
+    If a genuine reference to the measurement or to the clinical technique
+    ever belongs in this interface — closed-loop end-tidal control is on the
+    roadmap — narrow this test to the readout labels and traces rather than
+    deleting it. What must not happen is a *modeled* value acquiring the
+    unhedged name again.
+    """
+
+    page = _FakePage()
+    view = SimulationView(page=page, controller=_FakeController(_snapshot()))
+
+    strings = _mounted_interface_strings(view, page)
+
+    assert [text for text in sorted(strings) if _UNHEDGED_END_TIDAL.search(text)] == []
+
+    # Checked after the claim above, not before it: an empty result proves
+    # nothing on its own, and a Flet release that changed how a control holds
+    # its children would leave the walk finding nothing and the assertion
+    # passing vacuously. Ordering them this way also keeps the failure
+    # message pointed at the real cause in either case.
+    assert _ALVEOLAR_METRIC_LABEL in strings, (
+        "the control-tree walk did not reach the concentration readouts, "
+        "so the assertion above proved nothing"
+    )
 
 
 def test_format_percent_leaves_an_impossible_negative_visible() -> None:

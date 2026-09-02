@@ -3,11 +3,12 @@ id: PL-NV9W
 title: Label the alveolar readout end-tidal-equivalent, as MODEL.md requires
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, docs/MODEL.md
 added: 2026-08-30
+closed: 2026-09-02
 verify: uv run pytest tests/unit/test_simulation_view.py -k end_tidal_equivalent
 ---
 
@@ -45,3 +46,27 @@ or axis label that names the trace, not only the metric panel.
 **Done when.** No interface string calls the modelled alveolar value
 "end-tidal" unhedged, the label matches `docs/MODEL.md:1067`, and a test asserts
 the exact string.
+
+**Worked.** The label reads `"Alveolar / end-tidal-equivalent"`, and two tests
+hold it: one asserts the exact string against the label the grid actually
+builds *above that value control*, so the pairing is pinned along with the
+wording; the other walks every string in the mounted control tree and fails on
+any spelling of "end-tidal" that is not the hedged form, which is what the
+"no interface string" clause needs and what covers the legend, the axis caption
+and anything added later. Both restate the literal rather than importing it,
+so an edit to `simulation_view.py` cannot move both sides of the assertion at
+once. `docs/MODEL.md` needed no change: it already carried the requirement,
+and the defect was only that the interface did not meet it. The chart legend
+was checked and left alone — it says "Alveolar", which makes no end-tidal
+claim.
+
+**One thing the brief did not anticipate.** Rendering the running app showed
+the required label is too long for an equal share of the readout row: at 1440
+CSS pixels it wrapped to "Alveolar / end-tidal-" over "equivalent", which
+restored the unhedged phrase for anyone reading the row rather than studying
+it, and dropped that one reading below the baseline the other six share. The
+alveolar panel is now three grid columns to their two (15 columns in total,
+still filling the row exactly), verified by rendering at 1024, 1280 and 1440.
+At 1280 and above every label is on one line. At 1024 it wraps again, along
+with three labels that already wrapped there before this change; `PL-8M05`
+carries that.
