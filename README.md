@@ -127,8 +127,9 @@ trees to importing nothing a bare checkout does not already carry.
 
 Those tests approximate the older interpreter; `.github/workflows/quality.yml`'s
 `floor` job is the run itself. It installs the declared floor and executes
-`python3 tools/doc_check.py check` and `bin/docket check` under it, which
-settles syntax, imports and runtime behavior together rather than one at a time.
+`python3 tools/doc_check.py check`, `bin/docket check` and
+`python3 tools/contrast_check.py` under it, which settles syntax, imports and
+runtime behavior together rather than one at a time.
 
 `make check` mirrors the checks run in CI (`.github/workflows/quality.yml`)
 and must pass before a change is considered complete. It runs those last two

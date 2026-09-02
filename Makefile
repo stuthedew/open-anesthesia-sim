@@ -16,6 +16,11 @@ check: sync
 	uv run pytest
 	bin/docket check
 	python3 tools/doc_check.py check
+# Bare `python3` for the reason `doc_check.py` above uses it: standard library
+# only, so it runs in a checkout with no virtualenv. It reads the color
+# constants out of `app/` with `ast` rather than importing them, because
+# `app/simulation_view.py` imports Flet.
+	python3 tools/contrast_check.py
 
 fix:
 	uv run ruff format .
