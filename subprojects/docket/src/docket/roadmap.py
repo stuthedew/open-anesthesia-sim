@@ -629,10 +629,24 @@ class Scope:
     #: The milestone the current beat is about, labelled as the roadmap does.
     #: Empty when there is no such milestone, which leaves every id unplaced.
     anchor: str
-    #: Ids that milestone's own section places.
+    #: Ids the *current step* includes. Usually the anchor's own section, but
+    #: while a gate is being cleared it is the gate's entries alone - see
+    #: `milestone_scope`.
     current: frozenset[str]
     #: Ids only a later milestone places, mapped to the earliest such one.
+    #: While a gate is being cleared this also holds the anchor's own scope,
+    #: mapped to the anchor, because that work the step has not reached either.
     later: Mapping[str, str]
+    #: The timeline row the project stands on, when the roadmap lets a gate
+    #: ship as a different version from the milestone recording it. Empty when
+    #: the step and the anchor are the same milestone, which is the ordinary
+    #: case and needs no distinguishing.
+    step_label: str = ""
+    #: Whether `current` is a gate's entries rather than a milestone's whole
+    #: section. A caller naming where an id sits needs this and `step_label`
+    #: separately: they answer "on a gate?" and "which row?", and the beat can
+    #: move off the gate while the two labels still differ.
+    clearing: bool = False
 
     def placement(self, identifier: str) -> str:
         if identifier in self.current:
@@ -646,18 +660,46 @@ class Scope:
         return self.later.get(identifier, "")
 
 
-def milestone_scope(sections: Sequence[MilestoneSection], anchor: MilestoneSection | None) -> Scope:
+def milestone_scope(
+    sections: Sequence[MilestoneSection],
+    anchor: MilestoneSection | None,
+    *,
+    clearing_gate: GateStatus | None = None,
+    step_label: str = "",
+) -> Scope:
     """Read each milestone section for the ids it places, against the anchor.
 
     `sections` is expected in version order, so the *earliest* later milestone
     placing an id is the one reported: an item placed by both v0.3.0 and
     v0.4.0 is v0.3.0's, and saying so is what stops the marking overstating
     how far off the work is.
+
+    **`clearing_gate` narrows the anchor to its gate.** A section places ids
+    through two structures, and while a gate is open only one of them is work
+    the current step includes: `ROADMAP.md` has the gate clear *before* the
+    milestone it gates is implemented, so an id in that milestone's `Required
+    scope` is work the step has not reached, exactly like an id a later
+    milestone names. Passing the gate says the beat is to clear it, and the
+    anchor's non-gate scope moves into `later` under the anchor's own version.
+
+    Without it the anchor's whole section is the current step, which is right
+    once the gate is clear and the milestone is being implemented, and is what
+    a caller reading a section directly means. It is opt-in for that reason
+    rather than inferred here: this function is given no beat (queue item
+    PL-1J0P).
     """
     if anchor is None:
         return Scope(anchor="", current=frozenset(), later={})
-    current = frozenset(anchor.scope_ids)
-    later: dict[str, str] = {}
+    anchor_label = "v{}.{}.{}".format(*anchor.version)
+    placed = frozenset(anchor.scope_ids)
+    if clearing_gate is None:
+        current = placed
+        later: dict[str, str] = {}
+    else:
+        current = frozenset(
+            identifier for entry in clearing_gate.entries for identifier in entry.ids
+        )
+        later = {identifier: anchor_label for identifier in placed - current}
     for section in sections:
         if section.version <= anchor.version:
             continue
@@ -665,7 +707,13 @@ def milestone_scope(sections: Sequence[MilestoneSection], anchor: MilestoneSecti
         for identifier in section.scope_ids:
             if identifier not in current:
                 later.setdefault(identifier, label)
-    return Scope(anchor=anchor.label, current=current, later=later)
+    return Scope(
+        anchor=anchor.label,
+        current=current,
+        later=later,
+        step_label=step_label,
+        clearing=clearing_gate is not None,
+    )
 
 
 @dataclass(frozen=True)
@@ -832,8 +880,11 @@ def wave(roadmap: str, version: str, closed_ids: frozenset[str], known_ids: froz
     # variable rather than a widening of the first branch's.
     milestone: MilestoneSection | None
 
+    clearing: GateStatus | None = None
+
     if gate is not None and not gate.is_clear:
         beat, milestone, subject = CLEAR, gate.milestone, gate.milestone.label
+        clearing = gate
     elif gate is not None:
         if _shipping_the_gate(step, gate):
             assert step is not None  # narrowed by `_shipping_the_gate`
@@ -868,7 +919,18 @@ def wave(roadmap: str, version: str, closed_ids: frozenset[str], known_ids: froz
         total_steps=total,
         gate=gate,
         milestone=milestone,
-        scope=milestone_scope(sections, milestone),
+        scope=milestone_scope(
+            sections,
+            milestone,
+            clearing_gate=clearing,
+            # Only when they differ: naming the step where it *is* the anchor
+            # would invite a caller to print a distinction that is not there.
+            step_label=(
+                step.label
+                if step is not None and milestone is not None and step.version != milestone.version
+                else ""
+            ),
+        ),
         beat=beat,
         subject=subject,
         problems=tuple(problems),
