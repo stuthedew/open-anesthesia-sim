@@ -233,9 +233,9 @@ homework. Drop to specific items once a direction is picked, or when
 something individually urgent outranks the grouping.
 
 `docket next` gives the ranking and the reason, already honoring `P0` first,
-then what the roadmap's current step places, then work that finishes a feature
-already underway, then priority — and it excludes what is in flight on a
-branch. A suggestion the step has not reached stays in the list, marked with
+then what the roadmap's current step places, then work in a feature already
+underway — the one nearest finishing first — then priority, and it excludes
+what is in flight on a branch. A suggestion the step has not reached stays in the list, marked with
 the milestone that places it, because hiding it would be a verdict the tool
 cannot support. Placement is read from the frozen list a milestone records and
 its `Required scope`, never from a mention elsewhere in the section, so an id

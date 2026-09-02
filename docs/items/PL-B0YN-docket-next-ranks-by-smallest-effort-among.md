@@ -1,8 +1,15 @@
 ---
 id: PL-B0YN
 title: docket next ranks by smallest effort among items in underway features, not by which feature is nearest completion, so its rationale line and CLAUDE.md both describe a ranking the code does not implement
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-02
+closed: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_plan.py && grep -q 'def test_the_feature_nearest_completion_outranks_a_smaller_item' subprojects/docket/tests/test_plan.py
 ---
 
 **Problem.** `plan.py`'s `rank()` returns
