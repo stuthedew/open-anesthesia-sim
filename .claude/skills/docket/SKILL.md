@@ -306,6 +306,26 @@ carrying the item was pushed four minutes later — the owner caught it, not the
 tooling. Even fetched, the answer is bounded to what has been *pushed*, so
 read a clean result as "nothing visible", never "nothing".
 
+**Then push the first commit as soon as there is one.** The reading side
+above is as hard as it can get - a fetched `show` still answers only for what
+has been *pushed* - so the other half is not leaving the next session to find
+out the slow way. Push the first real commit rather than batching to the end:
+the `verify:` command an older item owes, a `touches` fill, the first failing
+test. There is usually something within minutes; where there is not, push as
+soon as there is. It costs nothing here - `.github/workflows/quality.yml`
+triggers on `pull_request` and on `push` to `main`, so a push to a branch with
+no pull request open runs no CI at all.
+
+The cost is that an abandoned branch and a live session look alike in `flight`,
+which says so and separates them by age; `bin/docket stranded` recovers what
+one strands. That trade is worth taking - a session picking a different item
+because one looked busy costs almost nothing against a queue this size, while
+two sessions on one item costs a session and a merge conflict (`PL-PRHN`).
+
+This shrinks the window rather than closing it: two sessions starting in the
+same minute still race, because both answers come from refs. `PL-SK88` carries
+the harder half.
+
 Then decide where the work happens and act on it — do not ask. Continue here when
 this session's context is an asset (short, already about this item, just
 diagnosed it). Start fresh when it is a liability (already completed

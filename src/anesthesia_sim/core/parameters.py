@@ -47,7 +47,13 @@ class SourceReference:
 
 @dataclass(frozen=True, slots=True)
 class AgentParameters:
-    """Validated partition parameters for one volatile anesthetic."""
+    """Validated partition parameters for one volatile anesthetic.
+
+    Built by `parse_agent_parameters()` from `_AgentPayload`, which validates
+    the file and is discarded. The two carry overlapping field names on
+    purpose; `_StrictPayload` says why that is a boundary rather than
+    duplication.
+    """
 
     schema_version: int
     id: str
@@ -83,7 +89,12 @@ class AgentParameters:
 
 @dataclass(frozen=True, slots=True)
 class ReferenceAdultParameters:
-    """Validated physiologic defaults for the v0.1.0 reference adult."""
+    """Validated physiologic defaults for the v0.1.0 reference adult.
+
+    Built by `parse_reference_adult_parameters()` from
+    `_ReferenceAdultPayload`, which validates the file and is discarded; see
+    `_StrictPayload` for why the pair exists.
+    """
 
     schema_version: int
     id: str
@@ -169,27 +180,56 @@ PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
 
 
 class _StrictPayload(BaseModel):
-    """Base for every parameter-file schema; rejects keys it does not declare.
+    """Base for every parameter-file schema: the load-time half of the pair.
 
-    Pydantic's default is to discard an unknown key silently, which in this
-    repository means a data file can document one model while the app runs
-    another: a renamed field, a units-suffixed variant, a typo'd duplicate,
-    or a field from a schema version this loader does not implement all
-    load clean and take no effect. A misspelling that *removes* a required
-    key is already caught as a missing field; this closes the other half.
+    **Why a `_...Payload` exists beside a public dataclass.** Each payload
+    model below is paired with a public, frozen, Pydantic-independent type -
+    `_AgentPayload` with `AgentParameters`, `_ReferenceAdultPayload` with
+    `ReferenceAdultParameters` - and the pairing is deliberate rather than
+    duplication that nobody got round to removing (PL-007). Two things follow
+    from it, and neither survives merging the two:
+
+    - *The rest of `core/` never imports Pydantic.* A payload is a load-time
+      artifact: it validates one JSON document and is then discarded by
+      `parse_agent_parameters()` / `parse_reference_adult_parameters()`, which
+      are the seam. What every other module holds is the plain dataclass. Put
+      the validators on the public type instead and the validation library
+      becomes a dependency of the compartments, the controller and the tests.
+    - *The two shapes are not the same shape.* A payload mirrors the file;
+      the public type has the form the model wants. `_AgentPayload` nests
+      three coefficients under `tissue_gas_partition_coefficients` where
+      `AgentParameters` carries them flat and adds the tissue:blood ratios it
+      derives from them; `_ReferenceAdultPayload` nests six values under
+      `tissue_groups` where `ReferenceAdultParameters` carries them flat. The
+      seam functions are that mapping. Fields that look copied are the subset
+      where the file's shape and the model's happen to agree.
+
+    So a change that collapses a pair is not a simplification: it couples
+    `core/` to the validation library, and it lets the JSON layout dictate
+    the type the simulation reads.
+
+    **Strictness.** Pydantic's default is to discard an unknown key
+    silently, which in this repository means a data file can document one
+    model while the app runs another: a renamed field, a units-suffixed
+    variant, a typo'd duplicate, or a field from a schema version this
+    loader does not implement all load clean and take no effect. A
+    misspelling that *removes* a required key is already caught as a missing
+    field; this closes the other half.
 
     Every payload model below inherits from this rather than setting
     `model_config` itself, so a seventh model added later is strict by
-    default instead of by being remembered. A test in
-    `tests/unit/test_parameters.py` walks this class's subclasses and
-    enforces that.
+    default instead of by being remembered. Two tests in
+    `tests/unit/test_parameters.py` walk this class's subclasses: one
+    enforces that strictness, the other that each subclass carries a
+    docstring, so a payload added later arrives explained rather than
+    looking like duplication to whoever meets it next.
     """
 
     model_config = ConfigDict(extra="forbid")
 
 
 class _SourcePayload(_StrictPayload):
-    """Schema for one `sources` entry; mirrors `SourceReference`."""
+    """Load-time schema for one `sources` entry, discarded into `SourceReference`."""
 
     citation: NonEmptyString
     url: NonEmptyString
@@ -207,13 +247,18 @@ Sources = Annotated[list[_SourcePayload], BeforeValidator(_validate_sources_none
 
 
 class _TissueGasPartitionCoefficientsPayload(_StrictPayload):
+    """The file's nesting for three coefficients `AgentParameters` holds flat."""
+
     vessel_rich: PositiveFinite
     muscle: PositiveFinite
     fat: PositiveFinite
 
 
 class _AgentPayload(_StrictPayload):
-    """Schema for `data/agents/*.json`; mirrors `AgentParameters`."""
+    """Load-time schema for `data/agents/*.json`, discarded into `AgentParameters`.
+
+    See `_StrictPayload` for why the pair exists and is not duplication.
+    """
 
     schema_version: SchemaVersion
     id: NonEmptyString
@@ -245,18 +290,25 @@ class _AgentPayload(_StrictPayload):
 
 
 class _TissueGroupPayload(_StrictPayload):
+    """The file's nesting for one tissue group; `ReferenceAdultParameters` is flat."""
+
     volume_l: PositiveFinite
     perfusion_fraction: PositiveFraction
 
 
 class _TissueGroupsPayload(_StrictPayload):
+    """The file's nesting for the three tissue groups, flattened by the seam."""
+
     vessel_rich: _TissueGroupPayload
     muscle: _TissueGroupPayload
     fat: _TissueGroupPayload
 
 
 class _ReferenceAdultPayload(_StrictPayload):
-    """Schema for `data/patients/*.json`; mirrors `ReferenceAdultParameters`."""
+    """Load-time schema for `data/patients/*.json`, discarded into `ReferenceAdultParameters`.
+
+    See `_StrictPayload` for why the pair exists and is not duplication.
+    """
 
     schema_version: SchemaVersion
     id: NonEmptyString
