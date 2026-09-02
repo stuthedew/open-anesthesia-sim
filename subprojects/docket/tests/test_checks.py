@@ -1133,3 +1133,78 @@ def test_a_lost_check_that_could_not_run_is_reported_as_unasked() -> None:
 
     assert report.errors == []
     assert any("items a merge removed: no items found on HEAD" in d for d in report.declined)
+
+
+def test_a_duplicate_front_matter_key_is_an_error() -> None:
+    """`PL-BR4G`: the parser keeps the last, so nobody chose the surviving value."""
+    errors = _errors(_item(duplicate_fields=("pr",)))
+
+    assert any("appear more than once" in e and "pr" in e for e in errors)
+
+
+def test_no_duplicate_key_error_on_a_clean_item() -> None:
+    assert not any("appear more than once" in e for e in _errors(_item()))
+
+
+def test_a_class_outside_the_vocabulary_is_an_error() -> None:
+    """`PL-MVC2`: `classes` fails open, so an unknown label matches no rule."""
+    errors = _errors(_item(classes=("safey",)))
+
+    assert any("not in the declared vocabulary" in e and "safey" in e for e in errors)
+
+
+def test_a_misspelled_safety_class_is_caught_even_though_the_pin_cannot_fire() -> None:
+    """The case the check exists for, asserted end to end.
+
+    `safey` is not in `safety_classes`, so the pin refusing to seat
+    safety-critical work below P1 does not fire and cannot. Before this check
+    the item sat at P3 with zero errors reported.
+    """
+    errors = _errors(_item(priority="P3", classes=("safey",)))
+
+    assert any("not in the declared vocabulary" in e for e in errors)
+    assert not any("safety-critical work starts at" in e for e in errors)
+
+
+def test_a_correctly_spelled_safety_class_still_reaches_the_pin() -> None:
+    errors = _errors(_item(priority="P3", classes=("safety",)))
+
+    assert not any("not in the declared vocabulary" in e for e in errors)
+    assert any("safety-critical work starts at" in e for e in errors)
+
+
+def test_the_derived_vocabulary_covers_every_class_the_checker_branches_on() -> None:
+    """`anticipated` is read by the safety-band exemption and named by no list."""
+    assert "anticipated" in Config().vocabulary()
+    errors = _errors(
+        _item(status="blocked", blocked_by=("PL-BBB2",), classes=("safety", "anticipated")),
+        _item("PL-BBB2"),
+    )
+
+    assert not any("not in the declared vocabulary" in e for e in errors)
+    assert not any("safety-critical work starts at" in e for e in errors)
+
+
+def test_a_declared_vocabulary_replaces_the_derived_one() -> None:
+    config = Config(known_classes=("perf",))
+
+    assert config.vocabulary() == {"perf"}
+    assert any(
+        "not in the declared vocabulary" in e
+        for e in analyze([_item(classes=("safety",), priority="P1")], TODAY, config).errors
+    )
+
+
+def test_one_feature_spelled_two_ways_is_an_error() -> None:
+    """`PL-MVC2`: `docket next` groups on the literal string."""
+    errors = _errors(
+        _item("PL-K7QX", feature="dev-tooling"), _item("PL-BBB2", feature="Dev_Tooling")
+    )
+
+    assert any("differ only in case or separator" in e for e in errors)
+
+
+def test_genuinely_different_features_are_left_alone() -> None:
+    errors = _errors(_item("PL-K7QX", feature="dev-tooling"), _item("PL-BBB2", feature="docket"))
+
+    assert not any("differ only in case or separator" in e for e in errors)

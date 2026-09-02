@@ -7,7 +7,8 @@ classes: infra
 feature: dev-tooling
 touches: pyproject.toml
 verify: grep -qF 'split-on-trailing-comma = false' pyproject.toml && uv run ruff format --check .
-status: ready
+status: done
+closed: 2026-09-02
 added: 2026-09-01
 ---
 
@@ -57,3 +58,21 @@ The `verify:` command exits 1 on 2026-09-01 and pairs the two halves the item
 owes: `grep` proves the setting landed, and `ruff format --check .` proves it
 changed no formatting. `grep` alone would pass on a tree where the setting was
 added and the code left unformatted; the format check alone passes today.
+
+**Closed 2026-09-02.** `pyproject.toml` gained a `[tool.ruff.lint.isort]`
+section setting `split-on-trailing-comma = false`, resolving the conflict
+toward the formatter: `skip-magic-trailing-comma = true` is a deliberate
+formatting decision, so the sorter is told the same thing rather than the
+formatter being reversed to silence the warning.
+
+**Re-banded on the way out.** This was filed `P3` as a config nit and worked
+ahead of most of `P2`, because the cost is not the warning. An evidence-led
+review of agentic software engineering names check accumulation as the failure
+mode for this kind of apparatus - gates grow "slower and noisier until people
+and agents route around it" - and a warning printed on every `make check` is
+the leading indicator of it. Measured before the fix: `make check` printed 104
+lines, 7 of them warnings. Six were `UV_NATIVE_TLS`, set by the remote
+container rather than by this repository; the seventh was this one, which fired
+everywhere. Its cost was paid by every other advisory in the suite, not by
+itself. `PL-ZBJ0` carries the general rule this instance produced.
+

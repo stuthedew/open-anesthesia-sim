@@ -2,7 +2,7 @@
 id: PL-YNCW
 title: docket new --touches before the title swallows it, because nargs='*' is greedy and the error names the title instead
 status: untriaged
-feature: docket
+feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py
 added: 2026-09-02
 ---

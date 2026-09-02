@@ -67,6 +67,40 @@ verify_required_from = 2026-08-30
 # Classes that make a release a minor version bump rather than a patch.
 minor_classes = ["feature"]
 
+# Every class an item may carry. `checks.py` rejects anything outside this
+# list, because `classes` fails open everywhere it is read: each use is a
+# membership test, so a misspelling matches no rule and nothing says so. The
+# expensive instance is the safety pin - `classes: safey` is not in
+# `safety_classes`, so work a clinician could be misled by stays seatable in
+# the bottom band and `docket check` reports zero errors (`PL-MVC2`).
+#
+# Declared rather than derived because this store uses four classes the tool
+# does not itself branch on. `ux`, `test` and `planning` describe work for a
+# reader; `anticipated` is the exception, branched on by the safety pin to let
+# a concern whose feature does not exist yet wait at its blocker's band.
+# Declaring the list at all replaces the derived default entirely, so every
+# class the tool reads has to be repeated here - that is deliberate, since a
+# vocabulary half-declared elsewhere is how the drift starts.
+#
+# Adding a class is an edit here first. That is the friction the check is for:
+# `bug` reached the store once against `defect` ninety-two times, and split
+# nothing only because it landed on an item that had already closed.
+known_classes = [
+  "anticipated",
+  "defect",
+  "docs",
+  "feature",
+  "infra",
+  "perf",
+  "planning",
+  "refactor",
+  "safety",
+  "science",
+  "session-cost",
+  "test",
+  "ux",
+]
+
 version_file = "pyproject.toml"
 
 # ROADMAP.md: "The next release number is chosen for the capability boundary it

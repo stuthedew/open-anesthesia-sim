@@ -3,7 +3,8 @@ id: PL-T63T
 title: "Half the store's recorded commit: hashes resolve nowhere, because the field names the branch commit a squash discards"
 priority: P2
 effort: S
-status: needs-decision
+status: done
+closed: 2026-09-02
 classes: defect, infra
 feature: commit-provenance
 touches: subprojects/docket/README.md, .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/checks.py
@@ -56,3 +57,31 @@ predates the freeze and was excluded from the approved list deliberately. This
 item is the same field one step earlier - what should be written, rather than
 what should be checked - so the two are one decision and should be answered
 together, `PL-T63T` first.
+
+**Decided 2026-09-02 (project owner).** Drop the field. `pr:` is the only
+provenance pointer; `commit:` is retired and must not be written into a new
+closure. The two rejected answers, and why:
+
+- *Record the landing commit on the default branch.* Durable, but unknowable
+  until after the merge, so it cannot be written by the closing commit. It
+  would need a second pass over every closed item, forever, to produce a
+  second pointer to the change `pr:` already reaches.
+- *Keep the branch commit and accept the decay.* Cheapest, and it knowingly
+  keeps a field that resolves nowhere about half the time while reading as
+  provenance - which is the first of the three tests `CLAUDE.md` now uses to
+  decide what interrupts feature work: it gives a wrong answer silently.
+
+**What landed.** `subprojects/docket/README.md`'s "Provenance survives the
+merge strategy" states the retirement and carries the 2026-08-31 measurement;
+`.claude/skills/docket/SKILL.md`'s close-out step says not to write the field.
+The 66 recorded values are left in place as a historical record rather than
+stripped, per the same decision.
+
+**No check enforces this, deliberately.** Erroring on a newly written `commit:`
+needs a cutover date, since every existing value has to stay legal - a second
+`verify_required_from`-shaped knob, and a permanent one, to guard a field that
+`docket new` does not write and the close-out step now tells a session in bold
+not to write. That fails `CLAUDE.md`'s test for building a mechanism: the risk
+does not recur often enough to pay for the machinery. `PL-68XK` was dropped for
+the matching reason - it existed to validate this field.
+

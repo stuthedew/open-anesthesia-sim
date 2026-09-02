@@ -626,12 +626,23 @@ A closed item's whole traceability is the pointer from it to the work: it is
 how a reader gets from "the interface rounds to two decimals" to the reasoning
 that chose two. Two fields carry it, and they fail in different ways.
 
-`commit` names the branch commit. It is exact, and it stops being resolvable
-the moment a project squash-merges: the squash puts a *new* commit on the
-default branch and deleting the head branch makes the one the item names
-unreachable. It also cannot be recorded by amending the commit it names,
-because amending changes the hash — so it is written after the fact, which is
-how a hash that resolves nowhere gets in.
+`commit` named the branch commit, and is **retired**. Do not write it into a
+new closure. It was exact and it stopped being resolvable the moment a project
+squash-merged: the squash puts a *new* commit on the default branch, and
+deleting the head branch makes the one the item names unreachable. Measured
+over the 83 items carrying the field on 2026-08-31: 21 hashes resolved from
+the default branch, 21 were present but reachable from nothing, and 41 sat
+below a shallow clone's horizon and could not be judged — so roughly half of
+what could be checked pointed nowhere, and the proportion grew with every
+squash-merged item.
+
+The values already recorded are left where they are, as a historical record
+rather than a pointer to follow. Nothing validates them, because there is no
+longer a field to hold to a standard; a reader who wants the change reads `pr`.
+Recording the *landing* commit instead was considered and rejected: it is
+durable but unknowable until after the merge, so it could not be written by
+the closing commit and would need a second pass over every item forever, to
+produce a second pointer to what `pr` already reaches (`PL-T63T`).
 
 `pr` names the pull request, as a bare number written without the `#`. It is
 unaffected by rebasing, squashing or amending, and GitHub writes it into the
@@ -679,7 +690,7 @@ What is left is the case worth failing on — a number inside the range the
 default branch covers that no commit there names, which is a typo or an
 invention.
 
-So a *landed* `done` requires `pr`, and `commit` is optional beside it. The
+So a *landed* `done` requires `pr`, and carries no second pointer. The
 requirement carries no cutover date, because there is nothing to cut over
 from: the store this grew in had every one of its 66 closed items backfilled
 in a single pass, each number derived from the commit on the default branch

@@ -601,7 +601,7 @@ reconstruct three commands at the moment they are trying to do something else.
    commit**, whose subject leads with **every** id it closes, comma-separated -
    the recovery below reads the newest subject naming an id, so a rider closed
    under another item's id alone is attributed to its own capture commit
-   (`PL-GW37`). Record the `commit` too where it is to hand; it is optional,
+   (`PL-GW37`). **Do not write `commit:`** - the field is retired (`PL-T63T`),
    because a squash-merge discards the branch commit while the pull request
    number outlives it.
 
