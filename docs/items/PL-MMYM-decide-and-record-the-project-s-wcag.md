@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, ux
 feature: presentation-safety
+milestone: v0.2.9
 touches: docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-02

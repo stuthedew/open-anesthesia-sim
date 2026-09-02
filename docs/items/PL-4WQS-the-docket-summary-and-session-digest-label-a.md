@@ -1,8 +1,14 @@
 ---
 id: PL-4WQS
 title: The docket summary and session digest label a count 'open' that excludes untriaged items, understating the queue by exactly the number beside it
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/render.py
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -rq 'def test_open_count_includes_untriaged' subprojects/docket/tests
 ---
 
 **Problem.** `render.py:600` prints `docket: {len(report.open_items)} open
