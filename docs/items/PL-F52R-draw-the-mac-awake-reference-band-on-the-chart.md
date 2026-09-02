@@ -104,6 +104,70 @@ are owed the same read before the band is drawn from them.
 2026-09-01; the bibliographic values are as that review verified them and were
 not re-derived here.
 
+**Appended 2026-09-02 — desflurane's candidate value, and the denominator trap
+it comes with.** Retrieved from PubMed; both values are *candidates* pending the
+project owner's read of the sources, and nothing is written into
+`desflurane.json` here.
+
+> Chortkoff BS, Eger EI II, Crankshaw DP, Gonsowski CT, Dutton RC, Ionescu P.
+> Concentrations of desflurane and propofol that suppress response to command
+> in humans. Anesth Analg. 1995;81(4):737-43. PMID 7574003.
+> doi:10.1097/00000539-199510000-00014
+
+> Song J-G, Cao Y-F, Yang L-Q, Yu W-F, Li Q, Song J-C, Fu X-Y, Fu Q. Awakening
+> concentration of desflurane is decreased in patients with obstructive
+> jaundice. Anesthesiology. 2005;102(3):562-5. PMID 15731594.
+> doi:10.1097/00000542-200503000-00014
+
+> Rampil IJ, Lockhart SH, Zwass MS, Peterson N, Yasuda N, Eger EI II, Weiskopf
+> RB, Damask MC. Clinical characteristics of desflurane in surgical patients:
+> minimum alveolar concentration. Anesthesiology. 1991;74(3):429-33.
+> PMID 2001020. doi:10.1097/00000542-199103000-00007
+
+| Source | Population | MAC-awake | As a fraction |
+| --- | --- | --- | --- |
+| Chortkoff 1995 | 22 male volunteers | 2.60 ± 0.46 % | **0.36 MAC**, stated in the paper |
+| Song 2005 (control arm) | non-jaundiced surgical patients | 2.17 ± 0.25 % | 0.36 MAC against Rampil's 31–65 yr MAC |
+
+**The two agree at 0.36 MAC, and that agreement is the reason to trust it** —
+different populations, different countries, twelve years apart, and neither
+derived from the other. It also sits in order beside Katoh above: isoflurane
+0.31, sevoflurane 0.34, desflurane 0.36. So the **First step.**'s question is
+answered: one fraction does *not* cover all three, but the spread is narrow
+(0.31–0.36) and each agent should carry its own value.
+
+**The trap, and why this section exists.** Chortkoff's 0.36 is anchored to a
+MAC of 7.22 % (2.60/0.36), which is Rampil's **18–30 yr** figure of 7.25 %.
+This repository records `mac_percent: 6.0`, which is Rampil's **31–65 yr**
+figure. Taking Chortkoff's *absolute* 2.60 % and dividing it by the 6.0 % in
+the data file gives **0.433 MAC — 20 % higher than the published 0.36**, and
+in the direction that draws the band too high and teaches a *later* wake-up
+than the literature supports.
+
+Song's 2.17 % avoids this only because its population matches the 6.0 %
+denominator; it is a coincidence of age-matching, not a general safeguard.
+
+Two consequences for the implementation:
+
+- **Store the fraction, never the absolute percent.** Katoh already expressed
+  MAC-awake "as a ratio to age-adjusted MAC", so the fraction is what all
+  three sources actually share, and it is the only form that stays correct if
+  `mac_percent` is ever changed or made age-aware (`PL-DHV7`, the MAC display
+  unit, and the Nickalls/Mapleson age note already in `desflurane.json`).
+- **Record which MAC each fraction was derived against**, because the number
+  is meaningless without it. A fraction with no stated denominator is exactly
+  the "correct number with the wrong context" failure `CLAUDE.md` names.
+
+**A limitation to record with the value.** Katoh's slow-washout arm is
+*descending* (15-min equilibration steps during washout); Chortkoff and Song
+both determined MAC-awake by *ascending* stepwise equilibration. All three are
+equilibrated rather than fast-washout determinations, which is why 0.36 belongs
+against the vessel-rich trace alongside Katoh's 0.34/0.31 rather than against
+the alveolar trace. But ascending and descending determinations are not
+interchangeable, and no descending-washout desflurane MAC-awake was found on
+PubMed. State that in `docs/MODEL.md` rather than presenting the three agents'
+fractions as if they were measured identically.
+
 **Done when.** Each agent's MAC-awake value is in its data file with a cited
 primary source, `docs/MODEL.md` records the provenance and states what the band does
 and does not assert, the chart draws it as a labelled population band with no
