@@ -1787,7 +1787,11 @@ specified.
 
 1. Add a modular anesthesia-machine abstraction with normal
    single-halogenated-agent interlock behavior — the safety baseline every
-   later machine feature below builds on.
+   later machine feature below builds on. The default fresh gas flow belongs
+   to it: today a literal in `core/circuit.py` that `docs/MODEL.md` restates
+   without provenance, and the one number in that document's accuracy table
+   tracing to no cited file. Scoping this milestone gives it a versioned data
+   file and a provenance row (`PL-8DJ7`).
 2. Add agent switching with residual washout accounting, after item 1.
    Requires the multi-substance patient state described in "Development
    pathway" — residual washout means holding two agents at once.
