@@ -62,18 +62,26 @@ appropriate, and its entry here should be deleted rather than left stale.
   files, and `tests/reference/test_multi_agent.py` covers directional
   solubility and mass-balance closure for isoflurane and desflurane.
 - `simulation_view.py` is tested through a minimal fake `Page`/`Controller`
-  pattern documented at the top of `tests/unit/test_simulation_view.py`
-  rather than a live Flet client. The simulation and render loops are now
-  covered too (started as tasks, driven for a bounded slice of real time,
-  then cancelled); `mount()`'s layout composition remains uncovered and has
-  no formatting or domain logic to verify.
+  pattern documented at the top of `tests/unit/test_simulation_view.py`,
+  which is still where its presentation logic is covered. The one thing that
+  pattern cannot answer - whether Flet's diff reports what a frame changed -
+  is `tests/integration/test_chart_patching.py`'s, which drives a real
+  `flet.messaging.session.Session` over a recording connection instead
+  (PL-010). The simulation and render loops are covered too (started as
+  tasks, driven for a bounded slice of real time, then cancelled);
+  `mount()`'s layout composition remains uncovered and has no formatting or
+  domain logic to verify.
 - Rendering is bounded and independent of run length: the chart is sent
   only the samples inside its visible window, decimated to at most
   `MAX_CHART_POINTS_PER_SERIES` per trace by min/max envelope selection
   (`app/chart_downsampling.py`), and the simulation and render loops run at
-  separate cadences. A live Flet client was not available in the session that
-  did this work, so the repaint mechanism was deliberately left unchanged —
-  see PL-010 before optimizing it further.
+  separate cadences. **Closed by PL-010, 2026-09-02.** The repaint mechanism
+  was left unchanged here because no live Flet client was available to
+  confirm it; one has now been run - Chromium against the `flet_web` server -
+  and an in-place mutation of a `LineChartDataPoint` does repaint. The frame
+  therefore moves the points the chart already holds rather than rebuilding
+  them, which took the render tick from 16.6 ms to 2.6 ms at the saturated
+  window. What the browser proved by hand, the integration test above holds.
 
 ## Open thread: the v0.2.8 gate's membership test - PL-MGNC, PL-H8MQ, PL-HXYY
 

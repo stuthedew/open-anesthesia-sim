@@ -66,9 +66,12 @@ RENDER_INTERVAL_S = 0.2
 INITIAL_CHART_WINDOW_S = 60.0
 MAX_CHART_WINDOW_S = 300.0
 # Per-trace ceiling on points handed to the chart. Each point is a Flet
-# control costing roughly 8 us to build, so this ceiling — not the length of
-# the run — sets the cost of a frame. 300 points across a chart a few hundred
-# pixels wide is already finer than the display can resolve.
+# control, so this ceiling — not the length of the run — sets the cost of a
+# frame: `_redraw_series` moves the points already drawn rather than
+# rebuilding them (PL-010), which leaves the per-frame work proportional to
+# this number rather than to it times the cost of a construction. 300 points
+# across a chart a few hundred pixels wide is already finer than the display
+# can resolve.
 MAX_CHART_POINTS_PER_SERIES = 300
 CHART_HEIGHT = 360
 
