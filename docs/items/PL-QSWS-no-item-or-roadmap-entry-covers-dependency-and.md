@@ -1,7 +1,10 @@
 ---
 id: PL-QSWS
 title: No item or roadmap entry covers dependency and toolchain drift, which a multi-year horizon makes a certainty rather than a risk
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: infra
 feature: dev-tooling
 touches: pyproject.toml, .github/workflows/quality.yml
 added: 2026-09-02
@@ -86,3 +89,21 @@ horizon adds and the shorter one hides.
 **Done when.** `ROADMAP.md` or `CLAUDE.md` states what this project does when a
 dependency or the interpreter moves, the answer names who or what notices, and
 any mechanism built to support it reports rather than gates.
+
+**Decision needed.** Which of the three responses above does this project
+adopt when a dependency or the interpreter moves — fix on breakage (1), a
+scheduled report against latest (2), or automated dependency pull requests
+(3)?
+
+**Recommended: 2, stated as policy now and built as a separate item later.**
+It is the only one that matches a multi-year horizon without adding a gate
+that can block work: it finds a break while the delta is one version wide,
+and it fails a job nobody is waiting on. Option 1 is defensible and is what
+the project does today by default; the value of choosing it deliberately is
+that sessions stop re-opening the question. Option 3 is ruled out on this
+project's own evidence, which `PL-ZBJ0` (retire a check that has stopped
+earning its place) records.
+
+Answering this closes the item by writing the chosen policy into
+`ROADMAP.md`; the scheduled CI job, if 2 is chosen, is a second item scoped
+after the answer.
