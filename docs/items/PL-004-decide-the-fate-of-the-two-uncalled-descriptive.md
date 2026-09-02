@@ -9,6 +9,7 @@ feature: core-boundaries
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/alveolar.py, docs/MODEL.md, docs/WORKING_NOTES.md, tests/unit/test_alveolar.py, tests/unit/test_simulation_view.py
 added: 2026-08-23
 closed: 2026-09-02
+pr: 210
 verify: uv run pytest tests/unit/test_alveolar.py tests/unit/test_simulation_view.py && ! grep -q 'def time_constant_s' src/anesthesia_sim/core/alveolar.py && ! grep -q circuit_time_constant_s src/anesthesia_sim/app/controller.py && grep -q 'def time_constant_s' src/anesthesia_sim/core/circuit.py && grep -qF 'not the time constant of the coupled system' docs/MODEL.md
 ---
 
