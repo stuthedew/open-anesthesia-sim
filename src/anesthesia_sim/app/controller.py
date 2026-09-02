@@ -47,7 +47,6 @@ class SimulationSnapshot:
     vessel_rich_partial_pressure_fraction: float
     muscle_partial_pressure_fraction: float
     fat_partial_pressure_fraction: float
-    circuit_time_constant_s: float
     delivered_agent_l: float
     exhausted_agent_l: float
     stored_agent_l: float
@@ -239,7 +238,6 @@ class SimulationController:
             vessel_rich_partial_pressure_fraction=(patient.vessel_rich.partial_pressure_fraction),
             muscle_partial_pressure_fraction=(patient.muscle.partial_pressure_fraction),
             fat_partial_pressure_fraction=(patient.fat.partial_pressure_fraction),
-            circuit_time_constant_s=circuit.time_constant_s,
             delivered_agent_l=accounting.delivered_agent_l,
             exhausted_agent_l=accounting.exhausted_agent_l,
             stored_agent_l=accounting.currently_stored_agent_l,

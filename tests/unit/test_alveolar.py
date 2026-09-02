@@ -1,5 +1,3 @@
-from math import inf
-
 import pytest
 
 from anesthesia_sim.core.alveolar import AlveolarCompartment
@@ -13,18 +11,6 @@ def test_rejects_agent_amount_above_alveolar_capacity() -> None:
         match="^agent_amount_l exceeds the alveolar capacity for a concentration fraction of 1$",
     ):
         AlveolarCompartment(agent_amount_l=2.6)
-
-
-def test_time_constant_is_the_ventilatory_turnover_of_the_gas_volume() -> None:
-    alveoli = AlveolarCompartment(gas_volume_l=2.5, alveolar_ventilation_l_min=5.0)
-
-    assert alveoli.time_constant_s == pytest.approx(30.0)
-
-
-def test_zero_ventilation_gives_an_infinite_time_constant() -> None:
-    alveoli = AlveolarCompartment(alveolar_ventilation_l_min=0.0)
-
-    assert alveoli.time_constant_s == inf
 
 
 def test_positive_blood_uptake_removes_alveolar_agent() -> None:

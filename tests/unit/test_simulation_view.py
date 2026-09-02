@@ -111,7 +111,6 @@ def _sample(
 
 def _snapshot(
     is_running: bool = False,
-    circuit_time_constant_s: float = 90.0,
     passes_validation: bool = True,
     history: tuple[SimulationHistorySample, ...] | None = None,
     agent_id: str = "sevoflurane",
@@ -141,7 +140,6 @@ def _snapshot(
         vessel_rich_partial_pressure_fraction=latest.vessel_rich_partial_pressure_fraction,
         muscle_partial_pressure_fraction=latest.muscle_partial_pressure_fraction,
         fat_partial_pressure_fraction=latest.fat_partial_pressure_fraction,
-        circuit_time_constant_s=circuit_time_constant_s,
         delivered_agent_l=0.012345,
         exhausted_agent_l=0.002345,
         stored_agent_l=0.01,
