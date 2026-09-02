@@ -1,9 +1,15 @@
 ---
 id: PL-Y4Q4
 title: PL-0MLQ is safety-classed and predates the freeze, but is absent from Gate 0's frozen list, so wave reports the gate one entry short
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, docs
+feature: planning-cadence
 touches: ROADMAP.md
 added: 2026-09-01
+closed: 2026-09-02
+verify: bin/docket wave | grep -q "21 entries, 22 ids"
 ---
 
 **Problem.** `PL-0MLQ` (refuse a setting outside the documented supported
@@ -64,3 +70,27 @@ not deferrable at all.
 grounds recorded, or states in the frozen list's own text why a `safety`-classed
 finding that continues `PL-VP7N` defers to Gate 1 — and the entry counts, the
 step-2 size, and v0.3.0's definition of done agree with whichever was chosen.
+
+**Closed 2026-09-02.** The project owner took the first of the two dispositions
+this brief set out: `PL-0MLQ` is listed as a Gate 0 entry with its grounds
+recorded, rather than `ROADMAP.md` arguing a `safety`-classed continuation of
+`PL-VP7N` down to Gate 1.
+
+Four edits, all in `ROADMAP.md`. The entry itself joins the *Core correctness*
+group beside `PL-VP7N` and `PL-SLHS`, marked added after the freeze. The frozen
+list's header sentence moves from "20 entries, 21 item ids" to "21 entries, 22
+item ids" and from six later additions across two notes to seven across three.
+A third note records the grounds — presence at the freeze, since the four
+compartment setters have never enforced `docs/MODEL.md` § "Supported input
+ranges", and the `safety` class, which re-enters regardless of presence — and
+states plainly that the omission was an oversight rather than a deferral, which
+is what this brief asked for so a later reader does not read the absence as a
+decision. It also records that the pairing rule cannot apply, `PL-VP7N` having
+shipped in v0.2.7. "The timeline"'s step-2 size moves from `3 M, 17 S` to
+`4 M, 17 S`.
+
+**Confirmed by the tool.** `bin/docket wave` now computes the gate at 21
+entries, 22 ids, 12 cleared and 9 open — the count it could not previously
+reach, because it reads the recorded entries against `docs/items/` and an entry
+nobody wrote down cannot be counted. That is the half of this defect that was
+invisible, and the `verify:` command above is the check that it stays fixed.

@@ -305,7 +305,7 @@ adds no capability and exists to clear the ground they are built on:
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
 | 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 35 S |
-| 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 3 M, 17 S |
+| 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 4 M, 17 S |
 | — | **v0.3.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Placed here deliberately, ahead of the substance generalization that would otherwise force the vocabulary to be invented and restructured at once. Not yet scoped. | — |
 | 3 | **v0.4.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt the milestone clears itself. | 5 M, 6 S |
 | 4 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
@@ -966,9 +966,9 @@ milestone's own scope". The other fourteen clear before implementation begins.
 The list itself stays frozen; an entry records its own outcome as it closes,
 per "The cadence" below.
 
-**Cleared before v0.4.0 begins — 20 entries, 21 item ids** (14 and 15 at the
-freeze; six were added later, per the two notes beneath this list). These are
-exactly what v0.3.0, the foundation release, ships.
+**Cleared before v0.4.0 begins — 21 entries, 22 item ids** (14 and 15 at the
+freeze; seven were added later, per the three notes beneath this list). These
+are exactly what v0.3.0, the foundation release, ships.
 
 Count entries, not ids: the PL-Z4GF/PL-SWFM entry below holds two ids for one
 problem, so both numbers above are true and only the first is the gate's size.
@@ -993,6 +993,8 @@ strongest model:*
   operating point. Added after the freeze; see below.
 - PL-9Y42 (S) Validate wash-in against a published human measurement. Added
   after the freeze; see below.
+- PL-0MLQ (M) Refuse a setting outside the documented supported input range.
+  Added after the freeze; see below.
 
 *Presentation safety — `safety`-classed, and the one entry whose defect is not
 in `core/`:*
@@ -1082,6 +1084,38 @@ measurement would make the claim untrue on the day it was made.
 The ten other findings from the same review are in the queue and clear at
 Gate 1: they are either post-freeze in substance, or classed outside the
 exception.
+
+**One entry admitted 2026-09-02, having been missed rather than deferred.**
+PL-0MLQ (refuse a setting outside the documented supported input range) is
+`safety`-classed at `P1` and qualifies on both of the same grounds as the four
+above: the four compartment setters have never enforced `docs/MODEL.md`
+§ "Supported input ranges", so the problem was in the tree at the freeze, and
+the `safety` class re-enters it regardless of presence. It was captured
+2026-08-30, the same day those four were admitted by exactly this rule, and was
+named nowhere in this file — not here, not in v0.3.0's out-of-scope list, and
+not among the ten findings deferred to Gate 1.
+
+Its omission was an oversight, not a judgement, and recording that matters
+because the alternative reading is available: a later reader finding a
+`safety`-classed continuation of a frozen entry absent from the list could take
+the absence for a deliberate deferral. It was not one, and the exception is in
+any case written as not deferrable.
+
+The pairing rule under "The cadence" — an entry is worked with the entry it
+completes, not after it — cannot be satisfied here, because PL-VP7N, the entry
+PL-0MLQ continues, shipped in v0.2.7. It therefore stands as its own entry.
+
+The failure was invisible to the tool as well as to the reader: `bin/docket
+wave` computes the gate's split by reading the entries recorded here against
+`docs/items/`, so an entry that was never written down cannot be counted, and
+the gate reported one entry short of its real size for three days. That is the
+failure mode "a gate nobody wrote down is a gate that gets renegotiated"
+describes, arriving through omission rather than through argument. PL-Y4Q4
+carries the diagnosis.
+
+Like the four above, this extends what the gate has left to run, by one `M`
+item — the step-2 size in "The timeline" moves from `3 M, 17 S` to `4 M, 17 S`
+to match.
 
 **One presence-qualifying finding deliberately deferred to Gate 1.** PL-WB0X
 (split `simulation_view.py`) describes a module that has been oversized since
