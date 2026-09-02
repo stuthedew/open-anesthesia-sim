@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket
 added: 2026-09-02
 closed: 2026-09-02
+pr: 220
 ---
 
 **Problem.** `plan.py` defined `blocked_summary()`, "blocked items and what
