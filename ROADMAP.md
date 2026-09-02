@@ -2167,6 +2167,26 @@ specified.
     requirement predates this item, where it sat as an unattached sentence at
     the end of this section with nothing to own it.
 
+    *Body composition defaults, and is editable per case (project owner,
+    2026-09-02).* A case opens with a body composition already set rather
+    than asking the learner to supply one, and case settings expose it for
+    editing when changing it is the point of the run. That answers the
+    derivation question below in one direction: the default is *derived* from
+    the case's other patient inputs, so an edit overrides a value that was
+    already there rather than filling a blank. Two consequences follow,
+    neither of them in this item's scope as it currently stands. The derived
+    value has to be visible and attributed wherever it acts - which rule
+    produced it, and whether it is still the default or has been overridden -
+    because a silently substituted body composition that moves fat uptake is
+    exactly the plausible-but-unexplained clinical value the safety standard
+    refuses. And an edited composition is a covariate set nobody sourced, so
+    the supported-range refusal below binds the edit control exactly as it
+    binds the input: accepting a hand-entered composition outside the
+    parameter set's domain is the same failure as extrapolating to it. There
+    is no case-settings surface today - the interface's only patient is the
+    single hard-coded `data/patients/reference_adult.json` - so this names an
+    intended surface rather than an existing one.
+
     *MAC basis (project owner, 2026-09-02).* `mac_percent` moves from the
     flat Gas Man values the agent files now carry - sevoflurane 2.0,
     isoflurane 1.2, desflurane 6.0 - to the Mapleson MAC40 basis, in the
