@@ -780,8 +780,8 @@ to `ready` and `needs-decision`, and to `check` alone: it is the only check
 here that *executes* the project rather than reading it, and `next` and the
 digest are asked on every session start.
 
-**It names candidates, never a verdict**, because a passing command is
-consistent with two findings no exit status can separate:
+**It reports two findings rather than a verdict**, because a passing command is
+consistent with two states no exit status can separate:
 
 - the work landed and nobody set `status: done`; or
 - the command does not discriminate — it would have passed before the work
@@ -791,6 +791,27 @@ Both want a person, and both close: the first by closing the item, the second
 by giving it a command that fails until its work exists. Run against this store
 on 2026-09-01 the second reading was every one of the eight it named, which is
 why the wording leads with the possibility rather than the conclusion.
+
+**An error rather than an advisory since `PL-71P4`.** Not knowing which of the
+two states holds does not make either one tolerable: the second leaves `docket
+verify` returning `ACCEPT` on a branch that did none of the work, which is the
+delegation gate open, and the first is an item that should have closed. The
+message names both repairs, and reporting an ambiguity is not the same as
+reporting something optional.
+
+The severity was affordable only because of an ordering. `PL-L9JS` repaired the
+seven items that passed on a clean tree *first*, so the rule needed no cutover
+date, no grandfathered set, and no second dated policy sitting beside
+`verify_required_from` for a reader to tell apart. Had the repair not gone
+first, the rule would have had to grandfather them and carry that exemption
+forever.
+
+The transient case — a session that ran the work before editing its item —
+resolves in the commit the close-out procedure already requires, since `status:
+done` travels with the work. `_check_selects_nothing` stays an *advisory* beside
+it, deliberately: a selector matching no test is the recommended shape for an
+item whose work has yet to write the test, so only the item's author can say
+which repair it wants.
 
 One part of that *is* decidable. A command recorded against more than one open
 item cannot be proving any single one of them done, whatever it returns, so
@@ -932,12 +953,14 @@ sitting in a band it is not allowed to sit in, a `done` item recording a pull
 request the default branch has never seen. These are errors and they exit non-zero.
 
 Everything requiring judgment is left alone. The tool will tell you the top
-band has grown past what anyone can choose between at a glance, that most of
-it is blocked on decisions nobody has made, or that an open item's own
-`verify:` command already passes — but it will not tell you what to work on
-instead, it does not close the item whose command passed, and it does not try
-to decide whether an item is still worth doing. A tool that guessed at that
-would produce output that looks authoritative and is not.
+band has grown past what anyone can choose between at a glance, or that most of
+it is blocked on decisions nobody has made — but it will not tell you what to
+work on instead, and it does not try to decide whether an item is still worth
+doing. A tool that guessed at that would produce output that looks
+authoritative and is not. Where it does fail the run — an open item whose own
+`verify:` command already passes — it still names the two readings and both
+repairs rather than picking one: it does not close the item whose command
+passed, and it does not rewrite the command.
 
 ## Configuration
 
