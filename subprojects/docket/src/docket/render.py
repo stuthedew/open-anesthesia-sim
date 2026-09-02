@@ -433,7 +433,7 @@ def _flight_lines(flight: FlightReport) -> str:
     return "\n".join(lines)
 
 
-def format_triage(report: Report, config: Config) -> str:
+def format_triage(report: Report, config: Config, flight: FlightReport | None = None) -> str:
     """Every untriaged item, what is unset on it, and the rules that bind the answer.
 
     A worklist and a constraint sheet, deliberately not a recommendation. What
@@ -448,13 +448,41 @@ def format_triage(report: Report, config: Config) -> str:
     The constraints are read from the settings and the checker rather than
     restated here, so they cannot drift from what the checker will actually
     say.
+
+    **Which branch already carries an item is mechanical too, and triage is
+    the more exposed of the two entry points rather than the less.** Starting
+    an item is preceded by `show`, which marks it; triage is reached straight
+    from the session-start digest, which reports the untriaged *count* and
+    nothing about who is holding those items. Two sessions triaged `PL-B0YN`
+    and `PL-LXR3` on one afternoon and the merge discarded most of one answer,
+    the reasoning behind it included (queue item PL-PRHN).
+
+    It marks and does not refuse, for the reason `branches_in_flight` reports
+    rather than blocks: the answer is bounded by what has been pushed and by
+    the refs this checkout can read, so a lock built on it would sooner or
+    later block the session whose own branch is the one holding the item,
+    with no way to tell it apart. Triage is cheap to redo and expensive to
+    have refused.
+
+    `format_unread` comes with the mark rather than as a nicety, exactly as it
+    does under `show`: the marks are drawn from the refs this checkout could
+    read, and silence about the ones it could not presents a partial reading
+    as a complete one.
     """
     if not report.untriaged:
         return "Nothing is untriaged."
 
+    flight = flight or FlightReport()
+    # The branch name, not merely the fact of one: a session reading `IN FLIGHT
+    # on claude/pl-lxr3-...` can tell another session's work from its own
+    # without leaving the output, which is the whole difference between a
+    # warning that is heeded and one that is trained out.
+    carrying = {branch.item_id: branch.name for branch in flight.branches}
     lines = [f"{_plural(len(report.untriaged), 'item is', 'items are')} untriaged.", ""]
     for item in sorted(report.untriaged, key=lambda i: i.sort_key()):
         lines.append(f"{item.identifier}  {item.title}")
+        if held_by := carrying.get(item.identifier):
+            lines.append(f"  IN FLIGHT on {held_by} - triaging it here as well collides at merge.")
         lines.append(f"  unset: {_unset(item)}")
         missing, empty = brief_gaps(item.body)
         if missing:
@@ -475,6 +503,8 @@ def format_triage(report: Report, config: Config) -> str:
     lines.append("")
     lines.append("What each item is worth, how big it is and what it belongs with are not")
     lines.append("computed here. This prints the rules; applying them is yours.")
+    if unread := format_unread(flight):
+        lines.append(unread)
     return "\n".join(lines)
 
 

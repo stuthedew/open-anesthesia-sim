@@ -254,10 +254,17 @@ def cmd_triage(args: argparse.Namespace) -> int:
     Prints; decides nothing. The digest already tells every session that items
     are waiting - what it could not do is put the rules in front of the
     session at the moment it applies them.
+
+    The flight report is read for the same reason `show` reads one, and the
+    case is stronger here: `show` is what a session runs having *chosen* an
+    item, while triage is the first command a session runs after a digest that
+    reports the untriaged count and nothing about who is holding those items.
+    Two sessions answered `PL-B0YN` and `PL-LXR3` the same afternoon and the
+    merge discarded most of one answer (queue item PL-PRHN).
     """
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    print(render.format_triage(report, config))
+    print(render.format_triage(report, config, _flight(args)))
     return 0
 
 

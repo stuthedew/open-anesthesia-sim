@@ -3,11 +3,12 @@ id: PL-PRHN
 title: bin/docket triage names no in-flight refs, so two sessions triaged the same two items concurrently and collided at merge
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-02
+closed: 2026-09-02
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_triage_names_an_item_already_in_flight' subprojects/docket/tests/test_cli.py
 ---
 
