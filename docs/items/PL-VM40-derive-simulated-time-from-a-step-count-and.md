@@ -3,11 +3,12 @@ id: PL-VM40
 title: Derive simulated time from a step count and never catch up to the wall clock
 priority: P1
 effort: M
-status: ready
+status: blocked
 classes: safety, science
 feature: teachable-case
 touches: src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_simulation.py
 added: 2026-08-25
+blocked-by: PL-WB0X
 ---
 **Problem.** Two separate things make a run irreproducible. `SimulationState.advance`
 accumulates `self.elapsed_s += simulation_step_s` per step, so the clock depends on
@@ -44,3 +45,14 @@ two runs given identical inputs produce element-wise identical recorded history
 regardless of machine speed or how the ticks fell, asserted by test; and
 `docs/MODEL.md` states the reproducibility guarantee and what it does and does not
 cover.
+
+**Blocked on `PL-WB0X` (2026-09-02, project owner).** Not a stated
+prerequisite in this brief - it is file contention that `bin/docket concurrent
+PL-WB0X` reports and nothing else would have surfaced. `PL-WB0X` moves the
+formatters and the chart-series assembly out of `simulation_view.py` into
+`app/formatting.py`, and this item edits both in their current location. Doing
+it first means doing that part of it twice, and the second time inside a file
+that has since moved.
+
+The block is sequencing only: nothing here is wrong today, and the band stands
+on this item's own classes rather than on the blocker's.
