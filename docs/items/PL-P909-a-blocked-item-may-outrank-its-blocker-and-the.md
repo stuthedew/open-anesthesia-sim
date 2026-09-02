@@ -9,6 +9,8 @@ feature: dev-tooling
 touches: subprojects/docket
 added: 2026-09-02
 closed: 2026-09-02
+commit: 92a8e55
+pr: 220
 ---
 
 **Problem.** `PL-YHF1` let a blocked item sit outside the top band despite a

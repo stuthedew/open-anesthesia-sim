@@ -9,6 +9,8 @@ feature: dev-tooling
 touches: subprojects/docket
 added: 2026-09-02
 closed: 2026-09-02
+commit: 92a8e55
+pr: 220
 ---
 
 **Problem.** `checks.py` refused a `safety` or `science` class at P2 or P3
