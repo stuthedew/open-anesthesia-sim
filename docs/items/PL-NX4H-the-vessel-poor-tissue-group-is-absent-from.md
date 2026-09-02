@@ -1,9 +1,14 @@
 ---
 id: PL-NX4H
 title: The vessel-poor tissue group is absent from Known limitations
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: model-spec-accuracy
+touches: docs/MODEL.md
 added: 2026-09-01
-verify: python3 tools/doc_check.py check && grep -qF 'vessel-poor' docs/MODEL.md
+verify: python3 tools/doc_check.py check && grep -qi 'vessel-poor' docs/MODEL.md
 ---
 
 **Problem.** The reference adult carries three tissue groups — vessel-rich

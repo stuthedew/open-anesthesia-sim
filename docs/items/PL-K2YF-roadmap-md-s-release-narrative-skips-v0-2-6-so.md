@@ -1,19 +1,15 @@
 ---
 id: PL-K2YF
 title: ROADMAP.md's release narrative skips v0.2.6, so the convention that each release adds a paragraph has already been missed once
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs, infra
 feature: planning-cadence
-touches: ROADMAP.md
+touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-01
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q '^v0.2.6 was' ROADMAP.md && grep -q 'def test_a_completed_release_needs_a_narrative_paragraph' tests/unit/test_doc_check.py
 ---
-
-**Problem.** ROADMAP.md's release narrative skips v0.2.6, so the convention that each release adds a paragraph has already been missed once
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `ROADMAP.md`'s "Release narrative" says of itself that "adding a
 release means adding a paragraph here and editing one heading". Its paragraphs
