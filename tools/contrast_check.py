@@ -82,35 +82,84 @@ class Requirement:
 
 
 #: The specification. Every entry names a pair that actually appears on screen
-#: together - checked against the source, not assumed - and the reason it is
-#: held to that number. Adding a color to the interface means adding it here.
+#: together and the reason it is held to that number. Adding a color to the
+#: interface means adding it here.
+#:
+#: **The surface is read from the widget tree, never assumed.** The first
+#: version of this table put the run-status text on `PANEL`; it is not there.
+#: `mount()` builds a top-level `Column` with no background of its own, so the
+#: run-status word, the halted-run notice and the disclaimer all sit on
+#: `BACKGROUND` (`app/main.py` sets `page.bgcolor`), while the metric labels,
+#: the axis description and the accounting lines sit inside containers that do
+#: set `bgcolor=PANEL`. `BACKGROUND` is the darker surface, so it is the
+#: binding one wherever a color appears on both - which is what made `MUTED`
+#: a worse failure than the panel measurement showed (PL-X0RG).
 #:
 #: `MUTED` is judged at the normal-text minimum rather than the large-text one
 #: even where it is bold: WCAG's large-text exception starts at 18pt, or 14pt
-#: bold (18.66px), and Flet's default text size is 14px.
+#: bold (18.66px), and Flet's default text size is 14px. The one genuinely
+#: large string, the 26px application title in `INK`, clears the stricter bar
+#: anyway, so the exception is not claimed anywhere in this interface.
 REQUIREMENTS: tuple[Requirement, ...] = (
+    Requirement(
+        "INK",
+        "BACKGROUND",
+        AA_TEXT,
+        "1.4.3",
+        "the application title in the page header (simulation_view.py:376-381)",
+    ),
     Requirement(
         "INK",
         "PANEL",
         AA_TEXT,
         "1.4.3",
-        "every numeric readout and its unit (simulation_view.py:215-224)",
+        "every numeric readout, its unit, and each panel heading "
+        "(simulation_view.py:215-224, :486, :551, :593)",
+    ),
+    Requirement(
+        "MUTED",
+        "BACKGROUND",
+        AA_TEXT,
+        "1.4.3",
+        "the run-status word while paused, beside the transport controls "
+        "(simulation_view.py:187, :394, :684)",
     ),
     Requirement(
         "MUTED",
         "PANEL",
         AA_TEXT,
         "1.4.3",
-        "the labels naming each readout, the run-status text, and the chart's "
-        "axis description (simulation_view.py:187, :532, :556)",
+        "the label naming each readout, the chart's axis description, and the "
+        "agent-accounting detail line (simulation_view.py:532, :556, :595)",
+    ),
+    Requirement(
+        "ACCENT",
+        "BACKGROUND",
+        AA_TEXT,
+        "1.4.3",
+        "the run-status word while running (simulation_view.py:681)",
+    ),
+    Requirement(
+        "ACCENT",
+        "PANEL",
+        AA_TEXT,
+        "1.4.3",
+        "the agent-accounting status word when conservation holds (simulation_view.py:730)",
+    ),
+    Requirement(
+        "WARNING",
+        "BACKGROUND",
+        AA_TEXT,
+        "1.4.3",
+        "the halted-run notice, the run-status word while stopped, and the "
+        "educational-use disclaimer (simulation_view.py:406, :417, :678)",
     ),
     Requirement(
         "WARNING",
         "PANEL",
         AA_TEXT,
         "1.4.3",
-        "the halted-run notice and the agent-accounting warning "
-        "(simulation_view.py:193, :678, :736)",
+        "the agent-accounting status word when validation fails (simulation_view.py:736)",
     ),
     Requirement(
         "sevoflurane.foreground",
@@ -135,24 +184,24 @@ REQUIREMENTS: tuple[Requirement, ...] = (
     ),
     Requirement(
         "sevoflurane.fill",
-        "PANEL",
+        "BACKGROUND",
         AA_NON_TEXT,
         "1.4.11",
-        "the identification swatch read as a shape, not as a background",
+        "the identification swatch in the header, read as a shape",
     ),
     Requirement(
         "isoflurane.fill",
-        "PANEL",
+        "BACKGROUND",
         AA_NON_TEXT,
         "1.4.11",
-        "the identification swatch read as a shape, not as a background",
+        "the identification swatch in the header, read as a shape",
     ),
     Requirement(
         "desflurane.fill",
-        "PANEL",
+        "BACKGROUND",
         AA_NON_TEXT,
         "1.4.11",
-        "the identification swatch read as a shape, not as a background",
+        "the identification swatch in the header, read as a shape",
     ),
     Requirement("CIRCUIT_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
     Requirement("ALVEOLAR_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
@@ -167,10 +216,17 @@ REQUIREMENTS: tuple[Requirement, ...] = (
 #: Declared pairs that do not meet their minimum today, each against the item
 #: that closes it. Not a suppression list: an entry here that starts passing is
 #: reported as an error, so a fix cannot leave its excuse behind.
+#:
+#: The sevoflurane entry is a limitation of this tool rather than of the
+#: interface. That swatch carries a border in its own foreground color, which
+#: is 10.70:1 against the page - so it is perceivable, by a channel a
+#: single-pair requirement cannot express. `PL-GNN1` adds the requirement kind
+#: that says "fill or border" and removes this entry.
 KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {
-    ("MUTED", "PANEL"): "PL-X0RG",
+    ("ACCENT", "BACKGROUND"): "PL-30P6",
+    ("ACCENT", "PANEL"): "PL-30P6",
+    ("sevoflurane.fill", "BACKGROUND"): "PL-GNN1",
     ("ALVEOLAR_COLOR", "PANEL"): "PL-GVXP",
-    ("sevoflurane.fill", "PANEL"): "PL-2SVR",
 }
 
 #: The six chart traces, in the order `_refresh_chart_series` plots them.
