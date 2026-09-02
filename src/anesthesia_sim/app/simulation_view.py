@@ -35,6 +35,14 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME, APP_VERSION
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MINIMUM_CARDIAC_OUTPUT_L_MIN,
+    MINIMUM_FRESH_GAS_FLOW_L_MIN,
+)
 
 # The step each simulation tick advances by. What range of steps is *supported*
 # is `core/`'s to declare and no longer this module's: the operator split's
@@ -85,24 +93,19 @@ COMPACT_PAGE_PADDING = 16
 COMPACT_PANEL_PADDING = 14
 COMPACT_PANEL_RADIUS = 10
 
-MAX_FRESH_GAS_FLOW_L_MIN = 10.0
-MAX_ALVEOLAR_VENTILATION_L_MIN = 12.0
-MAX_CARDIAC_OUTPUT_L_MIN = 10.0
+# The three flow sliders span the model's own supported input ranges, imported
+# from `core/supported_ranges.py` rather than restated here. Until PL-0MLQ this
+# module declared them, which made a presentation constant the only thing
+# keeping a run inside the domain the verification gates cover: any other
+# caller of `core/` could set a cardiac output of 1000 L/min and be given a
+# number. They are the model's declaration now, this module offers exactly
+# them, and `test_the_sliders_span_the_supported_input_ranges` holds the two
+# together.
+#
 # Delivered-concentration max is agent-specific (real vaporizer dial
 # capability), sourced from SimulationSnapshot.max_delivered_concentration_percent
-# rather than a fixed constant here.
-
-# Every control reaches zero, and each is named separately rather than sharing
-# one constant because each is a separate decision that could change on its
-# own: flooring cardiac output above zero would not imply flooring ventilation.
-# `docs/MODEL.md` § "Supported input ranges" records why zero is supported on
-# all four, and the splitting-error bound in § "Independent-solution test" is
-# measured on a trajectory that reaches zero cardiac output — so moving one of
-# these floors narrows the domain that bound was measured over.
-# `test_envelope_limits_match_the_interface` is what makes moving one fail.
-MIN_FRESH_GAS_FLOW_L_MIN = 0.0
-MIN_ALVEOLAR_VENTILATION_L_MIN = 0.0
-MIN_CARDIAC_OUTPUT_L_MIN = 0.0
+# rather than a fixed constant here; its floor is below, because it is a
+# percent where the core's own guard is a fraction.
 MIN_DELIVERED_CONCENTRATION_PERCENT = 0.0
 
 CIRCUIT_COLOR = PRIMARY
@@ -311,8 +314,8 @@ class SimulationView:
         )
 
         self._fresh_gas_flow_slider = ft.Slider(
-            min=MIN_FRESH_GAS_FLOW_L_MIN,
-            max=MAX_FRESH_GAS_FLOW_L_MIN,
+            min=MINIMUM_FRESH_GAS_FLOW_L_MIN,
+            max=MAXIMUM_FRESH_GAS_FLOW_L_MIN,
             value=initial_snapshot.fresh_gas_flow_l_min,
             label="{value} L/min",
             round=FLOW_DISPLAY_DECIMALS,
@@ -337,8 +340,8 @@ class SimulationView:
             on_change=(self._handle_delivered_concentration_change),
         )
         self._alveolar_ventilation_slider = ft.Slider(
-            min=MIN_ALVEOLAR_VENTILATION_L_MIN,
-            max=MAX_ALVEOLAR_VENTILATION_L_MIN,
+            min=MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+            max=MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
             value=(initial_snapshot.alveolar_ventilation_l_min),
             label="{value} L/min",
             round=FLOW_DISPLAY_DECIMALS,
@@ -347,8 +350,8 @@ class SimulationView:
             on_change=(self._handle_alveolar_ventilation_change),
         )
         self._cardiac_output_slider = ft.Slider(
-            min=MIN_CARDIAC_OUTPUT_L_MIN,
-            max=MAX_CARDIAC_OUTPUT_L_MIN,
+            min=MINIMUM_CARDIAC_OUTPUT_L_MIN,
+            max=MAXIMUM_CARDIAC_OUTPUT_L_MIN,
             value=initial_snapshot.cardiac_output_l_min,
             label="{value} L/min",
             round=FLOW_DISPLAY_DECIMALS,

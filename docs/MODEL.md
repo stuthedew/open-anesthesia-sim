@@ -960,8 +960,8 @@ The gate therefore drives four kinds of run:
   pinned reference states below belong to.
 - the *envelope corner* — each agent's own
   `max_delivered_concentration_percent` with fresh gas, alveolar ventilation
-  and cardiac output all at the interface's slider maxima (10, 12 and
-  10 L/min) — held for 600 s.
+  and cardiac output all at their supported maxima (10, 12 and 10 L/min,
+  which are also the sliders') — held for 600 s.
 - a *ventilator start*: the same corner but with alveolar ventilation at zero
   for the first 300 s, so the circuit saturates at the dial setting against
   lungs that can take none of it, and then ventilation to its maximum. This
@@ -1066,9 +1066,10 @@ A companion test confirms that halving $`\Delta t`$ halves the error, which
 is what makes a bound established at one step size a bound on the
 coefficient itself. The reference states are pinned in the test file: a
 change to the oracle or to a parameter file must be re-derived and reviewed
-rather than silently adopted. The slider maxima above are restated in the
-test file and checked against the interface's own constants, so widening a
-slider cannot silently shrink the domain this gate covers.
+rather than silently adopted. The supported ranges above are restated in the
+test file and checked against `core/supported_ranges.py`, so widening the
+model's declared domain cannot silently leave this gate measuring a subset
+of it.
 
 ### Published wash-in validation test
 
@@ -1208,7 +1209,7 @@ must produce identical snapshots and histories.
 The following settings may change during a run without resetting state:
 
 - fresh gas flow;
-- delivered sevoflurane concentration;
+- delivered agent concentration;
 - alveolar ventilation; and
 - cardiac output.
 
@@ -1228,15 +1229,92 @@ Changing delivered concentration does not alter existing circuit concentration.
 
 ### Supported input ranges
 
-Each control is supported over the closed interval the interface's slider
-spans, endpoints included:
+Each control is supported over a closed interval, endpoints included, and a
+setting outside it is refused rather than simulated:
 
-| Control | Range |
-| --- | --- |
-| Fresh gas flow | 0 to 10 L/min |
-| Delivered concentration | 0 to the agent's `max_delivered_concentration_percent` |
-| Alveolar ventilation | 0 to 12 L/min |
-| Cardiac output | 0 to 10 L/min |
+| Control | Range | Declared and refused by |
+| --- | --- | --- |
+| Fresh gas flow | 0 to 10 L/min | `core/supported_ranges.py` |
+| Delivered concentration | 0 to the agent's `max_delivered_concentration_percent` | `BreathingCircuit` |
+| Alveolar ventilation | 0 to 12 L/min | `core/supported_ranges.py` |
+| Cardiac output | 0 to 10 L/min | `core/supported_ranges.py` |
+
+**The ranges are the model's, not the interface's** (PL-0MLQ). Until v0.2.10
+the first three were declared only as slider limits in
+`app/simulation_view.py` and enforced nowhere:
+`RespiratorySystem.set_cardiac_output(1000.0)` was accepted and simulated,
+as were a fresh gas flow of 500 L/min and an alveolar ventilation of
+200 L/min, because the compartment setters checked only that the value was
+nonnegative and finite. The sliders were the sole thing keeping a run inside
+the domain the verification gates cover, so every other caller of `core/` —
+a headless run, a notebook, a test — could leave it. `core/supported_ranges.py`
+declares the three intervals now, each compartment refuses a value outside
+its own, and every `RespiratorySystem` setter forwards to that compartment;
+`app/` imports the same constants for its sliders rather than restating them.
+
+**Refused, not clamped**, for the reason the vaporizer maximum is: a silently
+clamped setting would simulate, display, and chart a value the user did not
+ask for. A `SimulationConfigurationError` is raised before anything changes,
+so the run in progress stays trustworthy and the interface reports the
+refusal beside the control that caused it — the same distinction "Supported
+simulation step" above draws between a refused argument and a step that
+broke down.
+
+**Enforced on the compartment, not on the coupled system**, which is the
+opposite of where `MAXIMUM_SIMULATION_STEP_S` sits, and for a reason the two
+cases do not share. A step is an argument to one call, and a compartment
+advanced alone is exact at any step, so guarding a compartment there would
+refuse an exact calculation. A flow is persistent state, reachable through
+`RespiratorySystem`, through the compartment it belongs to, and through that
+compartment's constructor; the compartment is the only point all three pass
+through.
+
+#### What a setting outside the range costs
+
+The ranges are not merely the domain nothing has measured. The shipped split
+is first order, so its error is $`C\,\Delta t`$, and $`C`$ grows with the
+flows roughly in proportion — doubling all three roughly doubles it. Measured
+on desflurane over the *unperfused load, then dial off* trajectory of
+"Independent-solution test" above, which is what the documented
+$`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ is measured on, and quoted at the
+shipped 0.1 s step against the 0.01-percentage-point displayed resolution:
+
+| Setting | $`C`$ (s⁻¹) | Multiple of the bound | Last displayed digit uncertain by |
+| --- | --- | --- | --- |
+| The documented maxima | $`2.29\times10^{-3}`$ | 1.0 | 2.3 counts |
+| Alveolar ventilation 200 L/min | $`3.37\times10^{-3}`$ | 1.5 | 3.4 counts |
+| Fresh gas flow 500 L/min | $`5.82\times10^{-3}`$ | 2.5 | 5.8 counts |
+| All three flows at twice their maxima | $`4.57\times10^{-3}`$ | 2.0 | 4.6 counts |
+| All three at ten times their maxima | $`2.28\times10^{-2}`$ | 10.0 | 23 counts |
+| Cardiac output 1000 L/min | $`9.12\times10^{-2}`$ | 40 | 91 counts |
+
+The last row is the setting PL-0MLQ found accepted. Ninety-one counts is an
+alveolar readout wrong in its *first* decimal while presenting itself as a
+settled two-decimal value, which is the plausible-but-wrong clinical number
+`CLAUDE.md` requires an obvious failure in place of. Every other row fails a
+claim "Displayed precision" below makes about the last displayed digit, by
+the multiple in the third column. So a setting outside these intervals is not
+an unverified number but a wrong one, and the amount it is wrong by is known.
+
+Note what the table also shows: the error does *not* explode at the boundary.
+Nothing breaks at 10.01 L/min, and the interval's exact endpoints are a
+decision — they are the settings envelope the interface offers and the
+verification measures over — rather than a discovered cliff. Widening one is
+therefore a legitimate change and a safety-critical one: re-measure $`C`$ over
+the new domain, re-derive the displayed resolution and the supported
+simulation step from it, and revise this section, "Independent-solution
+test", "Supported simulation step" and "Displayed precision" together.
+
+#### What is not bounded this way
+
+The two gas volumes — the circuit's and the alveolar compartment's — are
+model parameters taken from the data files rather than controls, and are
+validated as positive and finite rather than against a measured domain. The
+interface offers no control for either, and every reference measurement in
+this document holds both at their data-file values. `SimulationController`
+does expose `set_circuit_volume`, which no interface control reaches; a
+caller using it is outside the verified domain in a way this section does not
+yet bound (PL-GYH2).
 
 **Zero is a supported input on all four, deliberately** (PL-629Z). Three
 reasons, and the third is the one that decides it:
@@ -1273,10 +1351,13 @@ can produce, and its worst case — $`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ — i
 reached on a trajectory that holds cardiac output at zero. Narrowing a range
 would take that worst case out of the reachable domain, and widening one
 would admit trajectories never measured; either way the bound must be
-re-measured. `test_envelope_limits_match_the_interface` restates all seven
-limits — and the displayed resolution and the shipped simulation step
-alongside them — and fails if the interface moves any of them, so none of it
-can happen silently.
+re-measured. Three checks keep that from happening silently:
+`test_envelope_limits_match_the_supported_input_ranges` restates all six flow
+limits and fails if the model moves one,
+`test_displayed_resolution_and_shipped_step_match_the_interface` does the
+same for the resolution and step every figure is quoted at, and
+`test_the_sliders_span_the_supported_input_ranges` fails if the interface
+stops short of the declared domain or reaches past it.
 
 **The simulation step is bounded too, and separately.** It is not a control a
 user sets, but it is an input to every `advance()` call, and what a caller
@@ -1535,9 +1616,10 @@ allows — the worst disagreement in any of the six displayed states is:
 | The worst reachable trajectory | 2.3×10⁻² percentage points |
 
 Default flows are 4 L/min fresh gas with the reference adult's default
-alveolar ventilation and cardiac output; maximum flows are the interface's
-own slider limits for fresh gas, alveolar ventilation, and cardiac output,
-and the maximum dial is each agent's `max_delivered_concentration_percent`.
+alveolar ventilation and cardiac output; maximum flows are the supported
+maxima for fresh gas, alveolar ventilation, and cardiac output — which are
+also the sliders' — and the maximum dial is each agent's
+`max_delivered_concentration_percent`.
 The held rows run for 3600 s, the setting-change rows for 600 s; extending
 either changes nothing, because the worst case in every row is an alveolar or
 mixed-venous value inside a transient rather than at an endpoint. The last

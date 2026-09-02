@@ -8,6 +8,7 @@ from anesthesia_sim.core.parameters import (
     load_sevoflurane_parameters,
 )
 from anesthesia_sim.core.patient import FLOW_FRACTION_TOLERANCE, PatientCompartments
+from anesthesia_sim.core.supported_ranges import MAXIMUM_CARDIAC_OUTPUT_L_MIN
 
 
 def _build_patient() -> PatientCompartments:
@@ -137,3 +138,45 @@ def test_reset_clears_all_patient_stores() -> None:
     assert patient.total_agent_amount_l == 0.0
     assert patient.mixed_venous_fraction == 0.0
     assert patient.cardiac_output_l_min == 5.0
+
+
+def test_accepts_cardiac_output_at_both_ends_of_the_supported_range() -> None:
+    """Zero is the trajectory the splitting-error bound's worst case is
+    measured on, so it has to stay reachable; the maximum is the envelope
+    corner the same gates measure at."""
+
+    patient = _build_patient()
+
+    for cardiac_output_l_min in (0.0, MAXIMUM_CARDIAC_OUTPUT_L_MIN):
+        patient.set_cardiac_output(cardiac_output_l_min)
+
+        assert patient.cardiac_output_l_min == cardiac_output_l_min
+        assert patient.venous_blood.blood_flow_l_min == cardiac_output_l_min
+
+
+def test_rejects_cardiac_output_above_the_supported_range() -> None:
+    """Regression (PL-0MLQ): `set_cardiac_output(1000.0)` was accepted.
+
+    At that setting the shipped split's error coefficient is 40 times the
+    documented bound, which is 91 counts of the displayed resolution — an
+    alveolar readout wrong in its first decimal while presenting itself as
+    settled. `docs/MODEL.md` § "Supported input ranges" records the
+    measurement.
+    """
+
+    patient = _build_patient()
+    supported_output_l_min = patient.cardiac_output_l_min
+
+    with pytest.raises(SimulationConfigurationError, match="supported input range"):
+        patient.set_cardiac_output(1000.0)
+
+    assert patient.cardiac_output_l_min == supported_output_l_min
+    assert patient.venous_blood.blood_flow_l_min == supported_output_l_min
+
+
+def test_rejects_construction_with_cardiac_output_above_the_supported_range() -> None:
+    agent = load_sevoflurane_parameters()
+    parameters = replace(load_reference_adult_parameters(), default_cardiac_output_l_min=1000.0)
+
+    with pytest.raises(SimulationConfigurationError, match="supported input range"):
+        PatientCompartments.from_parameters(agent=agent, patient=parameters)

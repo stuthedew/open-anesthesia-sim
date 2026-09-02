@@ -4,6 +4,7 @@ import pytest
 
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.supported_ranges import MAXIMUM_FRESH_GAS_FLOW_L_MIN
 
 
 def test_rejects_agent_amount_above_circuit_capacity() -> None:
@@ -136,3 +137,39 @@ def test_rejects_invalid_vaporizer_maximum(max_delivered_concentration_fraction:
             delivered_concentration_fraction=0.0,
             max_delivered_concentration_fraction=(max_delivered_concentration_fraction),
         )
+
+
+def test_accepts_fresh_gas_flow_at_both_ends_of_the_supported_range() -> None:
+    """Zero is the vaporizer running into a closed system; the maximum is the
+    corner of the settings envelope every reference gate measures at."""
+
+    for fresh_gas_flow_l_min in (0.0, MAXIMUM_FRESH_GAS_FLOW_L_MIN):
+        circuit = BreathingCircuit(fresh_gas_flow_l_min=fresh_gas_flow_l_min)
+
+        assert circuit.fresh_gas_flow_l_min == fresh_gas_flow_l_min
+
+        circuit.set_fresh_gas_flow(fresh_gas_flow_l_min)
+
+        assert circuit.fresh_gas_flow_l_min == fresh_gas_flow_l_min
+
+
+def test_rejects_fresh_gas_flow_above_the_supported_range() -> None:
+    """Regression (PL-0MLQ): the range was documented but never enforced.
+
+    A bare circuit is an exact exponential at any flow, so this guard is not
+    about the circuit's own arithmetic — it is the model's declared input
+    domain, and the circuit is where every path that can change the flow
+    passes through, the same argument the vaporizer maximum above rests on.
+    """
+
+    circuit = BreathingCircuit(fresh_gas_flow_l_min=4.0)
+
+    with pytest.raises(SimulationConfigurationError, match="supported input range"):
+        circuit.set_fresh_gas_flow(500.0)
+
+    assert circuit.fresh_gas_flow_l_min == 4.0
+
+
+def test_rejects_construction_with_fresh_gas_flow_above_the_supported_range() -> None:
+    with pytest.raises(SimulationConfigurationError, match="supported input range"):
+        BreathingCircuit(fresh_gas_flow_l_min=500.0)
