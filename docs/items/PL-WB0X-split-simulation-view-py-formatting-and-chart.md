@@ -1,7 +1,7 @@
 ---
 id: PL-WB0X
 title: 'Split simulation_view.py: formatting and chart series are not the view''s job'
-priority: P2
+priority: P1
 effort: M
 status: ready
 classes: refactor
@@ -104,3 +104,17 @@ single-responsibility, by its own standard rather than by an imported one.
 tests, `docs/MODEL.md`'s "Displayed precision" section cites that module, the
 chart-series shaping sits beside `chart_downsampling.py`, and every existing
 view test passes unaltered.
+
+**Raised to P1 on 2026-09-02, by the checker rather than by judgment.**
+`PL-DHV7` (express concentrations in MAC multiples) and `PL-F52R` (draw the
+MAC-awake band) are both `P1` `safety`/`science` items whose briefs state they
+come after this one, and they now carry `blocked-by` so `docket next` reads the
+sequencing the briefs state (`PL-5WFS`). `_outranks_its_blocker` then refuses a
+`P1` waiting on a `P2`: "raise `PL-WB0X` to `P1` or above, because nothing here
+can start before it does."
+
+So the band here does not mean this refactor could mislead a clinician. It
+means two items that could are waiting on it, which is the one case
+`docket.toml`'s note about every `P1` carrying a safety class does not cover.
+Dropping it back to `P2` requires unblocking `PL-DHV7` first, or the checker
+fails.
