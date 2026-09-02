@@ -48,8 +48,11 @@ recurring cost while the UI button is used, and a small one otherwise.
 plus `PL-9GCV` on `claude/v0-3-0-workflow-metrics-nzzhsi` (a bare stub) and
 `PL-Q8QX` on `claude/breathing-circuit-default-tckz8n` (a full brief reaching
 the same recommendation). Keep one and drop the other two rather than
-triaging three entries for one defect; `PL-Q8QX` has the better-developed
-approach section and is the natural survivor.
+triaging three entries for one defect; `PL-9GCV` is dropped as a duplicate of this
+item, which now carries its prevention angle as an option. `PL-Q8QX` has not
+merged yet; drop it the same way when its branch lands, since everything it
+contributes — the recovery approach, and the mechanism correction below — is
+already here.
 
 `PL-Q8QX` states the mechanism wrongly, though, and the difference decides
 whether prevention is possible. It reports that `#220` was *titled* with three
