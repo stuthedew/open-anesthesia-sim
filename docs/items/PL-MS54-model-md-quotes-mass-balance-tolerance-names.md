@@ -8,7 +8,7 @@ classes: docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-08-30
-verify: python3 tools/doc_check.py check
+verify: grep -q 'AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L' docs/MODEL.md && ! grep -q 'MASS_BALANCE_ABSOLUTE_TOLERANCE' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md:502-503` presents a code block introduced as "The

@@ -61,24 +61,70 @@ LIST_FIELDS = ("classes", "touches", "blocked-by")
 DELEGABLE_EFFORTS = ("S", "M")
 
 
-def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
-    """Split a document into its front-matter fields and its body.
+def _front_matter_pairs(text: str) -> tuple[list[tuple[str, str]], str] | None:
+    """Every `key: value` line of the front matter, in file order, with the body.
 
-    A file with no front matter yields no fields rather than an error; the
-    caller decides whether that is a malformed item or simply not one.
+    Pairs rather than a dict, because a dict is exactly where a repeated key
+    stops being visible. `parse_front_matter` collapses them for callers that
+    want the fields; `repeated_front_matter_keys` reads the same list to find
+    the ones a collapse would have hidden. `None` when there is no front
+    matter at all, which the two callers report differently.
     """
     match = FRONT_MATTER_RE.match(text)
     if match is None:
-        return {}, text
+        return None
 
-    fields: dict[str, str] = {}
+    pairs: list[tuple[str, str]] = []
     for line in match.group(1).splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         field_match = FIELD_RE.match(line)
         if field_match is not None:
-            fields[field_match.group(1)] = field_match.group(2).strip()
-    return fields, match.group(2)
+            pairs.append((field_match.group(1), field_match.group(2).strip()))
+    return pairs, match.group(2)
+
+
+def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
+    """Split a document into its front-matter fields and its body.
+
+    A file with no front matter yields no fields rather than an error; the
+    caller decides whether that is a malformed item or simply not one.
+
+    A repeated key collapses to its last occurrence here, which is what a dict
+    can express. That is a lossy answer rather than a wrong one, and
+    `parse_item` pairs it with `repeated_front_matter_keys` so the loss is
+    reported instead of taken. Do not "fix" this by keeping the first instead:
+    either choice picks a winner, and picking one silently is the defect
+    (`PL-BR4G`).
+    """
+    parsed = _front_matter_pairs(text)
+    if parsed is None:
+        return {}, text
+    pairs, body = parsed
+    return dict(pairs), body
+
+
+def repeated_front_matter_keys(text: str) -> tuple[str, ...]:
+    """Front-matter keys the file spells more than once, sorted.
+
+    The store is one file per item precisely so that two branches adding work
+    cannot conflict, and that property has a sharp edge: two branches editing
+    the *same* item, inserting the same field at different line positions,
+    also do not conflict. Git merges both lines, the dict keeps whichever came
+    last, and every check downstream reads a value nobody chose. Observed on
+    `main` 2026-09-02 with two `pr:` lines that happened to agree.
+    """
+    parsed = _front_matter_pairs(text)
+    if parsed is None:
+        return ()
+    pairs, _ = parsed
+    seen: set[str] = set()
+    repeated: set[str] = set()
+    for key, _value in pairs:
+        if key in seen:
+            repeated.add(key)
+        seen.add(key)
+    return tuple(sorted(repeated))
 
 
 def _split_list(value: str) -> tuple[str, ...]:
@@ -134,6 +180,7 @@ class Item:
     not_delegable: str = ""
     path: str = ""
     unknown_fields: tuple[str, ...] = field(default_factory=tuple)
+    duplicate_fields: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def is_open(self) -> bool:
@@ -293,6 +340,7 @@ def parse_item(text: str, path: str = "") -> Item:
         body=body,
         path=path,
         unknown_fields=tuple(sorted(set(fields) - known)),
+        duplicate_fields=repeated_front_matter_keys(text),
     )
 
 

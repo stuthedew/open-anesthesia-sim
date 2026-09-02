@@ -8,7 +8,7 @@ classes: defect, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-08-30
-verify: python3 tools/doc_check.py check
+verify: grep -q 'tissue-then-venous' docs/MODEL.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** `docs/MODEL.md:514-522` states a normative requirement list — "The

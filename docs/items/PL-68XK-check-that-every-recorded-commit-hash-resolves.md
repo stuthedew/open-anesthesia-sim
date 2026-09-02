@@ -3,7 +3,9 @@ id: PL-68XK
 title: Check that a recorded commit hash resolves, now that it is the optional half of provenance
 priority: P2
 effort: S
-status: ready
+status: dropped
+closed: 2026-09-02
+reason: superseded by PL-T63T, which retired the `commit` field this existed to validate
 classes: infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_checks.py
@@ -89,3 +91,15 @@ not resolve or is unreachable, declines with a reason in a shallow checkout
 rather than failing, says nothing when git cannot answer at all, and has tests
 covering a reachable hash, an unresolvable one, an orphaned commit that
 `cat-file -e` would accept, a shallow checkout, and a repository with no git.
+
+**Dropped 2026-09-02.** `PL-T63T` was answered by the project owner: the
+`commit` field is retired rather than corrected, so there is no longer a field
+for this check to hold to a standard. The 66 recorded values stay as a
+historical record and are explicitly not pointers to follow, which is what this
+item would have been enforcing.
+
+The reachability reasoning here was right and is not lost - it is why the
+"record the landing commit instead" answer was rejected in `PL-T63T` rather
+than adopted, since that answer would have needed exactly this check plus a
+second pass over every closure forever.
+

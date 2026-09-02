@@ -15,6 +15,12 @@ from pathlib import Path
 
 CONFIG_NAME = "docket.toml"
 
+#: Classes `checks.py` branches on that no setting above names. `anticipated`
+#: claims the safety-band exemption for a concern whose feature does not exist
+#: yet, so it has to be spellable; a project redeclaring `known_classes` and
+#: leaving it out turns that exemption off, which fails closed and is correct.
+BRANCHED_ON: tuple[str, ...] = ("anticipated",)
+
 
 @dataclass(frozen=True)
 class Config:
@@ -49,6 +55,20 @@ class Config:
     verify_required_from: date | None = None
     #: Classes that make a release a minor version bump rather than a patch.
     minor_classes: tuple[str, ...] = ("feature",)
+    #: Every class an item may carry. Empty means "derive it", and the derived
+    #: value is the union of the four lists above - every class this tool
+    #: actually branches on. That default is the useful one: a class outside
+    #: it changes no decision the tool makes, so a project that has declared
+    #: nothing still gets the check that matters, which is that a class the
+    #: tool reads is spelled the way the tool reads it.
+    #:
+    #: The check exists because these fields fail *open*. `classes: safey` is
+    #: not in `safety_classes`, so the pin refusing to seat safety-critical
+    #: work below the top band does not fire and nothing says so - a typo is
+    #: enough to leave such an item in the bottom band (`PL-MVC2`). A project
+    #: using descriptive classes beyond the four lists declares the whole
+    #: vocabulary here; declaring some does not extend the derived set.
+    known_classes: tuple[str, ...] = ()
     #: Paths holding the checks themselves. A delegated diff that edits one
     #: has changed the thing measuring it, so the measurement means nothing.
     gate_paths: tuple[str, ...] = (
@@ -81,6 +101,24 @@ class Config:
     #: guess at, because a plausible wrong version is a provenance error.
     version_policy: str = "infer"
     extra: dict[str, object] = field(default_factory=dict)
+
+    def vocabulary(self) -> frozenset[str]:
+        """Every class an item may carry, declared or derived.
+
+        Derived from the lists the tool branches on when nothing is declared,
+        so the check is never comparing against an empty set and silently
+        passing everything - which would be this check having the same defect
+        it exists to catch.
+        """
+        if self.known_classes:
+            return frozenset(self.known_classes)
+        return frozenset(
+            self.safety_classes
+            + self.process_classes
+            + self.debt_classes
+            + self.minor_classes
+            + BRANCHED_ON
+        )
 
 
 def _date(value: object, fallback: date | None) -> date | None:
@@ -134,6 +172,7 @@ def load(root: Path) -> Config:
             section.get("verify_required_from"), defaults.verify_required_from
         ),
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
+        known_classes=_tuple(section.get("known_classes"), defaults.known_classes),
         protected_paths=_tuple(section.get("protected_paths"), defaults.protected_paths),
         gate_paths=_tuple(section.get("gate_paths"), defaults.gate_paths),
         check_command=str(section.get("check_command", defaults.check_command)),

@@ -8,7 +8,7 @@ classes: defect, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/data, docs/MODEL.md, docs/ARCHITECTURE.md, tools/doc_check.py, tests/reference/test_coupled_dynamics.py
 added: 2026-08-30
-verify: python3 tools/doc_check.py check
+verify: grep -rq 'circuit_volume_l' src/anesthesia_sim/data/ && python3 tools/doc_check.py check
 ---
 
 **Problem.** `core/circuit.py:46` hardcodes `circuit_volume_l: float = 6.0` and

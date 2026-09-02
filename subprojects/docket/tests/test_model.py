@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from datetime import date
 
-from docket.model import Item, parse_front_matter, parse_item, render_item
+from docket.model import (
+    Item,
+    parse_front_matter,
+    parse_item,
+    render_item,
+    repeated_front_matter_keys,
+)
 
 BRIEF = "**Problem.** It is wrong.\n**Why it matters.** It has a cost.\n**Done when.** Fixed.\n"
 
@@ -255,3 +261,29 @@ def test_verify_and_not_delegable_round_trip_through_the_file() -> None:
     item = _delegable(verify="make check", not_delegable="needs judgement")
     assert parse_item(render_item(item)).verify == "make check"
     assert parse_item(render_item(item)).not_delegable == "needs judgement"
+
+
+def test_a_repeated_front_matter_key_is_reported_not_collapsed_away() -> None:
+    """The shape a clean merge of two branches produces.
+
+    Both sessions answered the same advisory by writing `pr:` in, at different
+    line positions, so git took both lines and neither branch conflicted. The
+    dict keeps the last; this is what makes the loss visible (`PL-BR4G`).
+    """
+    text = "---\nid: PL-X0RG\ntitle: t\npr: 187\nclosed: 2026-09-02\npr: 999\n---\nBody\n"
+
+    assert repeated_front_matter_keys(text) == ("pr",)
+    assert parse_item(text).duplicate_fields == ("pr",)
+    assert parse_front_matter(text)[0]["pr"] == "999"
+
+
+def test_repeated_keys_are_reported_once_each_and_sorted() -> None:
+    text = "---\nid: PL-K7QX\nid: PL-AAA1\nid: PL-BBB2\ntitle: a\ntitle: b\n---\nBody\n"
+
+    assert repeated_front_matter_keys(text) == ("id", "title")
+
+
+def test_a_file_with_no_repeated_key_reports_none() -> None:
+    assert repeated_front_matter_keys("---\nid: PL-K7QX\ntitle: t\n---\nBody\n") == ()
+    assert repeated_front_matter_keys("# Just a heading\n") == ()
+    assert parse_item("---\nid: PL-K7QX\ntitle: t\n---\nBody\n").duplicate_fields == ()
