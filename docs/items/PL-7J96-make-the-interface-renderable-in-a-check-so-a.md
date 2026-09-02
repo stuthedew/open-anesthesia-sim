@@ -1,7 +1,12 @@
 ---
 id: PL-7J96
 title: Make the interface renderable in a check, so a presentation change can be looked at
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: test, infra, ux
+feature: presentation-safety
+touches: tools/, Makefile, docs/ARCHITECTURE.md, README.md, src/anesthesia_sim/app/main.py
 added: 2026-09-02
 ---
 
@@ -67,6 +72,16 @@ targets are worth considering instead, and they are not exclusive:
    breakpoint width" is a genuine pass/fail that does not fire on an
    intentional redesign. This is the one that would have caught both defects
    automatically, and it is the harder of the two to build.
+
+**Decision needed.** Does the rendering gate `make check`, or only produce
+artifacts a person looks at? Option 1 alone (a `make screenshot` target, no
+pass/fail) is the cheap half and is worth building either way; option 2 (a
+measured-geometry assertion wired into `make check`) is the half that decides
+whether a future wrapping defect fails a build or waits to be noticed. Build
+option 1 first regardless, since option 2 needs its renderer; the decision is
+whether option 2 follows in the same item or is dropped with a reason. Answer
+it before writing a `verify:` command, because the two options have different
+ones.
 
 **Done when.** A session can render the running interface with one command,
 and the project has decided — with the reason recorded — whether anything
