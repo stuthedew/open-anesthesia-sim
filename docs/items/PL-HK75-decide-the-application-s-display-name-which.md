@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: ux
 feature: presentation-safety
+milestone: v0.2.10
 touches: src/anesthesia_sim/app_metadata.py, tests/unit/test_simulation_view.py
 added: 2026-09-02
 closed: 2026-09-02
+pr: 197
 verify: uv run pytest tests/unit/test_simulation_view.py -k app_metadata && grep -q 'APP_DISPLAY_NAME = "Open Anesthesia Simulator"' src/anesthesia_sim/app_metadata.py
 ---
 

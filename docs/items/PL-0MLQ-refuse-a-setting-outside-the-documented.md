@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety
 feature: numerical-domain
+milestone: v0.2.10
 touches: src/anesthesia_sim/core/respiratory_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, docs/MODEL.md
 added: 2026-08-30
 closed: 2026-09-02

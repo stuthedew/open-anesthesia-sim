@@ -46,7 +46,8 @@ capability-boundary rule above governs.
 | v0.2.6 | Completed | Delegation and release-tooling release on the same model: work whose success a command can prove now has to name that command and have run it, `docket` computes the debt gate and the cadence beat instead of a session transcribing them, and the release path stopped leaving `uv.lock` stale, while drift between this table and the version file became something a check catches - caught, not prevented, since nothing writes the row. The one scientific item widened the splitting-error bound to the whole settings envelope. No equation, parameter, or numerical method changed. |
 | v0.2.7 | Completed | Session-discipline and applicability-domain release on the same model: the simulation step now refuses inputs outside the operator split's stated applicability domain and the splitting-error bound is measured across setting changes rather than one held operating point, while ten process items closed the three channels by which product work leaked into discussions that were not about it, gave multi-step instructions a written standard, and cleared three live tooling defects. No equation or parameter changed, and the numerical method is unchanged - it is now guarded at the domain it was always specified for. |
 | v0.2.8 | Completed | The workflow works: thirty-eight frozen entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the in-flight answer six commands read, the type-check and lint gates, and the instructions a session reads before it does anything. Seventy items in all. No simulator change: `src/` differs from v0.2.7 by three comments, and `docs/MODEL.md` only by the math syntax GitHub renders and by recording why the operator split is kept over an exact matrix exponential. No equation, parameter, numerical method, unit or displayed value changed. |
-| v0.2.9 | Completed / current baseline | Validation, accessibility and tooling patch on the same model, changing no source file at all: `src/` is identical to v0.2.8. Modelled wash-in is compared against published human measurements for the first time — verification became validation, with the two caveats that bound how strongly it may be stated recorded beside it — the interface gained a recorded WCAG 2.2 AA conformance target whose contrast ratios `make check` computes rather than a comment asserts, and three live defects in the queue's own ranking are closed. No equation, parameter, numerical method, unit or displayed value changed. |
+| v0.2.9 | Completed | Validation, accessibility and tooling patch on the same model, changing no source file at all: `src/` is identical to v0.2.8. Modelled wash-in is compared against published human measurements for the first time — verification became validation, with the two caveats that bound how strongly it may be stated recorded beside it — the interface gained a recorded WCAG 2.2 AA conformance target whose contrast ratios `make check` computes rather than a comment asserts, and three live defects in the queue's own ranking are closed. No equation, parameter, numerical method, unit or displayed value changed. |
+| v0.2.10 | Completed / current baseline | Interface-safety and accessibility patch on the same model: the supported input ranges became the model's own and are refused in `core/` rather than only bounded by the sliders, the alveolar readout stopped calling a modelled value "end-tidal", every readout now names its compartment above a smaller clinical gloss and shares one baseline with its neighbours, two colours that failed WCAG AA on clinical text were replaced, and the application acquired a name. Five tooling items closed live defects in the queue's ranking, its verify timeout, and the cost `make check` pays to run it. No equation, parameter, or numerical method changed, and no displayed number changed. |
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
@@ -85,66 +86,111 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.2.9
+## Current baseline: v0.2.10
 
-v0.2.9 is a patch on the v0.2.0 model carrying seven items, and it changes no
-source file: `src/` is identical to v0.2.8, so no equation, parameter,
-numerical method, unit or displayed value moved. What it adds is evidence, and
-the machinery that keeps two claims honest.
+v0.2.10 is a patch on the v0.2.0 model carrying eleven items. Unlike v0.2.9 it
+does change `src/`, in `core/` as well as `app/`, but not in the way that
+would make it a minor: no equation, parameter, or numerical method moved, no
+parameter file changed at all, and no displayed number is different. What
+changed is what the model **refuses**, and what the interface **claims**.
 
-**Validation, as distinct from verification (PL-9Y42).** Nothing in this
-repository had ever been compared to a measurement of a human being. Every
-test in `tests/reference/` checked the implementation against itself — an
-analytic exponential, an RK4 oracle of the project's own equations, mass
-balance, equilibrium — which establishes that the equations are solved
-correctly and says nothing about whether they describe the phenomenon.
-`tests/reference/test_published_wash_in.py` now pins the 30-minute
-$`F_A/F_I`$ of all three agents against Yasuda et al. 1991: sevoflurane 0.853
-against 0.850 ± 0.018, isoflurane 0.741 against 0.733 ± 0.027, desflurane
-0.908 against 0.900 ± 0.010 — +0.17, +0.30 and +0.80 SD from the published
-means, at the data file's own cited alveolar ventilation of 4.0 L/min rather
-than a value fitted to make it pass.
+**The supported input ranges became the model's own (PL-0MLQ).** Until this
+release the three flow limits were declared only as slider limits in
+`app/simulation_view.py` and enforced nowhere:
+`RespiratorySystem.set_cardiac_output(1000.0)` was accepted and simulated, as
+were a fresh gas flow of 500 L/min and an alveolar ventilation of 200 L/min,
+because the compartment setters checked only that a value was nonnegative and
+finite. A presentation constant was therefore the sole thing keeping a run
+inside the domain the verification gates cover, and any other caller of
+`core/` was outside it. `core/supported_ranges.py` now declares the ranges,
+every setter refuses a value outside them rather than clamping it, and the
+sliders offer exactly the model's declaration rather than their own.
 
-Two caveats are recorded with it in `docs/MODEL.md` and in the test's own
-docstring, because they bound what the agreement is worth: Yasuda's subjects
-breathed 65-70% nitrous oxide, so the measured curves carry a second-gas
-effect this fixed-volume single-gas alveolus cannot reproduce; and the
-partition coefficients under test share a lineage with the data being tested
-against, so passing shows the implementation reproduces its parameter set's
-intent rather than that the parameter set is independently right. It could
-still have failed, which is why it is worth having. It is weaker than
-"validated against a human measurement", and this release does not claim more.
+**Two readouts stopped claiming more than the model computes (PL-NV9W,
+PL-8M05).** The alveolar panel was labelled "Alveolar / end-tidal".
+`docs/MODEL.md` requires the hedged "end-tidal-equivalent" and says why in
+terms — the phrase "must not imply that airway sampling dynamics, dead space,
+or capnography are modeled", none of which are, so the modelled value is the
+gas fraction of one perfectly-mixed alveolus and is not end-tidal in any
+patient. End-tidal names a *measurement*, and that readout is the one a
+clinician would most readily set beside a real agent monitor. Each panel now
+names its compartment on one line and glosses it on a smaller line beneath —
+"Alveolar" over *end-tidal-equivalent*, "Circuit" over *inspired* — so the
+two are no longer offered as alternative names for one quantity. The same
+change put every reading back on one baseline: the longest labels used to
+wrap, a different set of them at each window width, in a row `docs/MODEL.md`
+says is read comparatively.
 
-**A colour that fails accessibility now fails the build (PL-MMYM, PL-1MK1,
-PL-HC9P).** The project's WCAG 2.2 AA conformance target and the success
-criteria that bind it are recorded rather than assumed; `tools/contrast_check.py`
-computes the contrast ratios `make check` gates on, replacing ratios asserted
-in code comments; and the target fires when a session picks a colour rather
-than when someone remembers to look. This is `CLAUDE.md`'s "find the decidable
-part and put it in code" applied to a published standard, and it left `src/`
-untouched — what changed is that the standard is now enforced rather than
-believed.
+Both defects passed the whole test suite while displaying wrongly, because
+text wrapping is a function of glyph widths, panel width and font and nothing
+in this repository draws the interface. They were found by rendering the
+running app. `PL-7J96` carries that gap.
 
-**Three live defects in the queue's own ranking.** `docket next` labelled every
-Gate 0 entry with the milestone that records the gate rather than the one that
-clears it (PL-1J0P); `wave` reported the gate one entry short, because a
-safety-classed item predating the freeze was absent from the frozen list
-(PL-Y4Q4); and `CLAUDE.md` still carried the workflow-first rule that v0.2.8's
-shipping was supposed to retire (PL-D1ZY). Full notes are in
-`docs/releases/v0.2.9.md`.
+**Two colours that failed WCAG AA on clinical text were replaced (PL-X0RG,
+PL-30P6).** `MUTED` is the label naming every readout and it did not meet the
+4.5:1 normal-text minimum against the surface it is actually drawn on;
+`ACCENT` was being used as text as well as for the alveolar trace, where one
+colour cannot meet both bars. `MUTED` moved, and `ACCENT` became a graphical
+colour with a separate `ACCENT_TEXT` for the text use.
+`tools/contrast_check.py` computes both, so neither can regress silently.
+
+**The application has a name (PL-HK75).** `APP_DISPLAY_NAME` had read
+"Working Title" — the window title and the largest text on the screen, in
+every screenshot the project had ever produced. It is now "Open Anesthesia
+Simulator", which `APP_AUTHOR` and `APP_BUNDLE_ID` already used.
+
+**Five tooling items** closed live defects rather than adding capability: a
+`verify:` command that timed out returned 1 and read as one that correctly
+failed (PL-T940); `docket next` ranked by smallest effort while claiming to
+rank by nearest-to-finished (PL-B0YN) and said "Finishes <feature>" for any
+item in an underway feature, contradicting itself in the same sentence
+(PL-G1MF); `docket check` ran every open item's `verify:` serially on every
+`make check`, costing 50 s and growing with the queue (PL-LXR3); and two
+coverage items would each have added a further ~50 s to the same command
+(PL-5TN8). Full notes are in `docs/releases/v0.2.10.md`.
 
 Like every release since v0.2.0 it changes no equation, parameter, or
-numerical method: `docs/MODEL.md`'s specification of the model is unchanged
-except for the validation entry above, and the v0.0.2 circuit and v0.1.0
-sevoflurane reference tests still pass unaltered. That is why it is a patch
-rather than a new minor — it crosses no model capability boundary, no new
-agent and no new physiology.
+numerical method: `src/anesthesia_sim/data/` is byte-identical to v0.2.9, the
+v0.0.2 circuit and v0.1.0 sevoflurane reference tests still pass unaltered,
+and `docs/MODEL.md` differs only by the supported-range specification and the
+readout-labelling requirement above. That is why it is a patch rather than a
+new minor — it crosses no model capability boundary, no new agent and no new
+physiology.
 
 **What the model currently is** is described under "The model as it stands"
 below, and does not change release to release while the patch series
 continues.
 
 ### Release narrative
+
+v0.2.9 was a validation, accessibility and tooling patch that changed no source
+file at all — `src/` was identical to v0.2.8 — and its claim was evidence
+rather than code. **Validation, as distinct from verification (PL-9Y42):**
+nothing in this repository had ever been compared to a measurement of a human
+being, every test in `tests/reference/` having checked the implementation
+against itself. `tests/reference/test_published_wash_in.py` pinned the
+30-minute $`F_A/F_I`$ of all three agents against Yasuda et al. 1991 —
+sevoflurane 0.853 against 0.850 ± 0.018, isoflurane 0.741 against
+0.733 ± 0.027, desflurane 0.908 against 0.900 ± 0.010, at the data file's own
+cited alveolar ventilation rather than a value fitted to make it pass. Two
+caveats bound what that agreement is worth and are recorded with it: Yasuda's
+subjects breathed 65-70% nitrous oxide, so the measured curves carry a
+second-gas effect this fixed-volume single-gas alveolus cannot reproduce, and
+the partition coefficients under test share a lineage with the data being
+tested against, so passing shows the implementation reproduces its parameter
+set's intent rather than that the parameter set is independently right. It is
+weaker than "validated against a human measurement" and was not claimed as
+more. **A colour that fails accessibility began failing the build** (PL-MMYM,
+PL-1MK1, PL-HC9P): the WCAG 2.2 AA target and the criteria binding it were
+recorded rather than assumed, and `tools/contrast_check.py` computes the
+ratios `make check` gates on, replacing ratios asserted in code comments —
+`CLAUDE.md`'s "find the decidable part and put it in code" applied to a
+published standard. **Three live defects in the queue's own ranking** closed
+with it: `docket next` labelled every Gate 0 entry with the milestone that
+records the gate rather than the one that clears it (PL-1J0P), `wave` reported
+the gate one entry short because a safety-classed item predating the freeze
+was absent from the frozen list (PL-Y4Q4), and `CLAUDE.md` still carried the
+workflow-first rule v0.2.8's shipping was supposed to retire (PL-D1ZY).
 
 v0.2.8 was a workflow release carrying seventy items, whose whole claim is
 that the development loop is reliable enough to run two long scientific
