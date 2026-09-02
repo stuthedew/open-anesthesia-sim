@@ -58,3 +58,40 @@ at all (which stays the separate advisory it already is).
 hash resolves) **or `PL-ZQ9C`** (record an item's pull request). All three edit
 `subprojects/docket/src/docket/checks.py`, so `docket concurrent` will flag
 them as contending — they want doing in one pass, not in parallel.
+
+**Measured 2026-09-02, and it changes the design.** Every dangling `touches`
+path in the store today is a file its own item is going to **create**, not a
+stale reference:
+
+| Item | Path | Created by |
+| --- | --- | --- |
+| `PL-LWMS` | `.mailmap` | its own "Done when" - collapse the owner to one identity |
+| `PL-XH1D` | `CONTRIBUTING.md` | its own "Done when" - document the attribution rule |
+| `PL-Y0RZ` | `tools/import_boundary_check.py` | the checker it exists to write |
+
+So a check of the shape this brief describes - "a declared path that resolves
+nowhere is stale" - would fire three times on the current store and be **wrong
+all three times**. It would ship already crying wolf, which is the failure
+`CLAUDE.md`'s retirement test now names, arriving before the check is even
+built.
+
+The distinction the check has to make is between a path that *was* real and a
+path that is *not yet* real, and that is not decidable from the tree alone: both
+look identical to `Path.exists()`. Two routes that are decidable:
+
+- **Ask git, not the filesystem.** A path that no commit reachable from the
+  default branch has ever held is forward-looking; one the history holds and the
+  tree does not is stale. That is the `item.py` -> `model.py` rename this item
+  was filed for, and it separates the two populations exactly. It costs a git
+  walk, so it belongs beside the other git-derived reads that decline in a
+  shallow checkout rather than answering wrongly.
+- **Scope it to closed items.** A `done` item's `touches` should all resolve,
+  because its work has landed. Cheaper, needs no git, and catches nothing until
+  an item closes - which is late but never wrong.
+
+Prefer the first. The second is the fallback if the walk proves too slow to run
+on every `make check`.
+
+**Do not implement the plain existence test.** It is the version this brief
+originally described, and the measurement above is why it must not ship.
+
