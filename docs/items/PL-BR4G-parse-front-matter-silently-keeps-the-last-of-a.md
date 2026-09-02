@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 closed: 2026-09-02
+pr: 237
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py
