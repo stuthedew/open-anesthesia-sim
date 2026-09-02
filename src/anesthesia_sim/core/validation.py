@@ -5,7 +5,7 @@ boundary everywhere instead of trusted or coerced silently.
 Every guard raises `SimulationConfigurationError`: a value was rejected
 before it changed anything. A guard reached partway through a step means
 something different — the numerics broke down rather than the caller
-passing a bad value — and `RespiratorySystem.advance()` is what turns it
+passing a bad value — and `AgentUptakeSystem.advance()` is what turns it
 into `SimulationNumericalError`, because it is the only frame that knows a
 step was in progress. See `core/exceptions.py` for why the hierarchy is
 kept separate from `ValueError`.

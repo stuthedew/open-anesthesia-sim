@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
-from anesthesia_sim.core.respiratory_system import RespiratorySystem
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 SECONDS_PER_MINUTE = 60.0
 
@@ -428,7 +428,7 @@ ALLOWED_PACKAGE_IMPORTS = frozenset(
     {
         "load_agent_parameters",
         "load_reference_adult_parameters",
-        "RespiratorySystem",
+        "AgentUptakeSystem",
         "simulation_view",
         "supported_ranges",
     }
@@ -625,16 +625,16 @@ def _reference_state(agent_id: str, duration_s: float, point: OperatingPoint) ->
     return _integrate_rk4(_build_derivative(agent_id, point), duration_s, ORACLE_STEP_S)
 
 
-def _empty_shipped_system(agent_id: str) -> RespiratorySystem:
+def _empty_shipped_system(agent_id: str) -> AgentUptakeSystem:
     """The implementation under test, empty and at its own defaults."""
 
-    system = RespiratorySystem.for_agent(agent_id)
+    system = AgentUptakeSystem.for_agent(agent_id)
     system.circuit.set_circuit_volume(CIRCUIT_VOLUME_L)
 
     return system
 
 
-def _apply_operating_point(system: RespiratorySystem, point: OperatingPoint) -> None:
+def _apply_operating_point(system: AgentUptakeSystem, point: OperatingPoint) -> None:
     """Move every slider to `point`, leaving compartment contents untouched.
 
     This is what the interface does when a slider moves mid-run, and it is
@@ -648,7 +648,7 @@ def _apply_operating_point(system: RespiratorySystem, point: OperatingPoint) -> 
     system.set_delivered_concentration(point.delivered_fraction)
 
 
-def _shipped_system(agent_id: str, point: OperatingPoint) -> RespiratorySystem:
+def _shipped_system(agent_id: str, point: OperatingPoint) -> AgentUptakeSystem:
     """The implementation under test, configured at one operating point."""
 
     system = _empty_shipped_system(agent_id)
@@ -657,7 +657,7 @@ def _shipped_system(agent_id: str, point: OperatingPoint) -> RespiratorySystem:
     return system
 
 
-def _shipped_states(system: RespiratorySystem) -> tuple[float, ...]:
+def _shipped_states(system: AgentUptakeSystem) -> tuple[float, ...]:
     """Read the six displayed states, in STATE_LABELS order."""
 
     patient = system.patient

@@ -173,3 +173,61 @@ def test_rejects_fresh_gas_flow_above_the_supported_range() -> None:
 def test_rejects_construction_with_fresh_gas_flow_above_the_supported_range() -> None:
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
         BreathingCircuit(fresh_gas_flow_l_min=500.0)
+
+
+def test_changing_circuit_volume_conserves_stored_agent() -> None:
+    """A setter may not create or destroy agent (PL-006).
+
+    Agent is held as a fraction of the volume, so before this guard existed
+    `set_circuit_volume` scaled `agent_amount_l` with the volume: halving the
+    volume halved the agent in it. `docs/MODEL.md`'s required invariants say
+    otherwise in terms - "no compartment creates agent spontaneously" and
+    "changing a setting does not reset stored state" - and the conservation
+    check that can halt a run is computed from exactly this quantity.
+    """
+
+    circuit = BreathingCircuit(circuit_volume_l=6.0)
+    circuit.set_agent_amount(0.048288200)
+
+    circuit.set_circuit_volume(3.0)
+
+    assert circuit.agent_amount_l == pytest.approx(0.048288200)
+    assert circuit.circuit_volume_l == 3.0
+    assert circuit.circuit_concentration_fraction == pytest.approx(0.048288200 / 3.0)
+
+    circuit.set_circuit_volume(12.0)
+
+    assert circuit.agent_amount_l == pytest.approx(0.048288200)
+    assert circuit.circuit_concentration_fraction == pytest.approx(0.048288200 / 12.0)
+
+
+def test_a_circuit_volume_too_small_for_its_agent_is_refused_unchanged() -> None:
+    """A refused volume leaves the circuit exactly as it was.
+
+    The alternative - checking capacity after moving the volume - would leave
+    a caller who caught the error holding a circuit whose volume had changed
+    and whose concentration had not.
+    """
+
+    circuit = BreathingCircuit(circuit_volume_l=6.0)
+    circuit.set_agent_amount(2.0)
+
+    with pytest.raises(
+        SimulationConfigurationError, match="^circuit_volume_l is smaller than stored agent$"
+    ):
+        circuit.set_circuit_volume(1.0)
+
+    assert circuit.circuit_volume_l == 6.0
+    assert circuit.agent_amount_l == pytest.approx(2.0)
+
+
+def test_a_circuit_volume_exactly_equal_to_its_agent_is_accepted() -> None:
+    """The capacity bound is closed, matching `set_agent_amount`'s own."""
+
+    circuit = BreathingCircuit(circuit_volume_l=6.0)
+    circuit.set_agent_amount(2.0)
+
+    circuit.set_circuit_volume(2.0)
+
+    assert circuit.circuit_concentration_fraction == pytest.approx(1.0)
+    assert circuit.agent_amount_l == pytest.approx(2.0)

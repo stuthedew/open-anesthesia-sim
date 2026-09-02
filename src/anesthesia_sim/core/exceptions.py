@@ -53,7 +53,7 @@ class SimulationNumericalError(SimulationExecutionError):
     valid: it is the step itself that produced a state the model cannot
     represent — a negative compartment amount, a fraction outside zero
     through one — typically because the step was too large for the
-    operator split in `RespiratorySystem.advance()`.
+    operator split in `AgentUptakeSystem.advance()`.
     """
 
 
