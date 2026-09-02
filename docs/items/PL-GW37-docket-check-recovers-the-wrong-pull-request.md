@@ -7,7 +7,7 @@ status: ready
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_rider_closure_recovers_no_pull_request_number' subprojects/docket/tests/test_vcs.py
 classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, CLAUDE.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-02
 ---
 
@@ -77,6 +77,12 @@ id" at the front of every commit subject, singular, which is what the session
 that produced this defect followed. One clarification there and in the
 `docket` skill's close-out mode fixes every future rider closure.
 
+**The convention half landed on 2026-09-02**, approved by the project owner,
+and is no longer part of this item. `CLAUDE.md`'s "Name the work after the
+item" bullet and the `docket` skill's close-out step both now say that a
+commit closing more than one item leads with all of them, comma-separated.
+What remains here is the guard.
+
 *The guard half, which is what makes it safe when a session forgets.* A
 recovered commit older than the item's own `closed:` date cannot be the commit
 that closed it. `fce85ff` is dated 2026-09-01; `PL-YLZQ` carries `closed:
@@ -97,5 +103,8 @@ of a commit that does not contain the item's work.
 `subprojects/docket/tests/test_vcs.py` carries
 `test_a_rider_closure_recovers_no_pull_request_number`: an item marked done in
 a commit whose subject leads with a different item's id, with an older commit
-naming this one, recovers nothing rather than the older number. `CLAUDE.md`
-and the `docket` skill say to lead a closing subject with every id it closes.
+naming this one, recovers nothing rather than the older number.
+
+The convention half of this - `CLAUDE.md` and the `docket` skill saying to
+lead a closing subject with every id it closes - is already done, so what is
+left is only the guard that catches a session forgetting.
