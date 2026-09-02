@@ -244,20 +244,16 @@ have: whether the item is still real, whether the marking is right about a
 milestone whose prose it cannot read, and how it fits what the owner said
 they were trying to do.
 
-**Workflow work outranks product work until the workflow is settled**
-(`CLAUDE.md`, standing decision of 2026-08-30). No arrangement of the queue
-shows this, because `docket check` pins `safety`- and `science`-classed items
-to P1, so the top band is product work by construction. Do not promote process
-work into P1 to compensate: P1 means "a clinician could be misled", and it
-stops meaning that the moment it also means "the release script is annoying".
+**Work the roadmap places nowhere ranks on its band alone.** `docket next`
+sorts in-scope work above unplaced work above out-of-scope work, so an item no
+milestone section names is neither preferred nor excluded — it sits between the
+two. Say so when you offer one, rather than presenting it as what the step
+calls for.
 
-What carries it instead is the roadmap's current step, which `docket next`
-ranks above everything but `P0` — so while the step names a workflow
-milestone, the gate leads the list on its own. That ranking reads ids out of
-milestone sections, not the standing decision, so **an item that neither
-section places is placed by neither**. Apply the rule by hand for those, and
-say which side of it the work sits on. A product item taken as a test case for
-a workflow change is workflow work.
+Do not promote process work into P1 to move it up that order. `docket check`
+pins `safety`- and `science`-classed items to P1, so the band means "a
+clinician could be misled", and it stops meaning that the moment it also means
+"the release script is annoying".
 
 `docket next` states which model the work warrants. That is not a suggestion
 to weigh: safety- or science-classed work, and any item whose next step is an

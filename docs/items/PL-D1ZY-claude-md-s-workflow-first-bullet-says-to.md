@@ -1,9 +1,15 @@
 ---
 id: PL-D1ZY
 title: CLAUDE.md's workflow-first bullet says to retire itself when the workflow release ships, and v0.2.8 has shipped
-status: untriaged
-touches: CLAUDE.md
+priority: P2
+effort: S
+status: done
+classes: defect, docs, session-cost
+feature: worker-instructions
+touches: CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-02
+closed: 2026-09-02
+verify: '! grep -rqE "Workflow work (comes before|outranks) product work" CLAUDE.md .claude/skills/docket/SKILL.md'
 ---
 
 **Problem.** `CLAUDE.md`'s "Workflow work comes before product work until the
@@ -51,3 +57,44 @@ merged as #176 shortly before. Not raised by the discussion that found it -
 that session was writing a GitHub repository description - so it was captured
 rather than fixed, per `CLAUDE.md`'s capture rule, and recommended in the
 reply per the compounding-friction rule.
+
+**Closed 2026-09-02.** The project owner confirmed the retirement, which this
+brief made the condition rather than letting a session infer it from the
+shipped release. Retired as a deletion, as the brief proposed: the bullet is
+gone from `CLAUDE.md`, and `.claude/skills/docket/SKILL.md`'s two paragraphs
+carrying its reasoning half are gone with it.
+
+**Why nothing replaced it.** The three tests that should decide workflow
+against product work were already resident and none is phase-scoped, so the
+retirement leaves no hole. (1) *Step membership* — `bin/docket next` ranks the
+roadmap's current step above everything but `P0`, so while the step is v0.3.0
+or v0.4.0 the product leads by construction. (2) *Compounding friction* —
+`CLAUDE.md`'s preceding bullet already carries the arithmetic the retired rule
+rested on, per-item saving times items remaining, and already requires it be
+recommended on sight. (3) *A tool that gives a wrong answer is a defect* —
+`CLAUDE.md`'s deterministic-tooling section already says a tool whose output
+looks authoritative and is not is worse than none, which is the class PL-T63T,
+PL-L9JS and PL-20CQ sit in; they are fixed on the defect's own merits, never as
+a workflow-versus-product question.
+
+**What survived from the skill, and why.** Two facts in the deleted paragraphs
+were independent of the ordering rule and were kept, rewritten: that work the
+roadmap places nowhere ranks on its band alone, sitting between in-scope and
+out-of-scope rather than being excluded; and that process work must not be
+promoted into `P1`, because `docket check` pins `safety` and `science` there
+and the band would stop meaning "a clinician could be misled". The second
+matters more now, not less, with the ordering rule gone. Dropped with the rule:
+the instruction to apply it by hand to unplaced items, and the classification
+note that a product item taken as a test case for a workflow change is workflow
+work, which has no consequence once nothing ranks on the distinction.
+
+**Left alone deliberately.** `subprojects/docket/src/docket/plan.py`'s comment
+on `PLACEMENT_ORDER` says the priority field "cannot express the phase". Read
+in context that is the roadmap step rather than the retired standing decision,
+and the behaviour it documents — placement beating band — is unchanged and
+still correct, so rewriting it would be churn in the apparatus rather than a
+correction.
+
+**Measured.** Resident instructions fall from 512 lines to 505 (`CLAUDE.md`
+390 to 383), which `tools/doc_check.py` reports and is the direction
+`CLAUDE.md`'s own resident-growth rule wants.
