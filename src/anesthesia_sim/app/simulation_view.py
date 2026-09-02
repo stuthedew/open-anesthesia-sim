@@ -94,13 +94,34 @@ COMPACT_PAGE_PADDING = 16
 COMPACT_PANEL_PADDING = 14
 COMPACT_PANEL_RADIUS = 10
 
-# The concentration row's grid: six readouts at an equal share, plus the
-# alveolar one at half again, which is what its required label needs to stay
-# on one line. `_build_concentration_metrics` carries why that matters.
-# 6 * 2 + 3 = 15, so the seven panels fill the row exactly.
-METRIC_PANEL_COLUMNS = 2
-METRIC_PANEL_WIDE_COLUMNS = 3
-METRIC_GRID_COLUMNS = 6 * METRIC_PANEL_COLUMNS + METRIC_PANEL_WIDE_COLUMNS
+# How many readout panels stand side by side, by window width. Each panel
+# spans one column, so this is the row's own column count rather than a span:
+# the seven panels always divide the row evenly, and the row reflows instead
+# of squeezing labels. The steps are set by the widest label a panel has to
+# hold on one line, not by taste - `_build_concentration_metrics` carries the
+# measurement and PL-8M05 the defect it fixes. Flet's breakpoint minima are
+# xs 0, sm 576, md 768, lg 992, xl 1200, xxl 1400 CSS pixels; a width takes
+# the largest step at or below it.
+METRIC_GRID_COLUMNS: dict[ft.ResponsiveRowBreakpoint | str, int | float] = {
+    ft.ResponsiveRowBreakpoint.XS: 1,
+    ft.ResponsiveRowBreakpoint.MD: 2,
+    ft.ResponsiveRowBreakpoint.LG: 4,
+    ft.ResponsiveRowBreakpoint.XL: 7,
+}
+
+# The clinical gloss under a compartment name is deliberately smaller than the
+# name above it. Which quantity the model computes is the primary claim; what
+# a clinician would compare it against is a secondary one, and the type sizes
+# say so. Same MUTED colour as the name, so this adds no pair to
+# `tools/contrast_check.py`, and it stays normal text at WCAG's 4.5:1.
+METRIC_NAME_SIZE = 14
+METRIC_QUALIFIER_SIZE = 12
+# A panel with no gloss still draws the line, so that every reading in the row
+# sits on one baseline. A blank string collapses to zero height in Flutter,
+# where a non-breaking space renders a full line of the qualifier's size -
+# which keeps the spacer tied to that size rather than to a pixel constant
+# somebody would have to re-measure after a font change.
+EMPTY_METRIC_QUALIFIER = "\u00a0"
 
 # The three flow sliders span the model's own supported input ranges, imported
 # from `core/supported_ranges.py` rather than restated here. Until PL-0MLQ this
@@ -511,25 +532,30 @@ class SimulationView:
     def _build_concentration_metrics(self) -> ft.ResponsiveRow:
         """Build the compact concentration summary grid.
 
-        The grid is 15 columns rather than seven equal ones because the
-        alveolar panel needs a wider column than its neighbours. Its required
-        label is the longest on the row, and at an equal share it was the only
-        one that wrapped, which cost the row two things at once: the wrap fell
-        inside the hedge, ending a line on "Alveolar / end-tidal-" for anyone
-        reading the row rather than studying it, and the second line pushed
-        that one reading below the baseline the other six share — in a row
-        `docs/MODEL.md` § "Displayed precision" says the six readouts "sit in
-        one row and are read comparatively", and on the reading a clinician is
-        most likely to compare.
+        Each panel names a compartment on one line and, where one applies,
+        glosses it on a smaller line beneath: "Alveolar" over
+        "end-tidal-equivalent", "Circuit" over "inspired". The split is a
+        safety decision before it is a typographic one. What the model
+        computes is a compartment - the gas fraction of one perfectly-mixed
+        alveolus, the mixed contents of the circuit - and what a clinician
+        would set beside it on a monitor is a different, measured thing. Two
+        lines at two sizes say which is which; one line joined by a slash
+        offered them as alternative names for the same quantity, which is the
+        modeled-versus-measured confusion `CLAUDE.md` forbids (PL-NV9W, then
+        PL-8M05).
 
-        Measured by rendering the running app at 1024, 1280 and 1440 CSS
-        pixels: at 1280 and above every label now sits on one line and every
-        reading on one baseline. At 1024 this label wraps again, but so do
-        "Simulated time", "Circuit / inspired" and "Vessel-rich group", which
-        wrapped there before this panel was widened — a narrow window makes
-        the row ragged generally rather than singling this reading out, and
-        `PL-8M05` carries that separately. The app opens full screen, so the
-        wide case is the one it runs in.
+        It also lets every reading in the row share a baseline. `docs/MODEL.md`
+        § "Displayed precision" says the six readouts "sit in one row and are
+        read comparatively" - the reason for showing them together is that a
+        reader can see "the circuit lead the alveoli lead the tissues" - and a
+        label that wrapped where its neighbours did not pushed one reading out
+        of that line. Splitting the two longest labels leaves no name long
+        enough to wrap, and a panel with no gloss still draws the gloss line,
+        so the seven blocks are the same height whatever they contain.
+
+        The row then reflows rather than squeezing: seven across at 1200 CSS
+        pixels and wider, four at 992, two at 768, one below that. Measured by
+        rendering the running app at each step.
 
         Returns:
             Seven responsive panels containing simulated time in
@@ -539,58 +565,72 @@ class SimulationView:
         return ft.ResponsiveRow(
             columns=METRIC_GRID_COLUMNS,
             controls=[
-                self._build_metric_panel("Simulated time", self._elapsed_time_text),
-                self._build_metric_panel("Circuit / inspired", self._circuit_concentration_text),
+                self._build_metric_panel("Simulated time", None, self._elapsed_time_text),
+                self._build_metric_panel("Circuit", "inspired", self._circuit_concentration_text),
                 # "end-tidal-equivalent", never "end-tidal": the hedge is
                 # required by docs/MODEL.md § "Minimum displayed outputs", and
                 # the reason is stated there in terms - the phrase "must not
                 # imply that airway sampling dynamics, dead space, or
-                # capnography are modeled", none of which they are. What this
-                # readout holds is the gas fraction of one perfectly-mixed
-                # alveolar compartment, so it is not end-tidal in any patient:
-                # dead space, airway sampling delay, shunt and V/Q mismatch are
-                # all in MODEL.md's "Known limitations". End-tidal is the name
-                # of a *measurement*, and this is the readout a clinician would
-                # most readily set beside a real agent monitor, which is what
-                # makes the unhedged label a presentation-safety defect rather
-                # than a wording preference (PL-NV9W). Do not shorten it to fit
-                # a layout; `test_the_alveolar_readout_is_labelled_end_tidal_equivalent`
-                # holds the exact string.
+                # capnography are modeled", none of which they are. Dead space,
+                # airway sampling delay, shunt and V/Q mismatch are all in
+                # MODEL.md's "Known limitations", so this value is not
+                # end-tidal in any patient. End-tidal is the name of a
+                # *measurement*, and this is the readout a clinician would most
+                # readily set beside a real agent monitor, which is what makes
+                # an unhedged label a presentation-safety defect rather than a
+                # wording preference (PL-NV9W). Do not shorten it to fit a
+                # layout; `test_the_alveolar_readout_is_labelled_end_tidal_equivalent`
+                # holds the exact pair of strings.
                 self._build_metric_panel(
-                    "Alveolar / end-tidal-equivalent",
-                    self._alveolar_concentration_text,
-                    wide_columns=METRIC_PANEL_WIDE_COLUMNS,
+                    "Alveolar", "end-tidal-equivalent", self._alveolar_concentration_text
                 ),
-                self._build_metric_panel("Mixed venous", self._mixed_venous_concentration_text),
-                self._build_metric_panel("Vessel-rich group", self._vessel_rich_concentration_text),
-                self._build_metric_panel("Muscle", self._muscle_concentration_text),
-                self._build_metric_panel("Fat", self._fat_concentration_text),
+                self._build_metric_panel(
+                    "Mixed venous", None, self._mixed_venous_concentration_text
+                ),
+                self._build_metric_panel(
+                    "Vessel-rich group", None, self._vessel_rich_concentration_text
+                ),
+                self._build_metric_panel("Muscle", None, self._muscle_concentration_text),
+                self._build_metric_panel("Fat", None, self._fat_concentration_text),
             ],
         )
 
     def _build_metric_panel(
-        self, label: str, value_text: ft.Text, wide_columns: int = METRIC_PANEL_COLUMNS
+        self, name: str, qualifier: str | None, value_text: ft.Text
     ) -> ft.Container:
         """Build one compact read-only metric panel.
 
         Args:
-            label: User-facing metric name.
+            name: The modeled quantity this panel displays, in the model's own
+                terms.
+            qualifier: What a clinician would compare that quantity against,
+                or None where nothing measured corresponds to it. Drawn
+                smaller than the name, because it is the weaker claim of the
+                two - see `_build_concentration_metrics`.
             value_text: Formatted value with its physical unit.
-            wide_columns: Columns this panel occupies once the row is wide
-                enough to hold every panel side by side. Defaults to an equal
-                share; a panel whose required label would otherwise wrap takes
-                more. Narrower layouts stack the panels and are unaffected.
 
         Returns:
             Responsive metric panel.
         """
 
         return ft.Container(
-            content=ft.Column(controls=[ft.Text(label, color=MUTED), value_text], spacing=2),
+            content=ft.Column(
+                controls=[
+                    ft.Text(name, color=MUTED, size=METRIC_NAME_SIZE),
+                    ft.Text(
+                        qualifier if qualifier is not None else EMPTY_METRIC_QUALIFIER,
+                        color=MUTED,
+                        size=METRIC_QUALIFIER_SIZE,
+                        italic=True,
+                    ),
+                    value_text,
+                ],
+                spacing=0,
+            ),
             bgcolor=PANEL,
             border_radius=COMPACT_PANEL_RADIUS,
             padding=COMPACT_PANEL_PADDING,
-            col={"sm": METRIC_GRID_COLUMNS, "md": METRIC_GRID_COLUMNS // 2, "lg": wide_columns},
+            col=1,
         )
 
     def _build_chart_panel(self) -> ft.Container:

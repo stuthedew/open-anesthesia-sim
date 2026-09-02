@@ -114,7 +114,7 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "every numeric readout, its unit, and each panel heading "
-        "(simulation_view.py:215-224, :486, :551, :593)",
+        "(simulation_view.py:248-257, :519, :650, :690, :743, :1127)",
     ),
     Requirement(
         "MUTED",
@@ -129,8 +129,13 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "PANEL",
         AA_TEXT,
         "1.4.3",
-        "the label naming each readout, the chart's axis description, and the "
-        "agent-accounting detail line (simulation_view.py:532, :556, :595)",
+        "the compartment name and the smaller clinical gloss under it on each "
+        "readout, the chart's axis description, and the agent-accounting "
+        "detail line (simulation_view.py:619, :622, :653, :242-244). The "
+        "gloss is judged at the same 4.5:1 as the name above it: at 12px it "
+        "is normal text by WCAG's definition, nowhere near the 18.66px the "
+        "large-text exception starts at, and it is the same MUTED colour on "
+        "the same PANEL surface, so it adds no pair to this table (PL-8M05).",
     ),
     Requirement(
         "ACCENT_TEXT",

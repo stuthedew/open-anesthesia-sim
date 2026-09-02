@@ -1,8 +1,15 @@
 ---
 id: PL-8M05
 title: Keep the concentration readouts on one baseline at narrow window widths
-status: untriaged
+priority: P1
+effort: S
+status: done
+classes: safety, ux
+feature: presentation-safety
+touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tools/contrast_check.py
 added: 2026-09-02
+closed: 2026-09-02
+verify: uv run pytest tests/unit/test_simulation_view.py -k qualifier_line
 ---
 
 **Problem.** At a window narrower than about 1280 CSS pixels, four of the
@@ -28,16 +35,42 @@ window width, so the row's shape changes under the reader.
 `_build_concentration_metrics` and `_build_metric_panel`;
 `docs/MODEL.md` § "Displayed precision" for the comparative-row requirement.
 
-**Approach (one option, not a decision).** Reserving a uniform two-line label
-block would align every reading at every width, at the cost of a taller row
-where one line would do. A more interesting alternative is to split the label
-into a compartment name and a subordinate clinical qualifier — "Alveolar" over
-"end-tidal-equivalent", "Circuit" over "inspired" — which would fix the
-alignment and arguably read better, since the name of what the model computes
-would then be visually primary and the clinical gloss secondary. That is a
-design change to the whole row rather than a layout fix, so it needs the
-project owner's decision before it is built.
-
 **Done when.** Every concentration reading in the row shares one baseline at
 every supported window width, and the choice is recorded with the rendered
 evidence for it.
+
+**Worked.** Two changes, and the first is why the second was possible.
+
+Each panel now names a compartment on one line and glosses it on a smaller
+italic line beneath — "Alveolar" over *end-tidal-equivalent*, "Circuit" over
+*inspired* — instead of joining the two with a slash. That is a safety
+decision before it is a typographic one: what the model computes is a
+compartment, what a clinician would set beside it on a monitor is a different
+and measured thing, and a slash offered them as alternative names for one
+quantity. Two lines at two sizes say which claim is which. It also removes
+the longest labels, so no name is long enough to wrap.
+
+A panel with no gloss still draws the gloss line, using a non-breaking space
+so the spacer is tied to the qualifier's font size rather than to a pixel
+constant somebody would have to re-measure. Every label block is therefore
+the same height and every reading sits on one baseline.
+
+The row also reflows rather than compressing: seven panels across at 1200 CSS
+pixels and wider, four at 992, two at 768, one below that, each panel spanning
+one column of a grid whose column *count* is what changes. Rendered at 1024,
+1200 and 1440: every name on one line and every reading on one baseline at all
+three. 1200 is the tightest seven-across case and it holds there in a serif
+fallback wider than the Roboto the app actually ships, so the shipped font has
+margin rather than being on the edge.
+
+`test_every_readout_reserves_a_qualifier_line_and_an_equal_column` holds both
+invariants — every panel draws its gloss line at a smaller size than its name
+and takes an equal column, and the widest step of the ladder still seats every
+readout side by side, so an eighth panel cannot silently split the row.
+
+**Note on the contrast table.** The gloss adds no pair to
+`tools/contrast_check.py`: same `MUTED` on the same `PANEL`, and at 12px it is
+normal text by WCAG's definition, so it is judged at the 4.5:1 the name above
+it already meets. The `INK`/`PANEL` and `MUTED`/`PANEL` entries' line
+citations were 90-odd lines stale and are refreshed; `PL-J7C5` proposes
+replacing them with symbol names, which do not drift.

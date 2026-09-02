@@ -33,6 +33,7 @@ from anesthesia_sim.app.simulation_view import (
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     FLOW_DISPLAY_DECIMALS,
     MAX_CHART_POINTS_PER_SERIES,
+    METRIC_GRID_COLUMNS,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     SimulationView,
@@ -391,33 +392,34 @@ def test_metric_placeholders_match_the_formatter_before_a_run() -> None:
         assert text.value == empty
 
 
-# The exact string the alveolar readout must carry, restated here rather than
-# imported from `simulation_view.py`. An import would move both sides of the
-# assertion together, which is precisely the edit these tests exist to catch:
-# `docs/MODEL.md` requires "alveolar or end-tidal-equivalent concentration",
-# and the hedge is the requirement rather than decoration.
-_ALVEOLAR_METRIC_LABEL = "Alveolar / end-tidal-equivalent"
+# The exact two strings the alveolar readout must carry, restated here rather
+# than imported from `simulation_view.py`. An import would move both sides of
+# the assertion together, which is precisely the edit these tests exist to
+# catch: `docs/MODEL.md` requires "alveolar or end-tidal-equivalent
+# concentration", and the hedge is the requirement rather than decoration.
+_ALVEOLAR_METRIC_NAME = "Alveolar"
+_ALVEOLAR_METRIC_QUALIFIER = "end-tidal-equivalent"
 
 # Any spelling of the measurement's name that is not the hedged form. The
 # lookahead is what distinguishes the two: "end-tidal-equivalent" is the
-# required label, "end-tidal" on its own is the claim MODEL.md forbids.
+# required gloss, "end-tidal" on its own is the claim MODEL.md forbids.
 _UNHEDGED_END_TIDAL = re.compile(r"end[\s-]?tidal(?!-equivalent)", re.IGNORECASE)
 
 
-def _metric_label_above(view: SimulationView, value_text: ft.Text) -> str:
-    """Return the label the metric grid displays above `value_text`.
+def _metric_labels_above(view: SimulationView, value_text: ft.Text) -> tuple[ft.Text, ft.Text]:
+    """Return the name and qualifier controls the grid draws above `value_text`.
 
-    Reads the assembled grid rather than a constant, so the pairing of a
-    label with the reading underneath it is part of what gets asserted: the
-    right number under the wrong label is the presentation-safety failure
+    Reads the assembled grid rather than a constant, so the pairing of a label
+    with the reading underneath it is part of what gets asserted: the right
+    number under the wrong label is the presentation-safety failure
     `CLAUDE.md` names, and it would survive any assertion made on the label
-    string alone.
+    strings alone.
     """
 
     for panel in view._build_concentration_metrics().controls:
-        label_control, panel_value_text = panel.content.controls
+        name_control, qualifier_control, panel_value_text = panel.content.controls
         if panel_value_text is value_text:
-            return label_control.value
+            return name_control, qualifier_control
 
     raise AssertionError("no metric panel in the grid displays that value control")
 
@@ -487,9 +489,51 @@ def test_the_alveolar_readout_is_labelled_end_tidal_equivalent() -> None:
 
     view, _ = _build_view(_snapshot())
 
-    label = _metric_label_above(view, view._alveolar_concentration_text)
+    name, qualifier = _metric_labels_above(view, view._alveolar_concentration_text)
 
-    assert label == _ALVEOLAR_METRIC_LABEL
+    assert name.value == _ALVEOLAR_METRIC_NAME
+    assert qualifier.value == _ALVEOLAR_METRIC_QUALIFIER
+    # The gloss is the weaker of the two claims and has to read as such: the
+    # compartment is what the model computes, the measurement is what a
+    # clinician would compare it against. Equal type would offer them as
+    # alternative names for one quantity, which is the confusion the split
+    # exists to remove.
+    assert qualifier.size < name.size
+
+
+def test_every_readout_reserves_a_qualifier_line_and_an_equal_column() -> None:
+    """The row is read across, so no panel may be shaped unlike its neighbours.
+
+    `docs/MODEL.md` § "Displayed precision" says the six concentration
+    readouts "sit in one row and are read comparatively" - the reason for
+    showing them together is that a reader can see "the circuit lead the
+    alveoli lead the tissues". Two things have to hold for that to work, and
+    neither is visible in a diff:
+
+    A panel with no clinical gloss still draws the gloss line, so that every
+    label block is the same height and every reading sits on one baseline.
+    Before PL-8M05 the labels were single strings of unequal length, and the
+    ones that wrapped dropped their reading a line below the rest - a
+    different set of them at every window width.
+
+    And the widest step of the reflow ladder puts every readout side by side.
+    Adding an eighth panel without widening that step would silently break the
+    row into two, which is the one arrangement the comparative reading cannot
+    survive.
+    """
+
+    view, _ = _build_view(_snapshot())
+
+    panels = view._build_concentration_metrics().controls
+
+    for panel in panels:
+        name, qualifier, _value = panel.content.controls
+        assert name.value, "a readout with no name"
+        assert qualifier.value, "a readout that does not hold its gloss line open"
+        assert qualifier.size < name.size
+        assert panel.col == 1, "a readout given more of the row than its neighbours"
+
+    assert max(METRIC_GRID_COLUMNS.values()) == len(panels)
 
 
 def test_no_interface_string_drops_the_end_tidal_equivalent_hedge() -> None:
@@ -519,7 +563,7 @@ def test_no_interface_string_drops_the_end_tidal_equivalent_hedge() -> None:
     # its children would leave the walk finding nothing and the assertion
     # passing vacuously. Ordering them this way also keeps the failure
     # message pointed at the real cause in either case.
-    assert _ALVEOLAR_METRIC_LABEL in strings, (
+    assert _ALVEOLAR_METRIC_QUALIFIER in strings, (
         "the control-tree walk did not reach the concentration readouts, "
         "so the assertion above proved nothing"
     )
