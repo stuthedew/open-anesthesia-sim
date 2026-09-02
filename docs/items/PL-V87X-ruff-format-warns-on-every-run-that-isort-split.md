@@ -9,6 +9,7 @@ touches: pyproject.toml
 verify: grep -qF 'split-on-trailing-comma = false' pyproject.toml && uv run ruff format --check .
 status: done
 closed: 2026-09-02
+pr: 236
 added: 2026-09-01
 ---
 
