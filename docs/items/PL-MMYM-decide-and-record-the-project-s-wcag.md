@@ -1,9 +1,15 @@
 ---
 id: PL-MMYM
 title: Decide and record the project's WCAG conformance target and which criteria bind
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: docs, ux
 feature: presentation-safety
+touches: docs/MODEL.md
 added: 2026-09-02
+closed: 2026-09-02
+verify: python3 tools/doc_check.py check && grep -qF 'The target is WCAG 2.2 Level AA' docs/MODEL.md
 ---
 
 **Problem.** The project applies WCAG in three places and has never stated what

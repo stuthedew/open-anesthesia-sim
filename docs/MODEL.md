@@ -1333,6 +1333,62 @@ is worse still.
 
 The phrase “end-tidal-equivalent” must not imply that airway sampling dynamics, dead space, or capnography are modeled.
 
+### Color contrast, and the standard this interface is held to
+
+**The target is WCAG 2.2 Level AA**, with two places this project deliberately
+holds itself higher and a set of criteria explicitly deferred. WCAG 2.2 is the
+current W3C Recommendation (published 2023-10-05); WCAG 3.0 is a Working Draft
+whose scoring model replaces pass/fail entirely and is not designed against
+here. Conforming to 2.2 AA also satisfies the 2.1 AA that EN 301 549 and the
+2024 ADA Title II rule reference and the 2.0 AA that Section 508 does, though
+none of those instruments binds this project — AA is chosen as the right
+engineering bar for a teaching tool, not as a compliance obligation.
+
+Two criteria carry most of the weight:
+
+- **SC 1.4.3, Contrast (Minimum)** — 4.5:1 for text. Every readout, every label
+  naming a readout, and every agent name over its identification color is held
+  to this. The large-text exception (18pt, or 14pt bold) is not claimed
+  anywhere: the interface's default text size is 14px, so bold status text is
+  judged at 4.5:1 like everything else.
+- **SC 1.4.11, Non-text Contrast** — 3:1 for graphical objects. Each chart trace
+  against the panel it is drawn on, and each agent swatch read as a shape.
+
+Held **above** AA in two places:
+
+- **Color is never the sole channel.** SC 1.4.1 (Level A) requires this, but the
+  reason here is stronger than the criterion: ISO 5360 Table 2 footnote b makes
+  displaying a color an obligation to display the *correct* one, so a second cue
+  is what keeps a mis-seen color from becoming a mis-identified agent. The agent
+  name always accompanies the color; the chart's traces require a non-color
+  channel for the reason below.
+- **Chart traces are held to pairwise separation, which WCAG does not cover.**
+  SC 1.4.11 only asks 3:1 against the *background*; it says nothing about how
+  far apart two adjacent series must be, and reading one compartment against
+  another is the whole lesson of this chart. This bar cannot be met on
+  luminance: contrast ratios compose along a bounded axis — black to white is
+  21:1 — so sorting $`n`$ traces by luminance, the smallest adjacent gap is
+  largest when the gaps are equal, and no arrangement of six traces gives every
+  pair more than $`21^{1/5}\approx1.84`$. That is below SC 1.4.11's 3:1, so a
+  redundant non-color channel (line style or marker) is a **requirement** for
+  this chart rather than an embellishment, and no palette choice can remove it.
+
+**Deferred, and named so the deferral is visible** rather than silently
+unlisted: SC 2.4.11 (Focus Not Obscured), 2.5.8 (Target Size), 1.4.10 (Reflow)
+and 1.4.12 (Text Spacing). Each needs a settled interface before it can be
+answered, and what the rendering backend can deliver for keyboard and
+screen-reader support is an open question rather than a commitment.
+
+**The ratios are computed, not asserted.** `tools/contrast_check.py` runs in
+`make check`, reads the color constants out of `app/theme.py` and
+`app/simulation_view.py`, and holds each declared pair to its declared minimum
+using WCAG 2.2's own relative-luminance and contrast-ratio definitions. Its
+requirement table names the pair, the criterion and the reason the pair is held
+to that number; the judgment of *which* pairs matter stays in that table, and
+the tool only evaluates it. Pairs that do not meet their minimum today are
+listed there against the item that closes each one, and a listed shortfall that
+starts passing is reported as an error, so a fix cannot leave its excuse behind.
+
 ### Displayed precision
 
 Every modeled concentration and relative partial pressure is displayed at a

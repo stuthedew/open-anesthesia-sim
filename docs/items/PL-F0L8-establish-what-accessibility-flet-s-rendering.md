@@ -1,8 +1,12 @@
 ---
 id: PL-F0L8
 title: Establish what accessibility Flet's rendering backend can actually deliver
-status: untriaged
+priority: P3
+effort: M
+status: needs-decision
+classes: planning
 feature: presentation-safety
+touches: ROADMAP.md, src/anesthesia_sim/app
 added: 2026-09-02
 ---
 
@@ -30,6 +34,14 @@ the same.
 This is a scoping question, not a defect. It is filed because a commitment whose
 feasibility is unknown is worth converting into one whose feasibility is known,
 before the phase that depends on it starts.
+
+**Decision needed.** Whether `ROADMAP.md` item 20 stays as written or is
+narrowed to what this stack can deliver - and, if the backend cannot expose
+usable semantics, which of three answers the project takes: narrow the
+commitment, add a non-visual route to the same values (a text summary of the
+chart, an exportable table), or accept the limit and document it. The
+investigation below is what makes that answerable; it is not itself the
+decision.
 
 **Approach.** Answer three things against current Flet and Flutter
 documentation and a hands-on check of the running app, not from memory:

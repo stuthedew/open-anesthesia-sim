@@ -1,9 +1,15 @@
 ---
 id: PL-HC9P
 title: Make the WCAG colour target fire when a session picks a colour
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: infra
 feature: presentation-safety
+touches: .claude/rules/ui-color.md
 added: 2026-09-02
+closed: 2026-09-02
+verify: python3 tools/doc_check.py check && grep -qF 'Picking a color in this interface' .claude/rules/ui-color.md
 ---
 
 **Problem.** The project's accessibility standard, wherever it ends up written,

@@ -1,8 +1,12 @@
 ---
 id: PL-LL9Y
 title: Check the warning and alert colours against the medical alarm-colour convention
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: ux
 feature: presentation-safety
+touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-09-02
 ---
 
@@ -24,6 +28,12 @@ simulator that uses a monitor's alarm colour to mean something else, or uses a
 different colour for something a monitor would flag, is teaching against the
 equipment — an educational defect by the same logic that makes a wrong agent
 colour a safety defect, and one WCAG says nothing about.
+
+**Decision needed.** Whether this simulator follows the medical alarm-colour
+convention for its alert surfaces, deliberately departs from it, or has no
+alert surface significant enough for the question to bite yet. All three are
+defensible; what is not defensible is the current state, where the colour was
+picked for contrast alone and the question was never asked.
 
 **Not a compliance claim.** IEC 60601-1-8 governs alarm systems on medical
 *electrical equipment*. This is an educational simulator and the standard does

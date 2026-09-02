@@ -1,9 +1,15 @@
 ---
 id: PL-1MK1
 title: Compute colour-contrast ratios in make check instead of asserting them in comments
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: infra
 feature: presentation-safety
+touches: tools/contrast_check.py, tests/unit/test_contrast_check.py, Makefile, .github/workflows/quality.yml, docs/ARCHITECTURE.md, README.md
 added: 2026-09-02
+closed: 2026-09-02
+verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_shortfall_that_starts_passing_is_an_error' tests/unit/test_contrast_check.py
 ---
 
 **Problem.** Every contrast claim in the tree is prose. `app/theme.py:53-56`

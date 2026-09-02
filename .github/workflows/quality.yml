@@ -53,6 +53,7 @@ jobs:
       - run: uv run pytest
       - run: bin/docket check
       - run: uv run python tools/doc_check.py check
+      - run: uv run python tools/contrast_check.py
 
   # The other half of what `checks` proves, and the half that was missing.
   # Everything above runs under the virtualenv on the interpreter
@@ -108,3 +109,4 @@ jobs:
 
       - run: python3 tools/doc_check.py check
       - run: bin/docket check
+      - run: python3 tools/contrast_check.py
