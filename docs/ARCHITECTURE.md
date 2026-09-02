@@ -38,6 +38,7 @@ src/anesthesia_sim/
 ├── app_metadata.py      # app name, version (from package metadata), bundle id
 ├── core/                # scientific simulation — no Flet dependency
 │   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError)
+│   ├── supported_ranges.py        # the declared input domain; refuses a setting outside it
 │   ├── exceptions.py              # exception hierarchy; every core failure is inside it
 │   ├── parameters.py              # load + validate agent/patient JSON data
 │   ├── circuit.py                 # breathing circuit compartment

@@ -53,18 +53,23 @@ DELIVERED_FRACTION = 0.05
 FRESH_GAS_FLOW_L_MIN = 4.0
 CIRCUIT_VOLUME_L = 6.0
 
-# The interface's own slider limits, restated here rather than imported for
-# the same reason as SHIPPED_STEP_S below — this reference test does not
-# depend on the application layer. `test_envelope_limits_match_the_interface`
-# is what keeps the restatement true: without it, moving a slider limit would
-# silently shrink the domain this gate covers, which is the defect PL-042
-# exists to fix.
+# The model's own supported input ranges, restated here rather than imported
+# for the same reason as SHIPPED_STEP_S below — this gate states the domain it
+# claims to cover in its own file, so that a widened domain fails here rather
+# than silently enlarging what these measurements are read as covering.
+# `test_envelope_limits_match_the_supported_input_ranges` is what keeps the
+# restatement true; without it, moving a limit would silently shrink or
+# stretch the domain this gate covers, which is the defect PL-042 exists to
+# fix. Before PL-0MLQ these were the interface's slider limits and the
+# restatement was checked against `simulation_view`, because the interface was
+# the only place the domain was declared.
 #
 # The floors matter as much as the maxima and are checked with them. The worst
 # trajectory this gate drives reaches zero cardiac output, so flooring that
-# slider above zero would take the bound's own worst case out of the reachable
-# domain without failing anything. `docs/MODEL.md` § "Supported input ranges"
-# records that zero is supported on all four controls, deliberately (PL-629Z).
+# control above zero would take the bound's own worst case out of the
+# reachable domain without failing anything. `docs/MODEL.md` § "Supported
+# input ranges" records that zero is supported on all four controls,
+# deliberately (PL-629Z).
 MAX_FRESH_GAS_FLOW_L_MIN = 10.0
 MAX_ALVEOLAR_VENTILATION_L_MIN = 12.0
 MAX_CARDIAC_OUTPUT_L_MIN = 10.0
@@ -103,9 +108,11 @@ class OperatingPoint:
 
     Frozen so it can key the reference-solution cache; the four fields are
     exactly the sliders that enter the governing equations. Circuit volume is
-    not among them: it is a slider, but it scales the circuit equation alone
-    and does not change the coupling between compartments, which is where the
-    splitting error lives.
+    not among them: it is a data-file parameter with no slider, and it scales
+    the circuit equation alone rather than changing the coupling between
+    compartments, which is where the splitting error lives. PL-GYH2 carries
+    the question of whether it should be a control at all, and what range it
+    would need if it became one.
     """
 
     delivered_fraction: float
@@ -406,14 +413,16 @@ SPLITTING_ERROR_BOUND_PER_STEP_SECOND = 2.8e-3
 EXACT_SOLUTION_FLOOR = 1e-12
 
 # Names this module is allowed to import from `anesthesia_sim`: the two
-# parameter loaders the oracle needs, the system under test, and the view
-# module whose slider limits define the envelope.
+# parameter loaders the oracle needs, the system under test, the module
+# declaring the input domain this gate measures over, and the view module
+# whose displayed resolution and shipped step every figure here is quoted at.
 #
-# `simulation_view` is on this list for one assertion — that the limits
-# restated above are still the interface's — and the rule the list enforces
-# is unaffected by it: what must never be imported is a solver, because
-# comparing the implementation against itself proves nothing. A module of
-# display constants is not that. The oracle itself
+# `supported_ranges` and `simulation_view` are on this list for two
+# assertions — that the limits restated above are still the model's, and that
+# the resolution and step they are quoted at are still the interface's — and
+# the rule the list enforces is unaffected by either: what must never be
+# imported is a solver, because comparing the implementation against itself
+# proves nothing. Modules of constants are not that. The oracle itself
 # (`_build_derivative`) still uses the parameter loaders alone.
 ALLOWED_PACKAGE_IMPORTS = frozenset(
     {
@@ -421,6 +430,7 @@ ALLOWED_PACKAGE_IMPORTS = frozenset(
         "load_reference_adult_parameters",
         "RespiratorySystem",
         "simulation_view",
+        "supported_ranges",
     }
 )
 
@@ -870,26 +880,29 @@ def test_lockstep_oracle_step_matches_the_pinned_one() -> None:
     assert _oracle_step_for(SHIPPED_STEP_S) == ORACLE_STEP_S
 
 
-def test_envelope_limits_match_the_interface() -> None:
-    """The restated interface limits are still the interface's own.
+def test_envelope_limits_match_the_supported_input_ranges() -> None:
+    """The restated limits are still the model's own declared domain.
 
-    Without this, moving a slider limit would silently shrink the domain the
-    gate covers and nothing would fail — which is exactly how the bound came
-    to be narrower than the reachable settings in the first place.
+    Without this, widening a supported range would silently leave the gate
+    measuring a subset of the domain it is read as covering, and nothing
+    would fail — which is exactly how the bound came to be narrower than the
+    reachable settings in the first place.
 
     The floors are checked alongside the maxima because the worst trajectory
-    the gate drives reaches zero cardiac output: flooring that slider above
+    the gate drives reaches zero cardiac output: flooring that control above
     zero would remove the bound's own worst case from the reachable domain,
-    which is the same defect at the other end of the axis. The displayed
-    resolution is checked with them because
-    `test_displayed_ordering_reverses_only_at_a_crossing` measures a property
-    of the rounded values, and adding a decimal would change what it proves
-    without changing anything it reads. The shipped step is checked with
-    them because everything this module measures is a coefficient multiplied
-    by it.
+    which is the same defect at the other end of the axis.
+
+    Before PL-0MLQ the comparison was against `simulation_view`'s slider
+    limits, because the interface was the only place a supported range was
+    written down. `core/supported_ranges.py` declares them now and refuses a
+    setting outside them, so this is a check against the model itself; that
+    the interface offers exactly the same domain is
+    `test_the_sliders_span_the_supported_input_ranges` in the view's own
+    suite.
     """
 
-    from anesthesia_sim.app import simulation_view
+    from anesthesia_sim.core import supported_ranges
 
     assert (
         MAX_FRESH_GAS_FLOW_L_MIN,
@@ -898,23 +911,48 @@ def test_envelope_limits_match_the_interface() -> None:
         MIN_FRESH_GAS_FLOW_L_MIN,
         MIN_ALVEOLAR_VENTILATION_L_MIN,
         MIN_CARDIAC_OUTPUT_L_MIN,
+    ) == (
+        supported_ranges.MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+        supported_ranges.MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        supported_ranges.MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+        supported_ranges.MINIMUM_FRESH_GAS_FLOW_L_MIN,
+        supported_ranges.MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        supported_ranges.MINIMUM_CARDIAC_OUTPUT_L_MIN,
+    ), (
+        "the model's supported input ranges have changed; re-run the envelope "
+        "and trajectory sweeps, update these constants and the bound, and "
+        "re-derive the measured figures in docs/MODEL.md"
+    )
+
+
+def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
+    """The two interface facts every figure here is quoted at are unchanged.
+
+    The displayed resolution, because
+    `test_displayed_ordering_reverses_only_at_a_crossing` measures a property
+    of the rounded values and adding a decimal would change what it proves
+    without changing anything it reads. The shipped step, because everything
+    this module measures is a coefficient multiplied by it.
+
+    The delivered-concentration floor is here rather than with the supported
+    ranges above because it is the only control the interface states in
+    percent where the core's own guard is a fraction.
+    """
+
+    from anesthesia_sim.app import simulation_view
+
+    assert (
         MIN_DELIVERED_CONCENTRATION_PERCENT,
         CONCENTRATION_DISPLAY_DECIMALS,
         SHIPPED_STEP_S,
     ) == (
-        simulation_view.MAX_FRESH_GAS_FLOW_L_MIN,
-        simulation_view.MAX_ALVEOLAR_VENTILATION_L_MIN,
-        simulation_view.MAX_CARDIAC_OUTPUT_L_MIN,
-        simulation_view.MIN_FRESH_GAS_FLOW_L_MIN,
-        simulation_view.MIN_ALVEOLAR_VENTILATION_L_MIN,
-        simulation_view.MIN_CARDIAC_OUTPUT_L_MIN,
         simulation_view.MIN_DELIVERED_CONCENTRATION_PERCENT,
         simulation_view.CONCENTRATION_DISPLAY_DECIMALS,
         simulation_view.SIMULATION_STEP_S,
     ), (
-        "the interface's slider limits or simulation step have changed; "
-        "re-run the envelope and trajectory sweeps, update these constants "
-        "and the bound, and re-derive the measured figures in docs/MODEL.md"
+        "the interface's displayed resolution or simulation step has changed; "
+        "re-run the trajectory sweeps and re-derive the measured figures in "
+        "docs/MODEL.md"
     )
 
 
