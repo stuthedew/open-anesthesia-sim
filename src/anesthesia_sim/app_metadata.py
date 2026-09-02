@@ -3,7 +3,7 @@
 from importlib.metadata import PackageNotFoundError, version
 
 DISTRIBUTION_NAME = "anesthesia-sim"
-APP_DISPLAY_NAME = "Working Title"
+APP_DISPLAY_NAME = "Open Anesthesia Simulator"
 APP_AUTHOR = "Open Anesthesia Simulator contributors"
 
 try:
