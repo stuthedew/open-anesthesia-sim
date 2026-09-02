@@ -5,14 +5,14 @@ priority: P1
 effort: M
 status: ready
 classes: safety, ux
-touches: src/anesthesia_sim/core/respiratory_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-08-24
 ---
 
 **Problem.** PL-018 made a failed step halt the run and warn that "the values
 shown may not reflect a completed step", but the metrics and chart traces are
 still drawn at whatever value the abandoned step left them:
-`RespiratorySystem.advance()` applies five sub-exchanges in sequence and a
+`AgentUptakeSystem.advance()` applies five sub-exchanges in sequence and a
 guard can reject the fifth after the first four have mutated state.
 
 **Why it matters.** `CLAUDE.md` prefers an obvious failure state to a
@@ -29,7 +29,7 @@ step, which is a real solution of the model. The diagnosis moves into the
 step size a reader can act on. Rejected options, the state inventory, and the
 reasoning are in `docs/WORKING_NOTES.md` under "Decided, not yet implemented".
 
-**Where.** `src/anesthesia_sim/core/respiratory_system.py` (`advance`,
+**Where.** `src/anesthesia_sim/core/uptake_system.py` (`advance`,
 `_advance_step`) and the five classes holding dynamic state:
 `src/anesthesia_sim/core/circuit.py`, `src/anesthesia_sim/core/alveolar.py`,
 `src/anesthesia_sim/core/tissue.py`, `src/anesthesia_sim/core/blood.py`,
@@ -38,7 +38,7 @@ reasoning are in `docs/WORKING_NOTES.md` under "Decided, not yet implemented".
 
 **First step.** Give each compartment `capture_state()` / `restore_state()`
 over its own dynamic fields, rather than reaching into them from
-`RespiratorySystem`. A field added later without its capture then fails
+`AgentUptakeSystem`. A field added later without its capture then fails
 locally and visibly instead of leaving a partial restore that looks complete.
 
 **Done when.** A failed step leaves every dynamic value bit-identical to its

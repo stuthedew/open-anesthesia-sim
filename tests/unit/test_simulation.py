@@ -1,8 +1,8 @@
 import pytest
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S, RespiratorySystem
 from anesthesia_sim.core.simulation import SimulationState
+from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
 
 
 def _advance_for(state: SimulationState, duration_s: float) -> None:
@@ -18,41 +18,41 @@ def _advance_for(state: SimulationState, duration_s: float) -> None:
         state.advance(MAXIMUM_SIMULATION_STEP_S)
 
 
-def test_advance_updates_time_and_complete_respiratory_system() -> None:
+def test_advance_updates_time_and_complete_uptake_system() -> None:
     state = SimulationState()
 
     _advance_for(state, duration_s=2.5)
 
     assert state.elapsed_s == pytest.approx(2.5)
-    assert state.circuit.circuit_concentration_fraction > 0.0
-    assert state.alveoli.concentration_fraction > 0.0
-    assert state.patient.total_agent_amount_l > 0.0
-    assert state.respiratory_system.agent_simulation_validation.passes_validation
+    assert state.uptake_system.circuit.circuit_concentration_fraction > 0.0
+    assert state.uptake_system.alveoli.concentration_fraction > 0.0
+    assert state.uptake_system.patient.total_agent_amount_l > 0.0
+    assert state.uptake_system.agent_simulation_validation.passes_validation
 
 
 def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
-    system = RespiratorySystem.default()
+    system = AgentUptakeSystem.default()
     system.circuit.set_circuit_volume(5.0)
     system.set_fresh_gas_flow(3.0)
     system.set_delivered_concentration(0.06)
     system.set_alveolar_ventilation(5.5)
     system.set_cardiac_output(6.0)
 
-    state = SimulationState(respiratory_system=system)
+    state = SimulationState(uptake_system=system)
     _advance_for(state, duration_s=10.0)
 
     state.reset()
 
     assert state.elapsed_s == 0.0
-    assert state.circuit.circuit_concentration_fraction == 0.0
-    assert state.alveoli.concentration_fraction == 0.0
-    assert state.patient.total_agent_amount_l == 0.0
+    assert state.uptake_system.circuit.circuit_concentration_fraction == 0.0
+    assert state.uptake_system.alveoli.concentration_fraction == 0.0
+    assert state.uptake_system.patient.total_agent_amount_l == 0.0
 
-    assert state.circuit.circuit_volume_l == 5.0
-    assert state.circuit.fresh_gas_flow_l_min == 3.0
-    assert state.circuit.delivered_concentration_fraction == 0.06
-    assert state.alveoli.alveolar_ventilation_l_min == 5.5
-    assert state.patient.cardiac_output_l_min == 6.0
+    assert state.uptake_system.circuit.circuit_volume_l == 5.0
+    assert state.uptake_system.circuit.fresh_gas_flow_l_min == 3.0
+    assert state.uptake_system.circuit.delivered_concentration_fraction == 0.06
+    assert state.uptake_system.alveoli.alveolar_ventilation_l_min == 5.5
+    assert state.uptake_system.patient.cardiac_output_l_min == 6.0
 
 
 @pytest.mark.parametrize("simulation_step_s", [0.0, -0.1, float("nan")])
@@ -65,7 +65,7 @@ def test_rejects_a_step_above_the_maximum_simulation_step() -> None:
     """Elapsed time must not move for a step that was never simulated.
 
     `SimulationState` is the class that owns simulated time, so this is the
-    one place the refusal has a consequence beyond the respiratory system:
+    one place the refusal has a consequence beyond the uptake system:
     a caller that swallowed the raise and read `elapsed_s` would otherwise
     be told the run had advanced by a step nothing was calculated for.
     """

@@ -231,7 +231,7 @@ class _AgentPayload(_StrictPayload):
         This is a `model_validator`, not a `field_validator` reading
         `info.data`: a field validator only sees fields declared before it,
         so reordering the two fields above would silently turn the check
-        into a no-op. The MAC start in `RespiratorySystem.for_agent()`
+        into a no-op. The MAC start in `AgentUptakeSystem.for_agent()`
         depends on this holding.
         """
 

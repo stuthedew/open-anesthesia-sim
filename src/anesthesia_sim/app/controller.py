@@ -8,10 +8,10 @@ builds it from the versioned data files.
 
 from dataclasses import dataclass
 
-from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
+from anesthesia_sim.core.exceptions import SimulationExecutionError
 from anesthesia_sim.core.parameters import load_agent_parameters
-from anesthesia_sim.core.respiratory_system import RespiratorySystem
 from anesthesia_sim.core.simulation import SimulationState
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,7 +111,7 @@ class SimulationController:
         """(Re)build dynamic state from scratch for a chosen agent.
 
         Every argument is an override applied on top of the state
-        `RespiratorySystem.for_agent()` already built from the data files;
+        `AgentUptakeSystem.for_agent()` already built from the data files;
         a `None` leaves that data-file value in place, including the
         agent's own 1 MAC delivered concentration. A requested delivered
         concentration above the agent's real vaporizer maximum is rejected
@@ -119,29 +119,29 @@ class SimulationController:
         """
 
         agent_parameters = load_agent_parameters(agent_id)
-        respiratory_system = RespiratorySystem.for_agent(agent_id)
+        uptake_system = AgentUptakeSystem.for_agent(agent_id)
 
         if circuit_volume_l is not None:
-            respiratory_system.circuit.set_circuit_volume(circuit_volume_l)
+            uptake_system.circuit.set_circuit_volume(circuit_volume_l)
 
         if fresh_gas_flow_l_min is not None:
-            respiratory_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
+            uptake_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
         if delivered_concentration_fraction is not None:
-            respiratory_system.set_delivered_concentration(delivered_concentration_fraction)
+            uptake_system.set_delivered_concentration(delivered_concentration_fraction)
 
         if alveolar_ventilation_l_min is not None:
-            respiratory_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
+            uptake_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
 
         if cardiac_output_l_min is not None:
-            respiratory_system.set_cardiac_output(cardiac_output_l_min)
+            uptake_system.set_cardiac_output(cardiac_output_l_min)
 
         self._agent_id = agent_id
         self._agent_display_name = agent_parameters.display_name
         self._max_delivered_concentration_percent = (
             agent_parameters.max_delivered_concentration_percent
         )
-        self._state = SimulationState(respiratory_system=respiratory_system)
+        self._state = SimulationState(uptake_system=uptake_system)
         self._concentration_history: list[SimulationHistorySample] = [self._build_history_sample()]
 
         # Every compartment above is newly constructed, so no state survives
@@ -211,7 +211,7 @@ class SimulationController:
     def snapshot(self) -> SimulationSnapshot:
         """Build a fresh, read-only view of current simulation state."""
 
-        system = self._state.respiratory_system
+        system = self._state.uptake_system
         circuit = system.circuit
         alveoli = system.alveoli
         patient = system.patient
@@ -278,28 +278,27 @@ class SimulationController:
         self._concentration_history = [self._build_history_sample()]
 
     def set_circuit_volume(self, circuit_volume_l: float) -> None:
-        """Change volume without creating or losing stored agent."""
+        """Change volume without creating or losing stored agent.
 
-        circuit = self._state.circuit
-        stored_agent_l = circuit.agent_amount_l
+        The conservation and the capacity guard are the circuit's own
+        (PL-006). This forwards because circuit volume is not one of the four
+        live inputs `AgentUptakeSystem` exposes; it reaches the compartment
+        that owns it, as the system's docstring says such a setting should.
+        """
 
-        if stored_agent_l > circuit_volume_l:
-            raise SimulationConfigurationError("circuit_volume_l is smaller than stored agent")
-
-        circuit.set_circuit_volume(circuit_volume_l)
-        circuit.set_agent_amount(stored_agent_l)
+        self._state.uptake_system.circuit.set_circuit_volume(circuit_volume_l)
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
-        self._state.respiratory_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
+        self._state.uptake_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
     def set_delivered_concentration(self, delivered_concentration_fraction: float) -> None:
-        self._state.respiratory_system.set_delivered_concentration(delivered_concentration_fraction)
+        self._state.uptake_system.set_delivered_concentration(delivered_concentration_fraction)
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
-        self._state.respiratory_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
+        self._state.uptake_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
 
     def set_cardiac_output(self, cardiac_output_l_min: float) -> None:
-        self._state.respiratory_system.set_cardiac_output(cardiac_output_l_min)
+        self._state.uptake_system.set_cardiac_output(cardiac_output_l_min)
 
     def advance(self, simulation_step_s: float) -> None:
         """No-op while paused; otherwise advance state and record history."""
@@ -311,7 +310,7 @@ class SimulationController:
         self._concentration_history.append(self._build_history_sample())
 
     def _build_history_sample(self) -> SimulationHistorySample:
-        system = self._state.respiratory_system
+        system = self._state.uptake_system
 
         return SimulationHistorySample(
             elapsed_s=self._state.elapsed_s,

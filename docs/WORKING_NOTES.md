@@ -483,7 +483,7 @@ failed at which step size, and where a reader can act on it.
 The one real risk in rollback is a snapshot that silently stops covering
 everything: a field added to a compartment later, with no matching capture,
 would leave a partial restore that looks like a complete one. That is why
-capture belongs on each compartment rather than in `RespiratorySystem` - a
+capture belongs on each compartment rather than in `AgentUptakeSystem` - a
 missing field is then a local, reviewable omission - and why the regression
 test asserts bit-identical state rather than approximate agreement.
 

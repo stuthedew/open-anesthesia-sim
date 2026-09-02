@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: feature
 feature: numerical-domain
-touches: src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/core/respiratory_system.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md
 added: 2026-08-30
 verify: uv run pytest -k advance_over
 ---
@@ -27,7 +27,7 @@ coarser headless run" — the headroom a headless run actually needs is a
 coarser *call*, not a coarser step.
 
 **Where.** `core/simulation.py`. Probably `SimulationState` rather than
-`RespiratorySystem`, since a duration is a statement about elapsed time and
+`AgentUptakeSystem`, since a duration is a statement about elapsed time and
 that is the class that owns it.
 
 **Worth deciding first.** What a non-integer number of steps does — refuse a
