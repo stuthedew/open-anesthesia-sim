@@ -1,7 +1,12 @@
 ---
 id: PL-1BPV
 title: Reference-patient and agent values restated in MODEL.md prose are outside the provenance check
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: infra, docs
+feature: model-spec-accuracy
+touches: tools/doc_check.py, docs/MODEL.md
 added: 2026-09-02
 ---
 
@@ -35,7 +40,7 @@ keys at once, so it goes stale in ways no single-key search would surface.
 parser and the data-file walk it already has are most of the machinery),
 `docs/MODEL.md`.
 
-**First step.** Decide how a prose value declares what it restates, because
+**Decision needed.** Decide how a prose value declares what it restates, because
 that is the whole design question and the rest is mechanical. A bare regex for
 numerals cannot work — `2.5` also appears as a step size at line 633 and a
 flow at line 1338 — so the check would have to guess, which is the

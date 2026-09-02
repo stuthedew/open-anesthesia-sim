@@ -1,8 +1,14 @@
 ---
 id: PL-Y0RZ
 title: Nothing enforces that only core/parameters.py imports Pydantic
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: infra, docs
+feature: core-boundaries
+touches: tools/import_boundary_check.py, Makefile
 added: 2026-09-02
+verify: uv run pytest tests/unit/test_parameters.py && grep -q 'import_boundary_check' Makefile
 ---
 
 **Problem.** The invariant holds today — `grep -rn pydantic src/anesthesia_sim/`
@@ -33,6 +39,17 @@ is the model to follow, including staying importable by a bare `python3`.
 Whether `app/` should also be forbidden the import is the judgment: the core
 boundary is the one the pairs exist for, but the interface has no business
 holding validation models either.
+
+**Named at triage:** `tools/import_boundary_check.py`, so the `verify:`
+command can name it. Change the name freely - the command is what would then
+need updating, not a commitment.
+
+**On the `verify:` command.** The `grep` is over the `Makefile` rather than
+over the tool, deliberately: a tool that exists but is not wired into `make
+check` enforces nothing, and "fails `make check`" is what the Done-when
+actually says. `tests/unit/test_parameters.py` is the paired half that passes
+today and covers the module the boundary exists to protect; it runs in 0.13 s,
+so it costs nothing inside `docket check`.
 
 **Done when.** A Pydantic import outside the allowed module fails
 `make check`, and the allowed module is named in one place a reader can find.
