@@ -3,12 +3,13 @@ id: PL-P0QT
 title: A merge resolution can delete a captured item with nothing recording that it did, and nothing checks for it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/, tools/
 added: 2026-09-02
-verify: bin/docket stranded && python3 -m pytest subprojects/docket/tests/test_vcs.py -k lost
+closed: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_vcs.py subprojects/docket/tests/test_cli.py && grep -q 'def test_lost_finds_the_item_a_merge_resolution_removed' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `PL-Q8QX` was captured on the v0.3.0 release branch in `ce090b4`
@@ -68,3 +69,26 @@ about, not a substitute for fixing it.
 into the default branch and is absent from it with no `dropped` record, with a
 test covering the merge-deletes-a-file case, and `PL-Q8QX` is recorded as
 superseded by `PL-2XTF` rather than silently absent.
+
+**How it was built, and where it differs from the plan above.** The check is
+`vcs.lost`, wired into `docket check` as an *error*. It compares the item ids
+in a ref's tree against the ids in every blob path reachable from that ref, so
+the deletion a merge performs in its own tree is visible even though no
+commit's diff shows it. Comparison is by id rather than path, so a renamed
+item file is not a loss.
+
+The plan above asked for a check "run on `main`", comparing the default branch
+against merged branch tips. **That cannot work, and measuring it is what
+changed the design.** After a squash merge the branch's commits are ancestors
+of nothing, so its objects stop being reachable: `PL-Q8QX`'s own blob is
+reachable from no commit `main` holds, and a check run there reports the store
+clean and is wrong to. Since a false clean bill of health on the capture rule
+is worse than no check at all, the walk asks the *branch* instead, in CI, on
+the pull request, before the squash collapses the history. It still catches an
+ordinary merge on `main`; nothing run there can catch a squashed one.
+
+Two facts were measured rather than assumed, and both are asserted in the
+tests so they cannot rot: `git log --diff-filter=D` really does miss the
+deletion, and `rev-list --objects` really does list newest-blob-first, which
+is what lets the report hand back the item as it last stood rather than as it
+was captured. `PL-Q8QX` is restored as a `dropped` record naming `PL-2XTF`.

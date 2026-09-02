@@ -22,6 +22,7 @@ from docket.vcs import (
     branches_in_flight,
     closures_on_base,
     default_base,
+    lost,
     merged_pull_requests,
     stranded,
     tags,
@@ -1073,3 +1074,145 @@ def test_a_closure_report_records_whether_the_checkout_is_truncated() -> None:
         assert report.shallow is expected, answer
         # Depth qualifies an absence, never a hit: the number is still derived.
         assert report.numbers == {"PL-K7QX": 148}
+
+
+def _lost_runner(tree: list[str], history: list[str], *, shallow: str = "false"):
+    """A git whose `ref` tree holds `tree` and whose history holds `history`.
+
+    `history` is spelled the way `rev-list --objects` prints it - `<sha> SP
+    <path>`, newest commit first - because the ordering is load-bearing: the
+    first blob seen for an id is the last content it had, and that is what the
+    report hands back for recovery.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "ls-tree":
+            return "\n".join(tree)
+        if args[0] == "rev-list":
+            return "\n".join(history)
+        if args[0] == "rev-parse" and args[-1] == "--is-shallow-repository":
+            return shallow
+        return ""
+
+    return run
+
+
+def test_lost_finds_an_item_the_history_holds_and_the_tree_does_not() -> None:
+    """The case a merge resolution creates: no commit deletes it, the tree just stops having it."""
+    report = lost(
+        ROOT,
+        items_dir="docs/items",
+        runner=_lost_runner(
+            tree=["docs/items/PL-K1K1-kept.md"],
+            history=[
+                "aaa111 docs/items/PL-K1K1-kept.md",
+                "bbb222 docs/items/PL-B2B2-dropped-by-a-merge.md",
+            ],
+        ),
+    )
+
+    assert [item.identifier for item in report.items] == ["PL-B2B2"]
+    assert report.items[0].blob == "bbb222"
+    assert report.items[0].path == "docs/items/PL-B2B2-dropped-by-a-merge.md"
+    assert report.known
+
+
+def test_lost_does_not_report_a_renamed_item_file() -> None:
+    """A title change renames the file, adding one path and removing another.
+
+    By path that reads as a loss, which is why the comparison is by id. The
+    same trap `stranded` documents, met here from the other direction.
+    """
+    report = lost(
+        ROOT,
+        items_dir="docs/items",
+        runner=_lost_runner(
+            tree=["docs/items/PL-K1K1-the-new-title.md"],
+            history=[
+                "aaa222 docs/items/PL-K1K1-the-new-title.md",
+                "aaa111 docs/items/PL-K1K1-the-old-title.md",
+            ],
+        ),
+    )
+
+    assert report.known
+    assert report.items == ()
+
+
+def test_lost_hands_back_the_newest_blob_of_a_file_that_changed() -> None:
+    """Recovery should restore the item as it last stood, not as it was captured."""
+    report = lost(
+        ROOT,
+        items_dir="docs/items",
+        runner=_lost_runner(
+            tree=["docs/items/PL-K1K1-kept.md"],
+            history=[
+                "newest0 docs/items/PL-B2B2-edited-then-lost.md",
+                "oldest0 docs/items/PL-B2B2-edited-then-lost.md",
+                "aaa111 docs/items/PL-K1K1-kept.md",
+            ],
+        ),
+    )
+
+    assert [item.blob for item in report.items] == ["newest0"]
+
+
+def test_lost_ignores_paths_outside_the_store() -> None:
+    report = lost(
+        ROOT,
+        items_dir="docs/items",
+        runner=_lost_runner(
+            tree=["docs/items/PL-K1K1-kept.md"],
+            history=[
+                "aaa111 docs/items/PL-K1K1-kept.md",
+                "ccc333 docs/archive/PL-C3C3-not-an-item-any-more.md",
+                "ddd444 README.md",
+            ],
+        ),
+    )
+
+    assert report.known
+    assert report.items == ()
+
+
+def test_lost_declines_rather_than_reporting_every_id_when_the_store_cannot_be_read() -> None:
+    """An unreadable tree would make the whole history read as lost - long, alarming and wrong."""
+    report = lost(
+        ROOT,
+        items_dir="docs/items",
+        runner=_lost_runner(tree=[], history=["aaa111 docs/items/PL-K1K1-kept.md"]),
+    )
+
+    assert not report.known
+    assert "whole history would read as lost" in report.declined
+    assert report.items == ()
+
+
+def test_lost_marks_a_truncated_clone_so_a_clean_answer_is_not_overclaimed() -> None:
+    report = lost(
+        ROOT,
+        items_dir="docs/items",
+        runner=_lost_runner(
+            tree=["docs/items/PL-K1K1-kept.md"],
+            history=["aaa111 docs/items/PL-K1K1-kept.md"],
+            shallow="true",
+        ),
+    )
+
+    assert report.items == ()
+    assert report.truncated
+
+
+def test_lost_treats_an_unanswerable_shallow_question_as_truncated() -> None:
+    """`is_shallow` returns None when git will not say; absence proves nothing."""
+    report = lost(
+        ROOT,
+        items_dir="docs/items",
+        runner=_lost_runner(
+            tree=["docs/items/PL-K1K1-kept.md"],
+            history=["aaa111 docs/items/PL-K1K1-kept.md"],
+            shallow="",
+        ),
+    )
+
+    assert report.truncated
