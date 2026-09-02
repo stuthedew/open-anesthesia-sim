@@ -4,13 +4,14 @@ title: PL-026's brief sends a reader to docs/WORKING_NOTES.md for its own reject
 priority: P2
 effort: S
 status: done
-verify: python3 tools/doc_check.py check && ! grep -q 'Decided, not yet implemented' docs/WORKING_NOTES.md && grep -q 'circuit_concentration_fraction' docs/items/PL-026-make-the-simulation-step-transactional-so-a.md
 classes: docs
 feature: dev-tooling
+milestone: v0.2.11
 touches: docs/items/PL-026-make-the-simulation-step-transactional-so-a.md, docs/WORKING_NOTES.md
 added: 2026-09-01
 closed: 2026-09-02
 pr: 204
+verify: python3 tools/doc_check.py check && ! grep -q 'Decided, not yet implemented' docs/WORKING_NOTES.md && grep -q 'circuit_concentration_fraction' docs/items/PL-026-make-the-simulation-step-transactional-so-a.md
 ---
 
 **Problem.** `docs/items/PL-026-make-the-simulation-step-transactional-so-a.md:30`
