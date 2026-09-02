@@ -44,16 +44,43 @@ wrote it, and `#217` is a release. So the exposure is one red `main` per pull
 request whose title the UI generates, not per pull request. That is a real
 recurring cost while the UI button is used, and a small one otherwise.
 
+**Filed three times, by three sessions that never saw each other.** This item,
+plus `PL-9GCV` on `claude/v0-3-0-workflow-metrics-nzzhsi` (a bare stub) and
+`PL-Q8QX` on `claude/breathing-circuit-default-tckz8n` (a full brief reaching
+the same recommendation). Keep one and drop the other two rather than
+triaging three entries for one defect; `PL-Q8QX` has the better-developed
+approach section and is the natural survivor.
+
+`PL-Q8QX` states the mechanism wrongly, though, and the difference decides
+whether prevention is possible. It reports that `#220` was *titled* with three
+ids and squash-merged under a different subject, concluding that GitHub "takes
+its subject from whatever the merger typed, which need not be the pull request
+title". What actually happened: `#220` was created from the UI with a title
+naming no id, merged at 17:24:30, and *then* retitled by this session at
+17:24:33. The squash took the title as it stood at merge — three seconds
+earlier. So the subject did follow the title, and the title was the defect.
+
+That reopens prevention, which `PL-Q8QX` writes off. A CI check that fails a
+pull request whose title does not lead with the ids its branch closes would
+have caught `#220` before anyone could merge it. It is not airtight — the
+squash UI does let a merger retype the subject — so it belongs *alongside*
+recovery, not instead of it.
+
 **Where.** `subprojects/docket/src/docket/checks.py` and `vcs.py`, wherever
-`ClosureReport` decides a closed item's pull request.
+`ClosureReport` decides a closed item's pull request; `.github/workflows/` for
+the prevention half.
 
 **Decision needed.** Which fix, given the frequency above:
 
 1. **Recover from the `(#N)` suffix instead of the id.** GitHub appends
    `(#N)` to every squash-merge subject — `#216` through `#220` all carry it.
-   Find the merge commit that introduced the item's transition to `done` and
-   read its number from that suffix. Exact, independent of titles, and removes
-   the whole class. The most work of the three, and the recommended one.
+   Find the merge commit that last wrote `status: done` into the item's own
+   file and read the number from that subject; that commit *is* the closure,
+   so this is strictly more evidence than the current path, not less. Exact,
+   independent of titles, and removes the whole class. Recommended, and it is
+   what `PL-Q8QX` independently reached. Pair it with a CI check on the pull
+   request title, per the correction above, so the common case is prevented
+   rather than repaired.
 2. **Also search the commit body.** The body does carry the ids here, because
    the pull request description mentions them. Cheap, but a body that merely
    *mentions* a closed item would attribute that item's pull request wrongly,
