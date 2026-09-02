@@ -490,6 +490,71 @@ def test_an_item_with_no_command_is_not_a_landed_candidate(tmp_path: Path) -> No
     assert already_passing(root, [_item(verify="")]).considered == 0
 
 
+# --- running them at once -----------------------------------------------------
+#
+# `make check` pays this, and the bill grows with the queue: every item triaged
+# to `ready` adds its command's runtime permanently, so the serial cost rose as
+# the store got healthier (`PL-LXR3`). Concurrency is the one remedy that
+# changes no answer, and these three pin the properties that make that true -
+# the commands really do overlap, the findings still come back in the store's
+# order rather than in whichever order the shells happened to finish, and no
+# two of them write coverage data to the same file.
+
+
+def test_verify_commands_run_concurrently(tmp_path: Path) -> None:
+    # Each command marks the shared log when it starts and again when it ends,
+    # so serial execution can only ever write `sese...` and any overlap at all
+    # puts two starts together. Asserting the property beats asserting a
+    # duration: a wall-clock threshold fails on a loaded machine for a reason
+    # that has nothing to do with the code.
+    root = _repo(tmp_path)
+    log = root / "overlap.log"
+    items = [
+        _item(identifier=f"PL-RUN{n}", verify=f"printf s >> {log}; sleep 0.3; printf e >> {log}")
+        for n in range(4)
+    ]
+
+    already_passing(root, items, workers=4)
+
+    assert "ss" in log.read_text(), f"the commands ran one after another: {log.read_text()}"
+
+
+def test_the_findings_follow_the_store_order_not_the_order_the_commands_finished(
+    tmp_path: Path,
+) -> None:
+    # The findings are reported as lists of ids. Collected as each shell
+    # returned, a slow command would sink to the bottom and the same unchanged
+    # store would print a different advisory run to run.
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-SLOW", verify="sleep 0.3"),
+        _item(identifier="PL-FAST", verify="true"),
+    ]
+
+    report = already_passing(root, items, workers=4)
+
+    assert report.passing == ("PL-SLOW", "PL-FAST")
+
+
+def test_no_two_commands_share_a_coverage_data_file(tmp_path: Path) -> None:
+    # Coverage reads its data file back to decide `--cov-fail-under`, so two
+    # `--cov` commands sharing one would race and a command could fail on data
+    # a sibling truncated - a wrong answer created by running them at once. The
+    # store carries eight such commands today, none on an open item, so this
+    # guards the case rather than reports it.
+    root = _repo(tmp_path)
+    seen = root / "coverage-paths"
+    record = f'printf "%s\n" "$COVERAGE_FILE" >> {seen}'
+    items = [_item(identifier="PL-COV1", verify=record), _item(identifier="PL-COV2", verify=record)]
+
+    already_passing(root, items, workers=4)
+
+    paths = [line for line in seen.read_text().splitlines() if line]
+    assert len(paths) == 2
+    assert len(set(paths)) == 2, f"both commands wrote coverage to {paths[0]}"
+    assert all(Path(path).parent != root for path in paths), "a probe wrote into the tree"
+
+
 # --- a command that selects no test, told apart from one that fails ----------
 #
 # The two arrive as the same thing at every reader of an exit status - non-zero
