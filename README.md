@@ -18,14 +18,18 @@ delivered agent -> breathing circuit -> alveoli -> blood
                 -> vessel-rich group / muscle / fat -> mixed venous return
 ```
 
-Sevoflurane, isoflurane, and desflurane are each modeled from validated,
-cited partition data and can be picked in the interface, which identifies the
-selected agent by name and by its ISO 5360 vaporizer color. Selecting an agent
-starts a new run at that agent's own 1 MAC: switching agents does **not**
-model washout of the previous agent, because carrying residual agent across
-a switch is a distinct, harder problem left to the anesthesia-machine
-milestone. The delivered-concentration control is limited to each agent's
-real vaporizer maximum.
+Sevoflurane, isoflurane, and desflurane are each modeled from cited
+partition data, and each agent's 30-minute wash-in lands inside the standard
+deviation of the ratio Yasuda et al. measured in volunteers
+(`tests/reference/test_published_wash_in.py`, which carries the citations and
+states what that comparison does and does not establish). All three can be
+picked in the interface, which identifies the selected agent by name and by
+its ISO 5360 vaporizer color. Selecting an agent starts a new run at that
+agent's own 1 MAC: switching agents does **not** model washout of the
+previous agent, because carrying residual agent across a switch is a
+distinct, harder problem left to the anesthesia-machine milestone. The
+delivered-concentration control is limited to each agent's real vaporizer
+maximum.
 
 Fresh gas flow, delivered concentration, alveolar ventilation, and cardiac
 output can all be changed live during a run. Agent mass delivered,

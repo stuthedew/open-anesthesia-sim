@@ -1070,6 +1070,107 @@ rather than silently adopted. The slider maxima above are restated in the
 test file and checked against the interface's own constants, so widening a
 slider cannot silently shrink the domain this gate covers.
 
+### Published wash-in validation test
+
+Every test above is **verification**: it asks whether the implementation
+solves the intended equations correctly, and answers it by comparing the
+implementation against an analytic solution, an independent integration of
+these same equations, a conservation identity, or its own behavior at another
+step size or setting. None of them asks whether the equations describe the
+phenomenon. A model can be numerically flawless and physiologically wrong,
+and a suite made only of the tests above would report the first as though it
+had settled the second.
+
+This test is the **validation** half, and it is the only required test whose
+expected values come from outside this repository
+(`tests/reference/test_published_wash_in.py`). The distinction matters to a
+reader of the two sections: "Independent-solution test" above and this one
+answer different questions, and conflating them over-reads both.
+
+$`F_A/F_I`$ at 30 minutes of wash-in is the classic measured quantity in the
+uptake literature, and Yasuda et al. published it for all three shipped
+agents in two volunteer studies:
+
+| Agent | $`F_A/F_I`$ at 30 min | Cohort | Published $`F_I`$ | Source |
+| --- | --- | --- | --- | --- |
+| Sevoflurane | 0.850 ± 0.018 | n=7 | 1.0% | Anesth Analg 1991;72:316-24 |
+| Isoflurane | 0.733 ± 0.027 | n=7 | 0.6% | Anesth Analg 1991;72:316-24 |
+| Desflurane | 0.90 ± 0.01 | n=8 | 2.0% | Anesthesiology 1991;74:489-98 |
+| Isoflurane | 0.73 ± 0.03 | n=8 | 0.4% | Anesthesiology 1991;74:489-98 |
+
+- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
+  Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
+  humans.* Anesth Analg 1991;72(3):316-24. PMID 1994760,
+  doi:10.1213/00000539-199103000-00007.
+- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA,
+  Fassoulaki A. *Kinetics of desflurane, isoflurane, and halothane in humans.*
+  Anesthesiology 1991;74(3):489-98. PMID 2001028,
+  doi:10.1097/00000542-199103000-00017.
+
+Isoflurane is compared against both cohorts rather than one. The model must
+land inside the published standard deviation for every row, and must also
+reproduce the ordering by solubility the two studies were run to test —
+$`F_A/F_I`$ higher for desflurane than sevoflurane than isoflurane — because
+three tolerances that happen to overlap are not a model.
+
+**The tolerance is the published spread, and the operating point is not
+fitted.** Alveolar ventilation and cardiac output are read from
+`reference_adult.json` at run time rather than written into the test, and the
+test fails if those defaults stop being 4.0 and 5.0 L/min. This is the
+assertion the whole comparison rests on: the agreement is sensitive to both
+flows — 1 L/min of alveolar ventilation either way puts all three agents
+outside their published spread, and 1 L/min of cardiac output moves every
+agent by more than one published standard deviation — so an operating point
+chosen to make the comparison pass would make the result circular. It is
+instead the shipped default, cited to the Gas Man workbook under "Parameter
+provenance", and fixed in v0.1.0 before any comparison to Yasuda existed.
+
+Fresh gas flow is the one setting the test chooses, at 10 L/min, so that
+$`F_I`$ — the modeled *circuit* fraction, not the vaporizer dial — is settled
+rather than still rising at 30 minutes, matching protocols that held an
+inspired concentration at the airway. The test shows that choice is not
+carrying the result: every agent stays inside its published spread at every
+fresh gas flow from 1 to 10 L/min. One delivered fraction serves four
+different published $`F_I`$ values because the governing equations are linear
+in it, which the test asserts across the published range rather than assumes.
+
+**Two caveats bound how strongly a pass may be stated.** Both belong beside
+any statement of this result, including in `README.md`.
+
+1. *The published subjects were breathing nitrous oxide.* Both protocols ran
+   65–70% N₂O concurrently, so the measured curves carry a second-gas effect
+   this model cannot reproduce — "Known limitations" excludes nitrous oxide,
+   simultaneous gases, and concentration and second-gas effects, and
+   "Assumptions" states that carrier gases are assumed not to affect
+   kinetics. The comparison is therefore not perfectly matched, in a
+   direction that is not obviously conservative.
+2. *These are Gas Man parameters, derived to reproduce Eger's data.* The
+   partition coefficients under test descend from the same lineage as the
+   measurements being tested against (see "Parameter provenance"). Passing
+   shows that this implementation reproduces its parameter set's intent, not
+   that the parameter set is independently right. It is weaker than
+   "validated against a human measurement" and must not be described as more.
+
+**How sharp a gate this is, measured rather than assumed.** Perturbing each
+agent's blood:gas partition coefficient until the comparison fails, with
+every other parameter shipped:
+
+| Agent | $`\lambda_{b:g}`$ | Reference point alone | With the flow sweep |
+| --- | --- | --- | --- |
+| Sevoflurane | 0.65 | −14% / +21% | −14% / +6% |
+| Isoflurane | 1.3 | −12% / +24% | −12% / +13% |
+| Desflurane | 0.42 | −4% / +30% | −4% / +11% |
+
+This is a coarse gate. At the reference point alone a solubility error of a
+fifth survives for two of the three agents — wider than the spread between
+published human measurements of the same coefficient — so a pass excludes a
+structurally wrong model rather than a mis-parameterized one. The flow sweep
+roughly halves the tolerated upward error and is therefore part of the gate
+rather than decoration. Desflurane is the tightest row and is tight in one
+direction only, because it already sits at +0.79 SD with little room above
+the mean; a change that moves it out of the band is a disagreement to
+explain, not a tolerance to widen.
+
 ### Mass-balance test
 
 Long wash-in, steady-delivery, and washout simulations must satisfy:
@@ -1622,6 +1723,7 @@ Version v0.1.0 is complete only when:
 - no scientific `TBD` markers remain;
 - v0.0.2 circuit reference tests still pass;
 - unit, integration, invariant, and independent reference tests pass;
+- the published wash-in validation passes for every agent and cohort;
 - mass balance closes within the documented tolerance;
 - supported step sizes pass convergence and nonnegativity tests;
 - deterministic replay passes;
