@@ -4,7 +4,11 @@ import pytest
 
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.core import respiratory_system
-from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
+from anesthesia_sim.core.exceptions import (
+    SimulationConfigurationError,
+    SimulationExecutionError,
+    SimulationNumericalError,
+)
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
 from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S
 
@@ -412,3 +416,94 @@ def test_a_refused_setting_does_not_fail_the_session() -> None:
     assert after.failure_reason is None
     assert after.is_running is True
     assert after.delivered_concentration_fraction == before.delivered_concentration_fraction
+
+
+# A reference patient whose lungs one supported step of uptake can overdraw at
+# the model's maximum cardiac output, but not at the patient file's own. It is
+# the only route from the app boundary to a step that breaks down: after
+# PL-VP7N no supported step does so on the shipped patient, which is the point
+# of that item. The alveolar volume comes through the patient file because that
+# is where a future parameter set - a paediatric patient, a far more soluble
+# agent - would bring it from.
+BREAKDOWN_ALVEOLAR_GAS_VOLUME_L = 0.015
+BREAKDOWN_CARDIAC_OUTPUT_L_MIN = 10.0
+
+
+def _controller_one_setting_from_a_failed_step() -> SimulationController:
+    """A run 60 s in, whose next step at a raised cardiac output breaks down."""
+
+    original = respiratory_system.load_reference_adult_parameters
+    edited = dataclasses.replace(
+        load_reference_adult_parameters(), alveolar_gas_volume_l=BREAKDOWN_ALVEOLAR_GAS_VOLUME_L
+    )
+    respiratory_system.load_reference_adult_parameters = lambda: edited
+
+    try:
+        controller = SimulationController(agent_id="isoflurane")
+    finally:
+        respiratory_system.load_reference_adult_parameters = original
+
+    controller.start()
+    _advance_for(controller, duration_s=60.0)
+    controller.set_cardiac_output(BREAKDOWN_CARDIAC_OUTPUT_L_MIN)
+
+    return controller
+
+
+def test_a_failed_step_adds_nothing_to_the_chart_history() -> None:
+    """PL-026 end to end, at the boundary the chart is actually drawn from.
+
+    The item's complaint was about what a halted run displays, and the
+    traces are drawn from `concentration_history` rather than from the
+    compartments directly. A failed step must therefore leave the history
+    exactly as long as it was, ending on the same sample: a history one
+    entry longer would put a point on the chart that no completed step
+    produced, at a simulation time that never happened.
+    """
+
+    controller = _controller_one_setting_from_a_failed_step()
+    before = controller.snapshot()
+
+    with pytest.raises(SimulationNumericalError):
+        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    after = controller.snapshot()
+
+    assert len(after.concentration_history) == len(before.concentration_history)
+    assert after.concentration_history[-1] == before.concentration_history[-1]
+    assert after.elapsed_s == before.elapsed_s
+
+
+def test_a_failed_step_leaves_every_displayed_value_bit_identical() -> None:
+    """The metrics beside the chart, held to the same standard.
+
+    Every concentration the dashboard shows comes off this snapshot, so
+    the rollback in `core/` is only worth having if it reaches here
+    unchanged. `==` rather than `pytest.approx`, for the reason the core
+    test gives: the claim is that nothing was written, not that what was
+    written came back close.
+    """
+
+    controller = _controller_one_setting_from_a_failed_step()
+    before = controller.snapshot()
+
+    with pytest.raises(SimulationNumericalError):
+        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    after = controller.snapshot()
+
+    assert after.circuit_concentration_fraction == before.circuit_concentration_fraction
+    assert after.alveolar_concentration_fraction == before.alveolar_concentration_fraction
+    assert after.mixed_venous_concentration_fraction == (before.mixed_venous_concentration_fraction)
+    assert after.vessel_rich_partial_pressure_fraction == (
+        before.vessel_rich_partial_pressure_fraction
+    )
+    assert after.muscle_partial_pressure_fraction == before.muscle_partial_pressure_fraction
+    assert after.fat_partial_pressure_fraction == before.fat_partial_pressure_fraction
+
+    # The mass-accounting panel too: it is a displayed value like any other,
+    # and its totals are the two the validator accumulates during a step.
+    assert after.delivered_agent_l == before.delivered_agent_l
+    assert after.exhausted_agent_l == before.exhausted_agent_l
+    assert after.stored_agent_l == before.stored_agent_l
+    assert after.agent_accounting_passes_validation
