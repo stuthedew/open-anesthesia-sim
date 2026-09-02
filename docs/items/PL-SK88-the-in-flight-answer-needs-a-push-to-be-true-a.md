@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: parallel-sessions
+milestone: v0.2.12
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-02
 closed: 2026-09-02

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, docs
 feature: model-spec-accuracy
+milestone: v0.2.12
 touches: tools/doc_check.py, docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-02

@@ -48,7 +48,8 @@ capability-boundary rule above governs.
 | v0.2.8 | Completed | The workflow works: thirty-eight frozen entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the in-flight answer six commands read, the type-check and lint gates, and the instructions a session reads before it does anything. Seventy items in all. No simulator change: `src/` differs from v0.2.7 by three comments, and `docs/MODEL.md` only by the math syntax GitHub renders and by recording why the operator split is kept over an exact matrix exponential. No equation, parameter, numerical method, unit or displayed value changed. |
 | v0.2.9 | Completed | Validation, accessibility and tooling patch on the same model, changing no source file at all: `src/` is identical to v0.2.8. Modelled wash-in is compared against published human measurements for the first time — verification became validation, with the two caveats that bound how strongly it may be stated recorded beside it — the interface gained a recorded WCAG 2.2 AA conformance target whose contrast ratios `make check` computes rather than a comment asserts, and three live defects in the queue's own ranking are closed. No equation, parameter, numerical method, unit or displayed value changed. |
 | v0.2.10 | Completed | Interface-safety and accessibility patch on the same model: the supported input ranges became the model's own and are refused in `core/` rather than only bounded by the sliders, the alveolar readout stopped calling a modelled value "end-tidal", every readout now names its compartment above a smaller clinical gloss and shares one baseline with its neighbours, two colours that failed WCAG AA on clinical text were replaced, and the application acquired a name. Five tooling items closed live defects in the queue's ranking, its verify timeout, and the cost `make check` pays to run it. No equation, parameter, or numerical method changed, and no displayed number changed. |
-| v0.2.11 | Completed / current baseline | Transactional-step and core-boundary patch on the same model: a simulation step that cannot be completed is now rolled back in full, so a halted run shows the last completed step rather than four of five sub-exchanges applied in order, and the entry point to the scientific core is named `AgentUptakeSystem` for what it owns rather than for anatomy that is one of its four compartments. `BreathingCircuit.set_circuit_volume()` conserves the agent in the circuit, closing a setter that destroyed 24 mL of it and made the *next* step fail for it. Two documentation items and one tooling item closed alongside. No equation, parameter, or numerical method changed; the only displayed values that differ are the ones a halted run shows, which is what the release is for. |
+| v0.2.11 | Completed | Transactional-step and core-boundary patch on the same model: a simulation step that cannot be completed is now rolled back in full, so a halted run shows the last completed step rather than four of five sub-exchanges applied in order, and the entry point to the scientific core is named `AgentUptakeSystem` for what it owns rather than for anatomy that is one of its four compartments. `BreathingCircuit.set_circuit_volume()` conserves the agent in the circuit, closing a setter that destroyed 24 mL of it and made the *next* step fail for it. Two documentation items and one tooling item closed alongside. No equation, parameter, or numerical method changed; the only displayed values that differ are the ones a halted run shows, which is what the release is for. |
+| v0.2.12 | Completed / current baseline | Provenance and parallelism patch on the same model, changing no equation, parameter or numerical method and leaving `src/anesthesia_sim/data/` byte-identical to v0.2.11: `docs/MODEL.md`'s prose values are now held to the data files they restate rather than only its provenance table, so a data-file edit can no longer leave a stated figure quietly wrong, and a figure derived from several values reports that it needs recomputing when an input moves. The in-flight answer that keeps two sessions off one item reached only `docket show`; it now reaches `docket triage`, reads the harness's session list for a session that has pushed nothing, and answers in a shallow checkout instead of declining. `src/` changes in three files and only twice over: two uncalled descriptive time constants are deleted, and the boundary between a load-time payload and the public type it produces is documented at the classes themselves. |
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
@@ -87,101 +88,126 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.2.11
+## Current baseline: v0.2.12
 
-v0.2.11 is a patch on the v0.2.0 model carrying five items. It changes `src/`
-in `core/` and `app/` both, and like every release since v0.2.0 it moves no
-equation, parameter, or numerical method. What changed is what a **failed**
-step leaves behind, and what the core's entry point is **called**.
+v0.2.12 is a provenance-and-parallelism patch on the v0.2.0 model carrying six
+items. `src/anesthesia_sim/data/` is byte-identical to v0.2.11 and, like every
+release since v0.2.0, it moves no equation, parameter, or numerical method.
+`src/` changes in three files and only twice over: two uncalled descriptive
+properties are gone, and the boundary between a load-time payload and the
+public type it produces is written down where a reader meets it. What the
+release is *for* is two questions the project could not previously answer
+mechanically — is this documented number still true, and is somebody else
+already doing this.
 
-**A step that cannot be completed is now rolled back in full (PL-026).**
-`_advance_step` applies five sub-exchanges in sequence, and a compartment
-guard can reject the fifth after the first four have already written their
-state. Until this release the run halted there and the interface warned that
-"the values shown may not reflect a completed step" — but the metrics and the
-chart traces were still drawn at whatever the abandoned step had left them.
-Those numbers are an artifact of the order the operators ran in, the fifth
-having run against the second's output; they are not a solution of the model
-at any time, and nothing on screen distinguished them from numbers the model
-produced. `AgentUptakeSystem.advance()` now captures every dynamic value
-before the step and restores it on any failure, so a halted run holds the last
-completed step — a real solution, at a real simulation time, which the
-interface may display and a reader may reason about. The banner says that
-instead of warning about it, and the diagnosis moved into the raised
-`SimulationNumericalError`, which names the invariant that failed and the step
-size it failed at.
+**`docs/MODEL.md`'s prose values are held to the data files they restate
+(PL-1BPV).** `tools/doc_check.py` already held the provenance table to
+`data/patients/` and `data/agents/` in both directions, and read nothing else.
+The same constants are restated in the surrounding prose — the reference
+adult's alveolar volume and ventilation, each agent's blood:gas coefficient,
+vaporizer maximum and MAC — so editing a data file updated the table, which
+the check forces, and left those sentences quietly wrong. By this project's
+standard that is a safety failure rather than untidiness: a reader who trusts
+"37.5 s for the reference adult" is reading a number for a patient the
+simulator may no longer ship, and the polish of the surrounding document is
+what makes it credible. Each restatement now carries a marker naming the file
+and key it restates, invisible in the rendered document, and the check holds
+the key to the file *and* the stated value to the paragraph the marker sits
+under — so neither the file nor the sentence can move alone.
 
-This is the one place a displayed value differs from v0.2.10, and it is the
-release's purpose rather than a side effect. No supported step reaches the
-guard on the reference adult with any shipped agent, so no ordinary run is
-affected; the change is to what a future parameter set — a smaller alveolar
-gas volume, a far more soluble agent — would show when it does.
+A figure *derived* from several stored values, which no file holds, carries a
+marker recording its inputs instead. When an input moves, the check reports
+that the figure must be recomputed and names it; it never recomputes it,
+because the rounding and the units are judgment and a plausible wrong number
+in this document is worse than none. The 20.7 s coupled-relaxation figure
+depends on four keys across two files, and is the case no single-key search
+would have surfaced.
 
-Each compartment captures its own run state rather than being read out of by
-the coupled system, so a dynamic field added later without a matching capture
-is a local, reviewable omission instead of a partial restore that looks
-complete. `tests/unit/test_state_capture.py` guards that deterministically:
-every field of every compartment is classified as run state or setting, and
-the tests fail when a new field is neither, when `restore_state()` does not
-bring back exactly the run-state fields, or when `reset()` and
-`capture_state()` disagree about which fields those are.
+The explicit marker was chosen over a scan for numerals, and the scan is not
+merely weaker but wrong: `2.5` appears in the document as an alveolar volume
+in litres, a solver tolerance in seconds and a flow in litres per minute, and
+two sentences reading "4 L/min fresh gas" name a quantity no data file holds
+rather than the reference adult's alveolar ventilation, which is also 4 L/min.
+A check that bound those to a key would have been confidently wrong in the
+places a reader trusts most.
 
-**The scientific core's entry point is named for what it owns (PL-006).**
-"Respiratory system" clinically means the patient's own lungs and airways,
-which maps to one of the class's four members. `circuit` is
-anesthesia-machine equipment and `patient` holds the vessel-rich, muscle and
-fat compartments. The name was a safety concern rather than a tidiness one:
-`total_stored_agent_l` sums all of them and feeds the conservation check that
-can halt a run, and at steady state most of that agent is in fat and muscle,
-so a reader taking the old name at face value read an accounting quantity as
-agent in the lungs and was wrong by a large factor. `core/uptake_system.py`
-now holds `AgentUptakeSystem`, named for what uptake means in
-inhaled-anesthetic pharmacology.
+**Two uncalled descriptive time constants are gone (PL-004).** `AlveolarGas`
+exposed a ventilation-only `time_constant_s` that nothing called.
+`docs/MODEL.md` records that quantity deliberately — as a limitation of any
+single-mechanism description of alveolar kinetics, not as a rate a run
+exhibits — so a property offering it as an output was the claim the document
+warns against, available to any caller. Deleting it leaves the document as the
+one place the quantity is stated, where it is stated with its caveat, and
+where the markers above now hold both it and the 20.7 s figure to the data.
 
-The same item moved circuit-volume conservation into the compartment that
-owns it. `BreathingCircuit.set_circuit_volume()` had scaled the stored
-fraction with the volume and so destroyed agent — measured at 24.1 mL of
-equivalent agent gas on a sevoflurane run 60 s in — after which the *next*
-step failed the accounting check and the numerics were blamed for a setter's
-defect. `app/controller.py` compensated by reading the amount out and putting
-it back, so the shipped application never showed it; that is what made it
-worth fixing rather than leaving, since the invariant held only for the one
-caller who knew to go the long way round.
+**The in-flight answer reaches the places sessions actually start (PL-PRHN,
+PL-SK88, PL-K2ZK).** `docket show` marked an item another branch was already
+carrying, but `docket triage` — the command a session runs straight off a
+session-start digest that reports the untriaged count and nothing about who
+holds those items — said nothing, and two sessions answered the same pair of
+items on one afternoon, the merge discarding most of one answer. Triage now
+names the branch. The read was bounded twice over and both bounds were
+narrowed: it answers only for what has been *pushed*, so starting an item now
+also reads the harness's own session list, which sees a session that has
+committed nothing at all; and it answers only across the refs a checkout
+holds, so a shallow container deepens once at session start rather than
+reporting a partial sweep as a clean one.
 
-**Two documentation items closed with them.** `docs/MODEL.md`'s failed-step
-paragraph said the step was abandoned while the code left it partly applied
-(PL-KQKM); rather than weakening the document to match, PL-026 landed first
-and the paragraph was corrected upward, alongside a new "Step atomicity"
-section stating the contract where the numerical method is specified rather
-than in a paragraph about the capacity guard. PL-026's own rejected options
-and state inventory had been held in `docs/WORKING_NOTES.md` (PL-YLZQ), which
-is that file's split applied backwards — one item's reasoning belongs in that
-item, where the session that starts it will read it — so the thread moved into
-the item and the section was deleted.
+None of it is a lock, deliberately. Every one of these answers is bounded by
+something — what has been pushed, which refs are readable, whether a session
+was renamed — and each says so where it answers, because a guard that cannot
+report its own gaps must never be read as evidence of absence.
 
-**One tooling item** made `bin/docket check` report what its `verify:`
-commands cost (PL-VG7G). The commands run concurrently, so the cost is the
-slowest single one and nothing named it; a command written during triage could
-take the check from 10 s to 59 s with no symptom but `make check` feeling
-slower. Full notes are in `docs/releases/v0.2.11.md`.
+**The payload boundary is written where a reader meets it (PL-007).** Each
+Pydantic model in `core/parameters.py` is paired with a public, frozen,
+Pydantic-independent type, which reads as duplication nobody removed. It is
+not. A payload validates one JSON document and is then discarded, which is why
+no other module in `core/` imports the validation library; and the two shapes
+differ because a payload mirrors the file while the public type has the form
+the model wants. Both facts are now recorded at the classes themselves rather
+than inferred from the code.
 
-**Two of the five are Gate 0 entries**, taking the frozen debt gate to 17 of
-21 cleared. What remains of it is four small items and none is safety- or
-science-classed, so the gate's strongest-model work is done. v0.3.0 is not cut
-by this: the gate clears first, and the foundation release is what closing it
-produces.
-
-Like every release since v0.2.0 it changes no equation, parameter, or
-numerical method: `src/anesthesia_sim/data/` is byte-identical to v0.2.10, and
-the v0.0.2 circuit and v0.1.0 sevoflurane reference tests still pass
-unaltered. That is why it is a patch rather than a new minor — it crosses no
-model capability boundary, no new agent and no new physiology.
+**Two of the six are Gate 0 entries**, taking the frozen debt gate from 17 to
+19 of 21 cleared. `PL-019` and `PL-010` are what remain, both small and
+neither safety- nor science-classed. v0.3.0 is not cut by this release: the
+gate clears first, and the foundation release is what closing it produces.
 
 **What the model currently is** is described under "The model as it stands"
 below, and does not change release to release while the patch series
 continues.
 
 ### Release narrative
+
+v0.2.11 was a transactional-step and core-boundary patch carrying five items,
+changing `src/` in `core/` and `app/` both. **A step that cannot be completed
+became one that is rolled back in full (PL-026):** `_advance_step` applies
+five sub-exchanges in sequence and a compartment guard can reject the fifth
+after four have written their state, so a halted run had been drawing metrics
+and chart traces at whatever the abandoned step left behind — an artifact of
+the order the operators ran in rather than a solution of the model at any
+time, with nothing on screen distinguishing the two.
+`AgentUptakeSystem.advance()` captures every dynamic value before the step and
+restores it on any failure, so a halted run holds the last completed step, and
+the diagnosis moved into `SimulationNumericalError`, which names the invariant
+that failed and the step size it failed at. That was the one displayed value
+differing from v0.2.10, and it was the release's purpose rather than a side
+effect: no supported step reaches the guard on the reference adult with any
+shipped agent, so the change is to what a future parameter set would show.
+Each compartment captures its own run state, so a dynamic field added later
+without a matching capture is a local, reviewable omission instead of a
+partial restore that looks complete, and `tests/unit/test_state_capture.py`
+fails when a new field is classified as neither run state nor setting.
+**The scientific core's entry point was renamed for what it owns (PL-006):**
+"respiratory system" clinically means the patient's own lungs and airways,
+which is one of the class's four members, while `total_stored_agent_l` sums
+all of them and feeds the conservation check that can halt a run — so a reader
+taking the old name at face value read an accounting quantity as agent in the
+lungs, and at steady state was wrong by a large factor. The same item moved
+circuit-volume conservation into the compartment that owns it, after
+`BreathingCircuit.set_circuit_volume()` was measured destroying 24.1 mL of
+equivalent agent gas and making the *next* step fail for it. Two documentation
+items and one tooling item closed alongside, the last making `bin/docket
+check` report what its `verify:` commands cost.
 
 v0.2.10 was an interface-safety and accessibility patch carrying eleven items,
 the first since v0.2.8 to change `core/`. **The supported input ranges became
@@ -1761,7 +1787,11 @@ specified.
 
 1. Add a modular anesthesia-machine abstraction with normal
    single-halogenated-agent interlock behavior — the safety baseline every
-   later machine feature below builds on.
+   later machine feature below builds on. The default fresh gas flow belongs
+   to it: today a literal in `core/circuit.py` that `docs/MODEL.md` restates
+   without provenance, and the one number in that document's accuracy table
+   tracing to no cited file. Scoping this milestone gives it a versioned data
+   file and a provenance row (`PL-8DJ7`).
 2. Add agent switching with residual washout accounting, after item 1.
    Requires the multi-substance patient state described in "Development
    pathway" — residual washout means holding two agents at once.
