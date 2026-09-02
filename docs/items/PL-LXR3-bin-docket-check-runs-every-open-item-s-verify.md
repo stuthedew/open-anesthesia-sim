@@ -78,3 +78,48 @@ paying in every `make check`, and pinning it here would add that cost to every
 run until the work lands. `test_checks.py` is 0.7 s and covers the caller that
 collects the results; the recursive `grep` names the test the work owes
 wherever it comes to live.
+
+**Measurements taken 2026-09-02 while triaging the same item on a parallel
+branch.** They support the decision above rather than reopening it, and three
+of them correct or sharpen the brief.
+
+- `bin/docket check`: **39.8 s** over **49** candidate commands, ~0.81 s each.
+  The 49.6 s / 48 figure in the brief above was measured the same day; treat
+  either as the order of magnitude rather than a fixed number.
+- **Nothing in the candidate set runs the full suite today.** The six `--cov`
+  full-suite commands (~50 s each) all belong to `done` items, so
+  `LANDED_STATUSES` excludes them. The **Problem.** section reads as though
+  they are in the run; they are not, and the cost is not dominated by a handful
+  of heavy entries.
+- The cost is process startup, not test execution: `python3
+  tools/doc_check.py check` is 0.20 s, a scoped `uv run pytest <one file>` is
+  0.38 s warm. That is what makes a thread pool the right instrument.
+- Per-command cost is skewed rather than flat - the slowest in the set is
+  `test_verify.py`, measured at 7.5 s here and 9.5 s above. A pool's floor is
+  therefore the slowest single command, roughly 8-10 s, not near-zero. Worth
+  recording the result against that floor rather than against zero.
+- **Deduplicating identical commands is not the win.** Of the 49 candidates 45
+  are distinct, and the one repeated command is `python3 tools/doc_check.py
+  check` at 0.20 s, so dedup saves about 1 s. Recorded so the implementing
+  session does not re-derive it.
+
+**The growth risk is concrete, and larger than "grows with the queue".**
+`PL-NC2P` and `PL-YMY7` are open, `ready`, in `core-guard-coverage`, and carry
+no command yet. Every coverage item in that feature has taken the shape `uv run
+pytest --cov=<module> --cov-fail-under=100`, which is a full-suite run at ~50 s.
+Giving those two the same shape takes `bin/docket check` from ~40 s to ~140 s -
+one triage pass, a 3.5x regression.
+
+**A constraint the concurrency approach has to meet.** Two `--cov` runs in one
+working directory both write `.coverage` and race. None are candidates today,
+but the paragraph above puts them there, so the pool needs a per-worker
+`COVERAGE_FILE` or a rule that runs `--cov` commands serially. Getting this
+wrong makes coverage results wrong rather than slow, which is worse than the
+problem being fixed.
+
+**One stale comment to fix on the way past.** `LANDED_TIMEOUT`'s comment in
+`subprojects/docket/src/docket/verify.py` records "Measured against this store
+on 2026-09-01, the 29 candidate commands took 18s in total and 5.1s at worst".
+It is now ~50 commands and ~40 s. That comment is the only record of the number
+anyone reading the constant will see, so update it with whatever this item
+measures rather than leaving a figure that understates the cost by half.

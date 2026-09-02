@@ -8,6 +8,7 @@ classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, tools/contrast_check.py, tests/unit/test_contrast_check.py, docs/MODEL.md
 added: 2026-09-02
+pr: 187
 closed: 2026-09-02
 pr: 187
 verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_muted_clears_the_text_minimum_on_both_surfaces' tests/unit/test_contrast_check.py
