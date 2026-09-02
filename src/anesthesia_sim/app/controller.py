@@ -60,9 +60,13 @@ class SimulationSnapshot:
 
     A non-`None` value means a step or a setting raised and the session is
     halted: `is_running` is `False`, but this is not the same state as a
-    user pause, and the interface must not present it as one. Every other
-    field in this snapshot was read after the failure, so a compartment
-    value may reflect a step that never completed.
+    user pause, and the interface must not present it as one.
+
+    Every other field in this snapshot is nonetheless a completed step's.
+    `AgentUptakeSystem.advance()` rolls a failed step back, and elapsed
+    time advances only after it returns, so a halted session reports the
+    last step that finished — at the simulation time it finished at —
+    rather than one abandoned partway through.
     """
 
 
@@ -162,13 +166,14 @@ class SimulationController:
     def fail(self, reason: str) -> None:
         """Halt the session because something raised, recording why.
 
-        Distinct from `pause()`: a pause is a user decision and the run can
-        be resumed from exactly where it stopped, while a failure means a
-        step or a setting raised and the state it left behind may not be a
-        completed step. Resuming is not offered, because continuing from a
-        partially applied step would extend a run whose trajectory is no
-        longer the one the model defines: only starting a fresh run clears
-        it, via `reset()` or `set_agent()`.
+        Distinct from `pause()`, which is a user decision the run resumes
+        from. A failure means a step or a setting raised, and while the
+        core rolls a failed step back — so the state left behind is the
+        last completed step rather than a partial one — resuming is still
+        not offered. The run reached a state the model could not step
+        from, so a resumed run would fail again on its first tick, and
+        offering Start would present that as a working control. Only a
+        fresh run clears it, via `reset()` or `set_agent()`.
         """
 
         self._is_running = False
@@ -268,8 +273,8 @@ class SimulationController:
         """Stop the run, clear any failure, and clear dynamic state.
 
         Settings are preserved. This is the only way out of a failed
-        session: the compartments are rebuilt to their initial state, so
-        nothing carries over from the step that failed.
+        session: every compartment goes back to its initial state, so
+        nothing carries over from the run that could not continue.
         """
 
         self.pause()

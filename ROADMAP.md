@@ -304,7 +304,10 @@ carried four queue items:
   interface labels the run "Stopped — simulation error" and warns that the
   values shown may not reflect a completed step; and Reset clears it. `core/`
   raises one documented exception hierarchy for this path. What a halted run
-  should *display* beyond that banner is a separate open question (PL-026).
+  should *display* beyond that banner was left open here and answered by
+  PL-026, which made the step transactional rather than treating the display:
+  a failed step is rolled back, so the values a halted run shows are the last
+  completed step, and the banner says so instead of warning about them.
 - **PL-021.** The agent and patient parameter schemas reject unknown keys
   rather than ignoring them, so a misspelled or obsolete field in a data file
   fails loudly instead of silently leaving a default in place.

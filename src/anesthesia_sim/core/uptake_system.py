@@ -23,12 +23,13 @@ from math import exp
 from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
     AgentSimulationValidator,
+    AgentSimulationValidatorState,
 )
-from anesthesia_sim.core.alveolar import AlveolarCompartment
-from anesthesia_sim.core.circuit import BreathingCircuit, FreshGasExchange
+from anesthesia_sim.core.alveolar import AlveolarCompartment, AlveolarCompartmentState
+from anesthesia_sim.core.circuit import BreathingCircuit, BreathingCircuitState, FreshGasExchange
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
-from anesthesia_sim.core.patient import PatientCompartments
+from anesthesia_sim.core.patient import PatientCompartments, PatientCompartmentsState
 from anesthesia_sim.core.validation import require_positive_finite
 
 SECONDS_PER_MINUTE = 60.0
@@ -90,6 +91,24 @@ class UptakeStepResult:
     circuit_to_alveolar_agent_l: float
     patient_agent_change_l: float
     agent_accounting: AgentSimulationValidationResult
+
+
+@dataclass(frozen=True, slots=True)
+class AgentUptakeSystemState:
+    """Every dynamic value one simulation step can change.
+
+    The counterpart of `UptakeStepResult`: that reports what a step
+    did, this records what it would have to undo. Each entry is captured by
+    the compartment that owns it rather than read out of it here, so that a
+    dynamic field added to a compartment later without a matching capture
+    is a local omission in one file rather than a partial restore that
+    looks complete. `advance()` says what it is for.
+    """
+
+    circuit: BreathingCircuitState
+    alveoli: AlveolarCompartmentState
+    patient: PatientCompartmentsState
+    agent_simulation_validator: AgentSimulationValidatorState
 
 
 @dataclass(slots=True)
@@ -187,7 +206,27 @@ class AgentUptakeSystem:
         self.patient.set_cardiac_output(cardiac_output_l_min)
 
     def advance(self, simulation_step_s: float) -> UptakeStepResult:
-        """Advance one conservative, validated simulation step.
+        """Advance one conservative, validated simulation step, or none.
+
+        The step is all-or-nothing. `_advance_step()` applies five
+        sub-exchanges in sequence, and a guard can reject the fifth after
+        the first four have already written their compartments; so this
+        method captures every dynamic value first and restores it on any
+        failure, leaving the system bit-identical to what it was on entry.
+
+        That matters because a partly applied step is not a solution of
+        anything. Its numbers are an artifact of the order the operators
+        ran in — the fifth having run against the second's output — rather
+        than evidence of where the model broke down, and `CLAUDE.md`
+        prefers an obvious failure to a plausible-looking number. Rolling
+        back leaves the last completed step, which *is* a solution, so a
+        caller that halts still holds state it can display and reason
+        about. The diagnosis goes in the raised message instead, where it
+        names the invariant and the step size a reader can act on.
+
+        Rolling back does not make the run resumable: the model reached a
+        state it could not step from, so the same step would fail again.
+        The caller must stop.
 
         Raises:
             SimulationConfigurationError: `simulation_step_s` is not a
@@ -195,17 +234,19 @@ class AgentUptakeSystem:
                 `MAXIMUM_SIMULATION_STEP_S`. Checked before anything is
                 changed, so the system is untouched and the caller can
                 retry with a valid step.
-            SimulationNumericalError: the step began but could not be
+            SimulationNumericalError: the step began and could not be
                 completed — a compartment guard rejected a value produced
                 by the step itself, typically because the step was large
                 enough for the operator split to drive an amount negative
-                or a fraction outside zero through one. Compartment state
-                is left partway through the step and must not be read as a
-                simulation result; the caller must stop the run rather
-                than continue from it.
+                or a fraction outside zero through one. The step has been
+                rolled back, so what the system holds is the last
+                completed step; the run must stop rather than continue
+                from it.
         """
 
         require_supported_simulation_step(simulation_step_s)
+
+        state_before_step = self.capture_state()
 
         try:
             return self._advance_step(simulation_step_s)
@@ -217,12 +258,58 @@ class AgentUptakeSystem:
             # setting was refused, nothing changed" apart from "the run is
             # no longer trustworthy". The original guard is kept as the
             # cause so the failing invariant stays traceable.
+            self.restore_state(state_before_step)
+
             raise SimulationNumericalError(
-                f"the simulation step of {simulation_step_s} s could not be completed: {error}"
+                f"the simulation step of {simulation_step_s} s could not be completed "
+                "and was rolled back, leaving the state the last completed step "
+                f"produced: {error}"
             ) from error
+        except Exception:
+            # Deliberately wider than the clause above, and deliberately
+            # re-raising unchanged. `AgentSimulationValidationError` from
+            # the accounting check, and a `TypeError` from some future
+            # refactor, each leave the same partly applied step behind and
+            # so need the same rollback; but neither is a guard rejecting a
+            # value, so neither is restated. Rewriting an accounting
+            # failure as a plain `SimulationNumericalError` would also
+            # erase the more specific type a caller may key on.
+            self.restore_state(state_before_step)
+
+            raise
+
+    def capture_state(self) -> AgentUptakeSystemState:
+        """Record every dynamic value, for `advance()` to roll back to."""
+
+        return AgentUptakeSystemState(
+            circuit=self.circuit.capture_state(),
+            alveoli=self.alveoli.capture_state(),
+            patient=self.patient.capture_state(),
+            agent_simulation_validator=(self.agent_simulation_validator.capture_state()),
+        )
+
+    def restore_state(self, state: AgentUptakeSystemState) -> None:
+        """Restore state previously captured by `capture_state()`.
+
+        Every compartment restores by direct field assignment, so this
+        cannot raise. That is a requirement rather than an accident: it
+        runs while a failure is already being handled, and a rollback that
+        could fail partway would leave exactly the partial state it exists
+        to prevent.
+        """
+
+        self.circuit.restore_state(state.circuit)
+        self.alveoli.restore_state(state.alveoli)
+        self.patient.restore_state(state.patient)
+        self.agent_simulation_validator.restore_state(state.agent_simulation_validator)
 
     def _advance_step(self, simulation_step_s: float) -> UptakeStepResult:
-        """Apply one step's transfers, assuming the step size is valid."""
+        """Apply one step's transfers, assuming the step size is valid.
+
+        Writes each compartment as it goes and does not clean up after
+        itself: `advance()` is what makes a failure partway through safe,
+        and this is not called from anywhere else.
+        """
 
         fresh_gas_exchange = self.circuit.advance_fresh_gas(simulation_step_s)
 

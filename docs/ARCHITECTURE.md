@@ -134,19 +134,25 @@ different treatment:
   says the setting was refused; the run is untouched and keeps going.
 - `SimulationExecutionError` (and its `SimulationNumericalError` /
   `AgentSimulationValidationError` subclasses) — a step began and could
-  not be completed, so compartment state may sit partway through it.
+  not be completed, so the run must stop.
   `AgentUptakeSystem.advance()` is what makes this distinction: it checks
   its own arguments first, then restates any guard reached during the step
   as a `SimulationNumericalError`, keeping the original as `__cause__`.
+  It is also what makes the step atomic — it captures every dynamic value
+  before the step and restores it on any failure, so what is left behind
+  is the last completed step rather than four of the five sub-exchanges.
+  Each compartment captures its own state (`capture_state()` /
+  `restore_state()`), so a dynamic field added without a matching capture
+  is a local omission; `docs/MODEL.md`, "Step atomicity", is the contract.
 
 Both view loops are guarded, and both call `SimulationController.fail()`
 on any exception — a `TypeError` from a refactor kills an asyncio task
 exactly as silently as a modelling failure does. `fail()` is a third run
 state, carried on the snapshot as `failure_reason` and rendered as
 "Stopped — simulation error" with a banner over the values: a halted run
-must never present as a pause, because the numbers beside it may come from
-a step that never finished. It cannot be resumed, only cleared by `reset()`
-or by starting a fresh run with `set_agent()`. Neither loop returns on
+must never present as a pause, because a pause is a run that continues when
+asked and a halt is one that cannot. It cannot be resumed, only cleared by
+`reset()` or by starting a fresh run with `set_agent()`. Neither loop returns on
 failure — they are started once, at mount, so a loop that exited could
 never be restarted.
 

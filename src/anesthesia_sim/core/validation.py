@@ -7,8 +7,11 @@ before it changed anything. A guard reached partway through a step means
 something different — the numerics broke down rather than the caller
 passing a bad value — and `AgentUptakeSystem.advance()` is what turns it
 into `SimulationNumericalError`, because it is the only frame that knows a
-step was in progress. See `core/exceptions.py` for why the hierarchy is
-kept separate from `ValueError`.
+step was in progress. It is also the only one that can undo that step, and
+does: the guard fires after earlier sub-exchanges have already written
+their compartments, so the step is rolled back before the numerical error
+is raised. See `core/exceptions.py` for why the hierarchy is kept separate
+from `ValueError`.
 """
 
 from math import isfinite

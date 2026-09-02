@@ -27,6 +27,23 @@ class AgentSimulationValidationResult:
     passes_validation: bool
 
 
+@dataclass(frozen=True, slots=True)
+class AgentSimulationValidatorState:
+    """The validator's run state: one accounting period's three totals.
+
+    All three are captured, `initial_agent_l` included. It is the anchor of
+    the current accounting period rather than a setting — `reset()` is what
+    writes it, and `reset()` is what clears run state everywhere else in
+    `core/` too — and the identity below only means anything with all three
+    read from the same instant. Restoring two of them onto a third that had
+    moved would leave a validator describing no real period.
+    """
+
+    initial_agent_l: float
+    delivered_agent_l: float
+    exhausted_agent_l: float
+
+
 @dataclass(slots=True)
 class AgentSimulationValidator:
     """Validate that the simulation neither creates nor loses agent.
@@ -111,6 +128,26 @@ class AgentSimulationValidator:
             "currently_stored="
             f"{check.currently_stored_agent_l:.6e} L"
         )
+
+    def capture_state(self) -> AgentSimulationValidatorState:
+        """Record run state so a failed step can be rolled back."""
+
+        return AgentSimulationValidatorState(
+            initial_agent_l=self.initial_agent_l,
+            delivered_agent_l=self.delivered_agent_l,
+            exhausted_agent_l=self.exhausted_agent_l,
+        )
+
+    def restore_state(self, state: AgentSimulationValidatorState) -> None:
+        """Restore run state previously captured by `capture_state()`.
+
+        Assigns the fields directly, so that rolling back cannot itself
+        raise; see `BreathingCircuit.restore_state()`.
+        """
+
+        self.initial_agent_l = state.initial_agent_l
+        self.delivered_agent_l = state.delivered_agent_l
+        self.exhausted_agent_l = state.exhausted_agent_l
 
     def reset(self, initial_agent_l: float = 0.0) -> None:
         """Begin a new accounting period."""

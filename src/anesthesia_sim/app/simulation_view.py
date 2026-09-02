@@ -435,7 +435,8 @@ class SimulationView:
                         ),
                         # Directly under the run controls and above every
                         # displayed value, so a halted run is read before the
-                        # numbers it calls into question.
+                        # values it explains: a completed step, but not a
+                        # continuing one.
                         self._notice_text,
                         self._build_parameter_controls(),
                         self._build_concentration_metrics(),
@@ -767,9 +768,11 @@ class SimulationView:
 
         has_failed = snapshot.failure_reason is not None
 
-        # Three states, not two. A halted run must never render as a pause:
-        # the values on screen may come from a step that never completed,
-        # and a reader who sees "Paused" has no reason to distrust them.
+        # Three states, not two. A halted run must never render as a pause.
+        # The core rolls a failed step back, so the numbers beside this word
+        # are a completed step's - but the run cannot go on from them, and a
+        # reader who sees "Paused" expects Start to resume it and reads a
+        # stopped trajectory as one still in progress.
         if has_failed:
             self._status_text.value = "Stopped — simulation error"
             self._status_text.color = WARNING
@@ -962,12 +965,20 @@ class SimulationView:
         A halted run outranks a refused setting: it describes the state of
         everything else on screen, where a refusal describes only one
         control.
+
+        The halted-run wording says what the values *are* rather than
+        warning about them, which is what rolling the failed step back
+        bought. The core leaves the last completed step, so the numbers are
+        a real solution of the model at a real simulation time; what the
+        reader needs to know is that they have stopped advancing and that
+        the run cannot be resumed, not that they are untrustworthy.
         """
 
         if failure_reason is not None:
             self._notice_text.value = (
                 f"Simulation stopped — {failure_reason}. "
-                "The values shown may not reflect a completed step. "
+                "The values shown are the last completed step; the step that "
+                "failed was rolled back and changed nothing. "
                 "Reset to start a new run."
             )
             self._notice_text.visible = True
