@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-02
 closed: 2026-09-02
+pr: 211
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_triage_names_an_item_already_in_flight' subprojects/docket/tests/test_cli.py
 ---
 

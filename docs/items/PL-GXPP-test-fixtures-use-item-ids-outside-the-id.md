@@ -1,9 +1,14 @@
 ---
 id: PL-GXPP
 title: Test fixtures use item ids outside the id alphabet, so a test routing one through id-aware machinery silently exercises nothing
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra
+feature: dev-tooling
 touches: subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests --collect-only -q && ! grep -qE 'PL-[A-Z0-9]*[AEIOU]' subprojects/docket/tests/*.py
 ---
 
 **Problem.** `store.ID_ALPHABET` is Crockford base32 *minus the vowels*, so
@@ -42,6 +47,16 @@ tree either matches `ID_RE` or sits in a test whose name says it is invalid is
 the kind of thing that answers identically every run - but it needs a way to
 tell the two apart that is not a hand-maintained allowlist, and if that costs
 more than the renames save, the renames alone are the answer.
+
+**On the `verify:` command.** The grep is the specification, not a proxy for
+one: the alphabet excludes the vowels, so a vowel between `PL-` and the end of
+an id is exactly the condition, and it lists the six offenders today with no
+false positive - `PL-1`, `PL-B1B`, `PL-M0` and `PL-M01` carry none. It is
+paired with `--collect-only` rather than a run because a rename breaks
+collection, which that catches in 0.5 s, while running the three files takes
+30 s inside every `make check` - the cost `PL-LXR3` was explicitly reasoned out
+of and `PL-PRHN` records. The suite itself is already gated: `make check` runs
+`uv run pytest` in full two steps earlier.
 
 **Done when.** No test fixture that is meant to read as a valid item id fails
 `store.ID_RE`, and the deliberately-invalid ones are still there.
