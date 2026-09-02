@@ -73,6 +73,27 @@ def _install_docket(root: Path) -> None:
     shim.chmod(0o755)
 
 
+def _break_the_remote(root: Path) -> None:
+    """Point `origin` at nothing, so every fetch fails the way no network does.
+
+    The deepening PL-K2ZK added is allowed to fail, and what it must not do is
+    fail loudly or hold the session open. A path that does not exist fails
+    immediately and locally, which is the offline case without the wait.
+    """
+    _git("remote", "set-url", "origin", str(root / "no-such-remote.git"), cwd=root)
+
+
+def _is_shallow(root: Path) -> bool:
+    result = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip() == "true"
+
+
 def _run_hook(root: Path) -> str:
     """The hook as a session start runs it: from the project directory.
 
@@ -104,31 +125,74 @@ def test_a_shallow_clone_behind_its_remote_is_counted_correctly(tmp_path: Path) 
     assert "is 2 behind origin/main with nothing of its own" in out
 
 
-def test_a_clone_sharing_no_history_says_so_instead_of_counting(tmp_path: Path) -> None:
-    """PL-FBCC: `rev-list A...B` answers an unrelated pair without failing.
+def test_a_shallow_checkout_is_deepened_once_at_session_start(tmp_path: Path) -> None:
+    """PL-K2ZK: the hook repairs the truncation instead of reading around it.
 
-    It prints the size of each side, which reads exactly like a real position -
-    and a fabricated "ahead" tells a session it carries work it does not,
-    arguing against the merge this line exists to prompt.
+    The container's clone is shallow, so `branches_in_flight` cannot find a
+    merge base and declines - in every session, for the life of the container.
+    One fetch converts that non-answer into the right answer, so the hook takes
+    it before anything below reads a ref.
     """
     work = _shallow_clone_of_a_moved_remote(tmp_path)
-    # A `--depth` fetch re-truncates `origin/main` and records it in
-    # `.git/shallow`, which no later ordinary fetch undoes.
+    assert _is_shallow(work)
+
+    out = _run_hook(work)
+
+    assert not _is_shallow(work)
+    assert "is 2 behind origin/main with nothing of its own" in out
+
+
+def test_a_clone_sharing_no_history_is_repaired_rather_than_reported(tmp_path: Path) -> None:
+    """PL-FBCC's state is now reachable only when the deepening cannot run.
+
+    `rev-list A...B` answers an unrelated pair without failing - it prints the
+    size of each side, which reads exactly like a real position, and a
+    fabricated "ahead" tells a session it carries work it does not. A `--depth`
+    fetch re-truncates `origin/main` and records it in `.git/shallow`, which no
+    later *ordinary* fetch undoes. The deepening is not an ordinary fetch, so
+    with a reachable remote the session now gets the number rather than the
+    complaint.
+    """
+    work = _shallow_clone_of_a_moved_remote(tmp_path)
     _git("fetch", "--quiet", "--depth=1", "origin", "+refs/heads/*:refs/remotes/origin/*", cwd=work)
 
     out = _run_hook(work)
 
+    assert "is 2 behind origin/main with nothing of its own" in out
+    assert "shares no readable history with origin/main" not in out
+
+
+def test_an_unreachable_remote_leaves_the_complaint_and_starts_cleanly(tmp_path: Path) -> None:
+    """The offline half of PL-K2ZK: silence from the fetch, not from the hook.
+
+    A container with no network must still start, and must still be told what
+    its history cannot answer. So the deepening fails quietly, the checkout is
+    left exactly as truncated as it was, and the guard PL-MGNC put in is what
+    speaks - including the remedy a person can run once they have a network.
+    """
+    work = _shallow_clone_of_a_moved_remote(tmp_path)
+    _git("fetch", "--quiet", "--depth=1", "origin", "+refs/heads/*:refs/remotes/origin/*", cwd=work)
+    _break_the_remote(work)
+
+    out = _run_hook(work)
+
+    assert _is_shallow(work)
     assert "shares no readable history with origin/main" in out
     assert "git fetch --deepen=100 origin" in out
     assert "ahead" not in out
 
 
 def test_the_repair_the_hook_names_actually_repairs_it(tmp_path: Path) -> None:
-    """A remedy printed to a session is worth nothing unless it has been run."""
+    """A remedy printed to a session is worth nothing unless it has been run.
+
+    Run with the remote broken afterwards, so what the position line proves is
+    the hand-run `--deepen`, not the hook deepening it a second time.
+    """
     work = _shallow_clone_of_a_moved_remote(tmp_path)
     _git("fetch", "--quiet", "--depth=1", "origin", "+refs/heads/*:refs/remotes/origin/*", cwd=work)
 
     _git("fetch", "--quiet", "--deepen=100", "origin", cwd=work)
+    _break_the_remote(work)
 
     assert "is 2 behind origin/main with nothing of its own" in _run_hook(work)
 
