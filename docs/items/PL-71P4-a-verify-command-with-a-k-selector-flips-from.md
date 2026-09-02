@@ -1,8 +1,14 @@
 ---
 id: PL-71P4
 title: "A verify: command with a -k selector flips from correctly failing to falsely passing when unrelated work adds a matching test name, so the already-passes set grows on its own"
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/checks.py, docket.toml, subprojects/docket/tests/test_checks.py
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_ready_item_whose_command_passes_is_an_error_after_the_cutoff' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `PL-L9JS` records eight open items whose `verify:` command passes
@@ -81,3 +87,33 @@ cannot be newly recorded or silently acquired without something failing at the
 moment it happens, and the reasoning for treating this differently from
 `PL-5QKT`'s selects-nothing case is written down where the next session
 reading either advisory will find it.
+
+**Triaged 2026-09-02.** P2, `defect`/`infra`, `dev-tooling`, `S`. Worked
+together with `PL-L9JS` (repair the nine open items whose `verify:` command
+already passes) as one session, after the v0.4.0 gate rather than interrupting
+it - the project owner's call on 2026-09-02. `PL-L9JS` is the repair half and
+this is the preventive half; neither is in the frozen gate list, so both are
+debt for the gate after it.
+
+**Sequencing note for the implementing session, deliberately not decided here.**
+Doing `PL-L9JS` *first* may remove this item's need for a dated cutoff
+altogether. The cutoff exists only to grandfather the nine items that pass
+today; repair them first and the store is already clean, so the rule can be a
+plain error with no `verify_must_fail_from` setting, no grandfather set, and no
+second dated policy sitting beside `verify_required_from` for a reader to
+distinguish. That is the cheaper mechanism if the ordering holds. It does not
+survive the two items being split across sessions, or a tenth conversion
+arriving in between - which is the failure this item exists to describe - so
+confirm the advisory names zero items before choosing it, and fall back to the
+cutoff if it does not.
+
+**Why the `verify:` command is the paired shape and not `bin/docket check`.**
+The natural proof - that `docket check` errors on an item whose command passes
+- cannot be written as a `verify:` command, because `docket check` runs every
+open item's `verify:` command and would recurse without bound (`PL-20CQ`).
+`PL-L9JS` records the same constraint in its `not-delegable:`. This item escapes
+it because its work is code plus a test, so a pytest run proves it without
+re-entering the checker. The command was run before being written down, per
+the `docket` skill: the pytest half exits 0 (85 tests, 0.19s) and the `grep`
+half exits 1 for the test the work has yet to add, so the pair exits 1 - an
+ordinary failure, not the 5 an empty `-k` selection returns.
