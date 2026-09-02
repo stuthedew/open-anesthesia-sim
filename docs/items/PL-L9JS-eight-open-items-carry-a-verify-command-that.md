@@ -73,3 +73,19 @@ sentence: the natural proof is that `docket check`'s landed advisory names none
 of the nine, but a command that runs `docket check` is run *by* `docket check`,
 so it recurses without bound. That is a live constraint on what any item about
 the store's own commands may record, not a quirk of this one.
+
+**Paired with `PL-71P4` on 2026-09-02.** This item is the repair half and
+scopes itself to the nine item files; `PL-71P4` (make a `verify:` command that
+passes before its work an error rather than an advisory) is the preventive half.
+Repairing without preventing does not converge: `PL-6P9Y` joined this set
+between 2026-09-01 and 2026-09-02 without anybody touching it, when `PL-Q2BJ`
+(#144) added a test whose name matched its `-k out_of_scope` selector, flipping
+the command from exit 5 to exit 0. Fourteen open items still carry `-k`
+selectors and are latent members of the same set, so the nine can be worked to
+zero and be non-zero again from work that did nothing wrong. `PL-71P4` carries
+the evidence and a sequencing note arguing this item should go first.
+
+The count in the table above is eight; the advisory named nine on 2026-09-02,
+the ninth being `PL-6P9Y`. Checked on that date: none of the nine is landed
+work - all nine are non-discriminating commands, so the table's conclusion holds
+for the larger set.
