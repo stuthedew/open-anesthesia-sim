@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from math import inf
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.supported_ranges import require_supported_alveolar_ventilation
 from anesthesia_sim.core.validation import (
     require_concentration_fraction,
     require_nonnegative_finite,
@@ -26,7 +27,7 @@ class AlveolarCompartment:
 
     def __post_init__(self) -> None:
         require_positive_finite("gas_volume_l", self.gas_volume_l)
-        require_nonnegative_finite("alveolar_ventilation_l_min", self.alveolar_ventilation_l_min)
+        require_supported_alveolar_ventilation(self.alveolar_ventilation_l_min)
         require_nonnegative_finite("agent_amount_l", self.agent_amount_l)
 
         if self.agent_amount_l > self.gas_volume_l:
@@ -50,9 +51,13 @@ class AlveolarCompartment:
         return SECONDS_PER_MINUTE * self.gas_volume_l / self.alveolar_ventilation_l_min
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
-        """Change ventilation without changing stored alveolar agent."""
+        """Change ventilation without changing stored alveolar agent.
 
-        require_nonnegative_finite("alveolar_ventilation_l_min", alveolar_ventilation_l_min)
+        Rejects a ventilation outside the supported range rather than
+        clamping it; see `core/supported_ranges.py`.
+        """
+
+        require_supported_alveolar_ventilation(alveolar_ventilation_l_min)
         self.alveolar_ventilation_l_min = alveolar_ventilation_l_min
 
     def set_concentration_fraction(self, concentration_fraction: float) -> None:

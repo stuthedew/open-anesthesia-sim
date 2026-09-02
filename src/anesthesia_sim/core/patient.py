@@ -10,12 +10,9 @@ from dataclasses import dataclass
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AgentParameters, ReferenceAdultParameters
+from anesthesia_sim.core.supported_ranges import require_supported_cardiac_output
 from anesthesia_sim.core.tissue import TissueGroup
-from anesthesia_sim.core.validation import (
-    require_concentration_fraction,
-    require_nonnegative_finite,
-    require_positive_finite,
-)
+from anesthesia_sim.core.validation import require_concentration_fraction, require_positive_finite
 
 FLOW_FRACTION_TOLERANCE = 1e-12
 
@@ -31,7 +28,7 @@ class PatientCompartments:
     venous_blood: VenousBloodCompartment
 
     def __post_init__(self) -> None:
-        require_nonnegative_finite("cardiac_output_l_min", self.cardiac_output_l_min)
+        require_supported_cardiac_output(self.cardiac_output_l_min)
 
         if abs(self.total_perfusion_fraction - 1.0) > FLOW_FRACTION_TOLERANCE:
             raise SimulationConfigurationError("tissue perfusion fractions must sum to 1")
@@ -109,9 +106,13 @@ class PatientCompartments:
         )
 
     def set_cardiac_output(self, cardiac_output_l_min: float) -> None:
-        """Change cardiac output without changing stored agent."""
+        """Change cardiac output without changing stored agent.
 
-        require_nonnegative_finite("cardiac_output_l_min", cardiac_output_l_min)
+        Rejects an output outside the supported range rather than clamping
+        it; see `core/supported_ranges.py`.
+        """
+
+        require_supported_cardiac_output(cardiac_output_l_min)
         self.cardiac_output_l_min = cardiac_output_l_min
         self._update_blood_flows()
 

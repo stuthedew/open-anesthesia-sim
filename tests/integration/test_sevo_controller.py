@@ -3,10 +3,10 @@ from math import isfinite
 import pytest
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.simulation_view import (
-    MAX_ALVEOLAR_VENTILATION_L_MIN,
-    MAX_CARDIAC_OUTPUT_L_MIN,
-    MAX_FRESH_GAS_FLOW_L_MIN,
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
 )
 
 
@@ -133,18 +133,18 @@ def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> No
 
     Reference and invariant tests elsewhere in this suite mostly exercise
     values near the physiologic defaults (~4-8 L/min). This drives every
-    setting to the maximum the sliders in `simulation_view.py` actually
-    allow, since nothing upstream in the model prevents a user from doing
-    exactly that.
+    setting to the maximum the model supports, which is also the maximum the
+    sliders offer: a run at the corner of the settings envelope is a run a
+    user can ask for.
     """
 
     controller = SimulationController()
     controller.start()
     max_delivered_concentration_percent = controller.snapshot().max_delivered_concentration_percent
-    controller.set_fresh_gas_flow(MAX_FRESH_GAS_FLOW_L_MIN)
+    controller.set_fresh_gas_flow(MAXIMUM_FRESH_GAS_FLOW_L_MIN)
     controller.set_delivered_concentration(max_delivered_concentration_percent / 100.0)
-    controller.set_alveolar_ventilation(MAX_ALVEOLAR_VENTILATION_L_MIN)
-    controller.set_cardiac_output(MAX_CARDIAC_OUTPUT_L_MIN)
+    controller.set_alveolar_ventilation(MAXIMUM_ALVEOLAR_VENTILATION_L_MIN)
+    controller.set_cardiac_output(MAXIMUM_CARDIAC_OUTPUT_L_MIN)
 
     _advance_for(controller, duration_s=300.0)
 

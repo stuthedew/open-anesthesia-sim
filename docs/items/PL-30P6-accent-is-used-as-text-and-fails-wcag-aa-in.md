@@ -3,11 +3,13 @@ id: PL-30P6
 title: ACCENT is used as text and fails WCAG AA in both places it appears
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tools/contrast_check.py, tests/unit/test_simulation_view.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tools/contrast_check.py, tests/unit/test_simulation_view.py, tests/unit/test_contrast_check.py, docs/MODEL.md
 added: 2026-09-02
+closed: 2026-09-02
+verify: uv run pytest tests/unit/test_contrast_check.py tests/unit/test_simulation_view.py && grep -q 'ACCENT_TEXT' src/anesthesia_sim/app/theme.py
 ---
 
 **Problem.** `ACCENT` (`#18A999`) is used as a *text* colour in two places, and
@@ -56,3 +58,32 @@ must go in the same change); `tests/unit/test_simulation_view.py:351`, `:383`.
 **Done when.** Both status words meet 4.5:1 on the surface they are actually
 drawn on, the chart trace's own requirement is unchanged or explicitly handed
 to `PL-GVXP`, and the `KNOWN_SHORTFALLS` entries are deleted.
+
+**Resolved by route 1 (2026-09-02).** `ACCENT_TEXT = "#127D71"` is a uniform
+darkening of `ACCENT`, so hue and saturation are unchanged (173 deg, 0.86) and
+the two read as one colour family. It measures **5.00:1** on `PANEL` and
+**4.65:1** on `BACKGROUND`. The two affirmative status words now use it;
+`ACCENT` keeps only its graphical roles.
+
+Two things found while doing it.
+
+**The "Valid" word is large text, and the stricter bar was applied anyway.** It
+renders at 20px bold (`simulation_view.py:208`), past WCAG's 14pt-bold
+threshold, so SC 1.4.3's 3:1 large-text figure would have sufficed - and
+`ACCENT` failed even that, at 2.93:1. Holding it to 4.5:1 keeps
+`docs/MODEL.md`'s statement true that the large-text exception is not claimed
+anywhere in this interface, and costs nothing since the new value clears it.
+
+**`ACCENT` had a third role, not two.** Besides the alveolar trace it colours
+the active track and thumb of all four parameter sliders
+(`:320`, `:336`, `:346`, `:356`) - a user-interface component under SC 1.4.11,
+also at 2.93:1 against 3:1. That is `PL-W8DQ`, captured rather than fixed here
+because the right value depends on whether `PL-GVXP` keeps `ACCENT` as the
+alveolar trace. So the constant was carrying a text role at 4.5:1, a trace role
+at 3:1 and a control role at 3:1, and no single value satisfies all three -
+which is the argument for the split, arriving after the split was chosen.
+
+`tools/contrast_check.py` now lists `ACCENT` twice with the same measured value
+and two different owners. That is deliberate: the trace and the slider track are
+separate elements sharing one constant, and separate entries are what make the
+sharing visible instead of hiding it behind a single row.

@@ -451,8 +451,12 @@ def verify_batch(
 LANDED_GUARD = "DOCKET_SKIP_LANDED"
 
 # Long enough for a project's own suite, short enough that one wedged command
-# cannot hang `make check`. Measured against this store on 2026-09-01, the 29
-# candidate commands took 18s in total and 5.1s at worst.
+# cannot hang `make check`. Re-measured on 2026-09-02, since the figure here is
+# the only record of the cost anyone reading this constant sees and the store
+# had roughly doubled under the old one: 48 candidate commands, 34.9s in total
+# run serially and 6.9s at worst. The timeout bounds a single command, so it is
+# the worst case that has to fit rather than the total - and the total is now
+# paid concurrently in any case.
 LANDED_TIMEOUT = 120.0
 
 

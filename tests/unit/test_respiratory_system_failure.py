@@ -10,6 +10,11 @@ a step larger than `MAXIMUM_SIMULATION_STEP_S` is refused as a
 configuration error before the step begins, because the operator split has
 no measured error bound there and the number it would return would be wrong
 in the first digit the interface displays.
+
+PL-0MLQ applies the same distinction to the four controls a user sets. A
+setting outside `core/supported_ranges.py` is refused by the compartment it
+belongs to, which is what every `RespiratorySystem` setter forwards to, and
+the run in progress stays trustworthy.
 """
 
 from math import inf, nan
@@ -26,6 +31,7 @@ from anesthesia_sim.core.exceptions import (
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S, RespiratorySystem
+from anesthesia_sim.core.supported_ranges import MAXIMUM_CARDIAC_OUTPUT_L_MIN
 
 # An alveolar gas volume no patient has, and that is the point: after PL-VP7N
 # no supported step can break the split on the reference adult, so the only
@@ -37,11 +43,10 @@ from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S, Re
 #
 # The arithmetic: one step of blood uptake removes about
 # Q * lambda_b/g * dt = (10/60) * 1.3 * 0.1 = 0.022 L of isoflurane per unit
-# alveolar fraction, at the interface's maximum cardiac output. A lung holding
+# alveolar fraction, at the model's maximum supported cardiac output. A lung holding
 # less than that at a fraction of 1 cannot supply it, so the alveolar guard
 # rejects the negative amount the split asks it to hold.
 BREAKDOWN_ALVEOLAR_GAS_VOLUME_L = 0.005
-MAX_CARDIAC_OUTPUT_L_MIN = 10.0
 
 
 def _sevoflurane_at_one_mac() -> RespiratorySystem:
@@ -66,7 +71,7 @@ def _lungs_too_small_for_one_supported_step() -> RespiratorySystem:
         ),
         patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
     )
-    system.set_cardiac_output(MAX_CARDIAC_OUTPUT_L_MIN)
+    system.set_cardiac_output(MAXIMUM_CARDIAC_OUTPUT_L_MIN)
 
     return system
 
@@ -201,4 +206,63 @@ def test_the_ordinary_step_is_unaffected() -> None:
     result = system.advance(0.1)
 
     assert result.fresh_gas_exchange.delivered_agent_l > 0.0
+    assert result.agent_accounting.passes_validation
+
+
+@pytest.mark.parametrize(
+    ("setter_name", "rejected_value"),
+    [
+        ("set_fresh_gas_flow", 500.0),
+        ("set_alveolar_ventilation", 200.0),
+        ("set_cardiac_output", 1000.0),
+    ],
+)
+def test_a_setting_outside_the_supported_range_is_refused_by_the_system(
+    setter_name: str, rejected_value: float
+) -> None:
+    """The three values PL-0MLQ found accepted, refused at the coupled system.
+
+    `RespiratorySystem` forwards each of these to the compartment that owns
+    the setting, so this is cover for the forwarding rather than a second
+    guard: what it holds is that no supported entry point into `core/` can
+    put the model outside the domain its error bound is measured over.
+    """
+
+    system = _sevoflurane_at_one_mac()
+
+    with pytest.raises(SimulationConfigurationError, match="supported input range"):
+        getattr(system, setter_name)(rejected_value)
+
+
+@pytest.mark.parametrize(
+    ("setter_name", "rejected_value"),
+    [
+        ("set_fresh_gas_flow", 500.0),
+        ("set_alveolar_ventilation", 200.0),
+        ("set_cardiac_output", 1000.0),
+    ],
+)
+def test_a_refused_setting_leaves_the_run_trustworthy(
+    setter_name: str, rejected_value: float
+) -> None:
+    """A refused setting is not a failed run, and must not read like one.
+
+    This is the same distinction the refused step above draws: nothing has
+    been miscalculated, so the caller keeps a run it can go on stepping and
+    displaying. The system must therefore be advanceable afterwards, and its
+    agent accounting must still close.
+    """
+
+    system = _sevoflurane_at_one_mac()
+    system.advance(MAXIMUM_SIMULATION_STEP_S)
+    before = system.total_stored_agent_l
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        getattr(system, setter_name)(rejected_value)
+
+    assert not isinstance(raised.value, SimulationNumericalError)
+    assert system.total_stored_agent_l == before
+
+    result = system.advance(MAXIMUM_SIMULATION_STEP_S)
+
     assert result.agent_accounting.passes_validation

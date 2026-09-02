@@ -32,13 +32,21 @@ from anesthesia_sim.app.simulation_view import (
     SIMULATION_STEP_S,
     SimulationView,
 )
-from anesthesia_sim.app.theme import ACCENT, AGENT_COLOR_SCHEMES, MUTED, WARNING
+from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, MUTED, WARNING
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import SimulationNumericalError
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.respiratory_system import MAXIMUM_SIMULATION_STEP_S, RespiratorySystem
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MINIMUM_CARDIAC_OUTPUT_L_MIN,
+    MINIMUM_FRESH_GAS_FLOW_L_MIN,
+)
 
 
 class _FakePage:
@@ -156,6 +164,75 @@ def test_the_shipped_step_is_within_the_maximum_simulation_step() -> None:
     """
 
     assert SIMULATION_STEP_S <= MAXIMUM_SIMULATION_STEP_S
+
+
+def test_the_sliders_span_the_supported_input_ranges() -> None:
+    """The interface offers exactly the domain the model declares.
+
+    Equality in both directions, and each half fails for its own reason. A
+    slider reaching past a supported maximum would hand the user a setting
+    `core/` refuses, which is a control that raises when dragged to its own
+    end. A slider stopping short would silently narrow the reachable domain,
+    which is how the splitting-error bound came to be measured over less than
+    the interface could produce (PL-042) - and how, before PL-0MLQ, the
+    floors could have moved and taken the bound's own worst case, a
+    trajectory holding cardiac output at zero, out of the measured domain.
+
+    Read off the constructed controls rather than the module constants, so a
+    literal typed into a slider fails here rather than passing because the
+    constant beside it is still correct.
+    """
+
+    page = _FakePage()
+    view = SimulationView(page=page, controller=SimulationController())
+
+    assert (
+        view._fresh_gas_flow_slider.min,
+        view._fresh_gas_flow_slider.max,
+        view._alveolar_ventilation_slider.min,
+        view._alveolar_ventilation_slider.max,
+        view._cardiac_output_slider.min,
+        view._cardiac_output_slider.max,
+    ) == (
+        MINIMUM_FRESH_GAS_FLOW_L_MIN,
+        MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+        MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        MINIMUM_CARDIAC_OUTPUT_L_MIN,
+        MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    )
+
+
+def test_every_slider_endpoint_is_a_setting_the_core_accepts() -> None:
+    """Dragging a slider to either end must never raise out of `core/`.
+
+    The check above compares numbers; this one drives the real controller
+    through the same callbacks the interface uses, so a slider whose end the
+    model refuses fails as the user would meet it rather than as a mismatched
+    constant. The delivered-concentration dial is included because its
+    maximum is the agent's own vaporizer limit, which is instance state and
+    so cannot be compared against a constant at all.
+    """
+
+    page = _FakePage()
+    view = SimulationView(page=page, controller=SimulationController())
+
+    sliders = (
+        (view._fresh_gas_flow_slider, view._handle_fresh_gas_flow_change),
+        (view._alveolar_ventilation_slider, view._handle_alveolar_ventilation_change),
+        (view._cardiac_output_slider, view._handle_cardiac_output_change),
+        (view._delivered_concentration_slider, view._handle_delivered_concentration_change),
+    )
+
+    for slider, handle_change in sliders:
+        for endpoint in (slider.min, slider.max):
+            slider.value = endpoint
+            handle_change(ft.Event(name="change", control=slider))
+
+            assert view._rejected_setting_notice is None, (
+                f"the core refused {endpoint}, an endpoint of a slider the "
+                f"interface offers: {view._rejected_setting_notice}"
+            )
 
 
 def test_format_percent_uses_the_documented_display_resolution() -> None:
@@ -348,7 +425,7 @@ def test_refresh_view_reflects_running_state(
     view, _ = _build_view(_snapshot(is_running=is_running))
 
     assert view._status_text.value == expected_status
-    assert view._status_text.color == (ACCENT if is_running else MUTED)
+    assert view._status_text.color == (ACCENT_TEXT if is_running else MUTED)
     assert view._start_button.disabled is expected_start_disabled
     assert view._pause_button.disabled is expected_pause_disabled
 
@@ -380,7 +457,7 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
     view, _ = _build_view(_snapshot(passes_validation=True))
 
     assert view._agent_accounting_status_text.value == "Valid"
-    assert view._agent_accounting_status_text.color == ACCENT
+    assert view._agent_accounting_status_text.color == ACCENT_TEXT
     assert "still accounts for all delivered agent" in (view._agent_accounting_detail_text.value)
     assert view._agent_amounts_text.value == (
         "Delivered: 0.012345 L\n"

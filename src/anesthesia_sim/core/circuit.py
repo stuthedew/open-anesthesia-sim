@@ -6,13 +6,16 @@ The circuit also owns the vaporizer delivery limit
 (`max_delivered_concentration_fraction`), because it owns the delivered
 concentration itself: enforcing the limit here means every path that can
 change that value — core, controller, or UI — is bounded by the same
-guard, rather than relying on the presentation layer to bound it.
+guard, rather than relying on the presentation layer to bound it. Fresh
+gas flow is bounded here for the same reason, against the model's own
+supported range in `core/supported_ranges.py`.
 """
 
 from dataclasses import dataclass
 from math import exp, inf
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.supported_ranges import require_supported_fresh_gas_flow
 from anesthesia_sim.core.validation import (
     require_concentration_fraction,
     require_nonnegative_finite,
@@ -51,7 +54,7 @@ class BreathingCircuit:
 
     def __post_init__(self) -> None:
         require_positive_finite("circuit_volume_l", self.circuit_volume_l)
-        require_nonnegative_finite("fresh_gas_flow_l_min", self.fresh_gas_flow_l_min)
+        require_supported_fresh_gas_flow(self.fresh_gas_flow_l_min)
         require_concentration_fraction(
             "max_delivered_concentration_fraction", self.max_delivered_concentration_fraction
         )
@@ -103,7 +106,9 @@ class BreathingCircuit:
         self.circuit_volume_l = circuit_volume_l
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
-        require_nonnegative_finite("fresh_gas_flow_l_min", fresh_gas_flow_l_min)
+        """Set fresh gas flow, rejecting a flow outside the supported range."""
+
+        require_supported_fresh_gas_flow(fresh_gas_flow_l_min)
         self.fresh_gas_flow_l_min = fresh_gas_flow_l_min
 
     def set_delivered_concentration(self, delivered_concentration_fraction: float) -> None:
