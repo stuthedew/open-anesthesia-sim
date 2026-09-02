@@ -23,6 +23,7 @@ from docket.config import Config
 from docket.model import Item
 from docket.verify import (
     LANDED_GUARD,
+    TIMED_OUT,
     already_passing,
     changed_paths,
     item_commits,
@@ -488,6 +489,88 @@ def test_one_missing_command_beside_a_real_one_still_reports_landed_work(tmp_pat
 def test_an_item_with_no_command_is_not_a_landed_candidate(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     assert already_passing(root, [_item(verify="")]).considered == 0
+
+
+# A command that could not answer, and the two ways that happens. The failure
+# both share is the one this module is otherwise built to refuse: a status that
+# means "could not look" read as "looked, and it failed correctly". A killed
+# command returned 1 - what a failing test returns - so it fell out of every
+# finding while the report stayed clean (`PL-T940`).
+
+
+def test_the_killed_status_cannot_be_confused_with_one_a_process_returned() -> None:
+    # The whole fix rests on the status being unreachable by a real command: a
+    # shell reports an exit status in 0-255 and a signal death as a small
+    # negative number, and 1 in particular is what a failing test returns, so a
+    # timeout sharing it is indistinguishable from an assertion that did not
+    # hold.
+    assert not -255 <= TIMED_OUT <= 255
+
+
+def test_a_timed_out_command_is_not_checked(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [_item(identifier="PL-K7QX", verify="sleep 5"), _item(identifier="PL-A1B2")]
+    report = already_passing(root, items, timeout=0.2, workers=2)
+
+    assert report.timed_out == ("PL-K7QX",)
+    assert report.passing == ("PL-A1B2",)
+    assert report.vacuous == ()
+
+
+def test_a_timed_out_command_is_not_counted_as_one_that_ran(tmp_path: Path) -> None:
+    # `considered` is rendered to a reader as "checked". A command killed
+    # part-way through was not, and counting it overstates what the run saw.
+    root = _repo(tmp_path)
+    items = [_item(identifier="PL-K7QX", verify="sleep 5"), _item(identifier="PL-A1B2")]
+
+    assert already_passing(root, items, timeout=0.2, workers=2).considered == 1
+
+
+def test_a_command_that_genuinely_fails_is_not_called_timed_out(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(verify="false")])
+
+    assert report.timed_out == ()
+    assert report.considered == 1
+
+
+def test_one_missing_command_beside_a_real_one_is_named_not_silently_dropped(
+    tmp_path: Path,
+) -> None:
+    # The same subtraction as a timeout, for the other way a command answers
+    # nothing: leaving it out of `considered` without saying so would replace
+    # one silent gap with a quieter one.
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-K7QX", verify="docket-no-such-command-xyz"),
+        _item(identifier="PL-A1B2", verify="true"),
+    ]
+    report = already_passing(root, items)
+
+    assert report.unavailable == ("PL-K7QX",)
+    assert report.considered == 1
+
+
+def test_a_run_where_every_command_was_killed_declines(tmp_path: Path) -> None:
+    # The counterpart of the missing-toolchain decline: finding none passing
+    # would be a fact about the machine, not about the store.
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-K7QX", verify="sleep 5"),
+        _item(identifier="PL-A1B2", verify="sleep 5"),
+    ]
+    report = already_passing(root, items, timeout=0.2, workers=2)
+
+    assert not report.known
+    assert "killed at the 0.2s limit" in report.declined
+
+
+def test_the_limit_the_results_were_produced_under_is_carried(tmp_path: Path) -> None:
+    # So a report names the number a reader would have to change, rather than
+    # the module-level default the run may not have used.
+    root = _repo(tmp_path)
+
+    assert already_passing(root, [_item()], timeout=7.5).limit == 7.5
 
 
 # --- running them at once -----------------------------------------------------

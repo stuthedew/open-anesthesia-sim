@@ -377,12 +377,44 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     its work exists. A command shared with another open item is the second
     with certainty, so it is named separately - closing anything on that
     evidence would be acting on a command that proves nothing.
+
+    A command that could not answer at all - killed at the limit, or not found
+    by the shell - is reported under "not checked" rather than as an advisory,
+    because there is no finding to report: the run looked and was stopped. The
+    distinction is the same one `landed.declined` draws for a whole run, made
+    per item, and it is what keeps `considered` honest. `PL-T940` carries the
+    case that made it necessary: without a status of its own a killed command
+    returned 1, which is what a failing test returns, so the item vanished
+    from every finding while the report stayed clean.
     """
     if landed is None:  # a caller that did not ask; every command but `check`
         return
     if not landed.known:
         report.declined.append(f"open items' own `verify:` commands: {landed.declined}")
         return
+
+    # Ahead of the `passing` guard below, because these are owed whether or not
+    # anything passed. An item whose command could not answer is not a finding
+    # about the item - it is this run saying it has nothing to say about it -
+    # so it belongs under "not checked" beside the runs that declined whole,
+    # and it must not be reachable only when some other item happens to pass.
+    if landed.timed_out:
+        one = len(landed.timed_out) == 1
+        report.declined.append(
+            f"{', '.join(landed.timed_out)}: `verify:` command killed at the "
+            f"{landed.limit:g}s limit, so nothing is claimed about "
+            f"{'it' if one else 'them'} - the command is either too slow for a "
+            "check that runs on every `make check`, or it hangs"
+        )
+    if landed.unavailable:
+        one = len(landed.unavailable) == 1
+        report.declined.append(
+            f"{', '.join(landed.unavailable)}: `verify:` command was not found by the "
+            f"shell, so nothing is claimed about {'it' if one else 'them'} - "
+            f"{'its' if one else 'their'} toolchain is missing here, or the command is "
+            "misspelled"
+        )
+
     if not landed.passing:
         return
     one = len(landed.passing) == 1
