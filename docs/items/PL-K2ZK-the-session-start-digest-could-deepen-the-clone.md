@@ -46,6 +46,25 @@ far enough for the in-flight walk to complete, against how often the walk
 currently declines. Either the hook deepens the checkout and fails silently
 without network, or the number says no and this is dropped with it.
 
+**Measured 2026-09-02, in a session container of the ordinary kind.** The
+number the decision asked for: `git fetch --unshallow origin` cost **3.4 s**
+of wall clock, took the history from 52 to 542 commits, and grew `.git` from
+8.8 MB to 11 MB. Before it, `bin/docket flight` declined on two refs (`main`
+and `origin/Review_articles`) and the session-start digest carried the "2 refs
+could not be compared with origin/main on the history this checkout holds"
+line; immediately after it, `flight` answers and the line is gone. So the
+whole of the declined answer is bought for 3.4 s, once per container, spent
+before the session does anything — against a decline paid in every session for
+the life of that container. `bin/docket stranded` read 0 both before and
+after, so the deepening changed what the tools *can* answer without changing
+what they did answer.
+
+Two implementation notes the measurement raises. `--unshallow` is the whole
+history and is cheap only because this repository is small; `--deepen=N` is
+the bounded alternative if that stops being true. And the fetch must fail
+silently — a container with no network must still start, per the guard
+`PL-MGNC` put in, which this does not replace.
+
 **Triaged 2026-09-01.** P3, `infra`/`session-cost`, `parallel-sessions`. Left
 out of v0.2.8's frozen list: `PL-MGNC` made the declining behaviour correct on
 purpose, so this asks the digest to answer a question it currently refuses to
