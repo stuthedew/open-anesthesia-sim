@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-01
 closed: 2026-09-02
+pr: 186
 verify: uv run pytest subprojects/docket/tests/test_plan.py && grep -q 'def test_an_item_with_others_open_does_not_claim_to_finish_the_feature' subprojects/docket/tests/test_plan.py
 ---
 
