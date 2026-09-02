@@ -115,3 +115,17 @@ strict = true
 [[tool.mypy.overrides]]
 module = ["flet_charts", "flet_charts.*"]
 ignore_missing_imports = true
+
+# `msgpack` ships no stubs and no `py.typed`. It is imported in exactly one
+# place - `tests/integration/test_chart_patching.py`, which serializes a Flet
+# message the same way the WebSocket transport does, because that
+# serialization is what seeds the snapshots the next diff reads. It arrives
+# as a Flet dependency rather than a declared one, which is correct here: the
+# test is asserting on Flet's own wire behavior, so the version that matters
+# is whichever one Flet is using. Without this, `tools/ignore_check.py`
+# declines to give a verdict on either test tree - an unresolved import
+# degrades every name it provides to `Any`, which is exactly the state that
+# makes a live `type: ignore` read as inert.
+[[tool.mypy.overrides]]
+module = ["msgpack"]
+ignore_missing_imports = true

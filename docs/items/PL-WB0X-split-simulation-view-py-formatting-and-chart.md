@@ -30,7 +30,7 @@ be traceable to the transformations that produced it; a formatter buried in a
 view class is the weakest link in that chain.
 
 The same argument applies less sharply to the chart series: `_build_chart_series`,
-`_refresh_chart_series`, `_decimated_points` and the six module-level sample
+`_refresh_chart_series`, `_redraw_series` and the six module-level sample
 accessors (`:134-158`) are a data-shaping concern that already has a sibling
 module in `app/chart_downsampling.py`.
 
@@ -46,7 +46,7 @@ group (`:890-943`), and the formatters (`:1019-1082`).
    it makes the precision rule directly testable and lets `docs/MODEL.md`
    cite a module rather than a private method.
 2. **`app/chart_series.py`** — the six sample accessors, series assembly and
-   `_decimated_points`, joining `chart_downsampling.py`.
+   `_redraw_series`, joining `chart_downsampling.py`.
 3. What remains — widget construction, event handling, refresh, failure —
    stays `SimulationView`. Do not split those three apart on principle; they
    are one concern (drive the interface) and separating them would add

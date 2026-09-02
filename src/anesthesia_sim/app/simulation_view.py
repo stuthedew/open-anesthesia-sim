@@ -17,6 +17,8 @@ alternative — an asyncio task dying behind a display that still reads
 
 import asyncio
 from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Final
 
 import flet as ft
 import flet_charts as fch
@@ -64,9 +66,12 @@ RENDER_INTERVAL_S = 0.2
 INITIAL_CHART_WINDOW_S = 60.0
 MAX_CHART_WINDOW_S = 300.0
 # Per-trace ceiling on points handed to the chart. Each point is a Flet
-# control costing roughly 8 us to build, so this ceiling — not the length of
-# the run — sets the cost of a frame. 300 points across a chart a few hundred
-# pixels wide is already finer than the display can resolve.
+# control, so this ceiling — not the length of the run — sets the cost of a
+# frame: `_redraw_series` moves the points already drawn rather than
+# rebuilding them (PL-010), which leaves the per-frame work proportional to
+# this number rather than to it times the cost of a construction. 300 points
+# across a chart a few hundred pixels wide is already finer than the display
+# can resolve.
 MAX_CHART_POINTS_PER_SERIES = 300
 CHART_HEIGHT = 360
 
@@ -158,6 +163,43 @@ AVAILABLE_AGENTS: tuple[tuple[str, str], ...] = tuple(
 # their validated data files.
 if set(AGENT_COLOR_SCHEMES) != set(AGENT_DATA_FILENAMES):
     raise RuntimeError("AGENT_COLOR_SCHEMES must define exactly the built-in volatile agents")
+
+
+@dataclass(frozen=True)
+class _AgentRenderStyle:
+    """The Flet objects one agent's identification color renders as.
+
+    `theme.py` holds the colors; this holds what Flet needs built out of
+    them. They are separate because the colors are the provenanced value -
+    an ISO 5360 sample, checked for contrast by `tools/contrast_check.py`,
+    which parses `theme.py` without importing Flet - while these are render
+    objects derived from it.
+
+    Attributes:
+        badge_border: Outline for the header badge, in the agent's own text
+            color. `theme.py` records why the badge needs one at all.
+        dropdown_text_style: Style for the selected agent's name in the
+            dropdown.
+    """
+
+    badge_border: ft.Border
+    dropdown_text_style: ft.TextStyle
+
+
+# Built once per agent at import time rather than per frame. `ft.Border` and
+# `ft.TextStyle` are Flet *value* types - no control identity, compared by
+# value - so one instance can be assigned repeatedly and to more than one
+# control without aliasing anything. `_apply_agent_color_scheme` still assigns
+# them on every tick: which agent is displayed stays read from the snapshot,
+# and Flet's own equality check makes the unchanged case free. Nothing may
+# mutate these; assign a different one instead.
+AGENT_RENDER_STYLES: Final[dict[str, _AgentRenderStyle]] = {
+    agent_id: _AgentRenderStyle(
+        badge_border=ft.Border.all(1, scheme.foreground),
+        dropdown_text_style=ft.TextStyle(color=scheme.foreground, weight=ft.FontWeight.BOLD),
+    )
+    for agent_id, scheme in AGENT_COLOR_SCHEMES.items()
+}
 
 
 # One named reader per plotted quantity. Named rather than inline so that the
@@ -295,6 +337,7 @@ class SimulationView:
         self._reset_button = ft.OutlinedButton(content="Reset", on_click=self._handle_reset)
 
         initial_agent_colors = AGENT_COLOR_SCHEMES[initial_snapshot.agent_id]
+        initial_agent_style = AGENT_RENDER_STYLES[initial_snapshot.agent_id]
         self._agent_dropdown = ft.Dropdown(
             value=initial_snapshot.agent_id,
             options=[
@@ -313,9 +356,7 @@ class SimulationView:
             fill_color=initial_agent_colors.fill,
             bgcolor=initial_agent_colors.fill,
             color=initial_agent_colors.foreground,
-            text_style=ft.TextStyle(
-                color=initial_agent_colors.foreground, weight=ft.FontWeight.BOLD
-            ),
+            text_style=initial_agent_style.dropdown_text_style,
             border_color=initial_agent_colors.foreground,
             focused_border_color=initial_agent_colors.foreground,
             on_select=self._handle_agent_change,
@@ -333,7 +374,7 @@ class SimulationView:
         self._agent_header_badge = ft.Container(
             content=self._subtitle_text,
             bgcolor=initial_agent_colors.fill,
-            border=ft.Border.all(1, initial_agent_colors.foreground),
+            border=initial_agent_style.badge_border,
             border_radius=COMPACT_PANEL_RADIUS,
             padding=6,
         )
@@ -862,16 +903,15 @@ class SimulationView:
         """Apply the verified agent color to the header and selection control."""
 
         scheme = AGENT_COLOR_SCHEMES[agent_id]
+        style = AGENT_RENDER_STYLES[agent_id]
         self._agent_header_badge.bgcolor = scheme.fill
-        self._agent_header_badge.border = ft.Border.all(1, scheme.foreground)
+        self._agent_header_badge.border = style.badge_border
         self._subtitle_text.color = scheme.foreground
 
         self._agent_dropdown.fill_color = scheme.fill
         self._agent_dropdown.bgcolor = scheme.fill
         self._agent_dropdown.color = scheme.foreground
-        self._agent_dropdown.text_style = ft.TextStyle(
-            color=scheme.foreground, weight=ft.FontWeight.BOLD
-        )
+        self._agent_dropdown.text_style = style.dropdown_text_style
         self._agent_dropdown.border_color = scheme.foreground
         self._agent_dropdown.focused_border_color = scheme.foreground
 
@@ -904,32 +944,67 @@ class SimulationView:
             (self._muscle_series, _muscle_value),
             (self._fat_series, _fat_value),
         ):
-            series.points = self._decimated_points(visible, value_for)
+            self._redraw_series(series, visible, value_for)
 
     @staticmethod
-    def _decimated_points(
+    def _redraw_series(
+        series: fch.LineChartData,
         visible: tuple[SimulationHistorySample, ...],
         value_for: Callable[[SimulationHistorySample], float],
-    ) -> list[fch.LineChartDataPoint]:
-        """Convert one trace's visible samples to bounded chart percentages.
+    ) -> None:
+        """Set one trace to its visible samples, bounded and in percent.
+
+        The points a series already holds are reused: their `x` and `y` are
+        overwritten in place, and the list is extended or truncated only for
+        the difference in count. Building a fresh `fch.LineChartDataPoint`
+        per drawn sample per frame is what PL-010 removed - it cost about
+        6 us each against 0.8 us to move an existing one, and at the
+        per-trace ceiling across six traces that was substantially the whole
+        frame.
+
+        Reuse is only safe because Flet's diff reports an in-place mutation:
+        it records the assignment on the point itself, so the client is sent
+        the moved coordinate rather than nothing. PL-001 declined this
+        optimization while that was unconfirmed, since a mutation the diff
+        missed would leave the chart drawing the previous frame beneath the
+        current frame's readouts. `tests/integration/test_chart_patching.py`
+        holds the guarantee against the real Flet session and says how it
+        was confirmed against a browser.
+
+        Every drawn point remains a recorded sample: values are converted
+        from fraction to percent, never interpolated or synthesized, and the
+        controller's own history is read but not modified.
 
         Args:
+            series: Trace to redraw. Its existing points are mutated.
             visible: Simulation samples inside the plotted time range.
             value_for: Function selecting one fraction from a sample.
-
-        Returns:
-            At most `MAX_CHART_POINTS_PER_SERIES` chart points with time in
-            seconds and the selected value converted from a fraction to
-            percent. Every point is a recorded sample: values are converted
-            but never interpolated or synthesized.
         """
 
         values = [value_for(sample) for sample in visible]
+        # Both raise before anything is written, so a trace is never left
+        # holding half of one frame and half of the next.
+        indices = select_envelope_indices(values, MAX_CHART_POINTS_PER_SERIES)
 
-        return [
-            fch.LineChartDataPoint(visible[index].elapsed_s, values[index] * 100.0)
-            for index in select_envelope_indices(values, MAX_CHART_POINTS_PER_SERIES)
-        ]
+        points = series.points
+        reused = min(len(points), len(indices))
+
+        for position in range(reused):
+            index = indices[position]
+            point = points[position]
+            point.x = visible[index].elapsed_s
+            point.y = values[index] * 100.0
+
+        if len(indices) > reused:
+            points.extend(
+                fch.LineChartDataPoint(visible[index].elapsed_s, values[index] * 100.0)
+                for index in indices[reused:]
+            )
+        elif len(points) > reused:
+            # Points past the drawn count are the previous frame's samples,
+            # carrying their own time and value. Left in place the chart
+            # would draw them as part of the current trace.
+            del points[reused:]
 
     def _refresh_and_render(self) -> None:
         """Refresh the dashboard and submit it to the Flet page."""

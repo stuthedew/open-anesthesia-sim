@@ -28,6 +28,7 @@ from anesthesia_sim.app.controller import (
     SimulationSnapshot,
 )
 from anesthesia_sim.app.simulation_view import (
+    AGENT_RENDER_STYLES,
     AVAILABLE_AGENTS,
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
@@ -745,6 +746,80 @@ def test_agent_header_badge_is_bordered_against_the_panel(agent_id: str) -> None
     assert border.top.color == scheme.foreground
 
 
+@pytest.mark.parametrize("agent_id", list(AGENT_COLOR_SCHEMES))
+def test_every_agent_has_render_objects_in_its_own_identification_color(agent_id: str) -> None:
+    """An agent added to the color map but not here would raise on selection.
+
+    `AGENT_RENDER_STYLES` is the Flet objects built once from those colors
+    (PL-010). Both halves are asserted: that the map covers every agent, and
+    that each entry carries that agent's own foreground rather than another
+    agent's - ISO 5360 Table 2 footnote b makes a wrong pairing an
+    identification error, not a styling one.
+    """
+
+    assert set(AGENT_RENDER_STYLES) == set(AGENT_COLOR_SCHEMES)
+
+    scheme = AGENT_COLOR_SCHEMES[agent_id]
+    style = AGENT_RENDER_STYLES[agent_id]
+
+    assert style.badge_border.top is not None
+    assert style.badge_border.top.color == scheme.foreground
+    assert style.dropdown_text_style.color == scheme.foreground
+
+
+def test_agent_color_render_objects_survive_a_frame_instead_of_being_rebuilt() -> None:
+    """PL-010: the render tick assigns the prebuilt objects, unconditionally."""
+
+    view, _ = _build_view(_snapshot(agent_id="isoflurane", agent_display_name="Isoflurane"))
+    style = AGENT_RENDER_STYLES["isoflurane"]
+
+    assert view._agent_header_badge.border is style.badge_border
+    assert view._agent_dropdown.text_style is style.dropdown_text_style
+
+    view._refresh_view()
+
+    assert view._agent_header_badge.border is style.badge_border
+    assert view._agent_dropdown.text_style is style.dropdown_text_style
+
+
+def test_switching_agent_repaints_the_header_badge_and_the_dropdown() -> None:
+    """Sharing one prebuilt object per agent must not freeze the selection.
+
+    The reason this is a separate test from the per-agent construction ones
+    above: those build a view per agent, so a `_apply_agent_color_scheme`
+    that had stopped updating anything would still pass them.
+    """
+
+    controller = _FakeController(
+        _snapshot(agent_id="sevoflurane", agent_display_name="Sevoflurane")
+    )
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    controller.snapshot_value = _snapshot(
+        agent_id="desflurane",
+        agent_display_name="Desflurane",
+        max_delivered_concentration_percent=18.0,
+    )
+    view._refresh_view()
+
+    scheme = AGENT_COLOR_SCHEMES["desflurane"]
+    style = AGENT_RENDER_STYLES["desflurane"]
+
+    assert view._agent_header_badge.bgcolor == scheme.fill
+    assert view._agent_header_badge.border is style.badge_border
+    assert view._subtitle_text.color == scheme.foreground
+    assert view._subtitle_text.value is not None
+    assert "Desflurane" in view._subtitle_text.value
+
+    assert view._agent_dropdown.value == "desflurane"
+    assert view._agent_dropdown.fill_color == scheme.fill
+    assert view._agent_dropdown.bgcolor == scheme.fill
+    assert view._agent_dropdown.color == scheme.foreground
+    assert view._agent_dropdown.text_style is style.dropdown_text_style
+    assert view._agent_dropdown.border_color == scheme.foreground
+    assert view._agent_dropdown.focused_border_color == scheme.foreground
+
+
 def test_refresh_view_scales_slider_and_chart_to_agent_max() -> None:
     """Real vaporizer caps differ per agent (e.g. desflurane 18% vs isoflurane 5%);
     the delivered-concentration slider and the chart's y-axis must track it."""
@@ -1010,6 +1085,31 @@ def test_chart_points_are_recorded_samples_not_interpolations() -> None:
     for series in _all_series(view):
         assert all(point.x in recorded_times for point in series.points)
         assert [point.x for point in series.points] == sorted(point.x for point in series.points)
+
+
+def test_chart_points_are_moved_rather_than_rebuilt_each_frame() -> None:
+    """PL-010's saving: a frame moves the points the chart already holds.
+
+    Identity is compared against retained references rather than `id()`,
+    which a freed point's replacement could reuse. That a *live client* is
+    told about the move - the part this saving is only safe because of - is
+    `tests/integration/test_chart_patching.py`'s to prove.
+    """
+
+    controller = _FakeController(_snapshot(history=_run_history(6_000)))
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    held = [list(series.points) for series in _all_series(view)]
+    drawn_before = [[(point.x, point.y) for point in points] for points in held]
+
+    # 50 further steps: the window slides, so every drawn time changes.
+    controller.snapshot_value = _snapshot(history=_run_history(6_050))
+    view._refresh_view()
+
+    for series, points_held, before in zip(_all_series(view), held, drawn_before, strict=True):
+        assert len(series.points) == len(points_held)
+        assert all(new is old for new, old in zip(series.points, points_held, strict=True))
+        assert [(point.x, point.y) for point in series.points] != before
 
 
 def _run_briefly(coroutine_function, ticks: int, interval_s: float) -> None:
