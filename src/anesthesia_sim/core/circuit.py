@@ -57,18 +57,25 @@ class BreathingCircuitState:
 class BreathingCircuit:
     """Ideal, well-mixed breathing circuit with constant volume.
 
+    Every default below is agent-independent, which is the only thing a
+    class holding no agent parameters can honestly claim to know. So a
+    bare `BreathingCircuit()` is an empty 6 L circuit at 4 L/min with the
+    vaporizer off: zero is the one dial position every vaporizer of every
+    agent has, and therefore the only delivered concentration this class
+    can supply without borrowing some particular agent's number (PL-019).
+
     `max_delivered_concentration_fraction` is the vaporizer's calibrated
     dial maximum for the agent in use. It defaults to 1.0, meaning "no
     device limit declared", which is only appropriate for a circuit built
     without an agent (a bare unit test of circuit physics). Every
     agent-aware path builds the circuit through
-    `AgentUptakeSystem.for_agent()`, which sets the real limit from the
-    agent data file.
+    `AgentUptakeSystem.for_agent()`, which sets both the real limit and
+    that agent's own starting dial from the agent data file.
     """
 
     circuit_volume_l: float = 6.0
     fresh_gas_flow_l_min: float = 4.0
-    delivered_concentration_fraction: float = 0.08
+    delivered_concentration_fraction: float = 0.0
     circuit_concentration_fraction: float = 0.0
     max_delivered_concentration_fraction: float = 1.0
 

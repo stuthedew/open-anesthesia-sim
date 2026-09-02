@@ -3,11 +3,13 @@ id: PL-019
 title: Remove `BreathingCircuit`'s agent-unaware delivered-concentration default
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: core-boundaries
-touches: src/anesthesia_sim/core/circuit.py, tests/reference/test_multi_agent.py, tests/reference/test_sevo_patient.py, tests/unit/test_circuit.py
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, tests/reference/test_multi_agent.py, tests/reference/test_sevo_patient.py, tests/unit/test_circuit.py, tests/unit/test_uptake_system_failure.py
 added: 2026-08-24
+closed: 2026-09-02
+verify: uv run pytest tests/unit/test_circuit.py tests/unit/test_uptake_system_failure.py tests/reference/test_multi_agent.py tests/reference/test_sevo_patient.py -q && ! grep -rq 'BreathingCircuit()' tests/reference
 ---
 
 **Problem.** `BreathingCircuit.delivered_concentration_fraction` defaults to

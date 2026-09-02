@@ -53,14 +53,23 @@ def test_zero_delivered_concentration_washes_out_circuit() -> None:
 
 
 def test_exact_update_is_independent_of_step_size() -> None:
-    one_step = BreathingCircuit()
-    many_steps = BreathingCircuit()
+    """One 60 s step and six hundred 0.1 s steps reach the same fraction.
+
+    Both circuits name their dial rather than taking the default, and the
+    first assertion is what makes the second mean something: with the
+    vaporizer off this comparison is satisfied by two circuits that both
+    stayed at zero, which is agreement about nothing.
+    """
+
+    one_step = BreathingCircuit(delivered_concentration_fraction=1.0)
+    many_steps = BreathingCircuit(delivered_concentration_fraction=1.0)
 
     one_step.advance(60.0)
 
     for _ in range(600):
         many_steps.advance(0.1)
 
+    assert one_step.circuit_concentration_fraction > 0.0
     assert many_steps.circuit_concentration_fraction == pytest.approx(
         one_step.circuit_concentration_fraction, rel=1e-12
     )
@@ -231,3 +240,27 @@ def test_a_circuit_volume_exactly_equal_to_its_agent_is_accepted() -> None:
 
     assert circuit.circuit_concentration_fraction == pytest.approx(1.0)
     assert circuit.agent_amount_l == pytest.approx(2.0)
+
+
+def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
+    """Regression (PL-019): the class holds no agent-shaped dial position.
+
+    `delivered_concentration_fraction` defaulted to 0.08 - sevoflurane's
+    vaporizer maximum - on a class that knows nothing about agents. Two
+    consequences, and the second is the one that made it worth removing:
+    declaring any lower device limit raised at construction, and the
+    message reported an "8% requested" the caller had never written.
+
+    Zero is the only dial position every vaporizer of every agent has, so
+    it is the only one this class can hold without knowing which agent is
+    in use. `AgentUptakeSystem.for_agent()` sets the real starting dial.
+    """
+
+    circuit = BreathingCircuit(max_delivered_concentration_fraction=0.05)
+
+    assert circuit.delivered_concentration_fraction == 0.0
+    assert circuit.max_delivered_concentration_fraction == 0.05
+
+    circuit.advance(60.0)
+
+    assert circuit.circuit_concentration_fraction == 0.0
