@@ -266,7 +266,11 @@ correction rather than handing the question back.
   request title. This is load-bearing rather than cosmetic: `bin/docket flight`
   recovers in-flight state by parsing commit subjects, so a session that commits
   without a leading id makes its own work invisible to every other session's
-  `bin/docket next`. Name the branch too where the session creates it
+  `bin/docket next`. **A commit closing more than one item leads with all of
+  them**, comma-separated: `docket check` recovers a closed item's pull request
+  from the newest subject naming it, so a rider whose id never leads one is
+  attributed to its own capture commit instead (`PL-GW37`). Name the branch too
+  where the session creates it
   (`claude/pl-k7qx-short-slug`); a branch generated before the session started
   cannot be renamed, which is expected rather than a failure. Say in your reply
   where you put the id.

@@ -554,7 +554,10 @@ reconstruct three commands at the moment they are trying to do something else.
 ## Mode: close out an item
 
 1. Set `status: done` and `closed`, and commit that **with the work, in one
-   commit**. Record the `commit` too where it is to hand; it is optional,
+   commit**, whose subject leads with **every** id it closes, comma-separated -
+   the recovery below reads the newest subject naming an id, so a rider closed
+   under another item's id alone is attributed to its own capture commit
+   (`PL-GW37`). Record the `commit` too where it is to hand; it is optional,
    because a squash-merge discards the branch commit while the pull request
    number outlives it.
 
