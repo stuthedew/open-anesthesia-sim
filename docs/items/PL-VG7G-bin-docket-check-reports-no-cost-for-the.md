@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-02
 closed: 2026-09-02
+pr: 198
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -rq 'def test_a_command_that_dominates_the_run_is_named' subprojects/docket/tests
 ---
 
