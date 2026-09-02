@@ -2153,6 +2153,75 @@ specified.
     crosses no capability boundary and takes a patch version rather than a
     minor, per "Versioning decision".
 
+30. Add patient factors - age, sex and body composition as inputs - so a
+    learner can see how patient characteristics change the anesthetic. This
+    is a core teaching component rather than a later extension: the
+    reference adult in `data/patients/reference_adult.json` is a placeholder
+    for it, and "how would this differ in this patient" is the question a
+    compartment model exists to answer. Today the application's only
+    statement about patient variability is that there is none.
+
+    Built-in patient profiles stay read-only and support a "duplicate and
+    customize" workflow carrying lineage and schema metadata, so a modified
+    profile can always be traced to the cited one it was derived from. That
+    requirement predates this item, where it sat as an unattached sentence at
+    the end of this section with nothing to own it.
+
+    *MAC basis (project owner, 2026-09-02).* `mac_percent` moves from the
+    flat Gas Man values the agent files now carry - sevoflurane 2.0,
+    isoflurane 1.2, desflurane 6.0 - to the Mapleson MAC40 basis, in the
+    release that adds age. Nickalls and Mapleson (Br J Anaesth
+    2003;91(2):170-4) is already cited in all three of `data/agents/*.json`
+    with a note recording that it is *not* used because this model has no age
+    parameter; this is that note becoming live. Their meta-analysis has
+    log10 MAC falling linearly and in parallel for every inhaled agent at
+    about 6% per decade for age >= 1 year, expressed from MAC at 40 years,
+    with MAC40 reported as 1.17% isoflurane, 1.80% sevoflurane and 6.60%
+    desflurane - figures to confirm against the primary paper when this is
+    scoped rather than to copy from here, per the provenance standard every
+    other parameter in `data/` is held to. Those are not the values the files
+    carry, so the displayed MAC changes at every age *including* 40. This is
+    therefore a parameter-set change needing a provenance row and a release
+    note, not a new input field, and it lands after `PL-DHV7` (MAC multiples
+    as a display unit): an age-adjusted MAC with no MAC unit to show it in
+    changes nothing a learner sees.
+
+    *Placement: proposed, not decided.* Phase 1, ahead of the substance
+    generalization. That generalization is this plan's stated known risk and
+    the most likely place to stall, and a core teaching component does not
+    belong behind it; and once compartments hold N substances, changing how
+    compartment volumes and flows are *derived* touches N times the surface,
+    which is the argument that already places item 29 ahead of that work.
+
+    *Not yet scoped, and the parameter set does not currently support it.*
+    Compartment volumes and flows are the Gas Man 70 kg defaults, so weight
+    has to scale them by a sourced rule rather than by proportion. Fat is the
+    pivotal compartment for volatile agents - tissue:gas coefficients of 34
+    (sevoflurane), 70 (isoflurane) and 13 (desflurane) - so what separates
+    two patients is body composition rather than total mass, and
+    `Meybohm et al. 2021`, already cited in
+    `data/patients/reference_adult.json`, is the obese case explored with the
+    same reference simulator this project draws its parameters from. Sex most
+    plausibly acts *through* body composition rather than as a coefficient of
+    its own, so deriving fat mass from sex, weight and height is the shape to
+    check before adding a third independent covariate.
+
+    *A covariate outside its supported range is refused, not extrapolated.*
+    `core/supported_ranges.py` is the pattern and its argument carries
+    unchanged: a silently extrapolated patient would simulate, display and
+    chart a value the parameter set cannot support. The extremes where that
+    happens - the neonate, the very obese, the very old - are exactly where a
+    reader is most likely to have a real patient in mind, which is what makes
+    this the milestone's load-bearing safety control rather than a validation
+    detail. Each covariate needs a sourced applicability domain before it is
+    accepted, on the terms the four flow controls already have.
+
+    *The teaching payoff needs item 11.* A single trace cannot show an effect
+    - the contrast is the lesson - so what this milestone is *for* only fully
+    arrives with side-by-side comparison (item 11) and the two-run rendering
+    `PL-B9PY` holds. That is a reason to scope item 11 knowing this is one of
+    its uses, not a reason to hold this behind it.
+
 Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
 milestone, delivered as v0.2.0 — see "Completed: v0.2.0" above — so it no
 longer appears here. Further volatile agents beyond isoflurane and desflurane (halothane,
@@ -2160,10 +2229,7 @@ enflurane, ether, xenon; not nitrous oxide, which is covered by items 6-7
 above) remain an unscoped later idea, to be added back here as its own item
 once someone is ready to scope it.
 
-None of items 1-29 mix scientific-core and UI/tooling concerns within a
+None of items 1-30 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
-
-Built-in profiles should remain read-only and support a future
-"duplicate and customize" workflow with lineage and schema metadata.
