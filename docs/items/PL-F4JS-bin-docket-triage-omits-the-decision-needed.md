@@ -1,8 +1,14 @@
 ---
 id: PL-F4JS
 title: bin/docket triage omits the **Decision needed.** requirement from the rules it prints, so triaging an item to needs-decision fails check after the edit
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra, session-cost
+feature: dev-tooling
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_the_triage_rules_name_the_decision_needed_requirement' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `bin/docket triage` closes with "The rules these answers have to
@@ -23,9 +29,10 @@ The brief-sections rule *is* printed ("a status past `untriaged` needs the full
 brief"), which is what makes the omission misleading rather than merely
 incomplete: the output looks like it covers the body requirements.
 
-**Where.** Whatever builds the rules block for `bin/docket triage` - the `triage`
-command in `subprojects/docket/src/docket/cli.py` - beside the existing brief-
-sections line, and `subprojects/docket/tests/test_cli.py`.
+**Where.** `_triage_rules` in `subprojects/docket/src/docket/render.py`, which
+builds the block `render_triage` prints, beside the existing brief-sections
+line; `subprojects/docket/tests/test_cli.py` holds the triage output tests.
+(The rendering is in `render.py`, not in `cli.py` as this brief first said.)
 
 **Worth checking while there.** Whether any other status-conditional rule in
 `checks.py` is absent from the same block; the two found so far are the brief

@@ -1,8 +1,14 @@
 ---
 id: PL-PRHN
 title: bin/docket triage names no in-flight refs, so two sessions triaged the same two items concurrently and collided at merge
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_triage_names_an_item_already_in_flight' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `bin/docket show <id>` marks an item `IN FLIGHT` and names the refs
@@ -26,9 +32,11 @@ count and nothing about who is holding it. The digest itself already knows -
 it prints "In flight on a branch: ..." - so the information exists and simply is
 not on this path.
 
-**Where.** The `triage` command in `subprojects/docket/src/docket/cli.py`, beside
-the rules block it already prints; `vcs.py` carries the in-flight machinery
-`show` and `flight` use, so nothing new has to be computed.
+**Where.** `render_triage` in `subprojects/docket/src/docket/render.py`, beside
+the rules block it already prints - not `cli.py`, as this brief first said;
+`vcs.py` carries the in-flight machinery `show` and `flight` use, so nothing
+new has to be computed. `subprojects/docket/tests/test_cli.py` holds the
+triage output tests.
 
 **Approach.** Print the same in-flight line `show` prints, per item, and name the
 refs that could not be compared - a session that sees "PL-LXR3 is in flight on

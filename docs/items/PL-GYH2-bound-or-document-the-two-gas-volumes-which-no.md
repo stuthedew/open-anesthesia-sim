@@ -1,7 +1,11 @@
 ---
 id: PL-GYH2
 title: Bound or document the two gas volumes, which no supported range covers
-status: untriaged
+priority: P1
+effort: M
+status: needs-decision
+classes: safety
+feature: numerical-domain
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
 added: 2026-09-02
 ---
@@ -31,7 +35,7 @@ a caller who means it.
 (`SimulationController.set_circuit_volume`), `docs/MODEL.md` § "Supported
 input ranges" — which currently states the gap and points here.
 
-**Worth deciding first.** Whether either volume should be a *control* at all.
+**Decision needed.** Whether either volume should be a *control* at all.
 Circuit volume has a controller setter and no slider, which is either a
 half-built feature or a leftover; `tests/reference/test_coupled_dynamics.py`
 called it "a slider" in a docstring until PL-0MLQ corrected that. If it
