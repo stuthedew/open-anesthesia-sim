@@ -10,6 +10,7 @@ touches: docs/MODEL.md
 added: 2026-08-30
 verify: python3 tools/doc_check.py check
 closed: 2026-09-02
+pr: 204
 ---
 
 **Problem.** `docs/MODEL.md:564-566` says that when a step fails, "the step is
