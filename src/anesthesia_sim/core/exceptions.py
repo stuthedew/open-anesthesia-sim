@@ -22,9 +22,12 @@ difference is what the interface acts on:
   simulated. Nothing has been miscalculated; the requested setting simply
   did not take effect, and the run (if any) is still trustworthy.
 - `SimulationExecutionError` — a step that had already begun could not be
-  completed. Compartment state may be left partway through that step, so
-  the values it would report are no longer trustworthy and the run must
-  stop rather than continue from them.
+  completed, and the run must stop rather than continue. What the model
+  holds is the last completed step: `RespiratorySystem.advance()` rolls
+  the failed step back before raising, so the values are a real solution
+  of the model rather than an artifact of how far into the step the
+  operators got. Stopping is required all the same — the model reached a
+  state it could not step from, so the same step would fail again.
 """
 
 
@@ -43,7 +46,14 @@ class SimulationConfigurationError(AnesthesiaSimulationError):
 
 
 class SimulationExecutionError(AnesthesiaSimulationError):
-    """Raised when a running simulation cannot continue safely."""
+    """Raised when a running simulation cannot continue safely.
+
+    A step that had begun could not be completed, or a caller asked a
+    halted run to continue. Where a step is what failed,
+    `RespiratorySystem.advance()` rolls it back before raising, so the
+    state left behind is the last completed step rather than a partly
+    applied one; the run still has to stop.
+    """
 
 
 class SimulationNumericalError(SimulationExecutionError):

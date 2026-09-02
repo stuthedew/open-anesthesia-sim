@@ -447,46 +447,6 @@ cannot be built while MAC is internal-only, so making MAC a displayed unit
 division - it is that a MAC multiple on a tissue compartment asserts
 something narrower than it appears to, and the label has to say which.
 
-## Decided, not yet implemented - PL-026
-
-Decided in conversation on 2026-08-24 rather than in a session, and waiting on
-implementation. The rejected options are recorded so they are not re-argued.
-
-The brief costed the transactional option as "capturing and restoring six
-compartments plus the accounting validator on every step", and that estimate
-is what pushed the item toward the two cheaper options. It is wrong. A run's
-dynamic state - everything `advance()` mutates - is eight floats:
-
-| Where | Field |
-| --- | --- |
-| `BreathingCircuit` | `circuit_concentration_fraction` |
-| `AlveolarCompartment` | `agent_amount_l` |
-| `TissueGroup` (x3) | `agent_amount_l` |
-| `VenousBloodCompartment` | `agent_amount_l` |
-| `AgentSimulationValidator` | `delivered_agent_l`, `exhausted_agent_l` |
-
-Everything else on those dataclasses is a setting or a parameter that a step
-never touches. Eight reads before `_advance_step` and eight writes on the
-failure path is free against a 0.1 s step, and it is explicit rather than
-clever, which is what the safety-critical standard asks for.
-
-Rejected, both for the same reason: keeping the banner as the only cue, and
-blanking or greying the metrics. Each leaves `core/` holding a state that is
-not a solution of the model, and leaves the run resettable but not
-resumable. The brief credited the partial numbers with teaching value; they
-do not have it. A partially applied step is an artifact of the order the
-five sub-exchanges were applied in - step 5 having run against step 2's
-output - not evidence of where the model broke down. The diagnosis belongs
-in the `SimulationNumericalError` message, where it can say which invariant
-failed at which step size, and where a reader can act on it.
-
-The one real risk in rollback is a snapshot that silently stops covering
-everything: a field added to a compartment later, with no matching capture,
-would leave a partial restore that looks like a complete one. That is why
-capture belongs on each compartment rather than in `RespiratorySystem` - a
-missing field is then a local, reviewable omission - and why the regression
-test asserts bit-identical state rather than approximate agreement.
-
 ## Aspirational: power-user custom agents (not scoped, not started)
 
 The project owner's stated future direction, raised while discussing

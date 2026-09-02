@@ -495,6 +495,44 @@ The implementation must:
 6. advance explicit simulation time; and
 7. calculate the post-step mass-balance residual.
 
+A step is all-or-nothing. Steps 1 through 7 write compartment state as they
+go, and a guard can reject a value produced by a later one after an earlier
+one has already written; so a step that cannot be completed must leave every
+dynamic value exactly as it was before the step, rather than as the operators
+left it. "Step atomicity" below says why, and what a caller is left holding.
+
+### Step atomicity
+
+A partially applied step is not a solution of the model at any time. Its
+numbers are an artifact of the order the sub-exchanges ran in — the fifth
+having run against the second's output — rather than evidence of where the
+model broke down, and they are indistinguishable, in the interface, from
+numbers the model produced. Preferring an obvious failure to a
+plausible-looking number therefore requires undoing the step, not annotating
+it.
+
+`RespiratorySystem.advance()` captures every dynamic value before the step
+and restores it on any failure. What the model holds afterwards is the last
+completed step: a real solution, at a real simulation time, which the
+interface may display and a reader may reason about. The diagnosis that would
+otherwise have to be inferred from those numbers is carried in the raised
+`SimulationNumericalError` message instead, which names the invariant that
+failed and the step size it failed at.
+
+The dynamic values are the eight the trajectory is carried in — the circuit
+concentration fraction, the alveolar amount, each of the three tissue
+amounts, the venous amount, and the cumulative delivered and exhausted
+amounts — plus the accounting period's initial amount. Settings and
+parameters are deliberately not captured: a rollback that restored cardiac
+output would undo a change the run had accepted. Each compartment captures
+its own, so a dynamic field added later without a matching capture is a local
+omission rather than a partial restore that looks complete.
+
+Rolling back does not make the run resumable. The model reached a state it
+could not step from, so the same step would fail again; the caller must stop
+either way. What the rollback settles is what the caller may *show* while
+stopped.
+
 Two constants describe the step, and they are different kinds of statement:
 
 ```text
@@ -636,9 +674,10 @@ sections together.
 
 **The capacity guard remains, and reports something else.** Where a supported
 step still drives an amount negative, `RespiratorySystem.advance()` reports
-`SimulationNumericalError`: the step is abandoned, simulation time does not
-advance, and the caller must stop the run rather than read the partially
-applied state as a result. No supported step reaches that on the reference
+`SimulationNumericalError`: the step is rolled back in full, simulation time
+does not advance, and the caller must stop the run — from a state that is the
+last completed step rather than a partially applied one. No supported step
+reaches that on the reference
 adult with any shipped agent, so the guard is now cover for a parameter set
 that could — a smaller alveolar gas volume, a far more soluble agent — rather
 than for a caller stepping too coarsely. The two failures are deliberately
@@ -815,6 +854,8 @@ The implementation must preserve the following invariants:
 - Reset clears dynamic state while preserving settings;
 - a delivered concentration above the agent's vaporizer maximum is rejected, not clamped;
 - a simulation step above `MAXIMUM_SIMULATION_STEP_S` is refused, not simulated;
+- a simulation step that cannot be completed leaves every dynamic value, and
+  simulation time, exactly as the last completed step left them;
 - zero fresh gas flow prevents new external delivery;
 - zero ventilation prevents circuit-to-patient ventilatory exchange;
 - zero cardiac output prevents pulmonary and tissue perfusion;
@@ -1505,13 +1546,13 @@ both the dropdown options and the header badge. Color must never be the only
 thing distinguishing two agents in this interface.
 
 Distinguishing a halted run from a paused one is required for the same
-reason. Both stop the numbers advancing, but a pause leaves state the
-reader can trust while a halt may leave a compartment partway through a
-step that never completed. A halted run displayed as "Paused" therefore
-gives the reader no cue that anything is wrong with the values beside it —
-the stale-state failure this specification's interface rules exist to
-prevent — and a display that is merely frozen, with no state change at all,
-is worse still.
+reason. Both stop the numbers advancing, and under "Step atomicity" both
+leave state the reader can trust — but a pause is a run that will continue
+when the reader asks, and a halt is a run that cannot. A halted run displayed
+as "Paused" therefore offers a Start control that will fail on its first
+tick, and presents a stopped trajectory as one still in progress: the
+mode-confusion failure this specification's interface rules exist to prevent.
+A display that is merely frozen, with no state change at all, is worse still.
 
 The phrase “end-tidal-equivalent” must not imply that airway sampling dynamics, dead space, or capnography are modeled.
 

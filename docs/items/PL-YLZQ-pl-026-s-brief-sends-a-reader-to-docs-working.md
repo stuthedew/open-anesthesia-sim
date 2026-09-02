@@ -3,12 +3,13 @@ id: PL-YLZQ
 title: PL-026's brief sends a reader to docs/WORKING_NOTES.md for its own rejected options and reasoning, which the rewritten split calls backwards
 priority: P2
 effort: S
-status: ready
+status: done
 verify: python3 tools/doc_check.py check && ! grep -q 'Decided, not yet implemented' docs/WORKING_NOTES.md && grep -q 'circuit_concentration_fraction' docs/items/PL-026-make-the-simulation-step-transactional-so-a.md
 classes: docs
 feature: dev-tooling
 touches: docs/items/PL-026-make-the-simulation-step-transactional-so-a.md, docs/WORKING_NOTES.md
 added: 2026-09-01
+closed: 2026-09-02
 ---
 
 **Problem.** `docs/items/PL-026-make-the-simulation-step-transactional-so-a.md:30`
@@ -51,3 +52,14 @@ is about a single open item.
 reasoning, `docs/WORKING_NOTES.md` has no "Decided, not yet implemented"
 section, and no `grep -n 'WORKING_NOTES' docs/items/*.md` hit sends a reader
 out of an item for that item's own reasoning.
+
+**Outcome (2026-09-02).** Closed with `PL-026` (make the simulation step
+transactional), on the same branch and in the same commit, under the rule that
+a finding an in-progress item needs in order to be properly finished is worked
+with it rather than after it. Implementing `PL-026` made
+`docs/WORKING_NOTES.md`'s "Decided, not yet implemented" heading false the
+moment it landed, so deleting the section was `PL-026`'s own close-out; the
+reasoning it held — the eight-float state table, the two rejected display
+treatments, and the argument for putting capture on each compartment — is now
+in `PL-026`'s body, alongside an outcome section recording what was actually
+built and where it departed from the table.

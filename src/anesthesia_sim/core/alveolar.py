@@ -17,6 +17,17 @@ from anesthesia_sim.core.validation import (
 SECONDS_PER_MINUTE = 60.0
 
 
+@dataclass(frozen=True, slots=True)
+class AlveolarCompartmentState:
+    """The alveolar compartment's run state: what a step can change.
+
+    Gas volume and alveolar ventilation are absent for the reason given on
+    `BreathingCircuitState`: they are settings, not trajectory.
+    """
+
+    agent_amount_l: float
+
+
 @dataclass(slots=True)
 class AlveolarCompartment:
     """One ideal, perfectly mixed alveolar gas compartment."""
@@ -84,6 +95,21 @@ class AlveolarCompartment:
             raise SimulationConfigurationError("blood transfer would exceed alveolar capacity")
 
         self.agent_amount_l = resulting_amount_l
+
+    def capture_state(self) -> AlveolarCompartmentState:
+        """Record run state so a failed step can be rolled back."""
+
+        return AlveolarCompartmentState(agent_amount_l=self.agent_amount_l)
+
+    def restore_state(self, state: AlveolarCompartmentState) -> None:
+        """Restore run state previously captured by `capture_state()`.
+
+        Assigns the field directly rather than going through
+        `apply_blood_uptake()`, so that rolling back cannot itself raise;
+        see `BreathingCircuit.restore_state()`.
+        """
+
+        self.agent_amount_l = state.agent_amount_l
 
     def reset(self) -> None:
         """Clear alveolar agent while preserving settings."""

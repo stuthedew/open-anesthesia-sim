@@ -39,7 +39,9 @@ against a documented numerical tolerance.
 A setting the model refuses is reported as refused and leaves the run
 alone. A failure the model cannot continue past halts the run and says so,
 rather than leaving the display reading "Running" over numbers that have
-stopped advancing; a halted run is cleared by Reset.
+stopped advancing. A step is all-or-nothing: one that cannot be completed
+is rolled back, so a halted run shows the last completed step rather than
+a step abandoned partway through. A halted run is cleared by Reset.
 
 Concentrations are displayed to 0.01 percentage points, which is the
 resolution the numerical method supports rather than the resolution the

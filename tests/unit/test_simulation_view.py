@@ -1180,9 +1180,12 @@ def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
     assert view._notice_text.visible is True
     assert view._notice_text.value is not None
     assert "the step could not be completed" in view._notice_text.value
-    # The reader has to be told the numbers beside the banner are suspect,
-    # not merely that something went wrong.
-    assert "may not reflect a completed step" in view._notice_text.value
+    # PL-026: the numbers beside the banner are the last completed step,
+    # because the core rolls a failed step back. The reader has to be told
+    # that much - a banner that only says something went wrong leaves them
+    # to guess whether the values are a solution of the model or debris.
+    assert "last completed step" in view._notice_text.value
+    assert "rolled back" in view._notice_text.value
 
 
 def test_refresh_view_does_not_offer_to_resume_a_failed_run() -> None:

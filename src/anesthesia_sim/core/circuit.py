@@ -33,6 +33,19 @@ class FreshGasExchange:
     exhausted_agent_l: float
 
 
+@dataclass(frozen=True, slots=True)
+class BreathingCircuitState:
+    """The circuit's run state: what one simulation step can change.
+
+    Circuit volume, fresh gas flow, the vaporizer dial and its maximum are
+    deliberately absent. They are settings the user owns rather than state
+    the trajectory carries, no step writes them, and a rollback that
+    restored them would silently undo a setting that was accepted.
+    """
+
+    circuit_concentration_fraction: float
+
+
 @dataclass(slots=True)
 class BreathingCircuit:
     """Ideal, well-mixed breathing circuit with constant volume.
@@ -166,6 +179,29 @@ class BreathingCircuit:
         """Preserve the original v0.0.2 circuit interface."""
 
         self.advance_fresh_gas(simulation_step_s)
+
+    def capture_state(self) -> BreathingCircuitState:
+        """Record run state so a failed step can be rolled back.
+
+        Captured by the compartment rather than read out of it by
+        `RespiratorySystem`, so that a dynamic field added here later
+        without a matching line below is a local, reviewable omission.
+        """
+
+        return BreathingCircuitState(
+            circuit_concentration_fraction=(self.circuit_concentration_fraction)
+        )
+
+    def restore_state(self, state: BreathingCircuitState) -> None:
+        """Restore run state previously captured by `capture_state()`.
+
+        Assigns the field directly rather than going through
+        `set_agent_amount()`. The value came off a valid circuit, so there
+        is nothing to re-check, and a rollback that could itself raise
+        would leave exactly the partial state it exists to prevent.
+        """
+
+        self.circuit_concentration_fraction = state.circuit_concentration_fraction
 
     def reset(self) -> None:
         """Clear circuit agent while preserving settings."""

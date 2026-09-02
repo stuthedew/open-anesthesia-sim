@@ -3,12 +3,13 @@ id: PL-KQKM
 title: MODEL.md says a failed step is abandoned; the code leaves partial state
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-08-30
 verify: python3 tools/doc_check.py check
+closed: 2026-09-02
 ---
 
 **Problem.** `docs/MODEL.md:564-566` says that when a step fails, "the step is
@@ -40,3 +41,20 @@ Decided scope it is fixed here and cited there as evidence, not folded into it.
 **Done when.** `docs/MODEL.md`'s failed-step paragraph states what the
 implementation actually guarantees and names PL-026 as the item that would
 strengthen it.
+
+**Outcome (2026-09-02).** Resolved in the other direction, by `PL-026` (make
+the simulation step transactional), on the same branch and in the same commit.
+This item planned to weaken the document to match the code — "the step is
+abandoned *as a result*, while compartment state is left partway through" —
+and to cite `PL-026` as the work that would make the original wording true.
+`PL-026` landed first, so the document was corrected upward instead:
+`RespiratorySystem.advance()` now captures every dynamic value before the step
+and restores it on failure, and the paragraph says the step is rolled back in
+full and the caller is left holding the last completed step. There is no
+weaker guarantee left to record, and nothing to cite `PL-026` as future work
+for.
+
+`docs/MODEL.md` also gained a "Step atomicity" section stating the contract in
+one place, which is what the document had been missing: the failed-step
+paragraph was carrying a guarantee that belonged to the numerical method, in a
+section about the capacity guard.
