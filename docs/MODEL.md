@@ -1451,7 +1451,18 @@ Two criteria carry most of the weight:
   naming a readout, and every agent name over its identification color is held
   to this. The large-text exception (18pt, or 14pt bold) is not claimed
   anywhere: the interface's default text size is 14px, so bold status text is
-  judged at 4.5:1 like everything else.
+  judged at 4.5:1 like everything else, and the one genuinely large string —
+  the application title — clears the stricter bar regardless.
+
+  **Text is measured against the surface it is actually drawn on, and there are
+  two.** The run-status word, the halted-run notice and the educational-use
+  disclaimer sit in the top-level column, so the page background shows through
+  behind them; the readouts, their labels, the axis description and the
+  accounting lines sit inside panels. The page background is the darker of the
+  two, so it is the binding surface wherever a color appears on both. Assuming
+  the panel is what hid the shortfall `PL-X0RG` fixed: the label color measured
+  4.28:1 on the panel and 3.98:1 on the page, and only the second is what a
+  reader of the run-status word actually sees.
 - **SC 1.4.11, Non-text Contrast** — 3:1 for graphical objects. Each chart trace
   against the panel it is drawn on, and each agent swatch read as a shape.
 

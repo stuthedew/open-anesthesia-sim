@@ -241,6 +241,38 @@ def test_the_shipped_palette_holds(capsys: pytest.CaptureFixture[str]) -> None:
     assert "0 errors" in capsys.readouterr().out
 
 
+def test_the_run_status_text_is_checked_against_the_page_background() -> None:
+    """The regression guard for PL-X0RG: this table once assumed the wrong surface.
+
+    `mount()` puts the run-status word in a top-level `Column` with no
+    background of its own, so it is drawn on `BACKGROUND`, not `PANEL`. The
+    first version of this table asserted it against `PANEL` - the lighter of
+    the two - which measured a pair that does not exist and let the real one
+    pass unread. `BACKGROUND` is darker, so it is the binding surface wherever
+    a color appears on both, and `MUTED` failed there by more than the panel
+    measurement showed.
+    """
+    declared = {
+        (requirement.foreground, requirement.background)
+        for requirement in contrast_check.REQUIREMENTS
+    }
+
+    for foreground in ("MUTED", "ACCENT", "WARNING"):
+        assert (foreground, "BACKGROUND") in declared, (
+            f"{foreground} is a run-status color drawn on the page background; "
+            "a requirement naming only PANEL checks a pair that is not on screen"
+        )
+
+
+def test_muted_clears_the_text_minimum_on_both_surfaces() -> None:
+    """PL-X0RG. It was 4.28 on the panel and 3.98 on the page background."""
+    palette = contrast_check.read_palette(REPO_ROOT)
+
+    for surface in ("PANEL", "BACKGROUND"):
+        ratio = contrast_check.contrast_ratio(palette["MUTED"], palette[surface])
+        assert round(ratio, 2) >= contrast_check.AA_TEXT, f"MUTED on {surface} is {ratio:.2f}"
+
+
 def test_every_known_shortfall_names_an_item_that_exists() -> None:
     """A shortfall excused by an id nobody filed is an excuse, not a plan."""
     filed = {
