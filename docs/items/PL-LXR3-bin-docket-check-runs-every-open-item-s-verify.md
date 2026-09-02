@@ -1,8 +1,14 @@
 ---
 id: PL-LXR3
 title: bin/docket check runs every open item's verify command serially on every make check, costing 50 s and growing with the queue
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: perf, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -rq 'def test_verify_commands_run_concurrently' subprojects/docket/tests
 ---
 
 **Problem.** `bin/docket check` executes the `verify:` command of every open
@@ -55,3 +61,20 @@ much is itself the argument that the total is not being watched.
 seconds rather than tens, the reduction is measured and recorded in the item,
 and no command's result is reported as passing without having been run against
 the current tree.
+
+**Approach decided 2026-09-02, at triage.** Concurrency, the first of the
+three candidates above. It is the only one that changes no answer - every
+command still runs against the current tree, so nothing can report a passing
+item that is not - and the cost is wall-clock rather than CPU, so a thread
+pool over the subprocesses is where the win is. "Run fewer" stays available
+and compatible if the measurement afterwards says concurrency alone is not
+enough; caching stays rejected while a cheaper option remains, because a stale
+cache here reports an item done that is not, which is the one failure this
+check exists to prevent.
+
+The `verify:` command pairs `test_checks.py` rather than `test_verify.py`
+deliberately: the latter is itself 9.5 s, which this item exists to stop
+paying in every `make check`, and pinning it here would add that cost to every
+run until the work lands. `test_checks.py` is 0.7 s and covers the caller that
+collects the results; the recursive `grep` names the test the work owes
+wherever it comes to live.
