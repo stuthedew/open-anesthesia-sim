@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, docs/MODEL.md
 added: 2026-08-30
 closed: 2026-09-02
+pr: 194
 verify: uv run pytest tests/unit/test_simulation_view.py -k end_tidal_equivalent
 ---
 

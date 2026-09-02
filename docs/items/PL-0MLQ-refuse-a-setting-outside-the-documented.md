@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: src/anesthesia_sim/core/respiratory_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, docs/MODEL.md
 added: 2026-08-30
 closed: 2026-09-02
+pr: 191
 verify: uv run pytest tests/unit/test_respiratory_system_failure.py && grep -q 'def test_a_setting_outside_the_supported_range_is_refused_by_the_system' tests/unit/test_respiratory_system_failure.py
 ---
 
