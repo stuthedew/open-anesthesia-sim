@@ -7,7 +7,9 @@ The first is scatter: picking the highest-priority item each time produces a
 project where fifteen features are each five percent done and nothing is
 finished. Work that belongs to a feature already underway is worth more than
 equally-ranked work that starts a new one, because a finished feature can
-ship and a half-finished one cannot.
+ship and a half-finished one cannot. Among several underway, the one nearest
+finishing wins, for the same reason: it is the one a session can actually
+close.
 
 The second is starting what someone else is already doing. That is knowable
 from branch names, so it is checked rather than left to memory.
@@ -189,10 +191,10 @@ def recommend(
 
     Order of precedence, highest first: anything at `P0`, because that is what
     `P0` means; then what the roadmap's current step includes, when a `scope`
-    is supplied; then work that finishes a feature already underway; then the
-    highest-priority item that is ready to start. Items already in flight on a
-    branch are excluded outright rather than ranked low - recommending work
-    somebody is doing is worse than recommending nothing.
+    is supplied; then work in a feature already underway, nearest to finished
+    first; then the highest-priority item that is ready to start. Items already
+    in flight on a branch are excluded outright rather than ranked low -
+    recommending work somebody is doing is worse than recommending nothing.
 
     A `P0` outranks the phase, unchanged: a hotfix is not deferred because the
     milestone is about something else. Everything below it is reordered by
@@ -221,23 +223,36 @@ def recommend(
     def placement(item: Item) -> str:
         return scope.placement(item.identifier) if scope is not None else UNPLACED
 
-    def rank(item: Item) -> tuple[int, int, int, int, int, str]:
-        """Hotfix, then the plan, then band, then whether it finishes something.
+    def rank(item: Item) -> tuple[int, int, int, int, int, int, str]:
+        """Hotfix, then the plan, then band, then how near its feature is to done.
 
         `P0` is lifted out of the band comparison so that the phase cannot
         reorder a hotfix; below it, what the current step includes comes ahead
         of what it does not, because the band cannot express the phase. The
         feature preference stays a tie-breaker inside a band, never across
         bands: a P1 defect does not wait because a P3 feature is half built.
+
+        Two terms carry that preference, not one. `finishes` is the binary
+        question - is this item in a feature already underway - and `remaining`
+        orders the ones that are by how much of their feature is left, fewest
+        first. Without the second term the tie fell through to effort, so the
+        smaller item won and a feature 30% done outranked one 75% done, while
+        the rationale line and `CLAUDE.md` both said the opposite (PL-B0YN).
+        `remaining` is 0 for an item outside any underway feature, which never
+        competes with an item inside one because `finishes` has already
+        separated them.
         """
         hotfix = 0 if item.priority == "P0" else 1
         band = PRIORITIES.index(item.priority) if item.priority in PRIORITIES else len(PRIORITIES)
-        finishes = 0 if item.identifier in underway else 1
+        feature = underway.get(item.identifier)
+        finishes = 1 if feature is None else 0
+        remaining = 0 if feature is None else len(feature.open_items)
         return (
             hotfix,
             PLACEMENT_ORDER[placement(item)],
             band,
             finishes,
+            remaining,
             item.sort_key()[1],
             item.identifier,
         )
@@ -248,11 +263,22 @@ def recommend(
             reason = "P0: this comes before feature work."
         elif item.identifier in underway:
             feature = underway[item.identifier]
-            reason = (
-                f"Finishes '{feature.name}', which is {int(feature.progress * 100)}% done "
-                f"({len(feature.open_items)} item(s) left). A shipped feature beats "
-                f"progress on several."
-            )
+            left = len(feature.open_items)
+            # Only the last open item finishes anything. Saying "Finishes" of
+            # the other kind asserted and then withdrew the same claim in one
+            # sentence, which taught a reader to discount the whole line -
+            # including the cases where it is true (PL-G1MF).
+            if left == 1:
+                reason = (
+                    f"Finishes '{feature.name}' - its last open item. "
+                    f"A shipped feature beats progress on several."
+                )
+            else:
+                reason = (
+                    f"Advances '{feature.name}', which is {int(feature.progress * 100)}% done "
+                    f"({left} items left). A shipped feature beats progress on several, "
+                    f"so the feature nearest done ranks first."
+                )
         else:
             reason = f"Highest-priority work that is ready to start ({item.priority})."
 

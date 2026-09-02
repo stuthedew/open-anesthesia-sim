@@ -1,15 +1,51 @@
 ---
 id: PL-2SVR
 title: The sevoflurane identification swatch is invisible as a shape against the panel
-priority: P2
+priority: P3
 effort: S
-status: ready
-classes: defect, ux
+status: needs-decision
+classes: ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tools/contrast_check.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-09-02
-verify: python3 tools/contrast_check.py && ! grep -q '("sevoflurane.fill", "PANEL")' tools/contrast_check.py
 ---
+
+> **Read this first (2026-09-02).** Most of what follows is wrong, and the item
+> is much narrower than it was written. Two corrections, both found while doing
+> `PL-X0RG`:
+>
+> 1. **The swatch is on the page background, not the panel.** The title above
+>    and the measurements below say `PANEL`. The header badge and the agent
+>    dropdown both sit in the top-level column, so the surface is `BACKGROUND`
+>    (`#F4F7FA`) and the sevoflurane fill measures **1.27:1**, not 1.37:1.
+> 2. **A border already exists, and predates this item.** `simulation_view.py`
+>    builds `_agent_header_badge` with `border=ft.Border.all(1, foreground)`,
+>    under a comment that already cites the 1.37:1 figure. The mitigation this
+>    item proposes was in the tree before the item was written; the item was
+>    drafted from the colour constants without reading the widget that uses
+>    them.
+>
+> So every badge does have a perceivable boundary today — but by a different
+> channel for each agent, which nothing states and nothing checks:
+>
+> | Agent | Fill vs page | Border vs page | Perceivable by |
+> | --- | --- | --- | --- |
+> | Sevoflurane | 1.27 | 10.70 | its border |
+> | Isoflurane | 6.60 | 1.08 | its fill |
+> | Desflurane | 6.06 | 1.08 | its fill |
+>
+> Isoflurane and desflurane carry a **white** border on a near-white page. It
+> contributes nothing; their dark fills do the work instead.
+>
+**Decision needed.** Whether anything is left in this item at all. `PL-GNN1`
+covers the checkable part - a "fill or border" requirement kind, which makes all
+three swatches pass honestly and would catch a future agent that is invisible by
+both channels. If that is the whole of it, drop this item with a reason rather
+than leaving it open. What `PL-GNN1` does *not* decide is whether isoflurane's
+and desflurane's white borders should stay: they are inert rather than harmful,
+but a border that contributes nothing is a thing every later reader has to work
+out before concluding it is deliberate. That is a judgment call, and it is the
+only live question here.
 
 **Problem.** Sevoflurane's ISO 5360 identification colour is yellow,
 `#FEDB00` as approximated in `app/theme.py:60`. Against `PANEL` (`#FFFFFF`) it

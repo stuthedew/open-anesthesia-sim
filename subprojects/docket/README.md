@@ -286,8 +286,8 @@ right.
 
 `docket next` ranks the work and says why it picked it. `P0` first, then what
 the roadmap's current step includes, then — *within* a priority band — work
-that finishes a feature already underway, because a shipped feature is worth
-more than equal progress spread across several. Work already in flight on a
+in a feature already underway, the one nearest finishing first, because a
+shipped feature is worth more than equal progress spread across several. Work already in flight on a
 branch is excluded rather than ranked low.
 
 The step's scope is preferred *absolutely* rather than as a tie-breaker inside
