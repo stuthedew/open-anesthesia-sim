@@ -188,6 +188,7 @@ tools/
 ├── contrast_check.py     # computes every declared color pair's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
+├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
 ```
 
@@ -200,6 +201,17 @@ is not expanded — no tree draws one today — and `__init__.py` is excluded
 throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
+
+`tools/pr_title_check.py` runs only on pull requests, and is the prevention
+half of `PL-2XTF`. A squash merge takes its subject from the pull request
+title, so a title naming none of the items it closes lands a subject that
+`docket check` cannot trace a closure back to. That happened once: a
+UI-generated title closed three items, `main` went red with errors no recovery
+could clear, and the numbers had to be read off GitHub by hand. The recovery
+half now falls back to each item's own file history, and this half stops the
+bad subject reaching `main` while the title can still be edited. Both are
+wanted — recovery alone leaves the wrong subject on `main` for good, and the
+check alone leaks when a merger retypes the subject in the squash dialog.
 
 `tools/contrast_check.py` holds the interface to the accessibility target
 `docs/MODEL.md` states — WCAG 2.2 Level AA. It reads the color constants out of

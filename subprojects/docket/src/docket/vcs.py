@@ -155,7 +155,7 @@ class FlightReport:
         return frozenset(branch.item_id for branch in self.branches)
 
 
-def _leading_ids(subject: str) -> list[str]:
+def leading_ids(subject: str) -> list[str]:
     """Every item id in the run of them a commit subject opens with."""
     match = LEADING_IDS_RE.match(subject)
     if match is None:
@@ -217,7 +217,7 @@ def _unmerged_commits(
             day = None
         if day is not None and day > last.get(ref, date.min):
             last[ref] = day
-        for identifier in _leading_ids(subject):
+        for identifier in leading_ids(subject):
             ids.setdefault(identifier, ref)
     return last, ids, unbounded
 
@@ -546,7 +546,7 @@ def _landed_since(
     output = run(["log", f"-n{limit}", "--format=%s", f"{fork}..{base}", "--"], root)
     found: list[str] = []
     for line in output.splitlines():
-        for identifier in _leading_ids(line):
+        for identifier in leading_ids(line):
             if identifier not in found:
                 found.append(identifier)
     return tuple(found)
@@ -852,21 +852,37 @@ def closures_on_base(
     return ClosureReport(
         base=base,
         landed=frozenset(landed),
-        derived=_merges_naming(landed, base, root, run),
+        derived=_merges_naming(landed, closures, items_dir, base, root, run),
         shallow=is_shallow(root, runner=run),
     )
 
 
 def _merges_naming(
-    identifiers: set[str], base: str, root: Path, run: Runner
+    identifiers: set[str],
+    closures: Mapping[str, str],
+    items_dir: str,
+    base: str,
+    root: Path,
+    run: Runner,
 ) -> tuple[tuple[str, int], ...]:
-    """The pull request number each id's own merge commit on `base` names.
+    """The pull request number each id's closure on `base` can be traced to.
 
-    One commit can close two items - a subject may open with a run of ids -
-    so a single merge can answer for several, and each is recorded against the
-    same number. Only the newest such commit counts: an id that led an earlier
-    subject too, most often the capture that filed it, was not the merge that
-    landed its work.
+    Two readings, tried in that order. The subject scan is first because it is
+    one history read for the whole set: one commit can close two items - a
+    subject may open with a run of ids - so a single merge answers for several,
+    and each is recorded against the same number. Only the newest such commit
+    counts: an id that led an earlier subject too, most often the capture that
+    filed it, was not the merge that landed its work.
+
+    Whatever the subjects do not answer falls back to the item's own file, per
+    `PL-2XTF`. A squash merge takes its subject from the pull request title,
+    which is written by whoever opened it and need not lead with any id - `#220`
+    was created from the Claude Code UI, closed three items, and left `main` red
+    with an error no recovery could clear, because the one subject that landed
+    named none of them. The file always knows: the commit that wrote
+    `status: done` into it *is* the closure, and it carries `(#N)` like every
+    other squash. That is strictly more evidence than the subject scan, not
+    less, and it costs a read only for the ids the cheap pass missed.
     """
     if not identifiers:
         return ()
@@ -877,10 +893,51 @@ def _merges_naming(
         if match is None:
             continue
         number = int(match.group(1) or match.group(2))
-        for identifier in _leading_ids(subject):
+        for identifier in leading_ids(subject):
             if identifier in identifiers:
                 found.setdefault(identifier, number)
+    for identifier in sorted(identifiers - set(found)):
+        recovered = _number_closing(closures[identifier], items_dir, base, root, run)
+        if recovered is not None:
+            found[identifier] = recovered
     return tuple(sorted(found.items()))
+
+
+def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runner) -> int | None:
+    """The number on the commit that wrote `status: done` into one item's file.
+
+    Walks the commits on `base` that touched the file, newest first, and takes
+    the first one that closed it - `done` in that commit's tree and not in its
+    parent's. The parent comparison is what keeps a *later* edit from being
+    read as the closure: backfilling a `pr` field, or correcting a brief, both
+    touch the file long after the work landed and both carry their own `(#N)`.
+    Answering with one of those would record a false provenance, which is worse
+    than the missing one this exists to supply.
+
+    A commit whose parent this checkout does not hold reads as "not done
+    there", because `_run_git` answers a failed `show` with empty output. That
+    is the safe direction on a truncated clone: it can only make the walk
+    accept an older commit it should have skipped, never invent a number for an
+    item that has none, and `ClosureReport.shallow` already tells the caller
+    the history was not whole.
+    """
+    path = f"{items_dir}/{name}"
+    for line in run(["log", "--format=%H%x1f%s", base, "--", path], root).splitlines():
+        revision, _, subject = line.partition("\x1f")
+        match = PR_SUBJECT_RE.search(subject.strip())
+        if match is None:
+            continue
+        if _done_at(revision, path, name, root, run) and not _done_at(
+            f"{revision}^", path, name, root, run
+        ):
+            return int(match.group(1) or match.group(2))
+    return None
+
+
+def _done_at(revision: str, path: str, name: str, root: Path, run: Runner) -> bool:
+    """Whether the item at `path` reads `status: done` in that revision's tree."""
+    text = run(["show", f"{revision}:{path}"], root)
+    return bool(text) and parse_item(text, name).status == "done"
 
 
 # An item file is named `<id>-<slug>.md`, so the id can be read from a tree
