@@ -1,7 +1,12 @@
 ---
 id: PL-SK88
 title: The in-flight answer needs a push to be true; a session-title read would close the window a push only shrinks
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: infra
+feature: parallel-sessions
+touches: .claude/skills/docket/SKILL.md
 added: 2026-09-02
 ---
 
@@ -37,6 +42,21 @@ cannot live in `docket` without breaking it. So the shape would be a check the
 *session* runs before starting, with `docket` unchanged, and the design
 question is whether a guard that exists only inside one harness is worth
 having beside one that works everywhere.
+
+**Decision needed.** Should a pre-start session-title check exist at all,
+given it can only ever work inside this harness?
+
+The two answers produce different software. *Build it* and the start-an-item
+guard becomes two checks: `docket`'s ref read, which works anywhere, and a
+title read that works only where the harness exposes one - closing the window
+for the sessions that have it, and leaving a guard that reads as authoritative
+but silently degrades to nothing in a bare checkout or a different tool.
+*Reject it* and the window stays open by the width of one push, mitigated by
+the push-early rule the skill now carries, with the residual failure being two
+sessions that start within a minute of each other.
+
+The push-early half landed on 2026-09-02 and is not part of this item. What is
+left is only whether to close the remaining window or accept it.
 
 **Done when.** A decision is recorded: either a session-title pre-start check
 exists and the `docket` skill's start-an-item mode names it alongside the
