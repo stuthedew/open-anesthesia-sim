@@ -12,8 +12,9 @@ verify: bin/docket check && grep -qF 'def check_sequencing_placement' subproject
 
 **Problem.** An item's brief can state placements for its own work that
 cannot all be true, and nothing in the store, in `make check` or in
-`tools/doc_check.py` notices. `PL-WB0X` (split `simulation_view.py`) is the
-live instance, and it states three:
+`tools/doc_check.py` notices. `PL-WB0X` (split `simulation_view.py`) was the
+live instance. It stated three (line numbers as of 2026-09-01; the
+contradiction itself was resolved 2026-09-02, see **Instance resolved** below):
 
 1. Its **Sequencing** section requires stage 1 (`app/formatting.py`) to land
    *before* `PL-DHV7` (MAC multiples as a display unit), which `ROADMAP.md`
@@ -83,16 +84,26 @@ which leaves this brief standing as the record. That is the honest close, not
 a failure to finish, and `subprojects/docket/README.md` is explicit that a
 dropped item keeps its file precisely so the finding is not re-raised.
 
-**Expect building the check to force a decision.** If the rule lands, `make
-check` stays red until `PL-WB0X` states one placement rather than three. That
-is the right forcing function and should be worked, not suppressed — but it
-means the work is not purely additive, and whoever takes it needs the project
-owner's answer on where `PL-WB0X` actually belongs.
+**Instance resolved 2026-09-02, which changes what this item can be tested
+against.** The project owner settled `PL-WB0X`'s placement: stages 1 and 2 (the
+two pure-module extractions) are in v0.4.0's Required scope, and stage 3 (the
+`SimulationView` decomposition proper) left that brief for `PL-B9PY` (decompose
+`SimulationView` so two runs can be rendered at once) and stayed at Gate 1. One
+item cannot sit in two milestones, so splitting was the resolution rather than
+choosing one of the three. `PL-WB0X` and `ROADMAP.md` now state one placement
+each and agree.
 
-**Not this item.** Resolving `PL-WB0X`'s own placement is a question about the
-plan, not about tooling, and it is answered by whichever of `PL-WB0X` or
-`PL-DHV7` is started first. What this item owns is the general record and the
-narrow check; the instance is its acceptance test.
+The consequence for this item is that **it no longer has a live instance to
+fire on**, so the acceptance test below was rewritten. That is a real weakening
+of the case for the check: the value was always "one instance across 230 item
+files", and it is now zero known instances. A rule with no instance is a rule
+whose upkeep is paid against a hypothesis. Weigh that when deciding whether to
+build it or to drop it — either close is honest, and this brief is the record
+in both cases.
+
+**Not this item.** Resolving `PL-WB0X`'s own placement was a question about the
+plan, not about tooling. It has been answered. What this item owns is the
+general record and the narrow check.
 
 **Found.** Outside review, relayed by the project owner on 2026-09-01 in a
 capture-only session. Verified in this checkout against `ROADMAP.md` and
@@ -100,7 +111,9 @@ capture-only session. Verified in this checkout against `ROADMAP.md` and
 
 **Done when.** Either `docket check` gains a rule that flags an item whose
 brief orders itself against another item in a direction `ROADMAP.md`'s
-milestone placement contradicts, and that rule names `PL-WB0X` when run
-against the store as it stands; or the item is `dropped` with the reason
-that the decidable sliver does not earn its upkeep, leaving this brief as
-the record.
+milestone placement contradicts, and that rule is shown to fire — against a
+fixture reproducing `PL-WB0X`'s three placements as they stood on 2026-09-01,
+since the store itself no longer contains an instance; or the item is `dropped`
+with the reason that the decidable sliver does not earn its upkeep, leaving
+this brief as the record. The second is now the more likely close, per
+**Instance resolved** above.

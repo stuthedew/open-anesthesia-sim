@@ -91,6 +91,15 @@ this source cannot answer that for desflurane, which still needs its own
 primary citation before the band is drawn for it. Do not extrapolate the
 sevoflurane fraction to desflurane.
 
+**Who sources what is left (2026-09-02).** Desflurane's MAC-awake is the one
+value still missing, and the working arrangement is that a session proposes it
+with its primary citation and the project owner reviews rather than searches —
+the reviewer is a physician, the searching is not the scarce half. Two limits
+on that: a proposed value is a *candidate* until the owner has seen the source,
+and nothing is written into a data file before then; and the Katoh values above
+were verified by an external review rather than by any session here, so they
+are owed the same read before the band is drawn from them.
+
 **Found.** External multi-domain review, relayed by the project owner
 2026-09-01; the bibliographic values are as that review verified them and were
 not re-derived here.
