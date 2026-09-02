@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 closed: 2026-09-02
+pr: 236
 classes: defect, infra
 feature: commit-provenance
 touches: subprojects/docket/README.md, .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/checks.py
