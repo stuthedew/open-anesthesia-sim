@@ -26,6 +26,12 @@ failed step at all.
 PL-006 adds the case where the distinction had been drawn in the wrong
 place: `set_circuit_volume` destroyed agent and the *next* step failed for
 it, reporting a numerical error for what was a setter's defect.
+
+PL-VYXP is the same shape once more, in `reset()` rather than in a setter:
+the accounting anchor was taken from the validator's zero default instead of
+from the compartments, so a compartment that reset to anything other than
+empty would leave the residual check reporting a failure against a run that
+is perfectly accounted for.
 """
 
 from math import inf, nan
@@ -576,3 +582,88 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     result = system.advance(MAXIMUM_SIMULATION_STEP_S)
 
     assert result.agent_accounting.passes_validation
+
+
+class _AlveolarCompartmentThatKeepsItsAgent(AlveolarCompartment):
+    """An alveolar compartment whose `reset()` leaves its store in place.
+
+    Stands in for a compartment that resets to something other than empty,
+    which is the case `AgentUptakeSystem.reset()` has to anchor correctly and
+    could not before PL-VYXP. No shipped compartment behaves this way today -
+    that is the point, since the defect is reachable only through one that
+    does, and a bellows model or a patient file carrying a residual is the
+    shape that would introduce it.
+    """
+
+    def reset(self) -> None:
+        return
+
+
+def test_reset_anchors_accounting_to_what_the_compartments_actually_hold() -> None:
+    """Regression test for PL-VYXP.
+
+    Measured against the shipped code before the fix, with the alveolus below
+    holding 0.05 L: `reset()` anchored `initial_agent_l` at 0.0 against
+    0.05 L actually stored, so the very next accounting check reported
+    `unaccounted = -0.05 L` and `passes_validation` False, on a system that
+    had neither created nor lost any agent at all.
+
+    The failure direction is worth recording because it is the safe one. An
+    anchor that is too low makes the identity short, so the check fires
+    rather than staying quiet, and a run halts that should not have; it
+    cannot mask a real drift except within the accounting tolerance itself.
+    That is what makes this a defect in the check rather than a hole in it -
+    and still worth closing, because a safety net that halts a healthy run
+    and blames the numerics teaches a reader to distrust it.
+    """
+
+    system = _sevoflurane_at_one_mac()
+
+    retained = _AlveolarCompartmentThatKeepsItsAgent(
+        gas_volume_l=system.alveoli.gas_volume_l,
+        alveolar_ventilation_l_min=system.alveoli.alveolar_ventilation_l_min,
+    )
+    retained.set_concentration_fraction(0.02)
+    system.alveoli = retained
+
+    system.reset()
+
+    # Every other compartment cleared, so what the system holds is exactly
+    # what the stand-in kept - a non-zero baseline the anchor has to match.
+    assert retained.agent_amount_l == pytest.approx(0.05)
+    assert system.total_stored_agent_l == pytest.approx(retained.agent_amount_l)
+
+    assert system.agent_simulation_validator.initial_agent_l == pytest.approx(
+        system.total_stored_agent_l
+    )
+
+    check = system.agent_simulation_validation
+
+    assert check.unaccounted_agent_l == pytest.approx(0.0)
+    assert check.passes_validation
+
+
+def test_reset_still_anchors_at_zero_when_every_compartment_clears() -> None:
+    """The ordinary path is unchanged, which is why the fix is safe to take.
+
+    Every shipped compartment clears itself, so reading the anchor back out
+    of them is exactly the `0.0` the default supplied. This asserts that
+    equivalence rather than assuming it, so a compartment whose `reset()`
+    later stops clearing is caught as a change in what an accounting period
+    starts from rather than silently rewriting it.
+    """
+
+    system = _sevoflurane_at_one_mac()
+
+    for _ in range(100):
+        system.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    assert system.total_stored_agent_l > 0.0
+
+    system.reset()
+
+    assert system.agent_simulation_validator.initial_agent_l == 0.0
+    assert system.agent_simulation_validator.delivered_agent_l == 0.0
+    assert system.agent_simulation_validator.exhausted_agent_l == 0.0
+    assert system.total_stored_agent_l == 0.0
+    assert system.agent_simulation_validation.passes_validation

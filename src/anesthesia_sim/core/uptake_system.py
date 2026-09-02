@@ -340,12 +340,28 @@ class AgentUptakeSystem:
         )
 
     def reset(self) -> None:
-        """Clear dynamic state and restart agent accounting."""
+        """Clear dynamic state and restart agent accounting.
+
+        The anchor is read back out of the compartments rather than left to
+        the validator's own zero default, so this says what `__post_init__`
+        says: an accounting period starts from whatever the system holds.
+        The two agree today - the three resets above clear every store, so
+        the expression below is exactly `0.0` - and they keep agreeing if a
+        compartment is ever added that resets to something other than empty.
+
+        The default does not. Anchored at zero against compartments holding
+        anything, the identity is short by that amount at every subsequent
+        check, so the residual check halts a run that is in fact perfectly
+        accounted for - and reports `AgentSimulationValidationError`, which
+        blames the numerics for what is an anchoring defect. That is the
+        safe direction to fail in, and still the wrong answer; a check must
+        not rest on an invariant it does not itself establish (PL-VYXP).
+        """
 
         self.circuit.reset()
         self.alveoli.reset()
         self.patient.reset()
-        self.agent_simulation_validator.reset()
+        self.agent_simulation_validator.reset(initial_agent_l=self.total_stored_agent_l)
 
     def _exchange_circuit_and_alveoli(self, simulation_step_s: float) -> float:
         """Exchange agent exactly between two mixed gas volumes."""
