@@ -168,6 +168,78 @@ interchangeable, and no descending-washout desflurane MAC-awake was found on
 PubMed. State that in `docs/MODEL.md` rather than presenting the three agents'
 fractions as if they were measured identically.
 
+**Appended 2026-09-02 — the project owner asks for two references, not one.**
+"Would want MAC-awake and 1 MAC and make them clear what they are (visually
+distinct)". This is a scope change to the section above, which specified a
+single band, and it is the right one: Chortkoff 1995 states that *"along with
+pharmacokinetics, the ratio of the awakening concentration to the anesthetizing
+concentration (MAC-awake/MAC) determines time to awakening"*. Drawing both
+makes that ratio the visible gap between them, so the chart shows the decrement
+required for arousal rather than only the endpoint. That is the
+context-sensitive emergence lesson stated geometrically.
+
+**Let the mark type carry the distinction, not the colour.** The two references
+differ in epistemic status, and the mark should say so:
+
+| | Mark | Why |
+| --- | --- | --- |
+| MAC-awake | a **band** | A measured population value with real spread — Katoh ± 0.05 MAC, Chortkoff ± 0.46 % |
+| 1 MAC | a **line** | A definitional anchor, not a distribution of the same kind |
+
+Band-versus-line is a stronger separation than any colour pair, it reads
+correctly in greyscale and with any colour-vision deficiency, and it satisfies
+`.claude/rules/ui-color.md`'s "colour is never the only channel carrying a
+distinction" without needing a second cue bolted on. Add line style and an
+inline text label on each, and register every new colour in
+`tools/contrast_check.py`'s `REQUIREMENTS` in the same change, naming the
+background each is actually drawn on — the rule the tool cannot check for
+itself.
+
+**The hazard this introduces: the two references belong against *different*
+traces.** MAC is by name and determination an *alveolar* quantity — Rampil 1991
+determined desflurane's MAC as an end-tidal percentage in surgical patients.
+The MAC-awake value this item draws is Katoh's slow-washout figure, which the
+**Required property** section above already establishes belongs against the
+*vessel-rich* trace, and which Katoh attributes to end-tidal-to-arterial and
+arterial-to-cerebral gradients — exactly the alveolar-to-vessel-rich difference
+this simulator represents.
+
+Two horizontal lines across one chart implicitly invite reading both against
+whichever trace the eye reaches first. That is the hazard the **Required
+property** section names, now doubled: there are two chances to read against
+the wrong curve rather than one.
+
+**But the two are not equally trace-sensitive, and the asymmetry is the design
+answer.** After a long case at a steady setpoint the alveolar and vessel-rich
+traces have converged, so the 1 MAC anchor is robust to which one it is read
+against. At MAC-awake they have not converged — measured in the section above
+as 3.01 min versus 6.72 min, 2.2x — so the *lower* reference is the
+trace-critical one. So: spend the labelling budget on the MAC-awake band, and
+do not let the 1 MAC line acquire equal visual weight merely because it is
+easier to draw.
+
+One consequence worth expecting rather than treating as a bug: on a short case
+the vessel-rich trace never reaches the 1 MAC line, because it never
+equilibrated. That is true and worth teaching, not a rendering fault.
+
+**One decision, taken here rather than handed on.** The 1 MAC line is the
+*nominal* 1 MAC from `mac_percent`, not the setpoint the learner happened to
+dial. A fixed reference stays comparable across runs, which is what makes the
+twenty-minute and three-hour cases answerable side by side; a line tracking the
+dialled concentration would only restate where the trace already starts. Note
+that `mac_percent` here is a flat adult value rather than age-adjusted (the
+Nickalls/Mapleson note in the agent data files), while Katoh expressed
+MAC-awake as a ratio to *age-adjusted* MAC — so the label must say "1 MAC
+(reference adult)" rather than implying a patient-specific value.
+
+> Eger EI II, Saidman LJ, Brandstater B. Minimum alveolar anesthetic
+> concentration: a standard of anesthetic potency. Anesthesiology.
+> 1965;26(6):756-63. PMID 5844267. doi:10.1097/00000542-196511000-00010
+
+Cited as the origin of the term rather than for a value: the human MAC figures
+this project uses come from Rampil 1991 and the Gas Man table already recorded
+in the agent data files.
+
 **Done when.** Each agent's MAC-awake value is in its data file with a cited
 primary source, `docs/MODEL.md` records the provenance and states what the band does
 and does not assert, the chart draws it as a labelled population band with no
