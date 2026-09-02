@@ -317,7 +317,12 @@ def test_next_leads_with_what_the_current_step_names(
 
     out = capsys.readouterr().out
     assert out.index("PL-B1B1") < out.index("PL-C2C2")
-    assert "In scope for v0.4.0 — the teachable case" in out
+    # Named as the roadmap arranges it rather than as "the current step": this
+    # fixture puts the gate under v0.4.0 and the step on v0.3.0, and calling
+    # the first the second is what PL-1J0P fixed.
+    assert "On the debt gate recorded under v0.4.0 — the teachable case" in out
+    assert "v0.3.0 — the foundation clears it" in out
+    assert "the step the project is on" not in out
 
 
 def test_the_verify_advisory_follows_the_plan_the_way_next_does(

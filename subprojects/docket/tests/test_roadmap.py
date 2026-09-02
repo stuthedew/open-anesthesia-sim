@@ -392,6 +392,61 @@ def test_the_wave_carries_the_scope_of_the_milestone_the_beat_is_about() -> None
     assert plan.scope.placement("PL-001") == IN_SCOPE
 
 
+def test_clearing_a_gate_leaves_the_gated_milestones_own_scope_out_of_the_step() -> None:
+    """The regression for PL-1J0P, and the half that was a ranking defect.
+
+    A milestone section places ids through two structures, and while its gate
+    is open only one of them is work the current step includes: `ROADMAP.md`
+    has the gate clear *before* the milestone it gates is implemented. Reading
+    the whole section as current work offered v0.4.0's `Required scope` as
+    v0.3.0's, which is the one thing the gate exists to stop - and `docket
+    next` really was offering it, three deep, when this was found.
+    """
+    plan = _wave("0.2.5")
+
+    assert plan.beat == CLEAR
+    assert plan.scope.clearing
+    assert plan.scope.placement("PL-001") == IN_SCOPE
+    assert plan.scope.placement("PL-MNPQ") == OUT_OF_SCOPE
+    assert plan.scope.milestone("PL-MNPQ") == "v0.4.0"
+
+
+def test_a_gate_shipping_as_its_own_version_names_the_step_apart_from_the_anchor() -> None:
+    """The label half of PL-1J0P: two names, and they are not the same name.
+
+    `wave` reports v0.3.0 as the step while the gate is recorded under v0.4.0,
+    so a caller that prints only the anchor and calls it the current step
+    contradicts `wave` in the same session.
+    """
+    plan = _wave("0.2.5")
+
+    assert plan.step is not None
+    assert plan.step.label == "v0.3.0 — the foundation"
+    assert plan.scope.anchor == "v0.4.0 — the teachable case"
+    assert plan.scope.step_label == "v0.3.0 — the foundation"
+
+
+def test_the_gated_milestones_own_scope_is_current_work_once_its_gate_is_clear() -> None:
+    """The guard against over-narrowing: the exclusion above is the beat's, not
+    the section's. Once every gate entry closes, `Required scope` is what the
+    milestone is for and ranks as current work again."""
+    plan = _wave("0.2.5", GATE_IDS)
+
+    assert plan.beat != CLEAR
+    assert not plan.scope.clearing
+    assert plan.scope.placement("PL-MNPQ") == IN_SCOPE
+
+
+def test_reading_a_section_directly_still_places_its_whole_scope() -> None:
+    """`milestone_scope` is given no beat, so the narrowing is opt-in: a caller
+    asking what a section places means the section, not the cadence."""
+    scope = milestone_scope(parse_milestones(ROADMAP), _section((0, 4, 0)))
+
+    assert not scope.clearing
+    assert scope.step_label == ""
+    assert scope.placement("PL-MNPQ") == IN_SCOPE
+
+
 def test_a_plan_with_no_milestone_to_anchor_on_places_nothing() -> None:
     scope = milestone_scope(parse_milestones(ROADMAP), None)
 

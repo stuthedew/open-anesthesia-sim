@@ -259,7 +259,28 @@ def recommend(
         where = placement(item)
         scoped_to = ""
         if scope is not None and where == IN_SCOPE:
-            reason = f"In scope for {scope.anchor}, the step the project is on. {reason}"
+            # Three arrangements, and conflating them is what PL-1J0P fixed.
+            # The step usually *is* the milestone placing the id. But the
+            # roadmap lets a gate ship as its own version, and then the id is
+            # on a list recorded under one milestone and cleared by another -
+            # and separately, a milestone's `Required scope` becomes current
+            # work only once its gate is clear. Saying "the step the project is
+            # on" of either told every session the project was on a release it
+            # had not reached.
+            if scope.clearing and scope.step_label:
+                reason = (
+                    f"On the debt gate recorded under {scope.anchor}; "
+                    f"{scope.step_label} clears it. {reason}"
+                )
+            elif scope.clearing:
+                reason = f"On {scope.anchor}'s frozen list, the step the project is on. {reason}"
+            elif scope.step_label:
+                reason = (
+                    f"In scope for {scope.anchor}, which the step the project is on "
+                    f"({scope.step_label}) comes before. {reason}"
+                )
+            else:
+                reason = f"In scope for {scope.anchor}, the step the project is on. {reason}"
         elif scope is not None and where == OUT_OF_SCOPE:
             scoped_to = scope.milestone(item.identifier)
             reason = (
