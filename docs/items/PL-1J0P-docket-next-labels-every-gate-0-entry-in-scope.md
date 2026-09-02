@@ -5,12 +5,13 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
+feature: planning-cadence
+milestone: v0.2.9
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py
+added: 2026-09-02
 closed: 2026-09-02
 pr: 179
 verify: uv run pytest subprojects/docket/tests -k "current_step or gate_shipping or own_gate or outside_a_gate or whole_scope"
-feature: planning-cadence
-touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py
-added: 2026-09-02
 ---
 
 **Problem.** `bin/docket next` prints, for each of the three items it offers

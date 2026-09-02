@@ -45,7 +45,8 @@ capability-boundary rule above governs.
 | v0.2.5 | Completed | Licensing, documentation and planning release: the project is licensed Apache-2.0, v0.3.0 through the MVP is scoped onto one timeline with its debt gates, Phase 0 is retired in favour of the standing debt gate, and `docs/worker.md` states what a delegated worker decides for itself. No source file changed. |
 | v0.2.6 | Completed | Delegation and release-tooling release on the same model: work whose success a command can prove now has to name that command and have run it, `docket` computes the debt gate and the cadence beat instead of a session transcribing them, and the release path stopped leaving `uv.lock` stale, while drift between this table and the version file became something a check catches - caught, not prevented, since nothing writes the row. The one scientific item widened the splitting-error bound to the whole settings envelope. No equation, parameter, or numerical method changed. |
 | v0.2.7 | Completed | Session-discipline and applicability-domain release on the same model: the simulation step now refuses inputs outside the operator split's stated applicability domain and the splitting-error bound is measured across setting changes rather than one held operating point, while ten process items closed the three channels by which product work leaked into discussions that were not about it, gave multi-step instructions a written standard, and cleared three live tooling defects. No equation or parameter changed, and the numerical method is unchanged - it is now guarded at the domain it was always specified for. |
-| v0.2.8 | Completed / current baseline | The workflow works: thirty-eight frozen entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the in-flight answer six commands read, the type-check and lint gates, and the instructions a session reads before it does anything. Seventy items in all. No simulator change: `src/` differs from v0.2.7 by three comments, and `docs/MODEL.md` only by the math syntax GitHub renders and by recording why the operator split is kept over an exact matrix exponential. No equation, parameter, numerical method, unit or displayed value changed. |
+| v0.2.8 | Completed | The workflow works: thirty-eight frozen entries of development machinery the project already runs on - the merge path, the release script, the queue's ranking, the in-flight answer six commands read, the type-check and lint gates, and the instructions a session reads before it does anything. Seventy items in all. No simulator change: `src/` differs from v0.2.7 by three comments, and `docs/MODEL.md` only by the math syntax GitHub renders and by recording why the operator split is kept over an exact matrix exponential. No equation, parameter, numerical method, unit or displayed value changed. |
+| v0.2.9 | Completed / current baseline | Validation, accessibility and tooling patch on the same model, changing no source file at all: `src/` is identical to v0.2.8. Modelled wash-in is compared against published human measurements for the first time — verification became validation, with the two caveats that bound how strongly it may be stated recorded beside it — the interface gained a recorded WCAG 2.2 AA conformance target whose contrast ratios `make check` computes rather than a comment asserts, and three live defects in the queue's own ranking are closed. No equation, parameter, numerical method, unit or displayed value changed. |
 | v0.3.0 | Planned / scoped | The foundation: Gate 0's inherited backlog cleared — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. No new capability; see the versioning exception above for why it is a minor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
@@ -84,56 +85,97 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.2.8
+## Current baseline: v0.2.9
 
-v0.2.8 is a workflow release on the v0.2.0 model, carrying seventy items. Its
-whole claim is that the development loop is reliable enough to run two long
-scientific milestones through, and it changes nothing a clinician would read:
-`src/` differs from v0.2.7 by three comments, and `docs/MODEL.md` only by the
-inline-math syntax GitHub renders (PL-TH9V) and by recording why the operator
-split is kept over an exact matrix exponential (PL-6GS0) — the split itself is
-unchanged.
+v0.2.9 is a patch on the v0.2.0 model carrying seven items, and it changes no
+source file: `src/` is identical to v0.2.8, so no equation, parameter,
+numerical method, unit or displayed value moved. What it adds is evidence, and
+the machinery that keeps two claims honest.
 
-Thirty-eight of the seventy were the frozen debt gate recorded under this
-release, and they fall into four groups. **The merge and release path**: main
-switched to squash-merge (PL-S4M2), releases are tagged so a commit maps to
-the version it shipped in (PL-J3ZK), an item records its pull request so
-provenance survives the squash (PL-ZQ9C), and `make release` stopped ending
-every release in a red test on a table it does not write (PL-8HJ2). **What a
-session is told at its start**: `docket next` no longer leads with work the
-current milestone excludes (PL-1TPM, PL-0RS6, PL-Q2BJ), the digest stopped
-printing fabricated ahead/behind counts (PL-FBCC), and six commands that rank
-or mark against in-flight work now say when a ref went unread rather than
-presenting a partial answer as a whole one (PL-5KR2, PL-MGNC, PL-KWC1,
-PL-CPSY, and PL-3576 for the seventh). **The gates themselves**: the
-type-check reaches past `src/` and ships a `py.typed` marker (PL-020), covers
-docket's own source (PL-0TRS) and the test trees (PL-CMCB, PL-J5NN), inert
-`noqa` directives fail the build (PL-ZN0N, PL-69J3), and a `verify:` command
-that selects no test is no longer read as one that discriminates (PL-5QKT,
-PL-DVPZ, PL-JWXF). **The instructions a session reads before anything else**:
-`CLAUDE.md` states what the project is and why workflow outranks product work
-while the loop is being fixed (PL-K6QR, PL-20ZR), keeps resident only what a
-session could get wrong before it would look anything up (PL-H7XN), and the
-pull request now arrives with the work instead of waiting to be asked for
-(PL-N7R9, PL-Z8SV).
+**Validation, as distinct from verification (PL-9Y42).** Nothing in this
+repository had ever been compared to a measurement of a human being. Every
+test in `tests/reference/` checked the implementation against itself — an
+analytic exponential, an RK4 oracle of the project's own equations, mass
+balance, equilibrium — which establishes that the equations are solved
+correctly and says nothing about whether they describe the phenomenon.
+`tests/reference/test_published_wash_in.py` now pins the 30-minute
+$`F_A/F_I`$ of all three agents against Yasuda et al. 1991: sevoflurane 0.853
+against 0.850 ± 0.018, isoflurane 0.741 against 0.733 ± 0.027, desflurane
+0.908 against 0.900 ± 0.010 — +0.17, +0.30 and +0.80 SD from the published
+means, at the data file's own cited alveolar ventilation of 4.0 L/min rather
+than a value fitted to make it pass.
 
-One gate entry was dropped rather than done, with its reason recorded:
-PL-J786 would have required a green `checks` run before any merge into main,
-which GitHub Free does not enforce on a private repository, so merges continue
-to rest on discipline and the measured risk is accepted knowingly. Full notes
-are in `docs/releases/v0.2.8.md`.
+Two caveats are recorded with it in `docs/MODEL.md` and in the test's own
+docstring, because they bound what the agreement is worth: Yasuda's subjects
+breathed 65-70% nitrous oxide, so the measured curves carry a second-gas
+effect this fixed-volume single-gas alveolus cannot reproduce; and the
+partition coefficients under test share a lineage with the data being tested
+against, so passing shows the implementation reproduces its parameter set's
+intent rather than that the parameter set is independently right. It could
+still have failed, which is why it is worth having. It is weaker than
+"validated against a human measurement", and this release does not claim more.
+
+**A colour that fails accessibility now fails the build (PL-MMYM, PL-1MK1,
+PL-HC9P).** The project's WCAG 2.2 AA conformance target and the success
+criteria that bind it are recorded rather than assumed; `tools/contrast_check.py`
+computes the contrast ratios `make check` gates on, replacing ratios asserted
+in code comments; and the target fires when a session picks a colour rather
+than when someone remembers to look. This is `CLAUDE.md`'s "find the decidable
+part and put it in code" applied to a published standard, and it left `src/`
+untouched — what changed is that the standard is now enforced rather than
+believed.
+
+**Three live defects in the queue's own ranking.** `docket next` labelled every
+Gate 0 entry with the milestone that records the gate rather than the one that
+clears it (PL-1J0P); `wave` reported the gate one entry short, because a
+safety-classed item predating the freeze was absent from the frozen list
+(PL-Y4Q4); and `CLAUDE.md` still carried the workflow-first rule that v0.2.8's
+shipping was supposed to retire (PL-D1ZY). Full notes are in
+`docs/releases/v0.2.9.md`.
 
 Like every release since v0.2.0 it changes no equation, parameter, or
-numerical method: `docs/MODEL.md`'s specification of the model is unchanged,
-and the v0.0.2 circuit and v0.1.0 sevoflurane reference tests still pass
-unaltered. That is why it is a patch rather than a new minor — it crosses no
-model capability boundary, no new agent and no new physiology.
+numerical method: `docs/MODEL.md`'s specification of the model is unchanged
+except for the validation entry above, and the v0.0.2 circuit and v0.1.0
+sevoflurane reference tests still pass unaltered. That is why it is a patch
+rather than a new minor — it crosses no model capability boundary, no new
+agent and no new physiology.
 
 **What the model currently is** is described under "The model as it stands"
 below, and does not change release to release while the patch series
 continues.
 
 ### Release narrative
+
+v0.2.8 was a workflow release carrying seventy items, whose whole claim is
+that the development loop is reliable enough to run two long scientific
+milestones through; it changed nothing a clinician would read, `src/`
+differing from v0.2.7 by three comments. Thirty-eight of the seventy were the
+frozen debt gate recorded under that release, in four groups. **The merge and
+release path**: main switched to squash-merge (PL-S4M2), releases are tagged
+so a commit maps to the version it shipped in (PL-J3ZK), an item records its
+pull request so provenance survives the squash (PL-ZQ9C), and `make release`
+stopped ending every release in a red test on a table it does not write
+(PL-8HJ2). **What a session is told at its start**: `docket next` no longer
+leads with work the current milestone excludes (PL-1TPM, PL-0RS6, PL-Q2BJ),
+the digest stopped printing fabricated ahead/behind counts (PL-FBCC), and six
+commands that rank or mark against in-flight work now say when a ref went
+unread rather than presenting a partial answer as a whole one (PL-5KR2,
+PL-MGNC, PL-KWC1, PL-CPSY, and PL-3576 for the seventh). **The gates
+themselves**: the type-check reaches past `src/` and ships a `py.typed` marker
+(PL-020), covers docket's own source (PL-0TRS) and the test trees (PL-CMCB,
+PL-J5NN), inert `noqa` directives fail the build (PL-ZN0N, PL-69J3), and a
+`verify:` command that selects no test is no longer read as one that
+discriminates (PL-5QKT, PL-DVPZ, PL-JWXF). **The instructions a session reads
+before anything else**: `CLAUDE.md` states what the project is and why
+workflow outranks product work while the loop is being fixed (PL-K6QR,
+PL-20ZR), keeps resident only what a session could get wrong before it would
+look anything up (PL-H7XN), and the pull request now arrives with the work
+instead of waiting to be asked for (PL-N7R9, PL-Z8SV). One gate entry was
+dropped rather than done, with its reason recorded: PL-J786 would have
+required a green `checks` run before any merge into main, which GitHub Free
+does not enforce on a private repository, so merges continue to rest on
+discipline and the measured risk is accepted knowingly. Full notes are in
+`docs/releases/v0.2.8.md`.
 
 v0.2.7 was a session-discipline and applicability-domain release carrying
 fourteen items. Four were scientific or safety-classed: the simulation step

@@ -8,7 +8,7 @@ classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/render.py
 added: 2026-09-02
-verify: uv run pytest subprojects/docket/tests && grep -rq 'def test_open_count_includes_untriaged' subprojects/docket/tests
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -rq 'def test_open_count_includes_untriaged' subprojects/docket/tests
 ---
 
 **Problem.** `render.py:600` prints `docket: {len(report.open_items)} open

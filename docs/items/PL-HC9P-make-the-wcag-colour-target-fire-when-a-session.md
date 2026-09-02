@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: presentation-safety
+milestone: v0.2.9
 touches: .claude/rules/ui-color.md
 added: 2026-09-02
 closed: 2026-09-02
