@@ -1,10 +1,14 @@
 ---
 id: PL-1J0P
 title: docket next labels every Gate 0 entry 'in scope for v0.4.0 - the step the project is on' while wave says the step is v0.3.0
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py
 added: 2026-09-02
+verify: uv run pytest subprojects/docket/tests/test_plan.py && grep -q 'def test_a_gate_placed_item_names_the_release_that_clears_it' subprojects/docket/tests/test_plan.py
 ---
 
 **Problem.** `bin/docket next` prints, for each of the three items it offers

@@ -1,9 +1,14 @@
 ---
 id: PL-9T8T
 title: The primary partition-coefficient citation names an author who is not on the paper
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
+feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/agents, docs/MODEL.md, tests/unit/test_parameters.py, tests/reference/test_multi_agent.py, docs/items
 added: 2026-09-01
-verify: python3 tools/doc_check.py check && grep -rqF 'De Wolf AM' src/anesthesia_sim/data/agents && ! grep -rq Stadler src/anesthesia_sim/data docs/MODEL.md tests
+verify: uv run pytest tests/unit/test_parameters.py tests/reference/test_multi_agent.py && ! grep -rq Stadler src/anesthesia_sim/data docs/MODEL.md tests/
 ---
 
 **Problem.** Every partition coefficient in this project — all twelve, across

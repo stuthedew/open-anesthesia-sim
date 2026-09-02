@@ -1,8 +1,13 @@
 ---
 id: PL-4MHK
 title: pyproject.toml's package metadata does not describe the project - a vague description and no classifiers
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+classes: defect, docs
+feature: project-introduction
 touches: pyproject.toml
+blocked-by: PL-N092
 added: 2026-09-01
 ---
 
