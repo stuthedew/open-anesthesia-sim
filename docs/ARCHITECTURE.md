@@ -174,6 +174,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
+├── contrast_check.py     # computes every declared color pair's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum
 ├── doc_check.py          # validates this map, MODEL.md's provenance table, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
@@ -188,6 +189,18 @@ is not expanded — no tree draws one today — and `__init__.py` is excluded
 throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
+
+`tools/contrast_check.py` holds the interface to the accessibility target
+`docs/MODEL.md` states — WCAG 2.2 Level AA. It reads the color constants out of
+`app/theme.py` and `app/simulation_view.py` with `ast` rather than importing
+them, because `app/simulation_view.py` imports Flet and these tools run under a
+bare `python3`. Its `REQUIREMENTS` table is the specification: each entry names
+a pair that appears on screen together, the success criterion, the minimum, and
+the reason. The tool evaluates that table and decides nothing else — which
+pairs matter, and whether a non-color channel is genuinely redundant, are
+judgments, and `.claude/rules/ui-color.md` carries them. Pairs that fall short
+today are listed against the item that closes each, and a listed shortfall that
+starts passing is an error, so a fix cannot leave its excuse behind.
 
 `tools/ignore_check.py` covers what the type-check gate cannot. `[tool.mypy]
 files` names `src`, `tools` and `subprojects/docket/src`, and every
@@ -281,7 +294,8 @@ All of those are approximations run under the project virtualenv — a syntax
 gate rather than an older parser, and the wrong interpreter's
 `sys.stdlib_module_names`. `.github/workflows/quality.yml`'s `floor` job
 performs the run they stand in for: `actions/setup-python` at the declared
-floor, then `python3 tools/doc_check.py check` and `bin/docket check` under it.
+floor, then `python3 tools/doc_check.py check`, `bin/docket check` and
+`python3 tools/contrast_check.py` under it.
 That decides syntax, imports and runtime behavior at once, with no list to keep
 current. A fourth test holds the job's pinned version to `requires-python`, so
 raising the floor cannot leave CI exercising an interpreter the project no
