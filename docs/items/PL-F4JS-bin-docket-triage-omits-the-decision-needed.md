@@ -5,14 +5,6 @@ status: untriaged
 added: 2026-09-02
 ---
 
-**Problem.** bin/docket triage omits the **Decision needed.** requirement from the rules it prints, so triaging an item to needs-decision fails check after the edit
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
-
 **Problem.** `bin/docket triage` closes with "The rules these answers have to
 satisfy" and prints six of them, read from `docket.toml` and the checker so that
 a triaging session does not have to re-derive what `docket check` will enforce.
