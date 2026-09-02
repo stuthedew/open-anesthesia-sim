@@ -1,7 +1,12 @@
 ---
 id: PL-B0YN
 title: docket next ranks by smallest effort among items in underway features, not by which feature is nearest completion, so its rationale line and CLAUDE.md both describe a ranking the code does not implement
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, docs, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py, CLAUDE.md
 added: 2026-09-02
 ---
 
@@ -50,7 +55,8 @@ session and lands on the choice of what to work on.
 finishing a feature" bullet is read against whatever is decided, and edited if
 the decision is that effort-ascending is the intended order.
 
-**Worth deciding first.** Which order is actually wanted. Two candidates:
+**Decision needed.** Which order `bin/docket next` should really apply within
+a band. Two candidates:
 
 - **Rank by remaining open items in the feature**, ascending, so the feature
   nearest completion wins — the rule all three artifacts already claim. Makes
@@ -76,3 +82,26 @@ rationale line states, `CLAUDE.md` and `PL-G1MF` agree with the implemented
 order, and a test pins the case above: two ready items of equal band in
 underway features of different completeness, where the smaller-effort item is
 in the less complete feature.
+
+**Triage note (2026-09-02).** Checked against the source before triaging, and
+the diagnosis holds: `rank()` at `subprojects/docket/src/docket/plan.py:224-243`
+returns `(hotfix, placement, band, finishes, sort_key()[1], identifier)`, where
+`finishes` at line 235 is binary and `sort_key()[1]` at line 241 is the effort
+index. No term anywhere in the tuple reads how near a feature is to completion.
+
+Left at `needs-decision` rather than `ready` on purpose. The two candidate
+orders produce different diffs - the first edits `plan.py`, the second edits
+`CLAUDE.md`'s "Prefer finishing a feature to advancing several" and the
+rationale branch at line 249 - and the second rewrites an owner-authored
+instruction, which is not a substitution to make unasked. The `verify:` command
+follows from which order is chosen and is deliberately unset until then;
+`checks.py` requires one only at `ready`.
+
+Banded `P2`, not `P1`. This is a real defect in the command every session leads
+with, so it sits above its `P3` sibling `PL-G1MF` (the wording of the same
+line), but `P1` in this store is reserved by practice for work that could
+mislead a clinician - every open `P1` carries `safety` or `science` - and
+`docket.toml`'s `process_classes` rule keeps tooling work from displacing it.
+`docs` is in the class list because the fix has to bring `CLAUDE.md` and
+`PL-G1MF`'s brief into agreement with whatever the code ends up doing, whichever
+order wins.
