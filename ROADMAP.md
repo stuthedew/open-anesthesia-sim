@@ -509,8 +509,8 @@ adds no capability and exists to clear the ground they are built on:
 | --- | --- | --- | --- |
 | 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 35 S |
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 4 M, 17 S |
-| — | **v0.3.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Placed here deliberately, ahead of the substance generalization that would otherwise force the vocabulary to be invented and restructured at once. Not yet scoped. | — |
-| 3 | **v0.4.0 — the teachable case** | Scoped below. 11 items, of which 6 are gate-0 debt the milestone clears itself. | 5 M, 6 S |
+| 3 | **v0.4.0 — the teachable case** | Scoped below. 13 items, of which 6 are gate-0 debt the milestone clears itself. | 7 M, 6 S |
+| — | **v0.4.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Not yet scoped. | — |
 | 4 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
@@ -1320,16 +1320,26 @@ Like the four above, this extends what the gate has left to run, by one `M`
 item — the step-2 size in "The timeline" moves from `3 M, 17 S` to `4 M, 17 S`
 to match.
 
-**One presence-qualifying finding deliberately deferred to Gate 1.** PL-WB0X
-(split `simulation_view.py`) describes a module that has been oversized since
-long before the freeze, so the presumption admits it. It is deferred anyway,
-which "The gate is a snapshot" permits provided the reason is stated: it is an
-`M` restructure of the interface layer with no connection to anything on the
-frozen list, and v0.3.0's claim is that it adds no capability and clears only
-inherited debt. Pulling in unrelated pre-existing debt because it is old is
-the refilling-queue problem the gate replaced Phase 0 to solve. Its own brief
-records where it does belong — a `v0.3.x` patch step, staged against the
-interface work that follows.
+**One presence-qualifying finding deliberately deferred to Gate 1, and later
+split.** PL-WB0X (split `simulation_view.py`) describes a module that has been
+oversized since long before the freeze, so the presumption admits it. It was
+deferred anyway, which "The gate is a snapshot" permits provided the reason is
+stated: it is an `M` restructure of the interface layer with no connection to
+anything on the frozen list, and v0.3.0's claim is that it adds no capability
+and clears only inherited debt. Pulling in unrelated pre-existing debt because
+it is old is the refilling-queue problem the gate replaced Phase 0 to solve.
+
+**That deferral stands and is not reopened here: none of this item shipped in
+v0.3.0.** What was settled on 2026-09-02 (project owner) is where the rest of
+it goes. Its brief stated three placements that could not all hold — stage 1
+before PL-DHV7, which ships in v0.4.0; the whole item at Gate 1, which ships
+inside v0.5.0; and "a `v0.3.x` patch step" — which is the contradiction PL-4C41
+was filed against. The resolution is to split the item rather than to pick one
+of the three, because one item cannot sit in two milestones: stages 1 and 2,
+the two pure-module extractions, are named in v0.4.0's Required scope above,
+where they gate that milestone's MAC unit and its chart work; stage 3, the
+`SimulationView` decomposition proper, is now queue item PL-B9PY and stays at
+Gate 1, where only v0.5.0's two-runs-at-once comparison requires it.
 
 *Documentation, performance, and the one decision that is the project
 owner's:*
@@ -1363,17 +1373,33 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   step at 0.1 s. The run loop advances a fixed number of steps per tick and
   never catches up to the wall clock: a slow machine runs slower, it does not
   run differently.
-- **A playback multiplier**, implemented as steps per tick and never as a
-  larger step, with the current rate visible beside the clock at all times.
+- **A playback multiplier** (queue item PL-SN2C), implemented as steps per
+  tick and never as a larger step, with the current rate visible beside the
+  clock at all times.
+- **The interface layer's two pure-module extractions** (queue item PL-WB0X,
+  stages 1 and 2 only): the displayed-precision formatters into a Flet-free
+  module of their own, and the chart-series shaping into a module beside
+  `app/chart_downsampling.py`. Both are behavior-unchanged and held to the
+  existing view tests; PL-WB0X's brief names the modules. Stage 1 lands before
+  the MAC unit below: that item rewrites every formatter and extends
+  `docs/MODEL.md`'s "Displayed precision" derivation, which today terminates in
+  a private static method on a Flet view class, so the one function the
+  specification reasons about cannot be read, cited or tested without loading
+  the whole interface. Stage 2 lands before the chart work, which four items of
+  this milestone touch in the same place. Stage 3, the `SimulationView`
+  decomposition proper, is **not** in scope: it is queue item PL-B9PY and stays
+  at Gate 1, because only v0.5.0's side-by-side comparison of two branches
+  needs it (project owner, 2026-09-02).
 - **MAC multiples as a display unit** across every readout and both chart
   axes, alongside percent, with the agent's `mac_percent` provenance
   traceable from the display (queue item PL-DHV7).
 - **A case-length time base**: minutes rather than seconds, selectable 15,
   30 and 60 minute scales plus a fit-the-run scale (queue item PL-SSBP).
-- **A vertical scale that fits the run** rather than the vaporizer's dial
-  maximum. In MAC mode the axis becomes agent-independent, which is what
+- **A vertical scale that fits the run** (queue item PL-CC23) rather than the
+  vaporizer's dial maximum. In MAC mode the axis becomes agent-independent, which is what
   makes a cross-agent comparison honest.
-- **A recorded control-input timeline**: every fresh gas flow, vaporizer
+- **A recorded control-input timeline** (queue item PL-DR1Z): every fresh gas
+  flow, vaporizer
   dial, alveolar ventilation and cardiac-output change stamped with the
   simulated time it took effect, held with the state it describes, and
   marked on the chart. The recording half of planned-milestone item 8, not
@@ -1384,8 +1410,8 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   meaningless default — when it lands. A tuple form costs nothing today and
   needs no such migration later.
 - **`SimulationHistorySample` keyed by substance, not by six flat named
-  compartment floats.** There is exactly one substance today, so this
-  changes representation, not behavior. It matters because item 12
+  compartment floats** (queue item PL-W3DD). There is exactly one substance
+  today, so this changes representation, not behavior. It matters because item 12
   (forking, promoted below to "Designed for forking") writes its
   element-wise reproducibility proof directly against this record's shape:
   reshaping it *after* that proof exists means reworking an
@@ -1403,7 +1429,8 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   means only while inspired concentration is held constant.
 - **A bounded concentration history** (queue item PL-011), which stops being
   optional once a four-hour run at 10 Hz records 144,000 samples.
-- **A documentation sweep**: `docs/MODEL.md`'s interface boundary, minimum
+- **A documentation sweep** (queue item PL-RCTQ): `docs/MODEL.md`'s interface
+  boundary, minimum
   displayed outputs and displayed-precision sections, and `README.md`.
 
 ### Designed for forking
@@ -1453,6 +1480,9 @@ v0.4.0 is complete only when:
   from the alveolar one;
 - every control change during a run is recorded with the simulated time it
   took effect, and is visible on the chart;
+- the recorded history is keyed by substance rather than by flat named
+  compartment floats, so item 12's reproducibility proof is written against a
+  shape a second substance will not change (queue item PL-W3DD);
 - changing agent cannot discard a run without the user being told what will
   be lost and confirming;
 - the MAC-awake band and the F_A/F_I trace each carry, at the point of
@@ -2033,14 +2063,25 @@ specified.
     this plan, and doing it against code that reads like the textbook is a
     different task from doing it against code that does not.
 
-    *Placement (project owner, 2026-08-26).* After v0.3.0 and before v0.4.0.
-    Deliberately ahead of item 6's substance generalization rather than
-    after: that change restructures every compartment, and settling the
-    vocabulary first makes it a transformation of well-named code instead of
-    a renaming and a restructuring at once. The accepted cost is that some
-    of this is revisited when compartments become per-substance; what
-    survives is the convention, which is the part that is expensive to
-    invent twice.
+    *Placement (project owner, 2026-08-26; revised 2026-09-02).* After
+    v0.4.0 and ahead of item 6's substance generalization. The second half
+    is the original constraint and is unchanged: that change restructures
+    every compartment, and settling the vocabulary first makes it a
+    transformation of well-named code instead of a renaming and a
+    restructuring at once. The accepted cost is that some of this is
+    revisited when compartments become per-substance; what survives is the
+    convention, which is the part that is expensive to invent twice.
+
+    The first half moved, and what it cost is worth recording. Placed
+    between v0.3.0 and v0.4.0, this unscoped pass over `core/` was the gate
+    on the whole teachable-case milestone, and it bought nothing there:
+    v0.4.0 changes no equation, parameter or numerical method, so the
+    fluency it exists to provide is not exercised until items 6 and 7.
+    Nothing between v0.4.0 and v0.7.0 touches `core/` either — v0.5.0 and
+    v0.6.0 are interface releases on an unchanged model — so the step is
+    free anywhere in that span, and it now sits immediately after v0.4.0 as
+    the `v0.4.x` row of "The timeline", which keeps the benefit as early as
+    the constraint allows.
 
     *Not yet scoped, and three questions have to be answered before it is.*
     What "reads like the domain" means concretely, beyond the one-line bar —

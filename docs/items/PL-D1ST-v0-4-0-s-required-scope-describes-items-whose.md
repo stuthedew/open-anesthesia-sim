@@ -3,11 +3,12 @@ id: PL-D1ST
 title: v0.4.0's Required scope describes items whose ids it never prints, so PL-SN2C and the playback multiplier are placed nowhere
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: planning-cadence
 touches: ROADMAP.md
 added: 2026-09-01
+closed: 2026-09-02
 verify: grep -qF 'PL-SN2C' ROADMAP.md
 ---
 
@@ -56,3 +57,22 @@ wrongly.
 Confirmed 2026-09-01, rather than carried from the brief: `PL-SN2C` appears
 zero times in `ROADMAP.md`. The `verify:` command was run before being written
 down and exits 1.
+
+**Closed 2026-09-02.** All four bullets now print their id: `PL-SN2C` (the
+playback multiplier), `PL-CC23` (the vertical scale that fits the run),
+`PL-DR1Z` (the recorded control-input timeline) and `PL-RCTQ` (the
+documentation sweep). Two bullets added in the same change print theirs too —
+`PL-WB0X` with `PL-B9PY` for the interface-layer extractions, and `PL-W3DD` for
+the substance-keyed history record — so every one of v0.4.0's thirteen
+`Required scope` bullets is now placed, checked by parsing the section rather
+than by eye.
+
+Taken alongside the milestone-scope change in the same commit rather than on
+its own, because that change was already rewriting this section and because
+v0.4.0 had just become the step the project is on: four of its thirteen items
+reading as unplanned is a cost every session doing this milestone would have
+paid.
+
+v0.3.0 records no `Required scope`, which the brief flagged to check. That is
+correct rather than a second instance: its whole content is Gate 0's frozen
+list, recorded under v0.4.0, and the timeline row says so.
