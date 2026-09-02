@@ -220,8 +220,17 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 "that would prove it done, or record in `not-delegable` why no command can"
             )
 
+    # A safety class forces the top band, because that is where work able to
+    # reach a wrong clinical value belongs. `blocked` is the one exception: a
+    # blocked item is not in the set `next` chooses from at all, so its band is
+    # a claim about work nobody can start, and forcing one buys nothing at the
+    # price of the failure this rule exists to prevent - an item quietly
+    # re-classed out of `safety` to satisfy the checker, which corrupts the
+    # class for every other reader of it and leaves the correction to someone's
+    # memory. Unblocking re-fires this, which is the point: the band is decided
+    # when the work becomes workable, by the checker rather than by recall.
     safety = tuple(c for c in item.classes if c in config.safety_classes)
-    if safety and item.priority in ("P2", "P3"):
+    if safety and item.status != "blocked" and item.priority in ("P2", "P3"):
         report.errors.append(
             f"{where}: class '{', '.join(safety)}' sits at {item.priority}; "
             "safety-critical work starts at P0 or P1"

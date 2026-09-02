@@ -257,6 +257,25 @@ def test_safety_work_may_not_sit_in_a_low_band() -> None:
     assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
 
 
+def test_blocked_safety_work_may_sit_anywhere() -> None:
+    """A blocked item is not in the set `next` chooses from, so a band is a claim
+    about work nobody can start. Forcing one here is what drives an item to be
+    re-classed out of `safety` to satisfy the checker, which is the failure the
+    rule exists to prevent."""
+    blocked = _item(classes=("safety",), priority="P3", status="blocked", blocked_by=("PL-0001",))
+
+    assert not _has(_errors(blocked), "starts at P0 or P1")
+
+
+def test_unblocking_safety_work_re_fires_the_band_rule() -> None:
+    """The exemption above must not become a way to park safety work at P3
+    forever: the moment the item is workable, the band is owed again, and the
+    checker asks rather than anyone having to remember."""
+    unblocked = _item(classes=("safety",), priority="P3", status="ready", verify="pytest")
+
+    assert _has(_errors(unblocked), "starts at P0 or P1")
+
+
 def test_a_done_item_records_its_date() -> None:
     """The `closed` date is answerable from the store, so it is owed unconditionally.
 
