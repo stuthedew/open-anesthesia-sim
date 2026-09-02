@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-02
 closed: 2026-09-02
+pr: 178
 verify: '! grep -rqE "Workflow work (comes before|outranks) product work" CLAUDE.md .claude/skills/docket/SKILL.md'
 ---
 
