@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: .claude/hooks/docket-digest.sh, subprojects/docket/README.md, tests/unit/test_docket_digest_hook.py
 added: 2026-08-31
 closed: 2026-09-02
+pr: 214
 verify: uv run pytest tests/unit/test_docket_digest_hook.py && grep -q 'def test_a_shallow_checkout_is_deepened_once_at_session_start' tests/unit/test_docket_digest_hook.py
 ---
 **Problem.** `PL-MGNC` stops `branches_in_flight` believing a walk the

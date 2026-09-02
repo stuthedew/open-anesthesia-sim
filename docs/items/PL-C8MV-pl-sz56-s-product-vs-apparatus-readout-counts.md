@@ -1,10 +1,14 @@
 ---
 id: PL-C8MV
 title: PL-SZ56's product-vs-apparatus readout counts tests of apparatus under tests/ as product churn
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
 feature: planning-cadence
-touches: docs/items/
+touches: docs/items/, docs/releases/
 added: 2026-09-02
+verify: python3 tools/doc_check.py check && grep -q 'counts as apparatus' docs/items/PL-SZ56-assess-the-v0-3-0-loop-trial-against-its-pre.md
 ---
 
 **Problem.** `PL-SZ56`'s readout 1 partitions churn by path: `src/` plus
@@ -35,6 +39,12 @@ with its date, its reason, and both scorings, exactly as readout 3's
 amendment of 2026-09-02 was. Stating the adjustment in the close-out
 alongside the as-written number is the cheaper and more honest option, and is
 the recommendation.
+
+
+**On the `verify:` command.** It greps `PL-SZ56` rather than
+`docs/releases/v0.3.0.md`, because that close-out does not exist yet and this brief's first
+disposition names the item outright. If the sentence lands in the
+close-out instead, move the command with it.
 
 **Done when.** Either `PL-SZ56` records which tests count as apparatus and
 why, with both scorings given, or the close-out states the adjustment beside
