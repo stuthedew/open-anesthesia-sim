@@ -25,6 +25,7 @@ from anesthesia_sim.app.chart_downsampling import first_index_at_or_after, selec
 from anesthesia_sim.app.controller import SimulationController, SimulationHistorySample
 from anesthesia_sim.app.theme import (
     ACCENT,
+    ACCENT_TEXT,
     AGENT_COLOR_SCHEMES,
     INK,
     MUTED,
@@ -204,7 +205,7 @@ class SimulationView:
         self._fat_concentration_text = self._build_metric_value(empty_compartment)
 
         self._agent_accounting_status_text = ft.Text(
-            "Valid", color=ACCENT, size=20, weight=ft.FontWeight.BOLD
+            "Valid", color=ACCENT_TEXT, size=20, weight=ft.FontWeight.BOLD
         )
         self._agent_accounting_detail_text = ft.Text("No unaccounted agent detected.", color=MUTED)
         self._agent_amounts_text = ft.Text(
@@ -678,7 +679,7 @@ class SimulationView:
             self._status_text.color = WARNING
         elif snapshot.is_running:
             self._status_text.value = "Running"
-            self._status_text.color = ACCENT
+            self._status_text.color = ACCENT_TEXT
         else:
             self._status_text.value = "Paused"
             self._status_text.color = MUTED
@@ -727,7 +728,7 @@ class SimulationView:
 
         if snapshot.agent_accounting_passes_validation:
             self._agent_accounting_status_text.value = "Valid"
-            self._agent_accounting_status_text.color = ACCENT
+            self._agent_accounting_status_text.color = ACCENT_TEXT
             self._agent_accounting_detail_text.value = (
                 "The simulation still accounts for all delivered agent."
             )

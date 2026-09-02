@@ -32,7 +32,7 @@ from anesthesia_sim.app.simulation_view import (
     SIMULATION_STEP_S,
     SimulationView,
 )
-from anesthesia_sim.app.theme import ACCENT, AGENT_COLOR_SCHEMES, MUTED, WARNING
+from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, MUTED, WARNING
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import SimulationNumericalError
@@ -348,7 +348,7 @@ def test_refresh_view_reflects_running_state(
     view, _ = _build_view(_snapshot(is_running=is_running))
 
     assert view._status_text.value == expected_status
-    assert view._status_text.color == (ACCENT if is_running else MUTED)
+    assert view._status_text.color == (ACCENT_TEXT if is_running else MUTED)
     assert view._start_button.disabled is expected_start_disabled
     assert view._pause_button.disabled is expected_pause_disabled
 
@@ -380,7 +380,7 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
     view, _ = _build_view(_snapshot(passes_validation=True))
 
     assert view._agent_accounting_status_text.value == "Valid"
-    assert view._agent_accounting_status_text.color == ACCENT
+    assert view._agent_accounting_status_text.color == ACCENT_TEXT
     assert "still accounts for all delivered agent" in (view._agent_accounting_detail_text.value)
     assert view._agent_amounts_text.value == (
         "Delivered: 0.012345 L\n"

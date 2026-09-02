@@ -6,7 +6,20 @@ from typing import Final
 BACKGROUND = "#F4F7FA"
 PANEL = "#FFFFFF"
 PRIMARY = "#176B87"
+# ACCENT is a *graphical* color: the alveolar chart trace and the sliders'
+# active track. It is not legible as text - 2.93:1 on the panel - so text that
+# wants to look like the accent uses ACCENT_TEXT below. One constant serving
+# both roles is what PL-30P6 found: the two roles carry different WCAG minima
+# (4.5:1 for text under SC 1.4.3, 3:1 for graphical objects under SC 1.4.11)
+# and no single value can be chosen against both without one of them losing.
 ACCENT = "#18A999"
+# The accent, dark enough to be read as text: 5.00:1 on PANEL and 4.65:1 on
+# BACKGROUND. A uniform darkening of ACCENT, so hue and saturation are
+# unchanged (173 deg, 0.86) and the two still read as the same color family.
+# Used for the affirmative status words - "Running" and "Valid" - whose
+# counterpart is WARNING. Never use ACCENT for text, and never use this for a
+# chart trace: the split is the point.
+ACCENT_TEXT = "#127D71"
 INK = "#243B53"
 # Darkened from #627D98 (PL-X0RG), which reached only 4.28:1 on the panel and
 # 3.98:1 on the page background - below WCAG 2.2 SC 1.4.3's 4.5:1 for text, and
