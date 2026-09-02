@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: .claude/rules/ui-color.md
 added: 2026-09-02
 closed: 2026-09-02
+pr: 183
 verify: python3 tools/doc_check.py check && grep -qF 'Picking a color in this interface' .claude/rules/ui-color.md
 ---
 

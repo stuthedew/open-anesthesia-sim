@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-02
+pr: 183
 verify: python3 tools/doc_check.py check && grep -qF 'The target is WCAG 2.2 Level AA' docs/MODEL.md
 ---
 
