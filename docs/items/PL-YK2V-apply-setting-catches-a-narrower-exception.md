@@ -43,3 +43,17 @@ rather than requiring every future raise to be enumerated. Not agreed.
 **Done when.** The decision is recorded, and if the catch widens, a test
 makes a setting call raise a non-project exception and asserts the interface
 reaches a halted state rather than an inconsistent one.
+
+**Measured 2026-09-02.** Confirmed as written, through the real
+`_apply_setting` on a view built from `tests/unit/test_simulation_view.py`'s
+own doubles. A `SimulationConfigurationError` is handled and leaves
+`_rejected_setting_notice` set to `'Setting refused - a value the core
+refused'`. A `TypeError` raised from the same call site **escapes**
+`_apply_setting` and propagates to the caller - which in the running
+application is Flet's event dispatch - so the `_refresh_and_render()` on the
+last line never runs and the interface is not put back in step with the
+controller.
+
+The contrast is the point: `_halt_run(TypeError(...))`, which is where the
+two timer loops send exactly this exception, stops the run and puts the
+failure on screen. Same error, same process, two policies.

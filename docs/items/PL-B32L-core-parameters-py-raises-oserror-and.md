@@ -44,3 +44,11 @@ agreed - recorded from an audit.
 **Done when.** The decision is recorded, and if the code changes, a test
 points the loader at an unreadable and at a malformed resource and asserts
 the raised type.
+
+**Measured 2026-09-02.** Confirmed as written. With
+`core/parameters.py`'s `files` pointed at a directory holding no
+`sevoflurane.json`, `load_agent_parameters("sevoflurane")` raises
+`builtins.FileNotFoundError`; with the file present but holding `{ not json`
+it raises `json.decoder.JSONDecodeError`. Neither is an
+`AnesthesiaSimulationError` - asserted directly, `isinstance(...)` is
+`False`. The module's stated boundary is false for both.

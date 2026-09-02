@@ -38,3 +38,22 @@ under commentary.
 
 **Done when.** The decision is recorded, and if a note is added it lives in
 one place rather than at each site.
+
+**Measured 2026-09-02: the guards are safe, as claimed.** A vessel-rich
+tissue group was stepped at a range of blood flows approaching zero from
+above, holding everything else fixed:
+
+| `blood_flow_l_min` | resulting `agent_amount_l` | matches the `== 0.0` branch |
+| --- | --- | --- |
+| `0.0` | `0.066` | - |
+| `5e-324` (smallest denormal) | `0.066` | yes |
+| `1e-300` | `0.066` | yes |
+| `1e-30` | `0.066` | yes |
+| `1e-12` | `0.06600000000000002` | differs by `1.4e-17` |
+
+The last row is the correct continuous behaviour rather than a discrepancy:
+a real flow moves a real, tiny amount of agent. At the denormal end
+`time_constant_s` overflows to `inf`, `exp(-0.1/inf)` is exactly `1.0`, and
+the state is unchanged - which is what the branch returns. So the branch
+agrees with the limit at every magnitude tested, and this item remains what
+it was captured as: a documentation question, not a defect.

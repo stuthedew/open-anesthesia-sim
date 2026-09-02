@@ -18,13 +18,27 @@ inline: `AgentUptakeSystem.for_agent()` divides `mac_percent` and
 `delivered_concentration_fraction` as adjacent fields, and the delivered
 slider reads its `max` from one and its `value` from the other.
 
-**Why it matters.** The runtime guards catch the gross error - a percent
-above 1 handed to `require_concentration_fraction` is refused - but not the
-middle, where `0.5` is a valid fraction (50%) and a valid percent (0.5%) and
+**Why it matters.** The runtime guards catch the gross error but not the
+middle, where one number is a plausible reading under either convention and
 passes every guard in the codebase. `CLAUDE.md`'s safety-critical standard
 asks for "unit-aware types or equivalent safeguards where practical" and for
 avoiding implicit unit conversions; this is the one place the standard's own
 words are not met.
+
+**Measured 2026-09-02, and the audit's example was wrong.** The capture said
+`0.5` was "a valid fraction (50%) and a valid percent (0.5%)" passing every
+guard. Run against a sevoflurane system, `set_delivered_concentration(0.5)`
+is **refused** - the vaporizer maximum is 8%, so the fraction `0.08` caps it
+and a percent mistaken for a fraction is caught above that. The confusable
+band is therefore bounded above by the agent's own dial maximum, not open.
+
+It is not empty, which is the part that survives. Both
+`set_delivered_concentration(0.05)` and `set_delivered_concentration(0.0005)`
+are accepted, and they are 5% and 0.05% - two orders of magnitude apart,
+clinically a full dial setting against a rounding error, and nothing in the
+type system, the guards or the identifier names distinguishes the intent. So
+the finding holds at a narrower width than it was first written up as: the
+gap is `0` to the vaporizer maximum rather than `0` to `1`.
 
 No defect is known to follow from it today. This is a preventive change, and
 that is why it is a decision rather than a fix.

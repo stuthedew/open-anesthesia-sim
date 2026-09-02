@@ -40,3 +40,21 @@ any currently reachable path. Not agreed.
 **Done when.** The decision is recorded, and if the structure changes, a
 test raises a `BaseException` subclass from a stubbed sub-exchange and
 asserts the system is bit-identical to its pre-step capture.
+
+**Measured 2026-09-02, and it is concrete rather than theoretical.** A
+sevoflurane system was stepped 100 times, its state captured, and
+`PatientCompartments.advance` patched to raise a `BaseException` subclass -
+the position `KeyboardInterrupt` would arrive at, after
+`advance_fresh_gas()` and the circuit/alveolar exchange have already
+written.
+
+The circuit was left written and **not** rolled back:
+`circuit_concentration_fraction` was `0.0020003856996684967` before the step
+and `0.0020183972008138854` after it. That is a partly applied step
+surviving in the live system, which is exactly what `advance()`'s docstring
+says cannot happen. The validator compared equal only because nothing had
+written it yet.
+
+The same probe with an ordinary `RuntimeError` in the same position rolls
+back completely, so the transactional path works and the gap is precisely
+the non-`Exception` unwind.
