@@ -1,7 +1,7 @@
 ---
 id: PL-DR1Z
 title: Record the control-input timeline and mark it on the chart
-priority: P2
+priority: P1
 effort: M
 status: ready
 classes: feature, ux
@@ -50,3 +50,12 @@ of every past run carries retired names.
 
 Nothing is invalidated: the recording design, the tuple form and the
 nitrous-oxide argument behind it are all independent of v0.4.1.
+
+**Raised to `P1` (2026-09-03, `PL-9K7K`).** Not a reassessment of this item on
+its own: `PL-ZRSP` (plot the F_A/F_I ratio) is `P1`, science-classed, and now
+`blocked-by` this item, because its trace is the textbook wash-in curve only
+while inspired concentration is held constant and this timeline is what makes a
+mid-run dial change visible. A `P1` waiting on a `P2` is what `docket check`
+refuses, and correctly: whatever gates safety-classed work is that work's
+schedule. The band follows the dependency rather than a fresh judgment about
+this item's own value.

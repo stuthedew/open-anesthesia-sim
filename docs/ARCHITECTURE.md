@@ -299,10 +299,21 @@ the three statements of the current version to each other: one row per
 released version, exactly one marked the current baseline, a "Current
 baseline:" heading naming that same version, and that version matching
 `pyproject.toml`. A release bumps the version file and leaves the plan naming
-its predecessor, which happened on two consecutive releases. Tags are
-deliberately not compared — a shallow clone is a normal checkout, and a check
-that fails on how somebody fetched the repository gets switched off. `docket
-release` enforces the tag instead, when tags are certainly to hand.
+its predecessor, which happened on two consecutive releases.
+
+Tags *are* compared, in three directions: a completed release git holds no tag
+for is an error, a release tag no version-table row names is an error, and the
+roadmap's own count of deliberately untagged versions is held to git. What the
+check will not do is speak when it cannot tell a missing tag from an unfetched
+one — a check that fails on how somebody fetched the repository gets switched
+off. So it says nothing when the checkout holds no tags at all, withholds the
+findings a truncated clone could have invented, and says nothing about the
+release being cut right now, whose tag goes on a merge commit that does not
+exist yet (`PL-J295`, `PL-R7C0`). That last silence is safe because the version
+stops being the baseline as soon as a newer one lands, and is an error from
+then on — which is when an untagged release first costs anything. `docket
+release` is the other half, refusing to cut a release while the previous one is
+untagged, at the moment tags are certainly to hand.
 
 Everything here runs under whatever bare `python3` is on PATH: `make check`
 invokes `python3 tools/doc_check.py check` directly, CI does the same, and

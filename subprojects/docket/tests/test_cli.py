@@ -607,7 +607,7 @@ def test_triage_states_the_rules_the_answers_must_satisfy(
     output = capsys.readouterr().out
 
     assert "force P0 or P1" in output
-    assert "the top band is P1, holding 1 of the 5" in output
+    assert "the top band is P1, holding 1 startable of the 5" in output
     assert "src/core" in output
     assert "`verify:` command" in output
 

@@ -3,7 +3,8 @@ id: PL-ZRSP
 title: Plot the F_A/F_I ratio the uptake literature plots
 priority: P1
 effort: S
-status: ready
+status: blocked
+blocked-by: PL-DR1Z
 classes: science, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
@@ -70,3 +71,17 @@ and the curve's didactic role on p. 167.
 `inspired_partial_pressure_fraction`, so any label, docstring or axis title
 written here that calls it "circuit" is reworded one release later. Prefer the
 domain's name now; the code will catch up.
+
+**Blocked on `PL-DR1Z` (2026-09-03).** Sequencing only, and it is this item's own
+**Safety notes.** promoted from prose into the front matter: F_A/F_I is the
+textbook wash-in curve only while inspired concentration is held constant, and
+the control-input timeline is what makes a mid-run dial change visible. Until
+that lands, a learner reading a rise as uptake when it is a dial change has
+nothing on screen to correct them, which is the specific misreading this item
+exists to avoid creating.
+
+Nothing here is wrong today, and the band stands on this item's own classes
+rather than on the blocker's. `PL-9K7K` records why the state changed: `docket
+next` ranked this first among the v0.4.0 items on `P1`/`S` alone, which the
+ranking cannot reconcile with a sentence in a brief - so every session asking
+what to do next was pointed at the one item its own brief defers.
