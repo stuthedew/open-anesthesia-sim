@@ -1220,11 +1220,28 @@ def check_tags(root: Path, report: Report) -> None:
     withhold *and* truncation could account for it. A tag being **present** is
     never in doubt, so those inferences are untouched.
 
-    And the release being cut right now is
-    an advisory rather than an error: its tag goes on the merge commit, so
-    there is a window in which the newest version is completed and untagged,
-    and failing it would turn `make check` red on every release branch - which
-    is the failure `make release` was just repaired to stop causing.
+    The release being cut right now is the third, and it is now silent. It was
+    never an error - its tag goes on the merge commit, so there is a window in
+    which the newest version is completed and untagged, and failing it would
+    turn `make check` red on every release branch, the failure `make release`
+    was repaired to stop causing. It was an advisory, and that advisory was
+    retired (`PL-R7C0`) because it could not tell a release that was never
+    tagged from one tagged since this checkout last fetched.
+
+    Neither silence above covers that case. The empty-tag-set return catches a
+    checkout holding *no* tags; `is_shallow` catches truncation. A full clone
+    that fetched tags before the newest release was cut is neither, and it is
+    the ordinary state of any checkout more than one release old - so the
+    advisory fired on a correctly tagged repository and printed a `git tag`
+    command for a tag that already existed. Distinguishing the two needs the
+    network, which these tools do not have by contract.
+
+    Retiring it loses nothing permanent: the moment that version stops being
+    the baseline it falls through to `absent` and is reported as an **error**,
+    which is exactly when an untagged release starts to matter - `git describe
+    --contains` only fails once history has moved past the gap. The reminder
+    to tag also still arrives where it can be answered, from `docket release`,
+    which refuses to cut the next release while the previous one is untagged.
     """
     roadmap = root / ROADMAP
     if not roadmap.is_file():
@@ -1267,12 +1284,10 @@ def check_tags(root: Path, report: Report) -> None:
         if version in untagged or _is_tagged(version, existing):
             continue
         if version == baseline:
-            report.advisories.append(
-                f"{ROADMAP}:{row.line}: v{version} is the current baseline and carries no "
-                f"tag yet; tag the merge once it lands:\n"
-                f'    git tag -a v{version} <merge commit> -m "v{version}"\n'
-                f"    git push origin v{version}"
-            )
+            # Silent, not merely non-fatal: see the docstring. The skip stays -
+            # without it the release being cut is an error - but nothing is said,
+            # because a local checkout cannot tell "never tagged" from "tagged
+            # since you last fetched" (`PL-R7C0`).
             continue
         absent.append(
             f"{ROADMAP}:{row.line}: v{version} is marked completed but git holds no tag "

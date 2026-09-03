@@ -1,7 +1,12 @@
 ---
 id: PL-38PN
 title: Stale source line citations in PL-VM40 and PL-L2F2 point at lines the files no longer have
-status: untriaged
+status: ready
+priority: P3
+effort: S
+classes: docs
+touches: docs/items/PL-VM40-derive-simulated-time-from-a-step-count-and.md, docs/items/PL-L2F2-the-fixed-volume-alveolus-blocks-nitrous-oxide.md
+verify: python3 tools/doc_check.py check && ! grep -q 'line 943' docs/items/PL-VM40-derive-simulated-time-from-a-step-count-and.md
 added: 2026-09-03
 ---
 

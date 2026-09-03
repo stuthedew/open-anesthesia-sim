@@ -821,28 +821,36 @@ def test_a_roadmap_whose_tags_match_the_repository_is_quiet(tmp_path: Path) -> N
 
 
 def test_a_completed_release_with_no_tag_is_an_error(tmp_path: Path) -> None:
-    """PL-J3ZK's failure: a release whose span nothing can map back to a version."""
+    """PL-J3ZK's failure: a release whose span nothing can map back to a version.
+
+    This is also what makes the baseline's silence below safe rather than a
+    hole: the newest release is skipped, not forgiven. Once a newer one lands
+    it becomes an ordinary completed row with no tag and is reported here -
+    which is the moment the gap starts to matter, since `git describe
+    --contains` only fails after history has moved past it.
+    """
     errors = _errors(_tagged(tmp_path, "v0.2.5"))
 
     assert any("v0.2.4 is marked completed but git holds no tag" in message for message in errors)
 
 
-def test_the_release_being_cut_is_an_advisory_not_an_error(tmp_path: Path) -> None:
-    """The tag lands on the merge commit, so the newest version has none yet.
+def test_the_release_being_cut_is_silent(tmp_path: Path) -> None:
+    """Not an error, and no longer an advisory either.
 
-    Failing this would turn `make check` red on every release branch, which is
-    the failure PL-8HJ2 removed.
+    Not an error because the tag lands on the merge commit, so the newest
+    version has none yet, and failing it would turn `make check` red on every
+    release branch - the failure PL-8HJ2 removed.
+
+    Not an advisory because it could not tell a release that was never tagged
+    from one tagged since this checkout last fetched, and it fired on a
+    correctly tagged repository (PL-R7C0). A checkout holding tags for the
+    older releases but not the newest is neither an empty tag set nor a
+    shallow clone, so neither existing silence covered it.
     """
     root = _tagged(tmp_path, "v0.2.4")
 
     assert _errors(root) == []
-    assert any("v0.2.5 is the current baseline and carries no tag" in a for a in _advisories(root))
-
-
-def test_the_advisory_pastes_the_tag_commands_rather_than_asking_for_a_tag(tmp_path: Path) -> None:
-    advisories = _advisories(_tagged(tmp_path, "v0.2.4"))
-
-    assert any('git tag -a v0.2.5 <merge commit> -m "v0.2.5"' in a for a in advisories)
+    assert _advisories(root) == []
 
 
 def test_a_tag_the_version_table_does_not_name_is_an_error(tmp_path: Path) -> None:
