@@ -33,12 +33,18 @@ is whatever the tissues took, applied afterwards by `apply_blood_uptake`.
 asks for, in the wrong place.** `tests/reference/test_coupled_dynamics.py:562`,
 inside `_build_derivative`:
 
-```python
-d_alveolar = (
-    ventilation_l_s * (circuit - alveolar)
-    - cardiac_output_l_s * blood_gas * (alveolar - venous)
-) / alveolar_volume_l
+```text
+        d_alveolar = (
+            ventilation_l_s * (circuit - alveolar)
+            - cardiac_output_l_s * blood_gas * (alveolar - venous)
+        ) / alveolar_volume_l
 ```
+
+Quoted verbatim, with its own indentation, from
+`tests/reference/test_coupled_dynamics.py`. The fence is `text` rather than
+`python` deliberately: `ruff format` rewrites a `python` block, and de-indented
+to column zero it rewraps this onto one line, which would stop it being a
+faithful quotation of the source.
 
 A reader who knows the subject recognizes that on sight. `core/` has nothing
 resembling it.
