@@ -1,15 +1,15 @@
 ---
 id: PL-B875
 title: docs/MODEL.md still says the operator split is kept and that no planned work wants an exact step, which the 2026-09-03 re-scope reversed
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-03
 closed: 2026-09-03
-pr:
+pr: 268
 verify: python3 tools/doc_check.py check && grep -qF 'This decision was superseded on 2026-09-03' docs/MODEL.md
 ---
 
