@@ -151,18 +151,33 @@ def test_no_tool_imports_outside_the_standard_library() -> None:
             )
 
 
-def _ci_floor_pin() -> str:
-    """The Python version `.github/workflows/quality.yml` installs for its `floor` job.
+# A concrete `major.minor` pin. `3.x` and friends are deliberately not matched:
+# `drift.yml` pins `'3.x'` to run on the *newest* interpreter, which is the whole
+# point of that job, and holding it to the floor would invert it.
+CONCRETE_PIN_RE = r"""^\s*python-version:\s*['"]?([0-9]+\.[0-9]+)['"]?\s*$"""
+
+
+def _concrete_pins(workflow: Path) -> list[str]:
+    """Every concrete `python-version:` pin in one workflow file.
 
     Read with a regular expression rather than a YAML parser, for the reason
     `tools/doc_check.py` gives for the same choice: nothing in the standard
     library reads YAML, and one key's value is not worth a dependency. The
-    pattern is anchored to a whole line so that the `checks` job's comment
-    about deliberately *not* setting this input cannot match.
+    pattern is anchored to a whole line so that a job's comment about
+    deliberately *not* setting this input cannot match.
     """
-    pattern = r"""^\s*python-version:\s*['"]?([0-9]+\.[0-9]+)['"]?\s*$"""
-    text = (REPO_ROOT / ".github" / "workflows" / "quality.yml").read_text(encoding="utf-8")
-    pins = re.findall(pattern, text, re.MULTILINE)
+    return re.findall(CONCRETE_PIN_RE, workflow.read_text(encoding="utf-8"), re.MULTILINE)
+
+
+def _workflows() -> list[Path]:
+    found = sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml"))
+    assert found, "no workflows found; the glob is wrong"
+    return found
+
+
+def _ci_floor_pin() -> str:
+    """The Python version `.github/workflows/quality.yml` installs for its `floor` job."""
+    pins = _concrete_pins(REPO_ROOT / ".github" / "workflows" / "quality.yml")
     assert len(pins) == 1, f"expected exactly one python-version pin in the workflow, found {pins}"
     return pins[0]
 
@@ -184,3 +199,33 @@ def test_the_ci_floor_job_pins_the_declared_floor() -> None:
     major, minor = _bare_python_floor()
 
     assert _ci_floor_pin() == f"{major}.{minor}"
+
+
+def test_every_concrete_workflow_pin_is_the_declared_floor() -> None:
+    """One pin held to the floor is not enough once there is more than one workflow.
+
+    `PL-79N5` is why this exists. `PL-3V8K` split the pull-request title check
+    into its own workflow and dropped `uv` with it, correctly, since the script
+    is standard library only - but that left it running on whatever interpreter
+    the runner image shipped, under neither `.python-version` nor the floor.
+    Pinning it fixes that and introduces a *second* constant that can drift from
+    `subprojects/docket/pyproject.toml`, which is the defect one layer out.
+
+    The predecessor of this test read `quality.yml` alone, so a pin anywhere
+    else was unheld by construction. This reads every workflow, which also means
+    a workflow added later is covered without anyone remembering to come here.
+
+    Only concrete `major.minor` pins are held. `drift.yml` pins `3.x` to run on
+    the newest interpreter available, which is that job's entire purpose.
+    """
+    floor = "{}.{}".format(*_bare_python_floor())
+
+    offenders = {
+        workflow.name: pins
+        for workflow in _workflows()
+        if (pins := [pin for pin in _concrete_pins(workflow) if pin != floor])
+    }
+
+    assert not offenders, (
+        f"every concrete python-version pin must be the declared floor {floor}; found {offenders}"
+    )

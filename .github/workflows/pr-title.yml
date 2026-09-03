@@ -43,6 +43,20 @@ jobs:
       # standard Actions script-injection hole. `PR_BASE` names the merge
       # target, which the script compares against `HEAD` to find what this
       # branch actually closes.
+      # `PL-79N5`. Dropping `uv` was right - this script is standard library
+      # only - but it left the script under no pinned interpreter at all:
+      # not `.python-version`, which `uv run python` used to give it inside
+      # `checks`, and not the declared floor, because `quality.yml`'s `floor`
+      # job runs `doc_check.py`, `bin/docket check` and `contrast_check.py`
+      # and never this one. It ran on whatever `ubuntu-latest` happened to
+      # ship. The floor is not chosen here: it is what
+      # `subprojects/docket/pyproject.toml` declares in `requires-python`, and
+      # `tests/unit/test_tools_portability.py` holds every concrete pin in
+      # `.github/workflows/` to it, so this one cannot drift from that one.
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
       - name: pull request title names the items it closes
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
