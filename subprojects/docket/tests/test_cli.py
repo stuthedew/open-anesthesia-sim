@@ -1491,3 +1491,139 @@ def test_record_declines_where_the_parent_is_out_of_reach(
 
     assert "declined" in capsys.readouterr().out
     assert _pr_field(root) == ""
+
+
+def _owed_clone(tmp_path: Path, *, subject: str = "PL-K7QX: close it (#148)") -> Path:
+    """A checkout whose `origin/main` holds a closure recording no `pr`.
+
+    The state every merge leaves behind, built with real git and a real remote
+    because `closures_on_base` resolves the default base through one. `subject`
+    is what the squash merge wrote, which is where the number comes from.
+    """
+    origin = tmp_path / "origin"
+    items = origin / "items"
+    items.mkdir(parents=True)
+    name = "PL-K7QX-a-closed-item.md"
+
+    def git(*args: str, cwd: Path = origin) -> None:
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(origin)],
+        check=True,
+        capture_output=True,
+    )
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", key, value)
+    (items / name).write_text(
+        RECORD_ITEM.format(id="PL-K7QX", status="ready", extra=""), encoding="utf-8"
+    )
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: capture it")
+    (items / name).write_text(
+        RECORD_ITEM.format(id="PL-K7QX", status="done", extra=""), encoding="utf-8"
+    )
+    git("add", "-A")
+    git("commit", "-qm", subject)
+
+    work = tmp_path / "work"
+    subprocess.run(["git", "clone", "-q", str(origin), str(work)], check=True, capture_output=True)
+    return work
+
+
+def _work_pr(work: Path) -> str:
+    text = (work / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
+    return next((line for line in text.splitlines() if line.startswith("pr:")), "")
+
+
+def test_bare_record_writes_every_number_the_base_is_owed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The normal form, and what `make fix` runs.
+
+    It asks the question `check` asks and writes the answer, so the field costs
+    no commit of its own - it rides whatever the session was about to commit.
+    """
+    work = _owed_clone(tmp_path)
+
+    assert main(["record", "--items", str(work / "items")]) == 0
+
+    assert _work_pr(work) == "pr: 148"
+    assert "PL-K7QX: recorded `pr: 148`" in capsys.readouterr().out
+
+
+def test_bare_record_says_so_when_nothing_is_owed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Safe to run unattended, which is what putting it in `make fix` requires."""
+    work = _owed_clone(tmp_path)
+    main(["record", "--items", str(work / "items")])
+    capsys.readouterr()
+
+    assert main(["record", "--items", str(work / "items")]) == 0
+
+    assert "every closure already records its pull request" in capsys.readouterr().out
+
+
+def test_bare_record_writes_nothing_where_the_base_names_no_number(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A UI-generated title names no id and no number (`PL-2XTF`).
+
+    Guessing here would be worse than the gap: `check` is the command that
+    decides whether an unnameable closure is provenance lost, a decline, or a
+    truncated checkout, and this must not pre-empt it.
+    """
+    work = _owed_clone(tmp_path, subject="Add some safety checks")
+
+    assert main(["record", "--items", str(work / "items")]) == 0
+
+    assert _work_pr(work) == ""
+    out = capsys.readouterr().out
+    assert "1 landed closure(s) record no `pr`" in out
+    assert "names a number for none of them" in out
+
+
+def test_bare_record_does_not_call_an_unlanded_closure_unnameable(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The ordinary state mid-item, and it must not read as lost provenance.
+
+    A closure written in the working tree and not yet merged owes no number at
+    all. Counting it among the ones the base cannot name says the way back is
+    gone, which is the confident wrong answer this package refuses - and it is
+    what `make fix` printed the first time it ran this.
+    """
+    work = _owed_clone(tmp_path)
+    main(["record", "--items", str(work / "items")])
+    name = "PL-B1C2-a-closed-item.md"
+    (work / "items" / name).write_text(
+        RECORD_ITEM.format(id="PL-B1C2", status="done", extra=""), encoding="utf-8"
+    )
+    capsys.readouterr()
+
+    assert main(["record", "--items", str(work / "items")]) == 0
+
+    out = capsys.readouterr().out
+    assert "none has reached `origin/main` yet, so no number is owed" in out
+    assert "names a number for none of them" not in out
+
+
+def test_bare_record_dry_run_writes_nothing(tmp_path: Path) -> None:
+    work = _owed_clone(tmp_path)
+
+    assert main(["record", "--dry-run", "--items", str(work / "items")]) == 0
+
+    assert _work_pr(work) == ""
+
+
+def test_record_refuses_a_merge_without_the_number_it_is(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`--merge` names one commit; the bare form reads the base and takes none."""
+    work = _owed_clone(tmp_path)
+
+    assert main(["record", "--merge", "HEAD", "--items", str(work / "items")]) == 2
+
+    assert "needs the number that merge is" in capsys.readouterr().out
+    assert _work_pr(work) == ""

@@ -634,22 +634,23 @@ reconstruct three commands at the moment they are trying to do something else.
    branch — `main` had the fix while the queue still called the item open and
    a debt gate still counted it (`PL-D2GW`, then `PL-P5S0`).
 
-   **When `docket check` raises the missing-`pr` advisory, discharge it with
-   `bin/docket record <number> --merge <merge commit>` — never by editing the
-   file.** The command reads what the merge actually closed and refuses to
-   overwrite a different number; typing the line by hand is how the wrong one
-   gets recorded, and how two sessions opened `#229` and `#230` for one
-   identical insertion (`PL-QTSB`). **Run the in-flight guard first**
-   (`git fetch origin` then `bin/docket show <id>`): another branch is often
-   already holding it. Let the write ride a commit you are already making
-   rather than composing one for it.
+   **`bin/docket record` writes it, and `make fix` runs that.** Bare, with no
+   number: it writes every `pr` the base is owed and can supply, which is the
+   same reading `docket check` prints the advisory from. **Never edit the field
+   by hand** — the command refuses to overwrite a different number, and typing
+   the line is how the wrong one gets recorded and how two sessions opened
+   `#229` and `#230` for one identical insertion (`PL-QTSB`). Let the write
+   ride a commit you are already making; do not compose one for it, and do not
+   open a pull request for it alone. Where a number exists that the base cannot
+   name — a squash subject that led with no id — `bin/docket record <number>
+   --merge <merge commit>` is the explicit form.
 
-   **`.github/workflows/record-pr.yml` is parked and writes nothing**
-   (`PL-N5WZ`). It was meant to do this at merge time and cannot: `main`'s
-   required status checks reject a push made with `GITHUB_TOKEN`, because such
-   a push starts no workflow and the checks can never report on it. Do not
-   wait for it, and do not re-enable it — where the write is triggered instead
-   is an open decision.
+   No in-flight guard is owed before running it, unlike every other path that
+   edits an item someone else may hold. `PL-QTSB`'s harm was two *pull
+   requests* for one insertion (`#229`, `#230`), and there is no pull request
+   here: two sessions that both run it write the same tool-dictated line and
+   git merges them. Asking each to fetch and check first would be friction
+   that changes no outcome.
 
    The advisory is still an *error* where no commit on the base names a number
    at all **and** the checkout says it is complete, which is provenance
