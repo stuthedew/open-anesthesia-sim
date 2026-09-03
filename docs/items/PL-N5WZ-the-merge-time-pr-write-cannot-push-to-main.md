@@ -9,6 +9,7 @@ feature: delegation
 touches: .github/workflows/record-pr.yml, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests, Makefile, .claude/skills/docket/SKILL.md, subprojects/docket/README.md
 added: 2026-09-03
 closed: 2026-09-03
+pr: 265
 verify: uv run pytest subprojects/docket/tests/test_cli.py subprojects/docket/tests/test_checks.py && grep -q 'def _record_owed' subprojects/docket/src/docket/cli.py
 ---
 
