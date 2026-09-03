@@ -213,7 +213,20 @@ class AgentUptakeSystem:
         sub-exchanges in sequence, and a guard can reject the fifth after
         the first four have already written their compartments; so this
         method captures every dynamic value first and restores it on any
-        failure, leaving the system bit-identical to what it was on entry.
+        exit that is not a completed step, leaving the system bit-identical
+        to what it was on entry.
+
+        The rollback is on the unwind path rather than in an `except`
+        clause, so "any exit" means any: a `BaseException` — the reachable
+        one being `KeyboardInterrupt`, since `_advance_step()` contains no
+        `await` for a cancellation to arrive at — unwinds through it like
+        anything else. Enumerating exception types instead left exactly
+        that hole, measured before this changed: raising a `BaseException`
+        after the circuit had been written left
+        `circuit_concentration_fraction` at 0.0020183972008138854 against
+        0.0020003856996684967 before the step, which is the partly applied
+        step this method exists to prevent, surviving in the live system
+        (PL-BNPY).
 
         That matters because a partly applied step is not a solution of
         anything. Its numbers are an artifact of the order the operators
@@ -248,9 +261,13 @@ class AgentUptakeSystem:
         require_supported_simulation_step(simulation_step_s)
 
         state_before_step = self.capture_state()
+        step_completed = False
 
         try:
-            return self._advance_step(simulation_step_s)
+            result = self._advance_step(simulation_step_s)
+            step_completed = True
+
+            return result
         except SimulationConfigurationError as error:
             # A guard reached here means the step produced a state the
             # model cannot represent, not that the caller passed a bad
@@ -259,25 +276,29 @@ class AgentUptakeSystem:
             # setting was refused, nothing changed" apart from "the run is
             # no longer trustworthy". The original guard is kept as the
             # cause so the failing invariant stays traceable.
-            self.restore_state(state_before_step)
-
+            #
+            # This is the only exception type restated. Everything else -
+            # `AgentSimulationValidationError` from the accounting check, a
+            # `TypeError` from some future refactor - propagates unchanged,
+            # because neither is a guard rejecting a value, and rewriting an
+            # accounting failure as a plain `SimulationNumericalError` would
+            # erase the more specific type a caller may key on. They need
+            # the same rollback all the same, which is what `finally` gives
+            # them without a clause each.
             raise SimulationNumericalError(
                 f"the simulation step of {simulation_step_s} s could not be completed "
                 "and was rolled back, leaving the state the last completed step "
                 f"produced: {error}"
             ) from error
-        except Exception:
-            # Deliberately wider than the clause above, and deliberately
-            # re-raising unchanged. `AgentSimulationValidationError` from
-            # the accounting check, and a `TypeError` from some future
-            # refactor, each leave the same partly applied step behind and
-            # so need the same rollback; but neither is a guard rejecting a
-            # value, so neither is restated. Rewriting an accounting
-            # failure as a plain `SimulationNumericalError` would also
-            # erase the more specific type a caller may key on.
-            self.restore_state(state_before_step)
-
-            raise
+        finally:
+            # The flag rather than the exception is what decides this. A
+            # rollback keyed on catching something can only undo what it
+            # thought to catch, and the failure this closes was the one
+            # nobody enumerates: `BaseException`. Keyed on "did the step
+            # finish", the answer is right for every way out of the block,
+            # including the ones that have not been invented yet.
+            if not step_completed:
+                self.restore_state(state_before_step)
 
     def capture_state(self) -> AgentUptakeSystemState:
         """Record every dynamic value, for `advance()` to roll back to."""
@@ -340,12 +361,28 @@ class AgentUptakeSystem:
         )
 
     def reset(self) -> None:
-        """Clear dynamic state and restart agent accounting."""
+        """Clear dynamic state and restart agent accounting.
+
+        The anchor is read back out of the compartments rather than left to
+        the validator's own zero default, so this says what `__post_init__`
+        says: an accounting period starts from whatever the system holds.
+        The two agree today - the three resets above clear every store, so
+        the expression below is exactly `0.0` - and they keep agreeing if a
+        compartment is ever added that resets to something other than empty.
+
+        The default does not. Anchored at zero against compartments holding
+        anything, the identity is short by that amount at every subsequent
+        check, so the residual check halts a run that is in fact perfectly
+        accounted for - and reports `AgentSimulationValidationError`, which
+        blames the numerics for what is an anchoring defect. That is the
+        safe direction to fail in, and still the wrong answer; a check must
+        not rest on an invariant it does not itself establish (PL-VYXP).
+        """
 
         self.circuit.reset()
         self.alveoli.reset()
         self.patient.reset()
-        self.agent_simulation_validator.reset()
+        self.agent_simulation_validator.reset(initial_agent_l=self.total_stored_agent_l)
 
     def _exchange_circuit_and_alveoli(self, simulation_step_s: float) -> float:
         """Exchange agent exactly between two mixed gas volumes."""

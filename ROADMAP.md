@@ -2153,7 +2153,7 @@ specified.
     crosses no capability boundary and takes a patch version rather than a
     minor, per "Versioning decision".
 
-30. Add patient factors - age, sex and body composition as inputs - so a
+30. Add patient factors - age, sex and weight as inputs - so a
     learner can see how patient characteristics change the anesthetic. This
     is a core teaching component rather than a later extension: the
     reference adult in `data/patients/reference_adult.json` is a placeholder
@@ -2206,35 +2206,53 @@ specified.
     as a display unit): an age-adjusted MAC with no MAC unit to show it in
     changes nothing a learner sees.
 
-    *Placement: proposed, not decided.* Phase 1, ahead of the substance
+    *Placement (project owner, 2026-09-02).* Phase 1, ahead of the substance
     generalization. That generalization is this plan's stated known risk and
     the most likely place to stall, and a core teaching component does not
     belong behind it; and once compartments hold N substances, changing how
     compartment volumes and flows are *derived* touches N times the surface,
     which is the argument that already places item 29 ahead of that work.
 
-    *Not yet scoped, and the parameter set does not currently support it.*
-    Compartment volumes and flows are the Gas Man 70 kg defaults, so weight
-    has to scale them by a sourced rule rather than by proportion. Fat is the
-    pivotal compartment for volatile agents - tissue:gas coefficients of 34
-    (sevoflurane), 70 (isoflurane) and 13 (desflurane) - so what separates
-    two patients is body composition rather than total mass, and
-    `Meybohm et al. 2021`, already cited in
-    `data/patients/reference_adult.json`, is the obese case explored with the
-    same reference simulator this project draws its parameters from. Sex most
-    plausibly acts *through* body composition rather than as a coefficient of
-    its own, so deriving fat mass from sex, weight and height is the shape to
-    check before adding a third independent covariate.
+    *Scaling: not through body composition (project owner, 2026-09-02).*
+    Weight scales the compartments directly. A route in which weight, height
+    and sex first produce a body-composition estimate, and that estimate
+    scales the compartments, was proposed and declined; sex is therefore a
+    covariate in its own right rather than something acting through fat mass.
 
-    *A covariate outside its supported range is refused, not extrapolated.*
-    `core/supported_ranges.py` is the pattern and its argument carries
-    unchanged: a silently extrapolated patient would simulate, display and
-    chart a value the parameter set cannot support. The extremes where that
-    happens - the neonate, the very obese, the very old - are exactly where a
-    reader is most likely to have a real patient in mind, which is what makes
-    this the milestone's load-bearing safety control rather than a validation
-    detail. Each covariate needs a sourced applicability domain before it is
-    accepted, on the terms the four flow controls already have.
+    The trade is worth recording rather than arguing, because scoping will
+    meet it. Fat is the pivotal compartment for volatile agents - tissue:gas
+    coefficients of 34 (sevoflurane), 70 (isoflurane) and 13 (desflurane) -
+    so between two patients of the same mass and different composition it is
+    the fat compartment that separates them, and a rule keyed on total mass
+    cannot express that difference. What the direct route buys is one fewer
+    layer of unsourced derivation: a body-composition estimate needs its own
+    formula with its own provenance, and an unsourced scalar in front of the
+    dominant compartment is the "plausible but incorrect clinical value"
+    `CLAUDE.md` forbids just as surely as no scalar at all. Whichever rule is
+    chosen, it is sourced before it ships. `Meybohm et al. 2021`, already
+    cited in `data/patients/reference_adult.json`, is the obese case explored
+    with the same reference simulator this project draws its parameters from,
+    and is where scoping should start reading.
+
+    *An out-of-range covariate: agreed in principle, cutoffs unresearched
+    (project owner, 2026-09-02).* Bounding a covariate and reporting when one
+    is outside its bound - blocking, logging, or both - is accepted as the
+    right shape. What is **not** settled is where any cutoff sits, and no
+    number is written into `core/` until it is researched and sourced on the
+    terms every other value in `data/` is held to. A bound invented to have a
+    bound would refuse the paediatric or obese case a learner most wants, on
+    a number nobody can cite, which is worse than no bound at all.
+
+    So this is a research question before it is an implementation one, and it
+    is part of scoping this milestone rather than a queue item that could be
+    picked up ahead of it. Two things frame it. `core/supported_ranges.py` is
+    the nearest pattern and its argument still holds - a silently extrapolated
+    patient would simulate, display and chart a value the parameter set cannot
+    support - but it is not the same case: those four are operating settings
+    inside a run, where refusing costs nothing, while a covariate defines the
+    case itself, and refusing to construct a 3 kg or a 200 kg patient refuses
+    the question a learner came with. That asymmetry is why the mechanism is
+    open rather than inherited.
 
     *The teaching payoff needs item 11.* A single trace cannot show an effect
     - the contrast is the lesson - so what this milestone is *for* only fully

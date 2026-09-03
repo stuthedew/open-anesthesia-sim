@@ -33,3 +33,13 @@ call, and say so.
 **Done when.** The decision is recorded, and if the method changes, the
 `bool` behaviour - whichever way it goes - is asserted by a test rather than
 left implicit.
+
+**Measured 2026-09-02.** Confirmed as written.
+`AlveolarCompartment.apply_blood_uptake(False)` is accepted and leaves the
+compartment at `0.05 L`, because `isinstance(False, (int, float))` is `True`;
+`core/parameters.py`'s `_validate_positive_finite(True)` refuses with "must
+be a number". Two answers to the same question, in one package.
+
+The doubled expression needs no probe - `self.agent_amount_l -
+blood_uptake_l` appears on both the guard line and the assignment line, and
+the hazard is a future edit to one of them.
