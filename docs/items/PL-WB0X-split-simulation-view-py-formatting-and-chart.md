@@ -118,3 +118,27 @@ means two items that could are waiting on it, which is the one case
 `docket.toml`'s note about every `P1` carrying a safety class does not cover.
 Dropping it back to `P2` requires unblocking `PL-DHV7` first, or the checker
 fails.
+
+**What v0.4.1 does to this (added 2026-09-03).** The extraction itself is
+unaffected - it is view-layer only, and v0.4.1 touches no `app/` file for its own
+sake. Two artifacts it *relocates* are falsified a release later, and moving a
+false comment into a new module is worse than leaving it where it is:
+
+- `_format_percent`'s docstring (`app/simulation_view.py:1220`) justifies the
+  two-decimal resolution "against the measured error of the shipped operator
+  split". `PL-X9KD` re-derives that resolution from the exact step.
+- the `SIMULATION_STEP_S` comment (`:52-59`) names
+  `core.uptake_system.MAXIMUM_SIMULATION_STEP_S` as "the operator split's
+  applicability domain". `PL-X9KD` decides what that bound now means, or removes
+  it.
+
+Both should move as citations of `docs/MODEL.md` § "Displayed precision" and
+§ "Supported simulation step" rather than as restatements of their content, which
+is what makes the extracted module survive the re-derivation unchanged.
+
+**This item should run before `PL-9SH6`, not after.** `PL-9SH6` renames roughly
+300 accessor sites including `app/simulation_view.py`; doing it first lands that
+rename inside the 1265-line view class this item exists to split, and this item
+then moves renamed code. Running this first shrinks `PL-9SH6`'s app-layer
+surface instead. `PL-9SH6`'s Sequencing section does not name this item; it
+should.

@@ -41,3 +41,13 @@ may make this trivial or may subsume it: sequence them together.
 elapsed time still advances exactly, a duration that does not divide the step
 is refused with a message that says so, and `docs/MODEL.md` § "Supported
 simulation step" records the route.
+
+**What v0.4.1 does to this (added 2026-09-03).** This item cannot be scoped until
+`PL-X9KD` reports. Its stated problem is that `advance(30.0)` is refused with a
+`SimulationConfigurationError`, which depends on `MAXIMUM_SIMULATION_STEP_S`
+continuing to exist. `PL-X9KD` explicitly leaves that open: "Decide what the
+bound now means, or remove it and say why." If the bound goes, `advance_over`
+collapses to a single exact step and this item is close to moot; if it stays -
+on capacity-guard, scaling-and-squaring or observability grounds rather than
+splitting error - the item stands with a new rationale and the same shape.
+Either way the answer is `PL-X9KD`'s to give.

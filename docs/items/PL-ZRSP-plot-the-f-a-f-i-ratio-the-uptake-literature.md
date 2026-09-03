@@ -46,3 +46,28 @@ that has since moved.
 
 The block is sequencing only: nothing here is wrong today, and the band stands
 on this item's own classes rather than on the blocker's.
+
+**What the denominator is, and what has to be said about it (added 2026-09-03).**
+$`F_I`$ here is the modelled breathing-circuit fraction, and the identity
+$`F_C \equiv F_I`$ holds only *because of* this model's circuit assumptions - one
+ideal, perfectly mixed circuit, no dead space, and no separate inspiratory and
+expiratory limbs. It would stop holding under a multi-limb circuit such as Lerou
+and Booij's three-part breathing system. Since this trace is the field's canonical
+teaching graph, and v0.4.0's Definition of Done already requires that it "carry, at
+the point of display, what it does and does not assert", that assumption is part of
+what it must carry - not a footnote deferred to the naming pass.
+
+So this item records the assumption in `docs/MODEL.md` § "Model boundary" or
+§ "Assumptions" and surfaces it at the point of display, whether or not `PL-3TLK`
+(rename the middle gas-phase state $`F_C`$ to the domain's $`F_I`$) has landed.
+`PL-3TLK` carries the source: Hendrickx JFA, De Wolf A. Special aspects of
+pharmacokinetics of inhalation anesthesia. In: Schuttler J, Schwilden H (eds).
+Modern Anesthetics. Handbook of Experimental Pharmacology 182. Springer,
+2008:159-186 - the $`F_D \rightarrow F_I \rightarrow F_A`$ cascade on pp. 161-162
+and the curve's didactic role on p. 167.
+
+**What v0.4.1 does to this.** `PL-3TLK` renames the denominator's accessor from
+`BreathingCircuit.circuit_concentration_fraction` to
+`inspired_partial_pressure_fraction`, so any label, docstring or axis title
+written here that calls it "circuit" is reworded one release later. Prefer the
+domain's name now; the code will catch up.

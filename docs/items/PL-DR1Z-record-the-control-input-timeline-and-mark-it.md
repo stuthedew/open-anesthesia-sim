@@ -35,3 +35,18 @@ merely enough to draw a mark.
 it took effect and is visible on the chart and in a readable list; a refused setting
 records nothing, since it did not take effect; and reset clears the timeline with
 the rest of the run's history.
+
+**What v0.4.1 does to this (added 2026-09-03).** The four controls this item
+stamps are the forwarding setters on `AgentUptakeSystem`, and two of them are
+renamed one release later: `set_delivered_concentration` and the
+`delivered_concentration_fraction` it writes become the
+`_partial_pressure_fraction` form under `PL-9SH6`, and the circuit fraction
+becomes `inspired_` under `PL-3TLK`. Since the timeline entries are recorded as
+`(simulated_time, control, value)` tuples rather than a fixed struct, the control
+*identifier* is a stored string that will outlive the rename - so pick it from the
+domain vocabulary now (`delivered`, not `vaporizer_dial`; `inspired`, not
+`circuit`) rather than from the current accessor names, or the recorded history
+of every past run carries retired names.
+
+Nothing is invalidated: the recording design, the tuple form and the
+nitrous-oxide argument behind it are all independent of v0.4.1.

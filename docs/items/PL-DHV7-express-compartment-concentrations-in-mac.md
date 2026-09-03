@@ -55,3 +55,26 @@ section.
 the agent's `mac_percent` and its provenance are traceable from the display,
 and `docs/MODEL.md` states what a MAC multiple on a non-alveolar compartment
 does and does not assert.
+
+**What v0.4.1 does to this (added 2026-09-03).** Two things, one of which is
+worth designing around.
+
+`PL-X9KD` re-derives `docs/MODEL.md` § "Displayed precision" from scratch after
+`PL-GS5X` removes the splitting error, and this item extends that same section
+with a second unit. So **express the MAC resolution as a function of the percent
+resolution rather than deriving it independently** - MAC multiples are percent
+divided by the agent's `mac_percent`, so a single stated percent resolution
+determines both, and `PL-X9KD`'s re-derivation then propagates to both units for
+free. Deriving the MAC count separately means re-deriving two things one release
+later instead of one. (The unit conversion is not information-preserving across
+agents - 0.01 percentage points is 0.005 MAC for sevoflurane and 0.0017 for
+desflurane - so what to *display* is still a presentation decision; the point is
+that its input should be one number, not two.)
+
+Second, the formatters here read `snapshot.circuit_concentration_fraction`,
+`alveolar_concentration_fraction` and `mixed_venous_concentration_fraction`
+(`app/controller.py:21-27, 42-49`), all three of which `PL-9SH6` renames to the
+shared `_partial_pressure_fraction` form. Mechanical, but it means this item's
+diff is re-touched by the rename pass.
+
+`mac_percent` itself (`core/parameters.py`) is not touched by v0.4.1.

@@ -99,3 +99,18 @@ re-measure rather than trusting them. Still after `PL-H46J`.
 fraction throughout `core/`, `app/` and `tests/`, per the table above; the
 `venous_outflow_fraction` decision is recorded in the code; `make check` passes;
 and no test's expected value changed.
+
+**Two more items in the sequence (added 2026-09-03).** The Sequencing section
+above names `PL-H46J`, `PL-3TLK`, `PL-GS5X` and `PL-KZS3`. Two app-layer items
+belong in it too, and both run *before* this one:
+
+- `PL-WB0X` (split `simulation_view.py`) relocates the formatters and the chart
+  series out of the 1265-line view class. Running it first shrinks this item's
+  app-layer surface; running it after means this rename lands inside the class
+  `PL-WB0X` is about to split, and `PL-WB0X` then moves renamed code.
+- `PL-W3DD` (key `SimulationHistorySample` by substance) reshapes six of the
+  accessors named in the table above out of existence as separate fields.
+
+The warning already written here - "the counts in the table above will be
+smaller once it lands, re-measure rather than trusting them" - was written about
+`PL-GS5X` and applies at least as strongly to these two.

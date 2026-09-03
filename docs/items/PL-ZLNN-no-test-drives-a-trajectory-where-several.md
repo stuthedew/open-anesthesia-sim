@@ -65,3 +65,17 @@ docstring rather than leaving a later reader to assume nobody considered it.
 **Done when.** A seeded test drives several controls to random supported values
 at random moments over a multi-minute run for each agent, and asserts
 conservation, range and non-raising throughout.
+
+**What v0.4.1 does to this (added 2026-09-03).** The test survives; its motivation does
+not. The assertions - conservation, fractions in [0,1], no raise across a
+randomised multi-control trajectory - are method-agnostic, but the paragraph
+arguing for them describes "five sub-exchanges whose guards can each reject a
+value the step itself produced", and `PL-GS5X` composes no sub-exchanges. The
+200-run measurement was taken on the split and would need re-running.
+
+**Worth doing before `PL-GS5X`, not after.** A seeded randomised-trajectory
+probe asserting conservation, range and non-raising is the cheapest broad
+regression net available for a numerical-method swap, and it is worth more
+guarding the change than added afterwards. Reword the motivation as "the step
+must not produce a state its own guards reject", which holds under either
+method.
