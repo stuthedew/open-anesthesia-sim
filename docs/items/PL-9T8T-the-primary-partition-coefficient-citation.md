@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 closed: 2026-09-03
+pr: 252
 classes: defect, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/agents, docs/MODEL.md, tests/unit/test_parameters.py, tests/reference/test_multi_agent.py, docs/items
