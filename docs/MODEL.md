@@ -2,11 +2,18 @@
 
 ## Status
 
-This document specifies the scientific model implemented starting in
-v0.1.0 and still in force in v0.2.3, the current released baseline (see
-`ROADMAP.md`). The title is deliberately version-generic: the governing
-equations and compartment structure have not changed since v0.1.0, and are
-shared by every agent this model supports.
+This document specifies the scientific model implemented starting in v0.1.0
+and in force unchanged ever since: the governing equations and compartment
+structure have not changed, and are shared by every agent this model supports.
+The title is version-generic for that reason.
+
+**It deliberately names no current released baseline.** `ROADMAP.md`'s version
+table is where that lives, and a second copy here goes stale at every release
+without anything reading wrong until someone checks the version — which is
+exactly what happened, this sentence having named v0.2.3 for thirteen releases
+after v0.2.3 (`PL-C1KK`). Nothing in this document should restate the current
+version; a statement that needs one should say what has been true *since* a
+version instead, which cannot go stale.
 
 The preceding milestone, v0.0.2, delivered an analytically validated ideal
 breathing-circuit wash-in and washout model without a patient; its reference
@@ -2080,7 +2087,7 @@ Version v0.1.0 assumes:
 
 ## Known limitations
 
-As of v0.2.3, this model does not model:
+This model does not model:
 
 - a separate arterial blood-mixing compartment (arterial blood is flow-limited and equals alveolar gas at every instant, matching the Gas Man reference simulator's mammillary structure — see "Model boundary");
 - halothane, enflurane, ether, or xenon (isoflurane and desflurane were added in v0.2.0; see "Parameter provenance");
