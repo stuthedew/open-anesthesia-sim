@@ -113,6 +113,10 @@ class Report:
     errors: list[str] = field(default_factory=list)
     advisories: list[str] = field(default_factory=list)
     declined: list[str] = field(default_factory=list)
+    #: What running the items' own commands cost this run. Not a finding, and
+    #: kept out of the three lists above for that reason: nothing here asks to
+    #: be resolved. `_note_cost` says why it is reported at all.
+    cost: str = ""
 
     @property
     def open_items(self) -> list[Item]:
@@ -647,6 +651,52 @@ def _check_slow_commands(report: Report, landed: LandedReport | None) -> None:
     )
 
 
+def _note_cost(report: Report, landed: LandedReport | None) -> None:
+    """Say what running the items' own commands cost, every run, as a fact.
+
+    Deliberately not an advisory. `CLAUDE.md` holds that a check firing every
+    run without changing a decision is a defect in the check, and that is
+    right - but it is a rule about findings, which demand judgment and go
+    stale as a class. This is the same category as the open-item counts beside
+    it: a number the reader scans, nobody is asked to act on, and which is
+    worth its line only because a *change* in it is the signal.
+
+    That change is what this exists to expose. Two comments in `verify.py`
+    carried these figures by hand and both went stale inside a fortnight, and
+    the reason neither was caught is that the run reported nothing about
+    itself: on a healthy store `docket check` printed no cost at all, so the
+    pool going from 10.1s to 28.8s and the serial total from 34.9s to 175.5s
+    were invisible to every session that paid them (`PL-9NKK`). A figure
+    nobody can see cannot be noticed to have moved.
+
+    `serial` is on the line for the same reason and is the more important
+    half. Concurrency holds `elapsed` roughly flat while the queue grows, so
+    the number a session feels is the one that hides the growth; the serial
+    total is what the store actually asks for and it climbs with every item
+    triaged to `ready`.
+
+    The worst command is given against `limit` rather than alone, because that
+    margin is the whole question `LANDED_TIMEOUT` is set to answer, and it is
+    the one a bare duration cannot be read for. It names the command whether or
+    not `_check_slow_commands` also named it: that advisory fires on an outlier
+    against the median and is silent on a store where everything is uniformly
+    heavy, which is precisely the store whose margin is closing.
+
+    Silent where the run declined, where no caller asked, and where the store
+    holds no command to run - printing zeros would be this module's own
+    cardinal error, an empty result rendered as a measured one.
+    """
+    if landed is None or not landed.known or landed.slowest is None:
+        return
+    one = landed.considered == 1
+    report.cost = (
+        f"verify: {landed.considered} {'command' if one else 'commands'} in "
+        f"{landed.elapsed:.1f}s ({landed.serial:.1f}s serially); slowest "
+        f"{landed.slowest.identifier} {landed.slowest.seconds:.1f}s "
+        f"against a {landed.limit:g}s limit"
+    )
+
+
 def _check_references(report: Report) -> None:
     """Hold every cross-reference to an item that exists."""
     known = {item.identifier for item in report.items if item.identifier}
@@ -998,6 +1048,7 @@ def analyze(
     _check_landed(report, landed)
     _check_selects_nothing(report, landed, ids)
     _check_slow_commands(report, landed)
+    _note_cost(report, landed)
     _check_closures(report, closures)
     _check_lost(report, lost)
     _groom(report, today, settings, ids)
