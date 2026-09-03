@@ -53,7 +53,8 @@ capability-boundary rule above governs.
 | v0.3.0 | Completed | The foundation: Gate 0's inherited backlog cleared, 21 of 21 frozen entries closed across the v0.2.6 to v0.3.0 patch series — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. This cut carries the last two gate entries: the render loop stopped rebuilding what it could move (6.3x cheaper frame), and `BreathingCircuit` stopped defaulting to one agent's vaporizer maximum. No new capability, and no equation, parameter or numerical method changed; see the versioning exception above for why it is a minor. |
 | v0.3.1 | Completed | Provenance-integrity and rollback patch on the same model, adding no capability and changing no equation, parameter or numerical method: `src/anesthesia_sim/data/` is byte-identical to v0.3.0, `docs/MODEL.md` is unchanged, and `src/` changes in one file. `AgentUptakeSystem.advance()`'s rollback moved off its `except` clauses onto the unwind path, closing a measured hole where a `BaseException` left a partly applied step in the live system, and `reset()` now anchors the mass-balance accounting period to what the compartments hold rather than to a zero it did not itself establish. The rest is the queue's own record of what closed an item: the retired `commit:` hash a squash discards is replaced by the pull request number, recovered from file history and refused at the pull-request title; duplicate front-matter keys, undeclared `classes:` and `feature:` values, and a merge that deletes a captured item became errors rather than silent corruption; a `verify:` command is owed as an error when a grandfathered item closes; and a scheduled job reports whether the tree still builds on a toolchain nobody pinned. |
 | v0.3.2 | Completed | Provenance-honesty patch, and the release that decided how this project's numbers may be cited. Every shipped Python file is byte-identical to v0.3.1 and every stored numeric value is unchanged; what moved is what the citations claim about them. `docs/MODEL.md` gained a three-tier source hierarchy — primary measurement, secondary synthesis, reference implementation — and only the first may be named as the authority for a stored value, which makes the shipped parameter set Gas Man's and says so, where the agent files had let a journal's name stand in for a measurement nobody made. The isoflurane blood:gas question is recorded rather than answered: 1.3 is stored, 1.46 is what Lerman et al. measured in adults, and the 11% gap is the widest in the project. Alongside it, the numerical method's future is settled — the operator split is to be replaced by an exact matrix exponential so the code that computes a value is the governing equations, with the state vector decided as fractions — and two live defects close: the conservation guard's three sensitivity constants are pinned, and the pull-request title check moved to a workflow that can observe the rename it asks for. No capability, equation, parameter or numerical method changed. |
-| v0.3.3 | Completed / current baseline | Delegation and interface-boundary patch on the same model, adding no capability and changing no equation, parameter, numerical method, unit or displayed value: `src/anesthesia_sim/data/` is byte-identical to v0.3.2 and the one `src/` change is behavior-preserving. The queue's own provenance stopped needing a person: a closed item's pull request number is written by `bin/docket record`, riding whatever commit the session was already making, after the job meant to write it at merge time proved unlandable - a push made with `GITHUB_TOKEN` starts no workflow, so `main`'s required status checks can never report on the commit it pushes, and every configuration that would accept the push weakens that gate instead. That closes the `delegation` feature at 12 of 12. Alongside it, `app/simulation_view.py`'s displayed-precision formatters and chart-series assembly moved into two Flet-free modules, so `docs/MODEL.md`'s displayed-precision derivation now terminates in a function that can be read, cited and tested without loading the interface - stages 1 and 2 of v0.4.0's Required scope, landed ahead of the milestone. `core/` gained a 100% statement-and-branch coverage gate over the saturation it already had, before v0.4.1's exact-step solver arrives to be measured against it, and the pull-request title check now runs at the declared Python floor. |
+| v0.3.3 | Completed | Delegation and interface-boundary patch on the same model, adding no capability and changing no equation, parameter, numerical method, unit or displayed value: `src/anesthesia_sim/data/` is byte-identical to v0.3.2 and the one `src/` change is behavior-preserving. The queue's own provenance stopped needing a person: a closed item's pull request number is written by `bin/docket record`, riding whatever commit the session was already making, after the job meant to write it at merge time proved unlandable - a push made with `GITHUB_TOKEN` starts no workflow, so `main`'s required status checks can never report on the commit it pushes, and every configuration that would accept the push weakens that gate instead. That closes the `delegation` feature at 12 of 12. Alongside it, `app/simulation_view.py`'s displayed-precision formatters and chart-series assembly moved into two Flet-free modules, so `docs/MODEL.md`'s displayed-precision derivation now terminates in a function that can be read, cited and tested without loading the interface - stages 1 and 2 of v0.4.0's Required scope, landed ahead of the milestone. `core/` gained a 100% statement-and-branch coverage gate over the saturation it already had, before v0.4.1's exact-step solver arrives to be measured against it, and the pull-request title check now runs at the declared Python floor. |
+| v0.3.4 | Completed / current baseline | Documentation- and tooling-truth patch: every shipped Python file is byte-identical to v0.3.3 and `src/anesthesia_sim/data/` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The whole release is the project correcting statements it was making about itself. `docs/MODEL.md` had named v0.2.3 as the current released baseline for thirteen releases, and still recorded the operator split as kept on a decision the 2026-09-03 re-scope reversed; both are corrected, and the specification now names no current version at all, because a second copy of one goes stale silently at every release. Two checks that reported a false state were repaired and retired: the top-band advisory no longer counts blocked items a session cannot start, and `doc_check`'s baseline-tag advisory is gone, because a local checkout cannot tell a release never tagged from one tagged since it last fetched. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
@@ -91,73 +92,76 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.3.3
+## Current baseline: v0.3.4
 
-v0.3.3 is a delegation and interface-boundary patch carrying five items, and it
-is the release in which the queue stopped needing a person to record its own
-provenance. It adds no capability and moves no equation, parameter or numerical
-method: `src/anesthesia_sim/data/` is byte-identical to v0.3.2, no displayed
-value changed, and the only change under `src/` is a behavior-preserving
-extraction of two pure modules out of the interface layer, held to the view
-tests that already existed. What it is for is that two things this project
-relies on — the record of which pull request closed an item, and the boundary
-between what computes a displayed number and what draws it — were each being
-upheld by a session remembering to do it.
+v0.3.4 is a documentation- and tooling-truth patch carrying five items. Every
+shipped Python file is byte-identical to v0.3.3 and `src/anesthesia_sim/data/`
+is unchanged, so no equation, parameter, numerical method, unit or displayed
+value moved. What it is for is narrow and worth naming plainly: the project was
+making four statements about itself that were wrong, and each of them read as
+authoritative while being false. Nothing in it improves the simulator; it
+restores the correspondence between the simulator and what this repository says
+about it, which is the property every other claim here rests on.
 
-**The merge-time write was measured, found unlandable, and replaced by a local
-one (PL-WTQR, PL-N5WZ).** A closed item cannot carry its own `pr:` when it
-lands: the closure has to travel in the same commit as its work, or a merge
-arriving between two pushes takes the work and leaves the item open, and the
-number does not exist until after that commit. What supplied it afterwards was
-a session reading an advisory and composing a commit — usually a pull request
-of its own, and once two sessions reading the same advisory opened byte-identical
-duplicates (#229, #230). PL-WTQR moved the write into a job fired by the merge,
-where the number arrives in the event with no subject to parse, and its first
-run proved that job both correct and unlandable in the same minute: it computed
-`pr: 261`, committed it, and `main` refused the push — `GH006`, "3 of 3 required
-status checks are expected". That is not a bypass away from working. A push made
-with `GITHUB_TOKEN` starts no workflow, so the required checks can never report
-on the commit such a job pushes; the ruleset was already disabled when the run
-happened and the push failed anyway; and every configuration that would accept
-the push weakens the gate that makes a red `main` mean something. PL-N5WZ
-therefore changed the trigger rather than the mechanism. `bin/docket record`,
-bare, writes every number the default branch is owed — the same reading `docket
-check` prints its advisory from, so the two cannot disagree — and `make fix`
-runs it, so the field rides whatever commit the session was making anyway. The
-workflow is deleted rather than left parked, since a parked workflow reads to a
-later session as a mechanism that works. With it the `delegation` feature closes
-at 12 of 12.
+**`docs/MODEL.md` stopped naming a baseline it could not keep current
+(PL-C1KK).** Its Status section said the model was "still in force in v0.2.3,
+the current released baseline" — thirteen releases after v0.2.3. Nothing read
+wrong until someone checked the version, which is exactly what makes a stale
+specification a safety problem rather than an untidiness: a reader who trusts
+it reaches a wrong conclusion from a correct document. The fix is not a newer
+number. That section now names no current version at all, because `ROADMAP.md`'s
+version table is where the baseline lives and a second copy of it goes stale at
+every release with nothing reading wrong in between. A statement in the
+specification that needs a version now says what has been true *since* one,
+which cannot go stale.
 
-**The interface layer's pure parts moved out of the Flet class (PL-WB0X).**
-`app/simulation_view.py` was 1265 lines of one class that built every widget,
-formatted every displayed number, and assembled and decimated every chart
-series; it is now 1072, with the second and third of those in `app/formatting.py`
-and `app/chart_series.py`, which import no Flet and are tested directly. The
-consequence that matters is in `docs/MODEL.md`: § "Displayed precision" derives
-the two-decimal readout from the solver's measured error, and that derivation
-used to terminate in a private static method on a Flet view class, so the one
-function the specification reasons about could not be read, cited or tested
-without loading the interface. It now terminates in `app/formatting.py`. This is
-stages 1 and 2 of v0.4.0's Required scope, landed ahead of the milestone
-deliberately: the MAC-multiple readout rewrites every formatter, and four of the
-milestone's items touch the chart assembly in the same place.
+**The splitting-error decision is recorded as superseded rather than silently
+overwritten (PL-B875).** § "Numerical method" carried "The split is kept
+nonetheless (project owner, 2026-08-30)" together with its reasoning, including
+the claim that no planned work wanted an exact step. The 2026-09-03 re-scope
+reversed that on a ground the original had not weighed — not accuracy, but
+whether `core/` can be read as the model — and scoped the exact matrix
+exponential into v0.4.1 under `PL-GS5X`. The section now carries both: the
+original decision on its own terms, why it stays sound to ship until it is
+replaced, and the supersession with its date and its ground. It is marked as an
+interim correction rather than the rewrite, which `PL-X9KD` owns along with
+every statement in that document the splitting error currently justifies.
 
-**`core/` coverage became a gate rather than a fact (PL-22Z3).** `pytest-cov`
-was a declared dev dependency that nothing ran. Measured first: every module
-under `src/anesthesia_sim/core/` was already at 100% of statements and branches
-— 691 statements, 78 branches, none missed — and defended by nothing.
-`--cov=anesthesia_sim.core --cov-branch --cov-fail-under=100` now runs on `make
-check`'s pytest line and on CI's, for a measured 0.4 s. It is gated before
-v0.4.1's exact-step solver rather than after, so that `build_system_matrix`,
-`matrix_exponential` and `propagate` arrive covered instead of being measured
-against code that has already slipped.
+**The top-band advisory stopped counting items nobody can start (PL-P23D).**
+`docket check` warns when the top priority band holds more items than a session
+can weigh at a glance. It counted blocked ones, which answer "what next" for
+nobody — and worse, that made the advisory reachable without anyone
+over-prioritizing anything, because the checker's own blocker-band rule requires
+a blocker to sit at or above the band of what it blocks, so gating one safety
+item on a feature item lifts that feature item into the band. This release
+contains an instance: `PL-9K7K` below marks `PL-ZRSP` blocked and raises its
+blocker `PL-DR1Z` to `P1`, putting two more items in the band of which one
+cannot be started. The count is now of startable items, with the held ones named
+separately, and `docket triage`'s statement of the same rule was moved onto the
+same number — two counts for one rule is worse than either of them.
 
-**The title check runs at the version it declares (PL-79N5).**
-`tools/pr_title_check.py` is what stops a squash landing a subject that names no
-item id, which destroys provenance nothing else can reconstruct. Dropping `uv`
-from its workflow had left it the one `tools/` script CI never ran under a named
-interpreter; `pr-title.yml` now installs the declared floor, and
-`tests/unit/test_tools_portability.py` holds every workflow pin to it.
+**`doc_check`'s baseline-tag advisory was retired rather than narrowed
+(PL-R7C0).** It fired on any full clone whose tags predated the newest release —
+the ordinary state of a checkout more than one release old — and printed a `git
+tag` command for a tag that already existed. Telling "never tagged" from "tagged
+since you last fetched" needs the network, which these tools do not have by
+contract. Nothing permanent is lost: the moment that version stops being the
+baseline it falls through to an **error**, which is when an untagged release
+starts to matter, since `git describe --contains` only fails once history has
+moved past the gap; and the reminder still arrives where it can be acted on,
+from `docket release`, which refuses to cut while the previous release is
+untagged. This is `CLAUDE.md`'s retirement clause — a check that fires every run
+without changing a decision is a defect in the check — applied to a check this
+project wrote itself.
+
+**One sequencing bug was fixed by hand and its general form left open
+(PL-9K7K).** `docket next` offered `PL-ZRSP` (plot the F_A/F_I ratio) ahead of
+`PL-DR1Z` (record the control-input timeline), although `PL-ZRSP`'s own brief
+says its trace is the textbook wash-in curve only while inspired concentration
+is held constant — which is the thing the timeline records. The instance is
+closed: `PL-DR1Z` is raised to `P1` and `PL-ZRSP` marked blocked by it. The
+general case, that ranking reads the front matter and cannot see sequencing
+stated only in a brief, is `PL-5WFS` and stays open at `needs-decision`.
 
 **What the model currently is** is described under "The model as it stands"
 below, and does not change release to release while the patch series continues.

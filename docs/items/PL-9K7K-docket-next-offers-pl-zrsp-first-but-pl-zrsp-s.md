@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: planning-cadence
+milestone: v0.3.4
 touches: docs/items/PL-ZRSP-plot-the-f-a-f-i-ratio-the-uptake-literature.md
 added: 2026-09-03
 closed: 2026-09-03
