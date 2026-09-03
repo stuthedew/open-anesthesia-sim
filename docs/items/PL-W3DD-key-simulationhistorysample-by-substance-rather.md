@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: refactor
 feature: teachable-case
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_downsampling.py, docs/MODEL.md, tests/unit/test_simulation_view.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/chart_downsampling.py, docs/MODEL.md, tests/unit/test_simulation_view.py
 added: 2026-09-02
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_history_sample_is_keyed_by_substance' tests/unit/test_simulation_view.py
 ---
@@ -33,7 +33,8 @@ changes, which is what the existing view tests are for.
 **Where.** `app/controller.py` (`SimulationHistorySample`,
 `SimulationSnapshot.concentration_history`, `_build_history_sample`),
 `app/simulation_view.py` (`:209-235`, the six accessors, and the
-trace-to-quantity pairing in `_refresh_chart_series`),
+trace-to-quantity pairing in `SimulationView._plotted_series`, whose
+readers are `app/chart_series.py`'s since PL-WB0X),
 `app/chart_downsampling.py`, `docs/MODEL.md` § "Interface boundary".
 
 **Approach.** Key the recorded concentrations by substance id, keeping
@@ -66,8 +67,10 @@ before the record's new shape is designed. The six fields this item re-keys -
 `circuit_concentration_fraction`, `alveolar_concentration_fraction`,
 `mixed_venous_concentration_fraction`, `vessel_rich_partial_pressure_fraction`,
 `muscle_partial_pressure_fraction`, `fat_partial_pressure_fraction`
-(`app/controller.py:21-27`) - are exactly `PL-9SH6`'s rename targets, and
-`PL-9SH6`'s "Where" names `app/controller.py` explicitly. The first three become
+(`app/controller.py:22-27`) - are exactly `PL-9SH6`'s rename targets, and
+`PL-9SH6`'s "Where" names `app/controller.py` explicitly. Since `PL-WB0X`
+merged (#263) each also has a reader function in `app/chart_series.py:76-96`,
+so this item's re-keying reaches that module too. The first three become
 `inspired_`/`alveolar_`/`mixed_venous_partial_pressure_fraction`; the last three
 already conform.
 

@@ -104,10 +104,14 @@ and no test's expected value changed.
 above names `PL-H46J`, `PL-3TLK`, `PL-GS5X` and `PL-KZS3`. Two app-layer items
 belong in it too, and both run *before* this one:
 
-- `PL-WB0X` (split `simulation_view.py`) relocates the formatters and the chart
-  series out of the 1265-line view class. Running it first shrinks this item's
-  app-layer surface; running it after means this rename lands inside the class
-  `PL-WB0X` is about to split, and `PL-WB0X` then moves renamed code.
+- `PL-WB0X` (split `simulation_view.py`) **has landed** - merged 2026-09-03 as
+  #263, taking the view from 1265 lines to 1054 - which is the good order and
+  removes the risk of this rename landing inside a class about to be split. It
+  also moved this item's app-layer surface without shrinking it: the six sample
+  accessors are now free functions in `app/chart_series.py:76-96`, each
+  returning one of the fields the table above renames, and `app/formatting.py`
+  is a third app file to sweep. Re-measure against the current tree, not against
+  the counts in the table.
 - `PL-W3DD` (key `SimulationHistorySample` by substance) reshapes six of the
   accessors named in the table above out of existence as separate fields.
 

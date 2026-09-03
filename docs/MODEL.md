@@ -2020,10 +2020,19 @@ agent's maximum dial setting. Its resolution is set by pixels rather than by
 decimals, and it is coarser than the numeric readouts throughout; the
 readouts, not the traces, are where a value is read.
 
-`app/simulation_view.py` holds the resolution as a single constant with the
-formatter derived from it, and `tests/unit/test_simulation_view.py` pins
-both. `tests/reference/test_coupled_dynamics.py` restates the same constant
-and checks it against the interface, because the ordering claim above is a
+`app/formatting.py` is where this section terminates: it holds the
+resolution as a single constant, derives the formatter and the
+below-resolution marker from it, and imports no Flet, so the one function
+this section reasons about can be read, cited and tested without loading the
+interface. `tests/unit/test_formatting.py` pins the constant and every
+string the formatter produces; `tests/unit/test_simulation_view.py` holds
+the end-to-end path — real controller, real step, the string on the panel.
+`app/simulation_view.py` imports the constant for the delivered-agent
+slider's drag label, which is why that label and the readout beside it
+cannot drift apart.
+
+`tests/reference/test_coupled_dynamics.py` restates the same constant and
+checks it against `app/formatting.py`, because the ordering claim above is a
 property of the rounded values and adding a decimal would change what that
 claim proves without changing anything it reads. A change to the resolution
 is a change to this section.

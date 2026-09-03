@@ -26,6 +26,14 @@ are *drawn*. A brief that lists it as a consumer says the opposite.
 `src/anesthesia_sim/app/chart_downsampling.py` (module docstring and the
 `SampleT` signature).
 
+**Amended 2026-09-03, after `PL-WB0X` merged (#263).** There is now a module
+that genuinely does consume the sample through its accessors -
+`app/chart_series.py:76-96`, six free functions each returning one field - and
+`PL-W3DD`'s note names it. That is the module the "Where" was reaching for
+before it existed. `chart_downsampling.py` remains generic over `SampleT` and
+remains wrongly listed, so this item still stands; it is now a one-word swap
+rather than a deletion.
+
 **Done when.** `PL-W3DD`'s "Where" no longer names `chart_downsampling.py`, or
 names it explicitly as unaffected and says why.
 

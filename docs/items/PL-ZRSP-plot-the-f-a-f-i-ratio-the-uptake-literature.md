@@ -3,12 +3,11 @@ id: PL-ZRSP
 title: Plot the F_A/F_I ratio the uptake literature plots
 priority: P1
 effort: S
-status: blocked
+status: ready
 classes: science, ux
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
 added: 2026-08-25
-blocked-by: PL-WB0X
 ---
 **Problem.** The wash-in curve every textbook and every uptake lecture shows is
 F_A/F_I against time - the ratio that makes agents comparable and that the

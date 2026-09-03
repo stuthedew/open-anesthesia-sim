@@ -1,10 +1,17 @@
 """Present the interactive volatile-agent simulation as a responsive dashboard.
 
 This module is the visual boundary between the scientific simulation and the
-user. It renders immutable controller snapshots, translates concentration
-fractions to display percentages, and forwards user settings to the controller
-without implementing physiological calculations or modifying model state
-directly.
+user. It builds the controls, renders immutable controller snapshots, and
+forwards user settings to the controller without implementing physiological
+calculations or modifying model state directly.
+
+Two concerns it used to hold are their own modules, because each is a
+presentation-*correctness* question rather than a layout one and each needs
+to be readable and testable without loading a Flet interface:
+`formatting.py` turns a modeled fraction into the string a reader sees, at
+the resolution `docs/MODEL.md` derives, and `chart_series.py` shapes the
+chart's traces from the recorded run. What is left here is the interface
+itself.
 
 It is also the only layer that can tell a user what a raise out of `core/`
 means for what they are looking at, so both timer loops and every setting
@@ -23,8 +30,15 @@ from typing import Final
 import flet as ft
 import flet_charts as fch
 
-from anesthesia_sim.app.chart_downsampling import first_index_at_or_after, select_envelope_indices
-from anesthesia_sim.app.controller import SimulationController, SimulationHistorySample
+from anesthesia_sim.app import chart_series
+from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.formatting import (
+    CONCENTRATION_DISPLAY_DECIMALS,
+    FLOW_DISPLAY_DECIMALS,
+    format_delivered_label,
+    format_percent,
+    format_subtitle,
+)
 from anesthesia_sim.app.theme import (
     ACCENT,
     ACCENT_TEXT,
@@ -35,7 +49,7 @@ from anesthesia_sim.app.theme import (
     PRIMARY,
     WARNING,
 )
-from anesthesia_sim.app_metadata import APP_DISPLAY_NAME, APP_VERSION
+from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import (
@@ -65,35 +79,7 @@ SIMULATION_STEP_S = 0.1
 RENDER_INTERVAL_S = 0.2
 INITIAL_CHART_WINDOW_S = 60.0
 MAX_CHART_WINDOW_S = 300.0
-# Per-trace ceiling on points handed to the chart. Each point is a Flet
-# control, so this ceiling — not the length of the run — sets the cost of a
-# frame: `_redraw_series` moves the points already drawn rather than
-# rebuilding them (PL-010), which leaves the per-frame work proportional to
-# this number rather than to it times the cost of a construction. 300 points
-# across a chart a few hundred pixels wide is already finer than the display
-# can resolve.
-MAX_CHART_POINTS_PER_SERIES = 300
 CHART_HEIGHT = 360
-
-# Displayed resolution for every modeled concentration and relative partial
-# pressure, and for the delivered-agent setting shown beside its slider. Two
-# decimals of a percent — 0.01 percentage points — is a recorded decision
-# (PL-040), justified in `docs/MODEL.md` § "Displayed precision" against the
-# measured error of the shipped operator split. The short version: the
-# split disagrees with the independent solution by up to 5e-3 percentage
-# points at the default flows and 1.2e-2 at the extreme corner of the
-# settings envelope, so the second decimal is the uncertain digit — as the
-# last displayed digit should be — and the third and beyond were noise.
-# Changing this is a safety-critical change to how a clinical value reads,
-# not a formatting preference: revise the documented basis with it.
-CONCENTRATION_DISPLAY_DECIMALS = 2
-# Smallest percentage-point difference the concentration readouts resolve.
-CONCENTRATION_DISPLAY_RESOLUTION_PERCENT = 10.0**-CONCENTRATION_DISPLAY_DECIMALS
-
-# Decimals shown on the flow sliders' drag labels, matching the ".1f L/min"
-# readouts beside them. Flet's default is 0, which would make a slider's own
-# label disagree with the text next to it mid-drag.
-FLOW_DISPLAY_DECIMALS = 1
 
 COMPACT_PAGE_PADDING = 16
 COMPACT_PANEL_PADDING = 14
@@ -202,38 +188,6 @@ AGENT_RENDER_STYLES: Final[dict[str, _AgentRenderStyle]] = {
 }
 
 
-# One named reader per plotted quantity. Named rather than inline so that the
-# trace-to-quantity pairing in `_refresh_chart_series` reads as an explicit
-# table: plotting a compartment's values on another compartment's line would
-# be a presentation-correctness failure, and a table is auditable at a glance.
-def _sample_elapsed_s(sample: SimulationHistorySample) -> float:
-    return sample.elapsed_s
-
-
-def _circuit_value(sample: SimulationHistorySample) -> float:
-    return sample.circuit_concentration_fraction
-
-
-def _alveolar_value(sample: SimulationHistorySample) -> float:
-    return sample.alveolar_concentration_fraction
-
-
-def _mixed_venous_value(sample: SimulationHistorySample) -> float:
-    return sample.mixed_venous_concentration_fraction
-
-
-def _vessel_rich_value(sample: SimulationHistorySample) -> float:
-    return sample.vessel_rich_partial_pressure_fraction
-
-
-def _muscle_value(sample: SimulationHistorySample) -> float:
-    return sample.muscle_partial_pressure_fraction
-
-
-def _fat_value(sample: SimulationHistorySample) -> float:
-    return sample.fat_partial_pressure_fraction
-
-
 class SimulationView:
     """Render and update the volatile-agent patient interface.
 
@@ -270,7 +224,7 @@ class SimulationView:
         # Placeholders come from the formatter rather than from literals, so
         # a change to the displayed resolution cannot leave the pre-run
         # reading disagreeing with every reading after it.
-        empty_compartment = self._format_percent(0.0)
+        empty_compartment = format_percent(0.0)
         self._circuit_concentration_text = self._build_metric_value(empty_compartment)
         self._alveolar_concentration_text = self._build_metric_value(empty_compartment)
         self._mixed_venous_concentration_text = self._build_metric_value(empty_compartment)
@@ -290,7 +244,7 @@ class SimulationView:
             (f"{initial_snapshot.fresh_gas_flow_l_min:.1f} L/min"), color=INK
         )
         self._delivered_concentration_text = ft.Text(
-            self._format_percent(initial_snapshot.delivered_concentration_fraction), color=INK
+            format_percent(initial_snapshot.delivered_concentration_fraction), color=INK
         )
         self._alveolar_ventilation_text = ft.Text(
             (f"{initial_snapshot.alveolar_ventilation_l_min:.1f} L/min"), color=INK
@@ -299,19 +253,40 @@ class SimulationView:
             (f"{initial_snapshot.cardiac_output_l_min:.1f} L/min"), color=INK
         )
 
-        self._circuit_series = self._build_chart_series(color=CIRCUIT_COLOR, stroke_width=3)
-        self._alveolar_series = self._build_chart_series(
+        self._circuit_series = chart_series.build_series(color=CIRCUIT_COLOR, stroke_width=3)
+        self._alveolar_series = chart_series.build_series(
             color=ALVEOLAR_COLOR, stroke_width=3, dash_pattern=[10, 4]
         )
-        self._mixed_venous_series = self._build_chart_series(
+        self._mixed_venous_series = chart_series.build_series(
             color=MIXED_VENOUS_COLOR, stroke_width=2, dash_pattern=[4, 3]
         )
-        self._vessel_rich_series = self._build_chart_series(color=VESSEL_RICH_COLOR, stroke_width=2)
-        self._muscle_series = self._build_chart_series(
+        self._vessel_rich_series = chart_series.build_series(
+            color=VESSEL_RICH_COLOR, stroke_width=2
+        )
+        self._muscle_series = chart_series.build_series(
             color=MUSCLE_COLOR, stroke_width=2, dash_pattern=[2, 3]
         )
-        self._fat_series = self._build_chart_series(
+        self._fat_series = chart_series.build_series(
             color=FAT_COLOR, stroke_width=2, dash_pattern=[12, 4, 2, 4]
+        )
+        # Which quantity each trace draws, declared beside the traces
+        # themselves so that the line and the compartment it stands for are
+        # read together. This table is the whole trace-to-quantity pairing:
+        # an entry naming the wrong reader would plot one compartment's
+        # values on another compartment's line, which misstates the run as
+        # surely as a wrong number would. Nothing in the type system can
+        # catch that - `flet_charts` ships no stubs, so a chart series is
+        # `Any` to the checker - so
+        # `test_chart_traces_stay_bound_to_their_own_compartment` is what
+        # holds it, by giving each compartment a distinct multiple and
+        # reading the drawn points back.
+        self._plotted_series: tuple[chart_series.PlottedSeries, ...] = (
+            (self._circuit_series, chart_series.circuit_value),
+            (self._alveolar_series, chart_series.alveolar_value),
+            (self._mixed_venous_series, chart_series.mixed_venous_value),
+            (self._vessel_rich_series, chart_series.vessel_rich_value),
+            (self._muscle_series, chart_series.muscle_value),
+            (self._fat_series, chart_series.fat_value),
         )
 
         self._concentration_chart = fch.LineChart(
@@ -363,7 +338,7 @@ class SimulationView:
         )
 
         self._subtitle_text = ft.Text(
-            self._format_subtitle(initial_snapshot.agent_display_name),
+            format_subtitle(initial_snapshot.agent_display_name),
             color=initial_agent_colors.foreground,
             weight=ft.FontWeight.BOLD,
         )
@@ -379,7 +354,7 @@ class SimulationView:
             padding=6,
         )
         self._delivered_concentration_label = ft.Text(
-            self._format_delivered_label(initial_snapshot.agent_display_name),
+            format_delivered_label(initial_snapshot.agent_display_name),
             weight=ft.FontWeight.BOLD,
             color=INK,
         )
@@ -742,31 +717,6 @@ class SimulationView:
         )
 
     @staticmethod
-    def _build_chart_series(
-        color: str, stroke_width: float, dash_pattern: list[int] | None = None
-    ) -> fch.LineChartData:
-        """Build one visual series for the compartment chart.
-
-        Args:
-            color: Hexadecimal line color.
-            stroke_width: Line width in display pixels.
-            dash_pattern: Optional alternating dash and gap lengths
-                in display pixels.
-
-        Returns:
-            Configured Flet line-chart series.
-        """
-
-        return fch.LineChartData(
-            points=[fch.LineChartDataPoint(0.0, 0.0)],
-            color=color,
-            stroke_width=stroke_width,
-            dash_pattern=dash_pattern,
-            curved=False,
-            point=False,
-        )
-
-    @staticmethod
     def _build_legend_item(label: str, color: str, line_style: str) -> ft.Row:
         """Build one compact chart legend entry.
 
@@ -793,9 +743,9 @@ class SimulationView:
 
         snapshot = self._controller.snapshot()
 
-        self._subtitle_text.value = self._format_subtitle(snapshot.agent_display_name)
+        self._subtitle_text.value = format_subtitle(snapshot.agent_display_name)
         self._apply_agent_color_scheme(snapshot.agent_id)
-        self._delivered_concentration_label.value = self._format_delivered_label(
+        self._delivered_concentration_label.value = format_delivered_label(
             snapshot.agent_display_name
         )
         self._agent_dropdown.value = snapshot.agent_id
@@ -826,27 +776,25 @@ class SimulationView:
 
         self._refresh_notice(snapshot.failure_reason)
         self._elapsed_time_text.value = f"{snapshot.elapsed_s:.1f} s"
-        self._circuit_concentration_text.value = self._format_percent(
+        self._circuit_concentration_text.value = format_percent(
             snapshot.circuit_concentration_fraction
         )
-        self._alveolar_concentration_text.value = self._format_percent(
+        self._alveolar_concentration_text.value = format_percent(
             snapshot.alveolar_concentration_fraction
         )
-        self._mixed_venous_concentration_text.value = self._format_percent(
+        self._mixed_venous_concentration_text.value = format_percent(
             snapshot.mixed_venous_concentration_fraction
         )
-        self._vessel_rich_concentration_text.value = self._format_percent(
+        self._vessel_rich_concentration_text.value = format_percent(
             snapshot.vessel_rich_partial_pressure_fraction
         )
-        self._muscle_concentration_text.value = self._format_percent(
+        self._muscle_concentration_text.value = format_percent(
             snapshot.muscle_partial_pressure_fraction
         )
-        self._fat_concentration_text.value = self._format_percent(
-            snapshot.fat_partial_pressure_fraction
-        )
+        self._fat_concentration_text.value = format_percent(snapshot.fat_partial_pressure_fraction)
 
         self._fresh_gas_flow_text.value = f"{snapshot.fresh_gas_flow_l_min:.1f} L/min"
-        self._delivered_concentration_text.value = self._format_percent(
+        self._delivered_concentration_text.value = format_percent(
             snapshot.delivered_concentration_fraction
         )
         self._alveolar_ventilation_text.value = f"{snapshot.alveolar_ventilation_l_min:.1f} L/min"
@@ -897,7 +845,9 @@ class SimulationView:
         self._concentration_chart.max_x = chart_max_x
         self._concentration_chart.min_x = chart_min_x
 
-        self._refresh_chart_series(snapshot.concentration_history, chart_min_x)
+        chart_series.redraw_visible_window(
+            self._plotted_series, snapshot.concentration_history, chart_min_x
+        )
 
     def _apply_agent_color_scheme(self, agent_id: str) -> None:
         """Apply the verified agent color to the header and selection control."""
@@ -914,97 +864,6 @@ class SimulationView:
         self._agent_dropdown.text_style = style.dropdown_text_style
         self._agent_dropdown.border_color = scheme.foreground
         self._agent_dropdown.focused_border_color = scheme.foreground
-
-    def _refresh_chart_series(
-        self, history: tuple[SimulationHistorySample, ...], window_start_s: float
-    ) -> None:
-        """Redraw every trace from the samples inside the visible window.
-
-        Only samples the chart can actually show are sent, and that window is
-        decimated to a fixed per-trace budget, so the render payload is
-        bounded by the window and the budget rather than by how long the
-        simulation has been running. The controller's own history is read but
-        never modified.
-
-        Args:
-            history: Immutable simulation samples, oldest first, with elapsed
-                time in seconds and compartment values as fractions.
-            window_start_s: Earliest simulated time the chart displays, in
-                seconds. Samples older than this are outside the plotted axis
-                range and are not sent.
-        """
-
-        visible = history[first_index_at_or_after(history, window_start_s, _sample_elapsed_s) :]
-
-        for series, value_for in (
-            (self._circuit_series, _circuit_value),
-            (self._alveolar_series, _alveolar_value),
-            (self._mixed_venous_series, _mixed_venous_value),
-            (self._vessel_rich_series, _vessel_rich_value),
-            (self._muscle_series, _muscle_value),
-            (self._fat_series, _fat_value),
-        ):
-            self._redraw_series(series, visible, value_for)
-
-    @staticmethod
-    def _redraw_series(
-        series: fch.LineChartData,
-        visible: tuple[SimulationHistorySample, ...],
-        value_for: Callable[[SimulationHistorySample], float],
-    ) -> None:
-        """Set one trace to its visible samples, bounded and in percent.
-
-        The points a series already holds are reused: their `x` and `y` are
-        overwritten in place, and the list is extended or truncated only for
-        the difference in count. Building a fresh `fch.LineChartDataPoint`
-        per drawn sample per frame is what PL-010 removed - it cost about
-        6 us each against 0.8 us to move an existing one, and at the
-        per-trace ceiling across six traces that was substantially the whole
-        frame.
-
-        Reuse is only safe because Flet's diff reports an in-place mutation:
-        it records the assignment on the point itself, so the client is sent
-        the moved coordinate rather than nothing. PL-001 declined this
-        optimization while that was unconfirmed, since a mutation the diff
-        missed would leave the chart drawing the previous frame beneath the
-        current frame's readouts. `tests/integration/test_chart_patching.py`
-        holds the guarantee against the real Flet session and says how it
-        was confirmed against a browser.
-
-        Every drawn point remains a recorded sample: values are converted
-        from fraction to percent, never interpolated or synthesized, and the
-        controller's own history is read but not modified.
-
-        Args:
-            series: Trace to redraw. Its existing points are mutated.
-            visible: Simulation samples inside the plotted time range.
-            value_for: Function selecting one fraction from a sample.
-        """
-
-        values = [value_for(sample) for sample in visible]
-        # Both raise before anything is written, so a trace is never left
-        # holding half of one frame and half of the next.
-        indices = select_envelope_indices(values, MAX_CHART_POINTS_PER_SERIES)
-
-        points = series.points
-        reused = min(len(points), len(indices))
-
-        for position in range(reused):
-            index = indices[position]
-            point = points[position]
-            point.x = visible[index].elapsed_s
-            point.y = values[index] * 100.0
-
-        if len(indices) > reused:
-            points.extend(
-                fch.LineChartDataPoint(visible[index].elapsed_s, values[index] * 100.0)
-                for index in indices[reused:]
-            )
-        elif len(points) > reused:
-            # Points past the drawn count are the previous frame's samples,
-            # carrying their own time and value. Left in place the chart
-            # would draw them as part of the current trace.
-            del points[reused:]
 
     def _refresh_and_render(self) -> None:
         """Refresh the dashboard and submit it to the Flet page."""
@@ -1211,55 +1070,3 @@ class SimulationView:
         """
 
         return ft.Text(initial_value, size=22, weight=ft.FontWeight.BOLD, color=INK)
-
-    @staticmethod
-    def _format_percent(concentration_fraction: float) -> str:
-        """Convert a concentration fraction to display percent.
-
-        Renders at `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, the
-        resolution `docs/MODEL.md` § "Displayed precision" justifies against
-        the measured error of the shipped operator split.
-
-        A value that is positive but rounds to zero is rendered as below the
-        resolution rather than as zero. The distinction is the point: muscle
-        and fat sit under 0.01% for the first minutes of a run — fat for
-        thirteen of them at 1 MAC sevoflurane — and `0.00%` there would
-        assert a compartment is empty when the model says it is filling.
-        `<0.01%` says only what is known, and leaves `0.00%` meaning what it
-        should, that nothing has arrived yet.
-
-        A negative fraction is deliberately not given the below-resolution
-        form. The compartment guards make one impossible, so if one ever
-        reaches here it must stay visible as the anomaly it is rather than
-        be absorbed into a plausible-looking reading.
-
-        Args:
-            concentration_fraction: Dimensionless concentration
-                fraction from zero through one.
-
-        Returns:
-            Concentration as percent at the displayed resolution, or the
-            below-resolution form for a positive value that rounds to zero.
-        """
-
-        percent = concentration_fraction * 100.0
-        rendered = f"{percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}"
-
-        if percent > 0.0 and float(rendered) == 0.0:
-            resolution = CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
-
-            return f"<{resolution:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
-
-        return f"{rendered}%"
-
-    @staticmethod
-    def _format_subtitle(agent_display_name: str) -> str:
-        """Build the header subtitle naming the current app version and agent."""
-
-        return f"Version {APP_VERSION} — {agent_display_name} patient model"
-
-    @staticmethod
-    def _format_delivered_label(agent_display_name: str) -> str:
-        """Build the delivered-concentration panel label naming the agent."""
-
-        return f"Delivered {agent_display_name.lower()}"

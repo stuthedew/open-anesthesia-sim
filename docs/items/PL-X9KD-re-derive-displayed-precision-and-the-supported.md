@@ -77,6 +77,19 @@ splitting coefficient `C`; and in
 `tests/reference/test_coupled_dynamics.py` the three constants named above —
 not `PINNED_REFERENCE_STATES`.
 
+**And four sites in `app/`, added 2026-09-03 after `PL-WB0X` merged (#263).**
+That item extracted the formatters into `app/formatting.py`, and carried the
+split-derived justification with them rather than leaving it behind. All four
+say the two-decimal resolution rests on the shipped operator split's measured
+error, and all four are false once the exact step lands:
+`app/formatting.py:8-9` (module docstring), `:40-41` (the comment above
+`CONCENTRATION_DISPLAY_DECIMALS`), `:62-63` (`format_percent`'s docstring), and
+`app/simulation_view.py:65-69`, which names
+`core.uptake_system.MAXIMUM_SIMULATION_STEP_S` as "the operator split's
+applicability domain". Rewrite each as a citation of the relevant
+`docs/MODEL.md` section rather than a restatement of it, so the next
+re-derivation reaches one place instead of five.
+
 **Absorbed from `PL-K9HV`** (2026-09-03), which this item supersedes: the
 principle that the dependency must not run backwards. `MAXIMUM_SIMULATION_STEP_S`
 and `supported_ranges.py`'s intervals are currently justified *by* the readout's

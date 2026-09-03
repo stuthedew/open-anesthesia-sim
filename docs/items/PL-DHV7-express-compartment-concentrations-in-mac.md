@@ -3,12 +3,11 @@ id: PL-DHV7
 title: Express compartment concentrations in MAC multiples as a display unit
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, science
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/unit/test_formatting.py
 added: 2026-08-25
-blocked-by: PL-WB0X
 ---
 
 **Problem.** Every compartment is displayed as a percentage of an
@@ -73,8 +72,10 @@ that its input should be one number, not two.)
 
 Second, the formatters here read `snapshot.circuit_concentration_fraction`,
 `alveolar_concentration_fraction` and `mixed_venous_concentration_fraction`
-(`app/controller.py:21-27, 42-49`), all three of which `PL-9SH6` renames to the
-shared `_partial_pressure_fraction` form. Mechanical, but it means this item's
-diff is re-touched by the rename pass.
+(`app/controller.py:22-27` on `SimulationHistorySample` and `:44-49` on
+`SimulationSnapshot`), all three of which `PL-9SH6` renames to the shared
+`_partial_pressure_fraction` form - as are the six accessor functions
+`PL-WB0X` extracted into `app/chart_series.py:76-96`. Mechanical, but it means
+this item's diff is re-touched by the rename pass.
 
 `mac_percent` itself (`core/parameters.py`) is not touched by v0.4.1.

@@ -6,13 +6,13 @@ effort: S
 status: ready
 classes: docs, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_simulation_view.py
+touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_formatting.py
 added: 2026-09-03
-verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_concentration_decimals_are_a_choice_within_a_recorded_band' tests/unit/test_simulation_view.py
+verify: uv run pytest tests/unit/test_formatting.py && grep -q 'def test_concentration_decimals_are_a_choice_within_a_recorded_band' tests/unit/test_formatting.py
 ---
 
-**Problem.** `docs/MODEL.md` § "Displayed precision" and the comment block at
-`app/simulation_view.py:55-96` read as if the two-decimal concentration readout
+**Problem.** `docs/MODEL.md` § "Displayed precision" and the comment blocks in
+`app/formatting.py` read as if the two-decimal concentration readout
 were *derived* — an output of the splitting-error measurement, settled and
 safety-critical to touch. The project owner's account of the decision
 (2026-09-03) is that it was not: *"some of my decimal point decisions were fairly
@@ -51,11 +51,17 @@ change is to say which of the three is doing the work for each value.
 
 **Where.**
 
-- `src/anesthesia_sim/app/simulation_view.py:55-96` —
+- `src/anesthesia_sim/app/formatting.py` —
   `CONCENTRATION_DISPLAY_DECIMALS`, `FLOW_DISPLAY_DECIMALS` and their comment
-  blocks.
-- `src/anesthesia_sim/app/simulation_view.py:828, 848-853, 884-888` — the inline
-  `.1f` and `.6f` format strings that carry no constant and no rationale.
+  blocks. Both moved out of `simulation_view.py` with the formatters (PL-WB0X),
+  so this item now has one module to state the rule in rather than a section of
+  the view's preamble.
+- `src/anesthesia_sim/app/simulation_view.py`, `_refresh_view` and `__init__` —
+  the inline `.1f` (elapsed seconds, the three flow readouts) and `.6f`/`.3e`
+  (the agent-accounting panel) format strings that carry no constant and no
+  rationale. PL-WB0X deliberately left these alone rather than routing them
+  through `formatting.py`: a named formatter for each is this item's call to
+  make, and inventing one first would have prejudged it.
 - `docs/MODEL.md` § "Displayed precision", around lines 1707-1930.
 
 **Done when.** Each displayed value's decimal count is stated as one of two
