@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
+from dataclasses import replace as with_fields
 from datetime import date
 from pathlib import Path
 
@@ -37,6 +38,7 @@ from .vcs import (
     StrandedReport,
     branch_state,
     branches_in_flight,
+    closed_by,
     closures_on_base,
     default_base,
     fetch_remote,
@@ -792,6 +794,84 @@ def cmd_flight(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_record(args: argparse.Namespace) -> int:
+    """Write a pull request number onto the items its merge commit closed.
+
+    This is the write half of what `_check_closures` detects. The number does
+    not exist when the closure is committed - that is why the closure travels
+    with its work and the item lands with an empty `pr` (`PL-QS72`) - so
+    something has to supply it afterwards. Until now that something was a
+    session reading an advisory and retyping the number by hand, which cost a
+    commit and usually a pull request of its own on every item that closed,
+    turned `#229` and `#230` into duplicates of each other (`PL-QTSB`), and
+    left `main` red whenever the squash subject named no id at all
+    (`PL-2XTF`). None of that is judgment. The number is in the merge event,
+    and this writes it.
+
+    Takes the number rather than deriving it, which is the whole point: the
+    caller that has it - the merge-time job, handed it by the event that fired
+    it - needs no subject parsing and so cannot be defeated by a subject.
+    `closed_by` supplies the other half, which is what the commit closed, and
+    that is a tree comparison rather than a guess.
+
+    An item already carrying a *different* number is refused rather than
+    overwritten. Two numbers for one closure means one of them is wrong, and
+    which is not something this can know; a wrong provenance recorded
+    confidently is worse than the missing one this exists to supply.
+    """
+    directory, items, _ = _load(args)
+    root = args.items.parent if args.items else find_root()
+    if args.number < 1:
+        print(f"record: #{args.number} is not a pull request number")
+        return 2
+    try:
+        tracked = directory.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        print("record: the store is outside the repository, so git cannot say what closed")
+        return 2
+
+    report = closed_by(args.merge, root, items_dir=tracked)
+    if not report.known:
+        print(f"record: declined to read {report.declined}")
+        return 2
+
+    number = str(args.number)
+    known = {item.identifier: item for item in items}
+    written: list[str] = []
+    unchanged: list[str] = []
+    absent: list[str] = []
+    conflicting: list[tuple[str, str]] = []
+    for identifier, _path in report.closed:
+        item = known.get(identifier)
+        if item is None:
+            absent.append(identifier)
+        elif item.pr == number:
+            unchanged.append(identifier)
+        elif item.pr:
+            conflicting.append((identifier, item.pr))
+        else:
+            if not args.dry_run:
+                write_item(directory, with_fields(item, pr=number), replace=directory / item.path)
+            written.append(identifier)
+
+    verb = "would record" if args.dry_run else "recorded"
+    for identifier in written:
+        print(f"{identifier}: {verb} `pr: {number}`")
+    for identifier in unchanged:
+        print(f"{identifier}: already records `pr: {number}`; nothing to write")
+    for identifier in absent:
+        print(f"{identifier}: closed by `{args.merge}` but no longer in the store; nothing written")
+    if not report.closed:
+        print(f"`{args.merge}` closed no item, so #{number} is owed to nothing")
+    for identifier, existing in conflicting:
+        print(
+            f"{identifier}: closed by `{args.merge}`, which is #{number}, but the item "
+            f"records `pr: {existing}`. One of the two is wrong and this cannot tell "
+            f"which, so neither was written."
+        )
+    return 1 if conflicting else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     # The shared options are attached to the top-level parser *and* to every
     # subcommand, so `docket --items X check` and `docket check --items X` both
@@ -862,6 +942,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     branch_cmd.set_defaults(func=cmd_branch)
     add("stranded", "items that exist only on a branch").set_defaults(func=cmd_stranded)
+
+    record = add("record", "write a pull request number onto the items its merge closed")
+    record.add_argument("number", type=int, help="the pull request number")
+    record.add_argument(
+        "--merge", default="HEAD", help="the merge commit whose closures to record (default: HEAD)"
+    )
+    record.add_argument(
+        "--dry-run", action="store_true", help="say what would be written, and write nothing"
+    )
+    record.set_defaults(func=cmd_record)
     add("triage", "what is untriaged, and the rules the answers must satisfy").set_defaults(
         func=cmd_triage
     )
