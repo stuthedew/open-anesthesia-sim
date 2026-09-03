@@ -3,7 +3,8 @@ id: PL-P0BB
 title: "Decide the exact step's state vector: fractions or amounts, and whether a compartment or the system owns the trajectory"
 priority: P1
 effort: M
-status: needs-decision
+status: done
+closed: 2026-09-03
 classes: science, planning
 feature: numerical-domain
 touches: src/anesthesia_sim/core, docs/MODEL.md
@@ -64,3 +65,27 @@ accident.
 
 **Done when.** All three parts are recorded here and in `docs/MODEL.md`, and
 `PL-GS5X` can be started without any representation question left open.
+
+**Decided 2026-09-03 (project owner), all three parts as recommended.**
+
+1. **The state vector is fractions** — $`(F_C, F_A, F_v, F_1, F_2, F_3)`$ plus
+   the seventh augmented state carrying the constant fresh-gas forcing. Amounts
+   are derived per compartment as capacity times fraction. The reason is the
+   whole reason the exact step was chosen: `docs/MODEL.md`'s governing equations
+   are written in fractions, so assembling the matrix is transcribing them, and
+   an amount-based matrix would be equally correct while reading like nothing in
+   the literature.
+2. **Trajectory ownership is left to the implementation.** It is an architecture
+   question that `PL-GS5X` is better placed to answer with the code in front of
+   it, and it interacts with `PL-006` (clarify what `AgentUptakeSystem` actually
+   owns). The constraint that survives regardless: whatever owns the vector,
+   capture, restore and reset must round-trip it exactly, and no compartment may
+   hold a second copy that can disagree with it.
+3. **Mass conservation stops being structural, deliberately, and
+   `AgentSimulationValidator`'s tolerance is re-derived rather than carried
+   over.** Today the residual cannot fail to balance because every transfer is
+   an equal-and-opposite pair, which `docs/MODEL.md` already notes is why it
+   proves less than it appears to. Under a propagator the residual becomes a
+   real test of whether the matrix is right — a stronger gate, because it can
+   fail. `PL-GS5X` must state the new tolerance's derivation beside it, and must
+   not reuse the ~2e-15 figure, which describes the old mechanism.

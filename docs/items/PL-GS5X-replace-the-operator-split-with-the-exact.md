@@ -3,8 +3,7 @@ id: PL-GS5X
 title: Replace the operator split with the exact matrix exponential, so the code that computes the answer is the governing equations
 priority: P1
 effort: L
-status: blocked
-blocked-by: PL-P0BB
+status: ready
 classes: science, refactor
 feature: numerical-domain
 touches: src/anesthesia_sim/core, docs/MODEL.md, tests/reference
@@ -84,10 +83,15 @@ proves a hand-rolled exponential correct, and
 the solver. Re-deriving the equations from the specification is evidence;
 calling the implementation under test is not.
 
-**Version.** A numerical-method change that moves displayed values in their last
-digits and removes the split's applicability-domain bound, so a minor rather
-than the patch planned-milestone item 29 was scoped as. The version is named
-rather than inferred here, per `ROADMAP.md` § "Versioning decision".
+**Version: `v0.4.1`, a patch** (project owner, 2026-09-03). Recorded as a minor
+earlier the same day and corrected: `ROADMAP.md` § "Versioning decision" chooses
+by the capability boundary crossed, not by the size of the change, and this
+crosses none — same model, same parameters, same controls, same agents, and
+nothing the learner can do that they could not before. The displayed value moves
+in its last digit, which v0.2.11 shipped as a patch already, and the guarantee
+strengthens from bounded to exact, which is a stronger statement rather than a
+new capability. Item 29 in `ROADMAP.md` carries the full reasoning and why no
+exception is recorded.
 
 **Sequencing.** Before the naming items `PL-9SH6` and `PL-VZL0`: this deletes
 `_exchange_circuit_and_alveoli` and restructures `_advance_step`, so renaming
