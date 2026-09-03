@@ -7,9 +7,10 @@ status: done
 classes: planning
 feature: planning-cadence
 touches: docs/items/PL-ZRSP-plot-the-f-a-f-i-ratio-the-uptake-literature.md
-verify: bin/docket check && grep -q 'blocked-by: PL-DR1Z' docs/items/PL-ZRSP-plot-the-f-a-f-i-ratio-the-uptake-literature.md
 added: 2026-09-03
 closed: 2026-09-03
+pr: 269
+verify: bin/docket check && grep -q 'blocked-by: PL-DR1Z' docs/items/PL-ZRSP-plot-the-f-a-f-i-ratio-the-uptake-literature.md
 ---
 
 **Problem.** `bin/docket next` ranked `PL-ZRSP` (plot the F_A/F_I ratio) first
