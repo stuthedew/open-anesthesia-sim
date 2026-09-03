@@ -3,7 +3,8 @@ id: PL-9T8T
 title: The primary partition-coefficient citation names an author who is not on the paper
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-03
 classes: defect, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/agents, docs/MODEL.md, tests/unit/test_parameters.py, tests/reference/test_multi_agent.py, docs/items
@@ -108,6 +109,25 @@ arrived. It was corrected on this branch rather than left to this item,
 because knowingly leaving a false citation in a science-classed provenance
 brief is the defect this item describes. The count of ten above is the tree as
 it now stands.
+
+**Answered: no deterministic check is possible, and none was built.** The
+open question above resolves against a check. Nothing in this tree knows the
+paper's author list, so any checker would either pattern-match the one wrong
+name - which stops working the moment a different citation is mistyped, and
+which `CLAUDE.md` would rightly call scripting the judgment half - or would
+have to fetch the record from a network at check time, which `tools/`
+deliberately cannot do. The values were instead re-confirmed by hand against
+the PubMed Central full text on closing (PMC3502091): Table 1 gives blood
+0.42 / 0.65 / 1.3, VRG 0.54 / 1.1 / 2.1, muscle 0.97 / 2.4 / 4.5 and fat
+13 / 34 / 70 for desflurane / sevoflurane / isoflurane, matching the data
+files exactly, and the MAC sentence quoted in all three `mac_percent` notes
+appears verbatim in Methods.
+
+Author initials follow the PubMed-indexed form. The paper's own text is not
+self-consistent - its Authors' contributions section writes "TCVZ" and "JHX"
+while Competing interests writes "JFH" - so the indexed form is the one a
+reader searching from a data file will actually match, and the tree now
+carries it in one shape everywhere.
 
 **Done when.** No occurrence of "Stadler" remains under
 `src/anesthesia_sim/data`, in `docs/MODEL.md`, or under `tests/` — the scope

@@ -43,9 +43,10 @@ true, and the machine-parameter carve-out is what these two escape through.
 **Approach.** Move both constants into a versioned, cited data file beside
 `data/patients/` — machine parameters are their own kind, not patient or agent
 parameters — and add their provenance rows. Record there that the published Gas
-Man convention is 8 L (De Wolf AM, Van Zundert TCRV, De Cooman S, Hendrickx JFA.
+Man convention is 8 L (De Wolf AM, Van Zundert TC, De Cooman S, Hendrickx JF.
 *Theoretical effect of hyperventilation on speed of recovery and risk of
-rehyperventilation.* BMC Anesthesiol 2012;12:22) and that 6.0 L is retained
+rehypnotization following recovery - a Gas Man simulation.* BMC Anesthesiol
+2012;12:22) and that 6.0 L is retained
 deliberately, so a later reader finds a decision rather than an accident.
 Reconcile `docs/ARCHITECTURE.md:26-27` with whatever carve-out remains.
 

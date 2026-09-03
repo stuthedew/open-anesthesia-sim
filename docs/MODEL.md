@@ -826,7 +826,7 @@ Isoflurane and desflurane use the same governing equations, compartment
 structure, and `data/patients/reference_adult.json` physiologic parameters
 as sevoflurane — only each agent's own `data/agents/*.json` partition
 coefficients differ. All three agents' blood:gas and tissue:gas values are
-drawn from the same source table (Stadler et al. 2012, Table 1 — the paper
+drawn from the same source table (De Wolf et al. 2012, Table 1 — the paper
 already cited for sevoflurane), so the three data files are directly
 comparable rather than assembled from unrelated sources.
 
