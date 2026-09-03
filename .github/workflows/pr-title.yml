@@ -1,0 +1,64 @@
+name: pr-title
+
+# Split out of `quality.yml`, and the reason is the trigger rather than tidiness.
+#
+# `quality.yml` carries no `types:` on its `pull_request` trigger, so it uses
+# the default set - opened, synchronize, reopened - which does not include
+# `edited`. A rename therefore fires nothing. That made this check's own printed
+# remedy unreachable: it says "Rename the pull request to lead with the ids",
+# the rename fires no event, and a re-run of the failed job replays the original
+# event payload, so `github.event.pull_request.title` is still the old title and
+# the job fails identically. The only way out was pushing an unrelated commit to
+# manufacture a `synchronize` - which is the workaround this file removes.
+# `#257` is the case that found it; `PL-0ZP8` carries the diagnosis.
+#
+# It is a separate workflow rather than a job with `types:` added to
+# `quality.yml`, because a trigger is per-workflow and the two want different
+# ones. Adding `edited` there would re-run the full suite - lint, mypy, the
+# whole test run, twice over - every time anyone edits a pull request body.
+# Guarding the heavy jobs with `if: github.event.action != 'edited'` was
+# considered and rejected: a job skipped by `if:` reports the conclusion
+# `skipped` rather than `success`, and how required status checks treat that is
+# not something to discover on a protected branch.
+#
+# Two things follow for free. The check now reports in seconds instead of after
+# the full suite, which is when a title problem is cheapest to fix; and it runs
+# under a bare `python3` with no `uv sync`, because `tools/pr_title_check.py`
+# depends on nothing outside the standard library, like everything under
+# `tools/`.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    runs-on: ubuntu-latest
+
+    steps:
+      # `fetch-depth: 0` for the same reason the jobs in `quality.yml` need it:
+      # the script compares `PR_BASE` against `HEAD` to find which items this
+      # branch actually closes, which a truncated clone cannot answer.
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Pinned to the declared floor rather than `.python-version`, matching
+      # `quality.yml`'s `floor` job: this runs a `tools/` script under a bare
+      # interpreter, so the floor is the interpreter it must work on.
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      # The title reaches the script through the environment rather than a
+      # `${{ }}` interpolation inside the `run:` line: it is attacker-controlled
+      # text on a fork pull request, and pasting it into a shell command is the
+      # standard Actions script-injection hole. `PR_BASE` names the merge
+      # target.
+      - name: pull request title names the items it closes
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BASE: origin/${{ github.event.pull_request.base.ref }}
+        run: python3 tools/pr_title_check.py
