@@ -1,13 +1,14 @@
 ---
 id: PL-1TF4
 title: tools/contrast_check.py's docstring says four known shortfalls where KNOWN_SHORTFALLS holds three
-status: ready
+status: done
 priority: P3
 effort: S
 classes: docs
 touches: tools/contrast_check.py
 verify: python3 tools/contrast_check.py && ! grep -q 'Four declared' tools/contrast_check.py
 added: 2026-09-03
+closed: 2026-09-03
 ---
 
 **Problem.** The module docstring states "**Four** declared pairs do not meet
@@ -36,3 +37,10 @@ stale.
 
 **Found.** 2026-09-03, reading the tool while answering the project owner's
 question about whether its output nags (`PL-MHQK`).
+
+**Done.** The sentence no longer states a count at all: "The pairs listed in
+`KNOWN_SHORTFALLS` do not meet their minimum today." That is what the **Done
+when.** above asked for rather than swapping four for three - a restated
+number is a second copy of a fact that changes, and it had already gone stale
+once. The recorded `verify:` greps for the absence of the old wording and was
+watched exiting 1 before the edit.

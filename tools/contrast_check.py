@@ -33,9 +33,9 @@ standard-library-only tool cannot import it. The constants are extracted with
 `ast`, which also means this runs in a bare checkout with no virtualenv - the
 promise every tool here makes.
 
-**Known shortfalls, and why they do not simply fail the build.** Four declared
-pairs do not meet their minimum today. Listing them in `KNOWN_SHORTFALLS`
-against the item that closes each one keeps `make check` green while making the
+**Known shortfalls, and why they do not simply fail the build.** The pairs
+listed in `KNOWN_SHORTFALLS` do not meet their minimum today. Listing them
+there against the item that closes each one keeps `make check` green while making the
 gap visible and owned, which is the opposite of the comment-that-nobody-checks
 this file replaces. The list cannot rot: a shortfall that starts *passing* is
 an error too, so fixing one forces its entry out.
