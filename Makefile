@@ -25,6 +25,13 @@ check: sync
 fix:
 	uv run ruff format .
 	uv run ruff check --fix .
+# The mutating half of `bin/docket check`'s missing-`pr` advisory. `check`
+# reports which landed closures owe a pull request number and which number the
+# base names for each; this writes them, so the field rides the commit the
+# session is about to make instead of costing one of its own (`PL-N5WZ`).
+# Here rather than in `check` for the reason `ruff format` is: `check` runs in
+# CI, where mutating the tree is not the job.
+	bin/docket record
 
 test:
 	uv run pytest

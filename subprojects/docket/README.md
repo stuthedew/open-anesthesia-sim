@@ -35,7 +35,7 @@ docket verify PL-K7QX        # prove one item's work stayed in its commission
 docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # items that exist only on a branch
-docket record 257 --merge X  # write a pull request number onto what its merge closed
+docket record                # write every pull request number the base is owed
 docket check                 # validate the store; exits non-zero on errors
 ```
 
@@ -775,15 +775,31 @@ for one identical insertion. And it could fail outright: a squash subject that
 names no id leaves nothing to recover from, so the advisory became an error and
 the number had to be read off a web page by hand.
 
-`docket record <number> --merge <commit>` is the other half. It takes the
-number rather than deriving it, because the caller that should be running it —
-a job fired by the merge — is *handed* the number by the event, exactly, with
-no subject to parse. `closed_by` supplies what the merge closed by comparing
-the merge commit's tree against its parent's: `status: done` here and not
-there, compared by id so that a title edit renaming the file cannot be read as
-a closure. A revision whose parent the checkout does not hold declines rather
-than answering, because "no parent" would otherwise read as "everything done
-here was closed here" and stamp one number across the whole store.
+`docket record` is the other half, and bare is its normal form: it asks the
+same question `check` asks — which landed closures owe a number, and which
+number does the base name for each — and writes the answer instead of printing
+it. There is one reading, so the two cannot disagree. Crucially it takes no
+merge, because a session may be owed numbers from several, and because taking
+them from the base is what lets the write ride whatever commit the session was
+about to make. That is the cost being removed: not the typing, but the commit
+the typing needed.
+
+`docket record <number> --merge <commit>` is the explicit form, for the number
+the base cannot name — a squash subject that led with no id. It takes the
+number rather than deriving it, and `closed_by` supplies what that merge closed
+by comparing its tree against its parent's: `status: done` here and not there,
+compared by id so a title edit renaming the file cannot be read as a closure. A
+revision whose parent the checkout does not hold declines rather than
+answering, because "no parent" would otherwise read as "everything done here
+was closed here" and stamp one number across the whole store.
+
+Neither form runs in CI, and one was tried. `PL-WTQR` put the write in a job
+fired by the merge, which is exact — the number comes from the event, with no
+subject to parse. It cannot land: a push made with `GITHUB_TOKEN` starts no
+workflow, so a default branch that requires status checks can never see them
+report on the commit such a job pushes, and every configuration that would
+accept the push weakens that gate instead. `PL-N5WZ` records the measurement
+and the decision.
 
 An item already carrying a *different* number is refused, never overwritten.
 Two numbers for one closure means one is wrong, and nothing here can know

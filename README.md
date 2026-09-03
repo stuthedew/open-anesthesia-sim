@@ -94,7 +94,8 @@ make run
 make check       # ruff format --check, ruff check, mypy (strict), the
                  # type: ignore checker, pytest, then the docket and
                  # documentation checkers
-make fix         # ruff format, ruff check --fix
+make fix         # ruff format, ruff check --fix, and write any pull
+                 # request number a landed closure is owed
 make test        # pytest only
 make docket      # validate docs/items/ and list anything untriaged
 make release VERSION=<next>  # cut a release: bump and relock, then name the
