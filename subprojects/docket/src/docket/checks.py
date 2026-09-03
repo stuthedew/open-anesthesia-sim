@@ -855,10 +855,21 @@ def _groom(report: Report, today: date, config: Config, offered: frozenset[str] 
     if not top:
         return
     band = top[0].priority
-    if len(top) > config.top_band_limit:
+    # Blocked items sit in the band and cannot answer "what next": a session
+    # cannot start one, and the limit is about how many choices it must weigh at
+    # a glance. Counting them also made the advisory reachable without anyone
+    # over-prioritizing, because `_check_blocked_band` requires a blocker to sit
+    # at or above the band of what it blocks - so gating one safety item on a
+    # feature item raises that feature item into the band, and the count grows
+    # by an item no class pinned there and nobody can act on (`PL-P23D`).
+    startable = [item for item in top if item.status != "blocked"]
+    if len(startable) > config.top_band_limit:
+        held = len(top) - len(startable)
+        note = f", and {held} more blocked and not counted" if held else ""
         report.advisories.append(
-            f"{band}: {len(top)} items, past the {config.top_band_limit} a session can choose "
-            "between at a glance; demote what is not genuinely next"
+            f"{band}: {len(startable)} startable items{note}, past the "
+            f"{config.top_band_limit} a session can choose between at a glance; demote what is "
+            "not genuinely next"
         )
     undecided = [i for i in top if i.status == "needs-decision"]
     if len(undecided) > len(top) - len(undecided):
