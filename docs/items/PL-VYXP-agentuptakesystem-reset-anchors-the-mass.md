@@ -9,6 +9,7 @@ touches: src/anesthesia_sim/core/uptake_system.py, tests/unit/test_uptake_system
 verify: uv run pytest tests/unit/test_uptake_system_failure.py && grep -q 'def test_reset_anchors_accounting_to_what_the_compartments_actually_hold' tests/unit/test_uptake_system_failure.py
 added: 2026-09-02
 closed: 2026-09-02
+pr: 246
 ---
 
 **Problem.** `AgentUptakeSystem.reset()` called
