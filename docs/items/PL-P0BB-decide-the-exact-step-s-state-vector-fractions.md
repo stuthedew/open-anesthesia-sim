@@ -4,12 +4,13 @@ title: "Decide the exact step's state vector: fractions or amounts, and whether 
 priority: P1
 effort: M
 status: done
-closed: 2026-09-03
-pr: 256
 classes: science, planning
 feature: numerical-domain
+milestone: v0.3.2
 touches: src/anesthesia_sim/core, docs/MODEL.md
 added: 2026-09-03
+closed: 2026-09-03
+pr: 256
 not-delegable: the next step is a decision about the numerical method's state representation and a safety-critical invariant, not code; no command can prove a decision, and the implementation it authorizes edits `core/` and `docs/MODEL.md`, both protected paths.
 ---
 

@@ -8,7 +8,7 @@ classes: science, refactor
 feature: numerical-domain
 touches: src/anesthesia_sim/core, docs/MODEL.md, tests/reference
 added: 2026-09-03
-verify: uv run pytest tests/reference/ && grep -rq 'def build_system_matrix' src/anesthesia_sim/core/
+verify: uv run pytest -q tests/reference/test_coupled_dynamics.py && grep -rq 'def build_system_matrix' src/anesthesia_sim/core/
 ---
 
 **Problem.** The operator split hides the governing equations. `PL-SPMQ`
@@ -98,6 +98,16 @@ exception is recorded.
 that code first is work thrown away. `PL-3TLK`'s $`F_C \rightarrow F_I`$
 decision should be settled first even so, because the new matrix assembly should
 be written with the domain's names from its first line.
+
+**The `verify:` command is expensive on purpose, and the number is 23 s.**
+`docket check` flagged the original — the whole of `tests/reference/` — as the
+floor for every `make check` until this item closes: 34 s against a 0.7 s
+median. Narrowed to `test_coupled_dynamics.py` alone, which is 23 s, and not
+narrowed further. The cheap option is to pair the grep with a fast unit suite,
+as `PL-9SH6` and `PL-3TLK` do, and it is wrong here: those are renames that
+cannot move a number, while this replaces the numerical method, and the
+independent-oracle gate is the one thing that would catch it going wrong. Nine
+seconds a run is the right price for that. Measured 2026-09-03.
 
 **Done when.** One exact step replaces the five composed sub-steps, the matrix
 assembly reads as the governing equations without a lookup, the independent

@@ -4,12 +4,14 @@ title: Decide whether to adopt primary-literature partition coefficients or labe
 priority: P1
 effort: S
 status: done
-closed: 2026-09-03
-verify: uv run pytest tests/unit/test_parameters.py tests/reference/test_multi_agent.py && python3 tools/doc_check.py check && python3 -c "import json,glob,sys; sys.exit(0 if all('tier' in s['note'].lower() or 'device capability' in s['note'] for f in glob.glob('src/anesthesia_sim/data/**/*.json',recursive=True) for s in json.load(open(f))['sources']) else 1)"
 classes: science
 feature: model-spec-accuracy
+milestone: v0.3.2
 touches: src/anesthesia_sim/data/agents, docs/MODEL.md, tests/reference/test_multi_agent.py, tests/reference/test_published_wash_in.py, ROADMAP.md
 added: 2026-09-03
+closed: 2026-09-03
+pr: 257
+verify: uv run pytest tests/unit/test_parameters.py tests/reference/test_multi_agent.py && python3 tools/doc_check.py check && python3 -c "import json,glob,sys; sys.exit(0 if all('tier' in s['note'].lower() or 'device capability' in s['note'] for f in glob.glob('src/anesthesia_sim/data/**/*.json',recursive=True) for s in json.load(open(f))['sources']) else 1)"
 ---
 
 **Decided 2026-09-03 by the project owner: the labeling fix now, and ship-both on

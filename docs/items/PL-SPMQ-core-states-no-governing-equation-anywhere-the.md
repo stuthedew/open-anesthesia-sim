@@ -4,13 +4,14 @@ title: core/ states no governing equation anywhere; the only textbook transcript
 priority: P1
 effort: S
 status: done
-closed: 2026-09-03
-pr: 256
 classes: science, planning
 feature: numerical-domain
-not-delegable: the whole of this item was a decision about the numerical method; no command can prove a decision, and the implementation it authorized is PL-GS5X.
+milestone: v0.3.2
 touches: src/anesthesia_sim/core, docs/MODEL.md
 added: 2026-09-03
+closed: 2026-09-03
+pr: 256
+not-delegable: the whole of this item was a decision about the numerical method; no command can prove a decision, and the implementation it authorized is PL-GS5X.
 ---
 
 **Problem.** The project owner stated the bar for planned-milestone item 29
