@@ -1,12 +1,15 @@
 ---
 id: PL-1JDD
 title: Make the source tier machine-readable so doc_check can decide it
-status: untriaged
+priority: P1
+effort: M
+status: blocked
 classes: infra, science
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, tools/doc_check.py, docs/MODEL.md, tests/unit/test_parameters.py
+blocked-by: PL-6Q8N, PL-D6LX
 added: 2026-09-03
-verify: python3 tools/doc_check.py check && uv run pytest tests/unit/test_parameters.py
+verify: uv run pytest tests/unit/test_parameters.py && python3 tools/doc_check.py check && grep -q source_tiers tools/doc_check.py && python3 -c "import json,glob,sys; t={'primary','secondary','reference-implementation'}; f=glob.glob('src/anesthesia_sim/data/**/*.json',recursive=True); d=[json.load(open(p)) for p in f]; sys.exit(0 if d and all(x['schema_version']==2 and all(s.get('tier') in t for s in x['sources']) for x in d) else 1)"
 ---
 
 **Problem.** `docs/MODEL.md` § "Source hierarchy" now states which sources may

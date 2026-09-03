@@ -1,12 +1,14 @@
 ---
 id: PL-6Q8N
 title: The reference adult's eleven physiologic parameters have no primary source at all
-status: untriaged
+priority: P1
+effort: M
+status: ready
 classes: science, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-03
-verify: python3 tools/doc_check.py check && uv run pytest tests/unit/test_parameters.py
+verify: uv run pytest tests/unit/test_parameters.py && python3 tools/doc_check.py check && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/patients/reference_adult.json')); assert d['weight_kg']==70.0 and d['tissue_groups']['vessel_rich']['perfusion_fraction']==0.76 and d['tissue_groups']['fat']['volume_l']==14.5; assert any('Mapleson' in s['citation'] for s in d['sources'])"
 ---
 
 **Problem.** `src/anesthesia_sim/data/patients/reference_adult.json` stores
