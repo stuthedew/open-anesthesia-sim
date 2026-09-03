@@ -35,7 +35,8 @@ makes some of the model's behavior unreachable.
    transfer than being plainly a model explorer: it invites trust in a device
    metaphor the rest of the tool never honours.
 2. **The interface already does not claim to be a dial.**
-   `_format_delivered_label` renders "Delivered sevoflurane", not "Vaporizer".
+   `formatting.format_delivered_label` renders "Delivered sevoflurane", not
+   "Vaporizer".
    This item's title says dial; the interface never does.
 3. **Consistency across the four runtime controls.** Ventilation and cardiac
    output are patient states, not dials. Fresh gas flow is a real flowmeter

@@ -52,6 +52,8 @@ src/anesthesia_sim/
 ├── app/                  # Flet user interface
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic
+│   ├── formatting.py               # modeled value -> displayed string; Flet-independent
+│   ├── chart_series.py             # builds and redraws the chart's traces from the run
 │   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
 │   ├── theme.py                    # UI palette, cited ISO 5360 agent colors, layout constants
 │   └── main.py                     # entry point; builds the Flet page
@@ -116,10 +118,16 @@ primitive publicly and the invariant holding only for the caller that knew
 to compensate. The setter conserves, and the controller forwards. The
 snapshot carries the complete `SimulationHistorySample` record of the run:
 one sample per simulation step, not trimmed (see `docs/items/`).
-`app/simulation_view.py` reads only from that snapshot — it formats
-fractions as percentages, builds the chart, and wires slider/button
-callbacks through `_apply_setting` to controller setters. It performs no
-physiological or unit calculation of its own.
+`app/simulation_view.py` reads only from that snapshot — it builds the
+controls, drives the chart, and wires slider/button callbacks through
+`_apply_setting` to controller setters. It performs no physiological or
+unit calculation of its own. The two transformations it does apply are
+each their own module, because each is a presentation-*correctness*
+question rather than a layout one and each must be readable and testable
+without a Flet interface: `app/formatting.py` turns a fraction into the
+string a reader sees, at the resolution `docs/MODEL.md` § "Displayed
+precision" derives, and `app/chart_series.py` builds the traces and
+redraws them from the recorded run.
 
 **Failure direction:** every failure `core/` reports is a subclass of
 `AnesthesiaSimulationError` (`core/exceptions.py`), never a bare
@@ -162,7 +170,11 @@ trace draws is decided by `app/chart_downsampling.py`, a Flet-independent
 module kept separate because choosing a subset is a
 presentation-correctness concern (a subset that drops a transient shows a
 curve the simulation never produced) and therefore needs to be tested on its
-own. Stepping and drawing also run as separate loops on separate intervals,
+own. `app/chart_series.py` is the layer above it — it holds the per-trace
+point budget, converts fraction to percent, and moves the points a trace
+already holds — and it is separate for the same reason: which quantity a
+line carries is a correctness claim, and the view passes it in as one
+`PlottedSeries` table declared beside the traces themselves. Stepping and drawing also run as separate loops on separate intervals,
 so simulation time stays a function of steps taken rather than of how long a
 frame took.
 
@@ -328,7 +340,8 @@ and import, run before a push, and reach what those two commands never do.
 ## Tests (`tests/`)
 
 - **`tests/unit/`** — one module's behavior in isolation (a compartment, a
-  validator, a parameter loader, the controller, the view's formatting).
+  validator, a parameter loader, the controller, the displayed-value
+  formatters, the view).
 - **`tests/integration/`** — components wired together as the app assembles
   them (e.g. controller driving a full `AgentUptakeSystem`).
 - **`tests/reference/`** — analytic/independent reference cases the
@@ -346,7 +359,14 @@ and import, run before a push, and reach what those two commands never do.
   and reference cases documented in `docs/MODEL.md` first (per `CLAUDE.md`).
 - A new agent or patient profile → a new validated, cited file under
   `data/`, not hardcoded values in `core/`.
-- A new display panel, control, or chart series → `app/simulation_view.py`,
-  reading only fields already on `SimulationSnapshot`/`SimulationHistorySample`;
-  if the UI needs a value that doesn't exist yet, add it to those dataclasses
-  in `app/controller.py`, computed in `core/`, never computed in the view.
+- A new display panel or control → `app/simulation_view.py`, reading only
+  fields already on `SimulationSnapshot`/`SimulationHistorySample`; if the UI
+  needs a value that doesn't exist yet, add it to those dataclasses in
+  `app/controller.py`, computed in `core/`, never computed in the view.
+- A new way of *rendering* a value a reader interprets — a unit, a decimal
+  count, a marker for what the display cannot resolve → `app/formatting.py`,
+  as a pure function with its own test, and with the reason recorded in
+  `docs/MODEL.md` § "Displayed precision".
+- A new chart series, or a change to how one is drawn → `app/chart_series.py`,
+  with the trace paired to its quantity in `SimulationView`'s
+  `_plotted_series` table.
