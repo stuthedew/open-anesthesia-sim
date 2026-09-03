@@ -3,12 +3,11 @@ id: PL-VM40
 title: Derive simulated time from a step count and never catch up to the wall clock
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, science
 feature: teachable-case
 touches: src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_simulation.py
 added: 2026-08-25
-blocked-by: PL-WB0X
 ---
 **Problem.** Two separate things make a run irreproducible. `SimulationState.advance`
 accumulates `self.elapsed_s += simulation_step_s` per step, so the clock depends on
