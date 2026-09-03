@@ -1,9 +1,15 @@
 ---
 id: PL-9NKK
 title: verify.py's LANDED_TIMEOUT and landed_workers() record 48-49 candidates at 34.9 s serial and 6.9 s worst; measured 2026-09-03 it is 78 candidates at 175.5 s serial and 27.4 s worst
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
 feature: dev-tooling
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-09-03
+closed: 2026-09-03
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -rq 'def test_the_run_reports_what_it_cost' subprojects/docket/tests
 ---
 
 **Problem.** Two constants in `subprojects/docket/src/docket/verify.py` carry
@@ -56,3 +62,62 @@ printed every run that changes no decision is a defect in the check.
 
 **Done when.** Both figures match a measurement taken on the store as it stands, or
 the comment is replaced by something the tool computes.
+
+**Worked.** The comments do not carry a measurement any more; `check` reports
+one, on the line under its headline:
+
+```
+docket: 141 open (…), 0 errors, 3 advisories
+  verify: 82 commands in 31.1s (181.4s serially); slowest PL-GS5X 26.4s against a 120s limit
+```
+
+**A third stale copy turned up while fixing the two.**
+`subprojects/docket/README.md` carried "2026-09-02, 47 candidates: 34.9 s
+serially, 10.1 s concurrently" as well, which the brief above did not know
+about. That is the argument for the disposition rather than against it: the
+figure had been hand-copied to three places and every one of them was wrong,
+because the mechanism that made them stale is copying rather than any one
+author's oversight. All three are now replaced by the reading `check` takes at
+run time.
+
+**Two fields were missing and are added.** `LandedReport` carried `elapsed`
+and `typical` but not the serial total, and named the slowest command only
+when it cleared `SLOW_COMMAND_RATIO`. Both are on the line for reasons the
+other findings do not cover:
+
+- `serial` is the half that carries the news. Concurrency holds `elapsed`
+  roughly flat as the store grows, so the number a session feels is the one
+  that hides the growth - 10.1 s to 28.8 s while the serial total went 34.9 s
+  to 175.5 s. Reporting only the wall clock would have hidden this item's own
+  finding.
+- `slowest` answers a different question from `slow`. `slow` fires on an
+  outlier against the median and is silent on a store where everything is
+  uniformly heavy, which is exactly the store whose margin against
+  `LANDED_TIMEOUT` is closing. The margin always has an answer; whether an
+  outlier arrived usually does not.
+
+**Reported as a fact, not an advisory**, and kept out of `errors`,
+`advisories` and `declined`. `CLAUDE.md` holds that a check firing every run
+without changing a decision is a defect in the check - a rule about findings,
+which demand judgment. This is the category of the open-item counts beside it:
+scanned, acted on by nobody, and worth its line because a change in it is the
+signal. `_note_cost`'s docstring carries the argument.
+
+It stays silent where the run declined, where no caller asked, and where the
+store holds no command to run, rather than printing zeros - an empty result
+rendered as a measured one is the error this module is built to refuse. The
+CI `floor` job is the live instance: no `uv` on that runner, so every command
+returns 127, the run declines, and no cost line is printed.
+
+**Tests.** Nine in `test_checks.py` over the reported line and its four silent
+cases, five in `test_verify.py` over the two new fields - including that a
+command killed at the limit counts into neither, since it was stopped rather
+than having cost its duration. Each was checked against a mutated
+implementation rather than only against the working one: removing the
+`_note_cost` call fails six, and stubbing `serial` to zero fails one.
+
+**Not done here.** `PL-FRGP` - the slow-command advisory that overstates what
+narrowing the command it names would save - is the same file and was
+deliberately left alone: it is a separate decision the project owner has not
+taken, and the wording this item touches is the headline rather than that
+advisory.
