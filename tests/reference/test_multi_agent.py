@@ -118,7 +118,7 @@ def test_desflurane_alveolar_circuit_ratio_rises_faster_than_isoflurane() -> Non
     data files). A less soluble agent's alveolar fraction should approach
     its circuit/inspired fraction faster, matching the emergence-time
     ordering (desflurane fastest, then sevoflurane, then isoflurane)
-    reported by Stadler et al. 2012 for the same reference table.
+    reported by De Wolf et al. 2012 for the same reference table.
     """
 
     desflurane = _build_system_for_agent("desflurane")
