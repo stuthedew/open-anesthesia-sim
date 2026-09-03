@@ -621,29 +621,36 @@ reconstruct three commands at the moment they are trying to do something else.
    because a squash-merge discards the branch commit while the pull request
    number outlives it.
 
-   **Leave `pr` empty, and do not come back for it.** The number cannot be
-   known before the pull request is open, and `docket check` owes a `pr` only
-   on a closure that already stands on the default base — so an unlanded
-   closure carrying none is the expected shape rather than an error. The
-   `record-pr` workflow writes the field when the pull request merges, from
-   the number the merge event carries, so the item is complete on `main`
-   without anyone touching it again. **Do not split the closure out to get the
-   number earlier** — pushing the work first and adding the `pr` before the
-   merge reopens the very window below, and the merge can arrive between the
-   two pushes. Closing in the same commit as the work is what removes that
+   **Leave `pr` empty; it is written after the merge, by command.** The number
+   cannot be known before the pull request is open, and `docket check` owes a
+   `pr` only on a closure that already stands on the default base — so an
+   unlanded closure carrying none is the expected shape rather than an error.
+   **Do not split the closure out to get the number earlier** — pushing the
+   work first and adding the `pr` before the merge reopens the very window
+   below, and the merge can arrive between the two pushes. Closing in the same
+   commit as the work is what removes that
    window: requiring the number up front forced the closure into a second
    push, and a merge inside it took the work and left the closure on the
    branch — `main` had the fix while the queue still called the item open and
    a debt gate still counted it (`PL-D2GW`, then `PL-P5S0`).
 
-   **If `docket check` raises the missing-`pr` advisory anyway, the job did
-   not run — that is the finding, and the number is not.** Writing the field
-   in by hand is what this replaced: it cost a commit and usually a pull
-   request after every merge that closed anything, and two sessions reading
-   the same advisory opened `#229` and `#230` for one identical line
-   (`PL-QTSB`). So look at the workflow run first. Where it genuinely has to
-   be done locally, `bin/docket record <number> --merge <merge commit>` writes
-   it — never by editing the file, which is how the wrong number gets typed.
+   **When `docket check` raises the missing-`pr` advisory, discharge it with
+   `bin/docket record <number> --merge <merge commit>` — never by editing the
+   file.** The command reads what the merge actually closed and refuses to
+   overwrite a different number; typing the line by hand is how the wrong one
+   gets recorded, and how two sessions opened `#229` and `#230` for one
+   identical insertion (`PL-QTSB`). **Run the in-flight guard first**
+   (`git fetch origin` then `bin/docket show <id>`): another branch is often
+   already holding it. Let the write ride a commit you are already making
+   rather than composing one for it.
+
+   **`.github/workflows/record-pr.yml` is parked and writes nothing**
+   (`PL-N5WZ`). It was meant to do this at merge time and cannot: `main`'s
+   required status checks reject a push made with `GITHUB_TOKEN`, because such
+   a push starts no workflow and the checks can never report on it. Do not
+   wait for it, and do not re-enable it — where the write is triggered instead
+   is an open decision.
+
    The advisory is still an *error* where no commit on the base names a number
    at all **and** the checkout says it is complete, which is provenance
    genuinely lost; a truncated checkout declines instead, because the commit

@@ -27,9 +27,37 @@ name: record-pr
 # `docket check`'s advisory stays as the detector. It should now fire only when
 # this job did not run or could not push, which makes it the signal it was
 # always meant to be rather than the routine chore it had become.
+#
+# ---------------------------------------------------------------------------
+# PARKED on its first run (`#261`, 2026-09-03), pending `PL-N5WZ`. The
+# `pull_request` trigger is removed; `workflow_dispatch` is here only because
+# a workflow needs some trigger, and the job's own `if:` means a manual run
+# does nothing. Nothing is lost by that: the remedy for a `pr` this would have
+# written is `bin/docket record <number> --merge <commit>`, run locally, which
+# is what a session would reach for anyway.
+#
+# It works; it cannot land. The push was rejected by `main`'s protection:
+#
+#   remote: error: GH006: Protected branch update failed for refs/heads/main.
+#   remote: - 3 of 3 required status checks are expected.
+#
+# That is required status checks rather than the ruleset's `pull_request`
+# rule - the ruleset was already disabled when this ran, and the push failed
+# anyway. And it is not a bypass away from working, because the requirement
+# cannot be satisfied by anything this job can do: a push made with
+# `GITHUB_TOKEN` starts no workflow, so the three required checks can never
+# report on the commit it pushes. The only configurations that would accept
+# it weaken `main`'s own gate, which is a worse trade than the per-item commit
+# this was built to remove.
+#
+# Left in the tree rather than deleted because the decision it waits on is
+# where the write is triggered, not whether the write exists: `docket record`
+# and `vcs.closed_by` are the mechanism under every option, and this file is
+# the merge-time trigger for it. Parked rather than left failing, because a
+# red run after every merge is strictly worse than the advisory it replaced.
+# ---------------------------------------------------------------------------
 on:
-  pull_request:
-    types: [closed]
+  workflow_dispatch:
 
 # The one job in this repository that writes. Scoped to `contents` and to this
 # job alone; every other workflow here stays `contents: read`.
