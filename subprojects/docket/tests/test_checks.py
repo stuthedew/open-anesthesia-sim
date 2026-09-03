@@ -1018,14 +1018,26 @@ def test_a_closure_whose_merge_commit_names_its_number_is_an_advisory_not_an_err
     assert _has(report.advisories, "recoverable from its merge commit")
 
 
-def test_the_advisory_names_the_number_to_write_and_where() -> None:
+def test_the_advisory_names_the_number_and_the_command_that_writes_it() -> None:
     # An advisory a reader has to go and look something up to act on is one
-    # they defer, so the exact line to write is in the sentence.
+    # they defer, so the exact remedy is in the sentence. It is a command
+    # rather than a line to type: retyping a number by hand is what put two
+    # sessions on `#229` and `#230` for one identical insertion (`PL-QTSB`).
     item = _item(status="done", closed=TODAY)
     report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
 
     assert _has(report.advisories, "#148")
-    assert _has(report.advisories, "write `pr: 148` into the item")
+    assert _has(report.advisories, "`docket record 148 --merge")
+
+
+def test_the_advisory_says_the_merge_time_write_did_not_happen() -> None:
+    # The advisory is the detector, not the mechanism. A session that reads it
+    # as a chore and quietly discharges it restores the per-item commit this
+    # arrangement removed, and hides the fact that the job is broken.
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
+
+    assert _has(report.advisories, "means that did not happen")
 
 
 def test_a_derived_number_for_another_item_does_not_excuse_this_one() -> None:
@@ -1107,7 +1119,7 @@ def test_a_shallow_clone_still_advises_where_the_number_was_found() -> None:
 
     A derived number is proof the commit was there to read, so depth cannot
     make it less true - and suppressing it would take the one line that says
-    which number to write.
+    which number is owed and how to write it.
     """
     item = _item(status="done", closed=TODAY)
     report = analyze(
@@ -1115,7 +1127,7 @@ def test_a_shallow_clone_still_advises_where_the_number_was_found() -> None:
     )
 
     assert report.errors == [] and report.declined == []
-    assert _has(report.advisories, "write `pr: 148` into the item")
+    assert _has(report.advisories, "`docket record 148 --merge")
 
 
 def test_an_item_a_merge_removed_is_an_error_carrying_the_command_that_recovers_it() -> None:

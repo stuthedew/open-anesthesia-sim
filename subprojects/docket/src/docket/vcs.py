@@ -998,6 +998,107 @@ def _items_at(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, st
     return found
 
 
+@dataclass(frozen=True)
+class ClosedByReport:
+    """Which items one commit closed, or why that could not be read.
+
+    The counterpart to `ClosureReport`, asked from the other end. That one
+    starts from a set of closures and walks history backwards looking for the
+    merge that landed each; this starts from one merge and reads what it
+    closed. A caller that already knows the number - the merge-time job, which
+    is handed it by the event that fired it - needs only this one, and needs no
+    subject parsing at all.
+    """
+
+    revision: str = ""
+    #: Item id to the path holding it in that commit's tree. Pairs rather than
+    #: a mapping, to stay hashable like every other report in this module;
+    #: `paths` unpacks it.
+    closed: tuple[tuple[str, str], ...] = ()
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+    @property
+    def paths(self) -> dict[str, str]:
+        return dict(self.closed)
+
+
+def closed_by(
+    revision: str, root: Path, *, items_dir: str = "docs/items", runner: Runner | None = None
+) -> ClosedByReport:
+    """The items whose closure `revision` itself landed, as id to path.
+
+    Closed *here* means `status: done` in this commit's tree and not in its
+    parent's. That is the question a merge-time caller is asking, and the
+    stricter half of it is the parent: a pull request records its number on
+    what it closed, never on what was already closed when it branched.
+    `_number_closing` asks the same question of one file, walking backwards
+    until it finds the commit that closed it; this asks it of one commit,
+    forwards, and needs no subject to parse because the caller already has the
+    number.
+
+    The comparison is by id rather than by path. A title edit renames an item's
+    file, so a path missing from the parent tree proves nothing about whether
+    the item was already done - it may have been done under its old name.
+    Reading the parent's ids costs one `ls-tree` and removes the whole class.
+
+    `git diff` against the first parent rather than `diff-tree`, because a true
+    merge commit shows an empty `diff-tree` by default and would read as
+    closing nothing. Only the files the commit touched are examined, which is
+    what keeps this at a handful of tree reads instead of one per item: a file
+    the commit did not touch cannot have been closed by it.
+
+    A revision whose parent this checkout does not hold declines rather than
+    answering. At `fetch-depth: 1` there is nothing to compare against, and
+    "no parent" would otherwise read as "everything done here was closed here"
+    - the confident wrong answer this module refuses to give, and here it would
+    stamp one pull request number across the whole store.
+    """
+    run = runner or _run_git
+    if not run(["rev-parse", "--verify", "--quiet", f"{revision}^{{commit}}"], root).strip():
+        return ClosedByReport(declined=f"what `{revision}` closed: it names no commit here")
+    if not run(["rev-parse", "--verify", "--quiet", f"{revision}^^{{commit}}"], root).strip():
+        return ClosedByReport(
+            declined=(
+                f"what `{revision}` closed: its parent is outside this checkout, so its tree "
+                f"has nothing to be compared against"
+            )
+        )
+
+    touched: dict[str, str] = {}
+    listing = run(["diff", "--name-only", f"{revision}^", revision, "--", items_dir], root)
+    for line in listing.splitlines():
+        path = line.strip()
+        name = path.rsplit("/", 1)[-1]
+        match = ITEM_FILE_RE.match(name) if path else None
+        if match is not None and _done_at(revision, path, name, root, run):
+            touched[match.group(1)] = path
+    if not touched:
+        return ClosedByReport(revision=revision)
+
+    before = _items_at(f"{revision}^", root, items_dir, run)
+    closed = {
+        identifier: path
+        for identifier, path in touched.items()
+        if not _done_before(before.get(identifier), revision, root, run)
+    }
+    return ClosedByReport(revision=revision, closed=tuple(sorted(closed.items())))
+
+
+def _done_before(path: str | None, revision: str, root: Path, run: Runner) -> bool:
+    """Whether the item held at `path` already read `done` in `revision`'s parent.
+
+    An id absent from the parent tree is new in this commit, which cannot have
+    been done before it.
+    """
+    if path is None:
+        return False
+    return _done_at(f"{revision}^", path, path.rsplit("/", 1)[-1], root, run)
+
+
 def _title_at(ref: str, path: str, root: Path, run: Runner) -> str:
     """The title an item file carries on a branch, or empty if it cannot be read."""
     text = run(["show", f"{ref}:{path}"], root)

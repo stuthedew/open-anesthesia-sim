@@ -35,6 +35,7 @@ docket verify PL-K7QX        # prove one item's work stayed in its commission
 docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # items that exist only on a branch
+docket record 257 --merge X  # write a pull request number onto what its merge closed
 docket check                 # validate the store; exits non-zero on errors
 ```
 
@@ -738,10 +739,11 @@ trailing parentheses. One history read for the whole set, taken only when
 something landed, and the newest such commit wins — an id also leads the
 capture that filed it.
 
-- **The number is recoverable** → an advisory naming it and the line to
-  write. Nothing is lost; the way back exists in git, and the field is a
+- **The number is recoverable** → an advisory naming it, and the command that
+  writes it. Nothing is lost; the way back exists in git, and the field is a
   transcription still owed so the item file carries it too. True at any
-  depth: finding the commit is proof it was there to find.
+  depth: finding the commit is proof it was there to find. This should be a
+  rare sight rather than a routine one — see below.
 - **No commit names one, in a checkout that says it is complete** → the error
   it always was. That is provenance genuinely lost.
 - **No commit names one, in a truncated checkout** → a decline naming the
@@ -758,6 +760,38 @@ provenance had changed between the green run and the red one, only what the
 clone could see, so the failure pointed at an item that was not at fault
 (`PL-99Y4`). The check therefore runs for real only where the history is
 whole, which is what `fetch-depth: 0` in a CI checkout is for.
+
+### The write belongs to the merge, not to a later session
+
+Everything above describes how a missing `pr` is *detected*, and for a while
+that detection was also the mechanism: `check` named the number and a session
+retyped it. That is the wrong division of labour, and it showed.
+
+The transcription cost a commit and usually a pull request of its own after
+every merge that closed anything. It is also the most deterministic work in the
+queue — the tool names the item and states the exact line — so two sessions
+reading the same advisory computed the same answer and opened two pull requests
+for one identical insertion. And it could fail outright: a squash subject that
+names no id leaves nothing to recover from, so the advisory became an error and
+the number had to be read off a web page by hand.
+
+`docket record <number> --merge <commit>` is the other half. It takes the
+number rather than deriving it, because the caller that should be running it —
+a job fired by the merge — is *handed* the number by the event, exactly, with
+no subject to parse. `closed_by` supplies what the merge closed by comparing
+the merge commit's tree against its parent's: `status: done` here and not
+there, compared by id so that a title edit renaming the file cannot be read as
+a closure. A revision whose parent the checkout does not hold declines rather
+than answering, because "no parent" would otherwise read as "everything done
+here was closed here" and stamp one number across the whole store.
+
+An item already carrying a *different* number is refused, never overwritten.
+Two numbers for one closure means one is wrong, and nothing here can know
+which; a confident wrong provenance is worse than the missing one this exists
+to supply.
+
+Both halves are kept, and they answer to different failures. The write is the
+mechanism; the detection is what notices the mechanism did not run.
 
 ### An open item whose own command already passes
 
