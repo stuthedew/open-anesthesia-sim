@@ -4,12 +4,13 @@ title: Gate coverage at 100% on core/, so today's saturation cannot silently reg
 priority: P2
 effort: S
 status: done
-closed: 2026-09-03
-pr:
 classes: test, infra
 feature: core-guard-coverage
+milestone: v0.3.3
 touches: Makefile, .github/workflows/quality.yml
 added: 2026-09-03
+closed: 2026-09-03
+pr: 264
 verify: uv run pytest tests/unit/test_bootstrap.py && grep -q 'cov-fail-under=100' Makefile && grep -q 'cov-fail-under=100' .github/workflows/quality.yml
 ---
 
