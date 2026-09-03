@@ -55,10 +55,11 @@ jobs:
       - run: uv run python tools/doc_check.py check
       - run: uv run python tools/contrast_check.py
 
-      # The pull-request title check used to sit here, last, after the full
-      # suite. It lives in `.github/workflows/pr-title.yml` now: it needs the
-      # `edited` trigger so a rename re-runs it, and a trigger is per-workflow.
-      # That file carries the reasoning.
+      # The pull-request title check lived here and moved to its own workflow,
+      # `.github/workflows/pr-title.yml`, under `PL-3V8K`: it has to run on
+      # `pull_request: edited` so that renaming a title can clear it, and
+      # adding `edited` to this trigger would re-run everything above on every
+      # body edit.
 
   # The other half of what `checks` proves, and the half that was missing.
   # Everything above runs under the virtualenv on the interpreter
