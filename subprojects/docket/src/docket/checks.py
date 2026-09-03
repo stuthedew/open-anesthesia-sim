@@ -228,6 +228,27 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 "that would prove it done, or record in `not-delegable` why no command can"
             )
 
+    # The same requirement at the other end of the item's life, and this half
+    # is what reaches the set the gate above grandfathers. An item captured
+    # before `verify_required_from` is exempt at `ready` and stays exempt
+    # however long it sits there, so the only thing asking for its command was
+    # a grooming advisory - which works if somebody reads it. Closing the item
+    # is the moment the work exists and what proved it is known, so it is the
+    # first moment the command can be written *having been run*, which is the
+    # objection that earned the grandfathering in the first place (`PL-J49T`).
+    #
+    # An error rather than an advisory because nothing here needs judgment.
+    # Whether the field is present is decidable; only what it should say is
+    # not, and this refuses silence without guessing at the sentence.
+    # `dropped` is excluded: an item that will not be done carries a `reason`,
+    # not a command for work nobody did.
+    if item.status == "done" and _verify_required_at_close(item, config):
+        if not item.verify and not item.not_delegable:
+            report.errors.append(
+                f"{where}: is done but names no `verify:` command; give the command "
+                "that proved it, or record in `not-delegable` why no command can"
+            )
+
     # A safety class forces the top band, because that is where work able to
     # reach a wrong clinical value belongs. `blocked` earns a narrow exception:
     # a blocked item is not in the set `next` chooses from, so its band is a
@@ -325,6 +346,25 @@ def _verify_required(item: Item, config: Config) -> bool:
     if config.verify_required_from is None:
         return False
     return item.added is not None and item.added >= config.verify_required_from
+
+
+def _verify_required_at_close(item: Item, config: Config) -> bool:
+    """Whether the closing `verify:` rule applies to this item.
+
+    Anchored to `closed:` rather than `added:`, which is the whole difference
+    from `_verify_required` and the reason this one can reach the items that
+    predate `verify_required_from`. Those are exempt at `ready` by design - a
+    command written for an item nobody has started cannot be run before it is
+    written - and closing one is exactly when that objection lapses.
+
+    An item already closed before this cutover is untouched, deliberately.
+    Backfilling a command onto work that has merged would mean writing one
+    with nothing left to run it against, which is the same failure the
+    grandfathering avoids, one end of the item's life later.
+    """
+    if config.verify_required_at_close_from is None:
+        return False
+    return item.closed is not None and item.closed >= config.verify_required_at_close_from
 
 
 def _check_milestones(report: Report, version: str | None) -> None:

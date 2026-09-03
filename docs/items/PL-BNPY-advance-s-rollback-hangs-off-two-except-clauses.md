@@ -9,6 +9,7 @@ touches: src/anesthesia_sim/core/uptake_system.py, tests/unit/test_uptake_system
 verify: uv run pytest tests/unit/test_uptake_system_failure.py && grep -q 'def test_a_nonlocal_unwind_mid_step_is_rolled_back_too' tests/unit/test_uptake_system_failure.py
 added: 2026-09-02
 closed: 2026-09-02
+pr: 246
 ---
 
 **Problem.** `advance()` captured state, then restored it inside two
