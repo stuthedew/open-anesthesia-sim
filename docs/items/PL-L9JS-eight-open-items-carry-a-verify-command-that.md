@@ -4,14 +4,16 @@ title: "Eight open items carry a verify: command that passes without their work,
 priority: P2
 effort: S
 status: done
-closed: 2026-09-02
-pr: 236
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.3.1
 touches: docs/items
 added: 2026-09-01
+closed: 2026-09-02
+pr: 236
 not-delegable: the command that would prove this is `bin/docket check` itself, which cannot be a `verify:` command because `docket check` runs every open item's `verify:` command - it would recurse. What is left is eight judgments about what would prove each item done, which no command makes.
 ---
+
 **Problem.** Found by running `PL-3CBS`'s new check against the store on
 2026-09-01. Of 29 open items carrying a `verify:` command, 8 pass on a tree
 where their work plainly does not exist:

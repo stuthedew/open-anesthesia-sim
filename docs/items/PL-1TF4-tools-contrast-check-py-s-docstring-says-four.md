@@ -1,15 +1,16 @@
 ---
 id: PL-1TF4
 title: tools/contrast_check.py's docstring says four known shortfalls where KNOWN_SHORTFALLS holds three
-status: done
 priority: P3
 effort: S
+status: done
 classes: docs
+milestone: v0.3.1
 touches: tools/contrast_check.py
-verify: python3 tools/contrast_check.py && ! grep -q 'Four declared' tools/contrast_check.py
 added: 2026-09-03
 closed: 2026-09-03
 pr: 249
+verify: python3 tools/contrast_check.py && ! grep -q 'Four declared' tools/contrast_check.py
 ---
 
 **Problem.** The module docstring states "**Four** declared pairs do not meet

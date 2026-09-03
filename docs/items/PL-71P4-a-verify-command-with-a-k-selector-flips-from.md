@@ -4,12 +4,13 @@ title: "A verify: command with a -k selector flips from correctly failing to fal
 priority: P2
 effort: S
 status: done
-closed: 2026-09-02
-pr: 236
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.3.1
 touches: subprojects/docket/src/docket/checks.py, docket.toml, subprojects/docket/tests/test_checks.py
 added: 2026-09-02
+closed: 2026-09-02
+pr: 236
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_an_item_whose_work_has_landed_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
