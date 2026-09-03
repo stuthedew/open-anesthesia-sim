@@ -1,7 +1,12 @@
 ---
 id: PL-J3BB
 title: make check cannot run tools/pr_title_check.py, so a branch that closes an item after its PR opened goes red in CI with nothing locally to catch it
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra
+feature: dev-tooling
+verify: uv run pytest tests/unit/test_pr_title_check.py && grep -q 'pr-title' Makefile
 touches: Makefile, tools/pr_title_check.py
 added: 2026-09-03
 ---
@@ -45,3 +50,11 @@ options, and the second is better:
 **Done when.** A branch whose open pull request's title no longer leads with
 everything it closes fails `make check` locally, and `make check` still passes
 offline and on a branch with no pull request.
+
+**Triaged 2026-09-03, P3, and the priority is lower than it looked when
+captured.** `PL-3V8K` closed the expensive half the same day: a wrong title now
+costs a rename, which clears the check on its own, rather than a rename plus an
+unrelated commit to make CI look again. What remains is one wasted CI cycle and
+the round trip of noticing, which is real but small. P3 rather than P2 for that
+reason, and because the second approach above needs a GitHub call from
+`make check`, which has to stay green offline.
