@@ -1,16 +1,16 @@
 ---
 id: PL-R7C0
 title: doc_check's tag advisory fires on a full clone that has not fetched tags, so it reports a tagged release as untagged
-status: done
-closed: 2026-09-03
-pr:
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_the_release_being_cut_is_silent' tests/unit/test_doc_check.py
 added: 2026-09-03
+closed: 2026-09-03
+pr: 271
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_the_release_being_cut_is_silent' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `make check` printed:

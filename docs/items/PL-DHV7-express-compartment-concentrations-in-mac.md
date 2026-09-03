@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: safety, science
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/unit/test_formatting.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md, tests/unit/test_formatting.py
 added: 2026-08-25
 ---
 
@@ -79,3 +79,41 @@ Second, the formatters here read `snapshot.circuit_concentration_fraction`,
 this item's diff is re-touched by the rename pass.
 
 `mac_percent` itself (`core/parameters.py`) is not touched by v0.4.1.
+
+**`mac_percent`'s provenance tier changes when this lands (added 2026-09-03).**
+Today `mac_percent` is a starting-value convenience: it opens the vaporizer at
+1 MAC and bounds it, so an error in it moves only where the dial starts. This
+item makes it the divisor of every displayed compartment value and both chart
+axes, which is a clinically meaningful transformation under `CLAUDE.md`'s
+safety-critical standard. The stored values are tier 3 - the flat adult MACs
+De Wolf et al. state they used in Gas Man, adopted because the reference adult
+has no age parameter - and all three data files carry a `note` that ends
+"Used as the controller's starting delivered-concentration default (1 MAC),
+not a governing-equation parameter." That clause becomes false the moment a
+readout divides by it, so the three notes are part of this item's diff.
+
+The size of the gap is not negligible, and it falls in the direction that
+matters most here. Against Mapleson's age-40 meta-analytic MAC (Br J Anaesth
+1996;76:179-85, doi:10.1093/bja/76.2.179 - the tier 1 source the data files
+already cite through Nickalls and Mapleson), the stored values are:
+
+| Agent | Stored `mac_percent` | Mapleson age-40 | Displayed MAC reads |
+| --- | --- | --- | --- |
+| Sevoflurane | 2.0% | 1.80% | 10% low |
+| Desflurane | 6.0% | 6.6% | 10% high |
+| Isoflurane | 1.2% | 1.17% | 2.5% low |
+
+So a sevoflurane-versus-desflurane comparison in MAC multiples - the exact
+comparison this item exists to make honest - is skewed by about 22% between
+the two agents purely by the choice of MAC source. Deciding this is part of
+the item, not a follow-up: either keep the Gas Man set and state on the
+display that the MAC denominator is a flat adult value differing from the
+age-40 reference by up to 10%, or adopt Mapleson's age-40 values as the
+display denominator and record the tier change in `docs/MODEL.md`. Do not
+adopt the age-related iso-MAC form (Nickalls and Mapleson, Br J Anaesth
+2003;91:170-4, doi:10.1093/bja/aeg132) - that needs an age parameter the
+reference adult does not have, and inventing one here is out of scope.
+
+Whichever is chosen, the displayed MAC denominator names its agent and its
+source at the point of display, per the "traceable from the display"
+requirement above.
