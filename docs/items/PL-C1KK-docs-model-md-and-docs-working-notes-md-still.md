@@ -3,7 +3,9 @@ id: PL-C1KK
 title: docs/MODEL.md still names v0.2.3 as the current baseline, four releases on
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-03
+pr:
 classes: defect, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
@@ -50,3 +52,44 @@ which deliberately left this out of its scope.
 
 **Done when.** No document names a current baseline that disagrees with
 `pyproject.toml`.
+
+**Closed 2026-09-03**, and the "worth deciding while fixing it" question is
+answered in the direction this brief proposed: **name no current baseline at
+all.** Both lines were second copies of facts the same file already carried in
+a form that cannot go stale, which is why neither reading wrong nor being read
+was enough to catch them.
+
+§ "Status" said the model was "implemented starting in v0.1.0 and still in
+force in v0.2.3, the current released baseline" — and the *very next sentence*
+already said the governing equations and compartment structure have not changed
+since v0.1.0. That second sentence is version-proof and the first was not, so
+the first is gone. In its place the section states the model is in force
+unchanged since v0.1.0, and then says explicitly that this document names no
+current released baseline, that `ROADMAP.md`'s version table is where that
+lives, and that a statement needing a version should say what has been true
+*since* one. That last sentence is the part that stops a third document
+acquiring the same defect, which is what this item asked for.
+
+§ "Known limitations" opened "As of v0.2.3, this model does not model:". The
+stamp was doing no work the list did not do better — the entries that have
+changed already say so inline, e.g. "isoflurane and desflurane were added in
+v0.2.0" — so it now reads "This model does not model:".
+
+**The scale, measured rather than recalled.** The title said "four releases on";
+by the time this was fixed the sentence had named v0.2.3 through **thirteen**
+shipped releases, v0.2.4 to v0.3.3, counted from `ROADMAP.md`'s version table.
+That figure is stated in `docs/MODEL.md` itself, since the point of the new
+paragraph is that the failure was silent for a long time.
+
+**Done-when swept, not assumed.** No document names a current baseline that
+disagrees with `pyproject.toml` (0.3.3). Checked across `README.md`, `docs/`,
+`CLAUDE.md`, `AGENTS.md` and `.claude/`: the only surviving matches are
+`ROADMAP.md`'s own table, `docs/ARCHITECTURE.md` describing what `doc_check`
+validates, `.claude/skills/docket/SKILL.md` describing the release procedure,
+and the new sentence in `docs/MODEL.md` saying it names none. `README.md`
+carries no version string at all.
+
+**Both statements were true throughout**, as this brief predicted — no equation,
+parameter or numerical method changed across those thirteen releases — so this
+closed a stale citation rather than a wrong claim about the model. Its cost was
+provenance: a reader attributing a value to the wrong model version.

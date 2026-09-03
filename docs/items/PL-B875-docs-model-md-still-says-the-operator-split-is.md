@@ -1,8 +1,16 @@
 ---
 id: PL-B875
 title: docs/MODEL.md still says the operator split is kept and that no planned work wants an exact step, which the 2026-09-03 re-scope reversed
-status: untriaged
+status: done
+priority: P2
+effort: S
+classes: defect, docs
+feature: model-spec-accuracy
+touches: docs/MODEL.md
 added: 2026-09-03
+closed: 2026-09-03
+pr:
+verify: python3 tools/doc_check.py check && grep -qF 'This decision was superseded on 2026-09-03' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md` § "Selected method (as implemented)" carries, at
@@ -53,3 +61,34 @@ decision is named with its date and its item; and `make check` passes.
 
 **Found.** Session auditing which open items the v0.4.1 `core/` pass would
 invalidate, 2026-09-03.
+
+**Closed 2026-09-03** (project owner asked for the interim fix rather than
+waiting for `PL-GS5X`). § "Selected method (as implemented)" now carries the
+supersession where the superseded decision sits, in four edits and no more:
+
+- the subsection heading reads "The exact alternative, and why it replaces this
+  one" rather than "why it is not taken";
+- the 2026-08-30 decision is kept, with its reasoning, and marked as holding on
+  its own terms - the error bounds are why the split is sound to ship until it
+  is replaced, which is a live statement rather than a historical one;
+- a new paragraph records the 2026-09-03 supersession and the ground, which the
+  original decision did not weigh: readability, not accuracy. It names item 29's
+  bar, the three specific ways the split fails it - three of five sub-steps are
+  objects of the splitting scheme rather than of the physiology, the alveolar
+  balance's two terms sit in different sub-steps separated by a third, and the
+  pulmonary uptake rate specified under "Alveolar gas" is never formed - and
+  points at `PL-GS5X` and `PL-X9KD`;
+- one sentence states that until those land this section describes what ships
+  and its bounds are the live ones, and marks itself as the interim correction.
+
+The measurements, the applicability-domain reasoning and the determinism
+argument for the fixed 0.1 s step are untouched, as scoped. `PL-GS5X` still owns
+the rewrite.
+
+**Verified** by the command in the front matter, run before the work and
+watched fail: `doc_check` passed and the `grep` did not, exit 1. Exit 0 after.
+
+**Found alongside, and left alone:** § "Status" still says the model is "still
+in force in v0.2.3, the current released baseline", which is v0.3.2. That is
+`PL-C1KK`, already open, and folding it in here would have widened a scoped
+interim fix into a second one.
