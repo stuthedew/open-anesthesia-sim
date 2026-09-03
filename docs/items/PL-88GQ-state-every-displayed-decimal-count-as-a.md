@@ -92,10 +92,19 @@ magnitudes at the same apparent resolution, and would give the smallest values
 the most decimal places. This item records the existing decision; it does not
 reopen it.
 
-**Depends on.** PL-K9HV (fix the splitting-error budget in absolute units instead
-of deriving it from the readout) lands first: while `core/` derives
+**Depends on.** PL-X9KD (re-derive Displayed precision and the supported step
+bound after the exact step lands) lands first: while `core/` derives
 `MAXIMUM_SIMULATION_STEP_S` and the supported intervals from the two-decimal
 readout, calling that readout freely revisable would be false.
+
+*Repointed 2026-09-03.* This previously depended on PL-K9HV (fix the
+splitting-error budget in absolute units), which is now `dropped` - `PL-GS5X`
+removes the splitting error entirely, so there is no budget left to restate, and
+`PL-X9KD` absorbed the principle that the display must not bound the model.
+`PL-X9KD` says the same thing from its own side: "Interacts with PL-88GQ [...]
+if both are open, do them together." The band this item records as "the band the
+error budget licenses" must come from `PL-X9KD`'s new derivation, not from the
+splitting bound.
 
 **Related.** PL-TG60 (stop printing six decimals of an exhaust integral good to
 three) fixes one instance of this and could be closed alongside it.

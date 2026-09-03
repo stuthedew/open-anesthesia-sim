@@ -75,3 +75,12 @@ value in parentheses, and `make check` is green.
 that session as a single stray parenthesis in one file; the count and the
 spread above were measured during triage, and the item is rewritten around
 them.
+
+**What v0.4.1 does to this (added 2026-09-03).** Re-measure the table. Counted today, 16
+of the 40 sites in `src/` sit in `core/uptake_system.py` and `core/patient.py`,
+which `PL-GS5X` restructures, and `PL-9SH6` then rewrites roughly 300 accessor
+sites across `core/` and `app/` on top of that. The item survives at a smaller
+size; sweeping now means sweeping twice. Do it last in the v0.4.1 sequence, or
+fold it into the `PL-9SH6` rename only if that item's "this is a rename and
+nothing else" rule can be squared with it - which it probably cannot, so
+separately and after.

@@ -3,7 +3,8 @@ id: PL-2HTF
 title: MODEL.md's numerical requirements contradict the operator split it implements
 priority: P2
 effort: S
-status: ready
+status: blocked
+blocked-by: PL-GS5X
 classes: defect, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
@@ -64,3 +65,19 @@ document-versus-code contradictions found in the same review.
 operator split the code implements, names the sub-step ordering including the
 tissue-then-venous order inside the patient step, and no longer requires
 simultaneous evaluation.
+
+**Superseded by `PL-GS5X`, 2026-09-03.** The contradiction this item
+documents is between `docs/MODEL.md:506` — "evaluate every transfer from one
+consistent state" — and a sequential five-sub-step composition that cannot. A
+single matrix exponential over the augmented state vector *satisfies* that
+requirement rather than violating it, so the contradiction dissolves instead of
+needing to be softened. Worse, the Done-when here asks for prose naming "the
+sub-step ordering including the tissue-then-venous order inside the patient
+step" (`core/patient.py:145-151`), which is exactly the ordering `PL-GS5X`
+deletes: writing it now means writing documentation v0.4.1 must immediately
+remove.
+
+Blocked rather than dropped: after the exact step lands, check whether
+`docs/MODEL.md` § "Numerical method" requirement 3 (the equal-and-opposite
+internal transfers) still describes what the code does — `PL-P0BB` retires the
+structural-conservation property it names — and close this out against that.
