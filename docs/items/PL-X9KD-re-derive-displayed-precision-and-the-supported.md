@@ -1,6 +1,6 @@
 ---
 id: PL-X9KD
-title: Re-derive Displayed precision and the supported step bound, and re-pin the coupled-dynamics reference states, after the exact step lands
+title: Re-derive Displayed precision and the supported step bound, and retire the splitting-error constants, after the exact step lands
 priority: P1
 effort: M
 status: blocked
@@ -32,23 +32,74 @@ reader can act on.
    scaling-and-squaring headroom, and what a user can meaningfully observe are
    all still real limits. Decide what the bound now means, or remove it and say
    why.
-3. **The pinned reference states** in `tests/reference/test_coupled_dynamics.py`
-   are the split's solution at the historical operating point. They must be
-   re-pinned from the exact solver and the change recorded, not loosened until
-   they pass.
+3. **The splitting-error constants** in
+   `tests/reference/test_coupled_dynamics.py` lose their referent.
+   `SPLITTING_ERROR_BOUND_PER_STEP_SECOND = 2.8e-3` (`:409`) and its three
+   consumers (`:793`, `:820`, `:859`) describe a first-order error the exact
+   step does not have; `EXACT_SOLUTION_FLOOR = 1e-12` (`:413`) is commented as
+   the point "below this the split would no longer be first order because it
+   would no longer be a split"; and `MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = 3.0`
+   (`:102`) derives itself by multiplying the splitting bound by the shipped
+   step. Each needs a new bound derived from the exact step's own error, or
+   deletion with the reason recorded — not loosening until it passes.
+
+   **`PINNED_REFERENCE_STATES` is deliberately *not* in this list**, and an
+   earlier revision of this item was wrong to put it there (corrected
+   2026-09-03). It called them "the split's solution at the historical
+   operating point". They are the **independent RK4 oracle's** own solution:
+   the comment at `:441-445` says they exist "so that a later edit to the
+   oracle or to a parameter file cannot quietly move the reference the shipped
+   core is measured against", and
+   `test_independent_solution_matches_pinned_reference_states` (`:763`)
+   compares the oracle against them at `rel=1e-9, abs=1e-15`. `PL-GS5X` does
+   not touch the oracle — `test_oracle_imports_no_solver_from_core` forbids it
+   from importing the solver at all — so these states do not move, and
+   **re-pinning them from the exact solver would replace an independent
+   reference with the shipped solver's own output**, converting the regression
+   gate into a self-comparison. That is precisely the failure the paragraph
+   below warns against, arrived at from the other direction. Leave them alone.
 
 **Why it matters.** These are the three places where the numerical method
 reaches a clinician. A displayed digit justified by an error bound that no
 longer exists is false precision with a citation; a step refusal citing a domain
-that no longer applies is a wrong error message on a safety path; and a
-reference state loosened rather than re-derived converts a regression gate into
-a rubber stamp.
+that no longer applies is a wrong error message on a safety path; and an
+error bound loosened rather than re-derived converts a regression gate into a
+rubber stamp.
 
 **Where.** `docs/MODEL.md` § "Displayed precision", § "Supported simulation
 step" and § "Selected method (as implemented)"; `core/uptake_system.py`'s
-`MAXIMUM_SIMULATION_STEP_S` and `require_supported_simulation_step`;
-`tests/reference/test_coupled_dynamics.py`'s pinned states and its
-`SPLITTING_ERROR_BOUND_PER_STEP_SECOND`, which has no referent after `PL-GS5X`.
+`MAXIMUM_SIMULATION_STEP_S` and `require_supported_simulation_step`, whose
+message and docstring both cite "the operator split's applicability domain", and
+`core/simulation.py:38-42`, which repeats the phrase; the comment block at
+`core/uptake_system.py:37-62`; `core/supported_ranges.py:14-24` and `:35-39`,
+which justify all three maximum input ranges and the three zero floors by the
+splitting coefficient `C`; and in
+`tests/reference/test_coupled_dynamics.py` the three constants named above —
+not `PINNED_REFERENCE_STATES`.
+
+**And four sites in `app/`, added 2026-09-03 after `PL-WB0X` merged (#263).**
+That item extracted the formatters into `app/formatting.py`, and carried the
+split-derived justification with them rather than leaving it behind. All four
+say the two-decimal resolution rests on the shipped operator split's measured
+error, and all four are false once the exact step lands:
+`app/formatting.py:8-9` (module docstring), `:40-41` (the comment above
+`CONCENTRATION_DISPLAY_DECIMALS`), `:62-63` (`format_percent`'s docstring), and
+`app/simulation_view.py:65-69`, which names
+`core.uptake_system.MAXIMUM_SIMULATION_STEP_S` as "the operator split's
+applicability domain". Rewrite each as a citation of the relevant
+`docs/MODEL.md` section rather than a restatement of it, so the next
+re-derivation reaches one place instead of five.
+
+**Absorbed from `PL-K9HV`** (2026-09-03), which this item supersedes: the
+principle that the dependency must not run backwards. `MAXIMUM_SIMULATION_STEP_S`
+and `supported_ranges.py`'s intervals are currently justified *by* the readout's
+two-decimal count, so a purely presentational move to one decimal would, by the
+reasoning as written, license a step ten times larger and wider input intervals.
+The project owner's statement of intent, 2026-09-03: *"some of my decimal point
+decisions were fairly arbitrary. I care about display decimal points in UI. I
+didn't intend to dictate back end math."* Whatever bound the exact step
+justifies, it is to be stated in its own units and the display count left free
+in the one-to-two decimal range.
 
 **Interacts with `PL-88GQ`** (state every displayed decimal count as a
 presentation decision), which is about the same section from the other side; if
@@ -56,4 +107,6 @@ both are open, do them together.
 
 **Done when.** Each of the three is re-derived from the exact step's behavior
 with the derivation recorded, no constant survives whose justification named the
-splitting error, and `make check` passes.
+splitting error or was set by the displayed decimal count,
+`PINNED_REFERENCE_STATES` is unchanged and still compared against the oracle
+alone, and `make check` passes.

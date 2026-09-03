@@ -821,16 +821,22 @@ def cmd_record(args: argparse.Namespace) -> int:
     """
     directory, items, _ = _load(args)
     root = args.items.parent if args.items else find_root()
-    if args.number < 1:
-        print(f"record: #{args.number} is not a pull request number")
-        return 2
     try:
         tracked = directory.resolve().relative_to(root.resolve()).as_posix()
     except ValueError:
         print("record: the store is outside the repository, so git cannot say what closed")
         return 2
+    if args.number is None:
+        if args.merge is not None:
+            print("record: `--merge` names one commit, so it needs the number that merge is")
+            return 2
+        return _record_owed(directory, items, root, tracked, args)
+    if args.number < 1:
+        print(f"record: #{args.number} is not a pull request number")
+        return 2
 
-    report = closed_by(args.merge, root, items_dir=tracked)
+    merge = args.merge or "HEAD"
+    report = closed_by(merge, root, items_dir=tracked)
     if not report.known:
         print(f"record: declined to read {report.declined}")
         return 2
@@ -850,8 +856,7 @@ def cmd_record(args: argparse.Namespace) -> int:
         elif item.pr:
             conflicting.append((identifier, item.pr))
         else:
-            if not args.dry_run:
-                write_item(directory, with_fields(item, pr=number), replace=directory / item.path)
+            _write_pr(directory, item, number, args.dry_run)
             written.append(identifier)
 
     verb = "would record" if args.dry_run else "recorded"
@@ -860,16 +865,86 @@ def cmd_record(args: argparse.Namespace) -> int:
     for identifier in unchanged:
         print(f"{identifier}: already records `pr: {number}`; nothing to write")
     for identifier in absent:
-        print(f"{identifier}: closed by `{args.merge}` but no longer in the store; nothing written")
+        print(f"{identifier}: closed by `{merge}` but no longer in the store; nothing written")
     if not report.closed:
-        print(f"`{args.merge}` closed no item, so #{number} is owed to nothing")
+        print(f"`{merge}` closed no item, so #{number} is owed to nothing")
     for identifier, existing in conflicting:
         print(
-            f"{identifier}: closed by `{args.merge}`, which is #{number}, but the item "
+            f"{identifier}: closed by `{merge}`, which is #{number}, but the item "
             f"records `pr: {existing}`. One of the two is wrong and this cannot tell "
             f"which, so neither was written."
         )
     return 1 if conflicting else 0
+
+
+def _record_owed(
+    directory: Path, items: Sequence[Item], root: Path, tracked: str, args: argparse.Namespace
+) -> int:
+    """Write every `pr` the default base is owed and can supply, in one pass.
+
+    The normal form, and the one `make fix` runs. It asks exactly the question
+    `check` already asks - which landed closures record no `pr`, and which
+    number the base names for each - and writes the answer instead of printing
+    it. The two cannot disagree, because there is only one reading:
+    `closures_on_base` is the same call `cmd_check` makes.
+
+    No `--merge`, because there is no one merge. A session that has been open a
+    while may be owed numbers from several, and taking them from the base
+    rather than from a commit is what lets the write ride whatever commit the
+    session is about to make - which is the point. The field stops costing a
+    commit of its own, which is what it cost when a session had to read an
+    advisory and compose one (`PL-WTQR`, `PL-N5WZ`).
+
+    A closure the base names no number for is left alone, and left to `check` -
+    the command that decides whether that is provenance lost, a decline, or a
+    truncated checkout. Writing nothing there is what makes this safe to run
+    unattended.
+    """
+    owed = {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path}
+    if not owed:
+        print("record: every closure already records its pull request")
+        return 0
+    report = closures_on_base(root, owed, items_dir=tracked)
+    if not report.known:
+        print(f"record: declined to read {report.declined}")
+        return 2
+
+    numbers = report.numbers
+    known = {item.identifier: item for item in items}
+    verb = "would record" if args.dry_run else "recorded"
+    written = 0
+    for identifier in sorted(report.landed):
+        number = numbers.get(identifier)
+        item = known.get(identifier)
+        if number is None or item is None:
+            continue
+        _write_pr(directory, item, str(number), args.dry_run)
+        print(f"{identifier}: {verb} `pr: {number}`")
+        written += 1
+    if written:
+        return 0
+    if not report.landed:
+        # The ordinary state of a session mid-item: the closure it just wrote
+        # is `done` in the working tree and has not merged, so no number is
+        # owed yet. Reporting the unlanded count as unnameable would be the
+        # confident wrong answer - it reads as lost provenance and is not.
+        print(
+            f"record: {len(owed)} closure(s) record no `pr`, and none has reached "
+            f"`{report.base}` yet, so no number is owed"
+        )
+    else:
+        print(
+            f"record: {len(report.landed)} landed closure(s) record no `pr`, and "
+            f"`{report.base}` names a number for none of them; `docket check` says "
+            f"whether that is provenance lost or a history this checkout cannot see"
+        )
+    return 0
+
+
+def _write_pr(directory: Path, item: Item, number: str, dry_run: bool) -> None:
+    """Set one item's `pr`, leaving every other field exactly as it was."""
+    if not dry_run:
+        write_item(directory, with_fields(item, pr=number), replace=directory / item.path)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -943,10 +1018,16 @@ def build_parser() -> argparse.ArgumentParser:
     branch_cmd.set_defaults(func=cmd_branch)
     add("stranded", "items that exist only on a branch").set_defaults(func=cmd_stranded)
 
-    record = add("record", "write a pull request number onto the items its merge closed")
-    record.add_argument("number", type=int, help="the pull request number")
+    record = add("record", "write the pull request number onto the closures owed one")
     record.add_argument(
-        "--merge", default="HEAD", help="the merge commit whose closures to record (default: HEAD)"
+        "number",
+        type=int,
+        nargs="?",
+        default=None,
+        help="one pull request number; omit to write every number the base can supply",
+    )
+    record.add_argument(
+        "--merge", default=None, help="with a number, the merge that closed them (default: HEAD)"
     )
     record.add_argument(
         "--dry-run", action="store_true", help="say what would be written, and write nothing"

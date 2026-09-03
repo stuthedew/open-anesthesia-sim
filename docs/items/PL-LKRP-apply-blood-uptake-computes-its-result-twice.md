@@ -2,6 +2,7 @@
 id: PL-LKRP
 title: apply_blood_uptake computes its result twice and accepts bool where parameters.py rejects it
 status: needs-decision
+blocked-by: PL-GS5X
 priority: P3
 effort: S
 classes: refactor
@@ -43,3 +44,18 @@ be a number". Two answers to the same question, in one package.
 The doubled expression needs no probe - `self.agent_amount_l -
 blood_uptake_l` appears on both the guard line and the assignment line, and
 the hazard is a future edit to one of them.
+
+**`PL-GS5X` now owns this decision, 2026-09-03.** Both defects live inside
+`AlveolarCompartment.apply_blood_uptake`, whose only production caller is
+`core/uptake_system.py:345` — sub-step 5 of the five the exact matrix
+exponential replaces. Its other five callers are all in
+`tests/unit/test_alveolar.py`. So the question "is either worth touching" cannot
+be answered ahead of the item that decides whether the method survives at all:
+the pulmonary uptake term becomes a matrix entry, and a guarded subtraction
+applied after the fact may have nothing left to guard.
+
+Kept at `needs-decision` rather than blocked, because the decision is still owed
+and the `bool` half of it is a convention question the whole codebase answers —
+`isinstance(blood_uptake_l, (int, float))` accepts `bool` where
+`core/parameters.py`'s `_validate_positive_finite` rejects it — which survives
+whatever happens to this particular method.

@@ -152,7 +152,7 @@ passed to `build_series` as arguments, which was already the shape.
 
 The inline `.1f`, `.6f` and `.3e` format strings were deliberately left alone:
 PL-88GQ (state every displayed decimal count as a presentation decision the
-owner can revise) owns them and is blocked on PL-K9HV, so naming a formatter
+owner can revise) owns them and is blocked on PL-X9KD, so naming a formatter
 for each here would have prejudged that item's call. Its brief and `verify`
 were repointed at `app/formatting.py` and `tests/unit/test_formatting.py`
 instead.
@@ -164,3 +164,24 @@ dial should move in real increments).
 
 `PL-B9PY` (decompose `SimulationView` so two runs can be rendered at once) is
 unblocked, and stays at Gate 1 as decided.
+
+**What v0.4.1 does to the two new modules (added 2026-09-03, after the merge).**
+Recorded here because this item is what created their homes, and because the
+thing worth noticing is that the extraction *carried a justification that is
+about to expire* into a brand-new file rather than leaving it behind.
+
+`app/formatting.py` now states, in its module docstring (`:8-9`), in the comment
+above `CONCENTRATION_DISPLAY_DECIMALS` (`:40-41`) and in `format_percent`'s own
+docstring (`:62-63`), that the two-decimal resolution is justified "against the
+measured error of the shipped operator split". `app/simulation_view.py:65-69`
+still names `core.uptake_system.MAXIMUM_SIMULATION_STEP_S` as "the operator
+split's applicability domain". `PL-GS5X` (replace the operator split with the
+exact matrix exponential) removes the splitting error at any step size and
+`PL-X9KD` re-derives both § "Displayed precision" and the step bound, so all four
+sites are false one release later.
+
+Nothing to do about it here - this item is closed and its extractions are
+correct. `PL-X9KD`'s "Where" has been extended to name them, which is the item
+that owns the re-derivation. The lesson for the next extraction is worth keeping
+though: move a *citation* of `docs/MODEL.md`, not a restatement of what it says,
+so the module survives a re-derivation unchanged.

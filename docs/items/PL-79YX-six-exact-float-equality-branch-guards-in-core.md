@@ -57,3 +57,17 @@ a real flow moves a real, tiny amount of agent. At the denormal end
 the state is unchanged - which is what the branch returns. So the branch
 agrees with the limit at every magnitude tested, and this item remains what
 it was captured as: a documentation question, not a defect.
+
+**What v0.4.1 does to this (added 2026-09-03).** The inventory shrinks. Counted today,
+`core/` holds seven exact float-equality guards. Three are in `time_constant_s`
+properties and survive as they are: `circuit.py:126`, `tissue.py:98`,
+`blood.py:66`. Three sit inside sub-steps `PL-GS5X` deletes or restructures -
+`uptake_system.py:392` (`_exchange_circuit_and_alveoli`), `tissue.py:131`
+(`TissueGroup.advance`), `blood.py:92` (`VenousBloodCompartment.advance`) - and
+the seventh, `circuit.py:195` in `advance_fresh_gas`, depends on whether that
+method survives the swap. The matrix formulation also divides by *volume* rather
+than by flow, so zero flow may not be a singularity in the new code at all.
+
+So the "Measured 2026-09-02" table describes methods that are about to change.
+Do this after `PL-GS5X`, when the count is three or four rather than seven, and
+re-measure rather than trusting the table.

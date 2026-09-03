@@ -61,3 +61,26 @@ been missed twice. Both are corrected in the same change that files this.
 accessors are one accessor parameterized by compartment, `docs/MODEL.md` states
 the record's shape at the interface boundary, and every existing view and
 downsampling test passes unaltered.
+
+**What v0.4.1 does to this (added 2026-09-03).** Head-on, and worth knowing
+before the record's new shape is designed. The six fields this item re-keys -
+`circuit_concentration_fraction`, `alveolar_concentration_fraction`,
+`mixed_venous_concentration_fraction`, `vessel_rich_partial_pressure_fraction`,
+`muscle_partial_pressure_fraction`, `fat_partial_pressure_fraction`
+(`app/controller.py:22-27`) - are exactly `PL-9SH6`'s rename targets, and
+`PL-9SH6`'s "Where" names `app/controller.py` explicitly. Since `PL-WB0X`
+merged (#263) each also has a reader function in `app/chart_series.py:76-96`,
+so this item's re-keying reaches that module too. The first three become
+`inspired_`/`alveolar_`/`mixed_venous_partial_pressure_fraction`; the last three
+already conform.
+
+Two consequences. Where this item invents key names for the per-substance
+mapping, use the `_partial_pressure_fraction` vocabulary and `inspired` rather
+than `circuit` (`PL-3TLK`), so the record ships in the naming pass's final form
+and `PL-9SH6` has nothing to do here. And this item shrinks `PL-9SH6`: six flat
+accessors it plans to rename stop existing as separate names. `PL-9SH6`'s own
+warning - "re-measure rather than trusting them" - was written about `PL-GS5X`
+and applies at least as strongly to this item.
+
+Nothing here is invalidated: the substance-keying decision is independent of the
+numerical method, and v0.4.1 changes no equation or parameter.

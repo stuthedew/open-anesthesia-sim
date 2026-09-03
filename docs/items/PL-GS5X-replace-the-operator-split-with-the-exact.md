@@ -113,3 +113,42 @@ seconds a run is the right price for that. Measured 2026-09-03.
 assembly reads as the governing equations without a lookup, the independent
 oracle agrees to the tolerance `PL-X9KD` sets, `docs/MODEL.md` records the
 superseded decision, and no dependency was added.
+
+**What this item reaches outside its own release (added 2026-09-03).** Recorded
+here because nothing else records it: an audit of the open queue found no
+cross-reference in either direction between this release's items and v0.4.0's.
+
+*Items this one subsumes, now `blocked-by: PL-GS5X`.* Close each out with this
+one rather than working it first:
+
+- `PL-Y5BV` (the pulmonary uptake rate `docs/MODEL.md` specifies is never
+  computed) - forming $`Q\lambda_{b:g}(F_A-F_v)`$ as a matrix entry *is* the
+  fix, and the identity test it specifies becomes a comparison of the matrix
+  with itself.
+- `PL-2HTF` (`docs/MODEL.md`'s numerical requirements contradict the split) -
+  a single exponential satisfies § "Numerical method" requirement 2 rather than
+  violating it, and this item deletes the sub-step ordering that item would
+  document.
+- `PL-LKRP` (`apply_blood_uptake` computes its result twice, accepts `bool`) -
+  its only production caller is sub-step 5. Whoever writes the new step decides
+  the method's fate, and that decision closes it.
+- `PL-K9HV` is already `dropped`, superseded by `PL-X9KD`.
+
+*Items whose stated reasoning this one falsifies* - each now carries a note
+saying so, so no session has to rediscover it: `PL-SN2C`, `PL-DHV7`, `PL-RCTQ`,
+`PL-WB0X` (v0.4.0); `PL-GYH2`, `PL-4GN8`, `PL-ZLNN`, `PL-11YF`, `PL-TG60`,
+`PL-79YX`, `PL-6194`, `PL-10MX`, `PL-88GQ`.
+
+*One thing to land before this item, not after.* `PL-22Z3` gates coverage at
+100% on `core/`, which `core/` currently meets and nothing defends. This item
+adds a hand-rolled `build_system_matrix`, `matrix_exponential`, `multiply` and
+`propagate` to `core/`; landing the gate first forces the new solver in fully
+covered, where landing it afterwards measures against code that may already have
+dropped below the line.
+
+*And one correction to `PL-X9KD`* worth knowing here, because this item's author
+is the one who will read it: its third deliverable used to ask for
+`PINNED_REFERENCE_STATES` to be re-pinned from the exact solver. Those are the
+RK4 oracle's own solution, not the split's, and re-pinning them would convert
+`test_independent_solution_matches_pinned_reference_states` into a
+self-comparison. `PL-X9KD` is corrected; leave those states alone.
