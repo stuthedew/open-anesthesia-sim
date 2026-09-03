@@ -536,10 +536,14 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
     """The constraints, stated with the counts that make each one checkable."""
     counts = report.counts
     top = next((p for p in PRIORITIES if counts.get(p)), PRIORITIES[0])
+    # Startable rather than every member of the band, because `checks.py` counts
+    # it that way: a blocked item is not a choice a session can make
+    # (`PL-P23D`). Two numbers for one rule is worse than either of them.
+    startable = sum(1 for i in report.open_items if i.priority == top and i.status != "blocked")
     rules = [
         f"{'/'.join(config.safety_classes)} classes force P0 or P1; `docket check` "
         "rejects them at P2 or P3.",
-        f"the top band is {top}, holding {counts.get(top, 0)} of the "
+        f"the top band is {top}, holding {startable} startable of the "
         f"{config.top_band_limit} a session can choose between at a glance.",
         f"process work ({', '.join(config.process_classes)}) does not enter the top "
         "band ahead of the product work already in it - an item counts as process "
