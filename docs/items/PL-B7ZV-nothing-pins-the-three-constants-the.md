@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: tests/unit/test_agent_simulation_validation.py
 added: 2026-09-03
 closed: 2026-09-03
+pr: 253
 verify: uv run pytest tests/unit/test_agent_simulation_validation.py && grep -q 'def test_the_accounting_tolerances_are_the_documented_release_tolerances' tests/unit/test_agent_simulation_validation.py
 ---
 
