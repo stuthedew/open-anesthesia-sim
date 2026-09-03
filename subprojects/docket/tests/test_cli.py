@@ -1324,3 +1324,170 @@ def test_lost_reports_nothing_when_the_merge_kept_every_item(tmp_path: Path) -> 
     subprocess.run(["git", "commit", "-qm", "restore"], cwd=root, check=True, capture_output=True)
 
     assert lost(root, items_dir="items").items == ()
+
+
+RECORD_ITEM = """---
+id: {id}
+title: A closed item
+priority: P2
+effort: S
+status: {status}
+classes: infra
+touches: a.py
+added: 2026-08-01
+{extra}---
+
+**Problem.** x
+"""
+
+
+def _record_repo(tmp_path: Path, *, closes: bool = True, extra: str = "") -> Path:
+    """A checkout whose tip commit closes `PL-K7QX`, built with real git.
+
+    `record` compares a commit's tree against its parent's, and only a real
+    checkout proves those commands are spelled in a way git accepts.
+    """
+    root = tmp_path / "repo"
+    items = root / "items"
+    items.mkdir(parents=True)
+    name = "PL-K7QX-a-closed-item.md"
+    (items / name).write_text(
+        RECORD_ITEM.format(id="PL-K7QX", status="ready", extra=""), encoding="utf-8"
+    )
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", key, value], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "capture"], cwd=root, check=True, capture_output=True)
+    # A second commit either way, so the tip always has a parent to be compared
+    # against: a root commit declines, which is a different case with its own
+    # test. Where it does not close, it captures - the shape of a triage merge.
+    if closes:
+        (items / name).write_text(
+            RECORD_ITEM.format(id="PL-K7QX", status="done", extra=extra), encoding="utf-8"
+        )
+        subject = "PL-K7QX: do the thing"
+    else:
+        (items / "PL-B1C2-another-idea.md").write_text(
+            RECORD_ITEM.format(id="PL-B1C2", status="ready", extra=""), encoding="utf-8"
+        )
+        subject = "PL-B1C2: capture another idea"
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", subject], cwd=root, check=True, capture_output=True)
+    return root
+
+
+def _pr_field(root: Path) -> str:
+    text = (root / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
+    return next((line for line in text.splitlines() if line.startswith("pr:")), "")
+
+
+def test_record_writes_the_number_onto_what_the_merge_closed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The write half of the advisory `check` used to hand to a session."""
+    root = _record_repo(tmp_path)
+
+    assert main(["record", "257", "--items", str(root / "items")]) == 0
+
+    assert _pr_field(root) == "pr: 257"
+    assert "PL-K7QX: recorded `pr: 257`" in capsys.readouterr().out
+
+
+def test_record_leaves_the_rest_of_the_item_alone(tmp_path: Path) -> None:
+    """A round trip that reordered or dropped a field would put noise in every diff."""
+    root = _record_repo(tmp_path)
+    before = (root / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
+
+    main(["record", "257", "--items", str(root / "items")])
+
+    after = (root / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
+    assert after == before.replace("added: 2026-08-01\n", "added: 2026-08-01\npr: 257\n")
+
+
+def test_record_is_idempotent(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """The job that runs it can be re-run, and a session can run it without checking first."""
+    root = _record_repo(tmp_path, extra="pr: 257\n")
+
+    assert main(["record", "257", "--items", str(root / "items")]) == 0
+
+    assert "already records `pr: 257`" in capsys.readouterr().out
+    assert _pr_field(root) == "pr: 257"
+
+
+def test_record_refuses_to_overwrite_a_different_number(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Two numbers for one closure means one is wrong, and this cannot know which."""
+    root = _record_repo(tmp_path, extra="pr: 99\n")
+
+    assert main(["record", "257", "--items", str(root / "items")]) == 1
+
+    assert "records `pr: 99`" in capsys.readouterr().out
+    assert _pr_field(root) == "pr: 99"
+
+
+def test_record_dry_run_writes_nothing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    root = _record_repo(tmp_path)
+
+    assert main(["record", "257", "--dry-run", "--items", str(root / "items")]) == 0
+
+    assert "would record `pr: 257`" in capsys.readouterr().out
+    assert _pr_field(root) == ""
+
+
+def test_record_writes_nothing_where_the_commit_closed_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A capture-only merge owes no number, and must not stamp one on the store."""
+    root = _record_repo(tmp_path, closes=False)
+
+    assert main(["record", "257", "--items", str(root / "items")]) == 0
+
+    assert "closed no item" in capsys.readouterr().out
+    assert _pr_field(root) == ""
+
+
+def test_record_refuses_a_number_that_is_not_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _record_repo(tmp_path)
+
+    assert main(["record", "0", "--items", str(root / "items")]) == 2
+
+    assert "not a pull request number" in capsys.readouterr().out
+    assert _pr_field(root) == ""
+
+
+def test_record_declines_where_the_parent_is_out_of_reach(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Loudly, and writing nothing.
+
+    The job that runs this uses `fetch-depth: 0` for exactly this reason. A
+    truncated checkout that answered anyway would read every done item as
+    closed by this commit and stamp one number across the store.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-K7QX-a-closed-item.md").write_text(
+        RECORD_ITEM.format(id="PL-K7QX", status="done", extra=""), encoding="utf-8"
+    )
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", key, value], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "root"], cwd=root, check=True, capture_output=True)
+
+    assert main(["record", "257", "--items", str(root / "items")]) == 2
+
+    assert "declined" in capsys.readouterr().out
+    assert _pr_field(root) == ""

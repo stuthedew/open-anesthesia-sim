@@ -736,6 +736,14 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
     way back exists in git. That is a transcription still owed, which is an
     advisory naming the number to write.
 
+    That advisory used to be the *mechanism* and is now only the detector.
+    `docket record` writes the field from the number a merge event carries,
+    which is exact where this recovery is inferential, so the field should be
+    on the item before any session runs this check. An advisory here therefore
+    means the merge-time write did not happen, and it says so: a session that
+    quietly retypes the number restores the cost this removed and hides the
+    fact that the job is broken.
+
     Where no commit on the base names one, the answer depends on whether the
     checkout could have seen it. Only a complete history makes "no commit
     names a number" mean the way back is gone; a truncated one makes it mean
@@ -763,7 +771,9 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
             report.advisories.append(
                 f"{item.identifier}: marked done on `{closures.base}` and records no `pr`, "
                 f"but #{number} is recoverable from its merge commit; "
-                f"write `pr: {number}` into the item so the file carries it too"
+                f"`docket record {number} --merge <the merge commit>` writes it. A job at "
+                f"merge time normally has already, so this advisory means that did not "
+                f"happen - look at why before writing the field by hand"
             )
         elif closures.shallow is False:
             report.errors.append(
