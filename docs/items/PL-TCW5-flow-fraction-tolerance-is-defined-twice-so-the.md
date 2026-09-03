@@ -34,3 +34,11 @@ comment at each so the next reader does not file this again.
 
 **Done when.** The decision is recorded, and either one definition remains
 or both carry the note saying the duplication is deliberate.
+
+**Measured 2026-09-02: nothing to run.** This one is static and was verified
+by reading the tree rather than by a probe, which is the honest answer for
+it. `grep -rn "FLOW_FRACTION_TOLERANCE = " src/` returns exactly two lines,
+`core/parameters.py` and `core/patient.py`, both `1e-12`. There is no
+behaviour to measure - the defect is that a future edit to one is invisible
+to the other, and no probe can demonstrate a divergence that has not
+happened yet.

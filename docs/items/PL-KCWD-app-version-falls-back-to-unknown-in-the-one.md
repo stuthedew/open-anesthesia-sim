@@ -50,3 +50,21 @@ being one if agent files ever arrive from outside the wheel.
 
 **Done when.** The decision is recorded, and if the code changes, a test
 asserts the rendered subtitle for the metadata-unavailable case.
+
+**Measured 2026-09-02.** Confirmed as written. With
+`importlib.metadata.version` raising `PackageNotFoundError` and both modules
+reloaded, `APP_VERSION` is `'unknown'` and
+`SimulationView._format_subtitle('Sevoflurane')` returns
+
+    'Version unknown - Sevoflurane patient model'
+
+against `'Version 0.3.0 - Sevoflurane patient model'` normally. The string
+reaches the header verbatim, so the provenance line reads as though
+"unknown" were the version rather than the absence of one.
+
+Worth recording how the first probe failed, because it is a trap: patching
+`anesthesia_sim.app_metadata.version` and then reloading the module does
+**not** reproduce this - the reload re-executes
+`from importlib.metadata import ... version`, which overwrites the patch, and
+the probe reports the real version and a false all-clear. The patch has to be
+on `importlib.metadata.version` itself.
