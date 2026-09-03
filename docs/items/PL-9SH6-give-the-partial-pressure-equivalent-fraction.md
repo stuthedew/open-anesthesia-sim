@@ -89,6 +89,12 @@ target vocabulary. `PL-3TLK` supplies the $`F_C \rightarrow F_I`$ half of the
 table above together with the MODEL.md assumption it depends on; the two land in
 one commit.
 
+**Sequencing changed 2026-09-03.** Now behind `PL-GS5X` (the exact matrix
+exponential), which deletes `_exchange_circuit_and_alveoli` and restructures
+`AgentUptakeSystem._advance_step`. Renaming that code first is work thrown
+away, and the counts in the table above will be smaller once it lands —
+re-measure rather than trusting them. Still after `PL-H46J`.
+
 **Done when.** One accessor name denotes the partial-pressure-equivalent
 fraction throughout `core/`, `app/` and `tests/`, per the table above; the
 `venous_outflow_fraction` decision is recorded in the code; `make check` passes;

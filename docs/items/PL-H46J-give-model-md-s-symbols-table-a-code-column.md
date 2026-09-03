@@ -20,8 +20,16 @@ so the spec already points at the code for the *method* and not for the
 *state*. There is no way to get from $`F_v`$ to the thing that holds it without
 reading `core/` and inferring.
 
-**Why it matters.** This is the spine of planned-milestone item 29 (`core/`
-reads like the domain), and the reason it is a table rather than a rename.
+**Why it matters, and what this table is not.** The project owner sharpened
+the bar on 2026-09-03: a reviewer who knows the standard variables and
+equations should follow `core/` **without a lookup table**. So this column is
+not a reading aid and must never become one — a reader who needs it means the
+code has failed. It is scaffolding: it makes the pass enumerable, and it gives
+`PL-FZ6T` something mechanical to check so the naming cannot drift back. The
+deliverable is code that reads correctly on its own; this is how that is kept
+true over time.
+
+It is a table rather than a rename for a separate reason.
 
 The obvious reading of "make `core/` read like the domain" is to name
 identifiers after symbols — $`F_A`$ becomes `f_a`. That is the wrong move here

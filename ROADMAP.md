@@ -582,7 +582,7 @@ adds no capability and exists to clear the ground they are built on:
 | 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 35 S |
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 4 M, 17 S |
 | 3 | **v0.4.0 — the teachable case** | Scoped below. 13 items, of which 6 are gate-0 debt the milestone clears itself. | 7 M, 6 S |
-| — | **v0.4.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped 2026-09-03: six items under feature `core-domain-language` — `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T`. `PL-VZL0` is blocked on `PL-X2XX`. | 4 M, 2 S |
+| — | **v0.4.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped 2026-09-03, then **re-scoped the same day and no longer a patch**: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`) and the release takes a minor. Nine items: `PL-P0BB`, `PL-GS5X`, `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language`. `PL-3TLK` leads; the rest of the naming work follows the exact step. | 1 L, 6 M, 2 S |
 | 4 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
@@ -2208,7 +2208,38 @@ specified.
     the constraint allows.
 
     *Scoped 2026-09-03 (project owner), and the three open questions are
-    answered.* Six items carry the pass, under feature `core-domain-language`.
+    answered. Re-scoped the same day, and it is no longer a patch.*
+
+    **The bar, stated by the project owner 2026-09-03:** a reviewer who knows
+    the standard variables and equations of the textbook should be able to
+    follow `core/` and recognize them, without referring to `docs/MODEL.md` and
+    without a lookup table. That is a sharper test than the one-line bar in
+    `.claude/rules/core-domain.md`, and it is what the answers below are held
+    to.
+
+    **Naming alone cannot reach it, which is what the re-scope found.** The
+    alveolar balance's two terms are computed in two different steps of the
+    operator split, separated by a third, and the pulmonary uptake term is
+    never formed at all; three of the five composed sub-steps are objects of
+    the splitting scheme rather than of the domain. The equations exist in the
+    repository in exactly the right form — in the independent RK4 oracle, which
+    may not be imported from `core/` without making the verification a
+    tautology. So the split is replaced by the exact matrix exponential
+    (`PL-GS5X`), under which assembling the system matrix *is* transcribing the
+    governing equations, and the code that computes the answer is the code a
+    reviewer recognizes. `PL-SPMQ` carries the measurement and the options that
+    were weighed.
+
+    That supersedes `PL-6GS0`, which decided in v0.2.8 to keep the split. That
+    decision weighed accuracy and step size and was right on them; the
+    readability requirement was not in its frame. Because a numerical-method
+    change moves displayed values and removes the split's applicability-domain
+    bound, **this step takes a minor rather than the patch recorded above**,
+    and `PL-X9KD` re-derives every published statement that was justified by
+    the splitting error.
+
+    Nine items carry it: `PL-P0BB`, `PL-GS5X` and `PL-X9KD` under
+    `numerical-domain`, and six under `core-domain-language`.
 
     **What "reads like the domain" means concretely.** Not a symbol-to-
     identifier mapping, which was the shape guessed at here before the pass

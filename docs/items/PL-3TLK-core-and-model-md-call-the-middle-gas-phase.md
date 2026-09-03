@@ -82,6 +82,13 @@ used" (p. 160), so a code convention distinguishing "concentration" from
 "partial pressure" among the gas compartments would encode a distinction the
 domain does not make.
 
+**Sequencing 2026-09-03.** This one goes *ahead* of `PL-GS5X` (the exact
+matrix exponential), unlike the rest of the naming work. `PL-GS5X` writes a new
+matrix assembly from scratch, and it should carry the domain's name for the
+middle gas-phase state from its first line rather than be renamed afterwards.
+The decision here is what that item needs; the full rename across the existing
+call sites can follow with `PL-9SH6`.
+
 **Done when.** The middle gas-phase state carries the domain's name throughout
 `core/` and `docs/MODEL.md`, the assumption making $`F_C \equiv F_I`$ is stated
 where the model boundary is stated, `make check` passes, and no modelled value

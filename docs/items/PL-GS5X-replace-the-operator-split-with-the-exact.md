@@ -1,0 +1,101 @@
+---
+id: PL-GS5X
+title: Replace the operator split with the exact matrix exponential, so the code that computes the answer is the governing equations
+priority: P1
+effort: L
+status: blocked
+blocked-by: PL-P0BB
+classes: science, refactor
+feature: numerical-domain
+touches: src/anesthesia_sim/core, docs/MODEL.md, tests/reference
+added: 2026-09-03
+verify: uv run pytest tests/reference/ && grep -rq 'def build_system_matrix' src/anesthesia_sim/core/
+---
+
+**Problem.** The operator split hides the governing equations. `PL-SPMQ`
+measures this: the alveolar balance's two terms are computed in two different
+steps of `AgentUptakeSystem._advance_step`, separated by a third, and the
+pulmonary uptake term $`Q\lambda_{b:g}(F_A-F_v)`$ is never formed at all. Three
+of the five composed sub-steps are objects of the splitting scheme rather than
+of the domain, so no renaming makes them recognizable.
+
+The project owner chose the exact step on 2026-09-03 against the stated bar: a
+reviewer who knows the standard variables and equations should follow `core/`
+without referring to `docs/MODEL.md` or a lookup table.
+
+**Why it matters, and why the exact step meets that bar where nothing else
+does.** The system is
+linear and time-invariant within a step, so one matrix exponential solves it
+exactly, and assembling the matrix *is* transcribing the ODEs. From the retired
+harness's `build_system_matrix`:
+
+```text
+    matrix[1][0] = ventilation_l_s / alveolar_volume_l
+    matrix[1][1] = -(ventilation_l_s + cardiac_output_l_s * blood_gas) / alveolar_volume_l
+    matrix[1][2] = cardiac_output_l_s * blood_gas / alveolar_volume_l
+```
+
+That row is $`\frac{dF_A}{dt} = \frac{\dot V_A(F_C-F_A) - Q\lambda_{b:g}(F_A-F_v)}{V_A}`$,
+term for term, in the code that produces the number.
+
+**The implementation exists in this repository's history.**
+`git show 475fb92^:tools/review-verification/verify_physics.py` — the harness
+retired under `PL-STNV`. It imports `math` and nothing else, and carries
+`build_system_matrix` (7x7 augmented, the seventh state carrying the constant
+fresh-gas forcing), `multiply`, `matrix_exponential` (scaling and squaring with
+a 24-term Taylor series and four squarings of headroom) and `propagate`. The
+numerics are about thirty lines.
+
+**It is not a copy-paste, and three things must change.** The harness hard-coded
+`DELIVERED_FRACTION` and `CIRCUIT_VOLUME_L` as experiment constants; a shipped
+version builds the matrix from live settings and rebuilds it when one changes.
+It carried no validation of its own numerics beyond the comparison; shipped code
+needs the scaling-and-squaring parameters justified rather than inherited. And
+it advanced a bare list; the shipped state has to interoperate with capture,
+restore, reset and the accounting validator.
+
+**No new dependency, deliberately.** The project's runtime dependencies are
+`flet`, `flet-charts` and `pydantic`; there is no numpy and no scipy, and the
+reference oracle hand-writes RK4 on plain lists. A 7x7 exponential does not
+justify a compiled numeric dependency under a safety-critical path.
+
+**Expected, unmeasured:** with settings constant the propagator is constant, so
+it can be computed once per settings change and each step becomes one 7x7
+matrix-vector product — 49 multiply-adds and no transcendentals, against the
+five `exp()` calls the split makes every step. Measure rather than assume.
+
+**Accuracy is not the motivation but is not a cost either.** `docs/MODEL.md`
+§ "Selected method (as implemented)" records the measurement, made by this same
+harness: worst disagreement against the RK4 oracle across all six states is
+$`1.3\times10^{-16}`$ to $`4.8\times10^{-14}`$ for the exponential, against
+$`5.2\times10^{-6}`$ to $`1.7\times10^{-5}`$ for the shipped split.
+
+**This supersedes `PL-6GS0`**, closed 2026-08-30 in PR #94 and shipped in
+v0.2.8, which decided to keep the split. That decision weighed accuracy and step
+size and was right on those grounds; the code-readability requirement was not in
+its frame. § "Selected method (as implemented)" and its "The exact alternative,
+and why it is not taken" subsection are rewritten by this item, and must record
+that the decision changed and on what new ground, rather than quietly reversing.
+
+**The validation asset already exists and must not be weakened.**
+`tests/reference/test_coupled_dynamics.py`'s independent RK4 oracle is what
+proves a hand-rolled exponential correct, and
+`test_oracle_imports_no_solver_from_core` must keep forbidding it from importing
+the solver. Re-deriving the equations from the specification is evidence;
+calling the implementation under test is not.
+
+**Version.** A numerical-method change that moves displayed values in their last
+digits and removes the split's applicability-domain bound, so a minor rather
+than the patch planned-milestone item 29 was scoped as. The version is named
+rather than inferred here, per `ROADMAP.md` § "Versioning decision".
+
+**Sequencing.** Before the naming items `PL-9SH6` and `PL-VZL0`: this deletes
+`_exchange_circuit_and_alveoli` and restructures `_advance_step`, so renaming
+that code first is work thrown away. `PL-3TLK`'s $`F_C \rightarrow F_I`$
+decision should be settled first even so, because the new matrix assembly should
+be written with the domain's names from its first line.
+
+**Done when.** One exact step replaces the five composed sub-steps, the matrix
+assembly reads as the governing equations without a lookup, the independent
+oracle agrees to the tolerance `PL-X9KD` sets, `docs/MODEL.md` records the
+superseded decision, and no dependency was added.

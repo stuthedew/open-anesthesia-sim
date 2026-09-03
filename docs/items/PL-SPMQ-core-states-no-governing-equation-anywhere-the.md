@@ -1,7 +1,13 @@
 ---
 id: PL-SPMQ
 title: core/ states no governing equation anywhere; the only textbook transcription in the repo is the test oracle, so a reviewer cannot follow the science in the code the way the owner requires
-status: untriaged
+priority: P1
+effort: S
+status: done
+closed: 2026-09-03
+classes: science, planning
+feature: numerical-domain
+not-delegable: the whole of this item was a decision about the numerical method; no command can prove a decision, and the implementation it authorized is PL-GS5X.
 touches: src/anesthesia_sim/core, docs/MODEL.md
 added: 2026-09-03
 ---
@@ -119,3 +125,27 @@ reader must never need to open it. `PL-VZL0` leads with "cite `docs/MODEL.md`
 always"; a citation is a pointer to go and look something up, so the emphasis
 inverts — the equation visible at the site is the deliverable and the citation is
 provenance.
+
+**Closed 2026-09-03. The project owner chose C, the exact matrix exponential.**
+The three things this item's `Done when` asked for are all in place:
+
+- Option C chosen, and recorded in `ROADMAP.md` planned-milestone item 29 and
+  its `v0.4.x` timeline row, which now says the step takes a **minor** rather
+  than a patch and says why.
+- Three items carry the work — `PL-P0BB` (the state vector and what owns the
+  trajectory, which subsumes the dropped `PL-KZS3`), `PL-GS5X` (the
+  implementation, superseding `PL-6GS0`), `PL-X9KD` (re-deriving every
+  published statement justified by the splitting error).
+- `PL-H46J` and `PL-VZL0` reframed: the Code column is scaffolding for the
+  drift check and never a reading aid, and the citation is provenance while the
+  equation at the site is the deliverable.
+
+One thing found after this brief was written and worth recording here: the
+implementation is not hypothetical. `git show
+475fb92^:tools/review-verification/verify_physics.py` — the harness retired
+under `PL-STNV` — carries `build_system_matrix`, `multiply`,
+`matrix_exponential` and `propagate` in about thirty lines of numerics, importing
+`math` and nothing else. It produced the accuracy figures `docs/MODEL.md`
+already quotes. So option C needs no new dependency; the project has no numpy
+and no scipy, and a 7x7 exponential does not justify adding one under a
+safety-critical path. `PL-GS5X` records what must change before it can ship.

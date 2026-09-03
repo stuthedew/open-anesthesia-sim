@@ -3,11 +3,13 @@ id: PL-KZS3
 title: BreathingCircuit stores the fraction while every other compartment stores the amount, so mass is not the primitive in one of four
 priority: P3
 effort: M
-status: needs-decision
+status: dropped
+reason: subsumed by PL-P0BB, which decides the exact step's state vector and what owns the trajectory; that question only exists while each compartment owns its own state, and answering this narrow version first would commit the broad one by accident
 classes: refactor
 feature: core-boundaries
 touches: src/anesthesia_sim/core/circuit.py, docs/MODEL.md
 added: 2026-09-03
+closed: 2026-09-03
 ---
 
 **Problem.** Three of the four compartments store `agent_amount_l` and derive
@@ -34,8 +36,15 @@ diff. Folding a numerical change into it destroys that property for the sake of
 a consistency win, which is a bad trade. Project owner agreed to the exclusion,
 2026-09-03.
 
-**Decision needed.** Whether it is worth doing at all, and if so under
-what version. Three things to weigh:
+**Dropped 2026-09-03, subsumed rather than declined.** The project owner
+chose the exact matrix exponential (`PL-SPMQ` option C), under which no
+compartment necessarily owns trajectory at all: one propagator advances all six
+states. `PL-P0BB` therefore asks the question this item asks, in the form that
+survives that change — what the state vector is, in what units, and what owns
+it. The analysis below is kept because it is the argument `PL-P0BB` inherits.
+
+**Originally: whether it is worth doing at all, and if so under
+what version.** Three things to weigh:
 
 - The change is small and the argument for it is real, but nothing is currently
   wrong: the circuit's numbers are correct and its guards hold.
