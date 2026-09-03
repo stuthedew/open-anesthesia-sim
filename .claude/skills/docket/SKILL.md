@@ -645,6 +645,13 @@ reconstruct three commands at the moment they are trying to do something else.
    name — a squash subject that led with no id — `bin/docket record <number>
    --merge <merge commit>` is the explicit form.
 
+   No in-flight guard is owed before running it, unlike every other path that
+   edits an item someone else may hold. `PL-QTSB`'s harm was two *pull
+   requests* for one insertion (`#229`, `#230`), and there is no pull request
+   here: two sessions that both run it write the same tool-dictated line and
+   git merges them. Asking each to fetch and check first would be friction
+   that changes no outcome.
+
    The advisory is still an *error* where no commit on the base names a number
    at all **and** the checkout says it is complete, which is provenance
    genuinely lost; a truncated checkout declines instead, because the commit

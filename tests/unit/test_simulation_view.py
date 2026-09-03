@@ -22,18 +22,20 @@ import flet as ft
 import flet_charts as fch
 import pytest
 
+from anesthesia_sim.app.chart_series import MAX_CHART_POINTS_PER_SERIES
 from anesthesia_sim.app.controller import (
     SimulationController,
     SimulationHistorySample,
     SimulationSnapshot,
 )
+from anesthesia_sim.app.formatting import (
+    CONCENTRATION_DISPLAY_DECIMALS,
+    FLOW_DISPLAY_DECIMALS,
+    format_percent,
+)
 from anesthesia_sim.app.simulation_view import (
     AGENT_RENDER_STYLES,
     AVAILABLE_AGENTS,
-    CONCENTRATION_DISPLAY_DECIMALS,
-    CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
-    FLOW_DISPLAY_DECIMALS,
-    MAX_CHART_POINTS_PER_SERIES,
     METRIC_GRID_COLUMNS,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
@@ -247,59 +249,6 @@ def test_every_slider_endpoint_is_a_setting_the_core_accepts() -> None:
             )
 
 
-def test_format_percent_uses_the_documented_display_resolution() -> None:
-    """Pin the PL-040 decision: 0.01 percentage points, uniformly.
-
-    The resolution is justified in `docs/MODEL.md` § "Displayed precision"
-    against the measured splitting error, so a change here is a change to a
-    safety-critical claim about what the model can support — not a
-    formatting preference. This test exists to make that change deliberate.
-    """
-
-    assert CONCENTRATION_DISPLAY_DECIMALS == 2
-    assert CONCENTRATION_DISPLAY_RESOLUTION_PERCENT == pytest.approx(0.01)
-
-    assert SimulationView._format_percent(0.0) == "0.00%"
-    assert SimulationView._format_percent(1.0) == "100.00%"
-    assert SimulationView._format_percent(0.0803456) == "8.03%"
-    assert SimulationView._format_percent(0.02) == "2.00%"
-
-
-def test_format_percent_rounds_rather_than_truncates() -> None:
-    """The last displayed digit is the nearest one, not a truncation.
-
-    Truncation would bias every reading downward by up to a full count of
-    the uncertain digit, on top of the solver error the resolution is
-    already chosen to sit above. Exact ties are not asserted: a decimal
-    tie is not generally representable as a double, and the model's own
-    error is many orders of magnitude larger than that distinction.
-    """
-
-    assert SimulationView._format_percent(0.021_39) == "2.14%"
-    assert SimulationView._format_percent(0.021_31) == "2.13%"
-
-
-def test_format_percent_marks_a_value_below_the_resolution() -> None:
-    """A filling compartment must not read as an empty one.
-
-    Muscle and fat sit under 0.01% for the opening minutes of every run.
-    Rounding them to `0.00%` would assert the model holds zero there when
-    it does not, so a positive value that rounds to zero is shown as below
-    the resolution instead.
-    """
-
-    assert SimulationView._format_percent(1e-8) == "<0.01%"
-    assert SimulationView._format_percent(4.0e-5) == "<0.01%"
-
-    # Exactly zero is the one value that may read as zero: nothing has
-    # reached the compartment, which is a fact the model does hold.
-    assert SimulationView._format_percent(0.0) == "0.00%"
-
-    # Either side of the rounding threshold, at half the resolution.
-    assert SimulationView._format_percent(4.9e-5) == "<0.01%"
-    assert SimulationView._format_percent(5.1e-5) == "0.01%"
-
-
 def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
     """Step a started controller to `elapsed_s` at the shipped step size."""
 
@@ -380,7 +329,7 @@ def test_metric_placeholders_match_the_formatter_before_a_run() -> None:
     page = _FakePage()
     view = SimulationView(page=page, controller=SimulationController())
 
-    empty = SimulationView._format_percent(0.0)
+    empty = format_percent(0.0)
     for text in (
         view._circuit_concentration_text,
         view._alveolar_concentration_text,
@@ -586,19 +535,6 @@ def test_no_interface_string_drops_the_end_tidal_equivalent_hedge() -> None:
         "the control-tree walk did not reach the concentration readouts, "
         "so the assertion above proved nothing"
     )
-
-
-def test_format_percent_leaves_an_impossible_negative_visible() -> None:
-    """A negative fraction cannot occur, and must not be disguised if it does.
-
-    The compartment guards reject a negative amount, so reaching here means
-    something upstream is wrong. The below-resolution form would render that
-    as an ordinary small positive reading; `CLAUDE.md` requires the obvious
-    failure instead.
-    """
-
-    assert SimulationView._format_percent(-1e-8) == "-0.00%"
-    assert SimulationView._format_percent(-0.02) == "-2.00%"
 
 
 def test_refresh_view_formats_every_concentration_metric() -> None:
@@ -1040,7 +976,7 @@ def test_chart_right_edge_matches_the_numeric_readout() -> None:
         assert series.points[-1].x == pytest.approx(latest.elapsed_s)
         assert series.points[-1].y == pytest.approx(value * 100.0)
 
-    assert view._circuit_concentration_text.value == SimulationView._format_percent(
+    assert view._circuit_concentration_text.value == format_percent(
         latest.circuit_concentration_fraction
     )
 
@@ -1591,7 +1527,7 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
         _advance_to(controller, 120.0)
         snapshot = controller.snapshot()
 
-        return snapshot.alveolar_concentration_fraction, SimulationView._format_percent(
+        return snapshot.alveolar_concentration_fraction, format_percent(
             snapshot.alveolar_concentration_fraction
         )
 

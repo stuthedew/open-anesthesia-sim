@@ -429,6 +429,7 @@ ALLOWED_PACKAGE_IMPORTS = frozenset(
         "load_agent_parameters",
         "load_reference_adult_parameters",
         "AgentUptakeSystem",
+        "formatting",
         "simulation_view",
         "supported_ranges",
     }
@@ -937,9 +938,14 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
     The delivered-concentration floor is here rather than with the supported
     ranges above because it is the only control the interface states in
     percent where the core's own guard is a fraction.
+
+    The resolution is read from `app/formatting.py`, which declares it, and
+    not from `app/simulation_view.py`, which imports it for a slider's drag
+    label. Asserting against the importer would let this pass on an
+    accidental re-export after the declaration moved again (PL-WB0X).
     """
 
-    from anesthesia_sim.app import simulation_view
+    from anesthesia_sim.app import formatting, simulation_view
 
     assert (
         MIN_DELIVERED_CONCENTRATION_PERCENT,
@@ -947,7 +953,7 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
         SHIPPED_STEP_S,
     ) == (
         simulation_view.MIN_DELIVERED_CONCENTRATION_PERCENT,
-        simulation_view.CONCENTRATION_DISPLAY_DECIMALS,
+        formatting.CONCENTRATION_DISPLAY_DECIMALS,
         simulation_view.SIMULATION_STEP_S,
     ), (
         "the interface's displayed resolution or simulation step has changed; "

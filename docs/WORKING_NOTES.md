@@ -63,7 +63,12 @@ appropriate, and its entry here should be deleted rather than left stale.
   solubility and mass-balance closure for isoflurane and desflurane.
 - `simulation_view.py` is tested through a minimal fake `Page`/`Controller`
   pattern documented at the top of `tests/unit/test_simulation_view.py`,
-  which is still where its presentation logic is covered. The one thing that
+  which is still where its presentation logic is covered. The two pure
+  modules it delegates to are tested without that pattern: the
+  displayed-value formatters in `tests/unit/test_formatting.py` and the
+  sample selection in `tests/unit/test_chart_downsampling.py`, while
+  `app/chart_series.py` is covered through the view, where a trace can be
+  read back off the chart it was drawn on (PL-WB0X). The one thing that
   pattern cannot answer - whether Flet's diff reports what a frame changed -
   is `tests/integration/test_chart_patching.py`'s, which drives a real
   `flet.messaging.session.Session` over a recording connection instead
@@ -73,8 +78,8 @@ appropriate, and its entry here should be deleted rather than left stale.
   domain logic to verify.
 - Rendering is bounded and independent of run length: the chart is sent
   only the samples inside its visible window, decimated to at most
-  `MAX_CHART_POINTS_PER_SERIES` per trace by min/max envelope selection
-  (`app/chart_downsampling.py`), and the simulation and render loops run at
+  `MAX_CHART_POINTS_PER_SERIES` per trace (`app/chart_series.py`) by min/max
+  envelope selection (`app/chart_downsampling.py`), and the loops run at
   separate cadences. **Closed by PL-010, 2026-09-02.** The repaint mechanism
   was left unchanged here because no live Flet client was available to
   confirm it; one has now been run - Chromium against the `flet_web` server -

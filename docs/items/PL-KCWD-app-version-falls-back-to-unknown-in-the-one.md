@@ -5,12 +5,13 @@ status: needs-decision
 priority: P3
 effort: S
 classes: anticipated, defect
-touches: src/anesthesia_sim/app_metadata.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_app_metadata.py
+touches: src/anesthesia_sim/app_metadata.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_app_metadata.py
 added: 2026-09-02
 ---
 
 **Problem.** `app_metadata.py` falls back to `APP_VERSION = "unknown"` when
-installed-package metadata is unavailable, and `_format_subtitle()` renders
+installed-package metadata is unavailable, and `formatting.format_subtitle()`
+renders
 `f"Version {APP_VERSION} - {agent_display_name} patient model"`. The
 subtitle is the only on-screen link between a displayed number and the model
 that produced it, and in that build it reads "Version unknown".
@@ -26,7 +27,9 @@ which `ROADMAP.md` item 23 has not built yet. It becomes real when packaging
 does.
 
 **Where.** `src/anesthesia_sim/app_metadata.py`;
-`src/anesthesia_sim/app/simulation_view.py`, `_format_subtitle()`.
+`src/anesthesia_sim/app/formatting.py`, `format_subtitle()` (moved there from
+`SimulationView` by PL-WB0X, and now covered by
+`tests/unit/test_formatting.py`).
 
 **Decision needed.** Whether to solve it now or at packaging time, and how:
 
@@ -54,7 +57,7 @@ asserts the rendered subtitle for the metadata-unavailable case.
 **Measured 2026-09-02.** Confirmed as written. With
 `importlib.metadata.version` raising `PackageNotFoundError` and both modules
 reloaded, `APP_VERSION` is `'unknown'` and
-`SimulationView._format_subtitle('Sevoflurane')` returns
+`format_subtitle('Sevoflurane')` returns
 
     'Version unknown - Sevoflurane patient model'
 
