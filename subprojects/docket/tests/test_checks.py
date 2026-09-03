@@ -423,6 +423,25 @@ def test_an_overfull_top_band_is_an_advisory() -> None:
     assert _has(analyze(band, TODAY).advisories, "a session can choose between at a glance")
 
 
+def test_a_top_band_padded_with_blocked_items_is_not_overfull() -> None:
+    """Blocked work is in the band and is not a choice a session can make.
+
+    The checker's own blocker-band rule puts it there: an item may not wait on
+    one in a lower band, so gating a `P1` on a `P2` raises the blocker rather
+    than lowering the blocked. Counting both would then report an overfull band
+    that nobody over-prioritized and nobody can drain (`PL-P23D`).
+    """
+    startable = [_item(f"PL-B1B{n}", priority="P1") for n in range(4)]
+    blocked = [
+        _item(f"PL-C2C{n}", priority="P1", status="blocked", blocked_by=("PL-B1B0",))
+        for n in range(3)
+    ]
+
+    advisories = analyze(startable + blocked, TODAY).advisories
+
+    assert not _has(advisories, "a session can choose between at a glance")
+
+
 def test_a_top_band_of_mostly_open_decisions_is_an_advisory() -> None:
     band = [
         _item(
