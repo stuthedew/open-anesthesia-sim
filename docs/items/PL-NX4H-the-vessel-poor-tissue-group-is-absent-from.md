@@ -58,6 +58,25 @@ against the tree in this session; Gas Man's three-group structure was
 confirmed against De Wolf et al. 2012 Table 1 (PMC3502091,
 https://doi.org/10.1186/1471-2253-12-22).
 
+**Stronger citation available, added 2026-09-03.** The brief justifies the
+omission by matching Gas Man. A primary-literature justification exists and is
+better, because it is the argument made by the author who defined the groups:
+Eger's four-compartment model carries the vessel-poor group, and his
+five-compartment model deletes it — "the VPG is deleted because its
+contribution to uptake is considered insignificant" — while adding a lung and
+an intertissue-diffusion compartment (Carpenter RL, Eger EI, Johnson BH, et al.
+Pharmacokinetics of inhaled anesthetics in humans. Anesth Analg
+1986;65:575-582). Reported in Hendrickx JFA, De Wolf A. Special aspects of
+pharmacokinetics of inhalation anesthesia. In: Schuttler J, Schwilden H (eds).
+Modern Anesthetics. Handbook of Experimental Pharmacology 182. Springer, 2008,
+p. 163. The three modelled groups therefore match Eger's own 5C structure minus
+its lung and intertissue compartments, rather than merely matching a simulator.
+
+The same chapter (p. 165) also supplies a citable uncertainty statement for the
+partition coefficients: "Tissue solubilities vary up to 150% between authors
+(Yasuda et al. 1989), and the tissue homogenates used to determine these
+coefficients may not represent in vivo conditions."
+
 **Done when.** `docs/MODEL.md`'s "Known limitations" names the absent
 vessel-poor group with the reason it is absent and why the omission is
 tolerable, `python3 tools/doc_check.py check` passes, and no modelled value
