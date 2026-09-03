@@ -105,15 +105,37 @@ already cite through Nickalls and Mapleson), the stored values are:
 
 So a sevoflurane-versus-desflurane comparison in MAC multiples - the exact
 comparison this item exists to make honest - is skewed by about 22% between
-the two agents purely by the choice of MAC source. Deciding this is part of
-the item, not a follow-up: either keep the Gas Man set and state on the
-display that the MAC denominator is a flat adult value differing from the
-age-40 reference by up to 10%, or adopt Mapleson's age-40 values as the
-display denominator and record the tier change in `docs/MODEL.md`. Do not
-adopt the age-related iso-MAC form (Nickalls and Mapleson, Br J Anaesth
-2003;91:170-4, doi:10.1093/bja/aeg132) - that needs an age parameter the
-reference adult does not have, and inventing one here is out of scope.
+the two agents purely by the choice of MAC source.
 
-Whichever is chosen, the displayed MAC denominator names its agent and its
+**Decided: keep the Gas Man values and state the deviation** (project owner,
+2026-09-03). `mac_percent` stays 2.0 / 6.0 / 1.2. Three reasons, and the first
+is dispositive on its own: v0.4.0 changes no parameter, and editing
+`mac_percent` would move the vaporizer's 1 MAC starting dial, so re-sourcing it
+needs a scope exception this milestone has no reason to take. Second, those are
+the round numbers quoted at the bedside, which is worth something in a display
+whose purpose is teaching. Third, the ~22% cross-agent skew reverses no
+qualitative teaching point - 2% is about 1 MAC of sevoflurane and about a third
+of a MAC of desflurane on either source - so making the limitation visible
+satisfies `CLAUDE.md`'s "make uncertainty and model limitations visible" better
+than silently substituting a different denominator would.
+
+So this item owes three things rather than a parameter change:
+
+- the three data-file notes lose the clause "not a governing-equation
+  parameter", which stops being true, and gain what the value is now used for;
+- `docs/MODEL.md` states the denominator, its tier, and that it differs from
+  the age-40 meta-analytic reference by up to 10% per agent and about 22%
+  between sevoflurane and desflurane, so a cross-agent comparison in MAC
+  carries that much source-choice error before any model error;
+- the display names the agent and the source of the denominator it divided by.
+
+The tier upgrade itself is not dropped, only placed: it is a parameter change,
+so it belongs to v0.4.1 or Gate 1, whichever reaches it first. Do not adopt the
+age-related iso-MAC form (Nickalls and Mapleson, Br J Anaesth 2003;91:170-4,
+doi:10.1093/bja/aeg132) in either place - that needs an age parameter the
+reference adult does not have, and inventing one is a modelling change, not a
+display one.
+
+The displayed MAC denominator names its agent and its
 source at the point of display, per the "traceable from the display"
 requirement above.
