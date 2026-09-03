@@ -5,6 +5,7 @@ priority: P1
 effort: S
 status: done
 closed: 2026-09-03
+pr: 256
 classes: science, planning
 feature: numerical-domain
 not-delegable: the whole of this item was a decision about the numerical method; no command can prove a decision, and the implementation it authorized is PL-GS5X.

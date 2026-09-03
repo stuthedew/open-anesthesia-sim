@@ -5,6 +5,7 @@ priority: P1
 effort: M
 status: done
 closed: 2026-09-03
+pr: 256
 classes: science, planning
 feature: numerical-domain
 touches: src/anesthesia_sim/core, docs/MODEL.md
