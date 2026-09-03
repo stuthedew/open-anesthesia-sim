@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 closed: 2026-09-03
+pr: 256
 classes: defect, infra
 feature: dev-tooling
 verify: python3 tools/doc_check.py check && grep -rq 'types: [opened, synchronize, reopened, edited]' .github/workflows/
