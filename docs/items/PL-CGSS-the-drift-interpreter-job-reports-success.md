@@ -4,12 +4,13 @@ title: The drift interpreter job reports success identically whether it tested a
 priority: P2
 effort: S
 status: done
-closed: 2026-09-02
-pr: 245
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.3.1
 touches: .github/workflows/drift.yml
 added: 2026-09-02
+closed: 2026-09-02
+pr: 245
 verify: grep -q 'reach past the pin' .github/workflows/drift.yml && grep -q 'PINNED_MINOR' .github/workflows/drift.yml
 ---
 

@@ -1,15 +1,16 @@
 ---
 id: PL-J49T
 title: "Enforce the verify: command as an error when a grandfathered item is closed, so the burn-down stops depending on anyone reading an advisory"
-status: done
 priority: P3
 effort: S
+status: done
 classes: infra, session-cost
+milestone: v0.3.1
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, docket.toml, .claude/skills/docket/SKILL.md
-verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_closing_a_grandfathered_item_demands_the_command_the_ready_gate_never_could' subprojects/docket/tests/test_checks.py
 added: 2026-09-03
 closed: 2026-09-03
 pr: 249
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_closing_a_grandfathered_item_demands_the_command_the_ready_gate_never_could' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** 22 `ready` items predate `verify_required_from` and name no

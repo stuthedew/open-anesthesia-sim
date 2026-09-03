@@ -4,12 +4,13 @@ title: parse_front_matter silently keeps the last of a duplicate front-matter ke
 priority: P2
 effort: S
 status: done
-closed: 2026-09-02
-pr: 237
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.3.1
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-02
+closed: 2026-09-02
+pr: 237
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_repeated_front_matter_key_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
