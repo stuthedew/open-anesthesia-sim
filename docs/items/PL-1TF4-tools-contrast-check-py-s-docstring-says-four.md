@@ -9,6 +9,7 @@ touches: tools/contrast_check.py
 verify: python3 tools/contrast_check.py && ! grep -q 'Four declared' tools/contrast_check.py
 added: 2026-09-03
 closed: 2026-09-03
+pr: 249
 ---
 
 **Problem.** The module docstring states "**Four** declared pairs do not meet
