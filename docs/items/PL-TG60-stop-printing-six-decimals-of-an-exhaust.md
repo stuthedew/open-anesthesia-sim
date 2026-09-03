@@ -55,3 +55,16 @@ the defect here is displaying more digits than the integral supports.
 panel with the sub-step integration error recorded as the reason, the panel
 prints only digits that error supports, the gas-volume unit is unambiguous in
 the label, and a test pins the format.
+
+**What v0.4.1 does to this (added 2026-09-03).** **Re-measure before deciding anything.**
+This item's quantitative basis is the split: `BreathingCircuit.advance_fresh_gas`
+(`core/circuit.py:209-214`) integrates the *fresh-gas-only* sub-step trajectory
+analytically, which is what makes the exhaust integral good to about three
+decimals rather than six. Under a coupled propagator the exhaust integral has no
+sub-step trajectory to integrate and must be recomputed - `PL-GS5X`'s brief
+leaves that open, and `AgentSimulationValidator.record_external_agent_transfer`
+depends on the answer. The integral could become materially more accurate, in
+which case the right decimal count is a different number, or it could be
+computed a way that changes the argument entirely. Six decimals on a value good
+to three is still wrong today; how many are right is not answerable until the
+exact step lands.

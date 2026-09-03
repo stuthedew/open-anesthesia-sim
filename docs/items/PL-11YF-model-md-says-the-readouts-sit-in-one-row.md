@@ -43,3 +43,12 @@ readings; it needs the same qualification.
 in one row, and says what the reflow below it means for the ordinal-reading and
 uniform-resolution arguments that depend on it — or records that it deliberately
 specifies only the full-screen case.
+
+**What v0.4.1 does to this (added 2026-09-03).** The responsive finding is independent and
+stands - `METRIC_GRID_COLUMNS` in `app/simulation_view.py` reflows the readout
+row at a width `docs/MODEL.md` does not state. But one of the two arguments this
+item wants qualified is that "the splitting error cannot mislead a reader who
+compares the readouts the way the row is designed to be compared", and its third
+instance sits in § "Independent-solution test" - both rewritten by `PL-X9KD`.
+Cheaper after it; if taken before, qualify the width claim and leave the
+splitting-error sentence for `PL-X9KD` to replace.

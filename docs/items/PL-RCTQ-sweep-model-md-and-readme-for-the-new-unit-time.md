@@ -31,3 +31,15 @@ interface boundary states the fixed-step and no-catch-up guarantees from PL-VM40
 `make doc-check` passes; and `python3 tools/doc_check.py candidates --base <ref>`
 has been run over the milestone's diff and each surfaced line judged for truth
 rather than only for path validity.
+
+**What v0.4.1 does to this (added 2026-09-03).** Four of this sweep's
+`docs/MODEL.md` targets are rewritten one release later, so anything written here
+that ties a displayed unit's precision to the numerical method is false at
+v0.4.1: § "Displayed precision" and § "Supported simulation step" by `PL-X9KD`,
+§ "Selected method (as implemented)" by `PL-GS5X`, and §§ "Symbols" and
+"Conventions" by `PL-3TLK`, `PL-H46J` and `PL-212V`.
+
+Write the sweep so it survives: state the new unit, time base and run rate in
+their own terms, and cite § "Displayed precision" for the resolution rather than
+restating the derivation. A restated derivation is a second thing to keep true,
+and this one is about to change.

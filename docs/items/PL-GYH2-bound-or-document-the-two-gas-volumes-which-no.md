@@ -61,3 +61,14 @@ core method does.
 are established in `docs/MODEL.md` as data-file parameters rather than
 controls, and § "Supported input ranges" states that instead of naming this
 item as an open gap.
+
+**What v0.4.1 does to this (added 2026-09-03).** The deliverable stands - the two gas
+volumes still reach `core/` unbounded through
+`SimulationController.set_circuit_volume` - but the *argument* weakens and must
+be restated. "The splitting error depends on both" stops being true under
+`PL-GS5X`, and `BREAKDOWN_ALVEOLAR_GAS_VOLUME_L = 0.005`
+(`tests/unit/test_uptake_system_failure.py`) is currently justified as the
+volume "small enough to break the split at a supported step"; an exact
+exponential does not break there. The bound is still wanted - a 5 mL alveolus is
+not a patient - but on physiological grounds rather than numerical ones. Restate
+it that way and the item survives `PL-X9KD` unchanged.

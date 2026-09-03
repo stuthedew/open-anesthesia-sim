@@ -3,7 +3,8 @@ id: PL-Y5BV
 title: The pulmonary uptake rate MODEL.md specifies is never computed
 priority: P2
 effort: S
-status: ready
+status: blocked
+blocked-by: PL-GS5X
 classes: defect, test
 feature: model-spec-accuracy
 touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
@@ -62,3 +63,19 @@ here.
 alveolar uptake is asserted by a test across a range of states, or derived in
 `docs/MODEL.md` with the standing-in test named, and the document no longer
 specifies an equation nothing checks.
+
+**Superseded by `PL-GS5X`, 2026-09-03.** This item's premise is that
+$`\dot M_{\mathrm{pulmonary}} = Q\lambda_{b:g}(F_A-F_v)`$ is never formed, and
+that the alveolar update instead telescopes through
+`AlveolarCompartment.apply_blood_uptake` at `core/uptake_system.py:345`. Under
+the exact matrix exponential the term becomes an explicit entry of the system
+matrix — `PL-SPMQ` names the row — so $`F_v`$ enters the alveolar update
+directly, the "wrong venous capacity would still telescope" blind spot stops
+existing, and an identity test comparing the applied uptake against the
+expression would be comparing the matrix against itself. The recommended
+approach's tolerance, "the tolerance the split allows", also has no referent.
+
+Blocked rather than dropped: the `PL-GS5X` session is the one that can see
+whether anything of this item survives the rewrite — plausibly a test that the
+matrix row *is* $`Q\lambda_{b:g}/V_A`$, which is a different assertion from the
+one specified here. Close it out either way when that lands.
