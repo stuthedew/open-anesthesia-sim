@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 closed: 2026-09-03
+pr: 259
 
 classes: infra
 feature: dev-tooling
