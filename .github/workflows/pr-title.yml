@@ -1,0 +1,50 @@
+name: pr-title
+
+# Split out of `quality.yml` deliberately (`PL-3V8K`). This check tells an
+# author to rename the pull request, and a rename is a `pull_request: edited`
+# event, which the default trigger types do not include. So doing exactly what
+# the check asks could not clear it: the failed run stayed failed on the head
+# commit, and the only remedy left was pushing a commit, which the working
+# agreement forbids doing to kick CI. Observed on #256.
+#
+# Adding `edited` to `quality.yml`'s own trigger would have fixed that by
+# re-running sync, ruff, mypy, the whole test suite, docket, doc_check and
+# contrast on every title *and body* edit - including the body edits made while
+# iterating on a description. This job reads one string and one `git log`, so it
+# is its own workflow instead.
+#
+# No uv and no virtualenv: `tools/` runs under a bare `python3` by contract,
+# which `tests/unit/test_tools_portability.py` and `quality.yml`'s `floor` job
+# hold it to. That is what makes the split cheap - a checkout and one script,
+# with no dependency resolution in front of it.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+
+    steps:
+      # `fetch-depth: 0` because the script computes what this branch closes
+      # from the `PR_BASE..HEAD` range, which needs history on both sides of it.
+      # A depth-1 clone has neither and the range would be empty, which reads as
+      # "closes nothing" and passes any title at all.
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      # The title reaches the script through the environment rather than a
+      # `${{ }}` interpolation inside the `run:` line: it is attacker-controlled
+      # text on a fork pull request, and pasting it into a shell command is the
+      # standard Actions script-injection hole. `PR_BASE` names the merge
+      # target, which the script compares against `HEAD` to find what this
+      # branch actually closes.
+      - name: pull request title names the items it closes
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BASE: origin/${{ github.event.pull_request.base.ref }}
+        run: python3 tools/pr_title_check.py
