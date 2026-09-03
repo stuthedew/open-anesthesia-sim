@@ -4,13 +4,14 @@ title: quality.yml does not run on pull_request edited, so renaming a title to s
 priority: P2
 effort: S
 status: done
-closed: 2026-09-03
-pr: 256
 classes: defect, infra
 feature: dev-tooling
-verify: python3 tools/doc_check.py check && grep -rq 'types: [opened, synchronize, reopened, edited]' .github/workflows/
+milestone: v0.3.2
 touches: .github/workflows/quality.yml, .github/workflows/pr-title.yml
 added: 2026-09-03
+closed: 2026-09-03
+pr: 256
+verify: python3 tools/doc_check.py check && grep -rq 'types: [opened, synchronize, reopened, edited]' .github/workflows/
 ---
 
 **Problem.** `tools/pr_title_check.py` fails a pull request whose title does not

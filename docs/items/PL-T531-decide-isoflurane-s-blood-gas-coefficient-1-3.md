@@ -4,11 +4,13 @@ title: 'Decide isoflurane''s blood:gas coefficient: 1.3 (Gas Man) or 1.4 (textbo
 priority: P1
 effort: S
 status: done
-closed: 2026-09-03
-verify: uv run pytest tests/unit/test_parameters.py tests/reference/test_multi_agent.py && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/agents/isoflurane.json')); assert d['blood_gas_partition_coefficient'] == 1.3; assert any('Lerman J, Gregory GA' in s['citation'] for s in d['sources'])"
 classes: science
+milestone: v0.3.2
 touches: src/anesthesia_sim/data/agents/isoflurane.json, docs/MODEL.md, tests/reference/test_multi_agent.py
 added: 2026-09-01
+closed: 2026-09-03
+pr: 257
+verify: uv run pytest tests/unit/test_parameters.py tests/reference/test_multi_agent.py && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/agents/isoflurane.json')); assert d['blood_gas_partition_coefficient'] == 1.3; assert any('Lerman J, Gregory GA' in s['citation'] for s in d['sources'])"
 ---
 
 **Problem.** `data/agents/isoflurane.json` carries

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety, test
 feature: numerical-domain
+milestone: v0.3.2
 touches: tests/unit/test_agent_simulation_validation.py
 added: 2026-09-03
 closed: 2026-09-03
