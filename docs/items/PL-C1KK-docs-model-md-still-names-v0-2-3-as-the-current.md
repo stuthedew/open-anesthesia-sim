@@ -4,12 +4,12 @@ title: docs/MODEL.md still names v0.2.3 as the current baseline, four releases o
 priority: P2
 effort: S
 status: done
-closed: 2026-09-03
-pr:
 classes: defect, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-08-30
+closed: 2026-09-03
+pr: 268
 not-delegable: docs/MODEL.md is a protected path, and whether prose names the right baseline is not decidable by a check - doc_check reads ROADMAP.md's baseline heading only, and extending it to free prose would be guessing at the judgment half
 ---
 
