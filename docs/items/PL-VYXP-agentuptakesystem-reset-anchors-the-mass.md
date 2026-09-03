@@ -1,15 +1,16 @@
 ---
 id: PL-VYXP
 title: AgentUptakeSystem.reset() anchors the mass-balance baseline to an implicit zero it does not itself establish
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect
+milestone: v0.3.1
 touches: src/anesthesia_sim/core/uptake_system.py, tests/unit/test_uptake_system_failure.py
-verify: uv run pytest tests/unit/test_uptake_system_failure.py && grep -q 'def test_reset_anchors_accounting_to_what_the_compartments_actually_hold' tests/unit/test_uptake_system_failure.py
 added: 2026-09-02
 closed: 2026-09-02
 pr: 246
+verify: uv run pytest tests/unit/test_uptake_system_failure.py && grep -q 'def test_reset_anchors_accounting_to_what_the_compartments_actually_hold' tests/unit/test_uptake_system_failure.py
 ---
 
 **Problem.** `AgentUptakeSystem.reset()` called

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.3.1
 touches: subprojects/docket/, tools/
 added: 2026-09-02
 closed: 2026-09-02

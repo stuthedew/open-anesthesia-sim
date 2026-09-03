@@ -3,14 +3,15 @@ id: PL-V87X
 title: ruff format warns on every run that isort.split-on-trailing-comma conflicts with skip-magic-trailing-comma
 priority: P3
 effort: S
+status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.3.1
 touches: pyproject.toml
-verify: grep -qF 'split-on-trailing-comma = false' pyproject.toml && uv run ruff format --check .
-status: done
+added: 2026-09-01
 closed: 2026-09-02
 pr: 236
-added: 2026-09-01
+verify: grep -qF 'split-on-trailing-comma = false' pyproject.toml && uv run ruff format --check .
 ---
 
 **Problem.** Every `ruff format` run - so every `make fix`, and `make check`'s

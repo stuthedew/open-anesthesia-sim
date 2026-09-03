@@ -3,13 +3,14 @@ id: PL-2XTF
 title: A closed item's pull request is recovered from the commit subject, which a squash-merged UI-titled PR does not carry, so main goes red with an unrecoverable error
 priority: P2
 effort: S
-classes: defect, infra
 status: done
-closed: 2026-09-02
-pr: 227
+classes: defect, infra
 feature: dev-tooling
+milestone: v0.3.1
 touches: subprojects/docket
 added: 2026-09-02
+closed: 2026-09-02
+pr: 227
 ---
 
 **Problem.** `docket check` recovers a closed item's pull request by finding

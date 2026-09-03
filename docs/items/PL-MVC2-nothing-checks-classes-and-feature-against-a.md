@@ -4,12 +4,13 @@ title: "Nothing checks `classes:` and `feature:` against a declared vocabulary, 
 priority: P2
 effort: S
 status: done
-closed: 2026-09-02
-pr: 237
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.3.1
 touches: subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/checks.py, docket.toml, subprojects/docket/tests/test_checks.py
 added: 2026-09-02
+closed: 2026-09-02
+pr: 237
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_class_outside_the_declared_vocabulary_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 

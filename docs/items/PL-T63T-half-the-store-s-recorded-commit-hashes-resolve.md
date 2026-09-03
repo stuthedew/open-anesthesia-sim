@@ -4,13 +4,15 @@ title: "Half the store's recorded commit: hashes resolve nowhere, because the fi
 priority: P2
 effort: S
 status: done
-closed: 2026-09-02
-pr: 236
 classes: defect, infra
 feature: commit-provenance
+milestone: v0.3.1
 touches: subprojects/docket/README.md, .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/checks.py
 added: 2026-08-31
+closed: 2026-09-02
+pr: 236
 ---
+
 **Problem.** A closed item records `commit:` as the hash on the branch that
 did the work. `PL-S4M2` made `main` squash-merge, so that commit never reaches
 the default branch and becomes unreachable the moment the head branch is
