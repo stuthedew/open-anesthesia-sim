@@ -697,6 +697,8 @@ def _landed(**overrides: object) -> LandedReport:
         slow=(),
         typical=0.5,
         elapsed=10.0,
+        serial=42.0,
+        slowest=SlowCommand("PL-K7QX", 4.0),
         declined="",
     )
     base.update(overrides)
@@ -892,6 +894,81 @@ def test_a_run_that_could_not_execute_says_nothing_about_cost() -> None:
 
 def test_a_caller_that_did_not_ask_is_told_nothing_about_cost() -> None:
     assert analyze([_item()], TODAY, landed=None).advisories == []
+
+
+# What the run cost, reported every run as a fact rather than as a finding.
+# Two comments in `verify.py` carried these figures by hand and both went stale
+# inside a fortnight; the reason neither was caught is that a healthy store
+# printed no cost at all, so nobody could notice the number had moved
+# (`PL-9NKK`).
+
+
+def _cost(landed: LandedReport | None) -> str:
+    return analyze([_item()], TODAY, landed=landed).cost
+
+
+def test_the_run_reports_what_it_cost() -> None:
+    cost = _cost(_landed(considered=78, elapsed=28.8, slowest=SlowCommand("PL-GS5X", 27.4)))
+
+    assert "78 commands" in cost
+    assert "28.8s" in cost
+
+
+def test_the_serial_total_is_reported_beside_the_wall_clock() -> None:
+    # Reporting only the wall clock would hide exactly the growth this exists
+    # to expose: the pool holds that number flat while the queue climbs.
+    assert "175.5s serially" in _cost(_landed(serial=175.5))
+
+
+def test_the_costliest_command_is_given_against_the_limit_that_bounds_it() -> None:
+    # A bare duration cannot be read for the question `LANDED_TIMEOUT` answers,
+    # which is how much margin is left before a real command starts being
+    # killed and the check starts declining instead of answering.
+    cost = _cost(_landed(slowest=SlowCommand("PL-GS5X", 27.4), limit=120.0))
+
+    assert "PL-GS5X" in cost
+    assert "27.4s" in cost
+    assert "120s limit" in cost
+
+
+def test_the_costliest_command_is_named_where_no_command_is_an_outlier() -> None:
+    # The slow-command advisory fires on a ratio against the median, so it is
+    # silent on a store where everything is uniformly heavy - which is the
+    # store whose margin against the limit is closing fastest.
+    report = analyze(
+        [_item()], TODAY, landed=_landed(slow=(), slowest=SlowCommand("PL-GS5X", 27.4))
+    )
+
+    assert "PL-GS5X" in report.cost
+    assert not any("waits for" in message for message in report.advisories)
+
+
+def test_the_cost_is_not_reported_as_something_to_resolve() -> None:
+    # Nobody is asked to act on it, so it must not sit among the findings that
+    # do - that is what makes a line printed every run affordable.
+    report = analyze([_item()], TODAY, landed=_landed())
+
+    assert report.cost
+    assert not any("serially" in message for message in report.advisories + report.errors)
+
+
+def test_a_run_that_could_not_execute_reports_no_cost() -> None:
+    # Durations from a run that declined would be about the machine rather than
+    # the store, and printing them would be the empty-result-as-measured-result
+    # error this module exists to refuse.
+    assert _cost(LandedReport(declined="no toolchain here")) == ""
+
+
+def test_a_caller_that_did_not_ask_reports_no_cost() -> None:
+    assert _cost(None) == ""
+
+
+def test_a_store_with_no_command_to_run_reports_no_cost() -> None:
+    assert _cost(_landed(considered=0, slowest=None)) == ""
+
+
+def test_one_command_is_not_reported_as_commands() -> None:
+    assert "1 command in" in _cost(_landed(considered=1))
 
 
 # An open item whose own `verify:` command selects no test. The counterpart to

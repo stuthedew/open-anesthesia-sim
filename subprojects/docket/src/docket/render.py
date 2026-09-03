@@ -642,6 +642,12 @@ def format_check(report: Report) -> str:
     if report.declined:
         headline += f", {len(report.declined)} not checked"
     lines = [headline]
+    # Under the headline rather than appended to it: this is what the run cost
+    # rather than what it found, and the two want different attention. Absent
+    # entirely where nothing ran, so a reader never sees a cost line whose
+    # numbers came from a run that declined (`PL-9NKK`).
+    if report.cost:
+        lines.append(f"  {report.cost}")
     if report.errors:
         lines += ["", "Errors (the store is wrong; fix before committing):"]
         lines += [f"  {message}" for message in report.errors]

@@ -897,15 +897,39 @@ still counting as checked, and the report stayed clean (`PL-T940`).
 
 The commands run concurrently, at twice the core count and capped at eight,
 which changes no answer — each still runs in the working tree against the
-current state — and only the wall clock (`PL-LXR3`). Measured on this store
-2026-09-02, 47 candidates: **34.9 s serially, 10.1 s concurrently**, with the
-two runs' output byte-identical.
+current state — and only the wall clock (`PL-LXR3`).
 
-That makes the cost the slowest single command rather than the number of them,
-which is worth knowing before writing a `verify:`: one full-suite `pytest
---cov` run at ~56 s takes the whole check from 10 s to 59 s on its own, while a
-second costs 3.5 s on top of it. Each command is capped at two minutes so one
-wedged run cannot hang `make check`.
+**So `check` reports what the run cost, on the line under its headline:**
+
+```
+docket: 141 open (…), 0 errors, 3 advisories
+  verify: 82 commands in 31.1s (181.4s serially); slowest PL-GS5X 26.4s against a 120s limit
+```
+
+Four figures, and the reason each is there. The count and the wall clock are
+what a session pays. The **serial total** beside them is the one that carries
+the news: concurrency holds the wall clock roughly flat while the store grows,
+so it is the number that hides the growth, while the serial total climbs with
+every item triaged to `ready`. And the costliest command is given against the
+per-command limit, because that margin is the question the limit is set to
+answer — how much room is left before a real command starts being killed and
+the check declines instead of answering.
+
+It is a fact rather than a finding, and it sits outside the errors and the
+advisories for that reason: nobody is asked to act on it, and a *change* in it
+is the signal. That is what it is for. The same figures used to be written by
+hand into two comments and this file, and all three went stale inside a
+fortnight while the queue doubled underneath them — which nobody caught,
+because a healthy store printed no cost at all and there was nothing to notice
+moving (`PL-9NKK`). The dated measurements live in `PL-LXR3` and `PL-9NKK`,
+where a number keeps its date and stays true; this line is the same reading
+taken now.
+
+The wall clock is set by the slowest single command as much as by the number of
+them, which is worth knowing before writing a `verify:` — a full-suite `pytest
+--cov` run is tens of seconds on its own, and once one is in the pool a second
+costs a fraction of that. Each command is capped at two minutes so one wedged
+run cannot hang `make check`.
 
 **So a command far enough above the typical one is named, with what it cost.**
 The person who writes a heavy `verify:` is the only one placed to reconsider
