@@ -20,6 +20,7 @@ from docket.vcs import (
     behind_remote,
     branch_state,
     branches_in_flight,
+    closed_by,
     closures_on_base,
     default_base,
     lost,
@@ -1310,3 +1311,165 @@ def test_lost_treats_an_unanswerable_shallow_question_as_truncated() -> None:
     )
 
     assert report.truncated
+
+
+REV = "abc123"
+
+
+def _closed_by_runner(
+    touched: tuple[str, ...],
+    trees: dict[str, str],
+    *,
+    resolves: bool = True,
+    parent: bool = True,
+    log: list[list[str]] | None = None,
+):
+    """A git whose `trees` map `<ref>:<path>` to the text held there.
+
+    `touched` is what the commit changed under the item directory, which is
+    what `git diff --name-only` against the first parent answers. `resolves`
+    and `parent` are the two ways the read declines: a revision this checkout
+    does not hold, and one whose parent it does not hold.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if log is not None:
+            log.append(args)
+        if args[0] == "rev-parse":
+            if args[-1].startswith(f"{REV}^^"):
+                return f"{REV}~1\n" if parent else ""
+            return f"{REV}\n" if resolves else ""
+        if args[0] == "diff":
+            return "\n".join(touched)
+        if args[0] == "ls-tree":
+            prefix = f"{args[3]}:"
+            return "\n".join(sorted(k[len(prefix) :] for k in trees if k.startswith(prefix)))
+        if args[0] == "show":
+            return trees.get(args[-1], "")
+        return ""
+
+    return run
+
+
+def test_a_commit_that_writes_done_closed_the_item() -> None:
+    run = _closed_by_runner(
+        ("items/PL-K7QX-a.md",),
+        {
+            f"{REV}:items/PL-K7QX-a.md": CLOSED.format(id="PL-K7QX"),
+            f"{REV}^:items/PL-K7QX-a.md": OPEN_ITEM.format(id="PL-K7QX"),
+        },
+    )
+
+    report = closed_by(REV, ROOT, items_dir="items", runner=run)
+
+    assert report.known
+    assert report.paths == {"PL-K7QX": "items/PL-K7QX-a.md"}
+
+
+def test_an_item_already_done_at_the_parent_was_not_closed_here() -> None:
+    """The stricter half of the question, and the one a number depends on.
+
+    A pull request records its number on what it closed, never on what was
+    already closed when it branched - a later edit to a finished item's brief
+    touches the file and must not be read as the closure.
+    """
+    run = _closed_by_runner(
+        ("items/PL-K7QX-a.md",),
+        {
+            f"{REV}:items/PL-K7QX-a.md": CLOSED.format(id="PL-K7QX"),
+            f"{REV}^:items/PL-K7QX-a.md": CLOSED.format(id="PL-K7QX"),
+        },
+    )
+
+    assert closed_by(REV, ROOT, items_dir="items", runner=run).closed == ()
+
+
+def test_a_closed_item_renamed_by_the_commit_was_not_closed_by_it() -> None:
+    """A title edit renames the file, so the path proves nothing; the id does.
+
+    Comparing paths would find nothing at the new name in the parent tree and
+    read that as a closure, stamping this commit's number over the one that
+    actually closed the item.
+    """
+    run = _closed_by_runner(
+        ("items/PL-K7QX-new.md", "items/PL-K7QX-old.md"),
+        {
+            f"{REV}:items/PL-K7QX-new.md": CLOSED.format(id="PL-K7QX"),
+            f"{REV}^:items/PL-K7QX-old.md": CLOSED.format(id="PL-K7QX"),
+        },
+    )
+
+    assert closed_by(REV, ROOT, items_dir="items", runner=run).closed == ()
+
+
+def test_an_item_this_commit_created_and_closed_counts() -> None:
+    run = _closed_by_runner(
+        ("items/PL-K7QX-a.md",), {f"{REV}:items/PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}
+    )
+
+    assert closed_by(REV, ROOT, items_dir="items", runner=run).paths == {
+        "PL-K7QX": "items/PL-K7QX-a.md"
+    }
+
+
+def test_a_commit_that_only_captures_closes_nothing() -> None:
+    run = _closed_by_runner(
+        ("items/PL-K7QX-a.md",), {f"{REV}:items/PL-K7QX-a.md": OPEN_ITEM.format(id="PL-K7QX")}
+    )
+
+    report = closed_by(REV, ROOT, items_dir="items", runner=run)
+
+    assert report.known
+    assert report.closed == ()
+
+
+def test_a_touched_file_that_is_not_an_item_is_ignored() -> None:
+    run = _closed_by_runner(("items/README.md",), {f"{REV}:items/README.md": "not an item"})
+
+    assert closed_by(REV, ROOT, items_dir="items", runner=run).closed == ()
+
+
+def test_only_the_files_the_commit_touched_are_read() -> None:
+    """What keeps this at a handful of tree reads rather than one per item."""
+    log: list[list[str]] = []
+    run = _closed_by_runner(
+        ("items/PL-K7QX-a.md",),
+        {
+            f"{REV}:items/PL-K7QX-a.md": CLOSED.format(id="PL-K7QX"),
+            f"{REV}:items/PL-B1C2-b.md": CLOSED.format(id="PL-B1C2"),
+            f"{REV}^:items/PL-B1C2-b.md": CLOSED.format(id="PL-B1C2"),
+        },
+        log=log,
+    )
+
+    closed_by(REV, ROOT, items_dir="items", runner=run)
+
+    assert not [args for args in log if args[0] == "show" and "PL-B1C2" in args[-1]]
+
+
+def test_a_revision_with_no_parent_here_declines_rather_than_answering() -> None:
+    """At `fetch-depth: 1` there is nothing to compare against.
+
+    Answering anyway would read as "everything done here was closed here",
+    which would stamp one pull request number across the whole store.
+    """
+    run = _closed_by_runner(
+        ("items/PL-K7QX-a.md",),
+        {f"{REV}:items/PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+        parent=False,
+    )
+
+    report = closed_by(REV, ROOT, items_dir="items", runner=run)
+
+    assert not report.known
+    assert "parent is outside this checkout" in report.declined
+    assert report.closed == ()
+
+
+def test_a_revision_this_checkout_does_not_hold_declines() -> None:
+    run = _closed_by_runner((), {}, resolves=False)
+
+    report = closed_by(REV, ROOT, items_dir="items", runner=run)
+
+    assert not report.known
+    assert "names no commit here" in report.declined

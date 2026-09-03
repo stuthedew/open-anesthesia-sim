@@ -621,25 +621,40 @@ reconstruct three commands at the moment they are trying to do something else.
    because a squash-merge discards the branch commit while the pull request
    number outlives it.
 
-   **Leave `pr` empty there and fill it in once the pull request exists.** The
-   number cannot be known before the pull request is open, and `docket check`
-   now owes a `pr` only on a closure that already stands on the default base —
-   so an unlanded closure carrying none is the expected shape rather than an
-   error. **Do not split the closure out to get the number earlier** — pushing
-   the work first and adding the `pr` before the merge reopens the very window
-   below, and the merge can arrive between the two pushes. Let the item land
-   with an empty `pr`: `docket check` then raises an *advisory* naming the
-   number it recovered from the merge commit, so writing it in is a one-line
-   follow-up on whatever branch comes next, not a red store demanding its own
-   pull request. It is an error only where no commit on the base names a
-   number at all **and** the checkout says it is complete, which is provenance
+   **Leave `pr` empty; it is written after the merge, by command.** The number
+   cannot be known before the pull request is open, and `docket check` owes a
+   `pr` only on a closure that already stands on the default base — so an
+   unlanded closure carrying none is the expected shape rather than an error.
+   **Do not split the closure out to get the number earlier** — pushing the
+   work first and adding the `pr` before the merge reopens the very window
+   below, and the merge can arrive between the two pushes. Closing in the same
+   commit as the work is what removes that
+   window: requiring the number up front forced the closure into a second
+   push, and a merge inside it took the work and left the closure on the
+   branch — `main` had the fix while the queue still called the item open and
+   a debt gate still counted it (`PL-D2GW`, then `PL-P5S0`).
+
+   **When `docket check` raises the missing-`pr` advisory, discharge it with
+   `bin/docket record <number> --merge <merge commit>` — never by editing the
+   file.** The command reads what the merge actually closed and refuses to
+   overwrite a different number; typing the line by hand is how the wrong one
+   gets recorded, and how two sessions opened `#229` and `#230` for one
+   identical insertion (`PL-QTSB`). **Run the in-flight guard first**
+   (`git fetch origin` then `bin/docket show <id>`): another branch is often
+   already holding it. Let the write ride a commit you are already making
+   rather than composing one for it.
+
+   **`.github/workflows/record-pr.yml` is parked and writes nothing**
+   (`PL-N5WZ`). It was meant to do this at merge time and cannot: `main`'s
+   required status checks reject a push made with `GITHUB_TOKEN`, because such
+   a push starts no workflow and the checks can never report on it. Do not
+   wait for it, and do not re-enable it — where the write is triggered instead
+   is an open decision.
+
+   The advisory is still an *error* where no commit on the base names a number
+   at all **and** the checkout says it is complete, which is provenance
    genuinely lost; a truncated checkout declines instead, because the commit
-   may be outside it (`PL-99Y4`). Closing
-   in the same commit as the work is what removes the window: requiring the
-   number up front forced the closure into a second push, and a merge inside
-   that window took the work and left the closure on the branch — `main` had
-   the fix while the queue still called the item open and a debt gate still
-   counted it (`PL-D2GW`, then `PL-P5S0`).
+   may be outside it (`PL-99Y4`).
 2. **Sweep the docs.** `make doc-check` decides the package-map,
    provenance-table, marked-prose-value, dangling-citation, math-rendering and
    release-train questions outright, and

@@ -1,0 +1,158 @@
+name: record-pr
+
+# Write the pull request number onto the items it closed, at the one moment the
+# number and the closure are both certain: the merge.
+#
+# `PL-QS72` established why an item cannot carry its own `pr` when it lands.
+# The closure has to travel in the same commit as its work - a merge arriving
+# between two pushes takes the work and leaves the item open (`PL-P5S0`) - and
+# the number does not exist until after that commit. So the item lands with an
+# empty `pr`, and something has to supply it afterwards.
+#
+# Until this workflow that something was a session: `docket check` raised an
+# advisory naming the number, and a session retyped it. That cost a commit and
+# usually a pull request of its own after every merge that closed anything
+# (`#188`, `#213`, `#216`, `#221`, `#237`, `#241`, `#247`, `#250` among them),
+# it produced `#229` and `#230` as byte-identical duplicates when two sessions
+# read the same advisory (`PL-QTSB`), and where the squash subject named no id
+# it could not be done at all, leaving `main` red until the number was read off
+# the GitHub UI by hand (`PL-2XTF`).
+#
+# None of that was judgment. `github.event.pull_request.number` is the number,
+# exactly, with no subject to parse - which is what also puts `PL-2XTF` out of
+# reach: a title that names nothing no longer matters, because nothing is being
+# recovered from it. `bin/docket record` supplies the other half by comparing
+# the merge commit's tree against its parent's.
+#
+# `docket check`'s advisory stays as the detector. It should now fire only when
+# this job did not run or could not push, which makes it the signal it was
+# always meant to be rather than the routine chore it had become.
+#
+# ---------------------------------------------------------------------------
+# PARKED on its first run (`#261`, 2026-09-03), pending `PL-N5WZ`. The
+# `pull_request` trigger is removed; `workflow_dispatch` is here only because
+# a workflow needs some trigger, and the job's own `if:` means a manual run
+# does nothing. Nothing is lost by that: the remedy for a `pr` this would have
+# written is `bin/docket record <number> --merge <commit>`, run locally, which
+# is what a session would reach for anyway.
+#
+# It works; it cannot land. The push was rejected by `main`'s protection:
+#
+#   remote: error: GH006: Protected branch update failed for refs/heads/main.
+#   remote: - 3 of 3 required status checks are expected.
+#
+# That is required status checks rather than the ruleset's `pull_request`
+# rule - the ruleset was already disabled when this ran, and the push failed
+# anyway. And it is not a bypass away from working, because the requirement
+# cannot be satisfied by anything this job can do: a push made with
+# `GITHUB_TOKEN` starts no workflow, so the three required checks can never
+# report on the commit it pushes. The only configurations that would accept
+# it weaken `main`'s own gate, which is a worse trade than the per-item commit
+# this was built to remove.
+#
+# Left in the tree rather than deleted because the decision it waits on is
+# where the write is triggered, not whether the write exists: `docket record`
+# and `vcs.closed_by` are the mechanism under every option, and this file is
+# the merge-time trigger for it. Parked rather than left failing, because a
+# red run after every merge is strictly worse than the advisory it replaced.
+# ---------------------------------------------------------------------------
+on:
+  workflow_dispatch:
+
+# The one job in this repository that writes. Scoped to `contents` and to this
+# job alone; every other workflow here stays `contents: read`.
+permissions:
+  contents: write
+
+# Two merges landing close together would otherwise race for the same push.
+# Queued rather than cancelled: a cancelled run drops a number that nothing
+# else will write, and the second merge's job cannot record the first's items.
+concurrency:
+  group: record-pr
+  cancel-in-progress: false
+
+jobs:
+  record:
+    # Closing a pull request without merging closes no item and owes no number.
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      # The base branch, not the pull request head: the head is deleted by the
+      # merge, and what is being amended is the default branch. Nothing from
+      # the contributor's branch is executed here, which is what makes
+      # `contents: write` on a `pull_request` event safe to hold - the only
+      # inputs read are the three payload fields below, all of them generated
+      # by GitHub rather than typed by an author.
+      #
+      # `fetch-depth: 0` because `docket record` compares the merge commit's
+      # tree against its parent's, and `bin/docket check` below reads history
+      # to answer the same question from the other end. A depth-1 clone has
+      # neither, and `closed_by` declines rather than guessing (`PL-99Y4`).
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 0
+
+      # No uv and no virtualenv: `bin/docket` runs under a bare `python3` by
+      # contract, which `subprojects/docket/tests/test_portability.py` and
+      # `quality.yml`'s `floor` job hold it to. But "bare" must still mean a
+      # known interpreter rather than whatever `ubuntu-latest` ships, which is
+      # the hole `PL-79N5` found in `pr-title.yml`. The version is not chosen
+      # here: it is what `subprojects/docket/pyproject.toml` declares in
+      # `requires-python`, and `tests/unit/test_tools_portability.py` holds
+      # every concrete pin under `.github/workflows/` to it.
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      #
+      # The payload reaches the script through the environment rather than a
+      # `${{ }}` interpolation inside the `run:` line. These three fields are
+      # not author-controlled, so this is convention rather than necessity -
+      # but the convention is what makes the dangerous case obvious when one
+      # arrives, and `pr-title.yml` states the same reasoning for a field that
+      # genuinely is attacker-controlled.
+      - name: record the pull request on the items it closed
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+
+          bin/docket record "$PR_NUMBER" --merge "$MERGE_SHA"
+
+          if git diff --quiet -- docs/items; then
+            echo "record-pr: nothing to write"
+            exit 0
+          fi
+
+          # The store is validated before the write is pushed, not after. A
+          # push made with GITHUB_TOKEN does not trigger another workflow, so
+          # `quality.yml` will not run on this commit and this is the only
+          # chance to catch a malformed item file.
+          bin/docket check
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- docs/items
+
+          # The subject must not end in `(#N)`. `vcs.PR_SUBJECT_RE` reads that
+          # shape as "this commit is the merge of pull request N", and
+          # `_merges_naming` takes the newest such subject naming an id - so a
+          # trailing `(#257)` here would make this commit, rather than the
+          # merge it is recording, the answer to where those items closed.
+          git commit -m "Record #${PR_NUMBER} on the items it closed"
+
+          # `concurrency` above serialises the runs, so this loop is for the
+          # case it does not cover: a human or another job pushing to the base
+          # between this checkout and this push.
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${BASE_REF}"; then
+              exit 0
+            fi
+            echo "record-pr: push $attempt rejected; rebasing onto ${BASE_REF}"
+            git pull --rebase origin "$BASE_REF"
+          done
+          exit 1
