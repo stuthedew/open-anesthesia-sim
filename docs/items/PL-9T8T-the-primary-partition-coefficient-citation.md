@@ -4,12 +4,13 @@ title: The primary partition-coefficient citation names an author who is not on 
 priority: P2
 effort: S
 status: done
-closed: 2026-09-03
-pr: 252
 classes: defect, docs
 feature: model-spec-accuracy
+milestone: v0.3.2
 touches: src/anesthesia_sim/data/agents, docs/MODEL.md, tests/unit/test_parameters.py, tests/reference/test_multi_agent.py, docs/items
 added: 2026-09-01
+closed: 2026-09-03
+pr: 252
 verify: uv run pytest tests/unit/test_parameters.py tests/reference/test_multi_agent.py && ! grep -rq Stadler src/anesthesia_sim/data docs/MODEL.md tests/
 ---
 

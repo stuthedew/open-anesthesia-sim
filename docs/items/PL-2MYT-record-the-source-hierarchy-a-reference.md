@@ -4,11 +4,13 @@ title: 'Record the source hierarchy: a reference implementation is not a citatio
 priority: P1
 effort: S
 status: done
-closed: 2026-09-03
 classes: science, docs
 feature: model-spec-accuracy
+milestone: v0.3.2
 touches: docs/MODEL.md, .claude/rules/expert-review.md, docs/WORKING_NOTES.md
 added: 2026-09-03
+closed: 2026-09-03
+pr: 257
 verify: python3 tools/doc_check.py check
 ---
 
