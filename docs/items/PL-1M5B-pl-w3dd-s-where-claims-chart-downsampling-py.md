@@ -1,7 +1,12 @@
 ---
 id: PL-1M5B
 title: PL-W3DD's Where claims chart_downsampling.py consumes the sample accessors, but that module is generic over SampleT and imports nothing from controller.py
-status: untriaged
+status: ready
+priority: P3
+effort: S
+classes: docs
+touches: docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
+verify: python3 tools/doc_check.py check && ! grep -q 'chart_downsampling' docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
 added: 2026-09-03
 ---
 

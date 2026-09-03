@@ -1,7 +1,15 @@
 ---
 id: PL-R7C0
 title: doc_check's tag advisory fires on a full clone that has not fetched tags, so it reports a tagged release as untagged
-status: untriaged
+status: done
+closed: 2026-09-03
+pr:
+priority: P2
+effort: S
+classes: defect, infra
+feature: dev-tooling
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_the_release_being_cut_is_silent' tests/unit/test_doc_check.py
 added: 2026-09-03
 ---
 
@@ -77,3 +85,58 @@ recorded.
 
 **Found.** Closing `PL-C1KK` (docs/MODEL.md's stale baseline), 2026-09-03, when
 the advisory appeared after an edit that could not have caused it.
+
+**Closed 2026-09-03. Retired, which is option 2** — the project owner agreed
+the recommendation. Reading the code sharpened the case rather than changing
+it, and two facts decided it:
+
+**Neither existing silence could ever have covered this.** `check_tags` returns
+early on an *empty* tag set, and withholds the `absent` errors when
+`is_shallow` says the checkout is truncated. The baseline branch reached
+neither: it `continue`d before the truncation guard, and a full clone holding
+v0.3.0-v0.3.2 but not v0.3.3 is neither empty nor shallow. That state is not
+exotic — it is the ordinary condition of any checkout more than one release
+old, because `git fetch origin <branch>` does not bring tags. So the advisory
+was unguarded exactly where it was most likely to be wrong: on the newest
+version, the one most recently tagged.
+
+**Retiring loses nothing permanent, which is what makes it the right option
+rather than the cheap one.** The baseline is skipped, not forgiven. The moment
+a newer release lands, the old version falls through to `absent` and is an
+**error** — and that is precisely when an untagged release begins to cost
+anything, since `git describe --contains` only fails once history has moved
+past the gap. Meanwhile the reminder to tag still arrives where the question is
+answerable: `docket release` refuses to cut the next release while the previous
+one is untagged (`cli.py:548`), with the network available and the version in
+hand.
+
+Option 1 (decline, as the shallow case does) was rejected on the evidence: it
+keys on the checkout holding no tags at all, and this checkout held three, so
+it would not have caught the instance that produced this item.
+
+**What changed.** `tools/doc_check.py`'s `check_tags` no longer appends the
+baseline advisory; the `continue` stays, because without it the release being
+cut becomes an error and `make check` goes red on every release branch
+(`PL-8HJ2`'s failure). The docstring records all three silences and why this one
+was added. In `tests/unit/test_doc_check.py`,
+`test_the_release_being_cut_is_an_advisory_not_an_error` becomes
+`test_the_release_being_cut_is_silent` and asserts both lists empty;
+`test_the_advisory_pastes_the_tag_commands_rather_than_asking_for_a_tag` is
+deleted with the string it asserted. The safety of the silence is covered by
+`test_a_completed_release_with_no_tag_is_an_error`, which already asserted
+exactly that and whose docstring now says so — a second test repeating it was
+written and then removed as duplication.
+
+**This shrinks `PL-HKF4`, which is in flight on another branch and was not
+edited here.** That item is about the same advisory printing `<merge commit>`,
+which a shell reads as redirection. Its `tools/doc_check.py` half is now moot —
+the string is gone, and with it the harder half of that item, which was to
+resolve the real merge SHA. Its other two sites are untouched and still stand:
+`subprojects/docket/src/docket/cli.py:635`, where the placeholder is *correct*
+because the merge does not exist yet and only needs to be shell-safe, and
+`.claude/skills/docket/SKILL.md:607`'s worked example. Whoever picks it up
+should re-scope to those two.
+
+**Verified** by the command in the front matter, run before the work and
+watched fail: `pytest` passed and the `grep` did not, exit 1. Exit 0 after,
+127 tests.
