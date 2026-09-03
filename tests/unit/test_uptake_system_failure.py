@@ -27,6 +27,11 @@ PL-006 adds the case where the distinction had been drawn in the wrong
 place: `set_circuit_volume` destroyed agent and the *next* step failed for
 it, reporting a numerical error for what was a setter's defect.
 
+PL-BNPY closes what PL-026 left: the rollback hung off two `except`
+clauses, so it could only undo what those clauses thought to catch. It is now
+keyed on whether the step finished, in a `finally`, which covers a
+`BaseException` unwind too.
+
 PL-VYXP is the same shape once more, in `reset()` rather than in a setter:
 the accounting anchor was taken from the validator's zero default instead of
 from the compartments, so a compartment that reset to anything other than
@@ -667,3 +672,110 @@ def test_reset_still_anchors_at_zero_when_every_compartment_clears() -> None:
     assert system.agent_simulation_validator.exhausted_agent_l == 0.0
     assert system.total_stored_agent_l == 0.0
     assert system.agent_simulation_validation.passes_validation
+
+
+class _NonlocalUnwind(BaseException):
+    """Stands in for `KeyboardInterrupt`: unwinds without being an `Exception`.
+
+    A real one cannot be delivered at a chosen bytecode, and
+    `asyncio.CancelledError` - the other `BaseException` a reader might
+    expect here - is unreachable, because `_advance_step()` contains no
+    `await` for a cancellation to arrive at. So the class of failure is
+    injected rather than provoked, exactly as `_AccountingCheckThatFailsOnce`
+    injects the accounting failure above.
+    """
+
+
+class _PatientCompartmentsThatCanUnwindNonlocally(PatientCompartments):
+    """Patient compartments that can be armed to unwind without an `Exception`.
+
+    `PatientCompartments.advance()` is the third of `_advance_step()`'s five
+    sub-exchanges, so arming it puts the unwind after the circuit and the
+    circuit-alveolar exchange have already written and before the rest has -
+    the partial state the rollback exists to undo.
+    """
+
+    unwind_on_next_advance: bool = False
+
+    def advance(self, arterial_fraction: float, simulation_step_s: float) -> float:
+        if self.unwind_on_next_advance:
+            self.unwind_on_next_advance = False
+
+            raise _NonlocalUnwind("a nonlocal unwind partway through the step")
+
+        return super().advance(
+            arterial_fraction=arterial_fraction, simulation_step_s=simulation_step_s
+        )
+
+
+def _a_run_that_can_unwind_nonlocally() -> _PatientCompartmentsThatCanUnwindNonlocally:
+    """A sevoflurane system 10 s in, whose patient side can be armed to unwind."""
+
+    agent = load_agent_parameters("sevoflurane")
+    patient_parameters = load_reference_adult_parameters()
+    patient = _PatientCompartmentsThatCanUnwindNonlocally.from_parameters(
+        agent=agent, patient=patient_parameters
+    )
+
+    return patient
+
+
+def test_a_nonlocal_unwind_mid_step_is_rolled_back_too() -> None:
+    """Regression test for PL-BNPY.
+
+    Measured against the shipped code before the fix: with the unwind armed
+    after the circuit had been written, `circuit_concentration_fraction` was
+    left at 0.0020183972008138854 against 0.0020003856996684967 before the
+    step - a partly applied step surviving in the live system, which
+    `advance()`'s docstring says cannot happen.
+
+    The two `except` clauses it had could only undo what they thought to
+    catch, and `BaseException` is the one nobody enumerates. Keyed on whether
+    the step finished instead, the rollback is right for every way out of the
+    block.
+    """
+
+    system = _sevoflurane_at_one_mac()
+    system.patient = _a_run_that_can_unwind_nonlocally()
+
+    for _ in range(100):
+        system.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    state_before_step = system.capture_state()
+
+    # Not a vacuous comparison: 10 s of run leaves every dynamic value
+    # distinct and nonzero, so a partial write shows up as a difference.
+    assert state_before_step.circuit.circuit_concentration_fraction > 0.0
+    assert state_before_step.alveoli.agent_amount_l > 0.0
+
+    system.patient.unwind_on_next_advance = True
+
+    with pytest.raises(_NonlocalUnwind):
+        system.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    assert system.capture_state() == state_before_step
+
+
+def test_a_nonlocal_unwind_leaves_the_run_readable_and_steppable() -> None:
+    """The state a nonlocal unwind leaves is a real solution, not a fragment.
+
+    Unlike a step the model could not complete, nothing here says the model
+    reached a state it cannot step from - the unwind came from outside it -
+    so the distinguishing check is that the very next step succeeds against
+    the rolled-back state and the accounting still closes.
+    """
+
+    system = _sevoflurane_at_one_mac()
+    system.patient = _a_run_that_can_unwind_nonlocally()
+
+    for _ in range(100):
+        system.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    system.patient.unwind_on_next_advance = True
+
+    with pytest.raises(_NonlocalUnwind):
+        system.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    result = system.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    assert result.agent_accounting.passes_validation
