@@ -1,14 +1,16 @@
 ---
 id: PL-79N5
 title: pr_title_check.py is the one tools/ script CI never runs at the declared floor
-priority: P3
+priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-03
+
 classes: infra
 feature: dev-tooling
-touches: .github/workflows/pr-title.yml, .github/workflows/quality.yml
+touches: .github/workflows/pr-title.yml, tests/unit/test_tools_portability.py
 added: 2026-09-03
-verify: uv run pytest tests/unit/test_tools_portability.py && { grep -q pr_title_check .github/workflows/quality.yml || grep -q setup-python .github/workflows/pr-title.yml; }
+verify: uv run pytest tests/unit/test_tools_portability.py && grep -q 'def test_every_concrete_workflow_pin_is_the_declared_floor' tests/unit/test_tools_portability.py
 ---
 
 **Problem.** `PL-3V8K` moved the title check out of `quality.yml` into
@@ -51,20 +53,9 @@ gate, on the one workflow whose job is to protect squash-merge provenance.
    three `tools/` scripts already have it, rather than pinning a gate that
    wants to be quick.
 
-**Checked at triage, 2026-09-03: option 2 works, and needs no flag.** With
-`PR_TITLE` unset, `tools/pr_title_check.py` prints "PR_TITLE is not set;
-nothing to check" and exits **0** — `main()` returns before it calls
-`closes()`. So a bare `python3 tools/pr_title_check.py` line in the `floor`
-job is a valid smoke invocation; `--help` is unnecessary. It exercises the
-module import at 3.11, including the vendored `docket.model` and `docket.vcs`
-imports and the `argparse` setup, and stops there.
-
-It does not reach `closes()` or `leading_ids`, and do not try to make it: the
-only way in is to set `PR_TITLE`, which re-runs the real check against a
-made-up title, and on a `pull_request` event `origin/main..HEAD` is the
-branch's own range — so any branch that closes an item would fail the `floor`
-job for a title it was never given. The import-and-argparse smoke is the whole
-of what belongs there; `pr-title.yml` runs the behavior.
+Check what the script does with no environment set before choosing 2 — if it
+exits non-zero on missing `PR_TITLE`, the smoke invocation needs a flag the
+script may not have, and option 1 is the cheaper answer.
 
 **Do not treat this as blocking anything.** It is `P3`-shaped: a small
 coverage gap in the workflow apparatus, which `CLAUDE.md` holds to "working
@@ -79,3 +70,29 @@ had just landed under another item. This records the difference instead.
 **Done when.** `tools/pr_title_check.py` runs under a named interpreter in
 CI — either pinned in `pr-title.yml` or exercised by the `floor` job — and
 `quality.yml`'s `floor` header or `pr-title.yml`'s says which and why.
+
+**Closed 2026-09-03** (project owner authorized the fix the same day). Found by
+another session and correct: `PL-3V8K` was mine, and dropping `uv` left the
+script under neither pinned interpreter. `pr-title.yml` now installs the floor
+with `actions/setup-python`, matching `quality.yml`'s `floor` job.
+
+**The fix is two parts, and the second is the one that matters.** Adding the pin
+alone would have introduced a *second* hardcoded `3.11` that nothing holds to
+`subprojects/docket/pyproject.toml`'s `requires-python` — the same drift one
+layer out, and exactly the shape of defect this project keeps closing.
+`_ci_floor_pin()` read `quality.yml` alone and asserted exactly one pin *in that
+file*, so a pin anywhere else was unheld by construction and would have stayed
+green while diverging.
+
+`test_every_concrete_workflow_pin_is_the_declared_floor` now reads every
+workflow under `.github/workflows/` and holds each concrete `major.minor` pin to
+the declared floor, so a workflow added later is covered without anyone
+remembering to come back here. `drift.yml`'s `'3.x'` is deliberately not matched:
+that job exists to run on the *newest* interpreter, and holding it to the floor
+would invert its purpose.
+
+Verified by breaking it: the pin set to `3.12` fails the new test at
+`tests/unit/test_tools_portability.py:229`, and passes restored to `3.11`.
+`quality.yml`'s exactly-one-pin invariant is kept unchanged, since its reason is
+specific to that file — the `checks` job must set no `python-version`, because
+that would set `UV_PYTHON` and override `.python-version`.
