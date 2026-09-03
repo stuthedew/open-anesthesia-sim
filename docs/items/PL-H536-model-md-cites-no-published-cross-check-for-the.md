@@ -1,9 +1,14 @@
 ---
 id: PL-H536
 title: MODEL.md cites no published cross-check for the derived tissue:blood coefficients, though Baker and Farmery Table 2 tabulates all nine to the printed precision
-status: untriaged
 touches: docs/MODEL.md
 added: 2026-09-03
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: model-spec-accuracy
+verify: python3 tools/doc_check.py check && grep -qF 'Baker AB, Farmery AD' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md` § "Parameter provenance" derives nine tissue:blood

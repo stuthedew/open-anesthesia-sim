@@ -1,9 +1,14 @@
 ---
 id: PL-3TLK
 title: core/ and MODEL.md call the middle gas-phase state F_C (circuit), but the domain's symbol is F_I (inspired) and the F_A/F_I curve is the field's canonical teaching graph
-status: untriaged
 touches: src/anesthesia_sim/core/circuit.py, docs/MODEL.md
 added: 2026-09-03
+priority: P2
+effort: M
+status: ready
+classes: refactor, docs
+feature: core-domain-language
+verify: uv run pytest -q tests/unit/test_circuit.py tests/reference/test_circuit_wash_in.py && grep -q 'inspired_partial_pressure_fraction' src/anesthesia_sim/core/circuit.py
 ---
 
 **Problem.** The model's gas-phase cascade is delivered -> circuit -> alveolar,

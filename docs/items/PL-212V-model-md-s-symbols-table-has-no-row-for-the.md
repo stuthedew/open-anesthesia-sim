@@ -1,9 +1,14 @@
 ---
 id: PL-212V
 title: MODEL.md's Symbols table has no row for the tissue:gas coefficient, which is the parameter actually stored and the one core/ names
-status: untriaged
 touches: docs/MODEL.md, src/anesthesia_sim/core/tissue.py
 added: 2026-09-03
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: core-domain-language
+verify: python3 tools/doc_check.py check && grep -qF '\lambda_{i:g}' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md` § "Symbols" carries one tissue partition

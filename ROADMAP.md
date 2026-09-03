@@ -582,7 +582,7 @@ adds no capability and exists to clear the ground they are built on:
 | 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 35 S |
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 4 M, 17 S |
 | 3 | **v0.4.0 — the teachable case** | Scoped below. 13 items, of which 6 are gate-0 debt the milestone clears itself. | 7 M, 6 S |
-| — | **v0.4.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Not yet scoped. | — |
+| — | **v0.4.x — `core/` reads like the domain** | Planned-milestone item 29. A patch, not a milestone: no behavior changes. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped 2026-09-03: six items under feature `core-domain-language` — `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T`. `PL-VZL0` is blocked on `PL-X2XX`. | 4 M, 2 S |
 | 4 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
@@ -2207,19 +2207,50 @@ specified.
     the `v0.4.x` row of "The timeline", which keeps the benefit as early as
     the constraint allows.
 
-    *Not yet scoped, and three questions have to be answered before it is.*
-    What "reads like the domain" means concretely, beyond the one-line bar —
-    the likely spine is a mapping between `docs/MODEL.md` § "Symbols" and the
-    code's identifiers, since that table is already the project's own
-    notation. Whether equations belong *in* the code or are *cited* from it:
-    restating `docs/MODEL.md` in docstrings creates a second source of truth
-    that can drift, while a bare citation makes a five-line function
-    unreadable without a second document open, so the answer is probably
-    per-case and the citation is the part a check can verify. And how much
-    of the bar is decidable rather than judgment — unit suffixes in
-    identifiers and symbol-table coverage look checkable, in the spirit of
-    `tools/doc_check.py`, while "would a reader who knows the domain guess
-    this?" plainly is not.
+    *Scoped 2026-09-03 (project owner), and the three open questions are
+    answered.* Six items carry the pass, under feature `core-domain-language`.
+
+    **What "reads like the domain" means concretely.** Not a symbol-to-
+    identifier mapping, which was the shape guessed at here before the pass
+    was measured. Identifiers in this project carry their unit or kind
+    (`alveolar_ventilation_l_min`), which a bare symbol cannot do, and the
+    compartment object already supplies the subscript, so $`F_A`$ in code is
+    `alveoli.<accessor>` rather than any single identifier. The mapping is
+    therefore from a symbol to an **expression**, held as a fourth column of
+    `docs/MODEL.md` § "Symbols" (`PL-H46J`), which makes the pass finite and
+    checkable at once. Beside it sits one name per modelled quantity:
+    `core/` currently gives the partial-pressure-equivalent fraction eight
+    names across four compartments, which `PL-9SH6` collapses to one.
+
+    **Whether equations belong in the code or are cited from it.** Both, and
+    the line between them is sharper than "per-case". `docs/MODEL.md` writes
+    the differential equations while `core/` implements their analytic
+    solutions, and the spec carries a solved form in exactly one place, so a
+    docstring restating the solved form is the missing half rather than a
+    second source of truth. The rule is therefore: cite always, restate only
+    the solved form the spec lacks, never restate what it states (`PL-VZL0`).
+
+    **How much of the bar is decidable.** Three rules, all mechanical:
+    every Code cell resolves to a real attribute, the retired accessor names
+    never reappear, and a partition-coefficient identifier names both phases
+    in order (`PL-FZ6T`). A unit-suffix check was considered and rejected —
+    the suffixes are already near-universal, so it would be a pure ratchet
+    whose vocabulary needs maintaining. What stays judgment is the question
+    the bar is written as: would a reader who knows the domain guess this?
+
+    **What the sources changed.** Two references, supplied by the project
+    owner during scoping, settled questions the pass could not settle from
+    inside the tree. Hendrickx and De Wolf establish that the domain's
+    gas-phase cascade is $`F_D \rightarrow F_I \rightarrow F_A`$ and has no
+    $`F_C`$, so the middle state is named after its container rather than the
+    clinical quantity, and the $`F_A/F_I`$ curve this simulator exists to draw
+    has a denominator that cannot be found by name in the code (`PL-3TLK`);
+    they also record that in the gas phase "fraction", "concentration" and
+    "partial pressure" are interchangeable, which settles the accessor name
+    against a convention distinguishing them. Baker and Farmery name one
+    partition coefficient three different ways within a single chapter, which
+    is why the naming rule for ratios is worth enforcing mechanically rather
+    than left to a reader's recall (`PL-212V`).
 
     No behavior, equation, parameter, or numerical method changes, so it
     crosses no capability boundary and takes a patch version rather than a
