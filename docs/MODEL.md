@@ -720,8 +720,100 @@ No scientific parameter may be added without:
 - the definition used by the source;
 - the temperature or reference conditions when relevant;
 - any conversion performed;
-- the tissue-group mapping; and
-- a brief justification for selecting that source.
+- the tissue-group mapping;
+- a brief justification for selecting that source; and
+- which tier of the hierarchy below that source sits in, and — where the
+  source is not a primary measurement — what the primary literature reports
+  instead and by how much it differs.
+
+### Source hierarchy: what may be cited as the authority for a value
+
+A citation records where a number was found. It does not, on its own, say
+whether anything was measured there. Three tiers are distinguished, and only
+the first may be named as the authority for a stored value.
+
+1. **Primary measurement.** A study that measured the quantity, in the
+   species, population and conditions the model claims to represent, and
+   reports the value, its dispersion, and its reference conditions. Strum and
+   Eger's sevoflurane blood:gas determination (0.686 ± 0.047 at 37 °C, n=19)
+   and Yasuda, Targ and Eger's human tissue:blood coefficients are the shape
+   of this tier. Both are already cited in this project's agent files.
+2. **Secondary synthesis.** A review, textbook, monograph or consensus
+   document that collects primary measurements without making one. Legitimate
+   for finding the primary source, and for recording what the field
+   conventionally quotes — which is a real fact about the reader's
+   expectations, and the reason isoflurane's textbook 1.4 is worth naming.
+   Never the authority for a stored value: the rounding and the selection
+   between disagreeing measurements happened somewhere the reader cannot see.
+3. **Reference implementation.** Another simulator's parameter set — the
+   numbers some working program was built to run on. Gas Man is this
+   project's reference implementation, and that is why it is named throughout
+   this document. The tier is genuinely useful, and is not a euphemism for
+   worthless: it fixes the behavior of a widely taught teaching tool as
+   something this implementation can be compared against, and it supplies a
+   complete, internally consistent set where the primary literature supplies
+   scattered measurements made in different laboratories on different
+   cohorts. **It is still not a source.** A parameter set is assembled to make
+   a program behave; which measurement any individual number descends from,
+   and what was adjusted to make the set cohere, are not recoverable from the
+   program.
+
+**Republication does not promote a value between tiers.** A peer-reviewed
+paper that prints a reference implementation's parameter table is a tier-3
+citation wearing a journal's name. Both of this project's tier-3 citations are
+of exactly that kind, and neither measured a coefficient: De Wolf et al. 2012
+is a Gas Man simulation study whose Table 1 is the parameter set it fed to Gas
+Man, and Meybohm et al. 2021 is a Gas Man simulation study describing the
+product's standard 70 kg patient. Citing either as though the value had been
+measured is the specific failure this section exists to prevent.
+
+**Where this project stands, stated rather than implied.** Of the 29 rows in
+the provenance table below, 26 are tier 3. All twelve partition coefficients
+are the Gas Man set as published by De Wolf et al.; all eleven physiologic
+parameters in `src/anesthesia_sim/data/patients/reference_adult.json` are the
+Gas Man default patient; and the three `mac_percent` values are the MAC values
+De Wolf et al. state they used in their Gas Man simulations, with an
+age-related iso-MAC paper cited alongside but not adopted. The three
+exceptions are the vaporizer maxima, which cite manufacturer device
+specifications — the primary source for a device capability, since no
+measurement is at issue.
+
+Every `sources` entry in every data file names its tier. The three agent files
+cite the primary measurements alongside their tier-3 values — Strum and Eger
+for sevoflurane, Eger for desflurane, Lerman et al. 1984 for isoflurane,
+Yasuda et al. for tissue solubility — and each records the measured value, that
+it was **not adopted**, and by how much the stored number differs: sevoflurane
+−5.2%, isoflurane −11.0%, desflurane −0.9% against the measured blood:gas
+coefficients. Isoflurane is the widest gap in the project; the decision to keep
+the Gas Man value and label it, rather than move to the textbook 1.4 or to
+Lerman's measured 1.46, was taken on 2026-09-03 and the route to primary values
+for all three agents is `ROADMAP.md`'s planned-milestone item 31.
+
+`src/anesthesia_sim/data/patients/reference_adult.json` has no primary
+citation to place beside its values, so it records that instead, in those
+words: no primary source has been adopted for any of its eleven parameters.
+Mapleson's papers are named there as the primary lineage, and explicitly as
+located-but-unread rather than as a citation — writing one for a paper nobody
+has opened would be the same failure in a different tier.
+
+**So, three rules for a `sources` entry.**
+
+- Name the tier. Where the stored value is not a primary measurement, say
+  which value the primary literature reports and by how much the two differ,
+  in the note, in words a reader comparing against a textbook can act on.
+- Do not let a primary citation stand in for a primary value. Citing a
+  measurement *alongside* a tier-3 number does not source it; a file that
+  looks sourced while the number in it came from somewhere else is worse than
+  one that cites nothing, because it stops the reader checking.
+- Where no primary source has been adopted, record that as an open gap rather
+  than as a settled citation. "No primary source has been adopted for this
+  value" is a legitimate provenance state for an educational simulator, and a
+  recoverable one. A tier-3 citation presented as settled is neither.
+
+This applies to what a session *says* as well as to what it writes down.
+Answering "where does this constant come from?" with Gas Man, or with a paper
+that reports Gas Man's table, states a tier-3 provenance as though it were a
+measurement, and is the same error made in conversation instead of in a file.
 
 The following table records the values selected for v0.1.0. Each value is
 loaded and schema-validated from a versioned data file rather than
@@ -829,6 +921,15 @@ coefficients differ. All three agents' blood:gas and tissue:gas values are
 drawn from the same source table (De Wolf et al. 2012, Table 1 — the paper
 already cited for sevoflurane), so the three data files are directly
 comparable rather than assembled from unrelated sources.
+
+That shared table is the Gas Man parameter set, and it is tier 3 under
+"Source hierarchy" above: the comparability is real, and it is the
+comparability of three agents carrying one reference implementation's
+choices, not of three agents each traced to its own measurement. It buys a
+cross-agent comparison in which every agent shares the same error, which is
+the property a MAC-normalized axis needs; it does not make any of the twelve
+coefficients a measured value. Each agent file records the primary
+measurement alongside its stored number and states the difference.
 
 Desflurane is markedly less soluble than sevoflurane, which is itself less
 soluble than isoflurane (blood:gas 0.42 < 0.65 < 1.3). This does not change
