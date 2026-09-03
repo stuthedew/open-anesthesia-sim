@@ -7,9 +7,10 @@ status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py
-verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_top_band_padded_with_blocked_items_is_not_overfull' subprojects/docket/tests/test_checks.py
 added: 2026-09-03
 closed: 2026-09-03
+pr: 269
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_top_band_padded_with_blocked_items_is_not_overfull' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** The top-band advisory counted every item in the band, blocked ones
