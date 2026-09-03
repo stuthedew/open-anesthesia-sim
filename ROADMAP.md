@@ -52,7 +52,8 @@ capability-boundary rule above governs.
 | v0.2.12 | Completed | Provenance and parallelism patch on the same model, changing no equation, parameter or numerical method and leaving `src/anesthesia_sim/data/` byte-identical to v0.2.11: `docs/MODEL.md`'s prose values are now held to the data files they restate rather than only its provenance table, so a data-file edit can no longer leave a stated figure quietly wrong, and a figure derived from several values reports that it needs recomputing when an input moves. The in-flight answer that keeps two sessions off one item reached only `docket show`; it now reaches `docket triage`, reads the harness's session list for a session that has pushed nothing, and answers in a shallow checkout instead of declining. `src/` changes in three files and only twice over: two uncalled descriptive time constants are deleted, and the boundary between a load-time payload and the public type it produces is documented at the classes themselves. |
 | v0.3.0 | Completed | The foundation: Gate 0's inherited backlog cleared, 21 of 21 frozen entries closed across the v0.2.6 to v0.3.0 patch series — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. This cut carries the last two gate entries: the render loop stopped rebuilding what it could move (6.3x cheaper frame), and `BreathingCircuit` stopped defaulting to one agent's vaporizer maximum. No new capability, and no equation, parameter or numerical method changed; see the versioning exception above for why it is a minor. |
 | v0.3.1 | Completed | Provenance-integrity and rollback patch on the same model, adding no capability and changing no equation, parameter or numerical method: `src/anesthesia_sim/data/` is byte-identical to v0.3.0, `docs/MODEL.md` is unchanged, and `src/` changes in one file. `AgentUptakeSystem.advance()`'s rollback moved off its `except` clauses onto the unwind path, closing a measured hole where a `BaseException` left a partly applied step in the live system, and `reset()` now anchors the mass-balance accounting period to what the compartments hold rather than to a zero it did not itself establish. The rest is the queue's own record of what closed an item: the retired `commit:` hash a squash discards is replaced by the pull request number, recovered from file history and refused at the pull-request title; duplicate front-matter keys, undeclared `classes:` and `feature:` values, and a merge that deletes a captured item became errors rather than silent corruption; a `verify:` command is owed as an error when a grandfathered item closes; and a scheduled job reports whether the tree still builds on a toolchain nobody pinned. |
-| v0.3.2 | Completed / current baseline | Provenance-honesty patch, and the release that decided how this project's numbers may be cited. Every shipped Python file is byte-identical to v0.3.1 and every stored numeric value is unchanged; what moved is what the citations claim about them. `docs/MODEL.md` gained a three-tier source hierarchy — primary measurement, secondary synthesis, reference implementation — and only the first may be named as the authority for a stored value, which makes the shipped parameter set Gas Man's and says so, where the agent files had let a journal's name stand in for a measurement nobody made. The isoflurane blood:gas question is recorded rather than answered: 1.3 is stored, 1.46 is what Lerman et al. measured in adults, and the 11% gap is the widest in the project. Alongside it, the numerical method's future is settled — the operator split is to be replaced by an exact matrix exponential so the code that computes a value is the governing equations, with the state vector decided as fractions — and two live defects close: the conservation guard's three sensitivity constants are pinned, and the pull-request title check moved to a workflow that can observe the rename it asks for. No capability, equation, parameter or numerical method changed. |
+| v0.3.2 | Completed | Provenance-honesty patch, and the release that decided how this project's numbers may be cited. Every shipped Python file is byte-identical to v0.3.1 and every stored numeric value is unchanged; what moved is what the citations claim about them. `docs/MODEL.md` gained a three-tier source hierarchy — primary measurement, secondary synthesis, reference implementation — and only the first may be named as the authority for a stored value, which makes the shipped parameter set Gas Man's and says so, where the agent files had let a journal's name stand in for a measurement nobody made. The isoflurane blood:gas question is recorded rather than answered: 1.3 is stored, 1.46 is what Lerman et al. measured in adults, and the 11% gap is the widest in the project. Alongside it, the numerical method's future is settled — the operator split is to be replaced by an exact matrix exponential so the code that computes a value is the governing equations, with the state vector decided as fractions — and two live defects close: the conservation guard's three sensitivity constants are pinned, and the pull-request title check moved to a workflow that can observe the rename it asks for. No capability, equation, parameter or numerical method changed. |
+| v0.3.3 | Completed / current baseline | Delegation and interface-boundary patch on the same model, adding no capability and changing no equation, parameter, numerical method, unit or displayed value: `src/anesthesia_sim/data/` is byte-identical to v0.3.2 and the one `src/` change is behavior-preserving. The queue's own provenance stopped needing a person: a closed item's pull request number is written by `bin/docket record`, riding whatever commit the session was already making, after the job meant to write it at merge time proved unlandable - a push made with `GITHUB_TOKEN` starts no workflow, so `main`'s required status checks can never report on the commit it pushes, and every configuration that would accept the push weakens that gate instead. That closes the `delegation` feature at 12 of 12. Alongside it, `app/simulation_view.py`'s displayed-precision formatters and chart-series assembly moved into two Flet-free modules, so `docs/MODEL.md`'s displayed-precision derivation now terminates in a function that can be read, cited and tested without loading the interface - stages 1 and 2 of v0.4.0's Required scope, landed ahead of the milestone. `core/` gained a 100% statement-and-branch coverage gate over the saturation it already had, before v0.4.1's exact-step solver arrives to be measured against it, and the pull-request title check now runs at the declared Python floor. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
@@ -90,76 +91,73 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.3.2
+## Current baseline: v0.3.3
 
-v0.3.2 is a provenance-honesty patch carrying eight items, and it is the
-release that decided how this project's numbers may be cited. It adds no
-capability and moves no equation, parameter or numerical method: every shipped
-Python file under `src/anesthesia_sim/` is byte-identical to v0.3.1, and every
-numeric value in `src/anesthesia_sim/data/` is unchanged — the agent and
-patient files differ only in their `note:` text. What it is for is that the
-citations beside those unchanged numbers were claiming more than they could
-support.
+v0.3.3 is a delegation and interface-boundary patch carrying five items, and it
+is the release in which the queue stopped needing a person to record its own
+provenance. It adds no capability and moves no equation, parameter or numerical
+method: `src/anesthesia_sim/data/` is byte-identical to v0.3.2, no displayed
+value changed, and the only change under `src/` is a behavior-preserving
+extraction of two pure modules out of the interface layer, held to the view
+tests that already existed. What it is for is that two things this project
+relies on — the record of which pull request closed an item, and the boundary
+between what computes a displayed number and what draws it — were each being
+upheld by a session remembering to do it.
 
-**A citation records where a number was found, not that anything was measured
-there (PL-2MYT).** `docs/MODEL.md` now sets out three tiers, and only the first
-may be named as the authority for a stored value: a *primary measurement*, made
-in the species, population and conditions the model claims to represent, and
-reporting the value with its dispersion and reference conditions; a *secondary
-synthesis*, which collects primary measurements without making one, and is
-legitimate for finding the primary source and for recording what the field
-conventionally quotes, but never as the authority, because the rounding and the
-selection between disagreeing measurements happened somewhere the reader cannot
-see; and a *reference implementation*, another simulator's parameter set. The
-third tier is not a euphemism for worthless — it fixes the behavior of a widely
-taught teaching tool as something this implementation can be compared against,
-and it supplies a complete, internally consistent set where the primary
-literature supplies scattered measurements from different laboratories and
-cohorts. It is still not a source.
+**The merge-time write was measured, found unlandable, and replaced by a local
+one (PL-WTQR, PL-N5WZ).** A closed item cannot carry its own `pr:` when it
+lands: the closure has to travel in the same commit as its work, or a merge
+arriving between two pushes takes the work and leaves the item open, and the
+number does not exist until after that commit. What supplied it afterwards was
+a session reading an advisory and composing a commit — usually a pull request
+of its own, and once two sessions reading the same advisory opened byte-identical
+duplicates (#229, #230). PL-WTQR moved the write into a job fired by the merge,
+where the number arrives in the event with no subject to parse, and its first
+run proved that job both correct and unlandable in the same minute: it computed
+`pr: 261`, committed it, and `main` refused the push — `GH006`, "3 of 3 required
+status checks are expected". That is not a bypass away from working. A push made
+with `GITHUB_TOKEN` starts no workflow, so the required checks can never report
+on the commit such a job pushes; the ruleset was already disabled when the run
+happened and the push failed anyway; and every configuration that would accept
+the push weakens the gate that makes a red `main` mean something. PL-N5WZ
+therefore changed the trigger rather than the mechanism. `bin/docket record`,
+bare, writes every number the default branch is owed — the same reading `docket
+check` prints its advisory from, so the two cannot disagree — and `make fix`
+runs it, so the field rides whatever commit the session was making anyway. The
+workflow is deleted rather than left parked, since a parked workflow reads to a
+later session as a mechanism that works. With it the `delegation` feature closes
+at 12 of 12.
 
-**Applied to this project, that says the shipped parameter set is Gas Man's
-(PL-D6LX).** Every agent file's coefficient note now carries its tier, and the
-De Wolf et al. citation is relabelled for what it is: the authors ran Gas Man
-simulations and measured no coefficient, so their Table 1 is the parameter set
-they supplied to it — the Gas Man set carrying a journal's name. The primary
-studies stay cited and are marked *cited but not adopted*, each with the gap
-between the measurement and the stored value stated: desflurane's blood:gas is
-0.9% below Rampil et al., the closest of the three; isoflurane's implied
-brain:blood is 2.9% above Yasuda et al., the loosest. The decision was to fix
-the labelling now and to ship both parameter sets later, recorded as
-planned-milestone item 31 rather than done here.
+**The interface layer's pure parts moved out of the Flet class (PL-WB0X).**
+`app/simulation_view.py` was 1265 lines of one class that built every widget,
+formatted every displayed number, and assembled and decimated every chart
+series; it is now 1072, with the second and third of those in `app/formatting.py`
+and `app/chart_series.py`, which import no Flet and are tested directly. The
+consequence that matters is in `docs/MODEL.md`: § "Displayed precision" derives
+the two-decimal readout from the solver's measured error, and that derivation
+used to terminate in a private static method on a Flet view class, so the one
+function the specification reasons about could not be read, cited or tested
+without loading the interface. It now terminates in `app/formatting.py`. This is
+stages 1 and 2 of v0.4.0's Required scope, landed ahead of the milestone
+deliberately: the MAC-multiple readout rewrites every formatter, and four of the
+milestone's items touch the chart assembly in the same place.
 
-**Isoflurane's blood:gas is the sharpest case, and it is recorded rather than
-answered (PL-T531).** The stored value is 1.3, the textbook quotes 1.4, and
-what Lerman et al. measured in eleven adults aged 20-40 is 1.46. The stored
-figure is 11.0% below that — the widest gap between a stored value and its
-primary measurement anywhere in this project — and the file now says so at the
-point of citation instead of leaving a reader to discover it. A related
-correction closed alongside: the primary partition-coefficient citation had
-named an author who is not on the paper (PL-9T8T).
+**`core/` coverage became a gate rather than a fact (PL-22Z3).** `pytest-cov`
+was a declared dev dependency that nothing ran. Measured first: every module
+under `src/anesthesia_sim/core/` was already at 100% of statements and branches
+— 691 statements, 78 branches, none missed — and defended by nothing.
+`--cov=anesthesia_sim.core --cov-branch --cov-fail-under=100` now runs on `make
+check`'s pytest line and on CI's, for a measured 0.4 s. It is gated before
+v0.4.1's exact-step solver rather than after, so that `build_system_matrix`,
+`matrix_exponential` and `propagate` arrive covered instead of being measured
+against code that has already slipped.
 
-**The numerical method's future was settled in the same release, though none of
-it ships here (PL-SPMQ, PL-P0BB).** The project owner's requirement is that a
-reviewer who knows the standard variables and equations can follow `core/`
-without a lookup table. Naming alone cannot reach it: the alveolar balance's two
-terms are computed in two different steps of the operator split, separated by a
-third, and the pulmonary uptake term is never formed at all. So the split is to
-be replaced by an exact matrix exponential, under which assembling the system
-matrix *is* transcribing the governing equations. The state vector is decided as
-fractions, because that is what `docs/MODEL.md` writes the equations in, and one
-consequence is recorded deliberately: mass conservation stops being structural.
-Today every transfer is an equal-and-opposite pair, so the residual cannot fail
-to balance; under a propagator it becomes a real test of whether the matrix is
-right, which is a stronger gate and a deliberate change to a safety-critical
-invariant.
-
-**Two live defects close.** The conservation guard's sensitivity rested on three
-constants that nothing pinned, so a later edit could have loosened the guard
-without failing anything (PL-B7ZV). And the pull-request title check told an
-author to rename the pull request while being unable to observe a rename — its
-workflow's trigger excluded `edited` — so the only remedy left was the one the
-working agreement forbids, pushing a commit to kick CI; the check now lives in
-its own workflow that can see the fix it asks for (PL-3V8K).
+**The title check runs at the version it declares (PL-79N5).**
+`tools/pr_title_check.py` is what stops a squash landing a subject that names no
+item id, which destroys provenance nothing else can reconstruct. Dropping `uv`
+from its workflow had left it the one `tools/` script CI never ran under a named
+interpreter; `pr-title.yml` now installs the declared floor, and
+`tests/unit/test_tools_portability.py` holds every workflow pin to it.
 
 **What the model currently is** is described under "The model as it stands"
 below, and does not change release to release while the patch series continues.
