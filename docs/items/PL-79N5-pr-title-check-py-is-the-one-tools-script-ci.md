@@ -1,12 +1,14 @@
 ---
 id: PL-79N5
 title: pr_title_check.py is the one tools/ script CI never runs at the declared floor
-status: untriaged
+priority: P3
+effort: S
+status: ready
 classes: infra
 feature: dev-tooling
 touches: .github/workflows/pr-title.yml, .github/workflows/quality.yml
 added: 2026-09-03
-verify: grep -q 'setup-python' .github/workflows/pr-title.yml
+verify: uv run pytest tests/unit/test_tools_portability.py && { grep -q pr_title_check .github/workflows/quality.yml || grep -q setup-python .github/workflows/pr-title.yml; }
 ---
 
 **Problem.** `PL-3V8K` moved the title check out of `quality.yml` into
@@ -49,9 +51,20 @@ gate, on the one workflow whose job is to protect squash-merge provenance.
    three `tools/` scripts already have it, rather than pinning a gate that
    wants to be quick.
 
-Check what the script does with no environment set before choosing 2 — if it
-exits non-zero on missing `PR_TITLE`, the smoke invocation needs a flag the
-script may not have, and option 1 is the cheaper answer.
+**Checked at triage, 2026-09-03: option 2 works, and needs no flag.** With
+`PR_TITLE` unset, `tools/pr_title_check.py` prints "PR_TITLE is not set;
+nothing to check" and exits **0** — `main()` returns before it calls
+`closes()`. So a bare `python3 tools/pr_title_check.py` line in the `floor`
+job is a valid smoke invocation; `--help` is unnecessary. It exercises the
+module import at 3.11, including the vendored `docket.model` and `docket.vcs`
+imports and the `argparse` setup, and stops there.
+
+It does not reach `closes()` or `leading_ids`, and do not try to make it: the
+only way in is to set `PR_TITLE`, which re-runs the real check against a
+made-up title, and on a `pull_request` event `origin/main..HEAD` is the
+branch's own range — so any branch that closes an item would fail the `floor`
+job for a title it was never given. The import-and-argparse smoke is the whole
+of what belongs there; `pr-title.yml` runs the behavior.
 
 **Do not treat this as blocking anything.** It is `P3`-shaped: a small
 coverage gap in the workflow apparatus, which `CLAUDE.md` holds to "working
