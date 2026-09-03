@@ -9,6 +9,7 @@ feature: delegation
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests, .github/workflows/record-pr.yml, tests/unit/test_record_pr_workflow.py, .claude/skills/docket/SKILL.md, subprojects/docket/README.md
 added: 2026-09-03
 closed: 2026-09-03
+pr: 261
 verify: uv run pytest subprojects/docket/tests/test_cli.py tests/unit/test_record_pr_workflow.py && grep -q 'def closed_by' subprojects/docket/src/docket/vcs.py
 ---
 
