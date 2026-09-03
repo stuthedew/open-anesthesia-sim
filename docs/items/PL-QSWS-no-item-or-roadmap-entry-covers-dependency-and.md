@@ -4,13 +4,14 @@ title: No item or roadmap entry covers dependency and toolchain drift, which a m
 priority: P2
 effort: S
 status: done
-closed: 2026-09-02
-pr: 239
 classes: infra, docs
 feature: dev-tooling
+milestone: v0.3.1
 touches: pyproject.toml, .github/workflows/drift.yml, ROADMAP.md
-verify: test -f .github/workflows/drift.yml && grep -q 'uv sync --upgrade' .github/workflows/drift.yml && grep -q 'Keeping the toolchain current' ROADMAP.md
 added: 2026-09-02
+closed: 2026-09-02
+pr: 239
+verify: test -f .github/workflows/drift.yml && grep -q 'uv sync --upgrade' .github/workflows/drift.yml && grep -q 'Keeping the toolchain current' ROADMAP.md
 ---
 
 **Problem.** Nothing in `docs/items/` or `ROADMAP.md` says what happens when

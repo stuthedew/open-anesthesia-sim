@@ -1,15 +1,16 @@
 ---
 id: PL-BNPY
 title: advance()'s rollback hangs off two except clauses rather than the unwind path, so a BaseException leaves a partial step
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect
+milestone: v0.3.1
 touches: src/anesthesia_sim/core/uptake_system.py, tests/unit/test_uptake_system_failure.py
-verify: uv run pytest tests/unit/test_uptake_system_failure.py && grep -q 'def test_a_nonlocal_unwind_mid_step_is_rolled_back_too' tests/unit/test_uptake_system_failure.py
 added: 2026-09-02
 closed: 2026-09-02
 pr: 246
+verify: uv run pytest tests/unit/test_uptake_system_failure.py && grep -q 'def test_a_nonlocal_unwind_mid_step_is_rolled_back_too' tests/unit/test_uptake_system_failure.py
 ---
 
 **Problem.** `advance()` captured state, then restored it inside two
