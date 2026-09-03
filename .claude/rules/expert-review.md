@@ -62,6 +62,26 @@ Apply these principles when working in or recommending changes to that code:
   exactly why a model, equation, constant, UI convention, or design decision
   exists.
 
+## A reference implementation is not a source
+
+`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+value" is the full statement — the three tiers, why republication does not
+promote a value between them, and what a `sources` note owes a reader. Read it
+before writing or reviewing a provenance note; this is only what a session
+needs at the moment it names where a number came from.
+
+Gas Man is this project's **reference implementation**: the working example
+its starting values were taken from, and a behavior to compare against. It is
+never the authority for a constant, and neither is a paper whose table simply
+reprints its parameter set — De Wolf et al. 2012 and Meybohm et al. 2021 are
+both Gas Man simulation studies, and neither measured a coefficient. Where a
+stored value is one of theirs, say so, name what the primary literature
+reports instead, and give the difference.
+
+This binds replies as well as files. "It comes from Gas Man" is a statement
+about a program's parameter set, not about a measurement, and offering it as
+the provenance of a constant is the same error made out loud.
+
 The principles governing what a **displayed clinical value** may imply —
 false precision, modeled versus measured, misleading plots, visible model
 limitations — are not here. They are in `CLAUDE.md`'s safety-critical

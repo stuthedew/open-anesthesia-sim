@@ -3,7 +3,9 @@ id: PL-T531
 title: 'Decide isoflurane''s blood:gas coefficient: 1.3 (Gas Man) or 1.4 (textbook)'
 priority: P1
 effort: S
-status: needs-decision
+status: done
+closed: 2026-09-03
+verify: uv run pytest tests/unit/test_parameters.py tests/reference/test_multi_agent.py && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/agents/isoflurane.json')); assert d['blood_gas_partition_coefficient'] == 1.3; assert any('Lerman J, Gregory GA' in s['citation'] for s in d['sources'])"
 classes: science
 touches: src/anesthesia_sim/data/agents/isoflurane.json, docs/MODEL.md, tests/reference/test_multi_agent.py
 added: 2026-09-01
@@ -132,6 +134,41 @@ PMID 2774233 (DOI unavailable) and PMID 6465597
 muscle:blood and fat:blood ratios Option B needs were not, and are the one
 piece of sourcing this item still owes.
 
+**Appended 2026-09-03 — the recommendation above rests on a premise the
+project owner has since demoted; not re-decided here.**
+
+Option A's case is that "the set's internal consistency is doing work that a
+single closer number would not" — that is, that keeping 1.3 keeps all three
+agents inside one coherent Gas Man parameter set. On 2026-09-03 the project
+owner stated that Gas Man was supplied as a starting point and a working
+example, never as a definitive citation, and is not acceptable as a primary
+source. `docs/MODEL.md` § "Source hierarchy" now records that as the standard:
+a reference implementation is tier 3, and a peer-reviewed paper reprinting its
+parameter table — which De Wolf et al. 2012 is — does not promote the values
+in it.
+
+That does not make Option A wrong. Internal consistency across three agents is
+still a real property, and it is still the property a cross-agent comparison
+needs. It does mean the case for A can no longer be made as "stay with the
+authoritative set", only as "stay with one coherent tier-3 set and say so",
+which is a weaker and more honest claim than the one written above.
+
+It also confirms this item's own closing observation — that the eventual right
+answer is to rebase on primary measurements — as the owner's stated direction
+rather than a session's aside. That work is now scoped as `PL-D6LX` (decide
+whether to adopt primary-literature partition coefficients or label the
+shipped set as Gas Man's), which asks this question for all three agents and
+records why "just use the primary values" is not executable as written: this
+model's `vessel_rich` group is a lumped compartment and Yasuda 1989 reports
+per-organ coefficients, so a group-weighting scheme has to be constructed and
+justified before any tissue value can be called primary.
+
+**Recommend deciding this item as part of `PL-D6LX` rather than separately.**
+Deciding isoflurane alone now would set a precedent for the other two agents
+without the analysis that covers them, and `PL-D6LX` carries the verified
+primary values for all three (sevoflurane 0.686, isoflurane 1.46, desflurane
+0.424) alongside what adopting them would cost. Nothing here is changed.
+
 **Done when.** The decision is recorded in `isoflurane.json`'s `sources` note
 and in `docs/MODEL.md`'s parameter-provenance section, in terms that tell a
 reader comparing against a textbook why the number differs and by how much;
@@ -139,3 +176,33 @@ and, if B was chosen, the tissue coefficients were re-derived from Yasuda
 1989's tissue:blood ratios against the new blood:gas value rather than
 carried across, with the reference tests re-baselined and the provenance
 table updated.
+
+
+## Answered 2026-09-03, as part of `PL-D6LX`
+
+The project owner decided the broader question this item is a slice of: keep
+the shipped Gas Man set, label it honestly, and route the move to primary
+values through `ROADMAP.md`'s planned-milestone item 31 (ship a
+primary-literature set alongside the Gas Man set, selectable) rather than
+through one agent at a time.
+
+**Effectively Option A, for a different reason than the one argued above.**
+Not "stay with the authoritative set" — the 2026-09-03 appendix records why
+that argument no longer stands — but "stay with one coherent tier-3 set,
+labelled as one, until a primary set can be built for all three agents
+together". Moving isoflurane alone would have split the three agents across two
+provenances to buy agreement with a rounded textbook number that is itself not
+the measurement (1.4 against Lerman's 1.46).
+
+**What landed.** `isoflurane.json` now cites Lerman et al. 1984 directly — it
+previously cited only Malviya & Lerman 1990, whose abstract carries no adult
+value, so 1.46 was named nowhere in the tree — and records that the stored 1.3
+is the Gas Man figure, 11.0% below the measured adult value and the widest such
+gap in the project. `docs/MODEL.md` § "Source hierarchy" carries the same
+number and names item 31 as the route. **No coefficient changed.**
+
+**The debt this item owed is unchanged and moves to item 31:** Yasuda 1989's
+muscle and fat rows have still not been read, and `PL-D6LX` records the further
+obstacle — `vessel_rich` is a lumped compartment while Yasuda reports per-organ
+coefficients, so a group-weighting scheme must be built and justified before
+any tissue value may be called primary.
