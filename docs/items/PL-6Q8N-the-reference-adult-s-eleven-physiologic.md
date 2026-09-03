@@ -109,6 +109,22 @@ and is not acceptable as a primary source. The Mapleson records were located
 in that session; the tier framing they are judged against was written into
 `docs/MODEL.md` in the same session.
 
+**Narrowed 2026-09-03 — the gap is now recorded; the reading is not done.**
+The labeling half landed under `PL-D6LX` (decide whether to adopt
+primary-literature partition coefficients). `reference_adult.json`'s two
+`sources` notes now name their tier, say that Meybohm et al. adds a journal
+name to the same tier-3 provenance rather than a second independent source,
+and state in those words that **no primary source has been adopted for any of
+the eleven parameters**. The three Mapleson papers are named there as the
+primary lineage and explicitly as located-but-unread.
+
+So the finding is no longer that the file is silent about its provenance. What
+remains is the substantive half, unchanged: **read Mapleson 1973's quantifying
+tables** (and 1963/1964 as needed), and record per parameter whether the
+shipped value matches, differs, or is absent. Steps 1-5 under "Approach" stand
+as written; step 4's gap statement now exists at file level and becomes
+per-parameter as each is checked. Still no stored value may change here.
+
 **Done when.** Every one of the eleven parameters in `reference_adult.json`
 carries either a primary citation with its tier and reference conditions, or
 an explicit recorded statement that no primary source has been adopted and

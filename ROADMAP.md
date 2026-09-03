@@ -2332,6 +2332,18 @@ specified.
     `PL-B9PY` holds. That is a reason to scope item 11 knowing this is one of
     its uses, not a reason to hold this behind it.
 
+31. Ship a primary-literature partition-coefficient set alongside the Gas Man
+    set, selectable, so one case can be run under both and the difference read
+    off the same axes. Building the primary set is the prerequisite and the
+    larger half: `vessel_rich` is a lumped compartment while Yasuda 1989
+    reports per-organ coefficients, so a group-weighting scheme has to be
+    constructed and justified before any tissue value may be called primary.
+    Shipping both rather than replacing is the point — "how much does the
+    parameter set matter?" is a question no commercial simulator lets a
+    resident ask, and it teaches the provenance lesson better than any note in
+    a data file can. `PL-D6LX` carries the analysis and the verified primary
+    values; the project owner chose this route on 2026-09-03.
+
 Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
 milestone, delivered as v0.2.0 — see "Completed: v0.2.0" above — so it no
 longer appears here. Further volatile agents beyond isoflurane and desflurane (halothane,
@@ -2339,7 +2351,7 @@ enflurane, ether, xenon; not nitrous oxide, which is covered by items 6-7
 above) remain an unscoped later idea, to be added back here as its own item
 once someone is ready to scope it.
 
-None of items 1-30 mix scientific-core and UI/tooling concerns within a
+None of items 1-31 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.

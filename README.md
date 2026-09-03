@@ -18,8 +18,11 @@ delivered agent -> breathing circuit -> alveoli -> blood
                 -> vessel-rich group / muscle / fat -> mixed venous return
 ```
 
-Sevoflurane, isoflurane, and desflurane are each modeled from cited
-partition data, and each agent's 30-minute wash-in lands inside the standard
+Sevoflurane, isoflurane, and desflurane are each modeled from the Gas Man
+reference simulator's published partition data, not from primary
+measurements — the primary human studies are cited beside every value, with
+how far the shipped number sits from each (`docs/MODEL.md`, "Source
+hierarchy"). Each agent's 30-minute wash-in lands inside the standard
 deviation of the ratio Yasuda et al. measured in volunteers
 (`tests/reference/test_published_wash_in.py`, which carries the citations and
 states what that comparison does and does not establish). All three can be

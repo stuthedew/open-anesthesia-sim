@@ -25,12 +25,12 @@
         {
             "citation": "Gas Man Workbook and Laboratory Manual. Default Options: Patient Defaults.",
             "url": "https://gasmanweb.com/Workbook.pdf",
-            "note": "The default 70 kg patient uses alveolar volume 2.5 L, venous volume 1.0 L, alveolar ventilation 4 L/min, cardiac output 5 L/min, tissue volumes 6/33/14.5 L, and flow percentages 76/18/6."
+            "note": "Tier 3, reference implementation (see docs/MODEL.md, 'Source hierarchy'). The default 70 kg patient uses alveolar volume 2.5 L, venous volume 1.0 L, alveolar ventilation 4 L/min, cardiac output 5 L/min, tissue volumes 6/33/14.5 L, and flow percentages 76/18/6. This is a commercial teaching product's manual: it records what that program runs on and reports no measurement of its own. NO PRIMARY SOURCE HAS BEEN ADOPTED for any of the eleven parameters in this file, and both sources here are tier 3 - this file has the weakest provenance in the project, and these eleven values set every time constant in the model. The primary lineage for a lumped vessel-rich/muscle/fat compartment model with published volumes and blood flows is Mapleson's (J Appl Physiol 1963;18:197-204; Br J Anaesth 1964;36:129-139; Br J Anaesth 1973;45:319-334, the last titled for the quantifying data it publishes). Those papers have been located and their records verified, but NOT READ, so whether they carry these values is an open question, not a claim. PL-6Q8N carries the work of checking each parameter against them."
         },
         {
             "citation": "Meybohm P, et al. Context-sensitive decrement times for inhaled anesthetics in obese patients explored with Gas Man. Journal of Clinical Monitoring and Computing. 2021;35:897-908.",
             "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7943506/",
-            "note": "Published description of the standard 70 kg Gas Man model and its compartment parameters."
+            "note": "Tier 3, reference implementation. Meybohm et al. is a Gas Man simulation study; its description of the standard 70 kg model is a description of that product's parameter set, not an independent measurement of it. Citing it alongside the Workbook adds a journal name to the same tier-3 provenance rather than a second, independent source."
         }
     ]
 }

@@ -1,12 +1,20 @@
 ---
 id: PL-D6LX
 title: Decide whether to adopt primary-literature partition coefficients or label the shipped set as Gas Man's
-status: untriaged
+priority: P1
+effort: S
+status: done
+closed: 2026-09-03
+verify: uv run pytest tests/unit/test_parameters.py tests/reference/test_multi_agent.py && python3 tools/doc_check.py check && python3 -c "import json,glob,sys; sys.exit(0 if all('tier' in s['note'].lower() or 'device capability' in s['note'] for f in glob.glob('src/anesthesia_sim/data/**/*.json',recursive=True) for s in json.load(open(f))['sources']) else 1)"
 classes: science
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/agents, docs/MODEL.md, tests/reference/test_multi_agent.py, tests/reference/test_published_wash_in.py, ROADMAP.md
 added: 2026-09-03
 ---
+
+**Decided 2026-09-03 by the project owner: the labeling fix now, and ship-both on
+`ROADMAP.md` as item 31.** The record of the question follows; nothing below was
+edited to match the answer.
 
 **Decision needed.** Whether this project builds a partition-coefficient set
 from primary human measurements, and if so whether that set *replaces* the
@@ -122,3 +130,44 @@ three agent files name their tier and state each difference from the primary
 literature regardless of which option was chosen; `PL-T531` is closed or
 folded into whatever this decides; and if a set was built, its group-weighting
 scheme is documented in `docs/MODEL.md` and its reference tests re-baselined.
+
+
+## Decision and outcome, 2026-09-03
+
+The project owner chose the recommendation: **do the labeling fix now, put
+"ship both parameter sets, selectable" on `ROADMAP.md` as one line of intent,
+and do not build a primary-literature set yet.**
+
+**The labeling fix landed in this item.** Note text only — no schema field, no
+stored value, no reference-test re-baseline:
+
+- All three agent files: every `sources` entry names its tier. The De Wolf
+  entries say plainly that the authors ran Gas Man simulations and measured no
+  coefficient, so Table 1 is the parameter set they supplied to it.
+- Each primary measurement is marked *cited but not adopted*, with the measured
+  value, its cohort and reference temperature, and the percentage difference
+  from the stored number: sevoflurane −5.2%, isoflurane −11.0%,
+  desflurane −0.9%.
+- Each Yasuda entry records the implied brain:blood ratio the stored values
+  recover (1.692 / 1.615 / 1.286 against 1.70 / 1.57 / 1.29) and the reason
+  adopting the measured values is not a substitution — the lumped-compartment
+  versus per-organ problem above.
+- `isoflurane.json` gained **Lerman et al. 1984** (Anesthesiology 1984;61(2):139-143,
+  doi:10.1097/00000542-198408000-00005), the paper carrying the adult 1.46 the
+  textbook's 1.4 rests on. The file previously cited only Malviya & Lerman 1990,
+  whose abstract does not carry an adult value — so the primary measurement was
+  named nowhere in the tree and could not be compared against.
+- The three `mac_percent` notes record that the stored value is De Wolf's
+  quoted Gas Man MAC, not a value from the age-related iso-MAC paper cited
+  beside it.
+- The three vaporizer-maximum notes record that a calibrated dial maximum is a
+  device capability, outside the measured-quantity hierarchy entirely.
+
+**`PL-T531` is closed by this** — see its own closing note. Its question
+(isoflurane 1.3 versus 1.4) is answered by the same decision: keep the Gas Man
+value, label it against Lerman's 1.46, and move all three agents together
+under `ROADMAP.md` item 31 rather than one agent alone.
+
+**Still open.** `PL-6Q8N` (the reference patient's parameters, narrowed to
+reading Mapleson) and `PL-1JDD` (make the tier machine-readable). `ROADMAP.md`
+item 31 holds the build.

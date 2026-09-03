@@ -778,12 +778,23 @@ exceptions are the vaporizer maxima, which cite manufacturer device
 specifications — the primary source for a device capability, since no
 measurement is at issue.
 
-The three agent files also cite the primary measurements — Strum and Eger for
-sevoflurane, Eger for desflurane, Lerman et al. for isoflurane, Yasuda et al.
-for tissue solubility — and each records that the stored number is the Gas Man
-one rather than the measured one, which is the honest form of a tier-3 value.
-The reference patient file does not: it cites two tier-3 sources, no primary
-source, and says nothing about the absence.
+Every `sources` entry in every data file names its tier. The three agent files
+cite the primary measurements alongside their tier-3 values — Strum and Eger
+for sevoflurane, Eger for desflurane, Lerman et al. 1984 for isoflurane,
+Yasuda et al. for tissue solubility — and each records the measured value, that
+it was **not adopted**, and by how much the stored number differs: sevoflurane
+−5.2%, isoflurane −11.0%, desflurane −0.9% against the measured blood:gas
+coefficients. Isoflurane is the widest gap in the project; the decision to keep
+the Gas Man value and label it, rather than move to the textbook 1.4 or to
+Lerman's measured 1.46, was taken on 2026-09-03 and the route to primary values
+for all three agents is `ROADMAP.md`'s planned-milestone item 31.
+
+`src/anesthesia_sim/data/patients/reference_adult.json` has no primary
+citation to place beside its values, so it records that instead, in those
+words: no primary source has been adopted for any of its eleven parameters.
+Mapleson's papers are named there as the primary lineage, and explicitly as
+located-but-unread rather than as a citation — writing one for a paper nobody
+has opened would be the same failure in a different tier.
 
 **So, three rules for a `sources` entry.**
 
