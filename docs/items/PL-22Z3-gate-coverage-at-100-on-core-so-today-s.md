@@ -3,7 +3,9 @@ id: PL-22Z3
 title: Gate coverage at 100% on core/, so today's saturation cannot silently regress
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-03
+pr:
 classes: test, infra
 feature: core-guard-coverage
 touches: Makefile, .github/workflows/quality.yml
@@ -70,4 +72,32 @@ until this item closes.
 
 **Done when.** A statement or branch newly uncovered in any
 `src/anesthesia_sim/core/` module fails `make check` and CI, and the threshold
-is written in exactly one place.
+is written only on the two gate invocations - not in `addopts`, not in a
+`[tool.coverage]` table, and nowhere a scoped run would inherit it.
+
+*Amended on closing, 2026-09-03.* This previously ended "and the threshold is
+written in exactly one place", which contradicts this item's own `verify:`
+command - that command greps for `cov-fail-under=100` in `Makefile` **and** in
+`.github/workflows/quality.yml`, because CI mirrors `make check` step by step
+rather than calling it. The two are genuinely two places, and the alternative
+that would make them one - `fail_under` in `[tool.coverage.report]` - reopens
+exactly the trap the "Not in `addopts`" paragraph above rejects, one step
+removed: it would apply the threshold to any `--cov` run, including the scoped
+one a session makes when coverage is the question. So the duplication is
+deliberate and the sentence was wrong, not the approach. Both invocations carry
+a comment saying they must stay identical.
+
+**Closed 2026-09-03.** `--cov=anesthesia_sim.core --cov-branch
+--cov-fail-under=100` is on `make check`'s pytest line and on CI's. Measured
+before wiring it in: every module under `src/anesthesia_sim/core/` is at 100% of
+statements and 100% of branches (691 statements, 78 branches, 0 missed), and the
+gate costs 92.8 s against 92.4 s for the bare suite - inside the noise, so the
+"confirm the flag does not slow `make check` meaningfully" condition is met with
+room to spare. `drift.yml` untouched, as specified.
+
+**Landed ahead of `PL-GS5X` deliberately.** That item (replace the operator split
+with the exact matrix exponential) adds a hand-rolled `build_system_matrix`,
+`matrix_exponential`, `multiply` and `propagate` to `core/`. With the gate in
+place first, the new solver has to arrive fully covered; landing the gate
+afterwards would have measured against code that may already have dropped below
+the line, turning a one-flag item into a coverage chase.

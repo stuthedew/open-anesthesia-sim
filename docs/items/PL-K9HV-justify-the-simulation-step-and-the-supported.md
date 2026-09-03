@@ -3,11 +3,13 @@ id: PL-K9HV
 title: Fix the splitting-error budget in absolute units instead of deriving it from the readout
 priority: P2
 effort: S
-status: ready
+status: dropped
+reason: superseded by PL-X9KD, which rewrites both target sites wholesale after the exact step lands and has absorbed this item's principle and the owner statement behind it; leaving it open would duplicate that work
 classes: refactor, docs
 feature: numerical-domain
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/supported_ranges.py, docs/MODEL.md, tests/unit/test_uptake_system_failure.py
 added: 2026-09-03
+closed: 2026-09-03
 verify: uv run pytest tests/unit/test_supported_ranges.py tests/unit/test_uptake_system_failure.py && grep -q 'def test_displayed_resolution_does_not_bound_the_step' tests/unit/test_uptake_system_failure.py
 ---
 
@@ -96,3 +98,19 @@ which is clear at 21 of 21. No displayed value is wrong today, so the
 `safety`/`science` exception that would let a post-freeze finding reopen a
 cleared gate does not apply; it belongs to the next gate, `v0.4.x — core/ reads
 like the domain`, which it fits on its own terms.
+
+**Dropped 2026-09-03, superseded rather than declined.** Both target sites
+are splitting-error prose: the comment block at `core/uptake_system.py:37-62`
+above `MAXIMUM_SIMULATION_STEP_S`, and `core/supported_ranges.py:15-17` — "the
+shipped operator split is first order, so its error is `C * dt`". `PL-X9KD`'s
+Done-when requires that "no constant survives whose justification named the
+splitting error", which rewrites both wholesale, and after `PL-GS5X` there is no
+splitting-error budget left to restate in absolute units.
+
+**The principle is not dropped with the item.** `PL-X9KD` now carries it, under
+"Absorbed from `PL-K9HV`": the dependency must not run backwards, and the
+project owner's statement of 2026-09-03 — *"some of my decimal point decisions
+were fairly arbitrary. I care about display decimal points in UI. I didn't
+intend to dictate back end math."* — binds whatever bound the exact step turns
+out to justify. Reopen this item only if `PL-GS5X` is abandoned and the split
+ships on.
