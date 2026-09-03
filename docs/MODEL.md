@@ -2,11 +2,18 @@
 
 ## Status
 
-This document specifies the scientific model implemented starting in
-v0.1.0 and still in force in v0.2.3, the current released baseline (see
-`ROADMAP.md`). The title is deliberately version-generic: the governing
-equations and compartment structure have not changed since v0.1.0, and are
-shared by every agent this model supports.
+This document specifies the scientific model implemented starting in v0.1.0
+and in force unchanged ever since: the governing equations and compartment
+structure have not changed, and are shared by every agent this model supports.
+The title is version-generic for that reason.
+
+**It deliberately names no current released baseline.** `ROADMAP.md`'s version
+table is where that lives, and a second copy here goes stale at every release
+without anything reading wrong until someone checks the version — which is
+exactly what happened, this sentence having named v0.2.3 for thirteen releases
+after v0.2.3 (`PL-C1KK`). Nothing in this document should restate the current
+version; a statement that needs one should say what has been true *since* a
+version instead, which cannot go stale.
 
 The preceding milestone, v0.0.2, delivered an analytically validated ideal
 breathing-circuit wash-in and washout model without a patient; its reference
@@ -592,7 +599,7 @@ at every step size still refines consistently. A fourth-order Runge–Kutta
 method would remove the splitting error but was not required to pass the
 documented tolerances at `SIMULATION_STEP_S = 0.1`.
 
-**The exact alternative, and why it is not taken.** Because every setting is
+**The exact alternative, and why it replaces this one.** Because every setting is
 held constant across a step, the six-state system is linear and time-invariant
 *within* that step, so a single matrix exponential of the system matrix solves
 it exactly — with no splitting error at any step size. Measured against the
@@ -600,19 +607,40 @@ same from-scratch RK4 oracle at 5% delivered, over horizons of 60 s and
 3600 s, the exponential's worst disagreement across all six states is
 $`1.3\times10^{-16}`$ to $`4.8\times10^{-14}`$, against
 $`5.2\times10^{-6}`$ to $`1.7\times10^{-5}`$ for the shipped split.
-**The split is kept nonetheless** (project owner, 2026-08-30). Its error is
-not unknown but bounded — by the two release gates above across the settings
-envelope, and quantified in percentage points under "Displayed precision"
-below, which sets the displayed resolution from it. What an exact step would
-buy is therefore the removal of the applicability-domain bound under
-"Supported simulation step" below, not the correction of a wrong value — and
-no planned work wants that. `ROADMAP.md` scopes v0.4.0's playback multiplier
-as steps per tick with the step fixed at 0.1 s, and fixes it there for
-*determinism* — removing the step-size divergence and the machine-speed
-dependence that make a run irreproducible on another computer — rather than
-for accuracy, so an exact solver would not change that design either. Revisit
-only if some future requirement genuinely wants a larger step. The
-measurements are carried in queue item PL-6GS0; they were produced by the
+**The split was kept on that comparison** (project owner, 2026-08-30). Its
+error is not unknown but bounded — by the two release gates above across the
+settings envelope, and quantified in percentage points under "Displayed
+precision" below, which sets the displayed resolution from it. What an exact
+step would buy is therefore the removal of the applicability-domain bound
+under "Supported simulation step" below, not the correction of a wrong value,
+and no work planned at that date wanted it. That reasoning still holds on its
+own terms, and is why the split remains sound to ship until it is replaced.
+
+**This decision was superseded on 2026-09-03** (project owner), on a ground
+the original did not weigh: not accuracy, but whether the code can be read as
+the model. `ROADMAP.md` planned-milestone item 29 sets the bar that a reviewer
+who knows the standard variables and equations should be able to follow
+`core/` and recognize them without a lookup table, and the split cannot reach
+it — three of its five composed sub-steps are objects of the splitting scheme
+rather than of the physiology, the alveolar balance's two terms are computed
+in different sub-steps separated by a third, and the pulmonary uptake rate
+specified under "Alveolar gas" above is never formed at all. Assembling the
+system matrix, by contrast, *is* transcribing the governing equations. The
+split is therefore to be replaced by the exact matrix exponential in v0.4.1,
+under queue item `PL-GS5X`, and `PL-X9KD` re-derives every statement in this
+document that the splitting error justifies — "Displayed precision" and
+"Supported simulation step" among them.
+
+**Until those land, this section describes what ships**, and its error bounds
+are the live ones. This paragraph is an interim correction (`PL-B875`) rather
+than the rewrite; `PL-GS5X` owns that.
+
+The fixed 0.1 s step is unaffected either way. `ROADMAP.md` scopes v0.4.0's
+playback multiplier as steps per tick with the step fixed at 0.1 s, and fixes
+it there for *determinism* — removing the step-size divergence and the
+machine-speed dependence that make a run irreproducible on another computer —
+rather than for accuracy, so an exact solver does not change that design. The
+measurements above are carried in queue item PL-6GS0; they were produced by the
 v0.2.0 architecture review's verification harness, retired under PL-STNV.
 
 #### Supported simulation step
@@ -2059,7 +2087,7 @@ Version v0.1.0 assumes:
 
 ## Known limitations
 
-As of v0.2.3, this model does not model:
+This model does not model:
 
 - a separate arterial blood-mixing compartment (arterial blood is flow-limited and equals alveolar gas at every instant, matching the Gas Man reference simulator's mammillary structure — see "Model boundary");
 - halothane, enflurane, ether, or xenon (isoflurane and desflurane were added in v0.2.0; see "Parameter provenance");
