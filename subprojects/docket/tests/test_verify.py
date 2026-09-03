@@ -647,6 +647,65 @@ def test_the_run_carries_what_normal_looked_like(tmp_path: Path) -> None:
     assert report.elapsed > 0
 
 
+def test_the_run_carries_what_it_would_have_cost_serially(tmp_path: Path) -> None:
+    # The pool holds the wall clock roughly flat as the queue grows, so the
+    # number a session feels is the one that hides the growth. The serial total
+    # is what the store actually asks for, and it climbs with every item
+    # triaged to `ready` (`PL-9NKK`).
+    root = _repo(tmp_path)
+    items = [_item(identifier=f"PL-000{n}", verify="sleep 1") for n in range(4)]
+    report = already_passing(root, items, workers=8)
+
+    assert report.serial >= 4
+    assert report.elapsed < report.serial
+
+
+def test_the_costliest_command_is_carried_whether_or_not_it_is_an_outlier(tmp_path: Path) -> None:
+    # `slow` answers "did an outlier arrive", which is usually no. This answers
+    # "how close is any one command to the limit", which always has an answer
+    # and is the margin `LANDED_TIMEOUT` is chosen against.
+    root = _repo(tmp_path)
+    items = [_item(identifier=f"PL-000{n}") for n in range(6)]
+    report = already_passing(root, items, workers=8)
+
+    assert report.slow == ()
+    assert report.slowest is not None
+
+
+def test_the_costliest_command_is_the_one_that_actually_cost_the_most(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
+    items.append(_item(identifier="PL-SLOW", verify="sleep 1"))
+    report = already_passing(root, items, workers=8)
+
+    assert report.slowest is not None
+    assert report.slowest.identifier == "PL-SLOW"
+
+
+def test_a_killed_command_does_not_count_into_the_serial_total(tmp_path: Path) -> None:
+    # The same reason it is kept out of the median: it was stopped at the limit
+    # rather than having cost its duration, so counting it would report a total
+    # the run never paid - and this one is read against the limit itself.
+    root = _repo(tmp_path)
+    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
+    items.append(_item(identifier="PL-KILL", verify="sleep 30"))
+    report = already_passing(root, items, timeout=0.3, workers=8)
+
+    assert report.timed_out == ("PL-KILL",)
+    assert report.serial < 1
+    assert report.slowest is not None
+    assert report.slowest.identifier != "PL-KILL"
+
+
+def test_a_store_with_no_command_to_run_names_no_costliest_one(tmp_path: Path) -> None:
+    # An empty run must not render as a measured one, which is what a zero here
+    # would become by the time it reached a headline.
+    report = already_passing(_repo(tmp_path), [])
+
+    assert report.slowest is None
+    assert report.serial == 0.0
+
+
 # --- running them at once -----------------------------------------------------
 #
 # `make check` pays this, and the bill grows with the queue: every item triaged

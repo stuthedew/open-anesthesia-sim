@@ -470,12 +470,19 @@ def verify_batch(
 LANDED_GUARD = "DOCKET_SKIP_LANDED"
 
 # Long enough for a project's own suite, short enough that one wedged command
-# cannot hang `make check`. Re-measured on 2026-09-02, since the figure here is
-# the only record of the cost anyone reading this constant sees and the store
-# had roughly doubled under the old one: 48 candidate commands, 34.9s in total
-# run serially and 6.9s at worst. The timeout bounds a single command, so it is
-# the worst case that has to fit rather than the total - and the total is now
-# paid concurrently in any case.
+# cannot hang `make check`. The timeout bounds a single command, so the figure
+# that has to fit under it is the worst case rather than the total, and the
+# total is paid concurrently in any case.
+#
+# No measurement is recorded here any more, deliberately. Two were, and both
+# went stale inside a fortnight: a number hand-copied into a comment cannot
+# know that the queue doubled under it, and the comment kept asserting a cost
+# the run had left behind - 6.9s at worst where the run had reached 27.4s
+# (`PL-9NKK`). Re-writing it would buy the same fortnight again. So `check`
+# prints the count, the pool's wall clock, the serial total and the worst case
+# on every run instead, which is that reading taken now rather than in
+# September; `PL-LXR3` and `PL-9NKK` hold the dated ones, where a measurement
+# keeps its date and stays true.
 LANDED_TIMEOUT = 120.0
 
 
@@ -483,15 +490,23 @@ def landed_workers() -> int:
     """How many candidate commands to run at once.
 
     Each is a subprocess that spends most of its life on interpreter startup
-    and imports rather than on the CPU, so more of them than there are cores
-    is the right shape. Measured against this store on 2026-09-02, 49
-    candidates on a four-core box: 33.9 s serially, 10.8 s at four workers,
-    10.1 s at eight. The knee is at the core count and the tail beyond it is
-    the startup overlap, which is why this doubles rather than matching.
+    and imports rather than on the CPU, so more of them than there are cores is
+    the right shape: the knee sits at the core count and the tail beyond it is
+    the startup overlap, which is why this doubles rather than matching. Held
+    on two measurements a day apart, on four cores, over stores of 49 and 78
+    candidates - eight workers beat four in both, and beat sixteen and
+    twenty-four in the second.
 
     Capped because the win is already spent by then and an uncapped pool on a
     large machine would put dozens of pytest processes on one working tree for
-    no measured gain.
+    no measured gain. The second measurement is what shows the cap is still
+    right rather than merely inherited: at 78 candidates sixteen workers and
+    twenty-four were both *slower* than eight, so the pool has stopped gaining
+    from width and the cap is now binding on nothing.
+
+    The two runs are in `PL-LXR3` and `PL-9NKK`, with their dates, rather than
+    quoted here - `LANDED_TIMEOUT` above carries why. What this shape costs
+    today is on `check`'s own headline, taken from the run in front of you.
     """
     return min(8, (os.cpu_count() or 1) * 2)
 
@@ -610,6 +625,18 @@ class LandedReport:
     #: than a bare number nobody can scale.
     typical: float = 0.0
     elapsed: float = 0.0
+    #: What the same commands would have cost one after another. `elapsed` is
+    #: what a session waits through and this is what the queue actually asks
+    #: for, and the two diverge as the store grows: concurrency holds the first
+    #: roughly flat while the second climbs with every item triaged to `ready`.
+    #: Reported because the flat number is the one that hides the growth.
+    serial: float = 0.0
+    #: The costliest command that ran, whether or not it cleared the ratio that
+    #: fills `slow`. Separate from `slow` because the two answer different
+    #: questions: `slow` is "did an outlier arrive", which is usually no, and
+    #: this is "how close is any one command to `limit`", which always has an
+    #: answer and is the margin `LANDED_TIMEOUT` is chosen against.
+    slowest: SlowCommand | None = None
     declined: str = ""
 
     @property
@@ -758,6 +785,9 @@ def already_passing(
         if item.identifier not in timed_out and item.identifier not in unavailable
     ]
     typical = median(seconds for _, seconds in answered) if answered else 0.0
+    serial = sum(seconds for _, seconds in answered)
+    worst = max(answered, key=lambda pair: pair[1], default=None)
+    slowest = SlowCommand(worst[0].identifier, worst[1]) if worst else None
     slow = (
         tuple(
             SlowCommand(item.identifier, seconds)
@@ -789,4 +819,6 @@ def already_passing(
         slow=slow,
         typical=typical,
         elapsed=elapsed,
+        serial=serial,
+        slowest=slowest,
     )
