@@ -151,7 +151,7 @@ def test_loads_built_in_desflurane_parameters() -> None:
 def test_desflurane_is_less_soluble_than_sevoflurane_which_is_less_soluble_than_isoflurane() -> (
     None
 ):
-    """Directional check against the shared Gas Man source table (Stadler et al. 2012)."""
+    """Directional check against the shared Gas Man source table (De Wolf et al. 2012)."""
 
     desflurane = load_agent_parameters("desflurane")
     sevoflurane = load_agent_parameters("sevoflurane")

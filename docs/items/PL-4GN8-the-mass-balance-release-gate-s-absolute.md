@@ -55,6 +55,30 @@ simply ignore it. The change is to the assertions and to `docs/MODEL.md`, not
 to the validator - confirm that reading before touching `core/`, and if the
 halt threshold does turn out to need a change, that is a separate item.
 
+**It is also a property of the run length, not only of the dial** (measured
+2026-09-03, sevoflurane, stepping 0.1 s and reading `absolute_error_l` after
+every step). The residual accumulates monotonically, so the assertion has a
+horizon past which it is simply false:
+
+| Settings | `absolute_error_l` first exceeds 1e-12 L at | At 4 h |
+| --- | --- | --- |
+| The reference tests' own (FGF 4 L/min, 1 MAC) | t = 6212 s | 7.24e-11 L |
+| Envelope corner (FGF 10, V_A 12, Q 10, 8%) | t = 876 s | 4.71e-10 L |
+
+The tests run to 1200 s, which is why they pass. At the corner the assertion
+would fail inside the 1800 s horizon `test_published_wash_in.py` already runs
+at, and inside a case length a user of a teaching simulator would call
+ordinary.
+
+This sharpens the diagnosis rather than changing it: the fix is still to assert
+the dial-independent relative quantity, which stays at 2.45e-12 after 4 h at
+the corner - three orders inside the 1e-9 the guard uses - while the absolute
+figure has moved by three orders. It also settles the "unless the halt
+threshold is wrong too" question left open above: the halt threshold is right,
+and it is the `or` that makes it right. The absolute branch goes dead after an
+hour or two of simulated time and the relative branch carries the guard from
+then on, which is exactly what the disjunction is for.
+
 **Where.** `tests/reference/test_multi_agent.py:77`,
 `tests/reference/test_sevo_patient.py:222`,
 `src/anesthesia_sim/core/agent_simulation_validation.py` (read only, unless
