@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: delegation
+milestone: v0.3.3
 touches: .github/workflows/record-pr.yml, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests, Makefile, .claude/skills/docket/SKILL.md, subprojects/docket/README.md
 added: 2026-09-03
 closed: 2026-09-03

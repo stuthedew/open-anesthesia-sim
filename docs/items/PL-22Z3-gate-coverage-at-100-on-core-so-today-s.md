@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test, infra
 feature: core-guard-coverage
+milestone: v0.3.3
 touches: Makefile, .github/workflows/quality.yml
 added: 2026-09-03
 closed: 2026-09-03

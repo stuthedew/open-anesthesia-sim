@@ -4,13 +4,13 @@ title: pr_title_check.py is the one tools/ script CI never runs at the declared 
 priority: P2
 effort: S
 status: done
-closed: 2026-09-03
-pr: 259
-
 classes: infra
 feature: dev-tooling
+milestone: v0.3.3
 touches: .github/workflows/pr-title.yml, tests/unit/test_tools_portability.py
 added: 2026-09-03
+closed: 2026-09-03
+pr: 259
 verify: uv run pytest tests/unit/test_tools_portability.py && grep -q 'def test_every_concrete_workflow_pin_is_the_declared_floor' tests/unit/test_tools_portability.py
 ---
 
