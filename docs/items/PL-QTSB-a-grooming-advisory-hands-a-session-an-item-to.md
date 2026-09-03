@@ -3,11 +3,13 @@ id: PL-QTSB
 title: A grooming advisory hands a session an item to edit with no in-flight check, which is the PL-5KR2 gap on a third surface
 priority: P2
 effort: S
-status: ready
+status: dropped
+reason: the collision it guards against stopped costing anything when PL-N5WZ moved the `pr` write onto the session's own commit; two sessions now write the same tool-dictated line and git merges them
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, .claude/skills/docket/SKILL.md
 added: 2026-09-02
+closed: 2026-09-03
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_advisory_names_an_item_in_flight' subprojects/docket/tests/test_checks.py
 ---
 
@@ -80,3 +82,23 @@ attempt because a session happened to think of it.
 It also settles the shape. `show` already computes this answer, so the second
 option under **Where** is wiring an existing read into an existing output, and
 the marked advisory would read the way `triage`'s already does.
+
+**Dropped 2026-09-03, and the measurement is why.** `PL-N5WZ` moved the write
+into `bin/docket record`, run by `make fix` and riding the commit a session was
+already making. That removes the harm this item was filed for rather than
+guarding it: the damage recorded above was two *pull requests* for one
+insertion (`#229`, `#230`), and there is no pull request in this path any more.
+Two sessions that both run it write the same line, dictated by the same tool
+from the same reading, and git merges them - which is exactly what happened to
+`#229` and `#230` at the file level, harmlessly.
+
+What is left is a guard that would ask every session to fetch and check before
+running `make fix`, to prevent an outcome git already handles. That is friction
+that changes no result, which `CLAUDE.md`'s own test retires rather than adds.
+`.claude/skills/docket/SKILL.md` says so where the instruction would otherwise
+have gone, so the reasoning survives the item.
+
+The general finding it belongs to is not dropped with it. `PL-MC8Z` still holds
+the start-an-item file-overlap question, and `PL-5KR2`'s rule - that every
+surface naming an item to work should say whether it is in flight - stands for
+the surfaces where acting on it still costs a pull request.
