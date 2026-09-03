@@ -355,11 +355,26 @@ recommendation was that the coupled system is linear and time-invariant within
 a step, so one matrix exponential is exact where the pairwise split is
 $`O(\Delta t)`$. The review itself deferred it in favour of promoting the RK4
 oracle into CI, which landed as `tests/reference/test_coupled_dynamics.py`. The
-deferral was never revisited, and the measured comparison it rests on is
-carried in the item rather than here, since the harness that produced it is
-gone. It bears on the playback-speed thread above: an exact step would make a
-larger step a fidelity-free choice, which is exactly what that thread assumes
-it is not.
+measured comparison it rests on is carried in the item rather than here, since
+the harness that produced it is gone.
+
+**Revisited and reversed, 2026-09-03** (project owner). The deferral stood for
+three releases and this note said so; it no longer does. `PL-SPMQ` measured what
+the split costs a *reader* rather than what it costs the numbers, and the
+project owner chose the exact matrix exponential on that ground - `ROADMAP.md`
+planned-milestone item 29's bar is that a reviewer follow `core/` without a
+lookup table, which the five composed sub-steps prevent. `PL-GS5X` makes the
+change in v0.4.1, `PL-P0BB` settled the state vector as fractions, and `PL-X9KD`
+re-derives every published statement the splitting error justified.
+`docs/MODEL.md` § "Selected method (as implemented)" carries the supersession
+(`PL-B875`).
+
+It bears on the playback-speed thread above, and the bearing has now changed
+direction: an exact step makes a larger step a fidelity-free choice, which is
+exactly what that thread assumed it was not. The conclusion survives anyway -
+the multiplier stays steps-per-tick and the step stays 0.1 s - but for
+determinism rather than for accuracy, which is the ground `docs/MODEL.md`
+already gave and which `PL-SN2C`'s brief has been moved onto.
 
 ## Open thread: scenario branching, bookmarks, and what a snapshot is for - PL-DHV7, ROADMAP items 8, 11, 12 and 26
 
