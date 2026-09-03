@@ -52,6 +52,16 @@ digits the method cannot support is required. What is wrong is that a *chosen*
 tolerance is written as a *derivation*, and that nothing else is offered as an
 independent statement of either constant.
 
+**Settling the readout does not dissolve this.** The project owner decided on
+2026-09-03 that the readout stays at two decimals and one decimal stays
+rejected (recorded in PL-88GQ, state every displayed decimal count as a
+presentation decision the owner can revise). That closes the display question;
+it does not close this one. The defect is the direction of the derivation, not
+the count at the end of it — `supported_ranges.py` still appears to state where
+the *model* is valid when it states where the *readout* stays truthful, and the
+step still moves if the count ever does. A settled input to a backwards
+derivation leaves the derivation backwards.
+
 **Where.**
 
 - `src/anesthesia_sim/core/uptake_system.py:40-62` — the comment block above

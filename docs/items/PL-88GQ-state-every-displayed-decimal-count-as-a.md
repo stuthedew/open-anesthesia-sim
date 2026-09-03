@@ -62,11 +62,23 @@ change is to say which of the three is doing the work for each value.
 kinds, explicitly: a *ceiling* the model imposes, or a *choice* within that
 ceiling made for interpretability. For the concentration readout that means
 recording one-and-two decimals as the band the error budget licenses, naming two
-as the owner's pick inside it, and naming the `0.0%`-for-an-hour objection as the
-interpretability reason rather than an accuracy one. Every inline format string
+as the owner's pick inside it per the decision above, and naming the
+`0.0%`-for-an-hour objection as the interpretability reason rather than an
+accuracy one. Every inline format string
 either gains a named constant with a one-line reason or is recorded as
 arbitrary-and-revisable. A reader can tell, per value, whether changing the count
 requires re-deriving anything.
+
+**Decided 2026-09-03: the concentration readout stays at two decimals, and one
+decimal stays rejected on pedagogical grounds.** The project owner's call, made
+once the constraint was shown to be interpretability rather than accuracy. So
+this item records a decision rather than reopening one: the band the error
+budget licenses is one-to-two decimals, two is the chosen count, and the reason
+one is not taken is that the fat compartment would read `0.0%` for an entire
+hour and muscle for its first three to fifteen minutes — which erases the
+wash-in the simulator exists to teach. Written down as a teaching judgment,
+explicitly not as a numerical limit, so a future revisit knows exactly what it
+has to beat and does not mistake it for a model constraint it cannot touch.
 
 **Out of scope.** Varying the decimal count per compartment. `docs/MODEL.md`
 already rejects it — different counts across the six tiles would put different
