@@ -699,6 +699,7 @@ def _landed(**overrides: object) -> LandedReport:
         elapsed=10.0,
         serial=42.0,
         slowest=SlowCommand("PL-K7QX", 4.0),
+        workers=8,
         declined="",
     )
     base.update(overrides)
@@ -854,10 +855,77 @@ def test_the_cost_is_given_against_what_normal_looks_like() -> None:
     assert _has(messages, "63s for the whole run")
 
 
-def test_the_advisory_says_why_one_command_sets_the_floor() -> None:
-    messages = _slow(_landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),)))
+def test_the_advisory_bounds_what_narrowing_would_leave() -> None:
+    # The claim it replaced - that the named command "sets the floor" - was
+    # true only while the rest of the work fit underneath it, and this store
+    # outgrew that: removing the named command measured 28.6s to 23.7s, a
+    # sixth of what that sentence invites a reader to expect (`PL-FRGP`). So
+    # the run says what narrowing cannot buy, computed rather than asserted.
+    messages = _slow(
+        _landed(
+            passing=(),
+            slow=(SlowCommand("PL-K7QX", 27.0),),
+            considered=78,
+            serial=175.0,
+            workers=8,
+            elapsed=28.6,
+        )
+    )
 
-    assert _has(messages, "cannot finish before its slowest member")
+    # (175.0 - 27.0) / 8 workers = 18.5s of work left whatever happens here.
+    assert _has(messages, "cannot take the run below about 18s")
+    assert _has(messages, "77 commands are 148s of work across 8 workers")
+
+
+def test_the_bound_is_a_lower_bound_rather_than_a_prediction() -> None:
+    # A pool never packs perfectly, so the real run lands above this. Saying
+    # what narrowing cannot buy is honest; predicting what it will is what the
+    # old wording did wrong, and doing it more precisely would repeat it.
+    messages = _slow(
+        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 27.0),), serial=175.0, workers=8)
+    )
+
+    assert _has(messages, "cannot take the run below")
+    assert not _has(messages, "will take")
+
+
+def test_the_bound_removes_every_named_command_not_only_the_worst() -> None:
+    # Narrowing one of two heavy commands leaves the other where it was, so a
+    # bound computed against only the worst would not be a bound at all.
+    messages = _slow(
+        _landed(
+            passing=(),
+            slow=(SlowCommand("PL-K7QX", 30.0), SlowCommand("PL-B1C2", 30.0)),
+            considered=42,
+            serial=100.0,
+            workers=4,
+        )
+    )
+
+    # (100.0 - 60.0) / 4 workers = 10s, not (100.0 - 30.0) / 4 = 17.5s.
+    assert _has(messages, "cannot take the run below about 10s")
+    assert _has(messages, "40 commands are 40s of work")
+
+
+def test_a_run_that_did_not_say_how_wide_it_was_claims_no_bound() -> None:
+    # Dividing by a width nobody recorded would be the invented number this
+    # module refuses everywhere else. The sentence stops early instead.
+    messages = _slow(
+        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),), serial=175.0, workers=0)
+    )
+
+    assert _has(messages, "PL-K7QX")
+    assert not _has(messages, "cannot take the run below")
+
+
+def test_a_command_that_is_the_whole_run_claims_no_bound() -> None:
+    # Nothing is left once it is removed, so there is no remainder to divide
+    # and "below about 0s" would be a sentence that says nothing.
+    messages = _slow(
+        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),), serial=59.3, workers=8)
+    )
+
+    assert not _has(messages, "cannot take the run below")
 
 
 def test_the_advisory_offers_both_outcomes_rather_than_demanding_one() -> None:

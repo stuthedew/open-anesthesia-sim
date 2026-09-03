@@ -608,17 +608,35 @@ def _check_slow_commands(report: Report, landed: LandedReport | None) -> None:
     """Say when one item's `verify:` command is what this check spends its time on.
 
     The other findings here are about whether a command *proves* anything. This
-    one is about what it costs, and it exists because nothing else says. Since
-    the commands began running concurrently the wall clock is set by the
-    slowest single member rather than by how many there are (`PL-LXR3`), so one
-    heavy command is worth more attention than twenty light ones - and the
-    figure moves in one step, on the day somebody writes it. Measured on this
-    store: 10.1 s with none, 59.1 s with one full-suite `pytest --cov`, 62.6 s
-    with two.
+    one is about what it costs, and it exists because nothing else says. One
+    heavy command is worth more attention than twenty light ones, and the
+    figure moves in one step, on the day somebody writes it - then it is paid
+    by every `make check` in every later session, while the only person placed
+    to reconsider the command is the one who wrote it, in the session that
+    wrote it. This is the sentence that reaches them.
 
-    That cost is then paid by every `make check` in every later session, while
-    the only person placed to reconsider the command is the one who wrote it,
-    in the session that wrote it. This is the sentence that reaches them.
+    **It says what narrowing the command would leave, rather than claiming it
+    sets the floor.** Those are different statements and the second was wrong.
+    A pool cannot finish before its slowest member, which is true, but it is
+    only the *binding* constraint while the rest of the work fits underneath -
+    and this store outgrew that. When the advisory was written the pool held 49
+    commands totalling 34 s across eight workers, so about 4 s of aggregate
+    work sat behind a 6.9 s slowest member and the slowest member really was
+    the floor. At 78 commands totalling 175 s that aggregate is ~22 s against a
+    27 s slowest member, and removing the named command measured 28.6 s to
+    23.7 s - a sixth of what "sets the floor for every `make check`" invites a
+    reader to expect (`PL-FRGP`).
+
+    So the bound is computed rather than asserted. What the *other* commands
+    cost is their total divided across the pool's width, which `serial` and
+    `workers` now carry, and no narrowing of the named commands can take the
+    run below it. It is a lower bound rather than a prediction - the real run
+    lands above it, since a pool never packs perfectly - which is the honest
+    shape: this can say what narrowing cannot buy, and must not promise what it
+    will. Both regimes come out of the one arithmetic: where the queue is small
+    the bound is near zero and narrowing genuinely collapses the run; where the
+    queue is large the bound is most of the elapsed time and the reader learns
+    that before spending an afternoon on it.
 
     An advisory rather than an error, because the answer is a judgment: some
     commands are worth their cost and a coverage item's genuinely cannot be
@@ -627,8 +645,9 @@ def _check_slow_commands(report: Report, landed: LandedReport | None) -> None:
     cost is a valid outcome; not knowing it is what this removes.
 
     It names every command over the line rather than only the worst, because
-    two heavy commands overlap in the pool and narrowing one of them changes
-    nothing - the floor is wherever the second one is.
+    two heavy commands overlap in the pool and narrowing one alone leaves the
+    other where it was - and the bound is computed with all of them removed,
+    which is the only reading under which it stays a bound.
 
     Reported against the whole run rather than scoped to what `next` will
     offer, unlike `_check_selects_nothing`. The reasoning there was that its
@@ -641,13 +660,27 @@ def _check_slow_commands(report: Report, landed: LandedReport | None) -> None:
         return
     one = len(landed.slow) == 1
     named = ", ".join(f"{command.identifier} ({command.seconds:.0f}s)" for command in landed.slow)
+    message = (
+        f"{named} {'is' if one else 'are'} the costliest `verify:` "
+        f"{'command' if one else 'commands'} this check runs: against a "
+        f"{landed.typical:.1f}s median and {landed.elapsed:.0f}s for the whole run"
+    )
+    # The bound is only available where the run said how wide it was. An older
+    # `LandedReport`, or a caller that built one by hand, carries no `workers` -
+    # and dividing by it anyway would be the invented number this whole module
+    # refuses. The sentence simply stops early instead.
+    rest = landed.serial - sum(command.seconds for command in landed.slow)
+    if landed.workers > 0 and rest > 0:
+        others = landed.considered - len(landed.slow)
+        message += (
+            f". Narrowing {'it' if one else 'them'} cannot take the run below about "
+            f"{rest / landed.workers:.0f}s: the other {others} commands are "
+            f"{rest:.0f}s of work across {landed.workers} workers, so the pool is bounded "
+            "by the size of the queue as well as by its slowest member"
+        )
     report.advisories.append(
-        f"{named} {'is' if one else 'are'} what this check waits for: "
-        f"{'that command' if one else 'those commands'} against a {landed.typical:.1f}s "
-        f"median and {landed.elapsed:.0f}s for the whole run. A pool cannot finish before "
-        f"its slowest member, so {'this' if one else 'each of these'} sets the floor for "
-        "every `make check` until the item closes - narrow the command if it can be "
-        "narrowed, or accept the cost knowing what it is"
+        message + " - narrow the command if it can be narrowed, or accept the "
+        "cost knowing what it is"
     )
 
 
