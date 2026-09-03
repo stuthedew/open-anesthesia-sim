@@ -1,79 +1,88 @@
 ---
 id: PL-K9HV
-title: Justify the simulation step and the supported ranges without reference to the readout's decimal count
-status: untriaged
+title: Fix the splitting-error budget in absolute units instead of deriving it from the readout
+priority: P2
+effort: S
+status: ready
+classes: refactor, docs
 feature: numerical-domain
-touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/supported_ranges.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/supported_ranges.py, docs/MODEL.md, tests/unit/test_uptake_system_failure.py
 added: 2026-09-03
+verify: uv run pytest tests/unit/test_supported_ranges.py tests/unit/test_uptake_system_failure.py && grep -q 'def test_displayed_resolution_does_not_bound_the_step' tests/unit/test_uptake_system_failure.py
 ---
 
-**Problem.** Two backend constants are currently justified *by* a presentation
-choice rather than on their own terms. `MAXIMUM_SIMULATION_STEP_S = 0.1` is
-explicitly not the step at which the operator split breaks down — the comment
-says that is "two orders of magnitude away" — but "the largest step at which
-what the interface shows is still what the model can support", where "what the
-interface shows" means the two-decimal concentration readout. The supported
-input intervals in `supported_ranges.py` are drawn the same way: cardiac output
-is capped because beyond it the splitting error "turns the displayed
-resolution's 'uncertain by about two counts' into 91 counts, an alveolar
-readout wrong in its first decimal". Both therefore inherit whatever decimal
-count the readout happens to use.
+**Problem.** Two `core/` constants are justified *by* the readout's decimal
+count rather than in their own units. `MAXIMUM_SIMULATION_STEP_S = 0.1` is
+explicitly not where the operator split breaks down — the comment says that is
+"two orders of magnitude away" — but "the largest step at which what the
+interface shows is still what the model can support", where "what the interface
+shows" is the two-decimal concentration readout. `supported_ranges.py` draws its
+intervals the same way: cardiac output is capped because beyond it the splitting
+error "turns the displayed resolution's 'uncertain by about two counts' into 91
+counts, an alveolar readout wrong in its first decimal".
 
-The project owner's statement of intent (2026-09-03): *"some of my decimal
-point decisions were fairly arbitrary. I care about display decimal points in
-UI. I didn't intend to dictate back end math."* The decimal count was a
-presentation judgment; it was not meant to be the premise the integrator step
-and the model's supported domain are derived from.
+The project owner's statement of intent (2026-09-03): *"some of my decimal point
+decisions were fairly arbitrary. I care about display decimal points in UI. I
+didn't intend to dictate back end math."* — and the display count is to stay
+freely choosable in the range one-to-two decimals.
 
-**Why it matters.** The dependency runs the wrong way. Numerical accuracy and
-the physiological domain the model is valid over should bound what may be
-displayed; instead an arbitrary readout choice bounds them. Two consequences
-follow, and the second is the safety-relevant one:
+**Why it matters.** The dependency runs backwards. Numerical accuracy should
+bound what may be displayed; here the display choice bounds the integrator step
+and the model's supported domain, so a purely presentational move to one decimal
+would — by the reasoning as written — license a step roughly ten times larger and
+wider input intervals. A second cost is what `supported_ranges.py` appears to
+claim: it reads as a statement about where the *model* is valid when it is a
+statement about where the *readout* stays truthful at two decimals, and a reader
+taking the interval for a physiological validity claim is wrong about what the
+guard protects.
 
-1. A future decision to show one decimal instead of two would, by the same
-   reasoning, license a larger step and wider input intervals — a UI change
-   silently relaxing the integrator and the supported domain.
-2. `supported_ranges.py` reads as a statement about where the *model* is
-   valid. It is not: it is a statement about where the *readout* stays
-   truthful at two decimals. A reader — or a session — treating the interval
-   as a validity claim about the physiology would be wrong about what the
-   guard is protecting, which is exactly the "correct number, wrong context"
-   failure `CLAUDE.md`'s safety standard names.
+**Why no value moves.** PL-74TX (re-decide the two-decimal readout against the
+widened splitting-error measurement) already settled the accuracy question in the
+direction that makes this item small: at one decimal the readout would be
+"uncertain by a fifth of a count even at the extreme". One decimal is therefore
+comfortably inside the existing budget, and two decimals is the binding case that
+set it. So there is nothing to re-derive — 0.1 s and the present intervals stand.
+What is needed is to state the budget those numbers already satisfy as an
+absolute quantity and let the readout be checked against it, instead of the
+budget being read back out of the readout.
 
 Note the legitimate half, so the fix does not overshoot: choosing a numerical
-tolerance from what a user will see is a sound engineering pattern, and
-refusing to display digits the method cannot support is required. What is
-wrong is the direction and the documentation of it — the display choice is
-presented as a derivation rather than as a chosen tolerance, and nothing else
-is offered as an independent justification for either constant.
+tolerance from what a user will see is sound practice, and refusing to display
+digits the method cannot support is required. What is wrong is that a *chosen*
+tolerance is written as a *derivation*, and that nothing else is offered as an
+independent statement of either constant.
 
 **Where.**
 
 - `src/anesthesia_sim/core/uptake_system.py:40-62` — the comment block above
-  `MAXIMUM_SIMULATION_STEP_S`, and the "Raising it is a safety-critical change
-  to every displayed value" framing that follows from it.
+  `MAXIMUM_SIMULATION_STEP_S` and the "safety-critical change to every displayed
+  value" framing that follows from it.
 - `src/anesthesia_sim/core/supported_ranges.py:9-39` — the module docstring's
-  "Why the model declares these and not the interface" and "Widening any
-  interval is a safety-critical change" paragraphs.
+  "Why the model declares these and not the interface" and "Widening any interval
+  is a safety-critical change" paragraphs.
 - `docs/MODEL.md` §§ "Supported simulation step", "Supported input ranges",
-  "Displayed precision" — the three are currently a single mutually-referring
-  chain and would be re-cut together.
+  "Displayed precision" — currently a mutually-referring chain, re-cut together.
 
-**Done when.** `MAXIMUM_SIMULATION_STEP_S` and each interval in
-`supported_ranges.py` carry a justification that stands without reference to
-any decimal count — an error tolerance stated in absolute units, or the
-physiological/validity domain of the underlying parameter set — and the
-displayed resolution is derived *from* those, in that order. Where a tolerance
-was in fact chosen with the readout in mind, `docs/MODEL.md` says so as a
-chosen tolerance rather than as a derivation, and states what changes if the
-readout changes (which should be: nothing in `core/`).
+**Done when.** The splitting-error budget is stated once, in percentage points
+absolute over the reachable domain at the shipped step, as a property of the
+model; `MAXIMUM_SIMULATION_STEP_S` and the `supported_ranges.py` intervals cite
+that budget rather than any decimal count; and `docs/MODEL.md` records that the
+budget was set at the two-decimal case, that one decimal sits inside it with
+margin, and that moving between one and two decimals therefore changes nothing in
+`core/`. A regression test asserts the last part — that the displayed resolution
+is not what bounds the step.
 
-**Not-delegable.** Whether the current values are right is a modelling
-judgment, not a refactor: settling the step and the domain on their own terms
-may confirm 0.1 s and the present intervals, or may move them. Wants the
-strongest model, and the project owner's decision on any value that moves.
+**Not-delegable.** Structural rather than a judgment call: `touches` names
+`src/anesthesia_sim/core` and `docs/MODEL.md`, which makes the item
+non-delegable whatever proves it. The values themselves do not move, so this
+does not need the strongest model.
 
-**Depends on.** Interacts with PL-88GQ (state every displayed decimal count as
-a presentation decision the owner can revise), which is the display half of
-the same finding. This item is the one that must land first: PL-88GQ cannot
-call the readout freely revisable while `core/` derives two constants from it.
+**Sequencing.** Lands before PL-88GQ (state every displayed decimal count as a
+presentation decision the owner can revise): that item cannot call the readout
+freely revisable while `core/` derives two constants from it.
+
+**Gate placement decided 2026-09-03.** Not admitted to the frozen v0.4.0 gate,
+which is clear at 21 of 21. No displayed value is wrong today, so the
+`safety`/`science` exception that would let a post-freeze finding reopen a
+cleared gate does not apply; it belongs to the next gate, `v0.4.x — core/ reads
+like the domain`, which it fits on its own terms.
