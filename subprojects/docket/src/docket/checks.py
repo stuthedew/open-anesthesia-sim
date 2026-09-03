@@ -736,13 +736,13 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
     way back exists in git. That is a transcription still owed, which is an
     advisory naming the number to write.
 
-    That advisory used to be the *mechanism* and is now only the detector.
-    `docket record` writes the field from the number a merge event carries,
-    which is exact where this recovery is inferential, so the field should be
-    on the item before any session runs this check. An advisory here therefore
-    means the merge-time write did not happen, and it says so: a session that
-    quietly retypes the number restores the cost this removed and hides the
-    fact that the job is broken.
+    That advisory names a command rather than a line to type, and the
+    difference is the whole of `PL-N5WZ`. `docket record` writes every number
+    this same reading has already derived, so the field costs no commit of its
+    own - it rides whatever the session was about to commit anyway. Retyping
+    the number by hand is what cost a commit and usually a pull request after
+    every merge that closed anything, and what let two sessions open `#229` and
+    `#230` for one identical insertion (`PL-QTSB`).
 
     Where no commit on the base names one, the answer depends on whether the
     checkout could have seen it. Only a complete history makes "no commit
@@ -770,10 +770,9 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
         if number is not None:
             report.advisories.append(
                 f"{item.identifier}: marked done on `{closures.base}` and records no `pr`, "
-                f"but #{number} is recoverable from its merge commit; "
-                f"`docket record {number} --merge <the merge commit>` writes it. A job at "
-                f"merge time normally has already, so this advisory means that did not "
-                f"happen - look at why before writing the field by hand"
+                f"but #{number} is recoverable from its merge commit; `docket record` "
+                f"writes it - and every other number the base is owed - in one pass. Let "
+                f"it ride the commit you are already making rather than composing one"
             )
         elif closures.shallow is False:
             report.errors.append(
