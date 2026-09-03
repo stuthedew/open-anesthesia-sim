@@ -13,7 +13,15 @@ check: sync
 # it needs the virtualenv the gate above runs in. It reads `warn_unused_ignores`
 # over the two test trees `files` excludes, which nothing else evaluates.
 	uv run python tools/ignore_check.py
-	uv run pytest
+# `--cov=` takes the dotted module, never a path, and the run is the whole
+# suite: coverage of `core/` is the union of everything that exercises it, so
+# the threshold is only reachable from a whole-suite run. Deliberately not in
+# `[tool.pytest.ini_options] addopts` nor in a `[tool.coverage]` table - either
+# would apply the threshold to the scoped `uv run pytest tests/unit/test_x.py`
+# a session runs while iterating, which would fail for a reason unrelated to
+# the change under it. Measured 2026-09-03: 92.8 s with the flag against
+# 92.4 s without, so the gate is free. `PL-22Z3`.
+	uv run pytest --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
 	bin/docket check
 	python3 tools/doc_check.py check
 # Bare `python3` for the reason `doc_check.py` above uses it: standard library

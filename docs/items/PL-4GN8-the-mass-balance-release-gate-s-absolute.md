@@ -89,3 +89,19 @@ bound, the numeric tolerance is stated as a relative one with the reasoning
 for its value, and `docs/MODEL.md`'s release-gate sentence says the same
 thing the tests now assert - so that changing a dial in a test cannot change
 what the gate certifies.
+
+**What v0.4.1 does to this (added 2026-09-03).** The fix is method-independent: asserting
+`relative_error` rather than `absolute_error_l` is right whatever solves the
+step, and `AgentSimulationValidator` already exports both. What must be
+re-measured are the two tables the brief carries - the per-dial absolute errors
+and the "first exceeds 1e-12 L at t = 6212 s" horizon - both taken on the
+shipped split. `PL-P0BB` also notes that mass conservation "stops being
+structural, deliberately" under the exact step and that `PL-GS5X` must state the
+new tolerance's derivation, so this item's tolerance and that one's have to
+agree.
+
+**Worth doing before `PL-GS5X`, not after.** The conservation gate is the check
+most likely to move when the exhaust integral is recomputed under coupled
+dynamics. Making it dial-independent first means it certifies a fixed thing
+across the method change, instead of being re-tuned to whatever the new method
+produces - which is the difference between a gate and a rubber stamp.

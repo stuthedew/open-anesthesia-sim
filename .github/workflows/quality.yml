@@ -50,7 +50,14 @@ jobs:
       # No paths: `[tool.mypy] files` in pyproject.toml names what the gate
       # covers, and says why `tests/` is not in it.
       - run: uv run mypy
-      - run: uv run pytest
+      # The same invocation as `make check`'s pytest line, and it has to stay
+      # the same: `core/` is at 100% of statements and branches, and this is
+      # what keeps it there. See the comment in the Makefile for why the
+      # threshold is on the command line rather than in a config table.
+      # `drift.yml` deliberately keeps its bare `uv run pytest`: a coverage
+      # failure there would report as a dependency break, which is the opposite
+      # of what that workflow is for. `PL-22Z3`.
+      - run: uv run pytest --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
       - run: bin/docket check
       - run: uv run python tools/doc_check.py check
       - run: uv run python tools/contrast_check.py
