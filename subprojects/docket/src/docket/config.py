@@ -53,6 +53,14 @@ class Config:
     #: requirement off entirely, which is the right default for a project that
     #: does not delegate work and therefore has nothing riding on the field.
     verify_required_from: date | None = None
+    #: The same requirement at the other end of an item's life: an item
+    #: *closed* on or after this date must name a command or a
+    #: `not-delegable` reason, as an error rather than an advisory. Anchored
+    #: to the closure date rather than the capture date on purpose, since
+    #: that is what lets it reach the set `verify_required_from` grandfathers
+    #: - exempt at `ready`, and closing one is the first moment its command
+    #: could be run before being written. `None` leaves it off.
+    verify_required_at_close_from: date | None = None
     #: Classes that make a release a minor version bump rather than a patch.
     minor_classes: tuple[str, ...] = ("feature",)
     #: Every class an item may carry. Empty means "derive it", and the derived
@@ -121,7 +129,7 @@ class Config:
         )
 
 
-def _date(value: object, fallback: date | None) -> date | None:
+def _date(value: object, fallback: date | None, name: str = "verify_required_from") -> date | None:
     """Read a date written either as a TOML date literal or as a quoted string.
 
     Both spellings are accepted because both are natural to write and the
@@ -136,7 +144,7 @@ def _date(value: object, fallback: date | None) -> date | None:
         return value
     if isinstance(value, str):
         return date.fromisoformat(value)
-    raise ValueError(f"verify_required_from: {value!r} is not a date")
+    raise ValueError(f"{name}: {value!r} is not a date")
 
 
 def _tuple(value: object, fallback: tuple[str, ...]) -> tuple[str, ...]:
@@ -170,6 +178,11 @@ def load(root: Path) -> Config:
         ),
         verify_required_from=_date(
             section.get("verify_required_from"), defaults.verify_required_from
+        ),
+        verify_required_at_close_from=_date(
+            section.get("verify_required_at_close_from"),
+            defaults.verify_required_at_close_from,
+            "verify_required_at_close_from",
         ),
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
         known_classes=_tuple(section.get("known_classes"), defaults.known_classes),

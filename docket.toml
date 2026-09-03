@@ -64,6 +64,31 @@ untriaged_stale_days = 14
 # actually been run.
 verify_required_from = 2026-08-30
 
+# The same requirement at the other end of an item's life, and the half that
+# actually drains the set above (PL-J49T). An item closed on or after this date
+# must name a command or a `not-delegable` reason, as an **error**.
+#
+# Keyed on the closure date rather than the capture date, which is what lets it
+# reach the grandfathered items at all: they are exempt at `ready` and stay
+# exempt however long they sit there, so until now the only thing asking for
+# their command was a grooming advisory - a signal that works if somebody reads
+# it, and on 2026-09-03 a session read "1 advisory" across several runs without
+# reading the advisory. Closing an item is the first moment its command can be
+# written having been run, which is the objection that earned the
+# grandfathering; at that moment the objection has lapsed, so the exemption
+# lapses with it.
+#
+# An error rather than an advisory because the decidable half and the judgment
+# half separate cleanly here: whether the field is present is a yes/no, and only
+# what it should say needs a person. This refuses silence without guessing at
+# the sentence.
+#
+# Set to the day the rule landed, so it touches nothing already closed. The 54
+# done items carrying no command stay as they are, deliberately: backfilling one
+# onto merged work means writing a command with nothing left to run it against,
+# which is precisely the failure PL-5YK8 refused at the other end.
+verify_required_at_close_from = 2026-09-03
+
 # Classes that make a release a minor version bump rather than a patch.
 minor_classes = ["feature"]
 
