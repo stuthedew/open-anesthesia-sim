@@ -329,7 +329,12 @@ the independent-solution test beside it.
 **PL-024 - the venous pool's grip on the first minute.** The one check that
 still reproduced at retirement, and a documentation and presentation gap
 rather than a defect: 1.0 L is the Gas Man reference value and is cited twice
-in `reference_adult.json`, so the number is right and its meaning is unstated.
+in `reference_adult.json`, so the number is the one the reference
+implementation uses and its meaning is unstated. (Amended 2026-09-03: this
+originally read "so the number is right", which is the inference
+`docs/MODEL.md` § "Source hierarchy" now forbids — a tier-3 citation says
+what a program runs on, not that a value was measured. `PL-6Q8N` carries the
+sourcing question for this parameter and the other ten.)
 Its mixing time constant is 60 - V/Q̇ = 12 s at the reference 1.0 L and
 5 L/min, which dominates the displayed mixed-venous value early in wash-in.
 Measured against a near-instant 0.01 L pool, sevoflurane at 5% delivered:
