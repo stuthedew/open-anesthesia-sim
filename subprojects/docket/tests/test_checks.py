@@ -1233,3 +1233,72 @@ def test_genuinely_different_features_are_left_alone() -> None:
     errors = _errors(_item("PL-K7QX", feature="dev-tooling"), _item("PL-BBB2", feature="docket"))
 
     assert not any("differ only in case or separator" in e for e in errors)
+
+
+# The closing half of the same rule. The dates matter to the point being made:
+# `added` sits before `verify_required_from`, so every item below is one the
+# opening gate grandfathers and would never ask for a command.
+CLOSE_CUTOVER = Config(
+    verify_required_from=date(2026, 8, 1), verify_required_at_close_from=date(2026, 8, 20)
+)
+
+
+def test_closing_a_grandfathered_item_demands_the_command_the_ready_gate_never_could() -> None:
+    """The point of the closing gate, and the only reason it is keyed on `closed`.
+
+    An item captured before `verify_required_from` is exempt at `ready` and
+    stays exempt however long it sits there, so nothing but a grooming
+    advisory ever asks it for a command. Closing it is the first moment the
+    command can be written having been run, which is the objection that
+    earned the exemption - so that is where the exemption lapses.
+    """
+    item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 24), pr="48")
+
+    assert _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no `verify:`")
+
+
+def test_closing_an_item_may_record_why_no_command_can_prove_it() -> None:
+    """The same escape the opening gate allows; what is refused is silence."""
+    item = _item(
+        status="done",
+        added=date(2026, 7, 1),
+        closed=date(2026, 8, 24),
+        pr="48",
+        not_delegable="proving it means cutting a release",
+    )
+
+    assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no")
+
+
+def test_an_item_closed_before_the_cutover_is_left_alone() -> None:
+    """History is not backfilled, for the reason the grandfathering exists.
+
+    A command written for work that has already merged has nothing left to run
+    it against, which is the failure the opening gate's exemption avoids. This
+    end of the item's life inherits it.
+    """
+    item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 19), pr="48")
+
+    assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no")
+
+
+def test_a_dropped_item_is_never_asked_what_proved_it() -> None:
+    """Nothing was done, so there is nothing a command could have proved."""
+    item = _item(
+        status="dropped",
+        added=date(2026, 7, 1),
+        closed=date(2026, 8, 24),
+        priority="",
+        effort="",
+        reason="superseded by PL-AAAA",
+    )
+
+    assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no")
+
+
+def test_the_closing_gate_is_off_when_a_project_declares_no_cutover() -> None:
+    """A project that never turned the rule on is not retroactively holding it."""
+    off = Config(verify_required_from=date(2026, 8, 1))
+    item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 24), pr="48")
+
+    assert not _has(analyze([item], TODAY, off).errors, "is done but names no")

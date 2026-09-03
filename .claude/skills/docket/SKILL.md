@@ -492,6 +492,22 @@ Do not treat the advisory as a backlog to clear in one pass: that would mean
 writing commands away from the work, which is how all six of the wrong ones
 above came to exist.
 
+**Closing one is where the exemption ends, and that is an error rather than an
+advisory.** `verify_required_at_close_from` holds any item *closed* on or after
+its date to the same rule, whatever its capture date, so a grandfathered item
+cannot be finished while still saying nothing about what proved it. The
+advisory above asks; this refuses. Nothing about it needs judgment — whether
+the field is present is decidable, and only what it should say is not — which
+is why it is a hard failure and why the advisory was not simply made louder
+(`PL-J49T`).
+
+There is no new burden in it if the command is written where the rule above
+already says to write it: at the moment the item is started, having been run.
+Reaching a close with nothing to record means the command was never run, and
+`not-delegable:` is the honest answer where none can be. Items closed before
+the cutover are untouched, deliberately — backfilling one onto merged work
+means writing a command with nothing left to run it against.
+
 ## Mode: freeze a milestone's debt gate
 
 Triggered by scoping a milestone — scoping is the act that freezes the list.
