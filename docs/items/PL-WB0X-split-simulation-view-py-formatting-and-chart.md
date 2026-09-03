@@ -9,6 +9,7 @@ feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_downsampling.py, tests/unit/test_simulation_view.py, docs/MODEL.md
 added: 2026-08-30
 closed: 2026-09-03
+pr: 263
 verify: uv run pytest tests/unit/test_simulation_view.py && test -f tests/unit/test_formatting.py && uv run pytest tests/unit/test_formatting.py && ! grep -q flet src/anesthesia_sim/app/formatting.py
 ---
 
