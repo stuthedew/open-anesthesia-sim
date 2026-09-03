@@ -3,12 +3,11 @@ id: PL-DHV7
 title: Express compartment concentrations in MAC multiples as a display unit
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, science
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/unit/test_formatting.py
 added: 2026-08-25
-blocked-by: PL-WB0X
 ---
 
 **Problem.** Every compartment is displayed as a percentage of an

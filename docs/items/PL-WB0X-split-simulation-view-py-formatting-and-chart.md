@@ -3,11 +3,12 @@ id: PL-WB0X
 title: 'Split simulation_view.py: formatting and chart series are not the view''s job'
 priority: P1
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_downsampling.py, tests/unit/test_simulation_view.py, docs/MODEL.md
 added: 2026-08-30
+closed: 2026-09-03
 verify: uv run pytest tests/unit/test_simulation_view.py && test -f tests/unit/test_formatting.py && uv run pytest tests/unit/test_formatting.py && ! grep -q flet src/anesthesia_sim/app/formatting.py
 ---
 
@@ -118,3 +119,47 @@ means two items that could are waiting on it, which is the one case
 `docket.toml`'s note about every `P1` carrying a safety class does not cover.
 Dropping it back to `P2` requires unblocking `PL-DHV7` first, or the checker
 fails.
+
+**Outcome (2026-09-03).** Both extractions landed, behavior unchanged.
+`app/simulation_view.py` went from 1265 lines to 1054.
+
+`app/formatting.py` holds `CONCENTRATION_DISPLAY_DECIMALS`,
+`CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, `FLOW_DISPLAY_DECIMALS`,
+`format_percent`, `format_subtitle` and `format_delivered_label`, and imports
+no Flet. `FLOW_DISPLAY_DECIMALS` moved with them although the brief did not
+name it: leaving one displayed-precision constant in the view while the other
+declared the rule would have split the thing `docs/MODEL.md` cites across two
+files. `docs/MODEL.md` § "Displayed precision" now closes on this module, and
+`tests/unit/test_formatting.py` carries the four `format_percent` tests moved
+out of the view suite plus three new ones - the below-resolution marker is
+rendered from the constant rather than hardcoded, and the two label
+formatters were previously reachable only through a mounted interface.
+
+`app/chart_series.py` holds `MAX_CHART_POINTS_PER_SERIES`, the seven sample
+accessors, `build_series`, `redraw_series` and `redraw_visible_window`. The
+trace-to-quantity pairing that `_refresh_chart_series` used to carry is now
+`SimulationView._plotted_series`, declared beside the traces it pairs, so the
+line and the compartment it stands for are read together rather than in two
+places. `PlottedSeries` names the pair but does **not** enforce it -
+`flet_charts` ships no stubs, so a chart series is `Any` to mypy - and
+`test_chart_traces_stay_bound_to_their_own_compartment` remains the guarantee.
+
+The trace *colors* stayed in `app/simulation_view.py`. `tools/contrast_check.py`
+reads them out of that file with `ast` (it cannot import Flet), so moving them
+would have pulled the accessibility gate into the diff for no gain; they are
+passed to `build_series` as arguments, which was already the shape.
+
+The inline `.1f`, `.6f` and `.3e` format strings were deliberately left alone:
+PL-88GQ (state every displayed decimal count as a presentation decision the
+owner can revise) owns them and is blocked on PL-K9HV, so naming a formatter
+for each here would have prejudged that item's call. Its brief and `verify`
+were repointed at `app/formatting.py` and `tests/unit/test_formatting.py`
+instead.
+
+Four other open items cited symbols this moved and were repointed: PL-88GQ
+above, PL-W3DD (key `SimulationHistorySample` by substance), PL-KCWD
+(`APP_VERSION` falls back to 'unknown'), and PL-043 (whether the vaporizer
+dial should move in real increments).
+
+`PL-B9PY` (decompose `SimulationView` so two runs can be rendered at once) is
+unblocked, and stays at Gate 1 as decided.

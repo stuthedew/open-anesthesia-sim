@@ -249,7 +249,7 @@ KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {
     ("ALVEOLAR_COLOR", "PANEL"): "PL-GVXP",
 }
 
-#: The six chart traces, in the order `_refresh_chart_series` plots them.
+#: The six chart traces, in the order `SimulationView._plotted_series` lists them.
 TRACES: tuple[str, ...] = (
     "CIRCUIT_COLOR",
     "ALVEOLAR_COLOR",
