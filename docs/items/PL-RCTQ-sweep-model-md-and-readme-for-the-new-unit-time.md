@@ -3,7 +3,8 @@ id: PL-RCTQ
 title: Sweep MODEL.md and README for the new unit, time base and run rate
 priority: P2
 effort: S
-status: ready
+status: blocked
+blocked-by: PL-VM40, PL-SN2C, PL-SSBP, PL-CC23, PL-DR1Z, PL-ZRSP, PL-R3KB, PL-W3DD
 classes: docs
 feature: teachable-case
 touches: docs/MODEL.md, README.md
@@ -43,3 +44,26 @@ Write the sweep so it survives: state the new unit, time base and run rate in
 their own terms, and cite § "Displayed precision" for the resolution rather than
 restating the derivation. A restated derivation is a second thing to keep true,
 and this one is about to change.
+
+**Blocked on the milestone it sweeps (2026-09-04, project owner, deciding
+`PL-5WFS`).** Sequencing only. A documentation sweep of v0.4.0 cannot be
+written before v0.4.0, and this item's own "Done when" says so twice: it
+requires "the fixed-step and no-catch-up guarantees from PL-VM40", and that
+`python3 tools/doc_check.py candidates --base <ref>` "has been run over the
+milestone's diff" — a diff that does not exist until the milestone does.
+Before this edit `bin/docket next` offered it 6th of 9, startable today.
+
+**Which ids, and the rule for maintaining the list.** The blockers are the
+open `teachable-case` items that change something this sweep must describe,
+drawn from this brief's own "Problem" and "Where" rather than from a judgment
+about the milestone: `PL-VM40` (the fixed-step guarantees), `PL-SN2C` (the run
+rate), `PL-SSBP` (the case-length time base), `PL-CC23` (the vertical scale),
+`PL-DR1Z` (the recorded input timeline), `PL-ZRSP` (the F_A/F_I trace and its
+constant-F_I caveat), `PL-R3KB` (the agent-change confirmation) and `PL-W3DD`
+(the history record's shape, § "Interface boundary"). `PL-011` is deliberately
+absent: a memory bound is not an assertion either document makes.
+
+An item added to this milestone that changes what `docs/MODEL.md` or
+`README.md` assert belongs in this list. `docket check` raises "every blocker
+has closed; it is ready to promote" when the last one lands, which is exactly
+when this sweep becomes writable.
