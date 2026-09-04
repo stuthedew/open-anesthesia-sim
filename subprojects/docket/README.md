@@ -35,7 +35,7 @@ docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
 docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
-docket stranded              # items that exist only on a branch
+docket stranded              # work that exists only on a branch
 docket record                # write every pull request number the base is owed
 docket check                 # validate the store; exits non-zero on errors
 ```
@@ -75,8 +75,44 @@ The answer is bounded by the refs the checkout holds, so the count of refs read
 is part of the output, and a checkout that can read none declines rather than
 reporting a clean store. Read the other way, the report answers whether a
 branch is safe to delete: a branch named nowhere in it carries no item the
-default branch lacks. That claim is about items only. It says nothing about
-code on the branch, which is not what it read.
+default branch lacks. That claim is about items only — what a branch carries
+outside the store is the next section's question, and `docket stranded` prints
+both answers together.
+
+### The loss that is not an item: a commit pushed after the merge
+
+A pull request merges the head it was opened against. A commit pushed to the
+same branch afterwards is merged by nothing: no conflict, no red check, no
+advisory, and a default branch missing work everyone believes landed. Observed
+2026-09-04 on `#284`, whose follow-up `#286` says it plainly — "that pull
+request merged at its first commit, so the behavior change pushed to the same
+branch afterwards never landed". The commit carried a rule the project owner
+had asked for in that session, so `CLAUDE.md`'s "a behavior change takes effect
+in the session that asks for it" was quietly void.
+
+It surfaced only because that session happened to check the merge file by file.
+`stranded` would have reported the item on the branch; nothing at all watched
+the skill edit beside it, which was the actual behavior change.
+
+`docket stranded` reports it now. **The rule is a branch whose introduced
+content is partly on the base and partly not** — a branch nobody merged has
+landed nothing and is ordinary work in flight, and a branch merged whole never
+reaches the read. The report names the outstanding paths, the commit carrying
+them and the `git checkout` line that recovers each.
+
+**The branch ref is the only evidence, and that is worth stating because the
+obvious alternative does not work.** GitHub freezes `refs/pull/<n>/head` when
+the pull request closes, so the commit pushed after the merge appears in no
+pull-request ref and no merge-time check could see it. Measured against this
+repository: all 311 pull refs survive their branches being deleted, and
+comparing each merged head against the commit that landed it finds no
+discrepancy in any of the 204 — the loss is invisible from that side. What does
+survive is the branch, precisely because the push recreates it.
+
+It can raise a false alarm, in the direction chosen deliberately. Two sessions
+running `docket record` write the same tool-dictated line, so one branch can
+hold a blob identical to one the other landed and read as partly landed while
+it is simply live. That costs a glance; the silent direction costs the work.
 
 ### The other loss: a merge that deletes an item nothing deleted
 

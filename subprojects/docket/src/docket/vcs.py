@@ -293,15 +293,47 @@ def _unmerged_commits(refs: list[str], base: str, root: Path, run: Runner) -> _W
     return _Walk(last=last, ids=ids, staked=staked, opened=opened, unbounded=unbounded)
 
 
-def _work_already_on_base(ref: str, fork_point: str, base: str, root: Path, run: Runner) -> bool:
-    """Whether everything the ref adds is content the default branch has held.
+def _base_blobs(base: str, root: Path, run: Runner) -> frozenset[str]:
+    """Every blob the default branch's history holds, read in one walk.
 
-    Containment answers this for a merge commit and never for a squash: the
-    squash writes one new commit carrying the branch's *content* and none of
-    its commits, so `--merged` calls the branch unmerged for as long as its ref
-    survives, and every id leading one of its subjects reports in flight
-    forever. GitHub deleting the head branch on merge is what usually hides
-    that; a long-lived checkout that does not prune is where it bites.
+    The question each caller actually asks is per blob - has the default
+    branch ever held this content - and `git log --find-object` answers it
+    one blob at a time, walking the whole history for each. Listing the
+    objects reachable from the base answers it for all of them at once, and
+    the two agree by construction: a blob some commit on the base introduced
+    is a blob some tree on the base holds.
+
+    Measured on this repository at 425 commits: 17 `--find-object` walks cost
+    0.62 s and this costs 0.033 s, so the *complete* split below is cheaper
+    than the short-circuited all-or-nothing test it replaced.
+
+    A truncated clone reaches fewer commits and so returns fewer blobs, which
+    reads as "not landed" - the same safe direction `_landing_split` documents
+    and the same one `--find-object` gave.
+    """
+    found: set[str] = set()
+    for line in run(["rev-list", "--objects", base], root).splitlines():
+        oid, _, path = line.partition(" ")
+        # Only entries carrying a path are blobs or trees; a bare oid is a
+        # commit. Trees cost a membership test that can never match, since
+        # nothing compared against this set is a tree.
+        if path.strip():
+            found.add(oid.strip())
+    return frozenset(found)
+
+
+def _landing_split(
+    ref: str, fork_point: str, base_blobs: frozenset[str], root: Path, run: Runner
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The paths a ref introduces, split into what the base holds and what it does not.
+
+    Containment answers "has this branch landed" for a merge commit and never
+    for a squash: the squash writes one new commit carrying the branch's
+    *content* and none of its commits, so `--merged` calls the branch unmerged
+    for as long as its ref survives, and every id leading one of its subjects
+    reports in flight forever. GitHub deleting the head branch on merge is what
+    usually hides that; a long-lived checkout that does not prune is where it
+    bites.
 
     So the question asked here is about content rather than ancestry: of the
     blobs the ref adds to the tree it forked from, has the default branch held
@@ -309,13 +341,19 @@ def _work_already_on_base(ref: str, fork_point: str, base: str, root: Path, run:
     hold, never how the commits got there - pointed the other way, and it
     answers a rebase or a cherry-pick the same way it answers a squash.
 
-    **The default branch's history, not its tip.** Comparing against `base`
-    itself would call a squash-merged branch unlanded again the moment anyone
-    edited a file it had touched - which in this store is what the next triage
-    pass does to every item a branch captured, so the branch would be back to
-    reporting in flight forever one merge later. `git log --find-object` asks
-    instead whether the blob was ever on the default branch, and that does not
-    decay.
+    **The default branch's history, not its tip.** Comparing against the base
+    tree alone would call a squash-merged branch unlanded again the moment
+    anyone edited a file it had touched - which in this store is what the next
+    triage pass does to every item a branch captured, so the branch would be
+    back to reporting in flight one merge later. Asking whether the blob was
+    ever on the default branch does not decay.
+
+    **Both sides are returned, because two readers need opposite halves.**
+    `_work_already_on_base` needs to know the outstanding side is empty;
+    `orphaned` needs to know neither side is, which is what a branch looks like
+    when its pull request took part of its work and something pushed the rest
+    afterwards. Computing them separately would be two spellings of one
+    question, and two spellings are two answers waiting to disagree.
 
     Two silences read as "not landed", which is the safe direction. A ref that
     adds no blob at all - one with no commits yet, one that only deletes, or
@@ -325,22 +363,35 @@ def _work_already_on_base(ref: str, fork_point: str, base: str, root: Path, run:
     as merged would hand its item to a second session, which is the collision
     the whole read exists to prevent.
     """
-    introduced: list[str] = []
+    landed: list[str] = []
+    outstanding: list[str] = []
     for line in run(
         ["diff", "--raw", "--no-renames", "--no-abbrev", fork_point, ref, "--"], root
     ).splitlines():
         # `:<src mode> <dst mode> <src blob> <dst blob> <status>\t<path>`. The
-        # path is dropped rather than parsed - a blob is what is asked about,
-        # and a path can contain anything including the tab that precedes it.
-        fields = line.split("\t", 1)[0].split()
+        # fields end at the first tab, and everything after it is the path -
+        # which can itself contain a tab, so it is taken whole rather than
+        # split. git quotes a path it cannot print literally, and such a path
+        # is reported the way git wrote it.
+        head, _, path = line.partition("\t")
+        fields = head.split()
         if len(fields) == 5 and set(fields[3]) != {"0"}:
-            introduced.append(fields[3])
-    if not introduced:
-        return False
-    return all(
-        run(["log", "-1", "--format=%H", f"--find-object={blob}", base], root).strip()
-        for blob in introduced
-    )
+            (landed if fields[3] in base_blobs else outstanding).append(path or fields[3])
+    return tuple(landed), tuple(outstanding)
+
+
+def _work_already_on_base(split: tuple[tuple[str, ...], tuple[str, ...]]) -> bool:
+    """Whether everything a ref adds is content the default branch has held.
+
+    `_landing_split` carries the reasoning; this is the all-or-nothing reading
+    of it, kept as a named rule rather than spelled at the one call site so
+    that `orphaned`'s reading of the same split sits beside it and the two can
+    be compared. A ref introducing nothing has an empty landed side and reads
+    as not landed, which is what keeps a branch with no commits yet in the
+    report.
+    """
+    landed, outstanding = split
+    return bool(landed) and not outstanding
 
 
 @dataclass(frozen=True)
@@ -352,9 +403,20 @@ class _Refs:
     its own tracking ref - is the one reported for it.
     """
 
+    #: How many refs the listing returned before the merged ones were removed.
+    #: The count rather than the names, because the only caller needs to tell
+    #: "git listed nothing" - no git, no repository - from "every ref it listed
+    #: has landed", and those are opposite answers that an empty `candidates`
+    #: reports identically.
+    listed: int
     candidates: list[str]
     unlanded: list[str]
     unreadable: set[str]
+    #: Per unlanded ref, the paths it introduces that the base already holds
+    #: and the paths it does not. Kept because deciding a ref is unlanded
+    #: computes it, and `orphaned` would otherwise ask git the same question a
+    #: second time to find out *which* half was which.
+    landing: dict[str, tuple[tuple[str, ...], tuple[str, ...]]]
 
 
 def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) -> _Refs:
@@ -372,11 +434,8 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
     merged = {
         name.strip() for name in run([*args, f"--merged={base}"], root).splitlines() if name.strip()
     }
-    candidates = [
-        name.strip()
-        for name in run(args, root).splitlines()
-        if name.strip() and name.strip() not in merged
-    ]
+    listing = [name.strip() for name in run(args, root).splitlines() if name.strip()]
+    candidates = [name for name in listing if name not in merged]
 
     # A truncated clone is the normal state of an agent session's container,
     # and a ref with no readable merge-base is one whose commits this checkout
@@ -393,13 +452,26 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
     # disagree about which commit the branch left from.
     unlanded: list[str] = []
     unreadable: set[str] = set()
+    landing: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {}
+    # One walk of the base's objects, before the loop rather than inside it:
+    # the question is per blob and the answer is the same set for every ref.
+    base_blobs = _base_blobs(base, root, run)
     for name in candidates:
         fork_point = run(["merge-base", base, name], root).strip()
         if not fork_point:
             unreadable.add(name)
-        elif not _work_already_on_base(name, fork_point, base, root, run):
+            continue
+        split = _landing_split(name, fork_point, base_blobs, root, run)
+        if not _work_already_on_base(split):
             unlanded.append(name)
-    return _Refs(candidates=candidates, unlanded=unlanded, unreadable=unreadable)
+            landing[name] = split
+    return _Refs(
+        listed=len(listing),
+        candidates=candidates,
+        unlanded=unlanded,
+        unreadable=unreadable,
+        landing=landing,
+    )
 
 
 def branches_in_flight(
@@ -1736,3 +1808,156 @@ def lost(
         if identifier not in present
     )
     return LostReport(items=gone, ref=ref, truncated=is_shallow(root, runner=run) is not False)
+
+
+@dataclass(frozen=True)
+class OrphanedCommit:
+    """A commit on a branch carrying content the default branch does not hold."""
+
+    commit: str
+    subject: str
+    paths: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class OrphanedBranch:
+    """A branch the default branch took part of and not the rest.
+
+    `landed` is what makes this different from an ordinary branch in flight,
+    and it is the whole of the evidence. A branch nobody has merged has landed
+    nothing; a branch merged whole is not reported here at all, because
+    `_unlanded_refs` already excluded it. Both sides non-empty means the base
+    holds some of what this branch introduced and not the rest - which is what
+    a branch looks like after its pull request merged and something pushed to
+    it afterwards.
+    """
+
+    ref: str
+    landed: tuple[str, ...]
+    outstanding: tuple[str, ...]
+    commits: tuple[OrphanedCommit, ...]
+
+
+@dataclass(frozen=True)
+class OrphanedReport:
+    """Work that exists only on a branch whose pull request has already merged.
+
+    The counterpart to `StrandedReport`, asked of the tree instead of the
+    store. That one finds an *item* nobody merged, by comparing ids across
+    trees; this finds any *content* nobody merged, and the asymmetry it closes
+    is the finding in `PL-3D2M`: the queue had a stranded-work detector and the
+    rest of the repository had none, so a dropped commit that touched
+    `docs/items/` surfaced in the next session and one that touched a skill, a
+    rule or `src/` did not.
+
+    `refs_read` and `unreadable` carry the same meaning they do for
+    `StrandedReport` and `FlightReport`: what was compared, and which refs the
+    checkout could not compare, so a clean answer from a container holding two
+    refs is not mistaken for one from a checkout holding twenty.
+    """
+
+    branches: tuple[OrphanedBranch, ...] = ()
+    refs_read: int = 0
+    unreadable: tuple[str, ...] = ()
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def _commits_touching(
+    ref: str, base: str, paths: frozenset[str], root: Path, run: Runner
+) -> tuple[OrphanedCommit, ...]:
+    """The ref's own commits that touched one of `paths`, newest first.
+
+    Attribution is best-effort and the report says so: it names which commit a
+    reader should look at, while the paths themselves come from the tree
+    comparison and do not depend on this walk. A merge commit lists no paths of
+    its own under `--name-only`, which is the wanted behaviour - a merge of the
+    default branch into a branch introduces no work to leave behind.
+
+    `\\x1e` opens each record so a subject containing a newline cannot be read
+    as the start of another commit.
+    """
+    output = run(["log", "--format=%x1e%H%x1f%s", "--name-only", f"^{base}", ref, "--"], root)
+    found: list[OrphanedCommit] = []
+    for record in output.split("\x1e"):
+        if not record.strip():
+            continue
+        header, _, body = record.partition("\n")
+        commit, _, subject = header.partition("\x1f")
+        touched = tuple(
+            line.strip() for line in body.splitlines() if line.strip() and line.strip() in paths
+        )
+        if touched:
+            found.append(
+                OrphanedCommit(commit=commit.strip(), subject=subject.strip(), paths=touched)
+            )
+    return tuple(found)
+
+
+def orphaned(
+    root: Path, *, include_remote: bool = True, runner: Runner | None = None
+) -> OrphanedReport:
+    """Branches carrying work the default branch took only part of.
+
+    **The failure it detects.** A pull request merges; the session pushes one
+    more commit to the same branch afterwards. Nothing merges a merged pull
+    request a second time, so that commit lands nowhere - and it is silent in
+    every direction that would normally catch a mistake. There is no conflict,
+    no red check and no advisory; the branch reads as merged, the pull request
+    reads as merged, and the next session starts from a default branch missing
+    work everyone believes landed. Observed 2026-09-04 on `#284`, whose
+    follow-up `#286` says it outright: "That pull request merged at its first
+    commit, so the behavior change pushed to the same branch afterwards never
+    landed."
+
+    **Why the branch ref is the evidence and the pull request is not.** GitHub
+    freezes `refs/pull/<n>/head` when the pull request closes, so the commit
+    pushed after the merge appears in no pull-request ref and no merge-time
+    check could see it. Measured against this repository: all 311 pull refs
+    survive branch deletion, and comparing each merged head against the commit
+    that landed it finds no discrepancy in any of the 204 - the loss is not
+    visible from that side at all. What does survive is the branch, precisely
+    because the post-merge push recreates or keeps it.
+
+    **The rule, and why it is this one.** A branch whose introduced content is
+    partly on the base and partly not. A branch nobody merged has landed
+    nothing and is ordinary work in flight; a branch merged whole never reaches
+    here. Measured on this repository the day it was written: the one live
+    branch split 0 landed against 17 outstanding, which is the clean signature
+    of work in progress, so the rule was silent on the only ref it had to be
+    silent on.
+
+    **What it can get wrong, in the direction it chooses to get wrong.** Two
+    sessions running `bin/docket record` write the same tool-dictated line, so
+    one branch can hold a blob identical to one the other landed and read as
+    partly landed while it is simply live. That is a false alarm costing a
+    glance, against a false silence costing the work - and this check exists
+    because the silent direction is the expensive one. The reader decides,
+    the way they do for `flight` and `stranded`.
+    """
+    run = runner or _run_git
+    base = default_base(root, runner=run)
+    refs = _unlanded_refs(base, root, run, include_remote=include_remote)
+    if not refs.listed:
+        # No git, no repository, or a listing git could not answer. An empty
+        # result would otherwise read as "every branch is accounted for",
+        # which is the confident wrong answer this module refuses to give.
+        return OrphanedReport(declined="no branch refs this checkout can read")
+    branches = [
+        OrphanedBranch(
+            ref=name,
+            landed=refs.landing[name][0],
+            outstanding=refs.landing[name][1],
+            commits=_commits_touching(name, base, frozenset(refs.landing[name][1]), root, run),
+        )
+        for name in refs.unlanded
+        if all(refs.landing.get(name, ((), ())))
+    ]
+    return OrphanedReport(
+        branches=tuple(branches),
+        refs_read=len(refs.candidates),
+        unreadable=tuple(sorted(refs.unreadable)),
+    )

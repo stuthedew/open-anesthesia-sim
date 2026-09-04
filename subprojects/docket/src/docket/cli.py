@@ -35,6 +35,7 @@ from .store import find_item, new_id, read_items, write_item
 from .vcs import (
     CURRENT,
     FlightReport,
+    OrphanedReport,
     StrandedReport,
     branch_state,
     branches_in_flight,
@@ -45,6 +46,7 @@ from .vcs import (
     files_in_flight,
     lost,
     merged_pull_requests,
+    orphaned,
     precedence,
     stranded,
     tags,
@@ -135,6 +137,19 @@ def _stranded(
     except ValueError:
         return None
     return stranded(root, {item.identifier for item in items}, items_dir=tracked)
+
+
+def _orphaned(root: Path, args: argparse.Namespace) -> OrphanedReport | None:
+    """Work a branch carries that its own pull request left behind, or `None`.
+
+    Unlike `_stranded` this needs neither the store nor a store inside the
+    repository: the question is about the tree as a whole, which is the point
+    of it. Only `--no-git` turns it off, for the same reason it turns the rest
+    off - a caller that has said not to ask git must not be asked git.
+    """
+    if getattr(args, "no_git", False):
+        return None
+    return orphaned(root)
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -253,6 +268,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         _plan(root, items, config),
         _stranded(root, directory, items, args),
         config.workflow_paths,
+        _orphaned(root, args),
     )
     if rendered:
         print(rendered)
@@ -899,7 +915,14 @@ def cmd_wave(args: argparse.Namespace) -> int:
 
 
 def cmd_stranded(args: argparse.Namespace) -> int:
-    """Items that exist on a branch and nowhere this checkout's store can see.
+    """Work that exists on a branch and nowhere this checkout can otherwise see.
+
+    Two reads, printed together because a reader asking "is anything only on a
+    branch" means both and would not think to run two commands. `stranded`
+    answers it for items, by id across trees; `orphaned` answers it for
+    everything else, by content across the base - which is the half that was
+    missing while a dropped commit touching a skill or `src/` went unreported
+    (`PL-3D2M`).
 
     Exits zero whether or not it finds any: an item on a branch that is still
     being worked is the normal case, and the command cannot tell that from an
@@ -913,6 +936,10 @@ def cmd_stranded(args: argparse.Namespace) -> int:
         print("branch detection is off (`--no-git`), so nothing was read")
         return 0
     print(render.format_stranded(report))
+    left = _orphaned(root, args)
+    if left is not None:
+        print()
+        print(render.format_orphaned(left))
     return 0
 
 
@@ -1184,7 +1211,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="say nothing unless the branch is behind, for a caller that speaks unasked",
     )
     branch_cmd.set_defaults(func=cmd_branch)
-    add("stranded", "items that exist only on a branch").set_defaults(func=cmd_stranded)
+    add("stranded", "work that exists only on a branch").set_defaults(func=cmd_stranded)
 
     record = add("record", "write the pull request number onto the closures owed one")
     record.add_argument(
