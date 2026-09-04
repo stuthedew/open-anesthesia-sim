@@ -1,17 +1,14 @@
 ---
 id: PL-X3WZ
 title: A commit that only annotates an item's brief marks it IN FLIGHT, so docket next hides an item nobody is working
-status: untriaged
+status: needs-decision
 added: 2026-09-03
+priority: P2
+effort: M
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/SKILL.md
 ---
-
-**Problem.** A commit that only annotates an item's brief marks it IN FLIGHT, so docket next hides an item nobody is working
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `docket flight` recovers in-flight state by parsing commit
 subjects for item ids, and `CLAUDE.md` requires every commit subject to lead
@@ -47,6 +44,15 @@ surface the same mark. `.claude/skills/docket/SKILL.md` documents the trade the
 mark makes ("an abandoned branch and a live session look alike") and would need
 the annotation case added to it.
 
+**Decision needed.** Whether the in-flight signal comes from the diff or from
+the commit subject. Recommended: the diff. It asks nothing of a session, so it
+cannot be forgotten the way a marker convention can, and it also classifies
+`bin/docket new`'s capture commits correctly for free. Take the subject marker
+only if the diff read measures too expensive against `PL-PGY4`'s numbers - the
+candidate pool is already the slow half of `docket check` - and note that a
+convention a session must remember is exactly what `PL-CP74` records failing in
+the opposite direction.
+
 **Approach, not yet decided.** Two candidates, and the difference is whether
 the signal comes from the diff or from the subject:
 
@@ -67,3 +73,9 @@ it needs nothing of the session. Worth checking against `PL-CP74`
 (housekeeping work carries no item id, so the guard is blind to it) - that item
 is the same guard failing in the opposite direction, and one design may answer
 both.
+
+**Done when.** A commit that only records a note into an item's brief no
+longer marks that item `IN FLIGHT`, and a commit carrying its implementation
+still does; `docket next` offers the annotated item on the branch that
+annotated it. Whichever route is taken, `.claude/skills/docket/SKILL.md`'s
+statement of the trade the mark makes says what the mark now means.
