@@ -85,3 +85,9 @@ rather than on the blocker's. `PL-9K7K` records why the state changed: `docket
 next` ranked this first among the v0.4.0 items on `P1`/`S` alone, which the
 ranking cannot reconcile with a sentence in a brief - so every session asking
 what to do next was pointed at the one item its own brief defers.
+
+**Block cleared 2026-09-03.** `PL-WB0X` merged as `#263`, so the formatters
+and the chart-series assembly are already in `app/formatting.py` and
+`app/chart_series.py`. The paragraph above is kept as the record of why this
+waited; it no longer holds. Recovered from `origin/claude/what-next-rsmqeu`,
+which was abandoned without a pull request.

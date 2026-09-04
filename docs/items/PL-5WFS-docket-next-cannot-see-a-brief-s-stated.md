@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: subprojects/docket/src/docket/plan.py, docs/items/
 added: 2026-09-02
 closed: 2026-09-04
+pr: 292
 verify: bin/docket check && grep -q '^blocked-by: PL-VM40' docs/items/PL-SN2C-add-the-playback-multiplier-as-steps-per-tick.md
 ---
 

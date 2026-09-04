@@ -1,15 +1,16 @@
 ---
 id: PL-THVN
 title: PL-011's history sizing assumes six flat floats per sample, which PL-W3DD's per-substance mapping invalidates inside the same milestone
-status: done
 priority: P2
 effort: S
+status: done
 classes: docs
 feature: teachable-case
 touches: docs/items/PL-011-bound-the-controller-s-concentration-history.md, docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
-verify: python3 tools/doc_check.py check && grep -q '^blocked-by: PL-W3DD' docs/items/PL-011-bound-the-controller-s-concentration-history.md
 added: 2026-09-03
 closed: 2026-09-04
+pr: 292
+verify: python3 tools/doc_check.py check && grep -q '^blocked-by: PL-W3DD' docs/items/PL-011-bound-the-controller-s-concentration-history.md
 ---
 
 **Problem.** `PL-011` (bound the controller's concentration history) sizes the
