@@ -2169,8 +2169,8 @@ consecutive runs are comparable too.
 
 **A trace above the ceiling is named, not left to look like a plateau.** A
 fixed ceiling can be exceeded where a dial-maximum one could not, and the
-setting that exceeds it is a technique rather than an edge case: sevoflurane's
-8% dial is 4.00 ×MAC and is the standard inhalational-induction setting. A
+setting that exceeds it is in common use rather than an edge case: sevoflurane's
+8% dial is 4.00 ×MAC and is a common inhalational-induction setting. A
 clipped trace draws as a horizontal line at the top of the frame, and a
 horizontal line is what a plateau looks like — so a reader would conclude the
 concentration stopped rising at 3 ×MAC when the model says it did not, which

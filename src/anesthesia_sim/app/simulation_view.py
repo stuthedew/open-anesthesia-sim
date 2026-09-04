@@ -192,9 +192,9 @@ NO_TRACES_SHOWN_TEXT = (
 # Said when a drawn trace goes above the top of the plot, naming which.
 #
 # A fixed axis can be exceeded, and `CHART_AXIS_TOP_MAC` is exceeded by a
-# technique rather than by an edge case: sevoflurane's 8% dial is 4.00 MAC and
-# is the standard inhalational-induction setting, so the circuit trace leaving
-# the frame is a thing a lesson will do on purpose. What must not happen is
+# setting in common use rather than by an edge case: sevoflurane's 8% dial is
+# 4.00 MAC and is a common inhalational-induction setting, so the circuit trace
+# leaving the frame is a thing a lesson will do on purpose. What must not happen is
 # that it leave *quietly* — a trace clipped at the ceiling draws as a
 # horizontal line, and a horizontal line is what a plateau looks like. A
 # reader would conclude the concentration had stopped rising at 3 MAC, which
@@ -2017,7 +2017,7 @@ class SimulationView:
 
         The axis is fixed at `CHART_AXIS_TOP_MAC`, so unlike the old
         dial-maximum ceiling it can be exceeded — and the setting that
-        exceeds it, sevoflurane at 8%, is a technique rather than an
+        exceeds it, sevoflurane at 8%, is in common use rather than an
         accident. A clipped trace draws as a horizontal line at the
         ceiling, which is indistinguishable from a plateau, so leaving
         this unsaid would let a reader conclude the concentration stopped

@@ -9,8 +9,10 @@ feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_simulation_view.py, tests/unit/test_formatting.py, docs/MODEL.md, README.md, ROADMAP.md
 added: 2026-08-25
 closed: 2026-09-04
+pr: 319
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_axis_top_is_the_same_mac_multiple_for_every_agent' tests/unit/test_simulation_view.py
 ---
+
 **Problem.** The chart's `max_y` is the agent's
 `max_delivered_concentration_percent` - 8% for sevoflurane, 5% for isoflurane, 18%
 for desflurane. A sevoflurane case run at 1 MAC therefore occupies the bottom
@@ -135,7 +137,7 @@ room for overpressure.
 
 **One failure mode this change introduced, and its guard.** A dial-maximum
 ceiling could not be exceeded; a fixed one can, and sevoflurane at 8 % is
-4.00 MAC and is the standard inhalational-induction setting. A clipped trace
+4.00 MAC and is a common inhalational-induction setting. A clipped trace
 draws as a horizontal line, which is what a plateau looks like, so the chart
 names the compartments above the ceiling and says the readouts are unclipped.
 The comparison is against the displayed resolution rather than against zero,
