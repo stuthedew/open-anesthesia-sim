@@ -122,6 +122,61 @@ $$
 
 Wall-clock time may schedule interface updates, but it must never be used as simulation time.
 
+#### Simulated time is a count of steps, not a running total
+
+A run takes one step size and keeps it for its whole length. Simulated time
+is the number of completed steps times that step — one multiplication,
+rounded once — and never a total accumulated a step at a time.
+
+The two agree to about 35 ns over a four-hour run at the shipped 0.1 s step,
+far below anything displayed, so what the product buys is not accuracy. It
+is path-independence: the product is a function of how far the run has gone,
+while a running total is a function of the order and number of the additions
+that reached it. Ten steps of 0.1 s sum to 0.9999999999999999 and multiply
+to 1.0.
+
+A step differing from the one a run has already taken is refused as a
+`SimulationConfigurationError` rather than added to the count. The product
+needs a single step to multiply by, and a history recorded at two cadences
+has a sample spacing that is not a constant of the run — which every reader
+that maps a recorded sample index to a time assumes it is. Reset clears the
+count and the step together, so a fresh run may take a different one.
+
+#### The reproducibility guarantee
+
+**A run is a function of its inputs and of the number of steps taken, and of
+nothing else.** The interface schedules its ticks with the wall clock, but
+how many steps a tick takes is fixed: no tick takes extra steps to make up
+simulated time a slow tick lost, and the run loop reads no clock. A machine
+that wakes the loop late, drops a frame, or runs the whole session slowly
+therefore produces a run that reaches a given step *later in real time* and
+is identical in every recorded sample. It runs slower; it does not run
+differently.
+
+So, given the same initial state, parameters, step size, setting changes and
+event ordering, two runs taken to the same step count produce **element-wise
+identical** recorded histories and snapshots — identical, not agreeing
+within a tolerance — and recorded sample *n* is at simulated time *n* times
+the step in both. This is the property a comparison of one run against
+another rests on, including the planned comparison of a branched run against
+the run it branched from at every sample they share.
+
+Four things it does not cover, none of them a defect:
+
+- **A different step size.** Two runs at different steps are two numerical
+  solutions of the same equations, and "Step-refinement test" is what bounds
+  the distance between them.
+- **A different model version.** The guarantee holds within one version of
+  the equations and one parameter set, which is why both are versioned.
+- **A different platform.** Addition, multiplication and division are
+  correctly rounded and so identical everywhere, but the exponential each
+  compartment's analytic solution calls is a library function whose last bit
+  may differ between platforms, interpreters and math libraries.
+  Reproducibility is claimed for one build, not across all of them.
+- **Elapsed real time.** How long a machine takes to reach step *n*, and how
+  many steps it has reached when a wall-clock minute is up, are properties
+  of the machine and deliberately not of the model.
+
 ### Concentrations
 
 All model concentrations are stored internally as dimensionless partial-pressure-equivalent fractions from 0 through 1.
@@ -1147,7 +1202,11 @@ The implementation must preserve the following invariants:
 - derived concentration fractions remain finite and nonnegative;
 - no compartment creates agent spontaneously;
 - internal transfers remove and add equal amounts;
-- identical runs produce identical state and history;
+- identical runs produce identical state and history, element for element,
+  however the steps were grouped in real time;
+- simulated time is the number of completed steps times the run's step, and
+  a step differing from the one a run has already taken is refused, not
+  counted;
 - changing a setting does not reset stored state;
 - Pause prevents simulation-time advancement;
 - Reset clears dynamic state while preserving settings;
@@ -1547,6 +1606,19 @@ Two runs with identical:
 
 must produce identical snapshots and histories.
 
+Identical means element for element — every recorded sample of one run equal
+to the sample at the same index of the other, not merely equal endpoints and
+not agreement within a tolerance. Comparing endpoints would pass a pair of
+runs that diverged and returned, and the comparison a branched run will make
+against its parent is sample-by-sample.
+
+The two runs must also be driven differently in real time: the same steps
+taken one per tick in one run and in ragged bursts in the other, with the
+interface reading the run between ticks at different rates. Driving both
+identically holds the model to one trajectory twice, which is a weaker claim
+than the one "The reproducibility guarantee" makes — that how the ticks fell
+cannot reach the run.
+
 ## Runtime controls
 
 The following settings may change during a run without resetting state:
@@ -1724,7 +1796,9 @@ re-deriving both.
 Reset must:
 
 - pause the simulation;
-- set simulation time to zero;
+- set simulation time to zero, by clearing the step count it was reached
+  from, and release the step the run was taking so a fresh run may take a
+  different one;
 - clear circuit, alveolar, blood, and tissue agent amounts;
 - clear concentration and mass-accounting history;
 - clear the recorded control-input timeline, which belongs to the run that
@@ -1850,6 +1924,8 @@ The Flet interface must not:
 - calculate mass balance;
 - modify core state directly;
 - continue a run past a step the core could not complete;
+- take extra simulation steps to make up wall-clock time a slow tick lost,
+  or otherwise let elapsed real time decide how many steps a run takes;
 - present a run halted by a failure as though it were paused; or
 - display a concentration at a finer resolution than "Displayed precision"
   justifies, or render a value the model does not resolve as though it were
