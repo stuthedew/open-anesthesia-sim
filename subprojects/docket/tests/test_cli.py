@@ -742,6 +742,80 @@ def test_stranded_reports_nothing_when_every_branch_has_landed(
     assert "No item exists only on a branch" in capsys.readouterr().out
 
 
+def _pushed_after_merge_repo(tmp_path: Path) -> Path:
+    """A repository in the geometry that loses a commit, built with real git.
+
+    The sequence is the one observed on `#284`: a branch commits its work, the
+    pull request squash-merges that head, and the session then pushes one more
+    commit to the same branch. Nothing merges a merged pull request a second
+    time, so the last commit lands nowhere - and it touches no item file, which
+    is what made it invisible to every check this project ran (`PL-3D2M`).
+
+    Real git rather than the injected runner, for the reason `_branched_repo`
+    gives: the rules are asserted in `test_vcs.py`, and only a checkout proves
+    the commands are spelled in a way git accepts.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+
+    git("checkout", "-qb", "claude/pl-k7qx-do-the-thing")
+    (root / "work.py").write_text("the change the pull request took\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: the work the pull request took")
+
+    git("checkout", "-q", "main")
+    git("merge", "-q", "--squash", "claude/pl-k7qx-do-the-thing")
+    git("commit", "-qm", "PL-K7QX: the work the pull request took (#1)")
+
+    git("checkout", "-q", "claude/pl-k7qx-do-the-thing")
+    (root / "rule.md").write_text("the behavior change the owner asked for\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: the rule pushed after the merge")
+    git("checkout", "-q", "main")
+    return root
+
+
+def test_stranded_reports_a_commit_pushed_after_its_pull_request_merged(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _pushed_after_merge_repo(tmp_path)
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert "claude/pl-k7qx-do-the-thing  (1 file of its work already landed)" in out
+    assert "PL-K7QX: the rule pushed after the merge" in out
+    assert "    rule.md" in out
+    assert "git checkout claude/pl-k7qx-do-the-thing -- rule.md" in out
+    # The commit the pull request did take is not offered for recovery.
+    assert "work.py" not in out
+
+
+def test_stranded_leaves_a_branch_whose_work_is_all_unlanded_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An ordinary live branch, which must not read as work left behind."""
+    root = _branched_repo(tmp_path)
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    assert "No branch carries work its own pull request left behind" in capsys.readouterr().out
+
+
 def test_stranded_says_so_when_it_was_told_not_to_ask_git(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

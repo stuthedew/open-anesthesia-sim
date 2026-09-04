@@ -180,6 +180,14 @@ judgment is the reply's: leave a branch someone is working, and recover from
 one nobody will merge - restore the file, commit it on its own, and say in the
 reply which branch it came off.
 
+**The same command's second half is not about items at all, and it is not a
+judgment call in the same way.** It names a branch whose pull request already
+took part of its work and left the rest - a commit pushed after the merge,
+which nothing merges and nothing else reports (`PL-3D2M`). Recover it the way
+`CLAUDE.md`'s merged-branch rule says: restart the branch on the merged `main`
+and carry the commit forward as a new pull request, never by pushing to the
+merged branch again, which is what lost it.
+
 ## Mode: housekeeping nobody filed
 
 Triggered by the session being about to *do* repository work that no item

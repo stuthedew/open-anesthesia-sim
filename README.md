@@ -63,6 +63,14 @@ shown rather than selected, because a unit toggle would make the axis a mode.
 The MAC resolution is derived from the percent resolution rather than chosen
 beside it, and works out to 0.01 MAC.
 
+Any compartment's trace can be turned off, because the legend under the
+chart is also its control: a checkbox per compartment, as Gas Man has. "Why
+does fat lag muscle" is a two-trace question, and it is unreadable against
+four other lines crossing it. Turning one off changes what is drawn and
+nothing else — every compartment's concentration stays in the readouts above
+the chart, and the run itself is untouched — so a chart showing two curves is
+a chosen view of six modelled compartments rather than a smaller model.
+
 Under that chart is the graph the uptake literature is taught from:
 `F_A/F_I`, the alveolar concentration as a fraction of the inspired one, on a
 dimensionless axis fixed from 0 to 1. It is the same quantity the Yasuda

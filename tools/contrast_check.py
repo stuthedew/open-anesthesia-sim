@@ -114,7 +114,17 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "every numeric readout, its unit, and each panel heading "
-        "(simulation_view.py:248-257, :519, :650, :690, :743, :1127)",
+        "(simulation_view.py:248-257, :519, :650, :690, :743, :1127). Also "
+        "the six compartment checkboxes that show and hide the chart's "
+        "traces, in both roles the pair has: the box itself is INK filled "
+        "with a PANEL tick, and its label is INK text while that trace is "
+        "drawn. The box is a user-interface component, so SC 1.4.11's 3:1 "
+        "would suffice for it - the text minimum is met anyway, and is what "
+        "the label needs. Deliberately not one of the six trace colours nor "
+        "ACCENT: the legend row has already spent its colour budget on six "
+        "compartments (.claude/rules/ui-color.md, judgment 3), so the "
+        "control is drawn as furniture rather than competing with the "
+        "swatch beside it (PL-CG7J)",
     ),
     Requirement(
         "MUTED",

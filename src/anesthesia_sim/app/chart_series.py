@@ -288,7 +288,7 @@ def park_control_mark(series: fch.LineChartData) -> None:
 
 
 def redraw_visible_window(plotted: Sequence[PlottedSeries], window: HistoryWindow) -> None:
-    """Redraw every trace from the window of the run the caller asked for.
+    """Redraw the traces the caller is drawing, from the window it asked for.
 
     The window arrives already cut to the axis the caller is about to draw:
     the controller answers `history_window` with the range at or after the
@@ -299,9 +299,20 @@ def redraw_visible_window(plotted: Sequence[PlottedSeries], window: HistoryWindo
     it, so a frame costs what it draws rather than what the window spans
     (`PL-D9WD`).
 
+    **The caller passes the traces it is drawing, not all of them.** A trace
+    left out is *not blanked*: it keeps the points of the frame it was last
+    passed in, which is deliberate - a trace a reader has hidden costs
+    nothing per frame, and costs nothing to restore. The obligation that
+    comes with it is the caller's: a trace it stops passing must also come
+    off the chart's own series list, or the chart goes on drawing a curve
+    that has stopped advancing while the readouts beside it have not.
+    `simulation_view.py`'s `_visible_plotted_series` and `_chart_data_series`
+    are built from one flag for exactly that reason (`PL-CG7J`).
+
     Args:
-        plotted: Every trace to redraw, each paired with the quantity it
-            draws.
+        plotted: Every trace to draw this frame, each paired with the
+            quantity it draws. A trace omitted is left holding its
+            previous points.
         window: The part of the run inside the plotted time range.
     """
 
