@@ -7,9 +7,9 @@ status: done
 classes: perf
 touches: subprojects/docket/tests
 feature: dev-tooling
+verify: python3 tools/doc_check.py check && grep -qF 'Decided: leave it (project owner, 2026-09-04)' docs/items/PL-KCQ7-40-percent-of-the-suite-s-wall-clock-29-2-s-of.md
 added: 2026-09-03
 closed: 2026-09-04
-not-delegable: the outcome is a decision to change nothing, so there is no state a command could find different afterwards. The only command available would grep this file for its own conclusion, which proves the sentence was written rather than that the ratio is acceptable - and whether it is acceptable is the judgment the item exists to record
 ---
 
 **Problem.** Measured 2026-09-03 on four cores, before `PL-WCZV` put `-n auto`
@@ -51,30 +51,57 @@ small, and the three named options each trade away something the apparatus is
 trusted for. Recording that answer is what closes this; it is here so the ratio
 is not rediscovered and treated as new.
 
-**Decided (project owner, 2026-09-04): leave it.** No change to the suite, and
-this item exists so the ratio is not rediscovered and treated as new.
+## Decided: leave it (project owner, 2026-09-04)
 
-The reasoning, recorded because the number will look alarming again to a
-session meeting it cold:
+The owner put the question in its sharpest form - should `subprojects/docket`
+come off the uniform Class C bar, and would fewer checks there be faster
+without costing bugs? No, on all three parts, and the third is the one that
+settles it.
 
-- **The absolute cost is now small.** `PL-WCZV` took the whole suite from 70 s
-  to 26.9 s locally. docket's share of it is roughly unchanged as a fraction
-  and much smaller as a number, and the fraction was never the thing that
-  mattered.
-- **It is no longer the largest item in either gate.** `bin/docket check` is,
-  at 30.5 s of a 59.2 s `make check` and 70 s of a 142 s CI job (`PL-8BFV`).
-  A session looking for time to save should look there.
-- **The tests are what make the queue trustworthy.** `PL-LXR3`, `PL-T940` and
-  `PL-VG7G` are each a case where this suite caught a check that would
-  otherwise have reported a clean result while proving nothing - which is the
-  specific failure the whole apparatus exists to refuse. The shell-outs in
-  `test_verify.py` are the slowest part and are also the part that exercises
-  the real subprocess behaviour rather than a mock of it.
-- **The three options each cost something real.** Narrowing the shell-outs
-  trades the honesty above for seconds. Splitting the apparatus suite out of
-  `testpaths` costs the property that one command proves the whole tree, which
-  is worth more than the time it saves.
+**There is no classification to move it off.** IEC 62304 classifies items of
+the *medical device software system*. A backlog tool that never runs in the
+product and computes no displayed value is outside its scope rather than
+Class A within it, so re-classing changes no check either way - the gate is set
+by `Makefile`, not by a letter. The only place this project was ever going to
+write a class down is `PL-BLHV`, still `needs-decision`, and its subject is the
+application. `CLAUDE.md`'s unequal standards, quoted above, are already the tier
+the question was reaching for.
 
-**Revisit if** the apparatus suite grows enough to make `make test` slow again
-on its own, or if `subprojects/docket/` stops being actively developed - at
-which point its tests would be paying for change that is no longer happening.
+**The gate is already tiered, and this tree is already on the low tier.** The
+one Class-C-grade check in it - 100% of statements *and* branches - is scoped to
+`anesthesia_sim.core` by `--cov=`. `subprojects/docket` has no coverage floor at
+all. What still reaches it is `ruff` at 0.1 s and `mypy` at 6.9 s repo-wide, so
+there was never anything to relax except the tests themselves.
+
+**Cutting those tests would cost bugs, and the store says so numerically.**
+63 of its 125 `defect`-classed items touch `subprojects/docket` - about half
+this project's defects, out of ~3,600 source lines - and **39 of the 63 describe
+a silent failure**: the check passed and the wrong answer was delivered anyway.
+`PL-LXR3`, `PL-T940` and `PL-VG7G`, named above, are three; two more corrupted
+the safety classification itself. `PL-BR4G`: `parse_front_matter` silently kept
+the last of a duplicate key, so a corrupt item passed `docket check`. `PL-MVC2`:
+nothing checked `classes` against a vocabulary, so `classes: safey` left
+safety-critical work seatable in the bottom band with zero errors reported.
+That is exactly the failure class human use does not catch and a test does.
+
+The governing standard for a tool of this kind is not IEC 62304 at all but
+**ISO 13485:2016 clause 4.1.6** - validate software used in the quality system,
+proportionate to the risk of its *use*. docket's risk is not patient harm; it is
+silently mis-recording the safety class of product work, which the two items
+above are worked examples of. Proportionate validation against that history is
+roughly what the suite already provides.
+
+**On the three options above.** *Narrowing the shell-outs in `test_verify.py`*
+has no fat to take: measured 2026-09-04, the 12 slowest docket tests sum to
+13.7 s and the remaining ~520 spend ~16 s at roughly 30 ms each, which is
+`git` subprocess startup spread thin rather than a few slow tests. Cutting time
+there means cutting coverage broadly. *Splitting the apparatus out of the
+default `testpaths`* is worse than doing nothing on this evidence: against a
+39-instance silent-failure history, the session editing docket is precisely the
+one that has to see the failure. So: leave it, as the recommendation above said.
+
+**And the ratio was answered by removing work rather than checks.** `PL-WCZV`
+put `-n auto` on the suite; `bin/docket check` is now the largest item in
+`make check` (`PL-8BFV`), not the tests. Deleting the entire docket suite would
+have returned 29.8 s of the 122 s gate that then stood; `PL-WCZV` returned
+roughly twice that and removed nothing.

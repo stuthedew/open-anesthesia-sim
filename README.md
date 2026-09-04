@@ -92,9 +92,10 @@ make run
 
 ```bash
 make check       # ruff format --check, ruff check, mypy (strict), the
-                 # type: ignore checker, pytest under a 100% statement and
-                 # branch coverage gate on src/anesthesia_sim/core/, then the
-                 # docket and documentation checkers
+                 # type: ignore checker, pytest across every core under a
+                 # 100% statement and branch coverage gate on
+                 # src/anesthesia_sim/core/, then the docket and
+                 # documentation checkers
 make fix         # ruff format, ruff check --fix, and write any pull
                  # request number a landed closure is owed
 make test        # pytest only, without the coverage gate
