@@ -1,17 +1,14 @@
 ---
 id: PL-N2X4
 title: Hold tools/contrast_check.py's line citations to the file, or drop them
-status: untriaged
+status: needs-decision
 added: 2026-09-04
+priority: P2
+effort: S
+classes: defect, infra
+feature: dev-tooling
+touches: tools/contrast_check.py
 ---
-
-**Problem.** Hold tools/contrast_check.py's line citations to the file, or drop them
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `tools/contrast_check.py`'s `REQUIREMENTS` entries each cite the
 lines of `app/simulation_view.py` where the pair appears - nine citations
@@ -27,6 +24,10 @@ confirm which background it is drawn on, rather than assuming `PANEL`"). A
 citation nobody can follow makes that judgment unauditable while looking
 audited - the same failure mode `tools/doc_check.py`'s dangling-citation check
 exists to prevent for documentation.
+
+**Decision needed.** Make the line citations checkable, or replace them with
+control names? The item argues the second is smaller and probably right; either
+closes it, and they produce different work.
 
 **Two ways out, and the choice is the work.** Either make the citations
 decidable - a line-number citation is checkable the same way a path is, by
