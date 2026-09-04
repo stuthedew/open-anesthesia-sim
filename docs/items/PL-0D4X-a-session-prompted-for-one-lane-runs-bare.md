@@ -9,8 +9,10 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
 closed: 2026-09-04
+pr: 295
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_next_without_a_lane_names_the_lane_of_its_answer' subprojects/docket/tests/test_cli.py
 ---
+
 **Problem.** A session opened with the prompt "Next workflow item" ran bare
 `bin/docket next`, was handed `PL-DR1Z` - product-lane work - and started it.
 Observed 2026-09-04; the project owner caught it, not the tooling.

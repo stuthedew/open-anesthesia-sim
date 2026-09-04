@@ -3,12 +3,13 @@ id: PL-CP74
 title: Unfiled housekeeping work carries no item id, so every in-flight guard is structurally blind to it
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-04
 classes: infra
 feature: parallel-sessions
-touches: .claude/skills/docket/SKILL.md, CLAUDE.md, .claude/hooks/docket-branch-guard.sh
+touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, .claude/skills/docket/SKILL.md, CLAUDE.md, docs/ARCHITECTURE.md, Makefile, .github/workflows/quality.yml
 added: 2026-09-02
-verify: python3 tools/doc_check.py check && grep -qF 'file the item first' .claude/skills/docket/SKILL.md
+verify: uv run pytest tests/unit/test_branch_id_check.py -q && python3 tools/doc_check.py check && grep -qiF 'file the item first' .claude/skills/docket/SKILL.md CLAUDE.md
 ---
 
 **Problem.** `docket flight`, `show`, `triage`, `next` and the session-start
@@ -81,3 +82,32 @@ be sold as collision prevention. What would have helped here is `docket
 concurrent`, which already answers this — it lists `PL-2XTF` as unable to run
 alongside `PL-P0QT` — and which nothing prompts a session to run when the
 owner names the work directly.
+
+**What landed, 2026-09-04, and where it differs from the brief above.** The
+brief guessed at a hook on `.claude/hooks/docket-branch-guard.sh`. The
+deterministic half went to `tools/branch_id_check.py` instead — a
+standard-library script in `make check` and both CI jobs — because the question
+is answerable from `git log` at any moment rather than only at the one moment a
+hook fires, and because a `PreToolUse` hook would have had to parse a commit
+message out of a shell command string, which is fragile in exactly the way that
+makes a guard worse than none.
+
+The rule is stated twice on purpose. `.claude/skills/docket/SKILL.md` carries
+it under "Mode: housekeeping nobody filed" with the judgment the tool must not
+make; `CLAUDE.md` carries the eight-line trigger, because the brief's own
+reasoning holds — a session clearing a stale ref has no reason to load the
+docket skill, and no path-scoped rule fires on work that opens no file.
+
+Three things were deliberately not built. **The reading side**: teaching
+`FlightReport` a third field for unlanded refs that carry no id anywhere, so
+`flight` and the digest could *name* them. It is the honest cure for the
+title's "structurally blind", and it was declined because the digest is resent
+on every turn of every session and `origin/Review_articles` — one commit,
+unattributed, unlanded — would sit in it forever, which is the advisory-nobody-
+acts-on failure `CLAUDE.md` names. Captured separately. **A per-commit rule**:
+the check is satisfied by one id on the branch, which is what keeps it out of
+the how-small-to-file judgment and what keeps it agreeing with the rule as
+written. **Collision prevention**: as the brief says, this buys visibility and
+a record, not that. `docket concurrent` is what answers collisions, and nothing
+prompting a session to run it when the owner names the work directly remains
+open.
