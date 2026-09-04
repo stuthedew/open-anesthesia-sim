@@ -3,8 +3,7 @@ id: PL-ZRSP
 title: Plot the F_A/F_I ratio the uptake literature plots
 priority: P1
 effort: S
-status: blocked
-blocked-by: PL-DR1Z
+status: ready
 classes: science, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
@@ -91,3 +90,11 @@ and the chart-series assembly are already in `app/formatting.py` and
 `app/chart_series.py`. The paragraph above is kept as the record of why this
 waited; it no longer holds. Recovered from `origin/claude/what-next-rsmqeu`,
 which was abandoned without a pull request.
+
+**Unblocked 2026-09-04.** `PL-DR1Z` (record the control-input timeline and mark
+it on the chart) landed in v0.3.7, so the caveat this item's trace carries -
+that the curve means what the textbook curve means only while inspired
+concentration is held constant - is now something a reader can *check* rather
+than only be told: a mid-run change to the delivered dial is marked on the same
+chart, at the simulated time it took effect. That was the dependency, and it is
+why this item's band followed it.
