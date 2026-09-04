@@ -2136,6 +2136,54 @@ is. Both units are always shown rather than selected, because a unit selector
 would make the axis unit a mode, and a chart read under the wrong assumed
 unit is a misreading no disclaimer catches.
 
+**The chart's vertical range is denominated in MAC, and fixed.** The axis
+runs from 0 to **3 ×MAC** of the running agent, ruled every half MAC, for
+every agent. It is therefore one ruler: the same case drawn under two agents
+is drawn at the same height, which is the property the second unit exists to
+give and which the axis previously took away. Until PL-CC23 the top was the
+agent's vaporizer dial maximum — 3.00 ×MAC of desflurane, 4.00 of
+sevoflurane, 4.17 of isoflurane — so a learner comparing a desflurane wash-in
+to a sevoflurane one was comparing shapes silently rescaled by 1.39×, and the
+horizontal rules were a fixed 2 percent, which is every 0.33 ×MAC under
+desflurane and every 1.67 ×MAC under isoflurane.
+<!-- derived: 3.00 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_percent = 6 -->
+<!-- derived: 4.00 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_percent = 2 -->
+<!-- derived: 4.17 from data/agents/isoflurane.json max_delivered_concentration_percent = 5, mac_percent = 1.2 -->
+<!-- derived: 1.39 from data/agents/isoflurane.json max_delivered_concentration_percent = 5, mac_percent = 1.2 -->
+<!-- derived: 1.39 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_percent = 6 -->
+<!-- derived: 0.33 from data/agents/desflurane.json mac_percent = 6 -->
+<!-- derived: 1.67 from data/agents/isoflurane.json mac_percent = 1.2 -->
+
+**Why 3, and why fixed.** Three is exactly desflurane's dial maximum divided
+by its 1 MAC, so the shared ceiling is anchored to a real device limit rather
+than to a preference, and the agent whose vaporizer is most limited gets no
+dead band above its reachable range. It puts the 1 MAC line at a third of the
+plot height — inside the plot rather than on its frame, which a ceiling of 2
+could not do — and leaves the 2-3× MAC range that overpressure induction
+works in on the plot. Fixed rather than fitted for the reason "Why the axis is
+fixed rather than fitted" gives for the wash-in plot below: an axis that grew
+to fit an excursion would redraw a rising curve at a smaller height partway
+through a lesson, and a reader would attribute that shape change to the model.
+It is fixed across the session rather than only within a run, so two
+consecutive runs are comparable too.
+
+**A trace above the ceiling is named, not left to look like a plateau.** A
+fixed ceiling can be exceeded where a dial-maximum one could not, and the
+setting that exceeds it is a technique rather than an edge case: sevoflurane's
+8% dial is 4.00 ×MAC and is the standard inhalational-induction setting. A
+clipped trace draws as a horizontal line at the top of the frame, and a
+horizontal line is what a plateau looks like — so a reader would conclude the
+concentration stopped rising at 3 ×MAC when the model says it did not, which
+is a wrong clinical reading of a correct model. The chart therefore names the
+compartments that are above the ceiling and says that the readouts, which are
+not clipped, hold their values. The comparison is against the displayed
+resolution rather than against zero, so a trace sitting exactly at the
+ceiling is not reported: isoflurane's ceiling is 3 × 1.2, which in binary
+floating point is 3.5999999999999996.
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- derived: 4.00 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_percent = 2 -->
+
 **What the divisor is worth.** `mac_percent` is a tier-3 value, and this
 section is where that matters most: it is now the divisor of every MAC number
 on the display rather than only the vaporizer's starting position. "Delivery-
@@ -2820,14 +2868,16 @@ diagnostic whose job is to make a residual of order 10⁻¹⁵ L visible, not a
 value a reader interprets clinically. Precision in this interface is set by
 what each number is for, and the rule above governs the clinical readouts.
 
-The chart plots the same percentages on a shared linear axis scaled to the
-agent's maximum dial setting, and carries a second axis on the right reading
+The chart plots the same percentages on a shared linear axis running from 0 to
+3 ×MAC of the running agent, and carries a second axis on the right reading
 the identical coordinate in MAC multiples. Its resolution is set by pixels
 rather than by decimals, and it is coarser than the numeric readouts
 throughout; the readouts, not the traces, are where a value is read. The MAC
-axis is labelled on round MAC values rather than on round percentages —
-half-MAC steps for all three agents at the current dial-maximum range, so the
-gridline a reader learns under one agent means the same thing under the next.
+axis is labelled on round MAC values rather than on round percentages — half-MAC
+steps, which the fixed 3 ×MAC range gives for every agent, so the gridline a
+reader learns under one agent means the same thing under the next. "The chart's
+vertical range is denominated in MAC, and fixed" above carries why the range
+is what it is.
 
 `app/formatting.py` is where this section terminates: it holds the
 resolution as a single constant, derives the formatter, the below-resolution

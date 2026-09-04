@@ -63,6 +63,16 @@ shown rather than selected, because a unit toggle would make the axis a mode.
 The MAC resolution is derived from the percent resolution rather than chosen
 beside it, and works out to 0.01 MAC.
 
+The chart's vertical range carries the same argument. It is fixed at 0 to
+3 ×MAC for every agent rather than running to the agent's vaporizer dial,
+which was 3 MAC of desflurane and 4.17 of isoflurane — so the same case drawn
+under two agents used to be drawn at two scales, and comparing the wash-in
+shapes was comparing a rescaling. It does not grow to fit a run, because an
+axis that grew would redraw a rising curve at a smaller height partway
+through a lesson. A trace that goes above the ceiling is named under the
+chart rather than left to draw as a flat line at the top, which is what a
+plateau looks like.
+
 Any compartment's trace can be turned off, because the legend under the
 chart is also its control: a checkbox per compartment, as Gas Man has. "Why
 does fat lag muscle" is a two-trace question, and it is unreadable against
