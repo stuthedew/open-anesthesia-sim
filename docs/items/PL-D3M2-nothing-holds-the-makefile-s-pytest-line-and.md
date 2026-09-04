@@ -1,7 +1,11 @@
 ---
 id: PL-D3M2
 title: Nothing holds the Makefile's pytest line and quality.yml's identical, though both comments say they must stay the same
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: infra
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 feature: dev-tooling
 added: 2026-09-03
 ---
@@ -33,3 +37,10 @@ relying on a reader noticing. Worth deciding whether the rule is "identical
 strings" - simple, exact, and the sort of thing `CLAUDE.md` reserves hard
 failure for - or something looser that would need judgment and so should be an
 advisory or nothing at all.
+
+**Decision needed.** Whether the rule is "the two command strings are
+identical" - exact, decidable, and the kind of thing `CLAUDE.md` reserves hard
+failure for - or something looser that tolerates deliberate divergence and so
+has to be an advisory. The strict rule is recommended: the two lines are
+deliberately identical today, `-n auto` was chosen partly to keep them so, and a
+looser rule would need a judgment the tool cannot make.

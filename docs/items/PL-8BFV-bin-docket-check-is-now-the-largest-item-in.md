@@ -1,7 +1,11 @@
 ---
 id: PL-8BFV
 title: bin/docket check is now the largest item in make check - 30.5 s of 59.2 s after PL-WCZV, where it was a quarter
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: perf, infra
+touches: subprojects/docket/src/docket/verify.py, Makefile
 feature: dev-tooling
 added: 2026-09-03
 ---
@@ -47,3 +51,10 @@ Each trades something real, which is why this is a capture rather than a
 recommendation.
 
 **Done when.** A decision is recorded, including the decision to accept it.
+
+**Decision needed.** Which of the three uncosted levers to spend a session on,
+or whether to accept the cost. Fewer candidates and cheaper candidates both
+weaken what the check proves; moving the landed probe out of the local gate
+keeps the proof and pays for it at CI instead, ~2.6 min later, where it is
+already the largest step. Accepting it is a real answer and gets more defensible
+as the queue's growth slows.

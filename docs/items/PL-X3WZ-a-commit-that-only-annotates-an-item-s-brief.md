@@ -1,17 +1,14 @@
 ---
 id: PL-X3WZ
 title: A commit that only annotates an item's brief marks it IN FLIGHT, so docket next hides an item nobody is working
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/SKILL.md
+feature: dev-tooling
 added: 2026-09-03
 ---
-
-**Problem.** A commit that only annotates an item's brief marks it IN FLIGHT, so docket next hides an item nobody is working
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `docket flight` recovers in-flight state by parsing commit
 subjects for item ids, and `CLAUDE.md` requires every commit subject to lead
@@ -67,3 +64,16 @@ it needs nothing of the session. Worth checking against `PL-CP74`
 (housekeeping work carries no item id, so the guard is blind to it) - that item
 is the same guard failing in the opposite direction, and one design may answer
 both.
+
+**Done when.** A commit that only annotates an item's brief no longer marks
+that item `IN FLIGHT`, `bin/docket next` offers an item no session is
+implementing, and `.claude/skills/docket/SKILL.md`'s note on the trade the mark
+makes says what the annotation case now does.
+
+**Decision needed.** Whether the signal comes from the diff or from the
+subject - the two candidates the brief already sets out. Reading the diff is
+recommended: it needs no new convention for a session to remember and forget,
+and it correctly classifies the capture commits `bin/docket new` already
+produces. Its cost is a `git show --stat` per candidate commit, which lands on
+the pool `PL-8BFV` names as the largest item in `make check`, so whoever takes
+it should measure that rather than assume it is free.
