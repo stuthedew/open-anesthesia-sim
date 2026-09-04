@@ -32,10 +32,14 @@ diagnosed from scratch as a new performance bug.
 
 1. Accept it. Document the ceiling and stop tuning the selection. Costs
    nothing now.
-2. Draw the traces on `flet.Canvas` as a path rather than as chart points, if
-   a path's vertices are one control's data rather than N controls. Keeps
-   full control of rendering; loses whatever `flet_charts` gives for axes,
-   tooltips and legends, which would have to be rebuilt.
+2. ~~Draw the traces on `flet.Canvas` as a path rather than as chart
+   points.~~ **Measured 2026-09-04 and ruled out.** `Path.PathElement` is
+   declared `@value` rather than `@control`, which suggested a path's whole
+   vertex list would cross as one field. It does not: Flet's diff descends
+   into value lists element by element, so a canvas polyline costs the same
+   ~2 operations per vertex as a `LineChartDataPoint` does - 1 206 operations
+   for 100 vertices across six traces, 36 006 for 3 000. There is no
+   array-shaped transport inside Flet to move to.
 3. Render server-side. `flet_charts` also ships `matplotlib_chart.py` and
    `plotly_chart.py`; one image per frame is one patch. Almost certainly too
    slow to redraw at 5 Hz in Python, and would lose live interaction — worth a
@@ -47,6 +51,15 @@ diagnosed from scratch as a new performance bug.
    the chart reads, so it is a design decision rather than an optimization.
 
 **Where.** The decision is the deliverable; no code until it is made.
+
+**What the measurement leaves.** With option 2 gone, nothing changes the
+per-point cost, so the only levers are how many points are drawn and how
+often they change. That makes this item mostly a sizing question rather
+than an architecture one: sustained traffic is about `2 * P^2 * T /
+window_seconds` operations per second for `P` points across `T` traces,
+since a rebuild costs `2PT` and the window crosses a bucket boundary every
+`window / P` seconds. Options 3 and 4 remain, and both are larger than the
+problem currently justifies.
 
 **Prior art worth reading before deciding.** The *selection* half of this
 problem is settled and the existing min/max envelope code already matches it:
