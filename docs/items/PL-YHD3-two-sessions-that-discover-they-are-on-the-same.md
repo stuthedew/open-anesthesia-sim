@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py
 added: 2026-09-02
 closed: 2026-09-04
+pr: 310
 verify: python3 tools/doc_check.py check && grep -qF 'which session yields' .claude/skills/docket/SKILL.md && uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_precedence' subprojects/docket/tests/test_vcs.py
 ---
 

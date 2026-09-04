@@ -50,18 +50,22 @@ The filter must preserve pairing, and the test must cover the filtered case.
 A hidden trace must also disappear from any legend, so the chart never labels
 a line it is not drawing.
 
-**Promoted by the M4 decision, 2026-09-04.** `PL-D9WD` now draws all four M4
-aggregates rather than min and max, which roughly halves the number of chart
-columns affordable at a given traffic budget — about 46 columns across six
-traces, on PL-Q197's measured cost. That is too coarse to read. Since cost is
-linear in traces drawn, hiding traces is what returns the resolution: two
-traces instead of six buys about 138 columns for the same traffic.
+**Promoted by the M4 decision on 2026-09-04, and un-promoted by measuring
+it the same day.** The argument was that drawing all four M4 tuples rather
+than min and max would roughly halve the columns affordable at a given
+traffic budget — about 46 across six traces, on PL-Q197's measured cost —
+which is too coarse to read, and that hiding traces was therefore what would
+return the resolution rather than a nicety.
 
-So this stops being an independent nicety and becomes part of how the chart
-affords resolution at all. Sequence it with `PL-D9WD` rather than after it,
-and expect the pair to be judged together — M4 at six traces and M4 at two
-are different-looking charts, and only the second is the one a learner
-comparing two compartments would actually use.
+`PL-D9WD` landed and the prediction did not hold. Measured on the recording
+connection at a 150-column budget, a steady frame sends 24 patch operations,
+which is what the min/max envelope sent, and a compartment trace draws 182
+points where the envelope drew about 190. The reason is in the algorithm: M4's
+four tuples collapse to two on a monotone stretch, because a rising bucket's
+lowest value *is* its first sample, and these traces are monotone almost
+everywhere. So this item is back to being wanted on its own merits — reading
+two compartments against each other without four others crossing them — and is
+sequenced against nothing.
 
 **Done when.** Each of the six traces can be shown or hidden, hiding one
 removes its points from the client rather than blanking them, the pairing
