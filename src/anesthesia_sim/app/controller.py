@@ -9,7 +9,7 @@ builds it from the versioned data files.
 from dataclasses import dataclass
 
 from anesthesia_sim.core.exceptions import SimulationExecutionError
-from anesthesia_sim.core.parameters import load_agent_parameters
+from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -51,6 +51,20 @@ class SimulationSnapshot:
     `docs/MODEL.md` § "MAC multiples as a display unit" states what the
     quotient asserts, and § "Delivery-limit and MAC parameters" holds the
     value's provenance.
+    """
+    agent_mac_awake: MacAwakeReference
+    """The running agent's population MAC-awake, as a fraction of its MAC.
+
+    Travels whole rather than as two loose floats, and beside
+    `agent_mac_percent` for the same reason that field gives: the chart's
+    reference band is `fraction_of_mac` times that divisor, so pairing one
+    agent's MAC-awake with another agent's MAC would draw a correct number
+    at the wrong height on a labelled axis.
+
+    The interface reads it, `core/` does not: no governing equation consumes
+    MAC-awake, exactly as none consumes `mac_percent`. `docs/MODEL.md`
+    § "MAC-awake as a chart reference" states what the band asserts, which
+    trace it is read against, and why it is not a time to wake-up.
     """
     circuit_volume_l: float
     fresh_gas_flow_l_min: float
@@ -161,6 +175,7 @@ class SimulationController:
             agent_parameters.max_delivered_concentration_percent
         )
         self._agent_mac_percent = agent_parameters.mac_percent
+        self._agent_mac_awake = agent_parameters.mac_awake
         self._state = SimulationState(uptake_system=uptake_system)
         self._concentration_history: list[SimulationHistorySample] = [self._build_history_sample()]
 
@@ -245,6 +260,7 @@ class SimulationController:
             agent_display_name=self._agent_display_name,
             max_delivered_concentration_percent=(self._max_delivered_concentration_percent),
             agent_mac_percent=self._agent_mac_percent,
+            agent_mac_awake=self._agent_mac_awake,
             circuit_volume_l=circuit.circuit_volume_l,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
             delivered_concentration_fraction=(circuit.delivered_concentration_fraction),

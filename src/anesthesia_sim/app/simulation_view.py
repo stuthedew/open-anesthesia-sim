@@ -31,15 +31,17 @@ import flet as ft
 import flet_charts as fch
 
 from anesthesia_sim.app import chart_series
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
     format_delivered_label,
+    format_mac_awake_reference,
     format_mac_multiple,
     format_mac_reference,
     format_percent,
     format_subtitle,
+    mac_awake_band_percent,
     mac_axis_ticks,
 )
 from anesthesia_sim.app.theme import (
@@ -152,6 +154,37 @@ MIXED_VENOUS_COLOR = "#7C3AED"
 VESSEL_RICH_COLOR = "#DC2626"
 MUSCLE_COLOR = "#D97706"
 FAT_COLOR = "#64748B"
+
+# The two chart references are furniture rather than data, and are drawn in
+# the interface's own ink and label colour rather than in a seventh and
+# eighth hue. A new hue would enter the trace palette's separation problem
+# (`.claude/rules/ui-color.md`, judgment 3: six traces already cannot all
+# clear 3:1 against each other on a bounded axis) while implying the mark is
+# another compartment. What separates a reference from a trace here is
+# instead its *kind* — constant, horizontal, spanning the window — and its
+# mark type, which is also what separates the two references from each
+# other: a band for a measured population value with real spread, a line for
+# a definitional anchor. That distinction survives greyscale and every
+# colour-vision deficiency, which `.claude/rules/ui-color.md`'s judgment 2
+# requires of any encoding that carries meaning.
+#
+# The ranking between them is deliberate and is INK against MUTED. After a
+# long case at a steady setpoint the alveolar and vessel-rich traces have
+# converged, so the 1 MAC anchor is robust to which trace it is read
+# against; at MAC-awake they have not, so the band is the trace-critical
+# mark and carries the heavier weight. Giving the easier mark equal weight
+# is the failure PL-F52R names.
+MAC_AWAKE_BAND_COLOR = INK
+ONE_MAC_LINE_COLOR = MUTED
+# The band's fill is decoration: its boundaries are carried by a stroke on
+# the upper edge and by the fill's own cut-off on the lower, both in
+# `MAC_AWAKE_BAND_COLOR`, which is what `tools/contrast_check.py` measures.
+# The fill is light enough for six traces to remain legible across it, which
+# a fill at its own 3:1 would not be.
+MAC_AWAKE_BAND_FILL_OPACITY = 0.14
+# Wider than any trace's dashes ([10, 4], [4, 3], [2, 3], [12, 4, 2, 4]), so
+# the 1 MAC line does not read as a seventh compartment at a glance.
+ONE_MAC_LINE_DASH_PATTERN = [16, 8]
 
 # (agent_id, display_name) for every built-in agent, in AGENT_DATA_FILENAMES
 # order. Loaded once at import time; each file is tiny and this avoids
@@ -312,6 +345,19 @@ class SimulationView:
         self._fat_series = chart_series.build_series(
             color=FAT_COLOR, stroke_width=2, dash_pattern=[12, 4, 2, 4]
         )
+        # The two clinical references. Deliberately not members of
+        # `_plotted_series` below: nothing reads a sample to place them, and
+        # the table they would join exists to bind a trace to the one
+        # compartment it draws.
+        self._mac_awake_band_series = chart_series.build_reference_line(
+            color=MAC_AWAKE_BAND_COLOR, stroke_width=1.5
+        )
+        self._mac_awake_band_series.below_line_bgcolor = ft.Colors.with_opacity(
+            MAC_AWAKE_BAND_FILL_OPACITY, MAC_AWAKE_BAND_COLOR
+        )
+        self._one_mac_line_series = chart_series.build_reference_line(
+            color=ONE_MAC_LINE_COLOR, stroke_width=1.5, dash_pattern=ONE_MAC_LINE_DASH_PATTERN
+        )
         # Which quantity each trace draws, declared beside the traces
         # themselves so that the line and the compartment it stands for are
         # read together. This table is the whole trace-to-quantity pairing:
@@ -365,6 +411,11 @@ class SimulationView:
         )
         self._concentration_chart = fch.LineChart(
             data_series=[
+                # References first, so every trace is drawn over them. A
+                # compartment obscured by a reference band would be the
+                # annotation hiding the run it annotates.
+                self._mac_awake_band_series,
+                self._one_mac_line_series,
                 self._circuit_series,
                 self._alveolar_series,
                 self._mixed_venous_series,
@@ -393,6 +444,13 @@ class SimulationView:
                 initial_snapshot.agent_display_name, initial_snapshot.agent_mac_percent
             ),
             color=MUTED,
+        )
+        # The same traceability the line above gives the MAC axis, for the
+        # band: it has two free parameters rather than one - a published
+        # fraction and the divisor it is applied to - and both are named, so
+        # a reader who disagrees with either can see which.
+        self._mac_awake_reference_text = ft.Text(
+            self._format_mac_awake_reference(initial_snapshot), color=MUTED
         )
 
         self._start_button = ft.Button(content="Start", on_click=self._handle_start)
@@ -845,6 +903,60 @@ class SimulationView:
                         spacing=16,
                         run_spacing=6,
                     ),
+                    # The references get their own legend row rather than
+                    # joining the six above. They are not compartments, and a
+                    # single row would invite reading them as a seventh and
+                    # eighth trace - which is the misreading PL-F52R exists to
+                    # prevent, arriving through the legend instead of the
+                    # chart.
+                    ft.Row(
+                        controls=[
+                            ft.Text("Clinical references:", color=MUTED),
+                            self._build_band_legend_item(
+                                "MAC-awake (population, ±1 SD)", MAC_AWAKE_BAND_COLOR
+                            ),
+                            self._build_legend_item(
+                                "1 MAC, reference adult", ONE_MAC_LINE_COLOR, "wide dash"
+                            ),
+                        ],
+                        wrap=True,
+                        spacing=16,
+                        run_spacing=6,
+                    ),
+                    # What the band asserts, what it does not, and which trace
+                    # it is read against - the last being the whole reason the
+                    # sentence is here rather than only in `docs/MODEL.md`.
+                    # The model has no effect-site compartment and defines the
+                    # arterial fraction as the alveolar one, so the alveolar
+                    # trace is the fastest curve on the chart and the furthest
+                    # from where responsiveness actually returns: measured on a
+                    # 3-hour 1 MAC sevoflurane case with the vaporizer turned
+                    # off at 10 L/min, it crosses 0.33 MAC 2.2x earlier than
+                    # the vessel-rich trace. A band read against it therefore
+                    # teaches an early wake-up, which is the direction with
+                    # clinical consequence.
+                    ft.Row(
+                        controls=[
+                            self._mac_awake_reference_text,
+                            ft.Text(
+                                (
+                                    "MAC-awake is the population concentration at which half "
+                                    "of patients respond to command — a different endpoint "
+                                    "from MAC, which is immobility to incision. Read the band "
+                                    "against the vessel-rich trace: it is a brain "
+                                    "concentration, and during washout the alveolar trace "
+                                    "falls first and reaches the band earlier than the patient "
+                                    "would. Not a prediction for any individual patient, and "
+                                    "not a time to wake-up."
+                                ),
+                                color=MUTED,
+                                italic=True,
+                            ),
+                        ],
+                        wrap=True,
+                        spacing=8,
+                        run_spacing=2,
+                    ),
                     ft.Container(height=CHART_HEIGHT, content=self._concentration_chart),
                 ]
             ),
@@ -899,6 +1011,83 @@ class SimulationView:
             tight=True,
         )
 
+    @staticmethod
+    def _build_band_legend_item(label: str, color: str) -> ft.Row:
+        """Build the legend entry for a reference band, drawn as a band.
+
+        A filled swatch with a ruled upper edge rather than the 4px line
+        every other entry uses. The mark type is what distinguishes a
+        measured population value with real spread from a definitional
+        anchor, so a legend that drew both as lines would lose the one
+        channel carrying that distinction.
+
+        Args:
+            label: Reference name, including what its extent means.
+            color: Hexadecimal edge color; the fill is this at
+                `MAC_AWAKE_BAND_FILL_OPACITY`, as on the chart.
+
+        Returns:
+            Tightly sized chart legend entry.
+        """
+
+        return ft.Row(
+            controls=[
+                ft.Container(
+                    width=24,
+                    height=12,
+                    bgcolor=ft.Colors.with_opacity(MAC_AWAKE_BAND_FILL_OPACITY, color),
+                    border=ft.Border(top=ft.BorderSide(1.5, color)),
+                ),
+                ft.Text(label, color=INK),
+            ],
+            spacing=6,
+            tight=True,
+        )
+
+    @staticmethod
+    def _mac_awake_band_percent(snapshot: SimulationSnapshot) -> tuple[float, float]:
+        """Place this snapshot's MAC-awake band on the percent axis.
+
+        Both the fraction and the divisor it scales come out of one
+        snapshot, so the band can never be drawn from one agent's MAC-awake
+        at another agent's MAC — the correct number at the wrong height on a
+        labelled axis.
+
+        Args:
+            snapshot: The frame being rendered.
+
+        Returns:
+            Lower and upper edges as a percent of one atmosphere.
+        """
+
+        mac_awake = snapshot.agent_mac_awake
+
+        return mac_awake_band_percent(
+            fraction_of_mac=mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+            mac_percent=snapshot.agent_mac_percent,
+        )
+
+    @staticmethod
+    def _format_mac_awake_reference(snapshot: SimulationSnapshot) -> str:
+        """State what this snapshot's MAC-awake band was drawn from.
+
+        Args:
+            snapshot: The frame being rendered.
+
+        Returns:
+            A one-line statement of the band's centre and its edges.
+        """
+
+        mac_awake = snapshot.agent_mac_awake
+
+        return format_mac_awake_reference(
+            snapshot.agent_display_name,
+            fraction_of_mac=mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+            mac_percent=snapshot.agent_mac_percent,
+        )
+
     def _refresh_view(self) -> None:
         """Refresh every visible value from one controller snapshot."""
 
@@ -930,6 +1119,7 @@ class SimulationView:
         self._mac_reference_text.value = format_mac_reference(
             snapshot.agent_display_name, snapshot.agent_mac_percent
         )
+        self._mac_awake_reference_text.value = self._format_mac_awake_reference(snapshot)
 
         has_failed = snapshot.failure_reason is not None
 
@@ -1044,6 +1234,21 @@ class SimulationView:
         chart_min_x = max(0.0, chart_max_x - MAX_CHART_WINDOW_S)
         self._concentration_chart.max_x = chart_max_x
         self._concentration_chart.min_x = chart_min_x
+
+        # The references span the same window as the traces and are moved in
+        # the same frame, so a scroll can never leave one ruled across part of
+        # the chart or drawn at the previous agent's height.
+        mac_awake_lower_percent, mac_awake_upper_percent = self._mac_awake_band_percent(snapshot)
+        chart_series.redraw_reference_band(
+            self._mac_awake_band_series,
+            chart_min_x,
+            chart_max_x,
+            mac_awake_lower_percent,
+            mac_awake_upper_percent,
+        )
+        chart_series.redraw_reference_line(
+            self._one_mac_line_series, chart_min_x, chart_max_x, snapshot.agent_mac_percent
+        )
 
         chart_series.redraw_visible_window(
             self._plotted_series, snapshot.concentration_history, chart_min_x

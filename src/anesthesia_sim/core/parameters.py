@@ -46,6 +46,38 @@ class SourceReference:
 
 
 @dataclass(frozen=True, slots=True)
+class MacAwakeReference:
+    """Population MAC-awake for one agent, as a fraction of that agent's MAC.
+
+    MAC-awake is the concentration at which half of a population responds to
+    verbal command — a different endpoint from MAC, which is immobility to
+    surgical incision — so this is a second, lower reference and never a
+    restatement of the first.
+
+    **Stored as a fraction, never as a percent of one atmosphere.** The
+    published sources express MAC-awake as a ratio to MAC (Katoh 1993
+    explicitly "as a ratio to age-adjusted MAC"), and the fraction is the only
+    form that stays correct if `mac_percent` changes or is ever made
+    age-aware. Recording the absolute percent instead would silently bind the
+    value to whichever MAC its own population was measured against:
+    desflurane's 2.60% is anchored to a MAC of 7.25% and this project stores
+    6.0%, so the absolute figure divided by the stored MAC reads 0.433 against
+    a published 0.36. `docs/MODEL.md` § "MAC-awake as a chart reference"
+    carries that.
+
+    `mac_reference_basis` is prose rather than a number because the two
+    denominators are not the same kind of thing — Katoh's is each patient's
+    own age-adjusted MAC, Chortkoff's a single population figure — and a
+    fraction with no stated denominator is the "correct number with the wrong
+    context" failure `CLAUDE.md` names.
+    """
+
+    fraction_of_mac: float
+    standard_deviation_fraction_of_mac: float
+    mac_reference_basis: str
+
+
+@dataclass(frozen=True, slots=True)
 class AgentParameters:
     """Validated partition parameters for one volatile anesthetic.
 
@@ -64,6 +96,7 @@ class AgentParameters:
     fat_tissue_gas_partition_coefficient: float
     max_delivered_concentration_percent: float
     mac_percent: float
+    mac_awake: MacAwakeReference
     sources: tuple[SourceReference, ...]
 
     @property
@@ -254,6 +287,43 @@ class _TissueGasPartitionCoefficientsPayload(_StrictPayload):
     fat: PositiveFinite
 
 
+class _MacAwakePayload(_StrictPayload):
+    """Load-time schema for one agent's `mac_awake`, discarded into `MacAwakeReference`."""
+
+    fraction_of_mac: PositiveFraction
+    standard_deviation_fraction_of_mac: PositiveFraction
+    mac_reference_basis: NonEmptyString
+
+    @model_validator(mode="after")
+    def _band_must_lie_strictly_between_zero_and_one_mac(self) -> _MacAwakePayload:
+        """Reject a band that reaches zero or 1 MAC.
+
+        Both edges are drawn, so both are values a reader acts on. A lower
+        edge at or below zero is not a concentration, and an upper edge at or
+        above 1 MAC would put the awakening reference on top of the
+        anesthetizing one — which is not a rendering nuisance but a
+        contradiction of what MAC-awake is, and would erase the very decrement
+        the two references exist to show.
+        """
+
+        lower = self.fraction_of_mac - self.standard_deviation_fraction_of_mac
+        upper = self.fraction_of_mac + self.standard_deviation_fraction_of_mac
+
+        if lower <= 0.0:
+            raise ValueError(
+                "fraction_of_mac minus standard_deviation_fraction_of_mac must be positive "
+                f"({self.fraction_of_mac} - {self.standard_deviation_fraction_of_mac})"
+            )
+
+        if upper >= 1.0:
+            raise ValueError(
+                "fraction_of_mac plus standard_deviation_fraction_of_mac must be below 1 MAC "
+                f"({self.fraction_of_mac} + {self.standard_deviation_fraction_of_mac})"
+            )
+
+        return self
+
+
 class _AgentPayload(_StrictPayload):
     """Load-time schema for `data/agents/*.json`, discarded into `AgentParameters`.
 
@@ -267,6 +337,7 @@ class _AgentPayload(_StrictPayload):
     tissue_gas_partition_coefficients: _TissueGasPartitionCoefficientsPayload
     max_delivered_concentration_percent: PositivePercent
     mac_percent: PositivePercent
+    mac_awake: _MacAwakePayload
     sources: Sources
 
     @model_validator(mode="after")
@@ -365,6 +436,11 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
         fat_tissue_gas_partition_coefficient=coefficients.fat,
         max_delivered_concentration_percent=(model.max_delivered_concentration_percent),
         mac_percent=model.mac_percent,
+        mac_awake=MacAwakeReference(
+            fraction_of_mac=model.mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=(model.mac_awake.standard_deviation_fraction_of_mac),
+            mac_reference_basis=model.mac_awake.mac_reference_basis,
+        ),
         sources=_sources_to_tuple(model.sources),
     )
 

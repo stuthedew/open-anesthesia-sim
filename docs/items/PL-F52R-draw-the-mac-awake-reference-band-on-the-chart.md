@@ -3,11 +3,13 @@ id: PL-F52R
 title: Draw the MAC-awake reference band on the chart
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, science, ux
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/data/agents, docs/MODEL.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/agents, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-08-25
+closed: 2026-09-04
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_interface_never_predicts_a_time_to_wake_up' tests/unit/test_simulation_view.py
 ---
 **Problem.** A washout curve on its own has no endpoint. A learner turns the
 vaporizer off, watches the alveolar trace fall, and has nothing to read it against -
@@ -245,3 +247,41 @@ primary source, `docs/MODEL.md` records the provenance and states what the band 
 and does not assert, the chart draws it as a labelled population band with no
 per-patient time prediction anywhere in the interface, and the interface makes
 clear which trace the band is to be read against.
+
+
+**Closed 2026-09-04.** Every citation was retrieved from PubMed and checked
+against its abstract in this session, which is what the 2026-09-02 note above
+said the Katoh values were still owed: Katoh 1993 (PMID 8214700) reports
+0.34 +/- 0.05 sevoflurane and 0.31 +/- 0.05 isoflurane by slow washout
+"expressed as a ratio to age-adjusted MAC"; Chortkoff 1995 (PMID 7574003)
+reports desflurane 2.60 +/- 0.46 % and states it as "36% of MAC"; Song 2005
+(PMID 15731594) reports 2.17 +/- 0.25 % in its non-jaundiced control arm; and
+Rampil 1991 (PMID 2001020) reports 7.25 % at 18-30 yr and 6.0 % at 31-65 yr.
+All four match what the appends above record.
+
+**One correction to the appends, which does not change the design.** The
+2026-09-02 appends state two error directions the wrong way round: drawing
+0.34 against the alveolar trace, and drawing the band 20 % too high from the
+denominator mistake, were both described as teaching a *later* wake-up.
+Concentration falls during emergence, so a higher reference is crossed sooner
+and a faster-falling trace crosses any reference sooner - both errors
+therefore teach an *earlier* wake-up, which is what the older "Required
+property" section says and what the arithmetic gives. Every failure mode here
+runs in that one direction, and `docs/MODEL.md` § "MAC-awake as a chart
+reference" now states it once rather than twice inconsistently.
+
+**Measured here, at the value actually drawn.** The Required-property section
+measured the trace separation at 0.33 MAC. Re-measured at the band's own
+centre on the same case - 3-hour 1 MAC sevoflurane, vaporizer off at 10 L/min
+- the alveolar trace crosses 0.34 x MAC at 2.83 min and the vessel-rich trace
+at 6.51 min, 2.30x later. `docs/MODEL.md` carries those figures.
+
+**What landed.** `mac_awake` in all three agent data files as a validated
+fraction with its standard deviation and the denominator it was derived
+against; `MacAwakeReference` through `core/parameters.py` and the snapshot;
+`mac_awake_band_percent` and `format_mac_awake_reference` in
+`app/formatting.py`; a band and a 1 MAC line drawn behind the six traces,
+each with its own legend mark type; six provenance rows; a new `docs/MODEL.md`
+section; and an "Interface boundary" prohibition on displaying any
+time-to-awakening figure, which `test_the_interface_never_predicts_a_time_to_wake_up`
+holds against every string in the mounted tree.

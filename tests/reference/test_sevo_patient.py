@@ -51,6 +51,11 @@ def _synthetic_agent(blood_gas_partition_coefficient: float) -> AgentParameters:
         "tissue_gas_partition_coefficients": {"vessel_rich": 1.1, "muscle": 2.4, "fat": 34.0},
         "max_delivered_concentration_percent": 8.0,
         "mac_percent": 2.0,
+        "mac_awake": {
+            "fraction_of_mac": 0.34,
+            "standard_deviation_fraction_of_mac": 0.05,
+            "mac_reference_basis": "synthetic; no reference band is drawn in this test",
+        },
         "sources": [
             {
                 "citation": "Synthetic parameters for directional solubility testing only.",

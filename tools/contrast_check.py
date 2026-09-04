@@ -226,6 +226,35 @@ REQUIREMENTS: tuple[Requirement, ...] = (
     Requirement("VESSEL_RICH_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
     Requirement("MUSCLE_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
     Requirement("FAT_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
+    Requirement(
+        "MAC_AWAKE_BAND_COLOR",
+        "PANEL",
+        AA_NON_TEXT,
+        "1.4.11",
+        "the MAC-awake reference band on the chart, and its legend swatch. The "
+        "pair measured is the band's *boundary*: a 1.5px stroke on the upper "
+        "edge and the fill's own cut-off on the lower, both this color at full "
+        "opacity, which is what a reader has to perceive to know where the band "
+        "is. The fill between them is this color at "
+        "MAC_AWAKE_BAND_FILL_OPACITY and is decoration - it is deliberately "
+        "light enough for six traces to stay legible across it, which a fill "
+        "meeting 3:1 in its own right would not be. That is a fill judged by "
+        "SC 1.4.11's own carve-out for a graphical object whose meaning another "
+        "part carries, not a shortfall: no entry belongs in KNOWN_SHORTFALLS "
+        "for it (PL-F52R)",
+    ),
+    Requirement(
+        "ONE_MAC_LINE_COLOR",
+        "PANEL",
+        AA_NON_TEXT,
+        "1.4.11",
+        "the 1 MAC reference line on the chart, and its legend swatch. Held to "
+        "the graphical-object minimum rather than to the 4.5:1 the same color "
+        "meets as MUTED text elsewhere: this instance is a ruled line, not a "
+        "string. It is deliberately quieter than MAC_AWAKE_BAND_COLOR - the two "
+        "traces have converged by the time a run reaches 1 MAC and have not at "
+        "MAC-awake, so the band is the trace-critical mark of the two (PL-F52R)",
+    ),
 )
 
 #: Declared pairs that do not meet their minimum today, each against the item
