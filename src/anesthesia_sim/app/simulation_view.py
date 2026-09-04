@@ -921,10 +921,7 @@ class SimulationView:
         # MAC axis carried over from the previous agent would label the same
         # traces against the wrong scale. Rebuilt only when one of the two
         # actually moves, for the reason recorded at `_mac_axis_basis`.
-        mac_axis_basis = (
-            snapshot.max_delivered_concentration_percent,
-            snapshot.agent_mac_percent,
-        )
+        mac_axis_basis = (snapshot.max_delivered_concentration_percent, snapshot.agent_mac_percent)
 
         if mac_axis_basis != self._mac_axis_basis:
             self._mac_axis_basis = mac_axis_basis

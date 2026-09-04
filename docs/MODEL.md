@@ -123,6 +123,18 @@ $$
 \text{percent} = 100F
 $$
 
+The interface also converts to the second display unit, a multiple of the
+running agent's 1 MAC. It is a rescaling of the percent above by one
+per-agent constant and introduces no new state:
+
+$$
+\text{MAC multiple} = \frac{100F}{\mathrm{MAC}_\%}
+$$
+
+What that quotient does and does not assert is "MAC multiples as a display
+unit"; it is not the definition of a modeled quantity and nothing in `core/`
+computes it.
+
 A concentration fraction must always be finite and satisfy:
 
 $$
@@ -160,6 +172,7 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | $`\dot V_A`$ | Alveolar ventilation | L gas/min |
 | $`Q`$ | Cardiac output | L blood/min |
 | $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min |
+| $`\mathrm{MAC}_\%`$ | Agent's 1 MAC, age-40 alveolar (display divisor only; not in any governing equation) | percent |
 | $`\lambda_{b:g}`$ | Sevoflurane blood:gas partition coefficient | dimensionless |
 | $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$ | dimensionless |
 | $`M_C`$ | Sevoflurane stored in the breathing circuit | L equivalent gas |
@@ -800,11 +813,17 @@ the provenance table below, 26 are tier 3. All twelve partition coefficients
 are the Gas Man set as published by De Wolf et al.; all eleven physiologic
 parameters in `src/anesthesia_sim/data/patients/reference_adult.json` are the
 Gas Man default patient; and the three `mac_percent` values are the MAC values
-De Wolf et al. state they used in their Gas Man simulations, with an
-age-related iso-MAC paper cited alongside but not adopted. The three
+De Wolf et al. state they used in their Gas Man simulations, with two
+tier-2 sources cited alongside but not adopted — Mapleson's 1996 meta-analysis
+and the age-related iso-MAC charts built on it. The three
 exceptions are the vaporizer maxima, which cite manufacturer device
 specifications — the primary source for a device capability, since no
 measurement is at issue.
+
+`mac_percent` is the one of these that a reader now divides by: it is the
+divisor of the second display unit, so its tier governs a displayed clinical
+value rather than only a starting dial position. "Delivery-limit and MAC
+parameters" states what that costs, and "Known limitations" records it.
 
 Every `sources` entry in every data file names its tier. The three agent files
 cite the primary measurements alongside their tier-3 values — Strum and Eger
@@ -956,7 +975,11 @@ comparability of three agents carrying one reference implementation's
 choices, not of three agents each traced to its own measurement. It buys a
 cross-agent comparison in which every agent shares the same error, which is
 the property a MAC-normalized axis needs; it does not make any of the twelve
-coefficients a measured value. Each agent file records the primary
+coefficients a measured value. That shared-error argument covers the
+*coefficients*, which is what this paragraph is about. It does **not** extend
+to the three `mac_percent` divisors, whose deviations from the primary
+literature run in opposite directions between sevoflurane and desflurane;
+"Delivery-limit and MAC parameters" measures that separately. Each agent file records the primary
 measurement alongside its stored number and states the difference.
 
 Desflurane is markedly less soluble than sevoflurane, which is itself less
@@ -995,18 +1018,22 @@ appropriate for a patient.
 <!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
-`mac_percent` is 1 MAC for a 40-year-old adult. It is used for exactly one
-thing: choosing the starting position of the delivered-concentration control
-when a run begins, so that a new run starts from a recognizable clinical
-anchor rather than an arbitrary number. `AgentUptakeSystem.for_agent()`
-applies it, so the starting dial position is agent-specific in the core
-rather than in the controller, and every agent file **must** declare a
-`mac_percent` its own vaporizer can deliver — a cross-field check in
-`core/parameters.py` enforces that, and runs after every field is
-populated so it cannot be defeated by field declaration order. It is
-deliberately not carried into the simulation. Specifically, the model does **not**:
+`mac_percent` is 1 MAC for a 40-year-old adult. It is used for two things,
+both of them presentation: choosing the starting position of the
+delivered-concentration control when a run begins, so that a new run starts
+from a recognizable clinical anchor rather than an arbitrary number; and
+serving as the divisor of the second display unit ("MAC multiples as a
+display unit"). `AgentUptakeSystem.for_agent()` applies the first, so the
+starting dial position is agent-specific in the core rather than in the
+controller, and every agent file **must** declare a `mac_percent` its own
+vaporizer can deliver — a cross-field check in `core/parameters.py` enforces
+that, and runs after every field is populated so it cannot be defeated by
+field declaration order. It is still not carried into the simulation:
+no governing equation reads it, and `core/` computes no quantity derived
+from it. Specifically, the model does **not**:
 
-- compute or display a MAC fraction, MAC-hours, or age-adjusted MAC;
+- compute MAC-hours or an age-adjusted MAC, or sum MAC fractions across
+  agents;
 - model an effect-site compartment or any depth-of-anesthesia endpoint; or
 - imply that an alveolar concentration equal to `mac_percent` corresponds to
   any particular clinical state in a particular patient.
@@ -1015,10 +1042,59 @@ MAC is a population ED50 for immobility to a standardized stimulus, varying
 with age and modified by other agents, opioids, temperature, and patient
 factors none of which are modeled here. Presenting a single-agent alveolar
 concentration as though it indexed anesthetic depth would be exactly the
-kind of plausible-but-wrong clinical inference `CLAUDE.md` forbids. The
-values are cited to age-related iso-MAC data in each agent's `sources`
-array; the reasoning for treating them as a starting default only, rather
-than as a modeled quantity, is recorded here.
+kind of plausible-but-wrong clinical inference `CLAUDE.md` forbids, which is
+why the displayed unit is a *ratio to* 1 MAC, written `×MAC`, and never a
+depth. The reasoning for that distinction is in the display section named
+above; what follows here is what the three stored numbers are worth.
+
+**The provenance tier is load-bearing now, and it was not before.** While
+`mac_percent` only chose where the dial opened, an error in it moved the
+starting point of a run and nothing else. As the divisor of every displayed
+compartment value and of the chart's second axis it is a clinically
+meaningful transformation under `CLAUDE.md`'s safety-critical standard. The
+stored values are **tier 3**: the flat adult MACs De Wolf et al. state they
+used in their Gas Man simulations, adopted because they are the same
+parameter set as every partition coefficient in this model and because the
+reference adult has no age parameter to apply an age-related MAC to.
+
+**The size of the gap, and which comparison it distorts.** Mapleson's
+meta-analysis of the published MAC literature gives, for age 40, isoflurane
+1.17%, sevoflurane 1.80% and desflurane 6.6%, with 95% confidence limits of
+about ±7% (±10% for desflurane). Against those:
+
+| Agent | Stored `mac_percent` | Mapleson age-40 | Displayed MAC reads |
+| --- | --- | --- | --- |
+| Sevoflurane | 2.0% | 1.80% | 10% low |
+| Isoflurane | 1.2% | 1.17% | 2.5% low |
+| Desflurane | 6.0% | 6.6% | 10% high |
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+
+The errors run in opposite directions for sevoflurane and desflurane, so a
+sevoflurane-versus-desflurane comparison in MAC multiples — the exact
+comparison the second display unit exists to make honest — differs by about
+22% between the two MAC sources. That is larger than either source's own
+confidence limits and is a real limitation of the display, recorded in
+"Known limitations" rather than left implicit.
+
+**Why the Mapleson values are nonetheless not adopted here.** Three reasons,
+and the first is this document's own rule. Mapleson 1996 is a meta-analysis:
+it regresses a literature survey and measures nothing, which is **tier 2**
+under "Source hierarchy", and tier 2 may never be the authority for a stored
+value. Second, every other parameter in this model is the Gas Man set, so a
+Mapleson divisor over a Gas Man trajectory would make each displayed multiple
+a ratio between two different parameter lineages; dividing this model's
+output by this model's own MAC is at least internally consistent. Third,
+±7-10% confidence limits mean no MAC source makes a cross-agent comparison
+exact, so the honest response is to display the divisor and disclose the
+limitation — which the interface and this section do — rather than to
+substitute a different non-primary number and present it as settled. The
+route to primary values for all three agents is `ROADMAP.md`'s
+planned-milestone item 31.
+
+Each agent's `sources` array carries the citation, the tier, the Mapleson
+value it was not taken from, and the difference.
 
 The project must not tag a release while scientific `TBD` values remain in
 this document. None remain as of this revision.
@@ -1672,8 +1748,12 @@ The interface must show:
 - fat concentration;
 - cumulative delivered amount;
 - cumulative exhausted amount;
-- total stored amount; and
-- mass-balance residual or status.
+- total stored amount;
+- mass-balance residual or status; and
+- every concentration above, and the delivered concentration, additionally as
+  a multiple of the running agent's 1 MAC, with that agent's 1 MAC in percent
+  stated on the display. See "MAC multiples as a display unit" for what the
+  multiple asserts and for why both units are shown rather than selected.
 
 Arterial concentration is deliberately **not** in this list. Arterial blood is
 flow-limited in this model and holds no independent state: $`F_a \equiv F_A`$
@@ -1747,6 +1827,75 @@ mode-confusion failure this specification's interface rules exist to prevent.
 A display that is merely frozen, with no state change at all, is worse still.
 
 The phrase “end-tidal-equivalent” must not imply that airway sampling dynamics, dead space, or capnography are modeled.
+
+### MAC multiples as a display unit
+
+Every compartment is displayed twice: as a percent of one atmosphere, and as
+a multiple of the running agent's 1 MAC. Both are shown at once, on every
+compartment, on the delivered-agent control, and on the chart, which carries a
+percent axis on the left and a MAC axis on the right.
+
+**Why the second unit exists.** A percent axis silently changes meaning when
+the agent changes. 2% is 1 MAC of sevoflurane and about a third of a MAC of
+desflurane, so two runs plotted in percent are two different clinical
+situations drawn at the same height, and a learner comparing a desflurane
+wash-in to a sevoflurane one in percent is comparing nothing. MAC multiples
+are the unit that survives the agent change, and the unit clinicians reason
+in.
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- derived: a third of a MAC of desflurane from data/agents/desflurane.json mac_percent = 6 -->
+
+**What a MAC multiple on a compartment asserts.** This is the whole difficulty
+of the unit, and it is not the arithmetic. MAC is defined for the *alveolar*
+(end-tidal) concentration at one atmosphere in a nominal 40-year-old, as the
+population ED50 for immobility to a standardized surgical stimulus. So:
+
+- On the **alveolar** compartment, a MAC multiple is the conventional
+  reading, subject to every limitation of the divisor recorded below.
+- On the **circuit, mixed-venous, vessel-rich, muscle and fat** compartments
+  it means only *this compartment's partial pressure equals N times the
+  alveolar partial pressure that would be 1 MAC*. It is a partial-pressure
+  ratio. It is **not** a statement that the patient is at N MAC of anesthetic
+  depth, and the two read identically on a label unless the label says which.
+
+The interface states the distinction beside the chart, in those terms, and
+the ratio is never presented as a depth. Three further limitations hold for
+every compartment including the alveolar one, and none of them is modeled
+here: MAC falls about 6% per decade of age (Mapleson 1996; cited in each
+agent's `sources`) and this model's reference adult has no age parameter;
+MAC multiples of co-administered agents are additive and this model runs one
+agent at a time; and MAC is modified by opioids, temperature, and patient
+factors none of which are represented.
+
+**The unit is written `×MAC`, not `MAC`.** "0.80 MAC" is read as a depth;
+"0.80 ×MAC" is read as what the number is. The multiplication sign is doing
+safety work rather than typographic work, and it is why the readouts carry it.
+
+**The divisor is displayed.** A MAC multiple has exactly one free parameter,
+and `CLAUDE.md` requires a clinically meaningful displayed value to be
+traceable to the transformation that produced it. The interface therefore
+states the running agent's 1 MAC in percent beside the chart — "1 MAC
+sevoflurane = 2.0%" — so a reader who disagrees with the divisor can see that
+they disagree, and can convert back to the percent the model actually
+computes.
+
+**Nothing in `core/` computes a MAC multiple.** The transformation lives in
+`app/formatting.py` and takes the divisor as an argument; the divisor reaches
+it through `SimulationSnapshot.agent_mac_percent`, beside the concentrations
+it scales and the agent it belongs to, so a frame cannot pair one agent's
+compartment with another agent's MAC. The chart's plotted points remain in
+percent — the MAC axis relabels that same coordinate rather than carrying a
+second series, so the two axes cannot come to disagree about where a trace
+is. Both units are always shown rather than selected, because a unit selector
+would make the axis unit a mode, and a chart read under the wrong assumed
+unit is a misreading no disclaimer catches.
+
+**What the divisor is worth.** `mac_percent` is a tier-3 value, and this
+section is where that matters most: it is now the divisor of every MAC number
+on the display rather than only the vaporizer's starting position. "Delivery-
+limit and MAC parameters" carries the provenance and the size of the gap
+against the primary literature, including the consequence for the
+cross-agent comparison this unit exists to support.
 
 ### Color contrast, and the standard this interface is held to
 
@@ -1894,6 +2043,39 @@ are least physiological. At the previous 0.001 percentage points the last
 digit was uncertain by two to twenty-three counts and the digit before it by
 up to two, so two of the three displayed decimals carried no information
 about the model.
+
+**The MAC resolution is derived from this one, not chosen beside it.** A MAC
+multiple is a percent divided by the agent's own `mac_percent`, so the
+resolution above already fixes how finely the quotient is known, and stating
+a second resolution independently would mean re-deriving two numbers whenever
+this one is re-measured. The rule is one line: **the finest power of ten that
+is nowhere finer than the percent resolution converted into MAC.** That
+conversion is agent-specific — 0.01 percentage points is 0.005 MAC for
+sevoflurane, 0.0083 for isoflurane and 0.0017 for desflurane — so the binding
+agent is isoflurane at 0.0083 MAC, and **0.01 MAC** is the finest power of ten
+at or above it.
+
+One count of the MAC line is therefore 0.02 percentage points of sevoflurane,
+0.012 of isoflurane and 0.06 of desflurane: coarser than the percent readout
+beside it for every agent, which is the property that keeps the two units from
+contradicting each other. A reader must never be able to watch the MAC digit
+move while the percent digit stands still, because that would assert the model
+resolved something it does not. The unit conversion is not
+information-preserving across agents, which is why the MAC resolution is
+uniform in MAC rather than being the percent resolution restated: a
+per-agent MAC resolution would put different magnitudes at the same glyph
+position, which is the failure "Why the resolution is uniform rather than
+per-compartment" rejects below, arriving across agents instead of across
+compartments.
+
+The below-resolution form applies to the MAC line for the same reason it
+applies to the percent line, and matters more rather than less: a compartment
+clears 0.01 MAC later than it clears 0.01 percentage points, so `0.00 ×MAC`
+under a percent line already showing the compartment filling would be the two
+readouts contradicting each other. `<0.01 ×MAC` states what is known.
+`tests/unit/test_formatting.py` re-runs the derivation against every shipped
+agent, so adding an agent or changing the percent resolution fails there
+rather than silently over-claiming.
 
 **The resolution is a property of the display alone.** Everything upstream of
 the formatter carries full binary64: the compartment states, every
@@ -2044,15 +2226,19 @@ value a reader interprets clinically. Precision in this interface is set by
 what each number is for, and the rule above governs the clinical readouts.
 
 The chart plots the same percentages on a shared linear axis scaled to the
-agent's maximum dial setting. Its resolution is set by pixels rather than by
-decimals, and it is coarser than the numeric readouts throughout; the
-readouts, not the traces, are where a value is read.
+agent's maximum dial setting, and carries a second axis on the right reading
+the identical coordinate in MAC multiples. Its resolution is set by pixels
+rather than by decimals, and it is coarser than the numeric readouts
+throughout; the readouts, not the traces, are where a value is read. The MAC
+axis is labelled on round MAC values rather than on round percentages —
+half-MAC steps for all three agents at the current dial-maximum range, so the
+gridline a reader learns under one agent means the same thing under the next.
 
 `app/formatting.py` is where this section terminates: it holds the
-resolution as a single constant, derives the formatter and the
-below-resolution marker from it, and imports no Flet, so the one function
-this section reasons about can be read, cited and tested without loading the
-interface. `tests/unit/test_formatting.py` pins the constant and every
+resolution as a single constant, derives the formatter, the below-resolution
+marker, the MAC decimal count and the MAC axis placement from it, and imports
+no Flet, so the functions this section reasons about can be read, cited and
+tested without loading the interface. `tests/unit/test_formatting.py` pins the constant and every
 string the formatter produces; `tests/unit/test_simulation_view.py` holds
 the end-to-end path — real controller, real step, the string on the panel.
 `app/simulation_view.py` imports the constant for the delivered-agent
@@ -2120,6 +2306,20 @@ This model does not model:
 - clinical alarms;
 - dosing recommendations; or
 - patient-specific clinical predictions.
+
+**The MAC divisor is a limitation of the display, and a named one.** The
+second display unit divides by a tier-3 `mac_percent`, and "Delivery-limit
+and MAC parameters" measures the gap: against Mapleson's age-40 meta-analytic
+values the stored sevoflurane MAC reads 10% low and the stored desflurane MAC
+10% high, so a sevoflurane-versus-desflurane comparison in MAC multiples is
+displaced by about 22% purely by the choice of MAC source. The direction is
+consistent within an agent and does not change any curve's shape or timing —
+it rescales one agent's MAC axis against another's — but it is larger than
+either source's own confidence limits, and a reader comparing two agents at
+"1 MAC" is comparing two doses that the primary literature would not call
+equipotent to that precision. The interface displays the divisor for exactly
+this reason. Moving all parameters to primary sources is `ROADMAP.md`'s
+planned-milestone item 31.
 
 ## Release gate
 
