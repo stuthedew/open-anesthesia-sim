@@ -3,12 +3,13 @@ id: PL-MC8Z
 title: The start-an-item guard checks who is on the item but never what files it touches, so overlap is found at merge
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: parallel-sessions
-touches: .claude/skills/docket/SKILL.md
+touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/concurrency.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_concurrency.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-02
-verify: python3 tools/doc_check.py check && grep -qF 'is another session in these files' .claude/skills/docket/SKILL.md
+closed: 2026-09-04
+verify: uv run pytest subprojects/docket/tests/test_concurrency.py subprojects/docket/tests/test_vcs.py && grep -qF 'is another session in these files' .claude/skills/docket/SKILL.md && grep -q 'def test_observed_overlap_reports_the_branch_changing_the_file' subprojects/docket/tests/test_concurrency.py
 ---
 
 **Problem.** The `docket` skill's "Mode: start an item" is a three-step guard —
@@ -51,3 +52,40 @@ bill of health would be worse than none.
 
 **Done when.** The start-an-item guard names the file-overlap question, and
 says what a session does with the answer.
+
+**Worked 2026-09-04, with the scope extended by the project owner.** The brief
+scopes a prose fix: one step in the guard telling a session to run
+`bin/docket concurrent <id>`. That was built, and so was a second half, because
+the prose half alone would not have caught the collision this session found on
+its way to picking the item.
+
+*The evidence.* Choosing between three apparatus items, `bin/docket concurrent
+PL-20CQ` listed eleven items it could not run alongside and said nothing about
+`origin/claude/perf-investigation-xnlfed`, which had commits from that morning
+in `checks.py`, `verify.py` and `test_checks.py` — `PL-20CQ`'s entire file set.
+It was found by hand, with `git diff --name-only origin/main...<ref>` over every
+remote branch. `concurrent` was blind to it because it compares one item's
+`touches` against another's, and `touches` is a prediction: the four items on
+that branch had declared other paths, and the branch had wandered.
+
+*So the guard reads the branches too.* `vcs.files_in_flight` diffs each
+unmerged ref against the default branch, `concurrency.observed_conflicts`
+matches those files against the item's `touches` with the same `_covers`
+logic, and `docket concurrent <id>` prints them as their own section. Against
+the case above it now names the ref, the four items on it, and the three files.
+
+*Reported separately from declared overlap, deliberately.* They are different
+kinds of evidence and only one of them says the collision has already happened;
+merging them into a single verdict would lose exactly that. The observed half
+also inherits the in-flight read's refusals rather than working around them: a
+ref whose commits went unread is not diffed, and an empty diff on a ref holding
+commits is named as unread rather than reported as a branch that changed
+nothing — `_run_git` answers a failure with the same empty string a clean
+branch gives, and conflating the two would be the false clean bill of health
+this package exists to refuse.
+
+*What it does not fix.* `touches` staying a prediction (`PL-PGZK` covers the
+hub-path over-firing that follows from it), and the window before a session's
+first push, which no ref can close (`PL-SK88`). The observed half narrows the
+second only for work already pushed.
+

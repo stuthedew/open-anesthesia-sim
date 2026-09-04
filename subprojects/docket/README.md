@@ -26,7 +26,7 @@ docket next --effort S       # what to work on, and why
 docket wave                  # which beat of the plan's cadence is due
 docket list                  # the queue, one line per item
 docket triage                # what is untriaged, and the rules the answers must satisfy
-docket concurrent PL-K7QX    # what can be worked alongside it
+docket concurrent PL-K7QX    # what can be worked alongside it, and what a live branch is already changing
 docket feature halted-step   # progress on one feature
 docket gate --feature x      # the open debt a milestone has to clear
 docket release v0.3.0        # verify, bump the version, write the notes
@@ -411,6 +411,27 @@ contend. *Absence* of declared overlap proves only that nobody foresaw a
 collision — the work may still wander into a shared file. So the command
 rules pairs out and never certifies a pair as safe, and items declaring no
 paths at all are reported as unanalysable rather than assumed harmless.
+
+**`docket concurrent <id>` also reports what the branches in flight have
+already changed**, which is the other half of the question and the one that
+fires on work actually underway. `touches` is a prediction written before the
+work; a branch diff is a measurement taken during it, so the two fail in
+opposite directions — the first is complete about intent and silent about
+drift, the second exact about what has happened and silent about what comes
+next. Observed 2026-09-02: two sessions passed every declared check, both
+edited `vcs.py`, and found out at merge. They are printed as separate sections
+rather than merged into one verdict, because a reader deciding whether to start
+needs to know which kind fired: only the second says the collision has already
+happened.
+
+The observed half is read per unmerged ref with `git diff --name-only
+base...ref`, and it inherits every limit of the in-flight read it is built on.
+A ref whose commits that read could not compare is not diffed either — the
+merge-base a three-dot diff needs is the one that already failed to resolve.
+An empty diff on a ref that holds commits the base does not is named as unread
+rather than reported as a branch that changed nothing, because `_run_git`
+answers a failure with the same empty string a clean branch gives. And the
+answer is bounded by what has been *pushed*, like everything else here.
 
 ### A debt gate is computed, not transcribed
 

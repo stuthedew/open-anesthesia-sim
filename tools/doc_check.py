@@ -1588,6 +1588,87 @@ def check_workflow_paths(root: Path, report: Report) -> None:
                     report.errors.append(f"{relative}:{line}: runs `{token}`, which does not exist")
 
 
+# What marks the invocation the two files promise to keep identical. The
+# coverage threshold is the whole point of the promise - it is what holds
+# `core/` at 100% of statements and branches - so the flag that carries it is
+# the right key. Deliberately narrower than "every pytest command": `drift.yml`
+# runs a bare `uv run pytest` on purpose, because a coverage failure there
+# would report as a dependency break, and a blanket rule would fire on it every
+# run (`PL-22Z3`).
+COVERAGE_GATE_MARK = "--cov-fail-under"
+
+
+def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
+    """Every command line in a Makefile recipe, with its line number.
+
+    A recipe line is one beginning with a tab; which target it belongs to does
+    not matter here, because the mark above is what selects the line rather
+    than its position.
+    """
+    for offset, line in enumerate(text.splitlines(), start=1):
+        if line.startswith("\t") and line.strip():
+            yield line.strip(), offset
+
+
+def check_coverage_gate(root: Path, report: Report) -> None:
+    """Hold the Makefile's coverage run and CI's to the same command.
+
+    Both files say in comments that they must stay the same, and nothing
+    checked it. They are the local gate and the merge gate, so a drift between
+    them means a session sees one answer and CI sees another - or, worse, both
+    stay green while only one of them still enforces the threshold. That is a
+    silent divergence in the check that holds `core/` at 100%, which is the
+    kind of exact rule a hard failure is for rather than an advisory
+    (`PL-D3M2`).
+
+    Exact string equality, not a parse. The two lines are deliberately
+    identical today and `-n auto` was chosen partly to keep them so on machines
+    of different widths - a looser comparison would need a judgment about which
+    differences are legitimate, and `CLAUDE.md` reserves scripted rules for the
+    half that is decidable.
+
+    Silent where neither file names the mark, so a checkout that has not
+    adopted a coverage gate is not failed for the absence of one.
+    """
+    makefile = root / "Makefile"
+    workflows = sorted(
+        path for pattern in WORKFLOW_GLOBS for path in root.glob(pattern) if path.is_file()
+    )
+    local: list[tuple[str, str]] = []
+    if makefile.is_file():
+        local = [
+            (command, f"Makefile:{line}")
+            for command, line in _recipe_commands(makefile.read_text(encoding="utf-8"))
+            if COVERAGE_GATE_MARK in command
+        ]
+    remote: list[tuple[str, str]] = []
+    for path in workflows:
+        relative = path.relative_to(root)
+        remote += [
+            (command, f"{relative}:{line}")
+            for command, line in workflow_commands(path.read_text(encoding="utf-8"))
+            if COVERAGE_GATE_MARK in command
+        ]
+    if not local and not remote:
+        return
+    # Reported before the comparison, because "the sets differ" is the wrong
+    # sentence for a gate that is missing from one side entirely - and an
+    # absent gate is the more serious of the two findings.
+    for name, found, other in (("Makefile", local, remote), ("CI", remote, local)):
+        if not found and other:
+            report.errors.append(
+                f"the {name} runs no `{COVERAGE_GATE_MARK}` command while "
+                f"{other[0][1]} does, so only one of the two gates gates coverage"
+            )
+            return
+    if {command for command, _ in local} != {command for command, _ in remote}:
+        where = ", ".join(f"{origin}: `{command}`" for command, origin in local + remote)
+        report.errors.append(
+            "the coverage gate differs between the Makefile and CI, so the local "
+            f"gate and the merge gate are not asking the same question - {where}"
+        )
+
+
 def _without_code(text: str) -> list[str]:
     """Every line with its code blanked, so only prose reaches the math rules.
 
@@ -1819,6 +1900,7 @@ def analyze(root: Path) -> Report:
     check_tags(root, report)
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)
+    check_coverage_gate(root, report)
     check_math_delimiters(root, report)
     check_resident_instructions(root, report)
     return report
