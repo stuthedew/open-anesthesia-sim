@@ -4,11 +4,12 @@ title: Decide what to do with origin/Review_articles: one unattributed commit ah
 priority: P2
 effort: S
 status: done
-closed: 2026-09-04
 classes: docs
 feature: provenance
 touches: docs/references/README.md, docs/MODEL.md, README.md, .gitattributes
 added: 2026-09-04
+closed: 2026-09-04
+pr: 298
 verify: python3 tools/doc_check.py check && test -f docs/references/schuttler-schwilden-2008-modern-anesthetics-hep-182.pdf
 ---
 
