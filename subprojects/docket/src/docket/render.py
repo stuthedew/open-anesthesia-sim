@@ -438,10 +438,12 @@ def format_orphaned(report: OrphanedReport) -> str:
     for branch in report.branches:
         landed = _plural(len(branch.landed), "file", "files")
         lines.append(f"{branch.ref}  ({landed} of its work already landed)")
+        # Each commit carries its own paths rather than the branch listing them
+        # all after the last one, which read as though they belonged to it.
         for commit in branch.commits:
             lines.append(f"  {commit.commit[:9]}  {commit.subject}")
-        for path in branch.outstanding:
-            lines.append(f"    {path}")
+            for path in commit.paths:
+                lines.append(f"    {path}")
         lines.append(f"  recover: git checkout {branch.ref} -- {branch.outstanding[0]}")
         lines.append("")
     lines.append(
