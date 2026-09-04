@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, docs
 feature: worker-instructions
+milestone: v0.3.6
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-04
 closed: 2026-09-04
