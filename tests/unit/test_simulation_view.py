@@ -23,17 +23,16 @@ import flet as ft
 import flet_charts as fch
 import pytest
 
-from anesthesia_sim.app.chart_downsampling import first_index_at_or_after
-from anesthesia_sim.app.chart_series import MAX_CHART_POINTS_PER_SERIES
+from anesthesia_sim.app.chart_series import CHART_COLUMN_BUDGET_PER_SERIES
 from anesthesia_sim.app.controller import (
     CONTROL_INPUT_UNITS,
     ControlChange,
     ControlInput,
     HistoryWindow,
+    RunHistory,
     SimulationController,
     SimulationHistorySample,
     SimulationSnapshot,
-    sample_elapsed_s,
 )
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
@@ -124,6 +123,7 @@ class _FakeController:
             if history is not None
             else (_sample(snapshot.elapsed_s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),)
         )
+        self._run = RunHistory.of(self.history_value)
         self.is_running = snapshot.is_running
         self.requested_window_starts: list[float] = []
 
@@ -142,6 +142,7 @@ class _FakeController:
 
         self.snapshot_value = _snapshot(history=history, **snapshot_fields)
         self.history_value = history
+        self._run = RunHistory.of(history)
 
     def history_window(self, start_s: float) -> HistoryWindow:
         """Cut the window the real controller would, by the same search.
@@ -152,9 +153,8 @@ class _FakeController:
         """
 
         self.requested_window_starts.append(start_s)
-        start_index = first_index_at_or_after(self.history_value, start_s, sample_elapsed_s)
 
-        return HistoryWindow(samples=self.history_value[start_index:], index_offset=start_index)
+        return self._run.window_from(start_s)
 
 
 def _sample(
@@ -1050,14 +1050,53 @@ def _all_series(view: SimulationView) -> tuple[fch.LineChartData, ...]:
     )
 
 
+def test_a_frame_never_materializes_the_window_as_rows(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`PL-D9WD`: nothing on the render path may walk the visible window.
+
+    `HistoryWindow.samples` rebuilds one row per sample in the window, so a
+    single use of it anywhere in a frame puts the per-frame cost back in
+    proportion to the width shown - which is the whole defect the M4
+    aggregate cache was built to remove, and the one a later change is most
+    likely to reintroduce, because rows are the obvious shape to reach for.
+
+    Asserted as never rather than as a bound: a frame has no legitimate use
+    for a row, since every trace reads one quantity through
+    `RunHistory.aggregates` and every readout comes from the snapshot.
+    """
+
+    materializations = 0
+    build_rows = HistoryWindow.samples.fget
+    assert build_rows is not None
+
+    def counted(window: HistoryWindow) -> tuple[SimulationHistorySample, ...]:
+        nonlocal materializations
+        materializations += 1
+
+        return build_rows(window)
+
+    monkeypatch.setattr(HistoryWindow, "samples", property(counted))
+
+    view, _ = _build_view(history=_run_history(18_000))
+    materializations = 0
+
+    view._refresh_view()
+
+    assert materializations == 0
+
+
 @pytest.mark.parametrize("sample_count", [3_000, 6_000, 18_000])
 def test_chart_payload_is_bounded_however_long_the_run(sample_count: int) -> None:
-    """The render payload must not grow with the length of the run."""
+    """The render payload must not grow with the length of the run.
+
+    The budget is in columns and the points follow from it: M4 contributes
+    at most its four tuples per column, and two on the monotone stretches a
+    real run is mostly made of.
+    """
 
     view, _ = _build_view(history=_run_history(sample_count))
 
     for series in _all_series(view):
-        assert len(series.points) <= MAX_CHART_POINTS_PER_SERIES
+        assert len(series.points) <= 4 * CHART_COLUMN_BUDGET_PER_SERIES
 
 
 def test_chart_sends_only_samples_inside_the_visible_window() -> None:
