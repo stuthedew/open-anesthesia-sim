@@ -24,6 +24,7 @@ import pytest
 
 from anesthesia_sim.app.chart_series import MAX_CHART_POINTS_PER_SERIES
 from anesthesia_sim.app.controller import (
+    ControlChange,
     SimulationController,
     SimulationHistorySample,
     SimulationSnapshot,
@@ -130,6 +131,7 @@ def _snapshot(
     max_delivered_concentration_percent: float = 8.0,
     agent_mac_percent: float | None = None,
     agent_mac_awake: MacAwakeReference | None = None,
+    control_timeline: tuple[ControlChange, ...] = (),
     failure_reason: str | None = None,
 ) -> SimulationSnapshot:
     """Build a snapshot for the view, defaulting MAC from the named agent.
@@ -181,6 +183,7 @@ def _snapshot(
         agent_accounting_absolute_error_l=1.5e-13,
         agent_accounting_passes_validation=passes_validation,
         concentration_history=history,
+        control_timeline=control_timeline,
         failure_reason=failure_reason,
     )
 

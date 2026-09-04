@@ -113,6 +113,7 @@ class _ReplayController:
             agent_accounting_absolute_error_l=1.5e-13,
             agent_accounting_passes_validation=True,
             concentration_history=history,
+            control_timeline=(),
             failure_reason=None,
         )
 
