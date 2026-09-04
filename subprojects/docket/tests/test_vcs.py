@@ -14,6 +14,7 @@ from docket.checks import Report
 from docket.vcs import (
     Branch,
     BranchState,
+    FlightFiles,
     FlightReport,
     StrandedItem,
     StrandedReport,
@@ -23,6 +24,7 @@ from docket.vcs import (
     closed_by,
     closures_on_base,
     default_base,
+    files_in_flight,
     lost,
     merged_pull_requests,
     stranded,
@@ -1473,3 +1475,95 @@ def test_a_revision_this_checkout_does_not_hold_declines() -> None:
 
     assert not report.known
     assert "names no commit here" in report.declined
+
+
+def _files_runner(diffs: dict[str, list[str]], counts: dict[str, int] | None = None):
+    """A git that answers `diff --name-only` and `rev-list --count` per ref.
+
+    A ref absent from `diffs` answers with the empty string `_run_git` returns
+    for a failure, which is the case the guard has to tell from a branch that
+    genuinely changed nothing.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "diff":
+            ref = args[-1].split("...")[-1]
+            return "".join(f"{path}\n" for path in diffs.get(ref, []))
+        if args[0] == "rev-list":
+            ref = args[-1].split("..")[-1]
+            return f"{(counts or {}).get(ref, 0)}\n"
+        raise AssertionError(f"unexpected git call: {args}")
+
+    return run
+
+
+def _flight(*branches: tuple[str, str], unreadable: tuple[str, ...] = ()) -> FlightReport:
+    return FlightReport(
+        branches=tuple(Branch(name=name, item_id=item) for name, item in branches),
+        unreadable=unreadable,
+        base=BASE,
+    )
+
+
+def test_a_branch_reports_the_files_it_has_changed() -> None:
+    run = _files_runner({"origin/feature": ["src/app/view.py", "docs/MODEL.md"]})
+
+    files = files_in_flight(ROOT, _flight(("origin/feature", "PL-K7QX")), runner=run)
+
+    assert files.base == BASE
+    assert [entry.branch for entry in files.branches] == ["origin/feature"]
+    assert files.branches[0].paths == ("docs/MODEL.md", "src/app/view.py")
+    assert files.branches[0].item_ids == ("PL-K7QX",)
+
+
+def test_two_items_on_one_branch_are_reported_once_naming_both() -> None:
+    run = _files_runner({"origin/feature": ["a.py"]})
+
+    files = files_in_flight(
+        ROOT, _flight(("origin/feature", "PL-K7QX"), ("origin/feature", "PL-A1B2")), runner=run
+    )
+
+    assert len(files.branches) == 1
+    assert files.branches[0].item_ids == ("PL-A1B2", "PL-K7QX")
+
+
+def test_a_ref_whose_commits_went_unread_is_not_diffed() -> None:
+    """The merge-base a three-dot diff needs is the one that already failed."""
+    run = _files_runner({})
+
+    files = files_in_flight(
+        ROOT, _flight(("origin/truncated", "PL-K7QX"), unreadable=("origin/truncated",)), runner=run
+    )
+
+    assert files.branches == ()
+    assert files.unreadable == ("origin/truncated",)
+
+
+def test_an_empty_diff_on_a_branch_holding_commits_is_named_unread() -> None:
+    """`_run_git` answers a failure with the empty string a clean branch gives.
+
+    Reporting the first as the second would say a branch changes nothing when
+    the truth is that nothing could be read about it.
+    """
+    run = _files_runner({}, counts={"origin/feature": 3})
+
+    files = files_in_flight(ROOT, _flight(("origin/feature", "PL-K7QX")), runner=run)
+
+    assert files.branches == ()
+    assert files.unreadable == ("origin/feature",)
+
+
+def test_an_empty_diff_on_a_branch_holding_no_commits_is_reported_as_empty() -> None:
+    run = _files_runner({}, counts={"origin/feature": 0})
+
+    files = files_in_flight(ROOT, _flight(("origin/feature", "PL-K7QX")), runner=run)
+
+    assert [entry.paths for entry in files.branches] == [()]
+    assert files.unreadable == ()
+
+
+def test_a_report_with_no_base_reads_nothing() -> None:
+    """No base means the flight read itself declined; there is nothing to diff."""
+    files = files_in_flight(ROOT, FlightReport(), runner=_files_runner({}))
+
+    assert files == FlightFiles()

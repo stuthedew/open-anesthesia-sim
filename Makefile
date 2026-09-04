@@ -51,8 +51,27 @@ fix:
 # CI, where mutating the tree is not the job.
 	bin/docket record
 
+# `-n auto` for the reason the `check` line above gives, which transfers
+# unchanged: what keeps the flag off `addopts` is the scoped
+# `uv run pytest tests/unit/test_x.py` a session runs while iterating, and this
+# target is always the whole suite. Measured 2026-09-04, four cores, 1230
+# tests: 88.5 s serially against 31.8 s, both passing. `PL-FX3N`.
+#
+# It costs neither `-x` nor the debugger, which is what made this not
+# automatic. The recipe takes no arguments, so a run wanting either is already
+# a direct `uv run pytest -x tests/unit/test_x.py` that never came through here
+# - and `-n auto` is safe to copy into one anyway: given `--pdb` it sets
+# `numprocesses = 0` and distribution off rather than erroring
+# (`xdist/plugin.py`, `pytest_cmdline_main`), where a pinned `-n 4` raises
+# `--pdb is incompatible with distributing tests`. `-x` stops the run under
+# both; under `-n` the in-flight workers finish first, so more tests run before
+# it stops.
+#
+# This is not the coverage gate. `.github/workflows/quality.yml`'s pytest step
+# has to stay identical to the `check` line above, and deliberately not to this
+# one, which shares the flag and nothing else (`PL-D3M2`).
 test:
-	uv run pytest
+	uv run pytest -n auto
 
 # Named for the store it validates. `make check` runs `bin/docket check` too;
 # this target exists so a session can validate the store on its own, after
