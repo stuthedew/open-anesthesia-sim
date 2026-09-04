@@ -799,6 +799,14 @@ the first may be named as the authority for a stored value.
    and what was adjusted to make the set cohere, are not recoverable from the
    program.
 
+**Full texts held on hand are in `docs/references/`, and holding one changes
+nothing about its tier.** The directory exists so that a session checking a
+claim can read the source instead of recalling it; `docs/references/README.md`
+carries the full citation for each. Baker and Farmery's 2011 *Comprehensive
+Physiology* review of inert gas transport in blood and tissues is the closest
+published statement of what this document specifies, and it is a tier-2
+synthesis for any individual number in it.
+
 **Republication does not promote a value between tiers.** A peer-reviewed
 paper that prints a reference implementation's parameter table is a tier-3
 citation wearing a journal's name. Both of this project's tier-3 citations are
