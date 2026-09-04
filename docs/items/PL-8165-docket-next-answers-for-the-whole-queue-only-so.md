@@ -4,11 +4,12 @@ title: docket next answers for the whole queue only, so two simultaneous session
 priority: P2
 effort: M
 status: done
-closed: 2026-09-04
 classes: session-cost, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, docket.toml, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
+closed: 2026-09-04
+pr: 287
 verify: uv run pytest subprojects/docket/tests/test_model.py subprojects/docket/tests/test_plan.py subprojects/docket/tests/test_config.py subprojects/docket/tests/test_cli.py -q
 ---
 
