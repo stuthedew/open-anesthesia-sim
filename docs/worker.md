@@ -142,10 +142,47 @@ decision back to the owner, which is the cost this arrangement exists to
 remove. It is quieter than improvising, so it is likelier to go uncorrected —
 which is why it is written here first.
 
+## Reaching a source
+
+**Direct HTTP to publishers and indexes is refused, and that is not a block.**
+The egress proxy rejects the tunnel itself, so every route that opens a socket
+to a journal fails the same way. Measured 2026-09-04 against `doi.org`,
+`api.crossref.org`, `api.openalex.org`, `www.sciencedirect.com`,
+`link.springer.com`, `arxiv.org`, and NCBI's own `pubmed.ncbi.nlm.nih.gov` and
+`eutils.ncbi.nlm.nih.gov`: `curl` returned `CONNECT tunnel failed, response
+403` for all eight, and `WebFetch` returned `EGRESS_BLOCKED`. This refusal is
+expected, so it is not the environment misbehaving and not something to route
+around.
+
+**The PubMed MCP server is the route that works.** Verified in the same
+session: search returned 23 hits for `"MAC-awake" AND sevoflurane`; metadata
+returned PMID, PMCID, DOI, journal, volume, pages, authors and abstract; and
+full text came back for an open-access article given its PMC id. Full text is
+PubMed Central only, so a paywalled article yields the abstract and no more.
+The server requires that a reply citing what it returned name PubMed and give
+the DOI as a link.
+
+**A search result is not a source.** Search answers when the publishers do not,
+which is what makes its summaries the likeliest thing to be mistaken for a
+reading. In the same measurement a search summary produced the citation
+`Anesthesiology 1994; 84:1484-1492`, which PubMed's citation matcher does not
+resolve. Search for an identifier; read the record through PubMed.
+
+**Full text arrives with its subscripts flattened.** The body comes back as
+plain prose, so `MAC_awake` reads as `MAC` and `ETCO2` as `ETCO`. Take a number
+from it; do not take the symbol that number belongs to from it.
+
+**Say which route a citation came from.** Whenever you write one down — into an
+item, a `**Worked.**` note, or your report — name the route and the depth:
+PubMed metadata, PubMed full text, or a document already held in
+`docs/references/`, and whether you read the full text or only the abstract.
+Once written, a citation taken from a search snippet is indistinguishable from
+one read at the source, and this note is the only thing that tells them apart.
+
 ## When something errors
 
-The section above is what you decide. This is what you do **not**: anything
-that is not yours. The brief, the `verify:` command, the tooling, the
+**What you decide for yourself**, above, is what you decide. This is what you
+do **not**: anything that is not yours. The brief, the `verify:` command, the tooling, the
 environment, existing tests, files outside `touches`.
 
 **Do not improvise. This is the rule most likely to be broken, because
@@ -169,7 +206,9 @@ So, when any of these happens:
 - the code disagrees with what the brief says it does;
 
 **stop that item and report it.** Do not attempt a fix, a substitution, or a
-diagnosis beyond naming what you observed.
+diagnosis beyond naming what you observed. The one exception is a refused
+connection to a journal or an index, which is the expected state of this
+environment rather than a fault: see **Reaching a source** above.
 
 The distinction is the one drawn in **What you decide for yourself** above: is
 the thing you are changing *yours* — code you wrote for this item, inside its
