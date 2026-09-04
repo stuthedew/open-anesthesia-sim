@@ -1,7 +1,12 @@
 ---
 id: PL-CG7J
 title: Add per-trace show/hide controls to the chart, as Gas Man has
-status: untriaged
+status: ready
+priority: P2
+effort: S
+classes: ux
+feature: teachable-case
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_a_hidden_trace_is_not_drawn' tests/unit/test_simulation_view.py
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py
 added: 2026-09-04
 ---

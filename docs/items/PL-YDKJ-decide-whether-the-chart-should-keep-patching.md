@@ -1,7 +1,11 @@
 ---
 id: PL-YDKJ
 title: Decide whether the chart should keep patching one control per plotted point
-status: untriaged
+status: needs-decision
+priority: P3
+effort: S
+classes: perf
+feature: teachable-case
 touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-04
 ---
@@ -28,7 +32,13 @@ more traces, a faster render cadence, a longer visible window or a second
 chart all multiply a per-point cost that should not exist, and each would be
 diagnosed from scratch as a new performance bug.
 
-**Options, none evaluated.**
+**Decision needed.** Accept that the chart is patched one control per plotted
+point — sizing the drawn point count around it — or move the traces onto a
+different rendering path. Answer it only when a scale, a trace count or a
+render cadence is actually blocked by the ceiling; as of 2026-09-04 nothing
+is, and `PL-Q197` plus `PL-CG7J` between them leave enough headroom.
+
+**Options.**
 
 1. Accept it. Document the ceiling and stop tuning the selection. Costs
    nothing now.

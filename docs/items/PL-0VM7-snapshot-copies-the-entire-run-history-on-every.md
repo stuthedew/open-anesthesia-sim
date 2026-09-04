@@ -1,7 +1,12 @@
 ---
 id: PL-0VM7
 title: snapshot() copies the entire run history on every frame
-status: untriaged
+status: ready
+priority: P2
+effort: S
+classes: perf
+feature: teachable-case
+verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_frame_reads_only_the_window_it_draws' tests/integration/test_controller.py
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py
 added: 2026-09-04
 ---

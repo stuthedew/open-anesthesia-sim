@@ -1,7 +1,12 @@
 ---
 id: PL-D9WD
 title: Build an M4 aggregate cache on a fixed dyadic grid
-status: untriaged
+status: ready
+priority: P2
+effort: M
+classes: perf
+feature: teachable-case
+verify: uv run pytest tests/unit/test_chart_downsampling.py && grep -q 'def test_aggregates_merge_without_revisiting_samples' tests/unit/test_chart_downsampling.py
 touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/controller.py
 added: 2026-09-04
 ---
@@ -12,6 +17,22 @@ frame, so per-frame cost is O(window) rather than O(points drawn). Measured
 207.7 ms at 12 h — more than the whole 200 ms frame budget. `PL-SSBP`'s
 settled scale list runs to 12 hours, and `PL-Z7LY` lets the user pan back
 across the whole record at any of them, so the rescan has to go.
+
+**Why it matters.** It is what makes the settled scale list reachable at all:
+without it the 12 h scale stalls the interface outright, and `PL-Z7LY`'s pan
+across the whole record multiplies that by every position the user can scroll
+to. It is also the structure that bounds memory once the allowed simulation
+duration is extended (`PL-011`), so one mechanism answers the read cost, the
+scale range and the retention policy together rather than three designs
+meeting later and disagreeing.
+
+It carries a correctness weight beyond speed. What a chart draws when it
+cannot draw every sample is a presentation-correctness claim, and this item
+decides it for every scale at once: whether a transient can vanish, whether a
+drawn point is a recorded sample, and whether zooming out shows the same run
+or a smoothed impression of it. Deciding that once, against a published
+guarantee and with the departures written down, is worth more than settling
+it per scale as each is added.
 
 **Approach, agreed with the project owner 2026-09-04.** Precompute the M4
 aggregates once per bucket and keep them, on a grid **anchored to absolute
@@ -87,6 +108,13 @@ decision from the cache's contents, and the paper supports taking it
 seriously: §6 finds min/max "on average ... higher data efficiency than all
 aggregation based techniques, including M4", precisely because M4 spends four
 tuples per group where min/max spends two.
+
+**Decided by the project owner, 2026-09-04: cache all four, draw min and max
+to start.** The two drawn per bucket stay what `select_envelope_indices`
+already selects, so nothing about the rendered chart changes when the cache
+lands — this item is a performance change, not a visual one. Moving to all
+four later is a draw-time switch with no migration, because the aggregates
+are already stored. Revisit it if E3 is ever actually observed on a trace.
 
 **Carrying the sample index is a correctness requirement, not an
 optimization.** `chart_downsampling.py` guarantees a drawn point is always a
