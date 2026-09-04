@@ -413,6 +413,116 @@ def branches_in_flight(
     )
 
 
+@dataclass(frozen=True)
+class BranchFiles:
+    """What one in-flight ref has actually changed since the default branch.
+
+    `item_ids` is every item `branches_in_flight` attributed to this ref, so a
+    reader told their file is being edited can also be told by whom. It may be
+    empty in principle and is not in practice: a ref reaches here only because
+    an id was read from its name or its subjects.
+    """
+
+    branch: str
+    item_ids: tuple[str, ...]
+    paths: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class FlightFiles:
+    """What the in-flight branches are changing, and which could not be read.
+
+    This is the *observed* half of the contention question, against `touches`,
+    which is the declared half. The two fail in opposite directions and that is
+    why both are worth having. A `touches` list is a prediction written before
+    the work, so it is complete about intent and silent about drift; a branch
+    diff is a measurement taken during the work, so it is exact about what has
+    happened so far and says nothing about what the branch will touch next.
+    Neither certifies a pair as safe, and this one does not either: it names
+    what has *already* collided.
+
+    `unreadable` carries the same obligation it does on `FlightReport`, for the
+    same reason. `_run_git` answers a failure with an empty string, so an
+    unreadable diff and a branch that changed nothing arrive here identically -
+    and reporting the first as the second would turn a gap in the evidence into
+    a clean bill of health, which is the one thing this package refuses to do.
+    """
+
+    branches: tuple[BranchFiles, ...] = ()
+    unreadable: tuple[str, ...] = ()
+    base: str = ""
+
+
+def files_in_flight(
+    root: Path, report: FlightReport, *, runner: Runner | None = None
+) -> FlightFiles:
+    """The files each in-flight branch has changed, read from the branch itself.
+
+    Kept out of `branches_in_flight` deliberately. That read is on the hot path
+    of `next`, `list`, `triage`, `status` and the session-start digest, and this
+    one costs a `git diff` per unmerged ref - so it is paid by the two callers
+    that ask the file question and by nobody else.
+
+    A ref `branches_in_flight` could not read is not read here either. Its
+    commits are the thing the checkout is missing, and a three-dot diff needs
+    exactly the merge-base that already failed to resolve, so asking again
+    would produce an empty answer indistinguishable from a branch that changed
+    nothing.
+
+    The diff is `base...ref` rather than `base..ref`: the two-dot form re-reports
+    every file the default branch has changed since the fork as though the
+    branch had changed it, which for a session started a day ago is most of the
+    tree. The three-dot form is the branch's own work, which is the question.
+    """
+    run = runner or _run_git
+    base = report.base
+    if not base:
+        return FlightFiles()
+
+    ids: dict[str, list[str]] = {}
+    for branch in report.branches:
+        ids.setdefault(branch.name, []).append(branch.item_id)
+
+    unread = set(report.unreadable)
+    found: list[BranchFiles] = []
+    for name, item_ids in ids.items():
+        if name in unread:
+            continue
+        paths = tuple(
+            sorted(
+                {
+                    line.strip()
+                    for line in run(["diff", "--name-only", f"{base}...{name}"], root).splitlines()
+                    if line.strip()
+                }
+            )
+        )
+        # An empty diff is either a branch whose commits cancel out or a git
+        # that failed, and the two must not be conflated. A ref carrying
+        # commits the base does not have owes a non-empty file list, so when it
+        # does not, the read is named as unread rather than reported as clean.
+        if not paths and _has_own_commits(name, base, root, run):
+            unread.add(name)
+            continue
+        found.append(BranchFiles(branch=name, item_ids=tuple(sorted(item_ids)), paths=paths))
+
+    return FlightFiles(
+        branches=tuple(sorted(found, key=lambda entry: entry.branch)),
+        unreadable=tuple(sorted(unread)),
+        base=base,
+    )
+
+
+def _has_own_commits(name: str, base: str, root: Path, run: Runner) -> bool:
+    """Whether the ref holds commits the default branch does not.
+
+    Only asked to disambiguate an empty diff, so the cost is paid on the rare
+    branch rather than on every one.
+    """
+    count = run(["rev-list", "--count", f"{base}..{name}"], root).strip()
+    return count.isdigit() and int(count) > 0
+
+
 def default_base(root: Path, *, runner: Runner | None = None) -> str:
     """The ref a branch should be compared against, preferring the remote's.
 
