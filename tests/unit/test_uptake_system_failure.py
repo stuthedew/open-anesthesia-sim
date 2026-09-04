@@ -459,7 +459,7 @@ def test_a_failed_step_says_it_was_rolled_back_and_names_the_invariant() -> None
 def test_simulation_time_does_not_advance_through_a_failed_step() -> None:
     """Elapsed time is part of the same transaction, by ordering.
 
-    `SimulationState.advance()` adds the step only after the system
+    `SimulationState.advance()` counts the step only after the system
     returns, so a failure leaves simulated time where the last completed
     step left it. A run whose clock had moved while its compartments had
     not would report a state at a time the model never produced.
