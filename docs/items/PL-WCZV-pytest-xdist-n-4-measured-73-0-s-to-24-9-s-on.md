@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: pyproject.toml, uv.lock, Makefile, .github/workflows/quality.yml
 added: 2026-09-03
 closed: 2026-09-03
+pr: 276
 verify: uv run pytest -q tests/unit/test_tools_portability.py && grep -q 'pytest-xdist' pyproject.toml
 ---
 

@@ -9,8 +9,15 @@ from __future__ import annotations
 
 from datetime import date
 
-from docket.concurrency import conflicts_for, parallel_batch, shared_paths, undeclared
+from docket.concurrency import (
+    conflicts_for,
+    observed_conflicts,
+    parallel_batch,
+    shared_paths,
+    undeclared,
+)
 from docket.model import Item
+from docket.vcs import BranchFiles, FlightFiles
 
 
 def _item(
@@ -116,3 +123,51 @@ def test_a_batch_honors_its_limit() -> None:
     items = [_item(f"PL-{n}{n}{n}{n}", (f"{n}.py",)) for n in range(1, 5)]
 
     assert len(parallel_batch(items, limit=2)) == 2
+
+
+def _files(*branches: tuple[str, tuple[str, ...], tuple[str, ...]]) -> FlightFiles:
+    return FlightFiles(
+        branches=tuple(
+            BranchFiles(branch=name, item_ids=ids, paths=paths) for name, ids, paths in branches
+        ),
+        base="origin/main",
+    )
+
+
+def test_observed_overlap_reports_the_branch_changing_the_file() -> None:
+    """The file the branch actually changed, not the declaration that matched.
+
+    `PL-MC8Z`'s own case: an item declaring `subprojects/docket/` learns which
+    file is being edited, which is what it can open.
+    """
+    item = _item("PL-1111", ("subprojects/docket/",))
+    files = _files(("origin/other", ("PL-2222",), ("subprojects/docket/src/docket/checks.py",)))
+
+    found = observed_conflicts(item, files)
+
+    assert [entry.branch for entry in found] == ["origin/other"]
+    assert found[0].paths == ("subprojects/docket/src/docket/checks.py",)
+    assert found[0].describe() == "origin/other (PL-2222)"
+
+
+def test_observed_overlap_ignores_a_branch_changing_nothing_this_item_declares() -> None:
+    item = _item("PL-1111", ("src/app/view.py",))
+
+    assert (
+        observed_conflicts(item, _files(("origin/other", ("PL-2222",), ("docs/MODEL.md",)))) == []
+    )
+
+
+def test_an_item_does_not_collide_with_its_own_branch() -> None:
+    item = _item("PL-1111", ("src/app/view.py",))
+
+    assert (
+        observed_conflicts(item, _files(("origin/mine", ("PL-1111",), ("src/app/view.py",)))) == []
+    )
+
+
+def test_an_item_declaring_nothing_observes_nothing() -> None:
+    """Silence in `touches` is a gap in the evidence, and stays one here."""
+    item = _item("PL-1111")
+
+    assert observed_conflicts(item, _files(("origin/other", ("PL-2222",), ("a.py",)))) == []

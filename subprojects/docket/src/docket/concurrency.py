@@ -14,6 +14,15 @@ foresaw a collision - the work may still wander into a shared file. So this
 rules pairs *out*, and never certifies a pair as safe. Presenting a
 heuristic as a guarantee would be exactly the failure this package is
 otherwise built to avoid.
+
+**Declared overlap is half the question, and the weaker half.** `touches` is
+written before the work, so it goes stale the moment a branch wanders outside
+it, and two sessions can pass every declared check and still meet in a file
+neither predicted - which is how the collision that produced `PL-MC8Z`
+happened. `observed_conflicts` reads the other half from the branches
+themselves: what work already underway has actually changed. It is exact where
+`touches` is a guess and blind to the future where `touches` is not, so the two
+are reported side by side rather than merged into one verdict.
 """
 
 from __future__ import annotations
@@ -22,6 +31,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 from .model import Item
+from .vcs import FlightFiles
 
 
 def _covers(one: str, other: str) -> bool:
@@ -76,6 +86,59 @@ def conflicts_for(item: Item, candidates: list[Item]) -> list[Conflict]:
         if overlap:
             found.append(Conflict(other, "shares files", overlap))
     return found
+
+
+@dataclass(frozen=True)
+class Observed:
+    """A branch that is already changing a file this item declares.
+
+    Distinct from `Conflict`, which reads one item's `touches` against
+    another's. This reads an item's `touches` against what a branch has
+    actually done, so it fires only where work is underway and it fires on the
+    real file rather than on the prediction. `paths` therefore carries the
+    files the *branch* changed, not the declaration they matched: telling a
+    session that `subprojects/docket/` collides is telling it nothing it can
+    open.
+    """
+
+    branch: str
+    item_ids: tuple[str, ...]
+    paths: tuple[str, ...]
+
+    def describe(self) -> str:
+        who = ", ".join(self.item_ids) if self.item_ids else "no item id"
+        return f"{self.branch} ({who})"
+
+
+def observed_conflicts(item: Item, files: FlightFiles) -> list[Observed]:
+    """Every in-flight branch already changing a file this item declares.
+
+    The item's own branch is excluded: an item in flight on a branch is not in
+    contention with itself, and reporting it would train a reader to skim the
+    section where somebody else's branch also appears.
+
+    Like everything else here this rules work out and never certifies it. An
+    empty answer means no branch has *yet* touched a file the item declares -
+    which leaves a branch that will touch one in its next commit, and every
+    file the item touches without having declared it.
+    """
+    found: list[Observed] = []
+    for entry in files.branches:
+        if item.identifier in entry.item_ids:
+            continue
+        overlap = tuple(
+            sorted(
+                {
+                    changed
+                    for declared in item.touches
+                    for changed in entry.paths
+                    if _covers(declared, changed)
+                }
+            )
+        )
+        if overlap:
+            found.append(Observed(branch=entry.branch, item_ids=entry.item_ids, paths=overlap))
+    return sorted(found, key=lambda entry: entry.branch)
 
 
 def undeclared(items: list[Item]) -> list[Item]:

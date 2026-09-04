@@ -15,7 +15,7 @@ from pathlib import Path
 
 from . import render
 from .checks import analyze
-from .concurrency import conflicts_for, parallel_batch
+from .concurrency import conflicts_for, observed_conflicts, parallel_batch
 from .config import Config
 from .config import load as load_config
 from .model import Item
@@ -42,6 +42,7 @@ from .vcs import (
     closures_on_base,
     default_base,
     fetch_remote,
+    files_in_flight,
     lost,
     merged_pull_requests,
     stranded,
@@ -355,6 +356,31 @@ def cmd_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_observed(args: argparse.Namespace, item: Item, flight: FlightReport) -> None:
+    """What branches are already changing, as against what items declared.
+
+    Printed under the declared answer rather than folded into it. The two are
+    different kinds of evidence - a prediction written before the work, and a
+    measurement taken during it - and a reader deciding whether to start needs
+    to know which one fired, because only the second says the collision has
+    already happened.
+    """
+    files = files_in_flight(args.items.parent if args.items else find_root(), flight)
+    observed = observed_conflicts(item, files)
+    print()
+    print("  Already changed on a branch in flight (observed, not declared):")
+    for entry in observed:
+        print(f"    {entry.describe()} has changed:")
+        for path in entry.paths:
+            print(f"      {path}")
+    if not observed:
+        print("    nothing - which means no branch has touched these files *yet*,")
+        print("    not that none will; and it says nothing about files this item")
+        print("    touches without having declared them")
+    if files.unreadable:
+        print(f"    ({len(files.unreadable)} ref(s) unread: {', '.join(files.unreadable)})")
+
+
 def cmd_concurrent(args: argparse.Namespace) -> int:
     """What can be worked alongside what.
 
@@ -396,6 +422,7 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
             print(f"    {other.identifier} {other.title}{flag}")
         if not free:
             print("    nothing")
+        _print_observed(args, item, flight)
         _say_unread(flight)
         return 0
 
