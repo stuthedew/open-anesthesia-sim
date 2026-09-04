@@ -1,7 +1,7 @@
 ---
 id: PL-55JM
 title: drift.yml runs pytest twice serially, and the comment explaining why it stays bare is about --cov rather than about -n auto
-status: ready
+status: needs-decision
 priority: P2
 effort: S
 classes: infra, test
@@ -32,7 +32,16 @@ The comment is the second half of the cost. A reader meeting it would reasonably
 conclude both flags were settled together, so the parallelism question stays
 answered-by-appearance rather than answered.
 
-**Decided at triage, 2026-09-04. Add `-n auto` to both lines.** The `--cov`
+**Decision needed.** Do `drift.yml`'s two pytest runs carry `-n auto`, or stay
+bare with `quality.yml`'s comment corrected to say the parallelism flag was
+considered separately from the coverage flag and deliberately left off? Either
+answer closes the item; what cannot stand is the comment continuing to imply
+both were settled together.
+
+**Recommended, for the session that takes this: add `-n auto` to both lines.**
+Left at `needs-decision` rather than answered - triage sets fields, it does not
+resolve the question an item poses (`PL-ZSV6`). The reasoning is recorded here
+so the decision costs one read rather than a re-investigation. The `--cov`
 reasoning does not transfer, and the distinction is clean: `--cov` measures the
 project against its own policy, so a red there is not news about dependencies;
 `-n auto` *runs* a dependency, so a red there is exactly the news this job
@@ -59,7 +68,9 @@ nobody's iteration; the saving is CI minutes.
 own pytest line (currently 61-63), which has to stop saying `drift.yml`
 "deliberately keeps its bare `uv run pytest`".
 
-**Done when.** Both `drift.yml` pytest lines carry `-n auto`, and
+**Done when,** on the recommended answer - the `verify:` command encodes it, so
+a session taking the other path rewrites both. Both `drift.yml` pytest lines
+carry `-n auto`, and
 `quality.yml`'s comment names the two flags separately: `--cov` stays off
 `drift.yml` for the reason it already gives, `-n auto` goes on because xdist is
 a declared dependency that job should be exercising.

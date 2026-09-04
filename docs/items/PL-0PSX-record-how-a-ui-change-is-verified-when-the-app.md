@@ -1,17 +1,14 @@
 ---
 id: PL-0PSX
 title: Record how a UI change is verified when the app cannot be rendered in a remote session
-status: untriaged
+status: needs-decision
 added: 2026-09-04
+priority: P2
+effort: M
+classes: docs, infra
+feature: worker-instructions
+touches: docs/worker.md
 ---
-
-**Problem.** Record how a UI change is verified when the app cannot be rendered in a remote session
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** The app cannot be rendered, driven or screenshotted from a
 Claude Code web session. Flet's Flutter web client fetches its CanvasKit and
@@ -32,6 +29,13 @@ nothing says so, which means the next session either burns time discovering
 the block or quietly skips the verification.
 
 **Where.** `docs/worker.md`, and possibly the session-start digest.
+
+**Decision needed.** Remove the limitation, or document it? Allowing
+`www.gstatic.com` through the remote environment's egress policy, or serving
+CanvasKit locally, would let a remote session render the app - and only the
+owner can change that policy. Documenting the block instead is cheap and
+certain but leaves four queued interface items unable to verify what they
+claim. Answer that first; the work below assumes the documenting branch.
 
 **Approach.** Write down what a remote session can and cannot establish, and
 what it should do instead: assert the assembled control tree (sizes, ordering,
