@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: perf
 feature: dev-tooling
+milestone: v0.3.5
 touches: subprojects/docket/tests
 added: 2026-09-03
 closed: 2026-09-04
