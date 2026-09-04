@@ -27,7 +27,7 @@ import re
 import subprocess
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from .model import parse_item
@@ -88,13 +88,20 @@ BRANCH_ID_RE = re.compile(
 LEADING_IDS_RE = re.compile(rf"^\s*{ID_PATTERN}(?:\s*(?:,|&|and)\s*{ID_PATTERN})*", re.I)
 ANY_ID_RE = re.compile(ID_PATTERN, re.I)
 
-# One line per commit: the ref that reached it, the day it was committed, the
-# parents this checkout holds, and its subject. `%S` needs `--source`, and the
-# unit separator is used as the delimiter because a subject can contain
-# anything a keyboard can type. `%p` is empty for a commit whose parents this
-# checkout does not have, which is how a walk that ran off the end of a
-# truncated history is told from one the default branch stopped.
-COMMIT_FORMAT = "--format=%S%x1f%cs%x1f%p%x1f%s"
+# One line per commit: the ref that reached it, when it was committed, the
+# parents this checkout holds, its hash, and its subject. `%S` needs
+# `--source`, and the unit separator is used as the delimiter because a subject
+# can contain anything a keyboard can type. `%p` is empty for a commit whose
+# parents this checkout does not have, which is how a walk that ran off the end
+# of a truncated history is told from one the default branch stopped.
+#
+# The full timestamp rather than the day, and the hash rather than nothing,
+# because `precedence` has to put two branches in a single order that both of
+# their sessions compute identically. Two sessions start minutes apart, so a
+# day cannot separate them, and two commits can share a second - which is what
+# the hash is there to break. `flight` still wants only the day and takes it
+# from the same read.
+COMMIT_FORMAT = "--format=%S%x1f%cI%x1f%p%x1f%H%x1f%s"
 
 
 @dataclass(frozen=True)
@@ -163,9 +170,48 @@ def leading_ids(subject: str) -> list[str]:
     return [found.group(0).upper() for found in ANY_ID_RE.finditer(match.group(0))]
 
 
-def _unmerged_commits(
-    refs: list[str], base: str, root: Path, run: Runner
-) -> tuple[dict[str, date], dict[str, str], set[str]]:
+@dataclass(frozen=True, order=True)
+class Stake:
+    """When a ref said it was carrying an item, and the commit that said so.
+
+    Ordered, and ordered on the hash after the time, because that is the whole
+    job: two branches carrying one item have to be put in an order both of
+    their sessions compute identically, and two commits made in the same second
+    would otherwise be a tie nobody can break. The hash is arbitrary as a
+    ranking and total as an order, which is the property wanted here - an
+    arbitrary answer both sessions reach is worth more than a principled one
+    they reach differently.
+    """
+
+    when: datetime
+    commit: str
+
+
+# Sorts a carrier with no readable stake behind every carrier that has one,
+# without ever being compared against a real one: the flag ahead of it in the
+# sort key separates the two groups first. Aware, so that a comparison against
+# one of these does not raise if a later change puts them side by side.
+_UNDATED = Stake(when=datetime.min.replace(tzinfo=UTC), commit="")
+
+
+@dataclass(frozen=True)
+class _Walk:
+    """What one pass over the unlanded refs produced.
+
+    Four readings of the same commits. They are kept together because they come
+    from one `git log`: separating them into functions of their own would mean
+    walking the history once per question, and the questions are asked together
+    every time.
+    """
+
+    last: dict[str, date]
+    ids: dict[str, str]
+    staked: dict[tuple[str, str], Stake]
+    opened: dict[str, Stake]
+    unbounded: set[str]
+
+
+def _unmerged_commits(refs: list[str], base: str, root: Path, run: Runner) -> _Walk:
     """The newest commit day per ref, the ref leading with each id, and what went unread.
 
     One `git log` covers every ref at once: `--source` reports which ref on the
@@ -194,32 +240,57 @@ def _unmerged_commits(
     to exclude. Reading the commits is what settles this rather than
     `is_shallow`, so a git too old to say whether the checkout is truncated is
     guarded too.
+
+    **`staked` and `opened` keep the *earliest* commit where the rest keeps the
+    newest**, and the difference is which question each answers. How long a
+    branch has been sitting is a question about its last commit; when a branch
+    began carrying an item - the only fact two sessions can order themselves by
+    - is a question about its first. `staked` dates the claim a commit subject
+    makes, per ref and per id, so a branch that picked up a rider is dated from
+    the rider rather than from its own first commit; `opened` dates the branch
+    itself, which is the claim a branch *name* makes from the moment there is
+    anything on it.
     """
     if not refs:
-        return {}, {}, set()
+        return _Walk({}, {}, {}, {}, set())
     # The trailing `--` is what keeps a branch sharing a name with a file from
     # being read as a path, which git refuses to guess at and answers with an
     # error - and every error here collapses to "nothing known".
     output = run(["log", "--source", COMMIT_FORMAT, f"^{base}", *refs, "--"], root)
     last: dict[str, date] = {}
     ids: dict[str, str] = {}
+    staked: dict[tuple[str, str], Stake] = {}
+    opened: dict[str, Stake] = {}
     unbounded: set[str] = set()
     for line in output.splitlines():
-        parts = line.split("\x1f", 3)
-        if len(parts) != 4:
+        parts = line.split("\x1f", 4)
+        if len(parts) != 5:
             continue
-        ref, committed, parents, subject = parts
+        ref, committed, parents, commit, subject = parts
         if not parents.strip():
             unbounded.add(ref)
         try:
-            day = date.fromisoformat(committed)
+            when: datetime | None = datetime.fromisoformat(committed)
         except ValueError:
-            day = None
-        if day is not None and day > last.get(ref, date.min):
-            last[ref] = day
+            # A date this checkout's git wrote in some other shape. The commit
+            # still names whatever it names, so the ids are read from it as
+            # before and only the ordering loses a data point - the direction
+            # that reports less rather than the one that reports wrongly.
+            when = None
+        stake = None if when is None else Stake(when=when, commit=commit)
+        if when is not None and when.date() > last.get(ref, date.min):
+            last[ref] = when.date()
+        if stake is not None:
+            first = opened.get(ref)
+            if first is None or stake < first:
+                opened[ref] = stake
         for identifier in leading_ids(subject):
             ids.setdefault(identifier, ref)
-    return last, ids, unbounded
+            if stake is not None:
+                held = staked.get((ref, identifier))
+                if held is None or stake < held:
+                    staked[(ref, identifier)] = stake
+    return _Walk(last=last, ids=ids, staked=staked, opened=opened, unbounded=unbounded)
 
 
 def _work_already_on_base(ref: str, fork_point: str, base: str, root: Path, run: Runner) -> bool:
@@ -272,6 +343,65 @@ def _work_already_on_base(ref: str, fork_point: str, base: str, root: Path, run:
     )
 
 
+@dataclass(frozen=True)
+class _Refs:
+    """Every ref this checkout holds, split by what can be believed about it.
+
+    `candidates` keeps the order refs were listed in, because that order
+    decides which of two refs holding one piece of work - a local branch and
+    its own tracking ref - is the one reported for it.
+    """
+
+    candidates: list[str]
+    unlanded: list[str]
+    unreadable: set[str]
+
+
+def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) -> _Refs:
+    """Which refs still carry work the default branch has not taken.
+
+    Split out because two reads need exactly this and would otherwise each
+    spell the four git questions it asks - listing the refs, subtracting the
+    merged ones, resolving each fork point, and asking after the content a
+    squash merge keeps - and two spellings of one question are two answers
+    waiting to disagree.
+    """
+    args = ["for-each-ref", "--format=%(refname:short)", "refs/heads"]
+    if include_remote:
+        args.append("refs/remotes")
+    merged = {
+        name.strip() for name in run([*args, f"--merged={base}"], root).splitlines() if name.strip()
+    }
+    candidates = [
+        name.strip()
+        for name in run(args, root).splitlines()
+        if name.strip() and name.strip() not in merged
+    ]
+
+    # A truncated clone is the normal state of an agent session's container,
+    # and a ref with no readable merge-base is one whose commits this checkout
+    # simply does not have. Excluding `^base` from a walk that cannot reach
+    # `base` would report the ref's whole visible history as its own work, so
+    # it is named as unread instead of answered wrongly. This is the first of
+    # two guards and not the sufficient one: a merge-base that resolves says
+    # the two share a commit this checkout can see, not that the walk below it
+    # is complete, which is what the second guard tests.
+    #
+    # The merge-base is the fork point the content test compares against, so
+    # the read that decides whether a ref can be answered at all is the same
+    # one that answers it - two calls asking git the same question could
+    # disagree about which commit the branch left from.
+    unlanded: list[str] = []
+    unreadable: set[str] = set()
+    for name in candidates:
+        fork_point = run(["merge-base", base, name], root).strip()
+        if not fork_point:
+            unreadable.add(name)
+        elif not _work_already_on_base(name, fork_point, base, root, run):
+            unlanded.append(name)
+    return _Refs(candidates=candidates, unlanded=unlanded, unreadable=unreadable)
+
+
 def branches_in_flight(
     root: Path, *, include_remote: bool = True, runner: Runner | None = None
 ) -> FlightReport:
@@ -314,44 +444,13 @@ def branches_in_flight(
     the reader, the way `stranded` reports rather than decides.
     """
     run = runner or _run_git
-    args = ["for-each-ref", "--format=%(refname:short)", "refs/heads"]
-    if include_remote:
-        args.append("refs/remotes")
 
     # One base for the whole read: what counts as merged, what a ref is
     # compared against, and what the commit walk excludes have to agree, or the
     # answer is assembled from two different questions.
     base = default_base(root, runner=run)
-    merged = {
-        name.strip() for name in run([*args, f"--merged={base}"], root).splitlines() if name.strip()
-    }
-    candidates = [
-        name.strip()
-        for name in run(args, root).splitlines()
-        if name.strip() and name.strip() not in merged
-    ]
-
-    # A truncated clone is the normal state of an agent session's container,
-    # and a ref with no readable merge-base is one whose commits this checkout
-    # simply does not have. Excluding `^base` from a walk that cannot reach
-    # `base` would report the ref's whole visible history as its own work, so
-    # it is named as unread instead of answered wrongly. This is the first of
-    # two guards and not the sufficient one: a merge-base that resolves says
-    # the two share a commit this checkout can see, not that the walk below it
-    # is complete, which is what the second guard tests.
-    #
-    # The merge-base is the fork point the content test compares against, so
-    # the read that decides whether a ref can be answered at all is the same
-    # one that answers it - two calls asking git the same question could
-    # disagree about which commit the branch left from.
-    unlanded: list[str] = []
-    unreadable: set[str] = set()
-    for name in candidates:
-        fork_point = run(["merge-base", base, name], root).strip()
-        if not fork_point:
-            unreadable.add(name)
-        elif not _work_already_on_base(name, fork_point, base, root, run):
-            unlanded.append(name)
+    refs = _unlanded_refs(base, root, run, include_remote=include_remote)
+    candidates, unlanded, unreadable = refs.candidates, refs.unlanded, set(refs.unreadable)
 
     # A resolvable merge-base answers only half of it. The walk that reads the
     # ids has to be able to exclude the default branch's own commits, and in a
@@ -360,12 +459,15 @@ def branches_in_flight(
     # rather than contributing what it appeared to say. The direction matters:
     # an id wrongly reported here is removed from `docket next` under the words
     # "do not start these again", so an unread ref is the cheaper error.
-    last_commit, subject_ids, unbounded = _unmerged_commits(unlanded, base, root, run)
-    if unbounded:
-        unreadable |= unbounded
-        unlanded = [name for name in unlanded if name not in unbounded]
+    walk = _unmerged_commits(unlanded, base, root, run)
+    last_commit, subject_ids = walk.last, walk.ids
+    if walk.unbounded:
+        unreadable |= walk.unbounded
+        unlanded = [name for name in unlanded if name not in walk.unbounded]
         subject_ids = {
-            identifier: name for identifier, name in subject_ids.items() if name not in unbounded
+            identifier: name
+            for identifier, name in subject_ids.items()
+            if name not in walk.unbounded
         }
     unlanded_set = set(unlanded)
 
@@ -410,6 +512,221 @@ def branches_in_flight(
         branches=tuple(sorted(in_flight.values(), key=lambda branch: branch.item_id)),
         unreadable=tuple(name for name in candidates if name in unreadable),
         base=base,
+    )
+
+
+@dataclass(frozen=True)
+class Carrier:
+    """One piece of work carrying an item, and the commit where it said so.
+
+    Identified by that commit rather than by the ref that reached it, because a
+    local branch and its own tracking ref are one session's work seen twice and
+    telling a session to yield to itself is the one answer this must never
+    give. `ref` is therefore a label - whichever ref git credited the commit to
+    - and never the thing being compared.
+
+    `mine` follows from the same identity: this checkout is carrying the work
+    when its `HEAD` *contains* the staking commit, which is true of the local
+    branch, its tracking ref, and a branch pushed under some third name alike.
+    Matching branch names would answer only the first of those, and would
+    answer it wrongly the moment `--source` credited the shared commit to the
+    tracking ref - which is what it does whenever the local branch is ahead by
+    so much as a merge.
+
+    `staked` is `None` for a ref whose name carries the id and whose commits
+    this checkout could not read. That is a claim it cannot date rather than
+    one made at the beginning of time, so it sorts *behind* every dated claim:
+    an unread ref put first would make every session that can read its own
+    commits yield to it, which in a truncated clone is every session.
+    """
+
+    ref: str
+    item_id: str
+    staked: Stake | None = None
+    last_commit: date | None = None
+    mine: bool = False
+
+
+@dataclass(frozen=True)
+class Precedence:
+    """Which branch carrying an item continues, and which yield to it.
+
+    **The point is that two sessions compute this identically, so it is a total
+    order rather than a judgment.** Everything else this module does about
+    parallel sessions detects a collision; nothing said which of the two
+    discovering it was the one to stop, and two sessions reasoning in prose
+    from the same evidence can reach the same answer as each other or the
+    opposite one, with no way to tell which happened until the merge. The
+    failure that costs the most is not both continuing - that is merely today -
+    but both standing down, after which the work is unstarted and each session
+    believes the other has it.
+
+    So the order is over commits: the earliest commit naming the item holds it,
+    a tie breaks on that commit's hash. Both properties are load-bearing. It is
+    the *earliest* commit rather than the newest, so a session that pushes
+    after a break does not overtake one that started before it; and it is a
+    commit rather than a push time, because git records no push time and
+    because a commit's date is the same fact in both checkouts.
+
+    Two sessions can still both continue, when one has pushed nothing the other
+    can see. That is the state of the world before this existed, so it is not a
+    regression, and it is what `PL-SK88`'s "push the first commit as soon as
+    there is one" shrinks. What cannot happen is both yielding: yielding needs
+    a carrier strictly ahead of your own in one order, and two carriers cannot
+    each be ahead of the other.
+    """
+
+    item_id: str
+    carriers: tuple[Carrier, ...] = ()
+    unreadable: tuple[str, ...] = ()
+    base: str = ""
+    branch: str = ""
+
+    @property
+    def holder(self) -> Carrier | None:
+        """The carrier that continues, or `None` where nothing carries the item."""
+        return self.carriers[0] if self.carriers else None
+
+    @property
+    def mine(self) -> Carrier | None:
+        """This checkout's own claim, or `None` where it has staked none."""
+        return next((carrier for carrier in self.carriers if carrier.mine), None)
+
+    @property
+    def yields(self) -> bool:
+        """Whether this checkout is carrying the item and is not the one that continues.
+
+        False where this checkout carries nothing, which is the ordinary state
+        of a session that has not started: there is no work to hand over and
+        nothing to yield. That case is what `branches_in_flight` already
+        reports, and reporting it here as a yield would turn the first guard a
+        session meets into an instruction to stop before it began.
+        """
+        mine = self.mine
+        return mine is not None and mine is not self.holder
+
+
+def _head_carries(stake: Stake | None, root: Path, run: Runner) -> bool:
+    """Whether this checkout's `HEAD` holds the commit that staked a claim.
+
+    Asked by containment rather than by comparing branch names, because a
+    session's own work reaches it under several names - the local branch, its
+    tracking ref, a branch pushed under a third one - and the walk credits the
+    commit to exactly one of them. A name comparison therefore reports "not
+    yours" for a session's own branch as soon as it is ahead of its tracking
+    ref by anything at all, including the merge that keeps it current, and a
+    session told to yield to itself would stop for nobody.
+
+    `merge-base` rather than `--is-ancestor`, whose answer is an exit code:
+    every failure in this module collapses to the empty string, and an exit
+    code that means "no" would be indistinguishable from git not running.
+    """
+    if stake is None:
+        return False
+    return run(["merge-base", stake.commit, "HEAD"], root).strip() == stake.commit
+
+
+def precedence(
+    root: Path, item_id: str, *, include_remote: bool = True, runner: Runner | None = None
+) -> Precedence:
+    """Every branch carrying one item, in the order that decides which continues.
+
+    `branches_in_flight` reports one branch per item deliberately - it is
+    answering "is this startable", and a second name adds nothing to that. Here
+    the second name *is* the answer, so the same evidence is read again without
+    that collapse, and with the timestamps a day-resolution report has no use
+    for.
+
+    **Only what is pushed can settle it, and this reads local refs anyway.** A
+    claim nobody else can fetch cannot enter the other session's ordering, so
+    two sessions reading only remote refs is the configuration in which they
+    always agree. But a session's own unpushed branch is exactly what it needs
+    to be told about - that its claim is invisible, and one push makes it real
+    - and dropping local refs would hide the case rather than fix it. The
+    asymmetry it leaves is the benign one: a session whose rival has pushed
+    nothing sees no rival and continues, which is where the world already was.
+    """
+    run = runner or _run_git
+    identifier = item_id.upper()
+    base = default_base(root, runner=run)
+    refs = _unlanded_refs(base, root, run, include_remote=include_remote)
+    walk = _unmerged_commits(refs.unlanded, base, root, run)
+    unreadable = refs.unreadable | walk.unbounded
+    readable = {name for name in refs.unlanded if name not in walk.unbounded}
+
+    # Candidate order, so that the ref a group is *named* by is chosen the same
+    # way `branches_in_flight` chooses it: a local branch ahead of its own
+    # tracking ref.
+    staked: dict[str, Stake | None] = {}
+    grouped: dict[str, list[str]] = {}
+    moved: dict[str, date] = {}
+    for name in refs.candidates:
+        if name not in readable and name not in unreadable:
+            continue
+        match = BRANCH_ID_RE.search(name)
+        by_name = match is not None and match.group(1).upper() == identifier
+        claims: list[Stake] = []
+        if name in readable:
+            # A branch named for the item has been carrying it since its first
+            # commit; a branch named for anything else has been carrying it
+            # only since the commit that said so, which is what dates a rider
+            # picked up mid-branch from the branch it rode in on.
+            if by_name and (opened := walk.opened.get(name)) is not None:
+                claims.append(opened)
+            if (subject := walk.staked.get((name, identifier))) is not None:
+                claims.append(subject)
+        if not claims and not by_name:
+            continue
+        stake = min(claims) if claims else None
+
+        # The commit is the identity of the claim, so one piece of work reached
+        # by two refs groups under it whatever those refs are called. A claim
+        # with no readable commit can only be grouped by its own name, which is
+        # right: nothing proves it is the same work as anything else.
+        key = stake.commit if stake is not None else f"\x00{name}"
+        grouped.setdefault(key, []).append(name)
+        staked[key] = stake
+        if (day := walk.last.get(name)) is not None and day > moved.get(key, date.min):
+            moved[key] = day
+
+    branch = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
+    if branch == "HEAD":
+        # A detached HEAD is not a branch, and nothing here needs it to be one:
+        # the claims are matched against what HEAD *contains*.
+        branch = ""
+    carriers = sorted(
+        (
+            Carrier(
+                ref=names[0],
+                item_id=identifier,
+                staked=staked[key],
+                last_commit=moved.get(key),
+                mine=_head_carries(staked[key], root, run),
+            )
+            for key, names in grouped.items()
+        ),
+        key=lambda carrier: (carrier.staked is None, carrier.staked or _UNDATED, carrier.ref),
+    )
+
+    # One session, one claim. A branch whose commits reach two of these is
+    # carrying one piece of work that git happened to credit to two refs, and
+    # the earliest of them is when this checkout began carrying it - so the
+    # later ones are dropped rather than listed as rivals of the first.
+    seen_mine = False
+    collapsed: list[Carrier] = []
+    for carrier in carriers:
+        if carrier.mine:
+            if seen_mine:
+                continue
+            seen_mine = True
+        collapsed.append(carrier)
+
+    return Precedence(
+        item_id=identifier,
+        carriers=tuple(collapsed),
+        unreadable=tuple(name for name in refs.candidates if name in unreadable),
+        base=base,
+        branch=branch,
     )
 
 
