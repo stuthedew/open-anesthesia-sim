@@ -26,6 +26,7 @@ than silently freeze the chart.
 from statistics import median
 from typing import Any
 
+import flet as ft
 import msgpack
 import pytest
 from flet.controls.base_control import BaseControl
@@ -46,6 +47,7 @@ from anesthesia_sim.app.controller import (
     ControlChange,
     ControlInput,
     HistoryWindow,
+    RecordedQuantity,
     RunHistory,
     SimulationHistorySample,
     SimulationSnapshot,
@@ -440,6 +442,77 @@ def test_a_scrolling_window_rebuilds_only_at_a_bucket_boundary() -> None:
 
     assert median(counts) <= 60, f"the typical frame sent {median(counts)} operations"
     assert sum(counts) / len(counts) <= 400, "the amortized cost of rebuilding grew"
+
+
+def _hide_traces(view: SimulationView, *quantities: RecordedQuantity) -> None:
+    """Uncheck these compartments through their own controls, as a reader would."""
+
+    for quantity in quantities:
+        trace = view._trace(quantity)
+        trace.checkbox.value = False
+        handler = trace.checkbox.on_change
+        assert handler is not None
+        handler(ft.Event(name="change", control=trace.checkbox))
+
+
+def test_hiding_a_trace_takes_its_points_off_the_client() -> None:
+    """`PL-CG7J`'s "removes rather than blanks", asserted on the wire.
+
+    A unit test can see the series leave `data_series`; only this can see
+    the *client* told to drop it. The distinction is the whole mechanism: a
+    trace left in place with an empty point list would still be a control
+    the client holds, diffs and repaints, and - worse - one no longer being
+    redrawn, sitting on the chart with whatever frame it was last drawn in.
+    """
+
+    view, session, connection = _mounted_view(start=600)
+    view._refresh_view()
+    session.page.update()
+    connection.messages.clear()
+
+    _hide_traces(view, RecordedQuantity.MUSCLE, RecordedQuantity.FAT)
+
+    removals = [
+        operation for operation in _patch_operations(connection) if operation[0] is Operation.Remove
+    ]
+    assert len(removals) == 2, "the client was left holding the hidden traces"
+
+
+def test_hiding_traces_cuts_what_a_frame_sends() -> None:
+    """The render-cost half of `PL-CG7J`, measured rather than argued.
+
+    What reaches the client each frame is about two patch operations per
+    drawn point whose chosen sample moved (`PL-Q197`), so a frame's cost is
+    linear in the traces drawn and hiding four of six should take a visible
+    bite out of it. Unlike every other lever on this number - fewer points, a
+    coarser bucket - it costs no resolution: a trace nobody is looking at is
+    not a fidelity loss.
+
+    Asserted as a reduction against the same view rather than as an absolute.
+    The absolute is what the two tests above are for, and a second copy of it
+    here would fail on their subject rather than on this one. The bound is
+    one operation per hidden trace against the nine observed, so it fails on
+    a frame that went back to redrawing hidden traces and not on noise: the
+    wash-in plot and both references are unaffected by any of this and are
+    most of what is left.
+    """
+
+    view, session, connection = _mounted_view(start=600)
+    with_all_six = median(_ops_per_frame(view, session, connection, frames=20))
+
+    hidden = (
+        RecordedQuantity.CIRCUIT,
+        RecordedQuantity.MIXED_VENOUS,
+        RecordedQuantity.VESSEL_RICH,
+        RecordedQuantity.FAT,
+    )
+    _hide_traces(view, *hidden)
+
+    with_two = median(_ops_per_frame(view, session, connection, frames=20))
+
+    assert with_two <= with_all_six - len(hidden), (
+        f"a frame sent {with_two} operations with two traces drawn against {with_all_six} with six"
+    )
 
 
 def test_a_run_full_of_control_marks_costs_a_frame_nothing_extra() -> None:

@@ -1822,6 +1822,8 @@ The Flet interface may:
 - render the run's recorded history;
 - select which recorded samples a plotted trace draws, subject to the
   constraint below;
+- draw a subset of the compartment traces, at the reader's request, subject
+  to the constraint below;
 - draw a published clinical constant as a chart reference, at a height the
   chart's own axis gives meaning to, subject to the constraint below;
 - form the ratio of two modelled fractions where this document names it as a
@@ -1866,6 +1868,19 @@ one sample every step and has no gaps at all, leaving only a spurious pixel
 where the line between two consecutive extrema crosses a column boundary.
 `app/chart_downsampling.py` carries the same statement for a reader of the
 code.
+
+**Which compartment traces are drawn is the reader's to choose, and the
+choice may not change anything else.** Two compartments cannot be compared
+against four other lines crossing them, so the interface may draw a subset of
+the six. Three things bound it. The selection is presentation only: it reaches
+no model state, changes no recorded sample, and leaves identical inputs
+producing identical results. Every compartment's concentration stays in the
+numeric readouts whatever is drawn, so a chart showing two curves is a chosen
+view of six modelled compartments rather than a model with two. And the
+display must state, for every compartment, whether its trace is currently
+drawn — a legend entry for a line that is not on the plot is a claim about the
+run the run does not support, which is the defect an unlabelled reference
+would be arriving from the other direction.
 
 A **reference** is not a trace and is deliberately exempt from the rule
 above: it draws no recorded sample, because it is a published constant
@@ -1978,6 +1993,13 @@ The interface must show:
   vaporizer dial, carrying the control marks above, ruled at the equilibrium
   the curve approaches, and stating where it is not defined. See "F_A/F_I as a displayed ratio" for the domain it is drawn over
   and for what the curve does and does not assert.
+
+The six compartment concentrations above are requirements on the **numeric
+readouts**, not on the chart. The chart's compartment traces are the reader's
+to show and hide (see "Interface boundary"), and a required value must not
+leave the display with the curve that draws it. The chart entries in this list
+— the MAC-awake band, the 1 MAC line, the control marks, and $`F_A/F_I`$ — are
+requirements on the chart itself and are not selectable.
 
 Arterial concentration is deliberately **not** in this list. Arterial blood is
 flow-limited in this model and holds no independent state: $`F_a \equiv F_A`$
