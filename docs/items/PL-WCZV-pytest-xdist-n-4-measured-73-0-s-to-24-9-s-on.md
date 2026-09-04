@@ -91,11 +91,34 @@ the runner or the dev container changes. `auto` reads whatever it lands on. Test
 outcomes do not depend on the worker count - that is the property the four runs
 above check - and only wall clock does.
 
-**CI gain, measured.** [pending - filled in from the first `checks` run on this
-branch against the last run on `main`]
+**CI gain, measured** on `quality.yml`'s `checks` job, and it is much smaller
+than the local one - correctly so. The `pytest` step against two serial
+baselines on `main` taken within the hour:
+
+| run | pytest step | whole `checks` job |
+| --- | --- | --- |
+| `fa4d88d` on `main`, serial | 67 s | 152 s |
+| `d595b48` on `main`, serial | 67 s | 154 s |
+| `df5c745` on this branch, `-n auto` | **49 s** | **137 s** |
+
+18 s of 67 s, 27%, against 65% locally. The log says why outright: `created:
+2/2 workers`, `2 workers [1224 items]`. **This repository is private**, so its
+standard GitHub Linux runner is two vCPUs rather than the four a public one
+gets, and `auto` read the machine correctly. Two cores buy 1.37x here where
+four bought 2.85x locally; nothing is wrong.
+
+That is the case for `auto` rather than the `-n 4` this item measured, and it
+is not hypothetical - a hardcoded `-n 4` would have put four workers on two
+cores every CI run. It also means the CI saving improves on its own if the
+repository is ever made public, with no edit here.
+
+CI's remaining floor is `bin/docket check` at 69.5 s, unaffected by any of
+this and already tracked by the slow-command advisory (`PL-GS5X`).
 
 **Local saving, measured 2026-09-04** on the four-core container, warm caches:
-**84.4 s to 29.6 s**, which is 54.8 s off a 122 s gate. That is the largest
-single saving available in it, and larger than deleting the entire
-`subprojects/docket` suite would have returned (29.8 s) - which is what
-`PL-KCQ7` asked about and answered no to.
+**84.4 s to 29.6 s**, which is 54.8 s off a 122 s gate - `make check` measured
+end to end at **68.7 s** afterwards. That is the largest single saving
+available in it, and larger than deleting the entire `subprojects/docket`
+suite would have returned (29.8 s) - which is what `PL-KCQ7` asked about and
+answered no to.
+
