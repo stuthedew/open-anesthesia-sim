@@ -55,7 +55,8 @@ capability-boundary rule above governs.
 | v0.3.2 | Completed | Provenance-honesty patch, and the release that decided how this project's numbers may be cited. Every shipped Python file is byte-identical to v0.3.1 and every stored numeric value is unchanged; what moved is what the citations claim about them. `docs/MODEL.md` gained a three-tier source hierarchy — primary measurement, secondary synthesis, reference implementation — and only the first may be named as the authority for a stored value, which makes the shipped parameter set Gas Man's and says so, where the agent files had let a journal's name stand in for a measurement nobody made. The isoflurane blood:gas question is recorded rather than answered: 1.3 is stored, 1.46 is what Lerman et al. measured in adults, and the 11% gap is the widest in the project. Alongside it, the numerical method's future is settled — the operator split is to be replaced by an exact matrix exponential so the code that computes a value is the governing equations, with the state vector decided as fractions — and two live defects close: the conservation guard's three sensitivity constants are pinned, and the pull-request title check moved to a workflow that can observe the rename it asks for. No capability, equation, parameter or numerical method changed. |
 | v0.3.3 | Completed | Delegation and interface-boundary patch on the same model, adding no capability and changing no equation, parameter, numerical method, unit or displayed value: `src/anesthesia_sim/data/` is byte-identical to v0.3.2 and the one `src/` change is behavior-preserving. The queue's own provenance stopped needing a person: a closed item's pull request number is written by `bin/docket record`, riding whatever commit the session was already making, after the job meant to write it at merge time proved unlandable - a push made with `GITHUB_TOKEN` starts no workflow, so `main`'s required status checks can never report on the commit it pushes, and every configuration that would accept the push weakens that gate instead. That closes the `delegation` feature at 12 of 12. Alongside it, `app/simulation_view.py`'s displayed-precision formatters and chart-series assembly moved into two Flet-free modules, so `docs/MODEL.md`'s displayed-precision derivation now terminates in a function that can be read, cited and tested without loading the interface - stages 1 and 2 of v0.4.0's Required scope, landed ahead of the milestone. `core/` gained a 100% statement-and-branch coverage gate over the saturation it already had, before v0.4.1's exact-step solver arrives to be measured against it, and the pull-request title check now runs at the declared Python floor. |
 | v0.3.4 | Completed | Documentation- and tooling-truth patch: every shipped Python file is byte-identical to v0.3.3 and `src/anesthesia_sim/data/` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The whole release is the project correcting statements it was making about itself. `docs/MODEL.md` had named v0.2.3 as the current released baseline for thirteen releases, and still recorded the operator split as kept on a decision the 2026-09-03 re-scope reversed; both are corrected, and the specification now names no current version at all, because a second copy of one goes stale silently at every release. Two checks that reported a false state were repaired and retired: the top-band advisory no longer counts blocked items a session cannot start, and `doc_check`'s baseline-tag advisory is gone, because a local checkout cannot tell a release never tagged from one tagged since it last fetched. |
-| v0.3.5 | Completed / current baseline | Gate-measurement patch changing no shipped code at all: `src/` and `src/anesthesia_sim/data/` are byte-identical to v0.3.4 and `docs/MODEL.md` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The release is the project's own quality gate learning what it costs, saying so truthfully, and getting roughly twice as fast. `pytest-xdist` at `-n auto` took the suite from 78 s to 27 s with coverage byte-identical at 100%, `make check` from 115.0 s to 59.2 s and the CI step 28%, and `make test` — the whole-suite target a session reaches for while iterating — followed at 88.5 s to 31.8 s; no test was skipped, disabled or relaxed to pay for it. Two advisories that quoted figures measured once and left to go stale now print what the run actually cost. The two questions those measurements raised — the docket suite's share of the wall clock, and `bin/docket check` becoming the gate's largest item — were decided as accept-with-evidence rather than left open, each carrying the numbers that would have to change to reopen it. And two silent-divergence holes closed: the local and merge coverage gates are held to one command by a check rather than by two comments asking to be kept the same, and the guard that keeps two sessions off one item now reads what files it touches, not only who is on it. |
+| v0.3.5 | Completed | Gate-measurement patch changing no shipped code at all: `src/` and `src/anesthesia_sim/data/` are byte-identical to v0.3.4 and `docs/MODEL.md` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The release is the project's own quality gate learning what it costs, saying so truthfully, and getting roughly twice as fast. `pytest-xdist` at `-n auto` took the suite from 78 s to 27 s with coverage byte-identical at 100%, `make check` from 115.0 s to 59.2 s and the CI step 28%, and `make test` — the whole-suite target a session reaches for while iterating — followed at 88.5 s to 31.8 s; no test was skipped, disabled or relaxed to pay for it. Two advisories that quoted figures measured once and left to go stale now print what the run actually cost. The two questions those measurements raised — the docket suite's share of the wall clock, and `bin/docket check` becoming the gate's largest item — were decided as accept-with-evidence rather than left open, each carrying the numbers that would have to change to reopen it. And two silent-divergence holes closed: the local and merge coverage gates are held to one command by a check rather than by two comments asking to be kept the same, and the guard that keeps two sessions off one item now reads what files it touches, not only who is on it. |
+| v0.3.6 | Completed / current baseline | The first two teachable-case items, and the first release since v0.2.3 to change what a learner sees: every compartment is displayed in MAC multiples alongside percent, on a chart that gained a percent axis left and a MAC axis right, and two horizontal clinical references - a band at the running agent's population MAC-awake, one standard deviation either side of the published mean, and a line at its nominal 1 MAC - so the gap between them shows the decrement required for arousal rather than only the endpoint. Display and provenance work rather than model work: no equation, parameter, numerical method or solver step moved, `core/` computes neither reference, and what the agent files gained is three measured constants with primary citations checked against source, stored as fractions of MAC so they survive a change to `mac_percent`. `docs/MODEL.md` records what a MAC multiple on a non-alveolar compartment does and does not assert, that the band is read against the vessel-rich trace and not the alveolar one, and that the interface displays no time-to-wake-up figure of any kind. Alongside them, `core-boundaries` closes: one module may import Pydantic and a check enforces it. The queue itself learned to answer per lane, so two simultaneous sessions no longer rank onto the same item. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
@@ -93,393 +94,126 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.3.5
+## Current baseline: v0.3.6
 
-v0.3.5 is a gate-measurement patch carrying eight items, and it changes no
-shipped code at all: `src/` and `src/anesthesia_sim/data/` are byte-identical
-to v0.3.4 and `docs/MODEL.md` is unchanged, so no equation, parameter,
-numerical method, unit or displayed value moved. What it is for is the quality
-gate this project runs on — the command a session types before it calls
-anything finished. That gate had grown expensive without anyone being able to
-say by how much, and two of its own advisories were quoting figures that had
-stopped being true. This release makes it roughly twice as fast, makes it
-report its own cost every run rather than in a comment written once, and closes
-two places where the gate could pass while the guarantee behind it was void.
+v0.3.6 is the first release since v0.2.3 that changes what a learner sees, and
+the first two items of the v0.4.0 teachable-case milestone are what changed it.
+Every compartment is now displayed in MAC multiples alongside percent, and the
+chart carries two horizontal clinical references: a band at the running agent's
+population MAC-awake, and a line at its nominal 1 MAC. Five further items close
+the `core-boundaries` feature and split the queue so two sessions can run at
+once without colliding.
 
-**The gate got about twice as fast, by removing work rather than checks
-(PL-WCZV, PL-FX3N).** `pytest-xdist` at `-n auto` took the whole suite from
-78 s to 27 s on four cores with coverage byte-identical at 691 statements /
-78 branches / 100%, and `make check` from 115.0 s to 59.2 s; CI gained 28%
-rather than 65%, because a private repository's standard runner is two vCPUs
-and `auto` reads the box it is on. `make test` — the whole-suite target a
-session actually reaches for while iterating — was left serial by that change
-and followed here, 88.5 s to 31.8 s. Every test still runs and nothing was
-skipped, disabled or relaxed to pay for it: coverage holding identical is what
-made the flag admissible, and the threshold stayed on the command line.
+**It is display and provenance work, not model work.** No equation, parameter,
+numerical method or solver step moved; `core/` computes neither reference, and
+no governing equation reads MAC-awake, exactly as none reads `mac_percent`.
+What the agent data files gained is three measured constants with primary
+citations, which are drawn on the chart and divided into, never integrated.
 
-**Two advisories stopped reporting a false state (PL-9NKK, PL-FRGP).** The
-`verify` pool's cost figures had been measured once and written into a comment
-— 48-49 candidates at 34.9 s serial — where the real number had reached 78
-candidates at 175.5 s; the check now prints what the run actually cost, so the
-figure cannot go stale between readings. The slow-command advisory said the
-command it named set the check's floor, when the pool had become
-throughput-bound: removing the named command measured 28.6 s to 23.7 s, not
-the ~24 s the sentence implied. Both are the failure `CLAUDE.md` reserves its
-retirement test for — a check that keeps firing while saying something untrue
-teaches a session to skim the output where a real advisory also appears.
-
-**The two questions the measurements raised were decided rather than left open
-(PL-KCQ7, PL-8BFV).** Both closed as accept-with-evidence, which is a real
-answer and is recorded so the ratio is not rediscovered and treated as new.
-The workflow apparatus takes about two fifths of the suite's wall clock, and
-that stays: 63 of the store's 125 defect-classed items touch
-`subprojects/docket`, **39 of them describing a silent failure** — the check
-passed and the wrong answer was delivered anyway — which is precisely the class
-human use does not catch and a test does. `bin/docket check` is now the largest
-single item in the gate at 30.5 s of 59.2 s, and that stays too: a pool's wall
-clock is `max(slowest command, total work ÷ workers)`, and at 28.8 s against
-25.2 s the two terms sit within 15% of each other, so each of the four levers
-weighed moves only one term and buys almost nothing. What had made the cost
-urgent was that it tripled *unseen*; the two items above are what fixed that,
-and 30 s with the numbers visible is a price rather than a problem.
-
-**Two silent-divergence holes closed (PL-D3M2, PL-MC8Z).** The local coverage
-gate and the merge gate ran the same pytest invocation and each carried a
-comment saying they must stay identical, with nothing checking it — so a drift
-would have left a session and CI asking different questions, or both green
-while only one still enforced 100% on `core/`. `tools/doc_check.py` now holds
-them to one command, keyed on `--cov-fail-under` so that `drift.yml`'s
-deliberately bare run and `make test`'s new parallel one are outside the
-comparison rather than failing it every run. Separately, the guard that keeps
-two sessions off one item asked who was on the item but never what files it
-touched, so an overlap surfaced at merge; it now reads `touches` as well.
-
-**What the model currently is** is described under "The model as it stands"
-below, and does not change release to release while the patch series continues.
-
+**Why this is a patch rather than v0.4.0.** Two of the teachable-case
+milestone's fourteen items is not the milestone, and cutting its number now
+would ship it under its own name with most of it missing — compressed playback,
+the case-length time base and the recorded control-input timeline are all still
+open. The capability-boundary rule under "Versioning decision" governs, and the
+boundary these two items cross is a step toward v0.4.0 rather than v0.4.0
+itself.
 
 ### Release narrative
 
-v0.3.0 was the foundation release, and what it completed was larger than what
-it carried. **Gate 0 closed at 21 of 21 frozen entries**, cleared across the
-v0.2.6 to v0.3.0 patch series. That gate held the debt inherited from before
-the debt gate existed, and clearing it was the whole claim of the release —
-after it the simulator does what it did before, correctly, with its
-verification gate widened to the inputs the interface can reach and its failure
-path unable to leave partial state behind. Like every release since v0.2.0 it
-moved no equation, parameter or numerical method:
-`src/anesthesia_sim/data/` was byte-identical to v0.2.12 and `docs/MODEL.md`
-unchanged, both verified against the tag rather than inferred from item titles.
-The cut carried the last two gate entries and four items captured outside the
-frozen list.
+**Every compartment is displayed in MAC multiples as well as percent
+(PL-DHV7).** A percent axis silently changes meaning when the agent changes:
+2% is 1 MAC of sevoflurane and about a third of a MAC of desflurane, so two
+runs plotted in percent are two different clinical situations drawn at the same
+height, and a learner comparing a desflurane wash-in to a sevoflurane one in
+percent is comparing nothing. MAC multiples are the unit that survives the
+agent change, and the unit clinicians reason in. Both units are shown at once —
+on every compartment, on the delivered-agent control, and on the chart, which
+now carries a percent axis on the left and a MAC axis on the right.
 
-**The render loop stopped rebuilding what it could move (PL-010).**
-`_decimated_points` built a fresh `fch.LineChartDataPoint` for every drawn
-point on every tick, and `_apply_agent_color_scheme` a fresh `ft.TextStyle` and
-`ft.Border` whether or not the agent had changed. Neither was a defect — the
-frame was already inside budget — and both were headroom the speed multiplier
-will need. `_redraw_series` now overwrites the `x` and `y` of the points the
-series already holds, and the style objects are built once per agent at import
-time. Measured over 400 frames at the steady state the ceiling describes,
-`_refresh_view`'s median fell from 16.603 ms to 2.646 ms and its p95 from
-24.996 ms to 3.407 ms: 6.3x cheaper, 14.0 ms of headroom per render tick. The
-gate on that change was presentation correctness rather than speed, and
-`tests/integration/test_chart_patching.py` is what keeps it true without a
-browser — it drives a real `flet.messaging.session.Session` over a recording
-connection that serializes exactly as the WebSocket transport does, so a Flet
-upgrade that stopped reporting in-place mutation fails there rather than
-freezing the chart in silence.
+The difficulty in that unit is not the arithmetic, and `docs/MODEL.md` § "MAC
+multiples as a display unit" is where it is written down. MAC is defined for
+the *alveolar* concentration in a nominal 40-year-old, so on the alveolar
+compartment a MAC multiple is the conventional reading, while on the circuit,
+mixed-venous, vessel-rich, muscle and fat compartments it means only *this
+compartment's partial pressure equals N times the alveolar partial pressure
+that would be 1 MAC*. It is a partial-pressure ratio, not a statement that the
+patient is at N MAC of anesthetic depth — and the two read identically on a
+label unless the label says which. Saying which is the item's safety content.
 
-**The breathing circuit stopped holding one agent's dial position (PL-019).**
-`BreathingCircuit.delivered_concentration_fraction` defaulted to `0.08` —
-sevoflurane's calibrated vaporizer maximum — on a class that carries no agent
-parameters at all. The default is now `0.0`: zero is the one dial position
-every vaporizer of every agent has, and therefore the only delivered
-concentration this class can supply without borrowing some particular agent's
-number. The reference tests that had been running on that default now name
-their dial, which was the point of the item rather than fallout from it:
-`tests/reference/test_multi_agent.py` had been simulating isoflurane at 8%, a
-dial no isoflurane vaporizer has. Both agents now run at 4% with each circuit
-carrying its own agent's maximum, and neither release gate's verdict moves —
-the two F_A/F_C margins are bit-identical before and after, the model being
-linear in the delivered fraction.
+**The chart gained a MAC-awake band and a 1 MAC line (PL-F52R).** Chortkoff et
+al. state that "along with pharmacokinetics, the ratio of the awakening
+concentration to the anesthetizing concentration (MAC-awake/MAC) determines
+time to awakening", so drawing both makes that ratio the visible gap between
+them: the chart shows the *decrement required for arousal* rather than only the
+endpoint, which is the context-sensitive emergence lesson stated geometrically
+and is what makes a twenty-minute case and a three-hour one answerable side by
+side.
 
-Three of the four off-list items were the queue checker's own safety rules. A
-blocked item is not in the set `bin/docket next` chooses from, so its priority
-band was a claim about work nobody can start: the exemption from the top band
-is now claimed explicitly with an `anticipated` class and fails closed
-(PL-YHF1), a blocked item may no longer outrank an open blocker (PL-P909), and
-`blocked_summary()` went as dead code duplicating what `docket list` already
-prints (PL-SS9Q). The fourth, PL-8DJ7, closed by routing rather than by code:
-the default fresh gas flow is a machine setting rather than a patient or agent
-property, so it belongs to the anesthesia-machine milestone's planned line
-rather than to `reference_adult.json`.
+Three decisions in it are worth reading. **The mark type carries the
+distinction, not the colour** — MAC-awake is a measured population value with
+real spread and is drawn as a band one standard deviation either side of the
+published mean; 1 MAC is a definitional anchor and is drawn as a line.
+Band-versus-line survives greyscale and every colour-vision deficiency, and
+both are drawn in the interface's own ink and label colours so that neither
+reads as a seventh compartment. **The band is read against the vessel-rich
+trace**, and the interface says so: this model has no effect-site compartment
+and defines $`F_a \equiv F_A`$, so the alveolar trace is the fastest curve on
+the chart and the furthest from where responsiveness actually returns —
+measured on a 3-hour 1 MAC sevoflurane case with the vaporizer turned off at
+10 L/min, the alveolar trace crosses the band's centre at 2.83 min and the
+vessel-rich trace at 6.51 min, 2.30 times later. And **the interface displays
+no time-to-wake-up figure of any kind**, which `docs/MODEL.md` now states as a
+prohibition on the interface rather than as a preference: a readout of the form
+"time to wake-up: 14 min" would read as a per-patient prediction this model
+does not support, and no surrounding disclaimer undoes that, because the number
+would be acted on and the disclaimer would not.
 
-v0.2.12 was a provenance-and-parallelism patch carrying six items, with
-`src/anesthesia_sim/data/` byte-identical to v0.2.11 and `src/` changing in
-three files and only twice over. **`docs/MODEL.md`'s prose values became held
-to the data files they restate (PL-1BPV).** `tools/doc_check.py` had held only
-the provenance table to `data/patients/` and `data/agents/`, in both
-directions, and read nothing else — so editing a data file updated the table,
-which the check forces, and left the same constants quietly wrong wherever the
-surrounding prose restated them. By this project's standard that is a safety
-failure rather than untidiness: a reader who trusts a stated figure is reading
-a number for a patient the simulator may no longer ship, and the polish of the
-surrounding document is what makes it credible. Each restatement now carries a
-marker naming the file and key it restates, invisible in the rendered
-document, and the check holds the key to the file *and* the stated value to
-the paragraph the marker sits under, so neither side can move alone. A figure
-*derived* from several stored values, which no file holds, records its inputs
-instead and reports that it must be recomputed when one moves — never
-recomputing it, because the rounding and the units are judgment and a
-plausible wrong number in that document is worse than none. The 20.7 s
-coupled-relaxation figure depends on four keys across two files and is the
-case no single-key search would have surfaced.
+**The MAC-awake values are stored as fractions of MAC, and every citation was
+checked against its source.** Katoh 1993 (PMID 8214700) reports 0.34 +/- 0.05
+for sevoflurane and 0.31 +/- 0.05 for isoflurane, expressed as a ratio to each
+patient's own age-adjusted MAC; Chortkoff 1995 (PMID 7574003) reports
+desflurane 2.60 +/- 0.46% and states it as 36% of MAC. The fraction is the only
+form that stays correct if `mac_percent` changes or is ever made age-aware, and
+desflurane shows why: its 2.60% is anchored to a MAC of 7.25%, so recording the
+absolute percent against this project's stored 6.0% would read as 0.433 against
+a published 0.36. `mac_reference_basis` is prose beside each value rather than a
+second number, because Katoh's denominator is each patient's own age-adjusted
+MAC and Chortkoff's a single population figure — and a fraction with no stated
+denominator is the "correct number with the wrong context" failure `CLAUDE.md`
+names.
 
-**The in-flight answer that keeps two sessions off one item was widened
-(PL-PRHN, PL-SK88, PL-K2ZK).** It reached only `docket show`; it now reaches
-`docket triage` — the command a session runs straight off a digest reporting
-the untriaged count and nothing about who holds those items — reads the
-harness's session list for a session that has pushed nothing at all, and
-answers in a shallow checkout instead of declining. None of it is a lock,
-deliberately: every one of those answers is bounded by something, and each
-says so where it answers, because a guard that cannot report its own gaps must
-never be read as evidence of absence. Alongside them, **PL-004** deleted a
-ventilation-only `time_constant_s` nothing called — `docs/MODEL.md` records
-that quantity as a limitation rather than a rate a run exhibits — and
-**PL-007** recorded at the classes themselves why each Pydantic payload is
-paired with a frozen public type rather than merged with it.
+**One module may import Pydantic, and a check now says so (PL-Y0RZ).** This
+closes the `core-boundaries` feature. `core/parameters.py` pairs each
+`_...Payload` validation model with a public frozen dataclass so that the
+compartments, the controller and the interface hold plain types with no
+dependency on the validation library. That was true and nothing measured it,
+and the failure worth a tool is not the coupling on its own: a leak into a
+compartment would have left the docstring asserting the property still
+asserting it, reading as verified while being false.
+`tools/import_boundary_check.py` walks every module under `src/anesthesia_sim/`
+with `ast` and fails on a `pydantic` root outside that one file. Three further
+states are errors, each closing a way a boundary check can pass while meaning
+nothing — an allowance naming a file that no longer exists, an allowance no
+longer used, and a declared tree matching no source files at all, since passing
+over nothing is indistinguishable from passing.
 
-v0.2.11 was a transactional-step and core-boundary patch carrying five items,
-changing `src/` in `core/` and `app/` both. **A step that cannot be completed
-became one that is rolled back in full (PL-026):** `_advance_step` applies
-five sub-exchanges in sequence and a compartment guard can reject the fifth
-after four have written their state, so a halted run had been drawing metrics
-and chart traces at whatever the abandoned step left behind — an artifact of
-the order the operators ran in rather than a solution of the model at any
-time, with nothing on screen distinguishing the two.
-`AgentUptakeSystem.advance()` captures every dynamic value before the step and
-restores it on any failure, so a halted run holds the last completed step, and
-the diagnosis moved into `SimulationNumericalError`, which names the invariant
-that failed and the step size it failed at. That was the one displayed value
-differing from v0.2.10, and it was the release's purpose rather than a side
-effect: no supported step reaches the guard on the reference adult with any
-shipped agent, so the change is to what a future parameter set would show.
-Each compartment captures its own run state, so a dynamic field added later
-without a matching capture is a local, reviewable omission instead of a
-partial restore that looks complete, and `tests/unit/test_state_capture.py`
-fails when a new field is classified as neither run state nor setting.
-**The scientific core's entry point was renamed for what it owns (PL-006):**
-"respiratory system" clinically means the patient's own lungs and airways,
-which is one of the class's four members, while `total_stored_agent_l` sums
-all of them and feeds the conservation check that can halt a run — so a reader
-taking the old name at face value read an accounting quantity as agent in the
-lungs, and at steady state was wrong by a large factor. The same item moved
-circuit-volume conservation into the compartment that owns it, after
-`BreathingCircuit.set_circuit_volume()` was measured destroying 24.1 mL of
-equivalent agent gas and making the *next* step fail for it. Two documentation
-items and one tooling item closed alongside, the last making `bin/docket
-check` report what its `verify:` commands cost.
+**The queue answers per lane, so two sessions no longer rank onto one item
+(PL-2NSX, PL-8165).** Both `bin/docket next` and the session-start digest
+answered for the whole queue, so the owner's habit of running two sessions at
+once — one on the simulator, one on the apparatus — handed both the same top
+item. `next` now takes a `product` or `workflow` lane, read from
+`docket.toml`'s `workflow_paths` against each item's `touches` rather than
+re-judged per item, and the digest names both lanes' picks plus the count of
+items reaching both halves, which need a session that can hold the whole change
+and are set aside rather than hidden.
 
-v0.2.10 was an interface-safety and accessibility patch carrying eleven items,
-the first since v0.2.8 to change `core/`. **The supported input ranges became
-the model's own (PL-0MLQ):** the three flow limits had been declared only as
-slider limits in `app/simulation_view.py` and enforced nowhere, so a cardiac
-output of 1000 L/min, a fresh gas flow of 500 L/min and an alveolar
-ventilation of 200 L/min were all accepted and simulated, the compartment
-setters having checked only for nonnegative and finite. A presentation
-constant was the sole thing keeping a run inside the domain the verification
-gates cover, and any other caller of `core/` was outside it;
-`core/supported_ranges.py` now declares the ranges and every setter refuses
-rather than clamps. **Two readouts stopped claiming more than the model
-computes (PL-NV9W, PL-8M05):** the alveolar panel read "Alveolar / end-tidal"
-where `docs/MODEL.md` requires the hedged "end-tidal-equivalent" and says why
-in terms — no airway sampling dynamics, dead space or capnography are
-modelled, so the value is the gas fraction of one perfectly-mixed alveolus and
-is not end-tidal in any patient. Each panel now names its compartment over a
-smaller gloss, which also put every reading back on one baseline after the
-longest labels had wrapped at a different set of window widths. Both defects
-passed the whole suite while displaying wrongly, because nothing in the
-repository draws the interface; they were found by rendering the running app,
-and `PL-7J96` carries that gap. **Two colours failing WCAG AA on clinical text
-were replaced (PL-X0RG, PL-30P6):** `MUTED` names every readout and missed the
-4.5:1 normal-text minimum, and `ACCENT` was serving as both text and the
-alveolar trace, where one colour cannot meet both bars. **The application
-acquired a name (PL-HK75)** — `APP_DISPLAY_NAME` had read "Working Title" in
-every screenshot the project had produced. Five tooling items closed live
-defects in the queue's ranking, its verify timeout, and the cost `make check`
-pays to run it. No equation, parameter, or numerical method changed, and no
-displayed number changed.
-
-v0.2.9 was a validation, accessibility and tooling patch that changed no source
-file at all — `src/` was identical to v0.2.8 — and its claim was evidence
-rather than code. **Validation, as distinct from verification (PL-9Y42):**
-nothing in this repository had ever been compared to a measurement of a human
-being, every test in `tests/reference/` having checked the implementation
-against itself. `tests/reference/test_published_wash_in.py` pinned the
-30-minute $`F_A/F_I`$ of all three agents against Yasuda et al. 1991 —
-sevoflurane 0.853 against 0.850 ± 0.018, isoflurane 0.741 against
-0.733 ± 0.027, desflurane 0.908 against 0.900 ± 0.010, at the data file's own
-cited alveolar ventilation rather than a value fitted to make it pass. Two
-caveats bound what that agreement is worth and are recorded with it: Yasuda's
-subjects breathed 65-70% nitrous oxide, so the measured curves carry a
-second-gas effect this fixed-volume single-gas alveolus cannot reproduce, and
-the partition coefficients under test share a lineage with the data being
-tested against, so passing shows the implementation reproduces its parameter
-set's intent rather than that the parameter set is independently right. It is
-weaker than "validated against a human measurement" and was not claimed as
-more. **A colour that fails accessibility began failing the build** (PL-MMYM,
-PL-1MK1, PL-HC9P): the WCAG 2.2 AA target and the criteria binding it were
-recorded rather than assumed, and `tools/contrast_check.py` computes the
-ratios `make check` gates on, replacing ratios asserted in code comments —
-`CLAUDE.md`'s "find the decidable part and put it in code" applied to a
-published standard. **Three live defects in the queue's own ranking** closed
-with it: `docket next` labelled every Gate 0 entry with the milestone that
-records the gate rather than the one that clears it (PL-1J0P), `wave` reported
-the gate one entry short because a safety-classed item predating the freeze
-was absent from the frozen list (PL-Y4Q4), and `CLAUDE.md` still carried the
-workflow-first rule v0.2.8's shipping was supposed to retire (PL-D1ZY).
-
-v0.2.8 was a workflow release carrying seventy items, whose whole claim is
-that the development loop is reliable enough to run two long scientific
-milestones through; it changed nothing a clinician would read, `src/`
-differing from v0.2.7 by three comments. Thirty-eight of the seventy were the
-frozen debt gate recorded under that release, in four groups. **The merge and
-release path**: main switched to squash-merge (PL-S4M2), releases are tagged
-so a commit maps to the version it shipped in (PL-J3ZK), an item records its
-pull request so provenance survives the squash (PL-ZQ9C), and `make release`
-stopped ending every release in a red test on a table it does not write
-(PL-8HJ2). **What a session is told at its start**: `docket next` no longer
-leads with work the current milestone excludes (PL-1TPM, PL-0RS6, PL-Q2BJ),
-the digest stopped printing fabricated ahead/behind counts (PL-FBCC), and six
-commands that rank or mark against in-flight work now say when a ref went
-unread rather than presenting a partial answer as a whole one (PL-5KR2,
-PL-MGNC, PL-KWC1, PL-CPSY, and PL-3576 for the seventh). **The gates
-themselves**: the type-check reaches past `src/` and ships a `py.typed` marker
-(PL-020), covers docket's own source (PL-0TRS) and the test trees (PL-CMCB,
-PL-J5NN), inert `noqa` directives fail the build (PL-ZN0N, PL-69J3), and a
-`verify:` command that selects no test is no longer read as one that
-discriminates (PL-5QKT, PL-DVPZ, PL-JWXF). **The instructions a session reads
-before anything else**: `CLAUDE.md` states what the project is and why
-workflow outranks product work while the loop is being fixed (PL-K6QR,
-PL-20ZR), keeps resident only what a session could get wrong before it would
-look anything up (PL-H7XN), and the pull request now arrives with the work
-instead of waiting to be asked for (PL-N7R9, PL-Z8SV). One gate entry was
-dropped rather than done, with its reason recorded: PL-J786 would have
-required a green `checks` run before any merge into main, which GitHub Free
-does not enforce on a private repository, so merges continue to rest on
-discipline and the measured risk is accepted knowingly. Full notes are in
-`docs/releases/v0.2.8.md`.
-
-v0.2.7 was a session-discipline and applicability-domain release carrying
-fourteen items. Four were scientific or safety-classed: the simulation step
-refuses an input outside the operator split's stated applicability domain
-rather than integrating past it (PL-VP7N), the splitting error is bounded
-across setting changes instead of one held operating point (PL-SLHS), the
-two-decimal readout was re-decided against that widened measurement (PL-74TX),
-and the cardiac-output slider's lower bound was settled (PL-629Z). The other
-ten shared one subject — keeping a session's output addressed to the question
-it was asked — and closed the three channels by which simulator work leaked
-into discussions that were not about it (PL-36SC, PL-5GFK), gave multi-step
-instructions a written standard (PL-R5GN, PL-HZC2, PL-5Q71), and cleared two
-live and silent tooling defects (PL-ZRFC, PL-0999).
-
-v0.2.5 was a licensing, documentation and planning release carrying seven
-items and changing no source file. The project became licensed Apache-2.0;
-v0.3.0 through the MVP was scoped onto one timeline with its debt gates ("The
-plan" below); Phase 0 was retired in favour of the standing debt gate; and
-`docs/worker.md` came to state what a delegated worker decides for itself
-before what it may not touch.
-
-v0.2.4 was a verification and delegation release. Fourteen previously
-untested capacity and validation guards in the scientific core and the
-controller gained tests; `_halt_run`'s deliberate suppression became covered
-by a test rather than only a comment; and work whose success a command can
-prove became handable to a cheaper model and verifiable in one step.
-
-The per-release detail below is history rather than current state, kept for
-the reasoning behind each change; the one-line item lists are in
-`docs/releases/`. Only the section heading above tracks which release is
-current, so adding a release means adding a paragraph here and editing one
-heading — not restating the baseline in three places, which is what left this
-file naming v0.2.3 as current two releases on (PL-SWFM).
-
-v0.2.3 was a hardening and verification release carrying nine queue items,
-three of which reach the running application:
-
-- **PL-040.** Concentrations were rendered to thousandths of a percentage
-  point, but the shipped operator split disagrees with an independent
-  solution by 1.7e-3 percentage points at default flows and 1 MAC and 1.2e-2
-  at the corner of the slider envelope, so two of the three displayed
-  decimals were solver noise presented as model output. Every modeled
-  concentration and the delivered-agent setting now read at a fixed 0.01
-  percentage points, with a positive value that would round to `0.00%` shown
-  as `<0.01%` so an empty compartment stays distinguishable from an
-  unresolved one.
-- **PL-001.** The chart was handed the entire recorded history every frame
-  while its axis only ever showed the last window, so frame cost grew with
-  run length and redraws overran the frame budget after about 90 s of
-  simulated time. The payload is now bounded and decimated to a fixed
-  per-trace budget, and stepping the model is independent of drawing it.
-  Nothing about the simulation's own time step changed.
-- **PL-023.** Mass balance could not detect a wrong rate: every internal
-  transfer is applied as an equal-and-opposite pair, so the accounting
-  residual stays at ~2e-15 L whatever the rates are — scaling the
-  circuit/alveolar exchange by 1.01 left all 345 tests green. An independent
-  RK4 oracle that re-derives the `docs/MODEL.md` equations from the parameter
-  files now runs in CI (`tests/reference/test_coupled_dynamics.py`) and
-  requires all six states to agree across the three agents at 60 s, 600 s and
-  3600 s; the same mutation fails 8 of its 22 cases. The tolerance is a bound
-  on the first-order splitting coefficient rather than a value fitted to
-  today's run.
-
-The remaining six are documentation and development-infrastructure work:
-PL-008 swept the documentation to match what the interface actually does,
-PL-033 added the reference patient's 70 kg to `docs/MODEL.md`'s provenance
-table with a statement that no equation consumes it, and PL-3QGR, PL-041,
-PL-032 and PL-034 replaced the single-file punch list with the per-item queue
-in `docs/items/`, mechanized the decidable half of the close-out
-documentation sweep, and split the queue workflow between `CLAUDE.md`, the
-skill and the tool. Full notes are in `docs/releases/v0.2.3.md`.
-
-The preceding v0.2.2 was a hardening and interface-provenance release on the
-same model, changing no equation, parameter, or numerical method either. It
-carried four queue items:
-
-- **PL-018.** A failure inside a step no longer leaves the interface reading
-  "Running" over numbers that have stopped advancing. A run now has a third
-  state, halted; `SimulationSnapshot` carries a `failure_reason`; the
-  interface labels the run "Stopped — simulation error" and warns that the
-  values shown may not reflect a completed step; and Reset clears it. `core/`
-  raises one documented exception hierarchy for this path. What a halted run
-  should *display* beyond that banner was left open here and answered by
-  PL-026, which made the step transactional rather than treating the display:
-  a failed step is rolled back, so the values a halted run shows are the last
-  completed step, and the banner says so instead of warning about them.
-- **PL-021.** The agent and patient parameter schemas reject unknown keys
-  rather than ignoring them, so a misspelled or obsolete field in a data file
-  fails loudly instead of silently leaving a default in place.
-- **PL-002.** Agent selection carries each agent's ISO 5360:2016 Table 2
-  identification color, with its Munsell-original-to-Pantone-to-sRGB
-  provenance chain and the measured deviation of each screen approximation
-  recorded in `docs/MODEL.md`. The agent name appears everywhere the color
-  does, so color is never the only cue.
-- **PL-022.** `AlveolarCompartment.advance_ventilation` — a dead,
-  non-conservative single-mechanism path that no shipped code called — is
-  deleted.
-
-The preceding v0.2.1 was a validation hotfix on the v0.2.0 model, likewise
-changing no equation, parameter, or numerical method. It closed three defects
-found by the architecture review of the v0.2.0 baseline (PL-015, PL-016,
-PL-017): a delivered concentration above the agent's real vaporizer maximum
-is rejected by `core/`, at construction and at every change, rather than
-clamped in the controller; the agent-file check that 1 MAC is deliverable
-runs after every field is populated, so field declaration order cannot defeat
-it; and the controller no longer keeps its own copies of the reference
-adult's cited ventilation and cardiac-output defaults, so the data file is
-what the app actually runs. The harness that reproduced these findings was
-retired by PL-STNV once every check it carried had become a closed item, a
-reference test, or an open queue entry; it survives in git history alone.
+**Two smaller corrections to the queue's own record.** `docket check` recovered
+the wrong pull request for an item closed as a rider on another item's, and
+advised writing that wrong number in (PL-GW37); a commit closing more than one
+item now leads with all of them. And a triage pass had been drifting into a
+work session — recommending what to do next, opening branches, shepherding
+fixes — where what the owner wants from one is a summary of what was triaged
+and where the queue stands (PL-ZSV6).
 
 ### The model as it stands
 

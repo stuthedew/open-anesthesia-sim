@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: infra, docs
 feature: core-boundaries
+milestone: v0.3.6
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, Makefile, .github/workflows/quality.yml, docket.toml, src/anesthesia_sim/core/parameters.py
 added: 2026-09-02
 closed: 2026-09-04
+pr: 289
 verify: uv run pytest tests/unit/test_parameters.py && grep -q 'import_boundary_check' Makefile
 ---
 
