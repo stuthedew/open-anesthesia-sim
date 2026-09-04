@@ -54,7 +54,8 @@ capability-boundary rule above governs.
 | v0.3.1 | Completed | Provenance-integrity and rollback patch on the same model, adding no capability and changing no equation, parameter or numerical method: `src/anesthesia_sim/data/` is byte-identical to v0.3.0, `docs/MODEL.md` is unchanged, and `src/` changes in one file. `AgentUptakeSystem.advance()`'s rollback moved off its `except` clauses onto the unwind path, closing a measured hole where a `BaseException` left a partly applied step in the live system, and `reset()` now anchors the mass-balance accounting period to what the compartments hold rather than to a zero it did not itself establish. The rest is the queue's own record of what closed an item: the retired `commit:` hash a squash discards is replaced by the pull request number, recovered from file history and refused at the pull-request title; duplicate front-matter keys, undeclared `classes:` and `feature:` values, and a merge that deletes a captured item became errors rather than silent corruption; a `verify:` command is owed as an error when a grandfathered item closes; and a scheduled job reports whether the tree still builds on a toolchain nobody pinned. |
 | v0.3.2 | Completed | Provenance-honesty patch, and the release that decided how this project's numbers may be cited. Every shipped Python file is byte-identical to v0.3.1 and every stored numeric value is unchanged; what moved is what the citations claim about them. `docs/MODEL.md` gained a three-tier source hierarchy — primary measurement, secondary synthesis, reference implementation — and only the first may be named as the authority for a stored value, which makes the shipped parameter set Gas Man's and says so, where the agent files had let a journal's name stand in for a measurement nobody made. The isoflurane blood:gas question is recorded rather than answered: 1.3 is stored, 1.46 is what Lerman et al. measured in adults, and the 11% gap is the widest in the project. Alongside it, the numerical method's future is settled — the operator split is to be replaced by an exact matrix exponential so the code that computes a value is the governing equations, with the state vector decided as fractions — and two live defects close: the conservation guard's three sensitivity constants are pinned, and the pull-request title check moved to a workflow that can observe the rename it asks for. No capability, equation, parameter or numerical method changed. |
 | v0.3.3 | Completed | Delegation and interface-boundary patch on the same model, adding no capability and changing no equation, parameter, numerical method, unit or displayed value: `src/anesthesia_sim/data/` is byte-identical to v0.3.2 and the one `src/` change is behavior-preserving. The queue's own provenance stopped needing a person: a closed item's pull request number is written by `bin/docket record`, riding whatever commit the session was already making, after the job meant to write it at merge time proved unlandable - a push made with `GITHUB_TOKEN` starts no workflow, so `main`'s required status checks can never report on the commit it pushes, and every configuration that would accept the push weakens that gate instead. That closes the `delegation` feature at 12 of 12. Alongside it, `app/simulation_view.py`'s displayed-precision formatters and chart-series assembly moved into two Flet-free modules, so `docs/MODEL.md`'s displayed-precision derivation now terminates in a function that can be read, cited and tested without loading the interface - stages 1 and 2 of v0.4.0's Required scope, landed ahead of the milestone. `core/` gained a 100% statement-and-branch coverage gate over the saturation it already had, before v0.4.1's exact-step solver arrives to be measured against it, and the pull-request title check now runs at the declared Python floor. |
-| v0.3.4 | Completed / current baseline | Documentation- and tooling-truth patch: every shipped Python file is byte-identical to v0.3.3 and `src/anesthesia_sim/data/` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The whole release is the project correcting statements it was making about itself. `docs/MODEL.md` had named v0.2.3 as the current released baseline for thirteen releases, and still recorded the operator split as kept on a decision the 2026-09-03 re-scope reversed; both are corrected, and the specification now names no current version at all, because a second copy of one goes stale silently at every release. Two checks that reported a false state were repaired and retired: the top-band advisory no longer counts blocked items a session cannot start, and `doc_check`'s baseline-tag advisory is gone, because a local checkout cannot tell a release never tagged from one tagged since it last fetched. |
+| v0.3.4 | Completed | Documentation- and tooling-truth patch: every shipped Python file is byte-identical to v0.3.3 and `src/anesthesia_sim/data/` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The whole release is the project correcting statements it was making about itself. `docs/MODEL.md` had named v0.2.3 as the current released baseline for thirteen releases, and still recorded the operator split as kept on a decision the 2026-09-03 re-scope reversed; both are corrected, and the specification now names no current version at all, because a second copy of one goes stale silently at every release. Two checks that reported a false state were repaired and retired: the top-band advisory no longer counts blocked items a session cannot start, and `doc_check`'s baseline-tag advisory is gone, because a local checkout cannot tell a release never tagged from one tagged since it last fetched. |
+| v0.3.5 | Completed / current baseline | Gate-measurement patch changing no shipped code at all: `src/` and `src/anesthesia_sim/data/` are byte-identical to v0.3.4 and `docs/MODEL.md` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The release is the project's own quality gate learning what it costs, saying so truthfully, and getting roughly twice as fast. `pytest-xdist` at `-n auto` took the suite from 78 s to 27 s with coverage byte-identical at 100%, `make check` from 115.0 s to 59.2 s and the CI step 28%, and `make test` — the whole-suite target a session reaches for while iterating — followed at 88.5 s to 31.8 s; no test was skipped, disabled or relaxed to pay for it. Two advisories that quoted figures measured once and left to go stale now print what the run actually cost. The two questions those measurements raised — the docket suite's share of the wall clock, and `bin/docket check` becoming the gate's largest item — were decided as accept-with-evidence rather than left open, each carrying the numbers that would have to change to reopen it. And two silent-divergence holes closed: the local and merge coverage gates are held to one command by a check rather than by two comments asking to be kept the same, and the guard that keeps two sessions off one item now reads what files it touches, not only who is on it. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
@@ -92,76 +93,66 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.3.4
+## Current baseline: v0.3.5
 
-v0.3.4 is a documentation- and tooling-truth patch carrying five items. Every
-shipped Python file is byte-identical to v0.3.3 and `src/anesthesia_sim/data/`
-is unchanged, so no equation, parameter, numerical method, unit or displayed
-value moved. What it is for is narrow and worth naming plainly: the project was
-making four statements about itself that were wrong, and each of them read as
-authoritative while being false. Nothing in it improves the simulator; it
-restores the correspondence between the simulator and what this repository says
-about it, which is the property every other claim here rests on.
+v0.3.5 is a gate-measurement patch carrying eight items, and it changes no
+shipped code at all: `src/` and `src/anesthesia_sim/data/` are byte-identical
+to v0.3.4 and `docs/MODEL.md` is unchanged, so no equation, parameter,
+numerical method, unit or displayed value moved. What it is for is the quality
+gate this project runs on — the command a session types before it calls
+anything finished. That gate had grown expensive without anyone being able to
+say by how much, and two of its own advisories were quoting figures that had
+stopped being true. This release makes it roughly twice as fast, makes it
+report its own cost every run rather than in a comment written once, and closes
+two places where the gate could pass while the guarantee behind it was void.
 
-**`docs/MODEL.md` stopped naming a baseline it could not keep current
-(PL-C1KK).** Its Status section said the model was "still in force in v0.2.3,
-the current released baseline" — thirteen releases after v0.2.3. Nothing read
-wrong until someone checked the version, which is exactly what makes a stale
-specification a safety problem rather than an untidiness: a reader who trusts
-it reaches a wrong conclusion from a correct document. The fix is not a newer
-number. That section now names no current version at all, because `ROADMAP.md`'s
-version table is where the baseline lives and a second copy of it goes stale at
-every release with nothing reading wrong in between. A statement in the
-specification that needs a version now says what has been true *since* one,
-which cannot go stale.
+**The gate got about twice as fast, by removing work rather than checks
+(PL-WCZV, PL-FX3N).** `pytest-xdist` at `-n auto` took the whole suite from
+78 s to 27 s on four cores with coverage byte-identical at 691 statements /
+78 branches / 100%, and `make check` from 115.0 s to 59.2 s; CI gained 28%
+rather than 65%, because a private repository's standard runner is two vCPUs
+and `auto` reads the box it is on. `make test` — the whole-suite target a
+session actually reaches for while iterating — was left serial by that change
+and followed here, 88.5 s to 31.8 s. Every test still runs and nothing was
+skipped, disabled or relaxed to pay for it: coverage holding identical is what
+made the flag admissible, and the threshold stayed on the command line.
 
-**The splitting-error decision is recorded as superseded rather than silently
-overwritten (PL-B875).** § "Numerical method" carried "The split is kept
-nonetheless (project owner, 2026-08-30)" together with its reasoning, including
-the claim that no planned work wanted an exact step. The 2026-09-03 re-scope
-reversed that on a ground the original had not weighed — not accuracy, but
-whether `core/` can be read as the model — and scoped the exact matrix
-exponential into v0.4.1 under `PL-GS5X`. The section now carries both: the
-original decision on its own terms, why it stays sound to ship until it is
-replaced, and the supersession with its date and its ground. It is marked as an
-interim correction rather than the rewrite, which `PL-X9KD` owns along with
-every statement in that document the splitting error currently justifies.
+**Two advisories stopped reporting a false state (PL-9NKK, PL-FRGP).** The
+`verify` pool's cost figures had been measured once and written into a comment
+— 48-49 candidates at 34.9 s serial — where the real number had reached 78
+candidates at 175.5 s; the check now prints what the run actually cost, so the
+figure cannot go stale between readings. The slow-command advisory said the
+command it named set the check's floor, when the pool had become
+throughput-bound: removing the named command measured 28.6 s to 23.7 s, not
+the ~24 s the sentence implied. Both are the failure `CLAUDE.md` reserves its
+retirement test for — a check that keeps firing while saying something untrue
+teaches a session to skim the output where a real advisory also appears.
 
-**The top-band advisory stopped counting items nobody can start (PL-P23D).**
-`docket check` warns when the top priority band holds more items than a session
-can weigh at a glance. It counted blocked ones, which answer "what next" for
-nobody — and worse, that made the advisory reachable without anyone
-over-prioritizing anything, because the checker's own blocker-band rule requires
-a blocker to sit at or above the band of what it blocks, so gating one safety
-item on a feature item lifts that feature item into the band. This release
-contains an instance: `PL-9K7K` below marks `PL-ZRSP` blocked and raises its
-blocker `PL-DR1Z` to `P1`, putting two more items in the band of which one
-cannot be started. The count is now of startable items, with the held ones named
-separately, and `docket triage`'s statement of the same rule was moved onto the
-same number — two counts for one rule is worse than either of them.
+**The two questions the measurements raised were decided rather than left open
+(PL-KCQ7, PL-8BFV).** Both closed as accept-with-evidence, which is a real
+answer and is recorded so the ratio is not rediscovered and treated as new.
+The workflow apparatus takes about two fifths of the suite's wall clock, and
+that stays: 63 of the store's 125 defect-classed items touch
+`subprojects/docket`, **39 of them describing a silent failure** — the check
+passed and the wrong answer was delivered anyway — which is precisely the class
+human use does not catch and a test does. `bin/docket check` is now the largest
+single item in the gate at 30.5 s of 59.2 s, and that stays too: a pool's wall
+clock is `max(slowest command, total work ÷ workers)`, and at 28.8 s against
+25.2 s the two terms sit within 15% of each other, so each of the four levers
+weighed moves only one term and buys almost nothing. What had made the cost
+urgent was that it tripled *unseen*; the two items above are what fixed that,
+and 30 s with the numbers visible is a price rather than a problem.
 
-**`doc_check`'s baseline-tag advisory was retired rather than narrowed
-(PL-R7C0).** It fired on any full clone whose tags predated the newest release —
-the ordinary state of a checkout more than one release old — and printed a `git
-tag` command for a tag that already existed. Telling "never tagged" from "tagged
-since you last fetched" needs the network, which these tools do not have by
-contract. Nothing permanent is lost: the moment that version stops being the
-baseline it falls through to an **error**, which is when an untagged release
-starts to matter, since `git describe --contains` only fails once history has
-moved past the gap; and the reminder still arrives where it can be acted on,
-from `docket release`, which refuses to cut while the previous release is
-untagged. This is `CLAUDE.md`'s retirement clause — a check that fires every run
-without changing a decision is a defect in the check — applied to a check this
-project wrote itself.
-
-**One sequencing bug was fixed by hand and its general form left open
-(PL-9K7K).** `docket next` offered `PL-ZRSP` (plot the F_A/F_I ratio) ahead of
-`PL-DR1Z` (record the control-input timeline), although `PL-ZRSP`'s own brief
-says its trace is the textbook wash-in curve only while inspired concentration
-is held constant — which is the thing the timeline records. The instance is
-closed: `PL-DR1Z` is raised to `P1` and `PL-ZRSP` marked blocked by it. The
-general case, that ranking reads the front matter and cannot see sequencing
-stated only in a brief, is `PL-5WFS` and stays open at `needs-decision`.
+**Two silent-divergence holes closed (PL-D3M2, PL-MC8Z).** The local coverage
+gate and the merge gate ran the same pytest invocation and each carried a
+comment saying they must stay identical, with nothing checking it — so a drift
+would have left a session and CI asking different questions, or both green
+while only one still enforced 100% on `core/`. `tools/doc_check.py` now holds
+them to one command, keyed on `--cov-fail-under` so that `drift.yml`'s
+deliberately bare run and `make test`'s new parallel one are outside the
+comparison rather than failing it every run. Separately, the guard that keeps
+two sessions off one item asked who was on the item but never what files it
+touched, so an overlap surfaced at merge; it now reads `touches` as well.
 
 **What the model currently is** is described under "The model as it stands"
 below, and does not change release to release while the patch series continues.
