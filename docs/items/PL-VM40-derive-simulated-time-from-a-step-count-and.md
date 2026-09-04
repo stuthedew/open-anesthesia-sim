@@ -3,11 +3,13 @@ id: PL-VM40
 title: Derive simulated time from a step count and never catch up to the wall clock
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, science
 feature: teachable-case
-touches: src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_simulation.py
+touches: src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, ROADMAP.md, tests/unit/test_simulation.py, tests/unit/test_simulation_view.py, tests/integration/test_sevo_controller.py
 added: 2026-08-25
+closed: 2026-09-04
+verify: uv run pytest tests/unit/test_simulation.py && grep -q 'def test_elapsed_time_is_the_step_count_times_the_step' tests/unit/test_simulation.py
 ---
 **Problem.** Two separate things make a run irreproducible. `SimulationState.advance`
 accumulates `self.elapsed_s += simulation_step_s` per step, so the clock depends on
@@ -61,3 +63,35 @@ and the chart-series assembly are already in `app/formatting.py` and
 `app/chart_series.py`. The paragraph above is kept as the record of why this
 waited; it no longer holds. Recovered from `origin/claude/what-next-rsmqeu`,
 which was abandoned without a pull request.
+
+**Landed 2026-09-04.** `SimulationState` holds `step_count` and the
+`simulation_step_s` the run is being taken at, and reports `elapsed_s` as
+their product; `reset()` clears both.
+
+Two decisions inside the approach, neither of which the brief settles:
+
+- **The step is fixed per run rather than hard-coded at 0.1 s.** `advance()`
+  records the step the run's first step was taken at and refuses a different
+  one thereafter, as a `SimulationConfigurationError` raised before anything
+  moves. That gives the product a single step to multiply by without moving
+  the cadence decision out of `app/simulation_view.py`, where a comment
+  derives it from the operator split's applicability domain, and without
+  rewriting the ~50 `controller.advance(0.1)` call sites in the test suite. A
+  step-refinement study can still take a whole run at a smaller step.
+- **The run loop is unchanged, and gains no `STEPS_PER_TICK` constant.** One
+  step per tick already *is* a fixed number of steps per tick, and nothing
+  consumes a constant today; the guarantee is stated in the loop's docstring
+  and locked by a test that drives it through a tick returning at once, so
+  the assertion is "one step per wakeup" with no real time in it. `PL-SN2C`,
+  the playback multiplier, is where a steps-per-tick constant belongs -
+  v0.4.0's Required scope already says that item is implemented as steps per
+  tick and never as a larger step.
+
+`docs/MODEL.md` gained "Simulated time is a count of steps, not a running
+total" and "The reproducibility guarantee" under § "Time", the second stating
+the four things the guarantee does *not* cover: a different step size, a
+different model version, a different platform (the compartments' analytic
+solutions call `exp`, whose last bit is a library's), and elapsed real time.
+"Deterministic replay test" now requires the comparison to be element-wise
+and the two runs to be driven differently in real time; `ROADMAP.md`'s
+forking entry no longer names the two divergence causes this closes.

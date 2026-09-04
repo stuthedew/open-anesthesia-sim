@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+from itertools import cycle
 from math import isfinite
 
 import pytest
@@ -126,6 +128,85 @@ def test_identical_runs_produce_identical_snapshots_and_history() -> None:
     second = _run()
 
     assert first.snapshot() == second.snapshot()
+
+
+def _scripted_run(bursts: Iterable[int], simulation_step_s: float = 0.1) -> SimulationController:
+    """One scripted run, its steps grouped into ticks of the given sizes.
+
+    The script changes a setting at fixed *step counts*, never at a burst
+    boundary, so two runs given different burst patterns differ in nothing
+    but how the steps were grouped and how often the interface read the run
+    between them - which is the difference between a fast host and a slow
+    one.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    steps_taken = 0
+
+    for burst in bursts:
+        for _ in range(burst):
+            controller.advance(simulation_step_s)
+            steps_taken += 1
+
+            if steps_taken == 100:
+                controller.set_alveolar_ventilation(6.0)
+            elif steps_taken == 250:
+                controller.set_cardiac_output(4.5)
+            elif steps_taken == 400:
+                controller.set_delivered_concentration(0.05)
+
+        # What a frame does between ticks: read the run, and never move it.
+        controller.history_window(controller.snapshot().elapsed_s - 60.0)
+
+    return controller
+
+
+def _ragged_bursts(total_steps: int) -> list[int]:
+    """Steps per tick for a host that wakes the loop irregularly."""
+
+    bursts: list[int] = []
+    remaining = total_steps
+
+    for size in cycle((7, 1, 13, 2, 5)):
+        if remaining <= size:
+            bursts.append(remaining)
+            break
+
+        bursts.append(size)
+        remaining -= size
+
+    return bursts
+
+
+def test_a_run_records_the_same_history_however_the_ticks_fell() -> None:
+    """Identical inputs must reproduce element-wise, whatever the host did.
+
+    Required test from docs/MODEL.md, and the half the test above does not
+    reach: that one drives both runs identically, so it holds the model to
+    the same trajectory twice and says nothing about the machine. Simulated
+    time is the number of steps taken times the step, and the run loop takes
+    a fixed number of steps per tick and never extra ones to make up lost
+    wall-clock time, so a host that wakes the loop late or drops a frame
+    runs *slower* than one that does not - it does not run *differently*.
+
+    The same 600 steps and the same settings at the same step counts, taken
+    one per tick and in ragged bursts. Compared sample by sample rather than
+    endpoint against endpoint, because that is the comparison a forked run
+    makes against the run it forked from: a divergence anywhere in the
+    recorded history is one a chart drawn from it would show.
+    """
+
+    steps = 600
+
+    one_step_per_tick = _scripted_run([1] * steps)
+    ragged = _scripted_run(_ragged_bursts(steps))
+
+    whole_run = one_step_per_tick.history_window(0.0)
+
+    assert whole_run.sample_count == steps + 1
+    assert whole_run.samples == ragged.history_window(0.0).samples
+    assert one_step_per_tick.snapshot() == ragged.snapshot()
 
 
 def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> None:
