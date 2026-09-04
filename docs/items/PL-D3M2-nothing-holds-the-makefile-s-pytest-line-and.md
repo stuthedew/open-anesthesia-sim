@@ -32,6 +32,15 @@ that nothing performs.
 **Where.** `tools/doc_check.py`, which already parses both files: `workflow_commands`
 yields every `run:` line and `Makefile` target parsing is beside it.
 
+**There are now two `uv run pytest` lines in the `Makefile`, so "the Makefile's
+pytest line" no longer identifies one.** `PL-FX3N` put `-n auto` on the `test`
+target, which shares the flag with the `check` line and nothing else - no
+`--cov`, no threshold, and no obligation to match the workflow. A checker that
+finds the Makefile's pytest invocation by pattern would now find two and could
+compare the wrong one, reporting drift that is deliberate. Anchor the read to
+the `check` target's recipe, and treat `test` as outside the pair; the comment
+above each line says which it is.
+
 **Done when.** A drift between the two commands fails a check rather than
 relying on a reader noticing. Worth deciding whether the rule is "identical
 strings" - simple, exact, and the sort of thing `CLAUDE.md` reserves hard

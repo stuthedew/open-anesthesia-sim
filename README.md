@@ -98,7 +98,7 @@ make check       # ruff format --check, ruff check, mypy (strict), the
                  # documentation checkers
 make fix         # ruff format, ruff check --fix, and write any pull
                  # request number a landed closure is owed
-make test        # pytest only, without the coverage gate
+make test        # pytest across every core, without the coverage gate
 make docket      # validate docs/items/ and list anything untriaged
 make release VERSION=<next>  # cut a release: bump and relock, then name the
                  # ROADMAP.md edits it does not write
