@@ -48,6 +48,8 @@ __all__ = [
     "MAC_UNIT_SUFFIX",
     "MAX_MAC_AXIS_INTERVALS",
     "format_delivered_label",
+    "format_elapsed",
+    "format_flow",
     "format_mac_awake_reference",
     "format_mac_multiple",
     "format_mac_reference",
@@ -444,6 +446,40 @@ def mac_axis_ticks(max_percent: float, mac_percent: float) -> tuple[tuple[float,
         # plotted area.
         for index in range(int(span_mac / step_mac) + 1)
     )
+
+
+def format_flow(flow_l_min: float) -> str:
+    """Render a flow setting in litres per minute, at the slider's own resolution.
+
+    One definition for the three flow settings rather than one per display
+    site. The readout beside a slider, the slider's own drag label and the
+    control-input timeline are three renderings of one number, and two of
+    them disagreeing by half a litre a minute is the same class of failure
+    as a concentration shown at two resolutions - which is why
+    `FLOW_DISPLAY_DECIMALS` exists and why nothing should be spelling
+    `:.1f` out beside it.
+    """
+
+    return f"{flow_l_min:.{FLOW_DISPLAY_DECIMALS}f} L/min"
+
+
+def format_elapsed(elapsed_s: float) -> str:
+    """Render simulated time as the interface states it everywhere.
+
+    Seconds, one decimal, matching the simulation step the run advances by.
+    The clock, and every recorded control change stamped against it, come
+    through here: a timeline reading in one time format beside a clock
+    reading in another would leave the reader converting between two
+    displayed times of the same quantity.
+
+    Seconds do not read well across a whole case, which is what v0.4.0's
+    case-length time base is for. That is a change to how this project
+    states simulated time rather than to one panel, so it belongs here, at
+    the one place that decides it, and not in whichever display happens to
+    be built first.
+    """
+
+    return f"{elapsed_s:.1f} s"
 
 
 def format_subtitle(agent_display_name: str) -> str:

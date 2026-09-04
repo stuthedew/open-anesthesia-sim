@@ -40,9 +40,19 @@ from flet.messaging.protocol import (
 from flet.messaging.session import Session
 from flet.pubsub.pubsub_hub import PubSubHub
 
-from anesthesia_sim.app.chart_series import MAX_CHART_POINTS_PER_SERIES
-from anesthesia_sim.app.controller import SimulationHistorySample, SimulationSnapshot
-from anesthesia_sim.app.simulation_view import RENDER_INTERVAL_S, SIMULATION_STEP_S, SimulationView
+from anesthesia_sim.app.chart_series import MAX_CHART_POINTS_PER_SERIES, PARKED_CONTROL_MARK_X
+from anesthesia_sim.app.controller import (
+    ControlChange,
+    ControlInput,
+    SimulationHistorySample,
+    SimulationSnapshot,
+)
+from anesthesia_sim.app.simulation_view import (
+    MAX_CHART_CONTROL_MARKS,
+    RENDER_INTERVAL_S,
+    SIMULATION_STEP_S,
+    SimulationView,
+)
 from anesthesia_sim.core.parameters import load_agent_parameters
 
 # One render tick covers this many recorded simulation samples.
@@ -78,9 +88,15 @@ class _RecordingConnection(Connection):
 class _ReplayController:
     """Serve snapshots from a recorded run, one render tick per call."""
 
-    def __init__(self, samples: tuple[SimulationHistorySample, ...], start: int) -> None:
+    def __init__(
+        self,
+        samples: tuple[SimulationHistorySample, ...],
+        start: int,
+        control_timeline: tuple[ControlChange, ...] = (),
+    ) -> None:
         self._samples = samples
         self._cursor = start
+        self._control_timeline = control_timeline
         self.is_running = True
 
     def snapshot(self) -> SimulationSnapshot:
@@ -114,6 +130,7 @@ class _ReplayController:
             agent_accounting_absolute_error_l=1.5e-13,
             agent_accounting_passes_validation=True,
             concentration_history=history,
+            control_timeline=self._control_timeline,
             failure_reason=None,
         )
 
@@ -135,8 +152,34 @@ def _recorded_run(sample_count: int) -> tuple[SimulationHistorySample, ...]:
     )
 
 
+def _control_timeline(
+    count: int, first_elapsed_s: float, spacing_s: float
+) -> tuple[ControlChange, ...]:
+    """`count` adjustments, cycling the controls, `spacing_s` apart.
+
+    The caller places them inside the visible window: a mark outside it is
+    not drawn, so a spacing that overruns the window would leave a test
+    measuring an empty pool while looking as though it measured a full one.
+    """
+
+    controls = list(ControlInput)
+
+    return tuple(
+        ControlChange(
+            elapsed_s=first_elapsed_s + index * spacing_s,
+            sample_index=round((first_elapsed_s + index * spacing_s) / SIMULATION_STEP_S),
+            adjustment=index + 1,
+            control=controls[index % len(controls)],
+            previous_value=1.0,
+            new_value=2.0,
+            unit="L/min",
+        )
+        for index in range(count)
+    )
+
+
 def _mounted_view(
-    start: int = SATURATED_SAMPLE_COUNT // 2,
+    start: int = SATURATED_SAMPLE_COUNT // 2, control_timeline: tuple[ControlChange, ...] = ()
 ) -> tuple[SimulationView, Session, _RecordingConnection]:
     """Mount the dashboard on a real session with a client already registered.
 
@@ -144,11 +187,16 @@ def _mounted_view(
         start: How many recorded samples the run has produced when the
             dashboard is built. The default saturates the visible window, so
             decimation is active and the drawn count holds steady.
+        control_timeline: Recorded control changes the run carries, which
+            the chart draws marks for. Empty by default, since most of
+            these tests are about the traces.
     """
 
     connection = _RecordingConnection()
     session = Session(connection)
-    controller = _ReplayController(_recorded_run(SATURATED_SAMPLE_COUNT), start=start)
+    controller = _ReplayController(
+        _recorded_run(SATURATED_SAMPLE_COUNT), start=start, control_timeline=control_timeline
+    )
     view = SimulationView(page=session.page, controller=controller)
     view.mount()
 
@@ -336,3 +384,41 @@ def test_a_scrolling_window_rebuilds_only_at_a_bucket_boundary() -> None:
 
     assert median(counts) <= 60, f"the typical frame sent {median(counts)} operations"
     assert sum(counts) / len(counts) <= 400, "the amortized cost of rebuilding grew"
+
+
+def test_a_run_full_of_control_marks_costs_a_frame_nothing_extra() -> None:
+    """The mark pool is fixed, so a marked run must cost what an unmarked one does.
+
+    The two tests above run with no recorded changes, which measures the
+    marks only in their parked state - and parking was where the first
+    regression was: relative to the moving window, it rewrote both points of
+    all 24 marks on every frame of a scrolling run. Drawn marks are the
+    other half, and they are the half a real teaching run has. A mark sits
+    at a fixed simulated time and spans a range that moves only with the
+    agent, so a steady frame must send nothing for it; this fails if one
+    ever comes to be recomputed per frame.
+    """
+
+    marked = _mounted_view(
+        start=3100,
+        control_timeline=_control_timeline(MAX_CHART_CONTROL_MARKS, 30.0, spacing_s=11.0),
+    )
+    unmarked = _mounted_view(start=3100)
+
+    drawn = [
+        series
+        for series in marked[0]._control_mark_series
+        if series.points[0].x != PARKED_CONTROL_MARK_X
+    ]
+    assert len(drawn) == MAX_CHART_CONTROL_MARKS, (
+        f"only {len(drawn)} of {MAX_CHART_CONTROL_MARKS} marks landed inside the window, "
+        "so this measures a pool that is mostly parked"
+    )
+
+    marked_counts = _ops_per_frame(*marked, frames=40)
+    unmarked_counts = _ops_per_frame(*unmarked, frames=40)
+
+    assert median(marked_counts) <= median(unmarked_counts), (
+        f"a full mark pool cost the typical frame "
+        f"{median(marked_counts) - median(unmarked_counts)} extra operations"
+    )
