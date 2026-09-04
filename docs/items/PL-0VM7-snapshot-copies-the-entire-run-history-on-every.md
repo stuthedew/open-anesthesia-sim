@@ -26,7 +26,7 @@ Linear, at roughly 10.5 us per thousand samples.
 **Why it matters.** Invisible today and severe later, which is the shape of
 defect worth recording before it bites. A one-hour case holds 36 000 samples
 and costs about 0.4 ms a frame — nothing. The fast-forward feature the owner
-wants (PL-SV2R) makes runs days or weeks long: a week is 6 048 000 samples,
+wants (PL-011) makes runs days or weeks long: a week is 6 048 000 samples,
 where the same copy is about 63 ms a frame, a third of the frame budget, and
 allocates a fresh 48 MB tuple five times a second purely to be discarded.
 
@@ -49,7 +49,7 @@ drawn, so nothing outside it needs to cross the boundary.
 run for the view to slice, the view asks for the window it is about to draw
 and the controller answers with at most the points asked for. That makes the
 read O(points drawn) instead of O(run length), removes the copy entirely, and
-is the interface a tiered store (PL-SV2R) would need anyway — so doing it
+is the interface a tiered store (PL-011) would need anyway — so doing it
 first makes that change additive rather than a rewrite.
 
 Also fixes the smaller O(window) cost beside it: `redraw_series` builds a

@@ -1,7 +1,9 @@
 ---
 id: PL-SV2R
 title: Decide how run history is retained once fast-forward makes runs days or weeks long
-status: untriaged
+status: dropped
+closed: 2026-09-04
+reason: Duplicate of PL-011 (bound the controller's concentration history), written in the same session without reading it first. PL-011 already holds the retention question, the owner's 30-day cap from 2026-08-25, and the link to the scenario-branching work; this item's measurements, sizing and prior art have been folded into it, and the correctness constraints with them. Nothing is lost by closing this one.
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/chart_downsampling.py
 added: 2026-09-04
 ---
