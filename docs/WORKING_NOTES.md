@@ -88,6 +88,20 @@ appropriate, and its entry here should be deleted rather than left stale.
   them, which took the render tick from 16.6 ms to 2.6 ms at the saturated
   window. What the browser proved by hand, the integration test above holds.
 
+  **Reopened and closed again by PL-Q197, 2026-09-04.** "Bounded and
+  independent of run length" was true of the *payload* and false of the
+  traffic. Bounding how many points are drawn does not bound how many of them
+  *move*, and the selection was re-derived per frame against a sample count
+  that changed per frame, so every drawn point took a different sample every
+  frame: about 2 700 patch operations where 24 had been enough, stepping up
+  the moment decimation engaged at 30 s of runtime. Measured on the recording
+  connection, the client was sent some 18 000 control mutations a second - only
+  ~50 kB, so the cost was the count and not the volume - which saturated the
+  Flutter process while Python sat under half a core, and left slider readouts
+  queued behind a backlog that never drained. Buckets are now anchored to
+  absolute sample index; the per-frame count is what
+  `test_a_growing_run_does_not_grow_the_traffic_it_sends` holds.
+
 ## Open thread: the v0.2.8 gate's membership test - PL-MGNC, PL-H8MQ, PL-HXYY
 
 **What the gate's admission test actually is** (project owner, 2026-08-31).

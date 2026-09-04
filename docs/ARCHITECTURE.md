@@ -191,9 +191,14 @@ trace draws is decided by `app/chart_downsampling.py`, a Flet-independent
 module kept separate because choosing a subset is a
 presentation-correctness concern (a subset that drops a transient shows a
 curve the simulation never produced) and therefore needs to be tested on its
-own. `app/chart_series.py` is the layer above it — it holds the per-trace
-point budget, converts fraction to percent, and moves the points a trace
-already holds — and it is separate for the same reason: which quantity a
+own. Bounding how many points are drawn is only half of it: the client is
+patched per point, so what a frame costs is how many drawn points *changed*
+which sample they show. The selection is therefore anchored to absolute
+sample index rather than to position within the window, so appending a
+sample leaves every completed bucket choosing what it already chose
+(PL-Q197). `app/chart_series.py` is the layer above it — it holds the
+per-trace point budget, converts fraction to percent, and moves the points a
+trace already holds — and it is separate for the same reason: which quantity a
 line carries is a correctness claim, and the view passes it in as one
 `PlottedSeries` table declared beside the traces themselves. Stepping and drawing also run as separate loops on separate intervals,
 so simulation time stays a function of steps taken rather than of how long a

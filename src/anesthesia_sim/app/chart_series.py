@@ -55,12 +55,18 @@ __all__ = [
 ]
 
 # Per-trace ceiling on points handed to the chart. Each point is a Flet
-# control, so this ceiling — not the length of the run — sets the cost of a
-# frame: `redraw_series` moves the points already drawn rather than
-# rebuilding them (PL-010), which leaves the per-frame work proportional to
+# control, and `redraw_series` moves the points already drawn rather than
+# rebuilding them (PL-010), which keeps a frame's Python work proportional to
 # this number rather than to it times the cost of a construction. 300 points
 # across a chart a few hundred pixels wide is already finer than the display
 # can resolve.
+#
+# What this ceiling does *not* bound is the traffic the client is sent. That
+# is the count of points whose chosen sample moved, which is a property of
+# the decimation rather than of this number: PL-Q197 found every drawn point
+# moving on every frame, and 1 788 of them at 5 Hz saturated the Flutter
+# client while Python idled. `chart_downsampling.py` is where that is held
+# down, and `tests/integration/test_chart_patching.py` is what keeps it there.
 MAX_CHART_POINTS_PER_SERIES: Final = 300
 
 #: Reads one quantity out of one recorded sample, in the sample's own units.
@@ -323,14 +329,18 @@ def redraw_visible_window(
             range and are not sent.
     """
 
-    visible = history[first_index_at_or_after(history, window_start_s, sample_elapsed_s) :]
+    window_start_index = first_index_at_or_after(history, window_start_s, sample_elapsed_s)
+    visible = history[window_start_index:]
 
     for series, value_for in plotted:
-        redraw_series(series, visible, value_for)
+        redraw_series(series, visible, value_for, window_start_index)
 
 
 def redraw_series(
-    series: fch.LineChartData, visible: tuple[SimulationHistorySample, ...], value_for: SampleValue
+    series: fch.LineChartData,
+    visible: tuple[SimulationHistorySample, ...],
+    value_for: SampleValue,
+    index_offset: int = 0,
 ) -> None:
     """Set one trace to its visible samples, bounded and in percent.
 
@@ -359,12 +369,17 @@ def redraw_series(
         series: Trace to redraw. Its existing points are mutated.
         visible: Simulation samples inside the plotted time range.
         value_for: Function selecting one fraction from a sample.
+        index_offset: Absolute index, within the whole recorded run, of
+            `visible[0]`. Passed through so that decimation anchors its
+            buckets to the run rather than to the window, which is what
+            keeps a point's chosen sample - and therefore the patch the
+            client is sent - unchanged from one frame to the next.
     """
 
     values = [value_for(sample) for sample in visible]
     # Both raise before anything is written, so a trace is never left
     # holding half of one frame and half of the next.
-    indices = select_envelope_indices(values, MAX_CHART_POINTS_PER_SERIES)
+    indices = select_envelope_indices(values, MAX_CHART_POINTS_PER_SERIES, index_offset)
 
     points = series.points
     reused = min(len(points), len(indices))

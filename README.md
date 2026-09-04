@@ -186,6 +186,11 @@ CI is where they actually run.
 - [`docs/MODEL.md`](docs/MODEL.md) — scientific model specification:
   equations, units, assumptions, parameter provenance, numerical method, and
   known limitations.
+- [`docs/references/`](docs/references/README.md) — source documents held on
+  hand so a session can read them rather than recall them, with the full
+  citation for each. Publisher-copyright works under the owner's personal
+  access, not covered by this repository's license, and they have to be
+  removed from the history before the repository could be made public.
 - [`CLAUDE.md`](CLAUDE.md) — development and safety-critical engineering
   standards followed in this repository. The standards that apply only to part
   of the tree, and the shape a reply takes, live alongside it in

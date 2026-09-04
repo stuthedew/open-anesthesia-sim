@@ -23,6 +23,7 @@ Flet upgrade that stopped reporting in-place mutation would fail here rather
 than silently freeze the chart.
 """
 
+from statistics import median
 from typing import Any
 
 import msgpack
@@ -230,7 +231,12 @@ def test_a_shorter_trace_removes_the_points_it_no_longer_draws() -> None:
     """
 
     view, session, connection = _mounted_view()
-    assert len(view._circuit_series.points) == MAX_CHART_POINTS_PER_SERIES - 2
+    # Saturated, but not at an exact count: the width ladder that keeps the
+    # selection stable (PL-Q197) spends somewhere between half the budget and
+    # all of it, so pinning the number would assert the ladder's rung rather
+    # than the buffer behavior under test.
+    drawn_when_saturated = len(view._circuit_series.points)
+    assert MAX_CHART_POINTS_PER_SERIES // 2 <= drawn_when_saturated <= MAX_CHART_POINTS_PER_SERIES
 
     # A run that has only just started draws every recorded sample, so the
     # trace is far shorter than the saturated one already on screen.
@@ -261,10 +267,73 @@ def test_a_longer_trace_adds_the_points_it_has_gained() -> None:
     session.page.update()
 
     drawn_now = len(view._circuit_series.points)
-    assert drawn_now == MAX_CHART_POINTS_PER_SERIES - 2
+    assert MAX_CHART_POINTS_PER_SERIES // 2 <= drawn_now <= MAX_CHART_POINTS_PER_SERIES
 
     additions = [
         operation for operation in _patch_operations(connection) if operation[0] is Operation.Add
     ]
     # One addition per trace per point gained, across all six traces.
     assert len(additions) == 6 * (drawn_now - drawn_at_mount)
+
+
+def _ops_per_frame(
+    view: SimulationView, session: Session, connection: _RecordingConnection, frames: int
+) -> list[int]:
+    """Patch operations the client is sent, one entry per render frame."""
+
+    counts: list[int] = []
+
+    for _ in range(frames):
+        connection.messages.clear()
+        view._refresh_view()
+        session.page.update()
+        counts.append(len(_patch_operations(connection)))
+
+    return counts
+
+
+def test_a_growing_run_does_not_grow_the_traffic_it_sends() -> None:
+    """PL-Q197's regression guard, in the units that actually saturated.
+
+    What pegged the Flutter client was not the amount of data - about 50 kB
+    a frame, which is nothing - but the number of discrete control mutations
+    it had to decode, route and repaint: roughly 2 700 per frame once
+    decimation engaged, 13 500 a second at `RENDER_INTERVAL_S`. Python was
+    under half a core throughout, which is why the process that looked busy
+    was the wrong one.
+
+    A steady frame past that threshold now moves the newest bucket and the
+    final sample and nothing else. The bound below is generous against the
+    ~20 observed, and still an order of magnitude under the broken
+    behavior, so it fails on a regression rather than on noise.
+    """
+
+    view, session, connection = _mounted_view(start=600)
+
+    counts = _ops_per_frame(view, session, connection, frames=40)
+
+    assert max(counts) <= 80, f"a frame sent {max(counts)} operations"
+
+
+def test_a_scrolling_window_rebuilds_only_at_a_bucket_boundary() -> None:
+    """Past `MAX_CHART_WINDOW_S` the window slides, and that costs differently.
+
+    A window of fixed length sliding along a fixed bucket grid spans
+    alternately `k` and `k + 1` buckets, so the number of chosen samples has
+    to change, and any change shifts every later point one position along a
+    positional list. That rebuild is a floor rather than a defect; what
+    matters is that it is confined to one frame per bucket width instead of
+    happening on all of them.
+
+    The median is therefore the statistic under test: it reads the ordinary
+    frame, which the rebuild must not become. Before the selection was
+    anchored, every frame here was a rebuild and the median was the same
+    ~3 500 operations as the peak.
+    """
+
+    view, session, connection = _mounted_view(start=3100)
+
+    counts = _ops_per_frame(view, session, connection, frames=40)
+
+    assert median(counts) <= 60, f"the typical frame sent {median(counts)} operations"
+    assert sum(counts) / len(counts) <= 400, "the amortized cost of rebuilding grew"
