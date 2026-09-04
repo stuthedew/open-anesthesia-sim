@@ -95,13 +95,78 @@ def test_select_envelope_indices_spans_the_full_value_range() -> None:
 
 
 def test_select_envelope_indices_matches_a_hand_computed_case() -> None:
-    # Ten samples, budget 6 -> two buckets of five: indices 0-4 and 5-9.
-    # Bucket one: minimum 1.0 at index 1, maximum 8.0 at index 3.
-    # Bucket two: minimum 0.0 at index 7, maximum 5.0 at index 5.
-    # Endpoints 0 and 9 are always kept.
+    # Ten samples, budget 6 -> a bucket budget of (6 - 2) // 2 = 2, which the
+    # width ladder satisfies with the first power of two at which the window
+    # spans one bucket even when it straddles a boundary: 16. So one bucket
+    # covers all ten samples. Its minimum is 0.0 at index 7 and its maximum
+    # 8.0 at index 3; endpoints 0 and 9 are always kept.
+    #
+    # Four points where the budget allowed six is the width ladder's cost,
+    # paid so that a bucket boundary does not move when a sample is appended.
+    # `chart_downsampling`'s module docstring carries why that trade is worth
+    # making; PL-Q197 measured what the alternative cost the client.
     values = [4.0, 1.0, 2.0, 8.0, 3.0, 5.0, 2.0, 0.0, 1.0, 3.0]
 
-    assert select_envelope_indices(values, max_points=6) == [0, 1, 3, 5, 7, 9]
+    assert select_envelope_indices(values, max_points=6) == [0, 3, 7, 9]
+
+
+def test_select_envelope_indices_holds_its_choices_as_the_run_grows() -> None:
+    """PL-Q197: a selection re-derived per frame moves every drawn point.
+
+    Buckets are anchored to absolute sample index, so appending samples
+    leaves every completed bucket choosing the sample it already chose. Only
+    the newest, still-filling bucket and the always-selected final sample
+    move. Before that anchoring, a run of this length re-chose every one of
+    its ~300 slots on every frame, and the ~1 800 resulting coordinate
+    patches across six traces saturated the Flutter client.
+
+    The sample counts below step by two, which is one render tick at
+    `RENDER_INTERVAL_S` over `SIMULATION_STEP_S`, and stay inside one rung of
+    the width ladder so that no frame here is a deliberate rebuild.
+    """
+
+    values = [0.08 * (1.0 - 0.999**index) for index in range(4000)]
+    previous: list[int] | None = None
+    worst_moved = 0
+
+    for sample_count in range(3000, 3040, 2):
+        indices = select_envelope_indices(values[:sample_count], max_points=300)
+
+        if previous is not None:
+            shared = min(len(indices), len(previous))
+            worst_moved = max(
+                worst_moved,
+                sum(
+                    1
+                    for new, old in zip(indices[:shared], previous[:shared], strict=True)
+                    if new != old
+                ),
+            )
+
+        previous = indices
+
+    assert worst_moved <= 4, f"{worst_moved} drawn points moved in one render tick"
+
+
+def test_select_envelope_indices_is_anchored_to_the_run_not_the_window() -> None:
+    """Two windows over the same run agree about the samples they share.
+
+    This is the property that makes a *scrolling* window cheap as well as a
+    growing one: sliding the window does not re-choose the samples that
+    remain inside it.
+    """
+
+    values = [float((index * 37) % 101) for index in range(4000)]
+
+    from_3072 = {3072 + index for index in select_envelope_indices(values[3072:], 300, 3072)}
+    from_3104 = {3104 + index for index in select_envelope_indices(values[3104:], 300, 3104)}
+
+    # Endpoints are the two windows' own, so they are excused; everything
+    # chosen for its own sake inside the overlap must agree.
+    overlap = {sample for sample in from_3072 if 3104 < sample < 3999}
+
+    assert overlap, "the windows shared no interior choices; the test proves nothing"
+    assert overlap <= from_3104
 
 
 def test_select_envelope_indices_is_deterministic() -> None:

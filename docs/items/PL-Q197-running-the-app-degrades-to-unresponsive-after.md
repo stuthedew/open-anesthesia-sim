@@ -1,96 +1,99 @@
 ---
 id: PL-Q197
 title: Running the app degrades to unresponsive after about a minute: sliders move but stop updating values
-status: untriaged
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/chart_downsampling.py, tests/integration/test_chart_patching.py
+status: done
+priority: P1
+effort: M
+classes: defect, safety
+touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, tests/unit/test_chart_downsampling.py, tests/integration/test_chart_patching.py
+verify: uv run pytest tests/integration/test_chart_patching.py tests/unit/test_chart_downsampling.py && grep -q 'def test_a_growing_run_does_not_grow_the_traffic_it_sends' tests/integration/test_chart_patching.py
 added: 2026-09-04
+closed: 2026-09-04
 ---
 
 **Problem.** Reported by the project owner, 2026-09-04, running `make run`
-(`uv run anesthesia-sim`) locally. The app degrades progressively over roughly
-a minute until it stops responding to input, while the simulation keeps
-advancing at a crawl. Sliders still move under the pointer; their value
-readouts stop updating.
-
-The owner then observed the decisive fact: **the Flet (Flutter) client process
-is pegged at 100% CPU while the Python process is not.** That rules out
-per-tick simulation cost and points at the volume of UI state being pushed at
-and re-rendered by the client.
+locally. The app degraded progressively over roughly a minute until it stopped
+responding to input, while the simulation kept advancing at a crawl. Sliders
+still moved under the pointer; their value readouts stopped updating. The
+owner then observed the decisive fact: the Flet (Flutter) client process was
+pegged at 100% CPU while the Python process was not.
 
 **Diagnosis — measured, not inferred.** `tests/integration/test_chart_patching.py`
-already provides a real `flet.messaging.connection.Connection` that serializes
+already provided a real `flet.messaging.connection.Connection` that serializes
 outbound messages exactly as the WebSocket transport does. Counting the patch
-operations in one steady-state render frame against run age, on that harness:
+operations in one steady-state render frame against run age:
 
-| Run age (s) | Drawn points/trace | Patch ops/frame | Ops/s at 5 Hz | Python ms/frame |
+| Run age (s) | Drawn points/trace | Patch ops/frame | Ops/s at 5 Hz | Bytes/frame |
 | ---: | ---: | ---: | ---: | ---: |
-| 2 | 24 | 24 | 120 | 7.4 |
-| 5 | 54 | 25 | 125 | 10.0 |
-| 10 | 104 | 22 | 110 | 15.9 |
-| 20 | 204 | 24 | 120 | 27.2 |
-| 30 | 298 | 2708 | 13540 | 72.1 |
-| 60 | 298 | 2681 | 13405 | 50.0 |
-| 120 | 298 | 2659 | 13295 | 52.0 |
-| 300 | 298 | 3583 | 17915 | 82.6 |
-| 600 | 298 | 3523 | 17615 | 87.9 |
+| 20 | 204 | 24 | 120 | 1 989 |
+| 30 | 298 | 2 708 | 13 540 | 50 893 |
+| 60 | 298 | 2 681 | 13 405 | 50 271 |
+| 300 | 298 | 3 583 | 17 915 | 66 917 |
 
-Client-bound patch traffic steps up about **150-fold** between 20 s and 30 s of
-runtime, and the step lands exactly where theory puts it.
+The cost was never the data. 50-67 kB a frame is roughly 250-330 kB/s, which
+no modern machine should notice. It was that the data arrived as ~3 500
+discrete control mutations, each of which the Dart side decodes, routes
+through the control tree, marks dirty and repaints.
 
-**Root cause.** `select_envelope_indices` returns `list(range(sample_count))`
-while the visible window still fits inside `MAX_CHART_POINTS_PER_SERIES` (300).
-At `SIMULATION_STEP_S = 0.1` that holds for the first 30 s, and over that span
-the mapping from output slot to source sample is the identity: slot *i* always
-holds sample *i*, so only newly appended points are dirty and a frame patches
-about two dozen fields.
+**Root cause.** `select_envelope_indices` returned `list(range(sample_count))`
+while the visible window still fitted inside `MAX_CHART_POINTS_PER_SERIES`
+(300) — the first 30 s at `SIMULATION_STEP_S = 0.1` — over which the mapping
+from output slot to source sample is the identity, so only newly appended
+points were dirty. Past 30 s decimation engaged, and its bucket boundaries
+were `(bucket * sample_count) // bucket_count`: recomputed every frame against
+a sample count that moved every frame. Every slot therefore held a *different
+sample* each frame, and all 298 points x 6 traces x (x, y) came out dirty.
 
-Past 30 s decimation activates, and it is **re-derived from scratch every
-frame** over a window whose sample count has changed. Bucket boundaries are
-computed as `(bucket * sample_count) // bucket_count`, so every boundary moves
-whenever `sample_count` moves — which is every frame. Slot *i* therefore holds a
-*different sample* each frame, and all 298 points x 6 traces x (x, y) come out
-dirty. At 300 s essentially every coordinate of all 1 788 drawn points is
-rewritten 5 times a second.
+This defeated PL-010's in-place point reuse rather than being caused by it.
+Reuse removed the cost of *constructing* a point per sample per frame; it
+cannot remove the patch, because the selection underneath it was unstable.
 
-This defeats PL-010's in-place reuse rather than being caused by it. Reuse
-removed the cost of *constructing* a point per sample per frame; it cannot
-remove the patch, because the selection underneath it is unstable, so the wire
-traffic is what a full rebuild would have sent.
+The unresponsiveness followed: `_run_render_timer` pushes a frame every
+`RENDER_INTERVAL_S` with no back-pressure, so once the client rendered slower
+than 5 Hz the backlog grew without bound and slider readout patches queued
+behind thousands of chart patches. A Flutter `Slider` repaints its own drag
+locally, which is why the thumb stayed live while its readout froze.
 
-The unresponsiveness is the second-order effect. `_run_render_timer` sleeps a
-fixed `RENDER_INTERVAL_S = 0.2` and pushes a frame unconditionally, with no
-back-pressure and no frame dropping. Once the client renders slower than 5 Hz,
-the backlog grows without bound, displayed state falls further and further
-behind, and slider readout patches queue behind thousands of chart patches. A
-Flutter `Slider` animates its own thumb locally, which is why the thumb stays
-live while its readout is frozen. Python stays off the pegged core because
-50-88 ms of work per 200 ms budget is only 25-44% of one core.
+**Fix.** Buckets are anchored to *absolute* sample index (`index_offset`)
+rather than to position within the visible slice, so a bucket lying wholly
+inside the window chooses the same sample on every frame and the client is
+told nothing about it. Holding that anchor as the window grows needs the
+bucket width to change in steps rather than continuously, so
+`_stable_bucket_width` doubles — about eight rebuilds over a five-minute run
+instead of five per second.
 
-**Why it matters.** The app is unusable within a minute, shorter than any
-teaching case. It also crosses the safety-critical presentation line twice: a
-slider whose position no longer matches the value driving the model displays a
-control setting the simulation is not using, and a chart lagging seconds behind
-the readouts beside it is the stale-picture failure
-`tests/integration/test_chart_patching.py` was written to prevent — arriving
-through latency instead of through a missed diff.
+Measured after, over 80 consecutive frames:
 
-**Where.**
+| Run age (s) | Mean ops/frame | Peak | Mean ops/s | Was |
+| ---: | ---: | ---: | ---: | ---: |
+| 60 | 20 | 23 | 98 | 13 405 |
+| 300 | 221 | 2 209 | 1 106 | 17 915 |
+| 600 | 271 | 2 193 | 1 354 | ~17 600 |
 
-1. `src/anesthesia_sim/app/chart_downsampling.py` — `select_envelope_indices`
-   is the root cause. Its bucket grid must be anchored so that a completed
-   bucket keeps its membership as the run grows, instead of being recomputed
-   against a moving `sample_count`.
-2. `src/anesthesia_sim/app/simulation_view.py` — `_run_render_timer` needs to
-   drop frames rather than queue them when the client is behind.
-3. `src/anesthesia_sim/app/chart_series.py` — `redraw_series` is correct as
-   written and is not the fault; it inherits an unstable selection.
+**Deliberately not done.** Frame dropping was proposed and rejected by the
+project owner: needing it at this workload would have been a red flag hiding
+the defect rather than fixing it, and the measurements bore that out.
 
-**Done when.** Steady-state patch operations per frame stay bounded by a small
-constant that does not grow with run age, with a regression test built on the
-existing `_RecordingConnection` harness asserting that bound at several run
-ages — the measurement above is already most of that test. Two properties
-`chart_downsampling.py` documents as presentation-correctness requirements must
-survive the change: every bucket's minimum and maximum are still drawn, so no
-transient can be hidden, and the last recorded sample is still selected, so the
-right-hand end of every trace still agrees with the numeric readouts. Input
-must stay responsive over a run long enough to cover a teaching case.
+**Residual, and why it is a floor.** Past `MAX_CHART_WINDOW_S` the window
+slides along a fixed grid, so it spans alternately `k` and `k + 1` buckets;
+the count of chosen samples must change, and any change shifts every later
+point one position along a positional list. One rebuild per bucket width
+survives. Removing it needs either snapping the axis onto bucket boundaries
+(which makes a smooth scroll jerk) or decimating from before `min_x` and
+trusting the chart to clip — the latter was implemented, measured at only
+1.7x better, and reverted rather than ship an unverifiable dependency on
+fl_chart's clipping. `PL-YDKJ` carries the architectural question underneath
+it.
+
+**Cost paid.** The width ladder spends between half the point budget and all
+of it, so a saturated trace now draws ~184 points where it drew 298. Both
+documented presentation-correctness properties survive: every bucket's
+minimum and maximum are still drawn, so no transient can be hidden, and the
+last recorded sample is still selected, so the right-hand end of every trace
+still agrees with the numeric readouts.
+
+**Guards added.** `test_select_envelope_indices_holds_its_choices_as_the_run_grows`
+and `test_select_envelope_indices_is_anchored_to_the_run_not_the_window` hold
+the pure property; `test_a_growing_run_does_not_grow_the_traffic_it_sends` and
+`test_a_scrolling_window_rebuilds_only_at_a_bucket_boundary` hold it end to end
+in the units that actually saturated the client.

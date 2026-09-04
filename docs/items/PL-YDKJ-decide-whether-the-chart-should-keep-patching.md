@@ -1,0 +1,64 @@
+---
+id: PL-YDKJ
+title: Decide whether the chart should keep patching one control per plotted point
+status: untriaged
+touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/simulation_view.py
+added: 2026-09-04
+---
+
+**Problem.** `flet_charts.LineChartData.points` is a `list[LineChartDataPoint]`
+where each point is a Flet *control* in the page's control tree, so a frame
+reaches the client as one patch operation per changed coordinate. PL-Q197
+measured what that costs: ~3 500 operations a frame saturated the Flutter
+client on ~50 kB of actual data, and the fix for it — anchoring decimation to
+absolute sample index — is a workaround for the transport rather than a
+treatment of it.
+
+No mature charting stack transfers a series that way. They take arrays and
+re-render from them: rendering 1 800 points is trivial for a GPU, and the
+expense here is entirely per-object tree diffing. That mismatch is why a
+scrolling window still costs one full rebuild per bucket width (PL-Q197's
+documented residual), and why any further tuning of the *selection* buys
+progressively less.
+
+**Why it matters.** Not urgent — after PL-Q197 the sustained rate is 98 ops/s
+growing and ~1 350 ops/s scrolling, against the ~17 900 that saturated the
+client, so the app works. It matters because it caps how far the chart can go:
+more traces, a faster render cadence, a longer visible window or a second
+chart all multiply a per-point cost that should not exist, and each would be
+diagnosed from scratch as a new performance bug.
+
+**Options, none evaluated.**
+
+1. Accept it. Document the ceiling and stop tuning the selection. Costs
+   nothing now.
+2. Draw the traces on `flet.Canvas` as a path rather than as chart points, if
+   a path's vertices are one control's data rather than N controls. Keeps
+   full control of rendering; loses whatever `flet_charts` gives for axes,
+   tooltips and legends, which would have to be rebuilt.
+3. Render server-side. `flet_charts` also ships `matplotlib_chart.py` and
+   `plotly_chart.py`; one image per frame is one patch. Almost certainly too
+   slow to redraw at 5 Hz in Python, and would lose live interaction — worth a
+   measurement before dismissing.
+4. A sweep display rather than a scrolling one, which is what physiologic
+   monitors do and for this exact reason: a fixed set of columns overwritten
+   in place by a moving cursor changes one column per frame instead of
+   shifting every point. Domain-native and O(1), but a visible change to how
+   the chart reads, so it is a design decision rather than an optimization.
+
+**Where.** The decision is the deliverable; no code until it is made.
+
+**Prior art worth reading before deciding.** The *selection* half of this
+problem is settled and the existing min/max envelope code already matches it:
+M4 (Jugel, Jerzak, Hackenbroich, Markl, "M4: A Visualization-Oriented Time
+Series Data Aggregation", PVLDB 7(10):797-808, 2014) groups a series into one
+bucket per pixel column and keeps each column's min, max, first and last, and
+proves the resulting line rendering is identical to plotting every point.
+Largest-Triangle-Three-Buckets (Steinarsson, MSc thesis, University of
+Iceland, 2013) is the other standard, optimizing perceived shape rather than
+exactness — cited from general knowledge, not verified against the thesis.
+`tsdownsample` (arXiv:2307.05389) surveys the current implementations. None of
+them addresses the *transport* question above, which is this item's subject.
+
+**Done when.** One of the options above is chosen and recorded, with the
+reasoning, and either implemented or written into `ROADMAP.md` as intent.
