@@ -180,6 +180,39 @@ judgment is the reply's: leave a branch someone is working, and recover from
 one nobody will merge - restore the file, commit it on its own, and say in the
 reply which branch it came off.
 
+## Mode: housekeeping nobody filed
+
+Triggered by the session being about to *do* repository work that no item
+names: resolving a merge, clearing a stale `origin/<branch>` ref, a docs
+sweep, a lint fix, recovering a stranded item, backfilling a field the store
+wants.
+
+**The rule: file the item first, then start it under its id** — `docket new`,
+then Mode: start an item below. This is the cheap half of a problem the project has
+already paid for the expensive half of. `flight`, `show`, `next`, `concurrent`
+and the digest are all id-matchers, so work carrying no id gets a clean answer
+from every one of them, correctly and uselessly. And unlike a race between two
+sessions starting the same item, which closes the moment one of them pushes,
+this stays invisible after *both* have pushed (`PL-CP74`).
+
+It buys a record as well as visibility. Housekeeping is obvious enough that two
+sessions recommend it in the same hour; unfiled, it leaves nothing behind
+saying it was already done, so the next session rediscovers it and recommends
+it again.
+
+**How small is too small to file is the judgment here, and the line is whether
+the work gets a commit of its own.** A rule demanding an item for a one-line
+typo fix would convert the queue into a log, which is worse than the collisions
+it prevents — so a fix riding inside a commit already led by an item's id is
+filed by that id and needs nothing more. File it when it is the reason this
+session exists, or when it will take a branch of its own.
+
+`tools/branch_id_check.py` catches the case where none of this happened: `make
+check` and CI fail a branch ahead of `main` that carries no id in its name and
+leads no commit subject with one. It decides visibility only, never whether the
+work deserved an item — that judgment is the paragraph above and stays here.
+
+
 ## Mode: recommend what to work on
 
 Triggered by "what should we work on next", "I have some time", "what's left".
@@ -187,9 +220,9 @@ Triggered by "what should we work on next", "I have some time", "what's left".
 ```bash
 docket wave            # which beat of the plan is due - read this first
 docket status          # features first - lead with this
-docket next            # the specific next item, with its reason
-docket next product    # ...the simulator only, when a second session has the apparatus
-docket next workflow   # ...the apparatus only, when a second session has the simulator
+docket next            # the specific next item, with its reason and its lane
+docket next product    # ...the simulator only
+docket next workflow   # ...the apparatus only
 ```
 
 **Start above the queue.** `docket wave` says where the project stands on the
@@ -251,11 +284,23 @@ session:` line carries each half's top item and how many span both, so the
 choice needs no command: read the lane matching this session and start there.
 Where that line is absent, no boundary is declared and there are no lanes.
 
-**Ask for a lane only when another session is genuinely running.** The owner
-runs two sessions at once precisely so one can take the simulator while the
-other takes the apparatus, and a bare `docket next` in both hands them the same
-item. So: told this session is the workflow one — or the product one — ask for
-that lane and stay in it. Told nothing, ask for neither. A lane narrows the
+**A prompt that names a lane has already asked for it.** "Next workflow item",
+"what's next on the simulator", "workflow lane" — that is `docket next
+workflow` or `docket next product`, run as the first command, and the session
+stays in that lane. It does not wait on establishing that a second session
+exists: naming the lane *is* the instruction, and the owner does not restate
+why they want it. `PL-0D4X` is what the older reading cost — a session prompted
+"Next workflow item" ran the bare command, was handed the product lane's pick,
+and started it.
+
+`docket next` now names the lane of its own answer and the other lane's pick,
+so a bare call in a lane-named session says so in its own output. Read that
+line before the item.
+
+**Otherwise ask for a lane only when another session is genuinely running.**
+The owner runs two sessions at once precisely so one can take the simulator
+while the other takes the apparatus, and a bare `docket next` in both hands
+them the same item. Told nothing at all, ask for neither: a lane narrows the
 queue, and narrowing it for a session that is the only one running is how the
 next piece of work is worse than the one the whole queue would have offered.
 

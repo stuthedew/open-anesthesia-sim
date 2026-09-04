@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, science
 feature: teachable-case
+milestone: v0.3.6
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md, tests/unit/test_formatting.py
 added: 2026-08-25
 closed: 2026-09-04

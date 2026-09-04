@@ -139,10 +139,10 @@ rather than validation models. That was prose in a docstring and nothing
 measured it. Like `ignore_check.py` it needs the project interpreter, though
 for an unrelated reason — it parses `src/`, and `src/` targets 3.14.
 
-`tools/doc_check.py` and `tools/contrast_check.py` are stdlib-only scripts that
-run in a bare checkout. `doc_check.py` also has a `candidates` mode that prints
-the documentation lines mentioning anything a diff changed, for the sweep a
-change needs before it is complete.
+`tools/doc_check.py`, `tools/contrast_check.py` and `tools/branch_id_check.py`
+are stdlib-only scripts that run in a bare checkout. `doc_check.py` also has a
+`candidates` mode that prints the documentation lines mentioning anything a diff
+changed, for the sweep a change needs before it is complete.
 
 Running in a bare checkout means running under whatever `python3` is on PATH,
 which is older than the 3.14 this project requires. `tools/ruff.toml` and
@@ -154,12 +154,12 @@ trees to importing nothing a bare checkout does not already carry.
 
 Those tests approximate the older interpreter; `.github/workflows/quality.yml`'s
 `floor` job is the run itself. It installs the declared floor and executes
-`python3 tools/doc_check.py check`, `bin/docket check` and
-`python3 tools/contrast_check.py` under it, which settles syntax, imports and
-runtime behavior together rather than one at a time.
+`python3 tools/doc_check.py check`, `python3 tools/branch_id_check.py`,
+`bin/docket check` and `python3 tools/contrast_check.py` under it, which settles
+syntax, imports and runtime behavior together rather than one at a time.
 
 `make check` mirrors the checks run in CI (`.github/workflows/quality.yml`)
-and must pass before a change is considered complete. It runs those two
+and must pass before a change is considered complete. It runs those
 stdlib-only commands under whatever `python3` is on your PATH rather than under
 a pinned interpreter, so on a machine already at 3.14 the `floor` job is the
 only place they meet the older one.

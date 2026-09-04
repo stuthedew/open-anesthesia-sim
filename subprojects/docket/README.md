@@ -674,6 +674,33 @@ keep their files — `done` records where the work landed, `dropped` records the
 reason, because a finding dropped without one gets raised again by the next
 person who notices it.
 
+### `blocked` means "not first", and that is the whole of it
+
+`blocked-by` names the items that must close before this one starts, and
+`status: blocked` takes it out of `docket next` until they do. The two are
+checked together: a blocker must exist, an item may not block itself, and a
+`blocked` item may not outrank its own blocker — nothing can start before the
+thing gating it, so a `P1` waiting on a `P2` is an error rather than a
+priority. When the last blocker closes, `docket check` says so.
+
+**A sequencing dependency is a legitimate use of it, not an abuse.** The word
+invites a narrower reading — that the work is impossible, or waiting on
+something outside the queue — and under that reading a project would leave
+ordering in prose and let the ranking contradict it. That is the failure this
+field exists to prevent, so the broader reading is the intended one: `blocked`
+says *this is not the one to start*, whatever the reason. Being startable-but-
+second qualifies.
+
+The cost of reading it narrowly is silent and falls on whoever picks the work
+up: `next` ranks on front matter and never reads a body, so a prerequisite
+written only in prose is invisible to it, and the ranking then states a sound
+reason for an order the briefs contradict. The cost of reading it broadly is a
+word doing slightly more work than it looks like. Prefer the word.
+
+Say which it is in the body — `**Blocked on X (date, who decided).**
+Sequencing only`, and why — so a reader can tell an ordering constraint from a
+genuine impossibility without inferring it from the field alone.
+
 ### `milestone:` records where work went out, never where it is planned
 
 `docket release` stamps `milestone:` onto the items it ships, and that is the
