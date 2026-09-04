@@ -136,13 +136,24 @@ class _ReplayController:
 
 
 def _recorded_run(sample_count: int) -> tuple[SimulationHistorySample, ...]:
-    """A monotone wash-in whose six traces never coincide."""
+    """A monotone wash-in whose six traces never coincide.
+
+    The alveolar trace *lags* the circuit one - a slower rise to a lower
+    asymptote - which is not decoration. The chart draws F_A/F_I from this
+    pair, and that ratio is only inside the domain `app/wash_in.py` states
+    while alveolar stays under circuit; a fixture where the alveolar trace
+    led would describe a run in which the lung filled the circuit, and would
+    leave the wash-in trace here drawing nothing or growing where every
+    other trace is steady. The two decay constants are 0.999 and 0.9993, so
+    the ratio rises from 0.61 to its 0.875 asymptote across the run and is
+    saturated at the window sizes these tests use.
+    """
 
     return tuple(
         SimulationHistorySample(
             elapsed_s=index * SIMULATION_STEP_S,
             circuit_concentration_fraction=0.080 * (1.0 - 0.999**index),
-            alveolar_concentration_fraction=0.070 * (1.0 - 0.998**index),
+            alveolar_concentration_fraction=0.070 * (1.0 - 0.9993**index),
             mixed_venous_concentration_fraction=0.050 * (1.0 - 0.997**index),
             vessel_rich_partial_pressure_fraction=0.060 * (1.0 - 0.996**index),
             muscle_partial_pressure_fraction=0.030 * (1.0 - 0.995**index),
@@ -206,6 +217,18 @@ def _mounted_view(
     connection.messages.clear()
 
     return view, session, connection
+
+
+def _wash_in_drawn(view: SimulationView) -> int:
+    """How many points the wash-in ratio is drawing, across every segment.
+
+    The trace is a pool of segments rather than one series, because it
+    breaks wherever the ratio leaves its domain, so "how long is it" is a
+    sum over the pool. The runs these tests replay stay inside the domain
+    throughout, so in practice one segment holds all of it.
+    """
+
+    return sum(len(series.points) for series in view._wash_in_segment_series)
 
 
 def _patch_operations(connection: _RecordingConnection) -> list[list[Any]]:
@@ -305,6 +328,7 @@ def test_a_longer_trace_adds_the_points_it_has_gained() -> None:
 
     view, session, connection = _mounted_view(start=12)
     drawn_at_mount = len(view._circuit_series.points)
+    wash_in_at_mount = _wash_in_drawn(view)
     assert drawn_at_mount < MAX_CHART_POINTS_PER_SERIES
 
     view._controller = _ReplayController(  # type: ignore[assignment]
@@ -319,8 +343,12 @@ def test_a_longer_trace_adds_the_points_it_has_gained() -> None:
     additions = [
         operation for operation in _patch_operations(connection) if operation[0] is Operation.Add
     ]
-    # One addition per trace per point gained, across all six traces.
-    assert len(additions) == 6 * (drawn_now - drawn_at_mount)
+    # One addition per trace per point gained: six compartment traces, plus
+    # the wash-in ratio, which is drawn from the same recorded run and grows
+    # with it but is decimated on its own and so gains its own count.
+    assert len(additions) == 6 * (drawn_now - drawn_at_mount) + (
+        _wash_in_drawn(view) - wash_in_at_mount
+    )
 
 
 def _ops_per_frame(
