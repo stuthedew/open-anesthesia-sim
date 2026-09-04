@@ -3,11 +3,11 @@ id: PL-ZRSP
 title: Plot the F_A/F_I ratio the uptake literature plots
 priority: P1
 effort: S
-status: blocked
-blocked-by: PL-DR1Z
+status: ready
 classes: science, ux
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_trace_stops_where_alveolar_exceeds_inspired' tests/unit/test_wash_in.py
 added: 2026-08-25
 ---
 **Problem.** The wash-in curve every textbook and every uptake lecture shows is
@@ -91,3 +91,17 @@ and the chart-series assembly are already in `app/formatting.py` and
 `app/chart_series.py`. The paragraph above is kept as the record of why this
 waited; it no longer holds. Recovered from `origin/claude/what-next-rsmqeu`,
 which was abandoned without a pull request.
+
+**Both blocks cleared 2026-09-04.** `PL-DR1Z` (the control-input timeline)
+merged as `#301`, so the marks that make a mid-run setting change visible are
+already on the chart and this item puts a second pool of them on the wash-in
+plot itself. `PL-WB0X` merged earlier as `#263`. Neither paragraph above holds
+any longer; both are kept as the record of why this waited.
+
+**`controller.py` drops off `touches:`, and two modules join it.** The ratio is
+a displayed quantity rather than recorded state, so nothing is added to
+`SimulationHistorySample` - which `PL-W3DD` is about to reshape, and which
+would then be carrying a derived value with a defined domain. It is computed at
+the display instead, in a Flet-free `app/wash_in.py` that `docs/MODEL.md`'s new
+section terminates in, the way `app/formatting.py` terminates § "Displayed
+precision".

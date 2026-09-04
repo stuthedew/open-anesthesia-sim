@@ -56,6 +56,7 @@ src/anesthesia_sim/
 │   ├── chart_series.py             # builds and redraws the chart's traces, references and control marks
 │   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; Flet-independent
+│   ├── wash_in.py                  # F_A/F_I and the domain it holds on; Flet-independent
 │   ├── theme.py                    # UI palette, cited ISO 5360 agent colors, layout constants
 │   └── main.py                     # entry point; builds the Flet page
 └── data/                 # versioned, cited parameter files

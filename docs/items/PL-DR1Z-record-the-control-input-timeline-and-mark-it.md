@@ -3,14 +3,16 @@ id: PL-DR1Z
 title: Record the control-input timeline and mark it on the chart
 priority: P1
 effort: M
+status: done
 classes: feature, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-08-25
-status: done
 closed: 2026-09-04
+pr: 301
 verify: uv run pytest tests/integration/test_controller.py tests/unit/test_simulation_view.py && grep -q 'def test_a_recorded_change_is_marked_on_the_chart_at_its_own_time' tests/unit/test_simulation_view.py
 ---
+
 **Problem.** The controller records concentrations. Nothing records *why* they
 moved. Once a fresh gas flow, vaporizer dial, ventilation or cardiac-output change
 has been made, the fact that it was made - and when - is unrecoverable from the run.
