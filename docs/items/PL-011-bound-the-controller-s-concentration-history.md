@@ -32,6 +32,9 @@ the per-frame path are not:
   rederived. PL-Q197 made that possible by anchoring buckets to absolute
   sample index: a completed bucket's extremes never change again, so they are
   now cacheable, which they were not when boundaries moved every frame.
+  `PL-D9WD` is that cache, agreed with the project owner 2026-09-04, and this
+  item's retention policy is downstream of it — raw samples become evictable
+  once a tier fine enough to serve the narrowest scale has consolidated them.
 
 Unbounded memory growth in a long teaching session remains the original
 concern, and the original note that it is "lower priority than it looks"
@@ -83,7 +86,10 @@ min/max/average/last consolidation, fixed total storage regardless of run
 length) — *cited from general knowledge; verify against its documentation
 before relying on the detail*. OM3 (Proc. ACM Management of Data, SIGMOD 2023)
 is the current academic form. M4 (Jugel et al., PVLDB 7(10):797-808, 2014) is
-the matching read rule and is already what `chart_downsampling.py` implements.
+the matching read rule; `PL-D9WD` carries it, read from the paper itself
+rather than a summary. Note that `chart_downsampling.py` currently implements
+the paper's *MinMax*, not M4 — it keeps min and max per bucket but not each
+bucket's first and last.
 
 Sizing it here: tiers of bucket width 2^t samples from t=5 upward, each bucket
 holding per-quantity min and max with the sample index each occurred at, total

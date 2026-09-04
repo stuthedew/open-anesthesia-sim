@@ -46,8 +46,9 @@ item can ship 15/30/60 plus "Fit run" as it stands. Anything past about an
 hour cannot, until per-bucket extremes are computed once and kept instead of
 rederived each frame — which `PL-Q197` made possible by anchoring buckets to
 absolute sample index, since a completed bucket's extremes never change
-again. Either split the upper scales out or take `PL-011` first; do not ship
-a selector offering a scale that stalls the interface.
+again. `PL-D9WD` is that cache. Either split the upper scales out or take
+`PL-D9WD` first; do not ship a selector offering a scale that stalls the
+interface.
 
 **Done when.** The user can choose a time base from a list, the chart window
 takes that width, and a run shorter than the selected scale still shows whole.
