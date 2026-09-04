@@ -43,7 +43,7 @@ holds only for the durations that were in view when it was written: an hour
 costs single-digit MB. The project owner has since said the allowed
 simulation duration is to be *extended* past Gas Man's (2026-09-04), which is
 what changes the arithmetic — see the table below.
-**Where.** `app/controller.py` (`_concentration_history`, `advance`).
+**Where.** `app/controller.py` (`RunHistory`, `advance`).
 **First step.** Decide what the history is *for* now that the chart no longer
 consumes all of it. If it is the record of a run (a future export or replay
 feature), it should stay complete and the fix is a documented ceiling with an
@@ -88,21 +88,31 @@ length) — *cited from general knowledge; verify against its documentation
 before relying on the detail*. OM3 (Proc. ACM Management of Data, SIGMOD 2023)
 is the current academic form. M4 (Jugel et al., PVLDB 7(10):797-808, 2014) is
 the matching read rule; `PL-D9WD` carries it, read from the paper itself
-rather than a summary. Note that `chart_downsampling.py` currently implements
-the paper's *MinMax*, not M4 — it keeps min and max per bucket but not each
-bucket's first and last.
+rather than a summary.
 
-Sizing it here: tiers of bucket width 2^t samples from t=5 upward, each bucket
-holding per-quantity min and max with the sample index each occurred at, total
-about n/16 buckets at ~144 B — roughly 54 MB for a week against 1.60 GB raw.
+**The consolidation half of that answer has landed, and it moved these
+numbers the other way (`PL-D9WD`, 2026-09-04).** The predicted sizing above
+was tiers of bucket width 2^t from t=5 upward at about n/16 buckets, kept
+*alongside* the raw record. What shipped keeps those tiers - four M4 tuples
+per bucket rather than two extremes - but stores the run itself by quantity
+as arrays of doubles rather than as a list of frozen dataclasses, and the
+second change is much the larger of the two. Measured over 200 000 samples:
+**127 B per sample including the ladders, against 264 B for the list of rows
+it replaced**. So halve every figure in the table above, and the owner's
+30-day cap now bounds retention at roughly 3.3 GB rather than 6.6.
+
+That is still a bound in name only and this item is still open: the store
+grows without limit, and what remains is the *eviction* rule - which raw
+samples may be dropped once a tier fine enough to serve the narrowest scale
+has consolidated them, and what the interface says when it happens.
 
 Two constraints that are correctness rather than capacity:
 
 - `chart_downsampling.py` guarantees a drawn point is always a *recorded
-  sample*, never synthesized. Min/max consolidation keeps that true only if
-  each extreme carries the timestamp it actually occurred at, rather than
-  being placed at a bucket boundary. Storing means instead would break the
-  guarantee outright.
+  sample*, never synthesized. Consolidation keeps that true only if each
+  extreme carries the timestamp it actually occurred at, rather than being
+  placed at a bucket boundary — which is why `M4Aggregate` stores four sample
+  *indices*. Storing means instead would break the guarantee outright.
 - `PL-Z7LY` lets the user pan back across the whole record (project owner,
   2026-09-04: scroll back through the whole run, as Gas Man does). Nothing the
   pan can reach may be discarded, so eviction applies to raw samples only once

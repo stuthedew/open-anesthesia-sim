@@ -1,14 +1,15 @@
 ---
 id: PL-MJ7B
 title: select_envelope_indices materializes one values list per trace per frame, and removing it is a constant-factor win the item that asked for it read as an asymptotic one
-status: done
 priority: P3
 effort: S
+status: done
 classes: perf
-verify: uv run pytest tests/unit/test_chart_downsampling.py && grep -q 'def test_the_envelope_scan_reads_each_sample_once' tests/unit/test_chart_downsampling.py
 touches: src/anesthesia_sim/app/chart_downsampling.py, tests/unit/test_chart_downsampling.py
 added: 2026-09-04
 closed: 2026-09-04
+pr: 309
+verify: uv run pytest tests/unit/test_chart_downsampling.py && grep -q 'def test_the_envelope_scan_reads_each_sample_once' tests/unit/test_chart_downsampling.py
 ---
 
 **Problem.** `chart_series.redraw_series` builds `values = [value_for(sample)
