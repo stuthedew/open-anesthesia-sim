@@ -42,6 +42,7 @@ __all__ = [
     "build_series",
     "circuit_value",
     "fat_value",
+    "PARKED_CONTROL_MARK_X",
     "mixed_venous_value",
     "muscle_value",
     "park_control_mark",
@@ -283,7 +284,18 @@ def redraw_control_mark(series: fch.LineChartData, x: float, top_y: float) -> No
     top.y = top_y
 
 
-def park_control_mark(series: fch.LineChartData, window_start_s: float) -> None:
+#: Where a mark with nothing to mark is put. A negative simulated time is
+#: outside the plotted range under every window the chart shows - its left
+#: edge is `max(0.0, ...)` and so never negative - and it is a *constant*,
+#: which is the property that matters. Parking relative to the moving window
+#: instead would rewrite both points of every unused mark on every frame of a
+#: scrolling run: 48 client operations a frame with nothing on screen to show
+#: for them, which is what `test_a_scrolling_window_rebuilds_only_at_a_bucket_boundary`
+#: caught (PL-Q197's budget, measured against 24 parked marks).
+PARKED_CONTROL_MARK_X: Final = -1.0
+
+
+def park_control_mark(series: fch.LineChartData) -> None:
     """Move one control mark out of sight, for a frame with no change to mark.
 
     Parked rather than removed: the pool of marks is fixed at construction
@@ -293,16 +305,16 @@ def park_control_mark(series: fch.LineChartData, window_start_s: float) -> None:
     outside the plotted range, so it draws nothing whether the client
     clips first or renders a degenerate segment first.
 
+    Parking is idempotent: an already-parked mark is written the same
+    values, Flet's diff sees no change, and the client is sent nothing. A
+    frame with no adjustments to mark therefore costs nothing at all.
+
     Args:
         series: Mark to park. Its two points are mutated.
-        window_start_s: Earliest simulated time the chart displays, in
-            seconds. The mark is parked just before it.
     """
 
-    parked_x = window_start_s - 1.0
-
     for point in series.points:
-        point.x = parked_x
+        point.x = PARKED_CONTROL_MARK_X
         point.y = 0.0
 
 

@@ -1472,7 +1472,7 @@ class SimulationView:
             )
 
         for series in self._control_mark_series[len(drawn) :]:
-            chart_series.park_control_mark(series, chart_min_x)
+            chart_series.park_control_mark(series)
 
     def _refresh_control_timeline(self, adjustments: tuple[ControlAdjustment, ...]) -> None:
         """Write the run's adjustments into the panel beside the chart.

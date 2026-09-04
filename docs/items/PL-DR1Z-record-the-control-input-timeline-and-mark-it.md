@@ -93,3 +93,25 @@ Verified against the running app (`FLET_FORCE_WEB_SERVER=true
 FLET_WEB_NO_CDN=true`, Chromium over the DevTools protocol, per `PL-CQRL`): a
 103 s run with four adjustments drew four marks at the right times and listed
 them correctly, most recent first.
+
+**Appended 2026-09-04 — the mark pool met `PL-Q197`'s frame budget, and lost.**
+`PL-Q197` (anchor chart decimation to the run) merged while this work was in
+flight, bringing a test that counts the client operations a steady frame sends.
+Parking an unused mark *relative to the moving window* rewrote both points of
+all 24 pooled marks on every frame of a scrolling run - 48 operations a frame
+with nothing on screen to show for them, taking the median from 31 to 79
+against a bound of 60.
+
+Parked marks now sit at a constant negative simulated time, which is outside
+every window the chart shows (its left edge is `max(0.0, ...)`) and, more to
+the point, does not move. Parking became idempotent: Flet's diff sees no change
+and the client is sent nothing.
+
+`test_a_run_full_of_control_marks_costs_a_frame_nothing_extra` covers the other
+half, which nothing did: both of `PL-Q197`'s budget tests run with an empty
+timeline, so they measure the marks only while parked, and a real teaching run
+has them drawn. It compares a full pool against an empty one on the same
+scrolling window, asserts the pool is genuinely full first - a spacing that
+overran the window would have measured an empty pool while looking full - and
+was checked against a mutation that makes a drawn mark's height track the
+window.
