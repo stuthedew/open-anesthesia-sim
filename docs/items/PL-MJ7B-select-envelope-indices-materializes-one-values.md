@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: perf
+milestone: v0.3.8
 touches: src/anesthesia_sim/app/chart_downsampling.py, tests/unit/test_chart_downsampling.py
 added: 2026-09-04
 closed: 2026-09-04
@@ -83,3 +84,10 @@ holds the selection identical to the one the old loop returned, because a
 read count says nothing about which samples were chosen.
 
 The `values` list stays, and the week-wide window remains `PL-011`'s.
+
+**Superseded in part, 2026-09-04.** The reasoning above names `PL-011` as
+where incrementally maintained bucket extremes would live. `PL-D9WD` built
+them first, as an M4 aggregate cache on a dyadic grid anchored to absolute
+sample index, merging tier to tier without revisiting a raw sample. The
+measurement and the trade recorded above stand; the forward reference does
+not.

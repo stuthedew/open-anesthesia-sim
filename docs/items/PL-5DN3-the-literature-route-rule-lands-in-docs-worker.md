@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: worker-instructions
+milestone: v0.3.8
 touches: .claude/rules/citing-sources.md, docs/worker.md
 added: 2026-09-04
 closed: 2026-09-04
