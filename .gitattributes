@@ -1,0 +1,7 @@
+# PDFs are binary. Without this git applies its text heuristic per file, and a
+# PDF whose first bytes carry no NUL is diffed and stored as text: the two
+# source documents under `docs/references/` arrived that way on the branch they
+# came from, one as 6068 lines of mojibake in the diff. The bytes survived, but
+# the diff is unreadable and a future line-ending normalization would corrupt
+# the xref offsets. Declared rather than left to the heuristic. `PL-JX2T`.
+*.pdf binary
