@@ -1,15 +1,16 @@
 ---
 id: PL-D9WD
 title: Build an M4 aggregate cache on a fixed dyadic grid
-status: done
 priority: P2
 effort: M
+status: done
 classes: perf
 feature: teachable-case
-verify: uv run pytest tests/unit/test_chart_downsampling.py && grep -q 'def test_aggregates_merge_without_revisiting_samples' tests/unit/test_chart_downsampling.py
 touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_chart_downsampling.py, tests/unit/test_run_history.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py, docs/MODEL.md
 added: 2026-09-04
 closed: 2026-09-04
+pr: 311
+verify: uv run pytest tests/unit/test_chart_downsampling.py && grep -q 'def test_aggregates_merge_without_revisiting_samples' tests/unit/test_chart_downsampling.py
 ---
 
 **Problem.** Decimation rescans every sample in the visible window on every
