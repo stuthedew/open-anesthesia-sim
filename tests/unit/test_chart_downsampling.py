@@ -6,6 +6,9 @@ disagree with the numeric readouts, and one that drops an extreme shows a
 curve the simulation never produced.
 """
 
+from collections.abc import Sequence
+from typing import overload
+
 import pytest
 
 from anesthesia_sim.app.chart_downsampling import first_index_at_or_after, select_envelope_indices
@@ -186,3 +189,59 @@ def test_select_envelope_indices_handles_a_flat_trace() -> None:
     assert indices[0] == 0
     assert indices[-1] == 499
     assert all(values[index] == 2.5 for index in indices)
+
+
+class _CountingValues(Sequence[float]):
+    """A value sequence that records how many reads the scan makes of it.
+
+    The property under test is a read count rather than a duration, for
+    the reason the rest of this project asserts counts: a timing assertion
+    is flaky on shared hardware, while the number of reads is exact and is
+    the quantity the cost is proportional to.
+    """
+
+    def __init__(self, values: Sequence[float]) -> None:
+        self._values = values
+        self.reads = 0
+
+    def __len__(self) -> int:
+        return len(self._values)
+
+    @overload
+    def __getitem__(self, index: int) -> float: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> Sequence[float]: ...
+
+    def __getitem__(self, index: int | slice) -> float | Sequence[float]:
+        if isinstance(index, slice):  # pragma: no cover - the scan indexes singly
+            return self._values[index]
+
+        self.reads += 1
+
+        return self._values[index]
+
+
+def test_the_envelope_scan_reads_each_sample_once() -> None:
+    """One read per sample, so the constant on the O(window) scan is 1.
+
+    The scan has to visit every sample of every bucket - that is what makes
+    the envelope an envelope, and it is why this stays proportional to the
+    window however the loop is written. What is not forced is re-reading
+    the two running extremes on every comparison, which the loop did until
+    PL-MJ7B and which made the same scan cost about three reads a sample.
+
+    Asserted as an equality rather than a bound: a loop that reads a sample
+    twice is a loop carrying its extremes somewhere other than in a local,
+    and there is no version of this scan that needs to.
+    """
+
+    values = [(index * 37 % 101) / 100.0 for index in range(2_000)]
+    counted = _CountingValues(values)
+
+    indices = select_envelope_indices(counted, max_points=300)
+
+    assert counted.reads == len(values)
+    # The optimization is only worth having if it selects what it selected
+    # before: the count above says nothing about which samples were chosen.
+    assert indices == select_envelope_indices(values, max_points=300)

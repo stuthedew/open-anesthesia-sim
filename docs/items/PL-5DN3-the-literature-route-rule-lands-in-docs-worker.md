@@ -7,9 +7,10 @@ status: done
 classes: docs, infra
 feature: worker-instructions
 touches: .claude/rules/citing-sources.md, docs/worker.md
-verify: python3 tools/doc_check.py check && test -f .claude/rules/citing-sources.md && grep -q 'PubMed MCP' .claude/rules/citing-sources.md && ! grep -q 'api.crossref.org' docs/worker.md
 added: 2026-09-04
 closed: 2026-09-04
+pr: 307
+verify: python3 tools/doc_check.py check && test -f .claude/rules/citing-sources.md && grep -q 'PubMed MCP' .claude/rules/citing-sources.md && ! grep -q 'api.crossref.org' docs/worker.md
 ---
 
 **Problem.** `PL-0XMD` put the literature-route rule - direct HTTP to
