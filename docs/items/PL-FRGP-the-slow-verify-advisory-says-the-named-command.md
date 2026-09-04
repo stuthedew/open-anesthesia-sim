@@ -1,9 +1,15 @@
 ---
 id: PL-FRGP
 title: The slow-verify advisory says the named command sets the check's floor, but the pool is now throughput-bound: removing PL-GS5X measured 28.6 s to 23.7 s, not the ~24 s the sentence implies
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
 feature: dev-tooling
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-09-03
+closed: 2026-09-03
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -rq 'def test_the_advisory_bounds_what_narrowing_would_leave' subprojects/docket/tests
 ---
 
 **Problem.** `docket check`'s slow-command advisory reads:
@@ -53,3 +59,52 @@ the command cost and stops short of promising a saving.
 **Note on scope.** `SLOW_COMMAND_RATIO`'s own justification is not in question here;
 30x against a 0.64 s median still picks out exactly the command a reader would want
 named. The defect is in what the sentence then tells them it is worth.
+
+**Worked.** The advisory no longer claims the named command sets the floor. It
+says what narrowing it cannot buy, computed from the serial total and the
+pool's width rather than asserted:
+
+```
+PL-GS5X (29s) is the costliest `verify:` command this check runs: against a
+0.7s median and 33s for the whole run. Narrowing it cannot take the run below
+about 21s: the other 81 commands are 164s of work across 8 workers, so the
+pool is bounded by the size of the queue as well as by its slowest member -
+narrow the command if it can be narrowed, or accept the cost knowing what it is
+```
+
+**A lower bound, deliberately, and not a prediction.** A pool never packs
+perfectly, so the real run lands above it - the bound for the store measured in
+this item's brief is 18.5 s against a run that measured 23.7 s. Saying what
+narrowing cannot buy is honest; saying what it will buy is the error the old
+wording made, and making that prediction more precise would have repeated it
+rather than fixed it.
+
+**One arithmetic covers both regimes**, which is why nothing here has to detect
+which one it is in. Where the queue is small the remainder divided across the
+pool is near zero, the bound is near zero, and narrowing genuinely collapses the
+run - the 2026-09-02 store, where the old sentence was true. Where the queue is
+large the bound is most of the elapsed time and the reader learns that before
+spending an afternoon on it.
+
+**The bound removes every named command, not only the worst.** Narrowing one of
+two heavy commands leaves the other where it was, so a bound computed against
+the worst alone would not be a bound. That is also the reasoning the advisory
+already gave for naming all of them, now made arithmetic rather than prose.
+
+**`workers` was the missing input**, and `serial` - added under `PL-9NKK` on the
+same branch - was the other. `LandedReport` carried the total but not the
+divisor, so the run knew what the queue cost and not what it cost *per pass*.
+Where either is absent the sentence stops early instead of dividing by a number
+nobody measured: an older report, a caller that built one by hand, or a store
+whose named commands are the whole of the run.
+
+**Tests.** Five in `test_checks.py` over the bound, its two silent cases and the
+multi-command reading, replacing `test_the_advisory_says_why_one_command_sets_
+the_floor` - which asserted the misleading sentence and so had to go rather than
+be adjusted. Two in `test_verify.py` over the recorded width. Checked against a
+mutated implementation: computing the bound without removing the named commands
+fails three.
+
+**Not changed.** `SLOW_COMMAND_RATIO` and its floor. 30x against a 0.64 s median
+still picks out exactly the command a reader would want named; the defect was in
+what the sentence then told them it was worth, which is what this item said.

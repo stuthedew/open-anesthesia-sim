@@ -1,9 +1,15 @@
 ---
 id: PL-WCZV
 title: pytest-xdist -n 4 measured 73.0 s to 24.9 s on the full suite with coverage identical at 100 percent; decide whether to take the dependency and where the flag lives
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: perf, infra
 feature: dev-tooling
+touches: pyproject.toml, uv.lock, Makefile, .github/workflows/quality.yml
 added: 2026-09-03
+closed: 2026-09-03
+verify: uv run pytest -q tests/unit/test_tools_portability.py && grep -q 'pytest-xdist' pyproject.toml
 ---
 
 **Problem, or rather the opportunity.** `uv run pytest --cov` is the single largest
@@ -55,3 +61,64 @@ byte-identical, which is the same property that made concurrency the right answe
 
 **Done when.** Either the flag is in place with the saving measured on CI as well as
 locally, or the decision not to take the dependency is recorded here with its reason.
+
+**Worked.** `pytest-xdist` in the dev group, `-n auto` on the `Makefile` line
+and the CI step, and on neither `addopts` nor a config table.
+
+Measured on this checkout after the change, 1230 tests, four cores:
+
+| | wall clock | result |
+| --- | --- | --- |
+| serial (before) | **78 s** | 1230 passed |
+| `-n auto` | **26.9 s** | 1230 passed |
+| whole `make check` | **115.0 s -> 59.2 s** | all checks passed |
+
+**Coverage is identical**, which is the property that had to hold before the
+wall clock mattered at all: `691 statements, 0 missed, 78 branches, 0 partial,
+100%`, clearing `--cov-fail-under=100` exactly as the serial run did. The
+threshold stays on the command line and was not relaxed to pay for the
+parallelism.
+
+**`-n auto` rather than a pinned number**, which the brief left open. The knee
+is at the core count, so a pinned `4` would be right here and wrong on the CI
+runner and wrong again on the project owner's machine - and the Makefile line
+and the CI step have to stay identical, which a machine-specific number would
+make impossible to check by eye. `auto` reads the box it is on and keeps one
+string in both places.
+
+**On the ordering risk the brief raised.** xdist distributes tests across
+processes, so a latent inter-test dependency that serial ordering hides becomes
+a failure - and the suites that shell out and share a working tree were named as
+where it would surface. Three consecutive `-n auto` runs passed all 1230 (28.1
+s, 26.9 s, 26.3 s), as did `-n 2`, `-n 4` and `-n 8` before the change. That is
+evidence rather than proof, and it is the reason the flag went in with the
+default `--dist load` rather than a stricter mode: nothing has yet been observed
+that `loadfile` or `loadscope` would fix, and reaching for one now would be
+guarding a fault nobody has seen.
+
+**CI's saving is measured by CI, not here**, as the brief required - and it is
+much smaller than the local one, which is the number worth carrying rather than
+the flattering one. Measured on `quality.yml`'s `checks` job, the pytest step
+alone:
+
+| | CI step | this container |
+| --- | --- | --- |
+| serial (run 33806497510, 2026-09-03) | **69 s** | 78 s |
+| `-n auto` (run 33819958377, 2026-09-04) | **50 s** | 26.9 s |
+| saving | **28%** | 65% |
+
+The GitHub-hosted runner is narrower than this four-core box, so `auto` resolves
+to fewer workers and the knee arrives sooner. That is the argument for `auto`
+rather than a pinned width working in the direction that matters: the same
+string gives each machine what it can use, and nobody has to keep a number
+current for a runner they cannot see.
+
+It also relocates the cost on CI. `bin/docket check` was already the largest
+step there - 72 s against pytest's 69 s on the pre-change run - and pytest
+dropping to 50 s makes that gap decisive rather than marginal. `PL-8BFV` is
+where that is recorded.
+
+**What it changes about where the time goes.** `bin/docket check` is now the
+largest single item in `make check` at 30.5 s of 59.2 s, having been a quarter
+of it. The suite is no longer the thing to look at; the queue's own check is.
+`PL-KCQ7` and `PL-PGY4` are the two items that bear on it.
