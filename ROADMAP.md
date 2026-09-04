@@ -56,7 +56,8 @@ capability-boundary rule above governs.
 | v0.3.3 | Completed | Delegation and interface-boundary patch on the same model, adding no capability and changing no equation, parameter, numerical method, unit or displayed value: `src/anesthesia_sim/data/` is byte-identical to v0.3.2 and the one `src/` change is behavior-preserving. The queue's own provenance stopped needing a person: a closed item's pull request number is written by `bin/docket record`, riding whatever commit the session was already making, after the job meant to write it at merge time proved unlandable - a push made with `GITHUB_TOKEN` starts no workflow, so `main`'s required status checks can never report on the commit it pushes, and every configuration that would accept the push weakens that gate instead. That closes the `delegation` feature at 12 of 12. Alongside it, `app/simulation_view.py`'s displayed-precision formatters and chart-series assembly moved into two Flet-free modules, so `docs/MODEL.md`'s displayed-precision derivation now terminates in a function that can be read, cited and tested without loading the interface - stages 1 and 2 of v0.4.0's Required scope, landed ahead of the milestone. `core/` gained a 100% statement-and-branch coverage gate over the saturation it already had, before v0.4.1's exact-step solver arrives to be measured against it, and the pull-request title check now runs at the declared Python floor. |
 | v0.3.4 | Completed | Documentation- and tooling-truth patch: every shipped Python file is byte-identical to v0.3.3 and `src/anesthesia_sim/data/` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The whole release is the project correcting statements it was making about itself. `docs/MODEL.md` had named v0.2.3 as the current released baseline for thirteen releases, and still recorded the operator split as kept on a decision the 2026-09-03 re-scope reversed; both are corrected, and the specification now names no current version at all, because a second copy of one goes stale silently at every release. Two checks that reported a false state were repaired and retired: the top-band advisory no longer counts blocked items a session cannot start, and `doc_check`'s baseline-tag advisory is gone, because a local checkout cannot tell a release never tagged from one tagged since it last fetched. |
 | v0.3.5 | Completed | Gate-measurement patch changing no shipped code at all: `src/` and `src/anesthesia_sim/data/` are byte-identical to v0.3.4 and `docs/MODEL.md` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The release is the project's own quality gate learning what it costs, saying so truthfully, and getting roughly twice as fast. `pytest-xdist` at `-n auto` took the suite from 78 s to 27 s with coverage byte-identical at 100%, `make check` from 115.0 s to 59.2 s and the CI step 28%, and `make test` — the whole-suite target a session reaches for while iterating — followed at 88.5 s to 31.8 s; no test was skipped, disabled or relaxed to pay for it. Two advisories that quoted figures measured once and left to go stale now print what the run actually cost. The two questions those measurements raised — the docket suite's share of the wall clock, and `bin/docket check` becoming the gate's largest item — were decided as accept-with-evidence rather than left open, each carrying the numbers that would have to change to reopen it. And two silent-divergence holes closed: the local and merge coverage gates are held to one command by a check rather than by two comments asking to be kept the same, and the guard that keeps two sessions off one item now reads what files it touches, not only who is on it. |
-| v0.3.6 | Completed / current baseline | The first two teachable-case items, and the first release since v0.2.3 to change what a learner sees: every compartment is displayed in MAC multiples alongside percent, on a chart that gained a percent axis left and a MAC axis right, and two horizontal clinical references - a band at the running agent's population MAC-awake, one standard deviation either side of the published mean, and a line at its nominal 1 MAC - so the gap between them shows the decrement required for arousal rather than only the endpoint. Display and provenance work rather than model work: no equation, parameter, numerical method or solver step moved, `core/` computes neither reference, and what the agent files gained is three measured constants with primary citations checked against source, stored as fractions of MAC so they survive a change to `mac_percent`. `docs/MODEL.md` records what a MAC multiple on a non-alveolar compartment does and does not assert, that the band is read against the vessel-rich trace and not the alveolar one, and that the interface displays no time-to-wake-up figure of any kind. Alongside them, `core-boundaries` closes: one module may import Pydantic and a check enforces it. The queue itself learned to answer per lane, so two simultaneous sessions no longer rank onto the same item. |
+| v0.3.6 | Completed | The first two teachable-case items, and the first release since v0.2.3 to change what a learner sees: every compartment is displayed in MAC multiples alongside percent, on a chart that gained a percent axis left and a MAC axis right, and two horizontal clinical references - a band at the running agent's population MAC-awake, one standard deviation either side of the published mean, and a line at its nominal 1 MAC - so the gap between them shows the decrement required for arousal rather than only the endpoint. Display and provenance work rather than model work: no equation, parameter, numerical method or solver step moved, `core/` computes neither reference, and what the agent files gained is three measured constants with primary citations checked against source, stored as fractions of MAC so they survive a change to `mac_percent`. `docs/MODEL.md` records what a MAC multiple on a non-alveolar compartment does and does not assert, that the band is read against the vessel-rich trace and not the alveolar one, and that the interface displays no time-to-wake-up figure of any kind. Alongside them, `core-boundaries` closes: one module may import Pydantic and a check enforces it. The queue itself learned to answer per lane, so two simultaneous sessions no longer rank onto the same item. |
+| v0.3.7 | Completed / current baseline | Interface-responsiveness and apparatus patch on the same model: `src/anesthesia_sim/data/` is byte-identical to v0.3.6 and `docs/MODEL.md` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The interface stopped becoming unresponsive about a minute into a run - chart decimation recomputed its bucket boundaries every frame against a sample count that moved every frame, so every drawn point came out dirty and thousands of discrete control mutations a frame outran the client, which is why sliders moved while their readouts froze; buckets are now anchored to the absolute sample index. The rest closes `delegation` and `provenance`: `docket next` names the lane of its own answer, housekeeping is filed before it is done and a branch carrying no item id fails the build, a brief's stated prerequisite is declared in `blocked-by` where the ranking can read it, two review articles became cited references under `docs/references/`, and the container stop hook stopped demanding a push that would recreate a merged branch. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
@@ -94,126 +95,109 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.3.6
+## Current baseline: v0.3.7
 
-v0.3.6 is the first release since v0.2.3 that changes what a learner sees, and
-the first two items of the v0.4.0 teachable-case milestone are what changed it.
-Every compartment is now displayed in MAC multiples alongside percent, and the
-chart carries two horizontal clinical references: a band at the running agent's
-population MAC-awake, and a line at its nominal 1 MAC. Five further items close
-the `core-boundaries` feature and split the queue so two sessions can run at
-once without colliding.
+v0.3.7 is a patch on the same model: `src/anesthesia_sim/data/` is
+byte-identical to v0.3.6, `docs/MODEL.md` is unchanged, and no equation,
+parameter, numerical method, unit or displayed value moved. One user-visible
+defect is fixed - the interface stopped becoming unresponsive during a run -
+and the rest closes two features of the development apparatus, `delegation` and
+`provenance`. Seven items.
 
-**It is display and provenance work, not model work.** No equation, parameter,
-numerical method or solver step moved; `core/` computes neither reference, and
-no governing equation reads MAC-awake, exactly as none reads `mac_percent`.
-What the agent data files gained is three measured constants with primary
-citations, which are drawn on the chart and divided into, never integrated.
-
-**Why this is a patch rather than v0.4.0.** Two of the teachable-case
-milestone's fourteen items is not the milestone, and cutting its number now
-would ship it under its own name with most of it missing — compressed playback,
-the case-length time base and the recorded control-input timeline are all still
-open. The capability-boundary rule under "Versioning decision" governs, and the
-boundary these two items cross is a step toward v0.4.0 rather than v0.4.0
-itself.
+**Why this is a patch rather than v0.4.0.** Nothing in it crosses a capability
+boundary. The chart draws the same traces from the same model; what changed is
+how many of them it tells the client about on each frame. Three of the
+teachable-case milestone's four scoped capabilities - compressed playback, the
+case-length time base and the recorded control-input timeline - are still open.
 
 ### Release narrative
 
-**Every compartment is displayed in MAC multiples as well as percent
-(PL-DHV7).** A percent axis silently changes meaning when the agent changes:
-2% is 1 MAC of sevoflurane and about a third of a MAC of desflurane, so two
-runs plotted in percent are two different clinical situations drawn at the same
-height, and a learner comparing a desflurane wash-in to a sevoflurane one in
-percent is comparing nothing. MAC multiples are the unit that survives the
-agent change, and the unit clinicians reason in. Both units are shown at once —
-on every compartment, on the delivered-agent control, and on the chart, which
-now carries a percent axis on the left and a MAC axis on the right.
+**The interface stopped going unresponsive about a minute into a run
+(PL-Q197).** Reported by the project owner running `make run`: sliders moved
+under the pointer while their readouts froze, the simulation crawled, and the
+Flet client process sat at 100% CPU while the Python process did not. The
+diagnosis was measured rather than inferred, because an existing integration
+test already provided a real connection that serializes outbound messages
+exactly as the WebSocket transport does. Counting patch operations in one
+steady-state frame against run age: 24 per frame at 20 s, 2 708 at 30 s.
 
-The difficulty in that unit is not the arithmetic, and `docs/MODEL.md` § "MAC
-multiples as a display unit" is where it is written down. MAC is defined for
-the *alveolar* concentration in a nominal 40-year-old, so on the alveolar
-compartment a MAC multiple is the conventional reading, while on the circuit,
-mixed-venous, vessel-rich, muscle and fat compartments it means only *this
-compartment's partial pressure equals N times the alveolar partial pressure
-that would be 1 MAC*. It is a partial-pressure ratio, not a statement that the
-patient is at N MAC of anesthetic depth — and the two read identically on a
-label unless the label says which. Saying which is the item's safety content.
+The cost was never the data. Fifty kilobytes a frame is roughly 250 kB/s, which
+no modern machine should notice. It was that the data arrived as thousands of
+discrete control mutations, each of which the client decodes, routes through
+the control tree, marks dirty and repaints. `select_envelope_indices` computed
+its bucket boundaries as `(bucket * sample_count) // bucket_count`, recomputed
+every frame against a sample count that moved every frame, so past 30 s - the
+point at which decimation engages - every output slot held a *different* sample
+each frame and all 298 points x 6 traces x (x, y) came out dirty.
 
-**The chart gained a MAC-awake band and a 1 MAC line (PL-F52R).** Chortkoff et
-al. state that "along with pharmacokinetics, the ratio of the awakening
-concentration to the anesthetizing concentration (MAC-awake/MAC) determines
-time to awakening", so drawing both makes that ratio the visible gap between
-them: the chart shows the *decrement required for arousal* rather than only the
-endpoint, which is the context-sensitive emergence lesson stated geometrically
-and is what makes a twenty-minute case and a three-hour one answerable side by
-side.
+That defeated v0.3.0's in-place point reuse rather than being caused by it:
+reuse removes the cost of *constructing* a point per sample per frame, and
+cannot remove a patch that the selection underneath it makes unstable. The
+unresponsiveness followed from there, because the render timer pushes a frame
+every 200 ms with no back-pressure: once the client rendered slower than that,
+the backlog grew without bound and slider readout patches queued behind
+thousands of chart patches, while a Flutter `Slider` went on repainting its own
+drag locally - which is exactly the symptom that was reported.
 
-Three decisions in it are worth reading. **The mark type carries the
-distinction, not the colour** — MAC-awake is a measured population value with
-real spread and is drawn as a band one standard deviation either side of the
-published mean; 1 MAC is a definitional anchor and is drawn as a line.
-Band-versus-line survives greyscale and every colour-vision deficiency, and
-both are drawn in the interface's own ink and label colours so that neither
-reads as a seventh compartment. **The band is read against the vessel-rich
-trace**, and the interface says so: this model has no effect-site compartment
-and defines $`F_a \equiv F_A`$, so the alveolar trace is the fastest curve on
-the chart and the furthest from where responsiveness actually returns —
-measured on a 3-hour 1 MAC sevoflurane case with the vaporizer turned off at
-10 L/min, the alveolar trace crosses the band's centre at 2.83 min and the
-vessel-rich trace at 6.51 min, 2.30 times later. And **the interface displays
-no time-to-wake-up figure of any kind**, which `docs/MODEL.md` now states as a
-prohibition on the interface rather than as a preference: a readout of the form
-"time to wake-up: 14 min" would read as a per-patient prediction this model
-does not support, and no surrounding disclaimer undoes that, because the number
-would be acted on and the disclaimer would not.
+Buckets are now anchored to the *absolute* sample index rather than to position
+within the visible slice, so a bucket lying wholly inside the window chooses the
+same sample on every frame and the client is told nothing about it. Holding that
+anchor as the window grows needs the bucket width to change in steps rather than
+continuously, so it doubles: about eight rebuilds over a five-minute run instead
+of five every second.
 
-**The MAC-awake values are stored as fractions of MAC, and every citation was
-checked against its source.** Katoh 1993 (PMID 8214700) reports 0.34 +/- 0.05
-for sevoflurane and 0.31 +/- 0.05 for isoflurane, expressed as a ratio to each
-patient's own age-adjusted MAC; Chortkoff 1995 (PMID 7574003) reports
-desflurane 2.60 +/- 0.46% and states it as 36% of MAC. The fraction is the only
-form that stays correct if `mac_percent` changes or is ever made age-aware, and
-desflurane shows why: its 2.60% is anchored to a MAC of 7.25%, so recording the
-absolute percent against this project's stored 6.0% would read as 0.433 against
-a published 0.36. `mac_reference_basis` is prose beside each value rather than a
-second number, because Katoh's denominator is each patient's own age-adjusted
-MAC and Chortkoff's a single population figure — and a fraction with no stated
-denominator is the "correct number with the wrong context" failure `CLAUDE.md`
-names.
+**A session prompted for one lane took the other lane's item (PL-0D4X).**
+v0.3.6 gave `docket next` its `product` and `workflow` lanes; a session prompted
+"next workflow item" then ran the bare command, was handed the product lane's
+pick, and started it. `next` now names the lane of its own answer and the other
+lane's pick, so a bare call in a lane-named session says so in its own output,
+and `CLAUDE.md` states that a prompt naming a lane *is* the instruction to
+filter by it.
 
-**One module may import Pydantic, and a check now says so (PL-Y0RZ).** This
-closes the `core-boundaries` feature. `core/parameters.py` pairs each
-`_...Payload` validation model with a public frozen dataclass so that the
-compartments, the controller and the interface hold plain types with no
-dependency on the validation library. That was true and nothing measured it,
-and the failure worth a tool is not the coupling on its own: a leak into a
-compartment would have left the docstring asserting the property still
-asserting it, reading as verified while being false.
-`tools/import_boundary_check.py` walks every module under `src/anesthesia_sim/`
-with `ast` and fails on a `pydantic` root outside that one file. Three further
-states are errors, each closing a way a boundary check can pass while meaning
-nothing — an allowance naming a file that no longer exists, an allowance no
-longer used, and a declared tree matching no source files at all, since passing
-over nothing is indistinguishable from passing.
+**Work nobody filed was invisible to every guard that reads the queue
+(PL-CP74).** `docket flight`, `show`, `triage`, `next` and the session-start
+digest all answer "is anybody already on this?" by matching a `PL-` id, so
+repository housekeeping - resolving a merge, a docs sweep, recovering a stranded
+item - returned a clean answer for itself, correctly and uselessly, and went on
+doing so after both sessions had pushed. Housekeeping is now filed before it is
+started, and `tools/branch_id_check.py` fails a branch ahead of the default base
+that carries no id in its name and leads no commit subject with one. The line
+between too small to file and not is whether the work takes a commit of its own.
 
-**The queue answers per lane, so two sessions no longer rank onto one item
-(PL-2NSX, PL-8165).** Both `bin/docket next` and the session-start digest
-answered for the whole queue, so the owner's habit of running two sessions at
-once — one on the simulator, one on the apparatus — handed both the same top
-item. `next` now takes a `product` or `workflow` lane, read from
-`docket.toml`'s `workflow_paths` against each item's `touches` rather than
-re-judged per item, and the digest names both lanes' picks plus the count of
-items reaching both halves, which need a session that can hold the whole change
-and are set aside rather than hidden.
+**A brief's stated prerequisite was invisible to the ranking (PL-5WFS).**
+`docket next` ranks by priority band and by which feature is nearest finishing,
+and does not read a brief's body, so v0.4.0's first three suggestions came out
+in close to the reverse of the order the briefs stated. A prerequisite is now
+declared in a `blocked-by` field the ranking reads, rather than in prose it
+cannot.
 
-**Two smaller corrections to the queue's own record.** `docket check` recovered
-the wrong pull request for an item closed as a rider on another item's, and
-advised writing that wrong number in (PL-GW37); a commit closing more than one
-item now leads with all of them. And a triage pass had been drifting into a
-work session — recommending what to do next, opening branches, shepherding
-fixes — where what the owner wants from one is a summary of what was triaged
-and where the queue stands (PL-ZSV6).
+**Two records corrected.** `PL-011`'s history sizing was quoted in bytes per
+sample against a record shape that `PL-W3DD` re-keys by substance inside the
+same milestone, so both the "few hundred bytes" that set its priority and the
+retention bound derived from it had stopped describing the record they were
+about (PL-THVN). And `origin/Review_articles` - one commit ahead of `main`, from
+before the branch convention, carrying no id in its name or its subject - was
+the exact shape `PL-CP74` describes, sitting on the remote. Its two review
+articles are now `docs/references/`, under sortable `author-year-title` names,
+with a `README.md` carrying the full citation for each, which is the part that
+survives if the files ever have to be removed (PL-JX2T).
+
+**The stop hook stopped demanding a push that would recreate a dead branch
+(PL-WW08).** The container's `Stop` hook counted unpushed commits against
+`origin/<branch>` whenever that ref merely *resolved locally*, so a merged pull
+request's surviving tracking ref made it report everything `main` had gained
+since as unpushed - on the ordinary completion of a piece of work, twice in one
+session. The file is neither this repository's nor the owner's to change: a
+container rewrites it at every start, user-level settings never reach a cloud
+session, and an environment setup script runs before Claude Code launches. So a
+SessionStart hook corrects the line in the container's own copy, counting
+commits held by no remote ref - which is more accurate than what it replaces
+rather than merely quieter, since the `origin/HEAD` fallback over-counted on a
+branch cut from another feature branch. `CLAUDE.md` loses the six resident lines
+that told every session how to disprove the false demand; the tool prints them
+at the only moment they are still needed, which is when it cannot apply the
+correction.
+
 
 ### The model as it stands
 

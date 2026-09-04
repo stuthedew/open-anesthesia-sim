@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: parallel-sessions
+milestone: v0.3.7
 touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, .claude/skills/docket/SKILL.md, CLAUDE.md, docs/ARCHITECTURE.md, Makefile, .github/workflows/quality.yml
 added: 2026-09-02
 closed: 2026-09-04

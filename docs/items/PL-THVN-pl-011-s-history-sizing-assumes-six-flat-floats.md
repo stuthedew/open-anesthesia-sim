@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: teachable-case
+milestone: v0.3.7
 touches: docs/items/PL-011-bound-the-controller-s-concentration-history.md, docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
 added: 2026-09-03
 closed: 2026-09-04

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: provenance
+milestone: v0.3.7
 touches: docs/references/README.md, docs/MODEL.md, README.md, .gitattributes
 added: 2026-09-04
 closed: 2026-09-04
