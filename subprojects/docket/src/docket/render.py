@@ -28,6 +28,7 @@ from .vcs import (
     BranchState,
     Carrier,
     FlightReport,
+    OrphanedReport,
     Precedence,
     StrandedReport,
 )
@@ -213,6 +214,7 @@ def format_digest(
     plan: Wave | None = None,
     stranded: StrandedReport | None = None,
     workflow_paths: tuple[str, ...] = (),
+    orphaned: OrphanedReport | None = None,
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -232,6 +234,14 @@ def format_digest(
     other line here, because all of them read the store in this checkout - so
     the digest is the only place a session can be told the queue it is reading
     is not all of it.
+
+    The orphaned line is the same argument for everything that is not an item.
+    A commit pushed to a branch after its pull request merged is merged by
+    nothing, and unless it happened to touch `docs/items/` no check in this
+    project noticed - so a session started from a default branch missing work
+    everyone believed landed, and a rule the owner had asked for was quietly
+    void (`PL-3D2M`). It appears only when a branch is genuinely split across
+    the base, which on this repository is never in the ordinary case.
 
     The `Top:` line goes through `recommend` for the same reason `next` does,
     and one sharper: the two lines sit in one block of output, so ranking them
@@ -306,6 +316,14 @@ def format_digest(
             f"  Only on a branch, not in this checkout: {named}{rest}. "
             "`bin/docket stranded` to recover."
         )
+    if orphaned is not None and orphaned.branches:
+        first = orphaned.branches[0]
+        rest = f", +{len(orphaned.branches) - 1} more" if len(orphaned.branches) > 1 else ""
+        outstanding = _plural(len(first.outstanding), "file", "files")
+        lines.append(
+            f"  Left on a branch after its pull request merged: {first.ref} "
+            f"({outstanding}){rest}. `bin/docket stranded` to recover."
+        )
     if report.untriaged:
         lines.append(
             f"  {_plural(len(report.untriaged), 'item', 'items')} untriaged; "
@@ -354,8 +372,11 @@ def format_stranded(report: StrandedReport) -> str:
     reads off the same output: a branch named nowhere below carries no item the
     default branch lacks, and deleting it loses no work the queue knows about.
 
-    That is the only claim being made. This says nothing about *code* on a
-    branch, which is not what it read.
+    That is the only claim being made about *items*. What a branch carries
+    outside `docs/items/` is `format_orphaned`'s question, and `cmd_stranded`
+    prints both - the two together being what closes the asymmetry `PL-3D2M`
+    found, where a dropped commit surfaced only if it happened to touch the
+    store.
     """
     if not report.known:
         return f"Stranded items not checked: {report.declined}."
@@ -382,6 +403,51 @@ def format_stranded(report: StrandedReport) -> str:
         "branch nobody will merge."
     )
     lines.append("Every other branch read carries no item the default branch lacks.")
+    return "\n".join(lines)
+
+
+def format_orphaned(report: OrphanedReport) -> str:
+    """Work left on a branch after its pull request merged, and how to recover it.
+
+    Organized by branch rather than by file, the opposite of `format_stranded`,
+    because the loss here is of a *push* - one commit that went nowhere - and
+    the reader's first question is which branch to look at. The files under it
+    are what that commit left behind.
+
+    The landed side is stated rather than assumed, because it is the evidence:
+    a branch appears here because the default branch holds some of what it
+    introduced and not the rest, and a reader who cannot see that count cannot
+    tell this from an ordinary branch in flight.
+    """
+    if not report.known:
+        return f"Work left on a merged branch not checked: {report.declined}."
+
+    # The count is of refs the default branch has *not* already taken whole,
+    # which is a smaller number than `format_stranded` reports and a different
+    # claim: a branch merged in full carries nothing to leave behind, so it is
+    # excluded before this read begins rather than examined and cleared.
+    refs = _plural(report.refs_read, "unmerged branch ref", "unmerged branch refs")
+    if not report.branches:
+        return f"No branch carries work its own pull request left behind, across the {refs} read."
+
+    lines = [
+        f"{_plural(len(report.branches), 'branch carries', 'branches carry')} work the "
+        f"default branch does not hold, having already taken the rest of it:",
+        "",
+    ]
+    for branch in report.branches:
+        landed = _plural(len(branch.landed), "file", "files")
+        lines.append(f"{branch.ref}  ({landed} of its work already landed)")
+        for commit in branch.commits:
+            lines.append(f"  {commit.commit[:9]}  {commit.subject}")
+        for path in branch.outstanding:
+            lines.append(f"    {path}")
+        lines.append(f"  recover: git checkout {branch.ref} -- {branch.outstanding[0]}")
+        lines.append("")
+    lines.append(
+        "A pull request merges the head it was opened against; a commit pushed to the "
+        "branch afterwards is merged by nothing and reported by nothing else."
+    )
     return "\n".join(lines)
 
 
