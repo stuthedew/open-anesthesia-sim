@@ -180,6 +180,39 @@ judgment is the reply's: leave a branch someone is working, and recover from
 one nobody will merge - restore the file, commit it on its own, and say in the
 reply which branch it came off.
 
+## Mode: housekeeping nobody filed
+
+Triggered by the session being about to *do* repository work that no item
+names: resolving a merge, clearing a stale `origin/<branch>` ref, a docs
+sweep, a lint fix, recovering a stranded item, backfilling a field the store
+wants.
+
+**The rule: file the item first, then start it under its id** — `docket new`,
+then Mode: start an item below. This is the cheap half of a problem the project has
+already paid for the expensive half of. `flight`, `show`, `next`, `concurrent`
+and the digest are all id-matchers, so work carrying no id gets a clean answer
+from every one of them, correctly and uselessly. And unlike a race between two
+sessions starting the same item, which closes the moment one of them pushes,
+this stays invisible after *both* have pushed (`PL-CP74`).
+
+It buys a record as well as visibility. Housekeeping is obvious enough that two
+sessions recommend it in the same hour; unfiled, it leaves nothing behind
+saying it was already done, so the next session rediscovers it and recommends
+it again.
+
+**How small is too small to file is the judgment here, and the line is whether
+the work gets a commit of its own.** A rule demanding an item for a one-line
+typo fix would convert the queue into a log, which is worse than the collisions
+it prevents — so a fix riding inside a commit already led by an item's id is
+filed by that id and needs nothing more. File it when it is the reason this
+session exists, or when it will take a branch of its own.
+
+`tools/branch_id_check.py` catches the case where none of this happened: `make
+check` and CI fail a branch ahead of `main` that carries no id in its name and
+leads no commit subject with one. It decides visibility only, never whether the
+work deserved an item — that judgment is the paragraph above and stays here.
+
+
 ## Mode: recommend what to work on
 
 Triggered by "what should we work on next", "I have some time", "what's left".

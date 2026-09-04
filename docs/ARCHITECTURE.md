@@ -206,6 +206,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
+├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them
 ├── contrast_check.py     # computes every declared color pair's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
 ├── import_boundary_check.py  # fails the build on a `pydantic` import anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, so the payload/dataclass boundary is measured rather than asserted
@@ -234,6 +235,26 @@ half now falls back to each item's own file history, and this half stops the
 bad subject reaching `main` while the title can still be edited. Both are
 wanted — recovery alone leaves the wrong subject on `main` for good, and the
 check alone leaks when a merger retypes the subject in the squash dialog.
+
+`tools/branch_id_check.py` is the same shape of guard aimed at the other end of
+the same problem, and the two do not overlap: the title check asks whether a
+pull request names the items it *closes*, and answers "no id is owed" for a
+branch that closes none — which is exactly the unfiled repository housekeeping
+`PL-CP74` found colliding. `docket flight`, `show`, `next`, `concurrent` and
+the session-start digest all answer "is anybody already on this?" by matching a
+`PL-` id in a branch name or at the front of a commit subject, so a branch
+carrying none reads as nobody's work to every one of them, and goes on doing so
+after both sessions have pushed.
+
+It imports `BRANCH_ID_RE` and `leading_ids` from `docket.vcs` rather than
+matching ids its own way, because a check looser than the guard it protects
+would certify a branch as visible that `docket flight` still cannot see — the
+gate green while the guarantee is void. One commit carrying an id is enough,
+which is what keeps the tool out of the judgment it must not make: how small a
+piece of work is too small to file is decided in `.claude/skills/docket/SKILL.md`
+under "Mode: housekeeping nobody filed", and a fix riding inside a commit an id
+already leads needs no item of its own. A release commit is exempt, exactly:
+`make release` writes that subject, and it closes no item.
 
 `tools/contrast_check.py` holds the interface to the accessibility target
 `docs/MODEL.md` states — WCAG 2.2 Level AA. It reads the color constants out of
@@ -377,8 +398,8 @@ All of those are approximations run under the project virtualenv — a syntax
 gate rather than an older parser, and the wrong interpreter's
 `sys.stdlib_module_names`. `.github/workflows/quality.yml`'s `floor` job
 performs the run they stand in for: `actions/setup-python` at the declared
-floor, then `python3 tools/doc_check.py check`, `bin/docket check` and
-`python3 tools/contrast_check.py` under it.
+floor, then `python3 tools/doc_check.py check`, `python3 tools/branch_id_check.py`,
+`bin/docket check` and `python3 tools/contrast_check.py` under it.
 That decides syntax, imports and runtime behavior at once, with no list to keep
 current. A fourth test holds the job's pinned version to `requires-python`, so
 raising the floor cannot leave CI exercising an interpreter the project no
