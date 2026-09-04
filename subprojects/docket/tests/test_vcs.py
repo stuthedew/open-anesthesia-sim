@@ -948,19 +948,49 @@ def test_the_branch_state_line_says_when_nothing_refreshed_the_base() -> None:
 CLOSED = "---\nid: {id}\ntitle: T\nstatus: done\n---\n"
 
 
+OPEN_ITEM = "---\nid: {id}\ntitle: T\nstatus: ready\n---\n"
+
+
 def _closure_runner(
     on_base: dict[str, str],
     subjects: tuple[str, ...] = (),
     log: list[list[str]] | None = None,
     shallow: str = "",
+    closed_from: int = 0,
+    file_history: tuple[str, ...] = (),
 ):
     """A git holding `on_base` (file name to text) and a default branch of `subjects`.
+
+    `subjects` is newest-first, as `git log` gives it, and each is given the
+    revision `c<index>` so that `c0^` resolves to `c1` the way a real parent
+    does. `closed_from` is the index from which the items read `status: done`,
+    so the default of 0 makes the newest subject the closure - the healthy
+    shape, where the commit that landed the work is also the one that wrote the
+    closure. A test wanting the defect shape says `closed_from=1` or more: the
+    newest commit naming the item then finds it *already* closed, which is what
+    a bookkeeping merge or a follow-up fix looks like.
 
     `shallow` is what `rev-parse --is-shallow-repository` answers - "true",
     "false", or the empty string for a git that will not say, which is the
     default because most cases here are about reading the base rather than
     about depth.
+
+    `file_history` is the item file's own log, which the fallback reads when
+    the subject scan cannot answer. It defaults to empty rather than to
+    `subjects`, because the two are different questions - a commit can name an
+    item in its subject without touching its file, and vice versa - and
+    conflating them let a subject about another item answer through the
+    fallback. `_recovery_runner` is the fake for tests about that path.
     """
+
+    def index_of(revision: str) -> int | None:
+        """The index a revision names, following one `^` to its parent."""
+        parents = 0
+        while revision.endswith("^"):
+            revision, parents = revision[:-1], parents + 1
+        if not revision.startswith("c") or not revision[1:].isdigit():
+            return None
+        return int(revision[1:]) + parents
 
     def run(args: list[str], root: Path) -> str:
         if log is not None:
@@ -972,16 +1002,22 @@ def _closure_runner(
         if args[0] == "for-each-ref":
             return f"{BASE}\n"
         if args[0] == "show":
-            name = args[-1].split("/")[-1]
-            return on_base.get(name, "")
+            revision, _, path = args[-1].partition(":")
+            name = path.split("/")[-1]
+            text = on_base.get(name, "")
+            if revision == BASE or not text:
+                return text
+            index = index_of(revision)
+            if index is None or index >= len(subjects):
+                return ""
+            identifier = name.split("-")[0]
+            return text if index <= closed_from else OPEN_ITEM.format(id=identifier)
         if args[0] == "log":
-            return "\n".join(subjects)
+            history = file_history if "--" in args else subjects
+            return "\n".join(f"c{index}\x1f{subject}" for index, subject in enumerate(history))
         return ""
 
     return run
-
-
-OPEN_ITEM = "---\nid: {id}\ntitle: T\nstatus: ready\n---\n"
 
 
 def _recovery_runner(history: tuple[tuple[str, str], ...], done_at: set[str], name: str):
@@ -1143,6 +1179,59 @@ def test_no_closure_in_question_costs_no_history_read() -> None:
     closures_on_base(ROOT, {}, runner=_closure_runner({}, (), log))
 
     assert not [args for args in log if args[0] == "log"]
+
+
+def test_a_rider_closure_recovers_the_pull_request_that_closed_it() -> None:
+    # PL-GW37. An item closed as a rider on another item's pull request is not
+    # named by that subject, so the newest subject naming it is something
+    # older - here the triage that filed it. Recency alone recorded `159` for
+    # `PL-YLZQ`, a commit containing none of its work, and advised writing that
+    # number in. Confirming the hit rejects it, and the file's own history
+    # answers with the merge that actually closed it.
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+        (
+            "PL-B1C2 Make the simulation step transactional (#204)",
+            "PL-K7QX, PL-A1B2: triage the two captures (#159)",
+        ),
+        file_history=(
+            "PL-B1C2 Make the simulation step transactional (#204)",
+            "PL-K7QX, PL-A1B2: triage the two captures (#159)",
+        ),
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
+        "PL-K7QX": 204
+    }
+
+
+def test_a_bookkeeping_merge_naming_a_closed_item_does_not_win() -> None:
+    # The other half of the same defect, and the commoner one: the newest
+    # subject leading with the id is a merge that wrote the item's `pr` back,
+    # or a follow-up fix. `PL-1TF4` and `PL-J49T` recovered `250`, whose
+    # subject reads "record #249". The item is already closed at such a commit
+    # *and* at its parent, which is what tells it from the closure.
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+        ("PL-K7QX: record #249 (#250)", "PL-K7QX: do the work (#249)"),
+        closed_from=1,
+        file_history=("PL-K7QX: record #249 (#250)", "PL-K7QX: do the work (#249)"),
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
+        "PL-K7QX": 249
+    }
+
+
+def test_a_subject_hit_that_cannot_be_confirmed_and_has_no_file_history_says_nothing() -> None:
+    # Silence is the correct outcome when nothing can be confirmed. Recording
+    # the unconfirmed number would be the false provenance this exists to stop.
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+        ("PL-B1C2 Something else (#204)", "PL-K7QX: triage it (#159)"),
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
 
 
 def test_a_number_belonging_to_another_item_is_not_borrowed() -> None:
