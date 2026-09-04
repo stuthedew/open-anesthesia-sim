@@ -36,8 +36,11 @@ from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
     format_delivered_label,
+    format_mac_multiple,
+    format_mac_reference,
     format_percent,
     format_subtitle,
+    mac_axis_ticks,
 )
 from anesthesia_sim.app.theme import (
     ACCENT,
@@ -107,12 +110,26 @@ METRIC_GRID_COLUMNS: dict[ft.ResponsiveRowBreakpoint | str, int | float] = {
 # `tools/contrast_check.py`, and it stays normal text at WCAG's 4.5:1.
 METRIC_NAME_SIZE = 14
 METRIC_QUALIFIER_SIZE = 12
+# The MAC line under each reading, in the same relationship to the percent
+# above it as the gloss is to the compartment name: smaller and MUTED, because
+# it is the weaker of the two claims. Percent is what the model computes and
+# what a monitor would show; a MAC multiple is that number divided by a
+# population constant this model does not otherwise use, and on the four
+# non-alveolar compartments it is a partial-pressure ratio rather than
+# anything a clinician reads off a patient. Sized between the name and the
+# gloss so the row reads value, then unit-conversion, then annotation.
+METRIC_SECONDARY_VALUE_SIZE = 13
 # A panel with no gloss still draws the line, so that every reading in the row
 # sits on one baseline. A blank string collapses to zero height in Flutter,
 # where a non-breaking space renders a full line of the qualifier's size -
 # which keeps the spacer tied to that size rather than to a pixel constant
 # somebody would have to re-measure after a font change.
 EMPTY_METRIC_QUALIFIER = "\u00a0"
+# The same spacer for the MAC line, so the "Simulated time" panel - which has
+# no concentration and therefore no MAC multiple - is the height of the six
+# that do, and every reading in the row keeps the shared baseline
+# `_build_concentration_metrics` exists to preserve.
+EMPTY_METRIC_SECONDARY_VALUE = "\u00a0"
 
 # The three flow sliders span the model's own supported input ranges, imported
 # from `core/supported_ranges.py` rather than restated here. Until PL-0MLQ this
@@ -232,6 +249,21 @@ class SimulationView:
         self._muscle_concentration_text = self._build_metric_value(empty_compartment)
         self._fat_concentration_text = self._build_metric_value(empty_compartment)
 
+        # The second display unit, one line under each percent. Both are shown
+        # at once rather than behind a unit selector: a selector would make the
+        # unit a mode, and a reader who missed the switch would read a
+        # desflurane compartment at 6.0 as six times what it is. Two lines
+        # cannot be misread that way, and the pair is also what makes the
+        # conversion legible - the agent's own 1 MAC is the ratio between them,
+        # and it is named under the chart.
+        empty_mac = format_mac_multiple(0.0, initial_snapshot.agent_mac_percent)
+        self._circuit_mac_text = self._build_metric_secondary_value(empty_mac)
+        self._alveolar_mac_text = self._build_metric_secondary_value(empty_mac)
+        self._mixed_venous_mac_text = self._build_metric_secondary_value(empty_mac)
+        self._vessel_rich_mac_text = self._build_metric_secondary_value(empty_mac)
+        self._muscle_mac_text = self._build_metric_secondary_value(empty_mac)
+        self._fat_mac_text = self._build_metric_secondary_value(empty_mac)
+
         self._agent_accounting_status_text = ft.Text(
             "Valid", color=ACCENT_TEXT, size=20, weight=ft.FontWeight.BOLD
         )
@@ -245,6 +277,17 @@ class SimulationView:
         )
         self._delivered_concentration_text = ft.Text(
             format_percent(initial_snapshot.delivered_concentration_fraction), color=INK
+        )
+        # The dial in the same two units as the compartments it fills. Without
+        # it the one control a reader sets would be the only value on screen
+        # they could not compare with the traces it produces.
+        self._delivered_concentration_mac_text = ft.Text(
+            format_mac_multiple(
+                initial_snapshot.delivered_concentration_fraction,
+                initial_snapshot.agent_mac_percent,
+            ),
+            color=MUTED,
+            size=METRIC_SECONDARY_VALUE_SIZE,
         )
         self._alveolar_ventilation_text = ft.Text(
             (f"{initial_snapshot.alveolar_ventilation_l_min:.1f} L/min"), color=INK
@@ -289,6 +332,37 @@ class SimulationView:
             (self._fat_series, chart_series.fat_value),
         )
 
+        # Two rulers against one set of traces. The plotted points stay in
+        # percent - `chart_series.redraw_series` converts nothing else - and
+        # the MAC axis is a relabelling of the same coordinate, so the two
+        # axes cannot come to disagree about where a trace is. That is the
+        # reason for a second axis rather than a unit toggle: a toggle would
+        # make the axis unit a hidden mode, and a chart read under the wrong
+        # assumed unit is a misreading no disclaimer catches.
+        # What the MAC axis labels currently stand for, so a frame that
+        # changes neither leaves them alone. They depend on the agent and the
+        # plotted range and on nothing that moves during a run, where the
+        # render loop runs several times a second: rebuilding them per frame
+        # would allocate a label control per tick per frame and send the
+        # client an add-and-remove of the whole axis each time - the same
+        # per-frame churn PL-010 removed from the traces, arriving by
+        # another door. `tests/integration/test_chart_patching.py` is what
+        # measures that, and it fails if this guard is dropped.
+        self._mac_axis_basis = (
+            initial_snapshot.max_delivered_concentration_percent,
+            initial_snapshot.agent_mac_percent,
+        )
+        self._mac_axis = fch.ChartAxis(
+            title=ft.Text("multiples of 1 MAC", color=MUTED, size=METRIC_QUALIFIER_SIZE),
+            labels=self._build_mac_axis_labels(*self._mac_axis_basis),
+            # The MAC ticks are the whole point of the axis, so the ends of
+            # the percent range must not add two more at whatever multiples
+            # they happen to fall on: isoflurane's 5% dial maximum is
+            # 4.17 MAC, and a label reading 4.17 beside labels reading 3.5
+            # and 4.0 would be read as a tick rather than as an endpoint.
+            show_min=False,
+            show_max=False,
+        )
         self._concentration_chart = fch.LineChart(
             data_series=[
                 self._circuit_series,
@@ -302,9 +376,23 @@ class SimulationView:
             max_x=INITIAL_CHART_WINDOW_S,
             min_y=0,
             max_y=initial_snapshot.max_delivered_concentration_percent,
+            left_axis=fch.ChartAxis(
+                title=ft.Text("percent", color=MUTED, size=METRIC_QUALIFIER_SIZE)
+            ),
+            right_axis=self._mac_axis,
             horizontal_grid_lines=fch.ChartGridLines(interval=2, color="#D9E2EC"),
             vertical_grid_lines=fch.ChartGridLines(interval=60, color="#D9E2EC"),
             expand=True,
+        )
+        # Names the divisor every MAC number on this page was produced with,
+        # which is what makes those numbers traceable without opening a data
+        # file (`CLAUDE.md`, safety-critical clinical-output standard). It
+        # changes with the agent, so it is held rather than built inline.
+        self._mac_reference_text = ft.Text(
+            format_mac_reference(
+                initial_snapshot.agent_display_name, initial_snapshot.agent_mac_percent
+            ),
+            color=MUTED,
         )
 
         self._start_button = ft.Button(content="Start", on_click=self._handle_start)
@@ -503,6 +591,7 @@ class SimulationView:
                     self._delivered_concentration_label,
                     self._delivered_concentration_slider,
                     self._delivered_concentration_text,
+                    self._delivered_concentration_mac_text,
                 ),
                 self._build_parameter_panel(
                     "Alveolar ventilation",
@@ -516,7 +605,11 @@ class SimulationView:
         )
 
     def _build_parameter_panel(
-        self, label: str | ft.Text, slider: ft.Slider, value_text: ft.Text
+        self,
+        label: str | ft.Text,
+        slider: ft.Slider,
+        value_text: ft.Text,
+        secondary_value_text: ft.Text | None = None,
     ) -> ft.Container:
         """Build one compact simulation-setting panel.
 
@@ -525,6 +618,10 @@ class SimulationView:
                 for a label that changes later (e.g. names the agent).
             slider: Slider controlling the setting.
             value_text: Current value with its physical unit.
+            secondary_value_text: The same setting in a second display
+                unit, drawn under the slider, or None where the setting
+                has only one. Only the delivered agent has two: the three
+                flow settings are in L/min, which MAC does not convert.
 
         Returns:
             Responsive setting panel.
@@ -538,7 +635,12 @@ class SimulationView:
 
         return ft.Container(
             content=ft.Column(
-                controls=[label_control, ft.Row(controls=[slider, value_text])], spacing=4
+                controls=[
+                    label_control,
+                    ft.Row(controls=[slider, value_text]),
+                    *([] if secondary_value_text is None else [secondary_value_text]),
+                ],
+                spacing=4,
             ),
             bgcolor=PANEL,
             border_radius=COMPACT_PANEL_RADIUS,
@@ -582,8 +684,10 @@ class SimulationView:
         return ft.ResponsiveRow(
             columns=METRIC_GRID_COLUMNS,
             controls=[
-                self._build_metric_panel("Simulated time", None, self._elapsed_time_text),
-                self._build_metric_panel("Circuit", "inspired", self._circuit_concentration_text),
+                self._build_metric_panel("Simulated time", None, self._elapsed_time_text, None),
+                self._build_metric_panel(
+                    "Circuit", "inspired", self._circuit_concentration_text, self._circuit_mac_text
+                ),
                 # "end-tidal-equivalent", never "end-tidal": the hedge is
                 # required by docs/MODEL.md § "Minimum displayed outputs", and
                 # the reason is stated there in terms - the phrase "must not
@@ -599,21 +703,38 @@ class SimulationView:
                 # layout; `test_the_alveolar_readout_is_labelled_end_tidal_equivalent`
                 # holds the exact pair of strings.
                 self._build_metric_panel(
-                    "Alveolar", "end-tidal-equivalent", self._alveolar_concentration_text
+                    "Alveolar",
+                    "end-tidal-equivalent",
+                    self._alveolar_concentration_text,
+                    self._alveolar_mac_text,
                 ),
                 self._build_metric_panel(
-                    "Mixed venous", None, self._mixed_venous_concentration_text
+                    "Mixed venous",
+                    None,
+                    self._mixed_venous_concentration_text,
+                    self._mixed_venous_mac_text,
                 ),
                 self._build_metric_panel(
-                    "Vessel-rich group", None, self._vessel_rich_concentration_text
+                    "Vessel-rich group",
+                    None,
+                    self._vessel_rich_concentration_text,
+                    self._vessel_rich_mac_text,
                 ),
-                self._build_metric_panel("Muscle", None, self._muscle_concentration_text),
-                self._build_metric_panel("Fat", None, self._fat_concentration_text),
+                self._build_metric_panel(
+                    "Muscle", None, self._muscle_concentration_text, self._muscle_mac_text
+                ),
+                self._build_metric_panel(
+                    "Fat", None, self._fat_concentration_text, self._fat_mac_text
+                ),
             ],
         )
 
     def _build_metric_panel(
-        self, name: str, qualifier: str | None, value_text: ft.Text
+        self,
+        name: str,
+        qualifier: str | None,
+        value_text: ft.Text,
+        secondary_value_text: ft.Text | None,
     ) -> ft.Container:
         """Build one compact read-only metric panel.
 
@@ -625,6 +746,10 @@ class SimulationView:
                 smaller than the name, because it is the weaker claim of the
                 two - see `_build_concentration_metrics`.
             value_text: Formatted value with its physical unit.
+            secondary_value_text: The same quantity in the second display
+                unit - a MAC multiple - or None for a panel that has no
+                second unit. A spacer line is drawn in its place so the
+                panel keeps the height of the six that do.
 
         Returns:
             Responsive metric panel.
@@ -641,6 +766,11 @@ class SimulationView:
                         italic=True,
                     ),
                     value_text,
+                    (
+                        secondary_value_text
+                        if secondary_value_text is not None
+                        else self._build_metric_secondary_value(EMPTY_METRIC_SECONDARY_VALUE)
+                    ),
                 ],
                 spacing=0,
             ),
@@ -667,7 +797,38 @@ class SimulationView:
                         color=INK,
                     ),
                     ft.Text(
-                        ("Vertical axis: percent | Horizontal axis: simulated seconds"), color=MUTED
+                        (
+                            "Left axis: percent of one atmosphere | "
+                            "Right axis: multiples of 1 MAC | "
+                            "Horizontal axis: simulated seconds"
+                        ),
+                        color=MUTED,
+                    ),
+                    # The convention, stated where the numbers that depend on
+                    # it are read. A MAC multiple on the alveolar trace is the
+                    # conventional reading; on the other five it is a
+                    # partial-pressure ratio, and the two are indistinguishable
+                    # on a label unless the label says which. `docs/MODEL.md`
+                    # § "MAC multiples as a display unit" is the specification
+                    # this sentence is the display-side half of, and PL-DHV7
+                    # the item that required both.
+                    ft.Row(
+                        controls=[
+                            self._mac_reference_text,
+                            ft.Text(
+                                (
+                                    "A MAC multiple is a compartment's partial pressure "
+                                    "relative to the alveolar concentration that would be "
+                                    "1 MAC in a 40-year-old — not a depth of anesthesia, "
+                                    "and not adjusted for age or any second agent."
+                                ),
+                                color=MUTED,
+                                italic=True,
+                            ),
+                        ],
+                        wrap=True,
+                        spacing=8,
+                        run_spacing=2,
                     ),
                     ft.Row(
                         controls=[
@@ -756,6 +917,19 @@ class SimulationView:
             snapshot.delivered_concentration_fraction * 100.0
         )
         self._concentration_chart.max_y = snapshot.max_delivered_concentration_percent
+        # The divisor and the plotted range both change with the agent, so a
+        # MAC axis carried over from the previous agent would label the same
+        # traces against the wrong scale. Rebuilt only when one of the two
+        # actually moves, for the reason recorded at `_mac_axis_basis`.
+        mac_axis_basis = (snapshot.max_delivered_concentration_percent, snapshot.agent_mac_percent)
+
+        if mac_axis_basis != self._mac_axis_basis:
+            self._mac_axis_basis = mac_axis_basis
+            self._mac_axis.labels = self._build_mac_axis_labels(*mac_axis_basis)
+
+        self._mac_reference_text.value = format_mac_reference(
+            snapshot.agent_display_name, snapshot.agent_mac_percent
+        )
 
         has_failed = snapshot.failure_reason is not None
 
@@ -793,9 +967,35 @@ class SimulationView:
         )
         self._fat_concentration_text.value = format_percent(snapshot.fat_partial_pressure_fraction)
 
+        # Every MAC line is produced from this snapshot's own divisor, so a
+        # frame can never pair one agent's concentration with another agent's
+        # MAC. `_refresh_view` is the only writer of both.
+        mac_percent = snapshot.agent_mac_percent
+        self._circuit_mac_text.value = format_mac_multiple(
+            snapshot.circuit_concentration_fraction, mac_percent
+        )
+        self._alveolar_mac_text.value = format_mac_multiple(
+            snapshot.alveolar_concentration_fraction, mac_percent
+        )
+        self._mixed_venous_mac_text.value = format_mac_multiple(
+            snapshot.mixed_venous_concentration_fraction, mac_percent
+        )
+        self._vessel_rich_mac_text.value = format_mac_multiple(
+            snapshot.vessel_rich_partial_pressure_fraction, mac_percent
+        )
+        self._muscle_mac_text.value = format_mac_multiple(
+            snapshot.muscle_partial_pressure_fraction, mac_percent
+        )
+        self._fat_mac_text.value = format_mac_multiple(
+            snapshot.fat_partial_pressure_fraction, mac_percent
+        )
+
         self._fresh_gas_flow_text.value = f"{snapshot.fresh_gas_flow_l_min:.1f} L/min"
         self._delivered_concentration_text.value = format_percent(
             snapshot.delivered_concentration_fraction
+        )
+        self._delivered_concentration_mac_text.value = format_mac_multiple(
+            snapshot.delivered_concentration_fraction, mac_percent
         )
         self._alveolar_ventilation_text.value = f"{snapshot.alveolar_ventilation_l_min:.1f} L/min"
         self._cardiac_output_text.value = f"{snapshot.cardiac_output_l_min:.1f} L/min"
@@ -1070,3 +1270,43 @@ class SimulationView:
         """
 
         return ft.Text(initial_value, size=22, weight=ft.FontWeight.BOLD, color=INK)
+
+    @staticmethod
+    def _build_metric_secondary_value(initial_value: str) -> ft.Text:
+        """Build the second-unit line drawn under a dashboard metric.
+
+        Args:
+            initial_value: Initial formatted value including its unit, or
+                `EMPTY_METRIC_SECONDARY_VALUE` for a panel with no second
+                unit.
+
+        Returns:
+            Styled Flet text control, subordinate to the reading above it.
+        """
+
+        return ft.Text(initial_value, size=METRIC_SECONDARY_VALUE_SIZE, color=MUTED)
+
+    @staticmethod
+    def _build_mac_axis_labels(max_percent: float, mac_percent: float) -> list[fch.ChartAxisLabel]:
+        """Build the chart's MAC axis labels for one agent and range.
+
+        The placement is `formatting.mac_axis_ticks`, which is Flet-free
+        and tested on its own; this only wraps each tick in the control
+        the chart draws it with.
+
+        Args:
+            max_percent: Top of the chart's percent axis.
+            mac_percent: Running agent's 1 MAC as a percent of one
+                atmosphere.
+
+        Returns:
+            One label per tick, positioned in the chart's own percent
+            coordinates.
+        """
+
+        return [
+            fch.ChartAxisLabel(
+                value=percent, label=ft.Text(label, color=MUTED, size=METRIC_QUALIFIER_SIZE)
+            )
+            for percent, label in mac_axis_ticks(max_percent, mac_percent)
+        ]

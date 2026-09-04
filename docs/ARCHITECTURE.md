@@ -125,9 +125,13 @@ unit calculation of its own. The two transformations it does apply are
 each their own module, because each is a presentation-*correctness*
 question rather than a layout one and each must be readable and testable
 without a Flet interface: `app/formatting.py` turns a fraction into the
-string a reader sees, at the resolution `docs/MODEL.md` § "Displayed
-precision" derives, and `app/chart_series.py` builds the traces and
-redraws them from the recorded run.
+strings a reader sees — a percent and a multiple of the running agent's
+1 MAC — at the resolutions `docs/MODEL.md` § "Displayed precision" derives,
+and `app/chart_series.py` builds the traces and redraws them from the
+recorded run. The MAC divisor reaches the formatter as an argument, from
+`SimulationSnapshot.agent_mac_percent`, rather than being looked up: it is
+what makes a displayed multiple agent-specific, so it travels with the value
+it divides.
 
 **Failure direction:** every failure `core/` reports is a subclass of
 `AnesthesiaSimulationError` (`core/exceptions.py`), never a bare

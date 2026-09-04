@@ -92,6 +92,7 @@ class _ReplayController:
             agent_id="sevoflurane",
             agent_display_name="Sevoflurane",
             max_delivered_concentration_percent=8.0,
+            agent_mac_percent=2.0,
             circuit_volume_l=6.0,
             fresh_gas_flow_l_min=4.0,
             delivered_concentration_fraction=0.08,
