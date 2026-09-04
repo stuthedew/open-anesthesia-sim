@@ -426,6 +426,43 @@ read cannot name its own gaps. Finding nothing here means nothing; finding
 something is decisive. It is also this harness only: `docket` knows nothing
 about it and must not (`PL-SK88` records why).
 
+**Where two branches are carrying the item, `bin/docket show <id>` says
+which session yields. Read the verdict; do not reason one out.** It prints
+the carriers in order — whichever commit named the item first holds it, a tie
+breaking on that commit's hash — and both sessions compute that order from the
+same commits, so both read the same answer. Reasoning it out instead is how two
+sessions reach *opposite* answers from one set of facts, and the outcome that
+costs most is not both continuing, which is where the project already was, but
+both standing down: the item is then unstarted and each session believes the
+other has it.
+
+One consequence worth acting on before the verdict is ever needed: a branch
+nobody can fetch is not in the other session's copy of the order at all, which
+is the second reason to push the first commit as soon as there is one.
+
+**Yielding costs a session's work only if the session throws it away**, so hand
+it over instead:
+
+1. Stop implementing, and open no pull request.
+2. Commit and push what you have to your own branch. The container is
+   ephemeral, and a diagnosis nobody receives is a session spent for nothing.
+   Pushing cannot flip the verdict — your claim is the later one, which is what
+   made you the session that yields.
+3. Say in the reply which branch you yielded to, which branch your findings are
+   on, and what they are: the root cause, the failing test, the file and line.
+   A yield that discards the work is a session thrown away; one that hands it
+   over is a session spent on reconnaissance, which is a different price.
+
+**The holder never yields back, and the case that looks like it should is
+already decided by the dates printed beside it.** A later session that has done
+more work is only possible where the earlier one has been sitting still — so
+where the branch holding the item has not committed since before your own first
+commit, you are not racing a live session, and a branch's age is the reader's
+call here exactly as it is in `flight` and `stranded`. Say so to the project
+owner and keep the work; do not yield into silence. That test is one-sided
+deliberately: applying it can leave two sessions working, which is where the
+world already was, and can never leave neither.
+
 **Then ask the other question: *is another session in these files?*** Every
 step above answers "is another session on this item?", and that is not what
 collides. Two sessions on different items are the normal case and neither
@@ -447,7 +484,7 @@ It answers in two parts, and they are different kinds of evidence:
 else".** Two unrelated items legitimately touch one file; the point is that
 the second to merge resolves deliberately instead of discovering it. Yield only
 where the overlap is the same logic rather than the same file — and then it is
-`PL-YHD3`'s question, not this one's. What a non-empty answer always changes is
+the yield rule above that decides which session stops, not this answer. What a non-empty answer always changes is
 sequencing: land the smaller change first, and say in the reply which branch
 you expect to resolve against.
 
