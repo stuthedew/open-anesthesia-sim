@@ -63,6 +63,10 @@ jobs:
       # of what that workflow is for. `PL-22Z3`.
       - run: uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
       - run: bin/docket check
+      # Repeated in the `floor` job below, unlike the line after it: this
+      # one reads `git log` and the branch name, never project source, so
+      # the 3.11 parser has nothing it cannot read. `PL-CP74`.
+      - run: uv run python tools/branch_id_check.py
       - run: uv run python tools/doc_check.py check
       - run: uv run python tools/contrast_check.py
       # Deliberately not repeated in the `floor` job below, unlike the three
@@ -133,5 +137,6 @@ jobs:
           python-version: '3.11'
 
       - run: python3 tools/doc_check.py check
+      - run: python3 tools/branch_id_check.py
       - run: bin/docket check
       - run: python3 tools/contrast_check.py
