@@ -1095,6 +1095,92 @@ def test_a_repository_with_no_workflows_is_left_alone(tmp_path: Path) -> None:
     assert _errors(_repo(tmp_path)) == []
 
 
+# --- the coverage gate, held identical between the Makefile and CI -----------
+#
+# Both files carry a comment saying the invocation has to stay the same, and
+# nothing checked it. They are the local gate and the merge gate, so a drift
+# means a session and CI stop asking the same question - silently, in the check
+# that holds `core/` at 100% (`PL-D3M2`).
+
+GATE = "uv run pytest -n auto --cov=demo.core --cov-branch --cov-fail-under=100"
+
+
+def _gated(root: Path, *, make: str | None = GATE, ci: str | None = GATE) -> Path:
+    """A repository whose Makefile and workflow each run a coverage gate."""
+    recipe = f"\t{make}\n" if make else "\ttrue\n"
+    (root / "Makefile").write_text(f".PHONY: check\ncheck:\n{recipe}", encoding="utf-8")
+    steps = "      - run: bin/runner check\n"
+    if ci:
+        steps += f"      - run: {ci}\n"
+    _with_workflow(
+        root,
+        "name: quality\n\non: [push, pull_request]\n\njobs:\n  checks:\n"
+        "    runs-on: ubuntu-latest\n    steps:\n"
+        "      - uses: actions/checkout@v7.0.1\n" + steps,
+    )
+    return root
+
+
+def test_the_same_coverage_gate_in_both_places_is_quiet(tmp_path: Path) -> None:
+    assert _errors(_gated(_repo(tmp_path))) == []
+
+
+def test_a_coverage_gate_that_drifted_between_them_is_an_error(tmp_path: Path) -> None:
+    # The failure this exists for: one side gains a flag and the other does
+    # not, so the local gate and the merge gate stop matching without saying so.
+    root = _gated(_repo(tmp_path), make=GATE.replace(" -n auto", ""))
+
+    errors = _errors(root)
+
+    assert any("the coverage gate differs between the Makefile and CI" in m for m in errors)
+
+
+def test_the_drift_error_names_both_commands(tmp_path: Path) -> None:
+    # A reader has to see which side changed; naming only the rule would make
+    # them diff two files by hand to find out.
+    root = _gated(_repo(tmp_path), make=GATE.replace(" -n auto", ""))
+
+    joined = " ".join(_errors(root))
+
+    assert "Makefile:" in joined
+    assert "quality.yml:" in joined
+
+
+def test_a_gate_ci_runs_and_the_makefile_does_not_is_an_error(tmp_path: Path) -> None:
+    # The more serious half, and it reads differently: this is not two commands
+    # disagreeing, it is one gate being absent where it was promised.
+    root = _gated(_repo(tmp_path), make=None)
+
+    assert any("only one of the two gates gates coverage" in m for m in _errors(root))
+
+
+def test_a_gate_the_makefile_runs_and_ci_does_not_is_an_error(tmp_path: Path) -> None:
+    # The direction that matters most: green locally, ungated on merge.
+    root = _gated(_repo(tmp_path), ci=None)
+
+    assert any("only one of the two gates gates coverage" in m for m in _errors(root))
+
+
+def test_a_repository_with_no_coverage_gate_at_all_is_left_alone(tmp_path: Path) -> None:
+    # Absence of a gate is not this check's business - it holds two statements
+    # to each other and says nothing about whether they should exist.
+    assert _errors(_gated(_repo(tmp_path), make=None, ci=None)) == []
+
+
+def test_a_bare_pytest_step_elsewhere_is_not_compared(tmp_path: Path) -> None:
+    # `drift.yml` runs a bare `uv run pytest` on purpose, because a coverage
+    # failure there would report as a dependency break. A rule keyed on "every
+    # pytest command" would fire on it every run (`PL-22Z3`).
+    root = _gated(_repo(tmp_path))
+    (root / ".github" / "workflows" / "drift.yml").write_text(
+        "name: drift\n\non: [schedule]\n\njobs:\n  drift:\n    runs-on: ubuntu-latest\n"
+        "    steps:\n      - run: uv run pytest\n",
+        encoding="utf-8",
+    )
+
+    assert _errors(root) == []
+
+
 # --- resident instructions --------------------------------------------------
 
 
