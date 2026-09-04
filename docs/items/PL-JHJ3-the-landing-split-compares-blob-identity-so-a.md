@@ -1,51 +1,74 @@
 ---
 id: PL-JHJ3
 title: The landing split compares blob identity, so a squash that merged content reads as unlanded and two sessions writing one record line read as landed
-status: untriaged
+status: done
+priority: P2
+effort: S
+classes: defect, infra
 feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md
 added: 2026-09-04
+closed: 2026-09-04
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_stranded_is_silent_when_the_merge_took_the_commit_and_merged_it' subprojects/docket/tests/test_cli.py
 ---
-
-**Problem.** The landing split compares blob identity, so a squash that merged content reads as unlanded and two sessions writing one record line read as landed
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `vcs._landing_split` asks whether the default branch has ever held
 each blob a ref introduces. Blob identity is not the same question as "did this
-work land", and it is wrong in both directions:
+work land". A squash merge writes the *result* of merging the branch into the
+base, so where the base moved on a file the branch also touched, what lands is
+neither side's blob - and the branch's copy then matches nothing the base has
+ever held, while every line of its work is there.
 
-- **A squash merge writes merged content.** GitHub squashes the *result* of
-  merging the branch into the base, so where the base moved on a file the branch
-  also touched, what lands is neither side's blob. Measured across this
-  repository's 204 merged pull requests, comparing each head's blobs against
-  every blob `main` has ever held: **9 read as not fully landed**, and reading
-  them showed the cause to be exactly this plus two item files renamed by a
-  title edit.
-- **Identical content from two sessions reads as landed.** Two sessions running
-  `bin/docket record` write the same tool-dictated line, so a live branch can
-  hold a blob another branch landed and read as partly landed - the false alarm
-  `PL-3D2M`'s docstring documents.
+**It fired falsely within the hour, in the digest of the session that shipped
+it.** `PL-3D2M` merged at 22:32. The next session start read:
 
-**The precise test, already measured.** `git merge-tree --write-tree <base>
-<ref>` performs the three-way merge and returns the resulting tree; comparing it
-to the base's own tree answers "does the base already contain everything this
-ref introduces" without touching blob identity at all. Run against all 204
-merged pull requests, each head compared against the commit that landed it:
-**0 discrepancies and 0 conflicts.** Run against a synthetic branch with one
-commit left behind, it fires and names exactly the file left behind.
+    Left on a branch after its pull request merged:
+    origin/claude/snapshot-run-history-copy-dw6djz (3 files).
 
-**What it costs.** `git merge-tree --write-tree` needs git 2.38 (2022), where
-the current read needs 2.16. A conflict has to be reported as "cannot say"
-rather than as an answer, which is a third state neither caller has today. And
-`_landing_split` returns *paths on each side*, which a tree comparison gives for
-the outstanding side but not for the landed one - so the "how much of its work
-already landed" count in the report would need a different source or would go.
+That branch carried the v0.3.8 release commit, squash-merged as `#312` while
+`#311` was landing edits to the same `ROADMAP.md` prose. The merge wrote the
+combined text, so three of that commit's ten paths matched no blob `main` had
+held. Reading the diff, `main` was **ahead** of the branch on all three - it
+held the branch's release edits *plus* the `PL-D9WD` cross-references added
+afterwards. Nothing was missing from anywhere.
 
-**Not urgent.** The current rule was silent on every branch this repository had
-when it was written, and it errs toward reporting rather than toward silence,
-which is the safe direction for a check whose whole point is that the silent
-failure is the expensive one.
+That is `CLAUDE.md`'s "an advisory being routed around": a line in text resent
+on every turn of every session, saying work is lost when it is not.
+
+**Fix.** The content split still selects candidates, and a second condition
+decides: the branch must carry a **commit none of whose paths reached the base
+at all**. A commit partly landed is a commit the merge took and merged; a commit
+wholly absent is one nothing took. On the branch above, ten paths touched and
+seven landed - silent. On `#284`'s dropped commit, every path outstanding -
+reported. The reported paths are narrowed to those commits' own, so a file the
+base merged differently is no longer offered for recovery, and `format_orphaned`
+prints each commit's paths under it rather than the branch's after the last one.
+
+**What the measurement was worth, and what it was not.** `PL-3D2M` argued
+precision from 204 merged pull requests compared against the commit that landed
+each, at 0 discrepancies and 0 conflicts. That was true of the 204 then merged
+and did not cover the shape that broke it - a branch whose prose the base had
+edited underneath, which `#312` produced twenty minutes later. Checked again
+after the event: comparing that branch against its own landing commit conflicts
+rather than resolving, so the landing-commit comparison would not have fixed it
+either. The population a measurement covered is part of what it measured, and
+the claim has been qualified everywhere it appears.
+
+**What is still wrong, deliberately.** A commit pushed after the merge that
+happens to leave one file in a state the base has held reads as partly landed
+and goes unreported. Silence is this check's expensive direction everywhere
+else; the trade is taken only because the alternative was firing in every
+session.
+
+**The exact test, and why it is not this item.** The invariant that admits no
+heuristic is whether the branch ref points past the head the pull request
+merged: `refs/pull/<n>/head` is frozen at merge, so a tip beyond it is precisely
+the work left behind, with no content comparison and so no squash or rename
+confound. It needs `refs/pull/*` fetched, which is a GitHub-ism `docket` must
+not learn (`PL-SK88`), so it would live in `tools/` beside a CI job rather than
+here. That is a design decision for the project owner, recorded as `PL-VV4D`.
+
+**Done when.** The digest is silent on a branch whose commit the merge took and
+merged, and still reports one carrying a commit nothing took. Done, with a
+regression test built on real git for the first and the existing one for the
+second.

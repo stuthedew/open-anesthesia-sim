@@ -1869,13 +1869,35 @@ class OrphanedReport:
 def _commits_touching(
     ref: str, base: str, paths: frozenset[str], root: Path, run: Runner
 ) -> tuple[OrphanedCommit, ...]:
-    """The ref's own commits that touched one of `paths`, newest first.
+    """The ref's commits *none* of whose work reached the base, newest first.
 
-    Attribution is best-effort and the report says so: it names which commit a
-    reader should look at, while the paths themselves come from the tree
-    comparison and do not depend on this walk. A merge commit lists no paths of
-    its own under `--name-only`, which is the wanted behaviour - a merge of the
-    default branch into a branch introduces no work to leave behind.
+    **Wholly, not partly, and that is the whole of the rule.** A commit whose
+    changes are partly on the base is a commit the merge *took*: the squash
+    landed it and merged it with whatever the base had changed underneath, so
+    the files they both touched differ from the branch's copies while the work
+    itself is there. A commit none of whose changes reached the base is one
+    nothing took. Only the second is work left behind.
+
+    That distinction was learned from this check's own first live firing
+    (`PL-JHJ3`). `origin/claude/snapshot-run-history-copy-dw6djz` carried the
+    v0.3.8 release commit, which `#312` squash-merged while `#311` was landing
+    edits to the same `ROADMAP.md` prose; the merge wrote the combined text, so
+    three of that commit's ten paths read as never landed and the branch was
+    reported as carrying lost work. `main` was *ahead* of it, not missing
+    anything. Ten paths touched and seven landed is the signature of a merge
+    that happened, and no content comparison of the outstanding three can see
+    that - only counting them against the rest of the same commit can.
+
+    A merge commit lists no paths of its own under `--name-only`, which is the
+    wanted behaviour: merging the default branch into a branch introduces no
+    work to leave behind, and such a commit is neither reported nor counted.
+
+    The cost is recall, in one narrow shape: a commit pushed after the merge
+    that happens to leave one file in a state the base has held reads as partly
+    landed and goes unreported. Silence is this check's expensive direction
+    everywhere else, and the trade is taken here only because the alternative
+    was an advisory firing in every session's digest - which `CLAUDE.md` calls
+    a defect in the check rather than coverage.
 
     `\\x1e` opens each record so a subject containing a newline cannot be read
     as the start of another commit.
@@ -1887,10 +1909,8 @@ def _commits_touching(
             continue
         header, _, body = record.partition("\n")
         commit, _, subject = header.partition("\x1f")
-        touched = tuple(
-            line.strip() for line in body.splitlines() if line.strip() and line.strip() in paths
-        )
-        if touched:
+        touched = tuple(line.strip() for line in body.splitlines() if line.strip())
+        if touched and all(path in paths for path in touched):
             found.append(
                 OrphanedCommit(commit=commit.strip(), subject=subject.strip(), paths=touched)
             )
@@ -1918,25 +1938,33 @@ def orphaned(
     pushed after the merge appears in no pull-request ref and no merge-time
     check could see it. Measured against this repository: all 311 pull refs
     survive branch deletion, and comparing each merged head against the commit
-    that landed it finds no discrepancy in any of the 204 - the loss is not
-    visible from that side at all. What does survive is the branch, precisely
-    because the post-merge push recreates or keeps it.
+    that landed it found no discrepancy in any of the 204 then merged - the loss
+    is not visible from that side at all. What does survive is the branch,
+    precisely because the post-merge push recreates or keeps it.
 
-    **The rule, and why it is this one.** A branch whose introduced content is
-    partly on the base and partly not. A branch nobody merged has landed
+    That 204 is a sample and not a proof, and saying so is the point: the very
+    next merge produced a shape it did not contain - a release branch whose
+    prose the base had edited under it - and the check fired falsely on it. The
+    population a measurement covered is part of what it measured.
+
+    **The rule, in two parts, and the second was learned the hard way.** A
+    branch whose introduced content is partly on the base and partly not, *and*
+    which carries a commit none of whose paths reached the base at all. The
+    content split alone selects candidates - a branch nobody merged has landed
     nothing and is ordinary work in flight; a branch merged whole never reaches
-    here. Measured on this repository the day it was written: the one live
-    branch split 0 landed against 17 outstanding, which is the clean signature
-    of work in progress, so the rule was silent on the only ref it had to be
-    silent on.
+    here - but it cannot tell a commit nothing took from a commit the merge took
+    and *merged*, which is what a squash against a base that moved underneath
+    produces. `_commits_touching` carries that half and the branch that taught
+    it (`PL-JHJ3`).
 
-    **What it can get wrong, in the direction it chooses to get wrong.** Two
-    sessions running `bin/docket record` write the same tool-dictated line, so
-    one branch can hold a blob identical to one the other landed and read as
-    partly landed while it is simply live. That is a false alarm costing a
-    glance, against a false silence costing the work - and this check exists
-    because the silent direction is the expensive one. The reader decides,
-    the way they do for `flight` and `stranded`.
+    **What it can get wrong.** Two sessions running `bin/docket record` write
+    the same tool-dictated line, so one branch can hold a blob identical to one
+    the other landed and read as partly landed - which now costs nothing unless
+    a whole commit is also unaccounted for. In the other direction, a commit
+    pushed after the merge that happens to leave one file in a state the base
+    has held is not reported. Silence is the expensive direction here and the
+    trade is taken deliberately; `_commits_touching` says why. The reader
+    decides, the way they do for `flight` and `stranded`.
     """
     run = runner or _run_git
     base = default_base(root, runner=run)
@@ -1946,16 +1974,27 @@ def orphaned(
         # result would otherwise read as "every branch is accounted for",
         # which is the confident wrong answer this module refuses to give.
         return OrphanedReport(declined="no branch refs this checkout can read")
-    branches = [
-        OrphanedBranch(
-            ref=name,
-            landed=refs.landing[name][0],
-            outstanding=refs.landing[name][1],
-            commits=_commits_touching(name, base, frozenset(refs.landing[name][1]), root, run),
-        )
-        for name in refs.unlanded
-        if all(refs.landing.get(name, ((), ())))
-    ]
+    branches: list[OrphanedBranch] = []
+    for name in refs.unlanded:
+        landed, outstanding = refs.landing.get(name, ((), ()))
+        if not (landed and outstanding):
+            continue
+        left = _commits_touching(name, base, frozenset(outstanding), root, run)
+        # A split alone is not enough, and the branch that taught this is named
+        # in `_commits_touching`. The split says some of the branch's content is
+        # not on the base, which a squash merged against a moving base produces
+        # on its own; a commit *wholly* absent says nothing took it. Without a
+        # commit to name there is also nothing to hand a reader, which is the
+        # same fact from the other side.
+        if left:
+            # The branch's outstanding side is narrowed to the paths of the
+            # commits actually reported. The wider set includes files a merged
+            # commit touched that the base then merged differently, which are
+            # not missing from anywhere and must not be offered for recovery.
+            carried = tuple(sorted({path for commit in left for path in commit.paths}))
+            branches.append(
+                OrphanedBranch(ref=name, landed=landed, outstanding=carried, commits=left)
+            )
     return OrphanedReport(
         branches=tuple(branches),
         refs_read=len(refs.candidates),
