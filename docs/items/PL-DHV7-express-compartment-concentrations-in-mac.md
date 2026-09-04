@@ -3,9 +3,11 @@ id: PL-DHV7
 title: Express compartment concentrations in MAC multiples as a display unit
 priority: P1
 effort: M
-status: ready
+status: done
+closed: 2026-09-04
 classes: safety, science
 feature: teachable-case
+verify: uv run pytest tests/unit/test_formatting.py tests/unit/test_simulation_view.py && grep -q 'def test_every_compartment_is_readable_in_mac_multiples' tests/unit/test_simulation_view.py && grep -q 'def test_the_mac_resolution_is_derived_from_the_percent_resolution' tests/unit/test_formatting.py
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md, tests/unit/test_formatting.py
 added: 2026-08-25
 ---
@@ -139,3 +141,42 @@ display one.
 The displayed MAC denominator names its agent and its
 source at the point of display, per the "traceable from the display"
 requirement above.
+
+**Closed 2026-09-04.** Built as specified, with two design choices worth
+recording and one question left to the project owner.
+
+*Both units at once, never a toggle.* A unit selector would make the axis
+unit a mode, and a desflurane compartment read at 6.0 under an assumed
+sevoflurane scale is a misreading no disclaimer catches. Each readout carries
+a MAC line under its percent, and the chart carries a percent axis on the
+left and a MAC axis on the right. The chart's plotted points stay in percent
+and the MAC axis relabels that same coordinate rather than carrying a second
+series, so the two axes cannot come to disagree about where a trace is.
+
+*The resolution is derived, per the v0.4.1 note above.* One rule - the finest
+power of ten nowhere finer than the percent resolution converted into MAC -
+gives 0.01 MAC, bound by isoflurane, and `PL-X9KD`'s re-derivation of the
+percent side will propagate through it without a second derivation.
+`test_the_mac_resolution_is_derived_from_the_percent_resolution` re-runs that
+arithmetic against every shipped agent.
+
+*The MAC source was left as it stands, and put to the owner.* The stored
+tier-3 values are kept rather than moved to Mapleson's age-40 figures, for
+three reasons now recorded in `docs/MODEL.md` § "Delivery-limit and MAC
+parameters": Mapleson 1996 is a meta-analysis and therefore tier 2 under this
+project's own source hierarchy, which admits only tier 1 as the authority for
+a stored value; every other parameter here is the Gas Man set, so a Mapleson
+divisor over a Gas Man trajectory would make each multiple a ratio between two
+lineages; and Mapleson's own 95% confidence limits are plus or minus 7-10%, so
+no source makes the cross-agent comparison exact. The 22% sevoflurane-versus-
+desflurane displacement is disclosed in "Known limitations" and the divisor is
+displayed rather than hidden. Changing the three values remains a data-only
+change if the owner decides otherwise; `ROADMAP.md`'s planned-milestone item 31
+is the standing route.
+
+*One correction made in passing.* All three agent files described Nickalls and
+Mapleson 2003 as "the tier 1 age-related source". It is tier 2 - its own
+abstract states the charts are based on Mapleson's 1996 meta-analysis - and
+that claim sat on the one parameter this item promotes to safety-critical.
+Corrected in all three, and each now cites Mapleson 1996 with the age-40 value
+and the difference.
