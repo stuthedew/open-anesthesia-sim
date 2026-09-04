@@ -45,6 +45,7 @@ from .vcs import (
     files_in_flight,
     lost,
     merged_pull_requests,
+    precedence,
     stranded,
     tags,
 )
@@ -336,6 +337,14 @@ def cmd_show(args: argparse.Namespace) -> int:
     that marks against in-flight ids says so. A mark without that line presents
     a partial reading as a complete one, which is the collapse `FlightReport`
     exists to prevent.
+
+    **The mark then had to say *whose* branch it was.** "Do not start this
+    again" is the right answer to another session's work and a false alarm
+    about your own, and re-reading the item you are implementing is the
+    commonest reason to run this twice. `precedence` separates the two, and
+    where more than one branch is carrying the item it also says which of them
+    continues - the one question every other guard in this package leaves
+    open (queue item PL-YHD3).
     """
     _, items, _ = _load(args)
     item = find_item(items, args.item)
@@ -350,7 +359,15 @@ def cmd_show(args: argparse.Namespace) -> int:
     if item.milestone:
         print(f"  milestone: {item.milestone}")
     if item.identifier in flight.ids:
-        print(f"  IN FLIGHT on a branch - do not start {item.identifier} again.")
+        # The whole precedence read only where something is actually carrying
+        # the item, which is the rare case. A session starting ordinary work
+        # pays exactly what it paid before.
+        print(
+            render.format_precedence(
+                precedence(args.items.parent if args.items else find_root(), item.identifier),
+                args.today or date.today(),
+            )
+        )
     print()
     print(item.body.strip())
     _say_unread(flight)

@@ -27,6 +27,7 @@ from docket.vcs import (
     files_in_flight,
     lost,
     merged_pull_requests,
+    precedence,
     stranded,
     tags,
 )
@@ -35,17 +36,36 @@ ROOT = Path("/nowhere")
 BASE = "origin/main"
 
 
+def _when(day: str) -> str:
+    """A commit date in the shape `%cI` writes, from the day a test names.
+
+    Tests that only care which day a branch last moved on say `2026-08-20`;
+    tests that care which of two branches moved *first* say the whole
+    timestamp. Both reach git's format from here, so neither has to spell it.
+    """
+    return day if "T" in day else f"{day}T00:00:00+00:00"
+
+
 def _runner(
     refs: list[str],
     merged: list[str] | None = None,
-    commits: dict[str, list[tuple[str, str]]] | None = None,
+    commits: dict[str, list[tuple[str, ...]]] | None = None,
     unrelated: tuple[str, ...] = (),
     adds: dict[str, list[str]] | None = None,
     on_base: set[str] | None = None,
     log: list[list[str]] | None = None,
     ran_out: tuple[str, ...] = (),
+    head: str = "",
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
+
+    A commit may carry a third field, its hash, for the tests that turn on two
+    refs holding one commit - a local branch and its own tracking ref - which
+    is what tells one piece of work from two. Left out, each ref's commits get
+    hashes of their own.
+
+    `head` is the branch this checkout has checked out, which is how
+    `precedence` tells the reader's own claim from somebody else's.
 
     `unrelated` names the refs whose merge-base with the default branch does
     not resolve - a truncated clone's missing history, which git answers with
@@ -67,12 +87,24 @@ def _runner(
         if log is not None:
             log.append(args)
         if args[0] == "rev-parse":
+            if args[-1] == "HEAD":
+                return f"{head}\n" if head else ""
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "for-each-ref":
             if any(arg.startswith("--merged=") for arg in args):
                 return "\n".join(merged or [])
             return "\n".join(refs)
         if args[0] == "merge-base":
+            if args[-1] == "HEAD":
+                # `precedence` asks whether this checkout holds the commit that
+                # staked a claim; the checkout holds whatever its own branch
+                # committed. git answers by printing the merge base, so a
+                # commit HEAD carries is echoed back and anything else is not.
+                held = {
+                    entry[2] if len(entry) > 2 else f"{head}@{position}"
+                    for position, entry in enumerate((commits or {}).get(head, []))
+                }
+                return f"{args[-2]}\n" if args[-2] in held else "0123456789abcdef\n"
             return "" if args[-1] in unrelated else "0123456789abcdef\n"
         if args[0] == "diff":
             return "\n".join(
@@ -88,10 +120,12 @@ def _runner(
             lines = []
             for ref in walked:
                 entries = (commits or {}).get(ref, [])
-                for position, (day, subject) in enumerate(entries):
+                for position, entry in enumerate(entries):
+                    day, subject = entry[0], entry[1]
+                    commit = entry[2] if len(entry) > 2 else f"{ref}@{position}"
                     off_the_end = ref in ran_out and position == len(entries) - 1
                     parent = "" if off_the_end else "0f1e2d3"
-                    lines.append(f"{ref}\x1f{day}\x1f{parent}\x1f{subject}")
+                    lines.append(f"{ref}\x1f{_when(day)}\x1f{parent}\x1f{commit}\x1f{subject}")
             return "\n".join(lines)
         return ""
 
@@ -1656,3 +1690,175 @@ def test_a_report_with_no_base_reads_nothing() -> None:
     files = files_in_flight(ROOT, FlightReport(), runner=_files_runner({}))
 
     assert files == FlightFiles()
+
+
+# --- precedence: which of two branches carrying one item continues -----------
+
+FIRST = "origin/claude/pl-k7qx-first"
+SECOND = "origin/claude/pl-k7qx-second"
+EARLY = ("2026-09-04T10:00:00+00:00", "PL-K7QX Start the thing", "aaaa111")
+LATE = ("2026-09-04T10:40:00+00:00", "PL-K7QX Start the thing too", "bbbb222")
+
+
+def _precedence(
+    refs: list[str],
+    commits: dict[str, list[tuple[str, ...]]] | None = None,
+    head: str = "",
+    item: str = "PL-K7QX",
+    ran_out: tuple[str, ...] = (),
+):
+    return precedence(ROOT, item, runner=_runner(refs, commits=commits, head=head, ran_out=ran_out))
+
+
+def test_precedence_gives_the_item_to_the_branch_that_named_it_first() -> None:
+    order = _precedence([FIRST, SECOND], {FIRST: [EARLY], SECOND: [LATE]})
+
+    assert [carrier.ref for carrier in order.carriers] == [FIRST, SECOND]
+    assert order.holder is not None
+    assert order.holder.ref == FIRST
+
+
+def test_precedence_orders_by_the_earliest_commit_not_the_newest() -> None:
+    """A branch that pushes again does not overtake one that started before it.
+
+    The whole point of dating a claim from its first commit: otherwise the
+    session that has been at it longest loses the item every time the other
+    one saves its work.
+    """
+    order = _precedence(
+        [FIRST, SECOND],
+        {FIRST: [("2026-09-04T10:05:00+00:00", "PL-K7QX More", "aaaa999"), EARLY], SECOND: [LATE]},
+    )
+
+    assert order.holder is not None
+    assert order.holder.ref == FIRST
+
+
+def test_precedence_breaks_a_tie_on_the_commit_hash() -> None:
+    """Two commits can share a second, and a tie both sessions cannot break is the defect."""
+    same = "2026-09-04T10:00:00+00:00"
+    order = _precedence(
+        [SECOND, FIRST],
+        {FIRST: [(same, "PL-K7QX One", "bbbb222")], SECOND: [(same, "PL-K7QX Two", "aaaa111")]},
+    )
+
+    assert order.holder is not None
+    assert order.holder.ref == SECOND
+
+
+def test_precedence_reads_a_branch_and_its_tracking_ref_as_one_carrier() -> None:
+    """Telling a session to yield to itself is the one answer this must never give."""
+    local = "claude/pl-k7qx-first"
+    order = _precedence([local, FIRST], {local: [EARLY], FIRST: [EARLY]}, head=local)
+
+    assert len(order.carriers) == 1
+    assert order.carriers[0].mine
+    assert not order.yields
+
+
+def test_precedence_says_this_branch_yields_to_the_earlier_claim() -> None:
+    local = "claude/pl-k7qx-second"
+    order = _precedence([local, FIRST], {local: [LATE], FIRST: [EARLY]}, head=local)
+
+    assert order.yields
+    assert order.mine is not None
+    assert order.mine.ref == local
+    assert order.holder is not None
+    assert order.holder.ref == FIRST
+
+
+def test_precedence_does_not_call_it_a_yield_when_this_branch_carries_nothing() -> None:
+    """A session that has not started has nothing to hand over and nothing to stop."""
+    order = _precedence(
+        ["claude/some-other-work-abcdef", FIRST],
+        {FIRST: [EARLY]},
+        head="claude/some-other-work-abcdef",
+    )
+
+    assert not order.yields
+    assert order.mine is None
+    assert order.holder is not None
+    assert order.holder.ref == FIRST
+
+
+def test_precedence_never_makes_both_sessions_yield() -> None:
+    """The failure worth more than the one it replaces: work nobody is doing.
+
+    Both checkouts see the same two pushed branches and differ only in which
+    one they have checked out, which is the position the two sessions are
+    actually in.
+    """
+    refs = ["claude/pl-k7qx-first", "claude/pl-k7qx-second", FIRST, SECOND]
+    commits = {
+        "claude/pl-k7qx-first": [EARLY],
+        FIRST: [EARLY],
+        "claude/pl-k7qx-second": [LATE],
+        SECOND: [LATE],
+    }
+
+    stood_down = [
+        _precedence(refs, commits, head=branch).yields
+        for branch in ("claude/pl-k7qx-first", "claude/pl-k7qx-second")
+    ]
+
+    assert stood_down == [False, True]
+
+
+def test_precedence_dates_a_branch_named_for_the_item_from_its_first_commit() -> None:
+    """A branch name claims the item from the moment there is anything on it."""
+    order = _precedence(
+        [FIRST], {FIRST: [("2026-09-04T09:00:00+00:00", "Fix the thing", "cccc333")]}
+    )
+
+    assert order.holder is not None
+    assert order.holder.staked is not None
+    assert order.holder.staked.commit == "cccc333"
+
+
+def test_precedence_dates_a_rider_from_the_commit_that_named_it() -> None:
+    """A branch carrying somebody else's item did not claim it before it said so."""
+    rider = "origin/claude/pl-j295-other"
+    order = _precedence(
+        [rider],
+        {
+            rider: [
+                ("2026-09-04T11:00:00+00:00", "PL-K7QX Pick this up too", "dddd444"),
+                ("2026-09-04T08:00:00+00:00", "PL-J295 The branch's own work", "eeee555"),
+            ]
+        },
+    )
+
+    assert order.holder is not None
+    assert order.holder.staked is not None
+    assert order.holder.staked.commit == "dddd444"
+
+
+def test_precedence_sorts_an_unreadable_claim_behind_every_dated_one() -> None:
+    """An unread ref put first would make every session in a truncated clone yield."""
+    truncated = "origin/claude/pl-k7qx-truncated"
+    order = _precedence(
+        [truncated, FIRST],
+        {truncated: [("2026-09-04T08:00:00+00:00", "PL-K7QX Older", "ffff666")], FIRST: [EARLY]},
+        ran_out=(truncated,),
+    )
+
+    assert [carrier.ref for carrier in order.carriers] == [FIRST, truncated]
+    assert order.carriers[1].staked is None
+    assert truncated in order.unreadable
+
+
+def test_precedence_ignores_a_branch_carrying_another_item() -> None:
+    order = _precedence(
+        [FIRST, "origin/claude/pl-j295-elsewhere"],
+        {FIRST: [EARLY], "origin/claude/pl-j295-elsewhere": [("2026-09-01", "PL-J295 Other")]},
+    )
+
+    assert [carrier.ref for carrier in order.carriers] == [FIRST]
+
+
+def test_precedence_finds_nothing_where_no_branch_carries_the_item() -> None:
+    order = _precedence(["main", "origin/claude/unrelated-abcdef"])
+
+    assert order.carriers == ()
+    assert order.holder is None
+    assert not order.yields

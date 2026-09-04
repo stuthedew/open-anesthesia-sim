@@ -283,6 +283,34 @@ that repair; the larger half is prose, in the `docket` skill, because a session
 handed an item is not obliged to run any command at all. `triage` carries the
 same mark now, for a collision it went on to hit itself — below.
 
+**Detection stops at "somebody is on it"; `precedence` says which one
+continues.** Everything above answers whether an item is being worked, and
+nothing said which of two sessions discovering each other was the one to stop.
+Two sessions reasoning in prose from the same evidence can reach the same
+answer as each other or the opposite one, with no way to tell which happened
+until the merge — and the expensive outcome is not both continuing, which is
+merely the state before any of this, but both standing down, after which the
+item is unstarted and each session believes the other has it.
+
+So it is an order rather than a judgment: the earliest commit naming the item
+holds it, and a tie breaks on that commit's hash. Both halves carry weight. The
+*earliest* commit, so a session that pushes again does not overtake one that
+started before it; a commit rather than a push time, because git records no
+push time and a commit's date is the same fact in both checkouts. Two sessions
+can still both continue, when one has pushed nothing the other can see; what
+cannot happen is both yielding, since that needs each to be ahead of the other
+in one order. `docket show` prints the order whenever more than one branch is
+carrying the item.
+
+**A claim is identified by the commit that staked it, never by the ref that
+reached it.** `git log --source` credits a commit two refs reach to one of
+them, and not reliably the one named first — so a branch a single merge ahead
+of its own tracking ref has its claim reported under `origin/...`, and a check
+on branch names then reads a session's own work as somebody else's and tells it
+to stand down. Asking whether `HEAD` *contains* the staking commit answers it
+for the local branch, its tracking ref, and a branch pushed under a third name
+alike.
+
 Neither half reaches the network. Only `docket branch` calls `fetch_remote`, so
 `flight` and `show` answer from the refs this checkout already holds — which is
 what lets them answer in a bare or offline tree, and what makes a fetch the
