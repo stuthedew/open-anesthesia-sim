@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: planning-cadence
+milestone: v0.3.7
 touches: subprojects/docket/src/docket/plan.py, docs/items/
 added: 2026-09-02
 closed: 2026-09-04

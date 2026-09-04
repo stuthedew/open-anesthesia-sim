@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: delegation
+milestone: v0.3.7
 touches: CLAUDE.md, .claude/settings.json, tools/stop_hook_patch.py, tests/unit/test_stop_hook_patch.py, docs/ARCHITECTURE.md
 added: 2026-09-03
 closed: 2026-09-04

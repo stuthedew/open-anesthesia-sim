@@ -93,11 +93,18 @@ and the chart-series assembly are already in `app/formatting.py` and
 waited; it no longer holds. Recovered from `origin/claude/what-next-rsmqeu`,
 which was abandoned without a pull request.
 
-**Both blocks cleared 2026-09-04.** `PL-DR1Z` (the control-input timeline)
-merged as `#301`, so the marks that make a mid-run setting change visible are
-already on the chart and this item puts a second pool of them on the wash-in
-plot itself. `PL-WB0X` merged earlier as `#263`. Neither paragraph above holds
-any longer; both are kept as the record of why this waited.
+**Unblocked 2026-09-04.** `PL-DR1Z` (record the control-input timeline and mark
+it on the chart) landed in v0.3.7, so the caveat this item's trace carries -
+that the curve means what the textbook curve means only while inspired
+concentration is held constant - is now something a reader can *check* rather
+than only be told: a mid-run change to the delivered dial is marked on the same
+chart, at the simulated time it took effect. That was the dependency, and it is
+why this item's band followed it.
+
+**`PL-WB0X` had cleared earlier**, as `#263`, so the formatters and the
+chart-series assembly were already in `app/formatting.py` and
+`app/chart_series.py` when this was worked. Neither blocked paragraph above
+holds any longer; both are kept as the record of why this waited.
 
 **`controller.py` drops off `touches:`, and two modules join it.** The ratio is
 a displayed quantity rather than recorded state, so nothing is added to

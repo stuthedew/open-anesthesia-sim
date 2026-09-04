@@ -5,6 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: defect, safety
+milestone: v0.3.7
 touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, tests/unit/test_chart_downsampling.py, tests/integration/test_chart_patching.py
 added: 2026-09-04
 closed: 2026-09-04

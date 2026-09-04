@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, ux
 feature: teachable-case
+milestone: v0.3.7
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-08-25
 closed: 2026-09-04
