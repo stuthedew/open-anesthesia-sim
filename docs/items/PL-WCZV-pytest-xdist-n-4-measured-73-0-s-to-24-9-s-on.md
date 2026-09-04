@@ -113,6 +113,21 @@ rather than a pinned width working in the direction that matters: the same
 string gives each machine what it can use, and nobody has to keep a number
 current for a runner they cannot see.
 
+**How much narrower, from the log rather than by inference** (added 2026-09-04,
+`PL-KCQ7`'s session, which reproduced this measurement before finding the two
+had collided). The `checks` step prints `created: 2/2 workers` and `2 workers
+[1224 items]`: **two**, not four. The cause is not the runner image but this
+repository's visibility - GitHub's standard Linux runner is four vCPUs on a
+public repository and two on a private one, and this repository is private. So
+two cores bought 1.37x where four bought 2.85x, and nothing is misconfigured.
+
+That turns the `auto` argument above from a principle into a measurement: a
+pinned `-n 4` would have put four workers on two cores every CI run from the
+day it landed. It also means the CI figure improves on its own if this
+repository is ever made public, with no edit here. Reproduced independently at
+67 s serial (runs 33818974668 and 33820263730) against 49 s at `-n auto` (run
+33820466910), which is the same 27-28% this item already records.
+
 It also relocates the cost on CI. `bin/docket check` was already the largest
 step there - 72 s against pytest's 69 s on the pre-change run - and pytest
 dropping to 50 s makes that gap decisive rather than marginal. `PL-8BFV` is
