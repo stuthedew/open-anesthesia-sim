@@ -10,6 +10,10 @@ from __future__ import annotations
 from datetime import date
 
 from docket.model import (
+    LANE_CROSSING,
+    LANE_PRODUCT,
+    LANE_UNPLACED,
+    LANE_WORKFLOW,
     Item,
     parse_front_matter,
     parse_item,
@@ -287,3 +291,55 @@ def test_a_file_with_no_repeated_key_reports_none() -> None:
     assert repeated_front_matter_keys("---\nid: PL-K7QX\ntitle: t\n---\nBody\n") == ()
     assert repeated_front_matter_keys("# Just a heading\n") == ()
     assert parse_item("---\nid: PL-K7QX\ntitle: t\n---\nBody\n").duplicate_fields == ()
+
+
+WORKFLOW = ("tools", ".claude", "docs/items", "CLAUDE.md")
+
+
+def test_an_item_wholly_inside_the_apparatus_is_workflow_work() -> None:
+    item = _item(touches=("tools/doc_check.py", ".claude/skills/docket/SKILL.md"))
+
+    assert item.lane(WORKFLOW) == LANE_WORKFLOW
+
+
+def test_an_item_touching_none_of_the_apparatus_is_product_work() -> None:
+    item = _item(touches=("src/anesthesia_sim/core/blood.py", "docs/MODEL.md"))
+
+    assert item.lane(WORKFLOW) == LANE_PRODUCT
+
+
+def test_an_item_reaching_both_halves_is_neither_lane_s_to_take() -> None:
+    """The case the split exists for: two sessions must not both be offered it."""
+    item = _item(touches=("tools/doc_check.py", "docs/MODEL.md"))
+
+    assert item.lane(WORKFLOW) == LANE_CROSSING
+
+
+def test_an_item_declaring_no_touches_cannot_be_placed() -> None:
+    """Silence is not 'product'. Guessing here is how a lane hands over the wrong work."""
+    assert _item(touches=()).lane(WORKFLOW) == LANE_UNPLACED
+
+
+def test_no_declared_boundary_leaves_every_item_unplaced() -> None:
+    """Fail closed, exactly as an unconfigured `protected_paths` refuses delegation."""
+    assert _item(touches=("tools/doc_check.py",)).lane(()) == LANE_UNPLACED
+
+
+def test_a_workflow_prefix_does_not_match_a_merely_similar_path() -> None:
+    """`tools` must not claim `toolsmith.py`, nor `CLAUDE.md` claim `CLAUDE.md.bak`."""
+    assert _item(touches=("toolsmith.py",)).lane(WORKFLOW) == LANE_PRODUCT
+    assert _item(touches=("CLAUDE.md.bak",)).lane(WORKFLOW) == LANE_PRODUCT
+    assert _item(touches=("tools/doc_check.py",)).lane(WORKFLOW) == LANE_WORKFLOW
+
+
+def test_a_declared_path_is_placed_whatever_its_classes_say() -> None:
+    """`classes` describes the kind of work; only `touches` says which half it is in.
+
+    A defect in this repository's tooling and a defect in the simulator carry
+    the same label, which is why the lane is not read from `classes` (`PL-8165`).
+    """
+    tooling = _item(classes=("defect",), touches=("tools/doc_check.py",))
+    simulator = _item(classes=("docs",), touches=("docs/MODEL.md",))
+
+    assert tooling.lane(WORKFLOW) == LANE_WORKFLOW
+    assert simulator.lane(WORKFLOW) == LANE_PRODUCT

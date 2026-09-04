@@ -17,8 +17,8 @@ from datetime import date
 from .checks import DONE_WHEN, REQUIRED_BRIEF, Report, brief_gaps
 from .concurrency import undeclared
 from .config import Config
-from .model import PRIORITIES, Item
-from .plan import Feature, Gate, effort_total, recommend
+from .model import PRIORITIES, SELECTABLE_LANES, Item
+from .plan import Feature, Gate, effort_total, recommend, set_aside
 from .release import PLANNED, RESERVED, Readiness, release_offer
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
 from .vcs import CURRENT, PULL, RESTART, Branch, BranchState, FlightReport, StrandedReport
@@ -160,12 +160,50 @@ def format_delegable(
     return "\n".join(lines)
 
 
+def _by_lane(
+    report: Report, flight: FlightReport, plan: Wave | None, workflow_paths: tuple[str, ...]
+) -> str:
+    """Each lane's own pick, for the session that is one of a parallel pair.
+
+    Ranked through `recommend` exactly as the `Top:` line above it is, and for
+    the same reason: two lines in one block that ranked by different rules
+    would contradict each other where a reader can see both at once.
+
+    Empty when no boundary is declared, and when neither lane has anything
+    startable - a line saying "product none, workflow none" costs a line of
+    every session's context and answers nothing.
+    """
+    if not workflow_paths:
+        return ""
+    picks = {
+        lane: recommend(
+            list(report.items),
+            flight.ids,
+            limit=1,
+            scope=plan.scope if plan is not None else None,
+            lane=lane,
+            workflow_paths=workflow_paths,
+        )
+        for lane in SELECTABLE_LANES
+    }
+    if not any(picks.values()):
+        return ""
+    named = ", ".join(
+        f"{lane} {found[0].item.identifier}" if (found := picks[lane]) else f"{lane} none"
+        for lane in SELECTABLE_LANES
+    )
+    held = set_aside(list(report.items), flight.ids, workflow_paths=workflow_paths)
+    spanning = f"; {held.total} in neither lane" if held.total else ""
+    return f"By lane, for a second session: {named}{spanning}."
+
+
 def format_digest(
     report: Report,
     in_flight: FlightReport | None = None,
     ready: Readiness | None = None,
     plan: Wave | None = None,
     stranded: StrandedReport | None = None,
+    workflow_paths: tuple[str, ...] = (),
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -201,6 +239,22 @@ def format_digest(
     instead of dropping it. That is `recommend`'s own rule: which section
     names an id is a fact, and whether the plan is wrong about it is a verdict
     this cannot support.
+
+    The lane line exists because this is what a session reads *first* - before
+    it would think to ask for a lane, and before the skill that would tell it
+    to has loaded. `docket next` gained `product` and `workflow` so two
+    simultaneous sessions never rank onto one item, and a digest that named a
+    single `Top:` left the split inert until somebody remembered to type it
+    (`PL-2NSX`). Both picks are named rather than one: the hook runs before
+    anything has been said, so it cannot know which half this session is, and
+    guessing would hand a session the other one's work.
+
+    It costs one line in every digest, single-session ones included, which is
+    why it carries "for a second session" rather than reading as an
+    instruction, and why it is omitted entirely where no boundary is declared
+    or neither lane has anything startable. Work spanning both halves is
+    counted on the same line: a session that read only the two picks would
+    otherwise take them for the whole queue.
     """
     flight = in_flight or FlightReport()
     if not report.items:
@@ -224,6 +278,9 @@ def format_digest(
         if top.scoped_to:
             marks += f", scoped to {top.scoped_to}, not this step"
         lines.append(f"  Top: {top.item.identifier} {top.item.title} ({marks})")
+
+    if lane_line := _by_lane(report, flight, plan, workflow_paths):
+        lines.append(f"  {lane_line}")
 
     if flight.ids:
         lines.append(

@@ -77,3 +77,15 @@ def test_a_malformed_verify_cutover_is_rejected_rather_than_ignored(tmp_path: Pa
 
 def test_the_verify_requirement_is_off_until_a_project_adopts_it(tmp_path: Path) -> None:
     assert load(tmp_path).verify_required_from is None
+
+
+def test_workflow_paths_are_read_from_the_config(tmp_path: Path) -> None:
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nworkflow_paths = ["tools", ".claude"]\n', encoding="utf-8"
+    )
+    assert load(tmp_path).workflow_paths == ("tools", ".claude")
+
+
+def test_workflow_paths_default_to_empty_which_disables_the_lanes(tmp_path: Path) -> None:
+    """Fail closed: a lane that quietly answers from the whole queue is the bug."""
+    assert load(tmp_path).workflow_paths == ()
