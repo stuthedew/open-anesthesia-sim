@@ -3,12 +3,11 @@ id: PL-F52R
 title: Draw the MAC-awake reference band on the chart
 priority: P1
 effort: S
-status: blocked
+status: ready
 classes: safety, science, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/data/agents, docs/MODEL.md
 added: 2026-08-25
-blocked-by: PL-DHV7
 ---
 **Problem.** A washout curve on its own has no endpoint. A learner turns the
 vaporizer off, watches the alveolar trace fall, and has nothing to read it against -

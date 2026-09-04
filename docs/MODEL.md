@@ -1078,7 +1078,8 @@ comparison the second display unit exists to make honest — differs by about
 confidence limits and is a real limitation of the display, recorded in
 "Known limitations" rather than left implicit.
 
-**Why the Mapleson values are nonetheless not adopted here.** Three reasons,
+**Why the Mapleson values are nonetheless not adopted here** (project owner,
+2026-09-04, on the recommendation below). Three reasons,
 and the first is this document's own rule. Mapleson 1996 is a meta-analysis:
 it regresses a literature survey and measures nothing, which is **tier 2**
 under "Source hierarchy", and tier 2 may never be the authority for a stored
@@ -1092,6 +1093,15 @@ limitation — which the interface and this section do — rather than to
 substitute a different non-primary number and present it as settled. The
 route to primary values for all three agents is `ROADMAP.md`'s
 planned-milestone item 31.
+
+**This is a decision taken, not a default left standing.** It was put to the
+project owner when the second display unit was built, with the gap measured
+and the alternative costed, and the stored values were kept on 2026-09-04.
+Revisiting it is therefore a change to a recorded decision rather than a
+correction of an oversight: the case above is what a later revision has to
+answer, and item 31 is where the answer belongs, because moving `mac_percent`
+alone would leave one parameter on a different lineage from the twelve
+coefficients beside it.
 
 Each agent's `sources` array carries the citation, the tier, the Mapleson
 value it was not taken from, and the difference.

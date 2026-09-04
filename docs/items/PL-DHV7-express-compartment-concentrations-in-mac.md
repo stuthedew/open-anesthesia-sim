@@ -160,7 +160,8 @@ percent side will propagate through it without a second derivation.
 `test_the_mac_resolution_is_derived_from_the_percent_resolution` re-runs that
 arithmetic against every shipped agent.
 
-*The MAC source was left as it stands, and put to the owner.* The stored
+*The MAC source was put to the owner, who kept the stored values*
+(2026-09-04). The stored
 tier-3 values are kept rather than moved to Mapleson's age-40 figures, for
 three reasons now recorded in `docs/MODEL.md` § "Delivery-limit and MAC
 parameters": Mapleson 1996 is a meta-analysis and therefore tier 2 under this
@@ -170,9 +171,11 @@ divisor over a Gas Man trajectory would make each multiple a ratio between two
 lineages; and Mapleson's own 95% confidence limits are plus or minus 7-10%, so
 no source makes the cross-agent comparison exact. The 22% sevoflurane-versus-
 desflurane displacement is disclosed in "Known limitations" and the divisor is
-displayed rather than hidden. Changing the three values remains a data-only
-change if the owner decides otherwise; `ROADMAP.md`'s planned-milestone item 31
-is the standing route.
+displayed rather than hidden. `docs/MODEL.md` records it as a decision taken
+rather than a default left standing, so a later revision answers that case
+rather than treating it as an oversight; `ROADMAP.md`'s planned-milestone item
+31 is the standing route, and it moves all twelve coefficients with it rather
+than stranding `mac_percent` on its own lineage.
 
 *One correction made in passing.* All three agent files described Nickalls and
 Mapleson 2003 as "the tier 1 age-related source". It is tier 2 - its own
