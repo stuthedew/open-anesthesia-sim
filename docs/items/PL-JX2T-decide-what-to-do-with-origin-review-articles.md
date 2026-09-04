@@ -4,11 +4,12 @@ title: Decide what to do with origin/Review_articles: one unattributed commit ah
 priority: P2
 effort: S
 status: done
-closed: 2026-09-04
 classes: docs
 feature: provenance
 touches: docs/references/README.md, docs/MODEL.md, README.md, .gitattributes
 added: 2026-09-04
+closed: 2026-09-04
+pr: 298
 verify: python3 tools/doc_check.py check && test -f docs/references/schuttler-schwilden-2008-modern-anesthetics-hep-182.pdf
 ---
 
@@ -68,5 +69,14 @@ models) and 14 (a modular hypnosis/eBIS effect model) — so this is sourcing
 material for those, not new scope, and the references README says so.
 
 **Done when.** The branch is merged behind an item, deleted, or explicitly kept
-with that decision recorded here. Done: content landed under `docs/references/`,
-branch deleted.
+with that decision recorded here. Done: content landed under `docs/references/`
+in #298, verified byte-identical — both PDF blobs carry the same SHAs on `main`
+as on `556d454` (`cbd4e7d…` and `5eaa2df…`), so the branch holds nothing `main`
+lacks.
+
+**The branch itself is still on the remote, and no session can remove it.**
+`git push origin --delete Review_articles` fails through this environment's git
+proxy, which drops the deletion ref and leaves git reporting `Everything
+up-to-date` at exit status 0; the GitHub MCP server has no branch-deletion tool.
+Deleting it is the project owner's action. `PL-TFWR` carries the diagnosis and
+the question of what the instructions should say about it.
