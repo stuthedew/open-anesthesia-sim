@@ -805,6 +805,67 @@ def test_stranded_reports_a_commit_pushed_after_its_pull_request_merged(
     assert "work.py" not in out
 
 
+def test_stranded_is_silent_when_the_merge_took_the_commit_and_merged_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The shape that made this check fire falsely on its first live run.
+
+    A branch commits, the base moves on to edit the same file, and the squash
+    merge writes the combined text. The branch's copy of that file then matches
+    nothing the base has ever held, so a content comparison calls it work left
+    behind - while the base is in fact *ahead* of the branch. Observed on
+    `origin/claude/snapshot-run-history-copy-dw6djz` carrying the v0.3.8
+    release commit, squash-merged as `#312` while `#311` edited the same
+    `ROADMAP.md` prose (`PL-JHJ3`).
+
+    Real git, because the confusion is entirely in what a squash against a
+    moved base writes, and an injected runner cannot produce that.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    (root / "NOTES.md").write_text("first line\n")
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+
+    git("checkout", "-qb", "claude/pl-k7qx-release")
+    (root / "NOTES.md").write_text("first line\nthe branch's own paragraph\n")
+    (root / "shipped.md").write_text("what the branch shipped\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: the release commit")
+
+    # The base moves on, editing the same file, and the squash writes the
+    # combined text - so the branch's copy of NOTES.md is on no tree the base
+    # has held, while every line of it is.
+    git("checkout", "-q", "main")
+    (root / "NOTES.md").write_text("first line\nan edit that landed first\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-OTHER: an edit that landed first (#1)")
+    (root / "NOTES.md").write_text(
+        "first line\nan edit that landed first\nthe branch's own paragraph\n"
+    )
+    (root / "shipped.md").write_text("what the branch shipped\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: the release commit (#2)")
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert "No branch carries work its own pull request left behind" in out
+    assert "claude/pl-k7qx-release" not in out
+
+
 def test_stranded_leaves_a_branch_whose_work_is_all_unlanded_alone(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

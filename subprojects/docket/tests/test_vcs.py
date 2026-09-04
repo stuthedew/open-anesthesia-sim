@@ -71,6 +71,7 @@ def _runner(
     unrelated: tuple[str, ...] = (),
     adds: dict[str, list[str] | list[tuple[str, str]]] | None = None,
     on_base: set[str] | None = None,
+    touched: dict[str, list[tuple[str, tuple[str, ...]]]] | None = None,
     log: list[list[str]] | None = None,
     ran_out: tuple[str, ...] = (),
     head: str = "",
@@ -97,7 +98,9 @@ def _runner(
     `adds` maps a ref to the blobs it introduces since its fork point and
     `on_base` names the blobs the default branch has held at some point, which
     is what separates a branch whose work has landed from one still carrying
-    it. `log`, when passed, collects every command for a test that asserts
+    it. `touched` maps a ref to its commits as (subject, paths), newest first,
+    which is what `orphaned` reads to tell a commit the merge took from one
+    nothing took. `log`, when passed, collects every command for a test that asserts
     which question was asked rather than what the answer was.
     """
 
@@ -135,12 +138,15 @@ def _runner(
             )
         if args[0] == "log":
             if "--name-only" in args:
-                # Which commit touched which path is plumbing rather than a
-                # rule, so it is proved against real git in `test_cli.py` and
-                # answered with silence here. `orphaned`'s own report keeps the
-                # paths separate from this walk for exactly that reason: they
-                # come from the tree comparison and do not depend on it.
-                return ""
+                # `orphaned` decides on this walk - a commit *none* of whose
+                # paths reached the base - so the fake has to answer it. The
+                # record shape is git's: \x1e opens each, then the hash, \x1f,
+                # the subject, then one path per line.
+                walked = args[-2]
+                return "".join(
+                    "\x1e{}\x1f{}\n{}\n".format(f"{walked}@{position}", subject, "\n".join(paths))
+                    for position, (subject, paths) in enumerate((touched or {}).get(walked, []))
+                )
             wanted = [arg for arg in args if arg.startswith("--find-object=")]
             if wanted:
                 held = wanted[0].split("=", 1)[1] in (on_base or set())
@@ -1913,8 +1919,11 @@ def _orphaned(
     on_base: set[str],
     refs: list[str] | None = None,
     merged: list[str] | None = None,
+    touched: dict[str, list[tuple[str, tuple[str, ...]]]] | None = None,
 ) -> OrphanedReport:
-    return orphaned(ROOT, runner=_runner(refs or [PARTLY], merged, adds=adds, on_base=on_base))
+    return orphaned(
+        ROOT, runner=_runner(refs or [PARTLY], merged, adds=adds, on_base=on_base, touched=touched)
+    )
 
 
 def test_a_branch_pushed_to_after_its_pull_request_merged_is_reported() -> None:
@@ -1926,12 +1935,22 @@ def test_a_branch_pushed_to_after_its_pull_request_merged_is_reported() -> None:
     this project noticed before `orphaned` (`PL-3D2M`).
     """
     report = _orphaned(
-        adds={PARTLY: [("a1", "landed.txt"), ("a2", "pushed-after.md")]}, on_base={"a1"}
+        adds={PARTLY: [("a1", "landed.txt"), ("a2", "pushed-after.md")]},
+        on_base={"a1"},
+        touched={
+            PARTLY: [
+                ("PL-ZSV6 the rule pushed after the merge", ("pushed-after.md",)),
+                ("PL-K7QX the work the pull request took", ("landed.txt",)),
+            ]
+        },
     )
 
     assert [branch.ref for branch in report.branches] == [PARTLY]
     assert report.branches[0].outstanding == ("pushed-after.md",)
     assert report.branches[0].landed == ("landed.txt",)
+    assert [commit.subject for commit in report.branches[0].commits] == [
+        "PL-ZSV6 the rule pushed after the merge"
+    ]
 
 
 def test_a_branch_that_has_landed_nothing_is_ordinary_work_in_flight() -> None:
@@ -2022,3 +2041,44 @@ def test_the_digest_names_a_commit_pushed_after_its_pull_request_merged() -> Non
 def test_the_digest_stays_silent_when_no_branch_has_been_left_behind() -> None:
     """The ordinary case, and the one a line resent every turn must not cost."""
     assert "after its pull request merged" not in _digest(left=OrphanedReport(refs_read=2))
+
+
+def test_a_commit_the_merge_took_and_merged_is_not_work_left_behind() -> None:
+    """The regression this check earned on its own first live firing.
+
+    `origin/claude/snapshot-run-history-copy-dw6djz` carried the v0.3.8 release
+    commit. `#312` squash-merged it while `#311` was landing edits to the same
+    `ROADMAP.md` prose, so the merge wrote the combined text and three of that
+    commit's ten paths no longer matched anything the base had held - and the
+    branch was reported as carrying lost work while `main` was *ahead* of it.
+
+    One commit, partly landed, is a merge that happened. Only a commit *none*
+    of whose paths reached the base is work nothing took (`PL-JHJ3`).
+    """
+    report = _orphaned(
+        adds={
+            PARTLY: [
+                ("a1", "pyproject.toml"),
+                ("a2", "docs/releases/v0.3.8.md"),
+                ("b1", "ROADMAP.md"),
+            ]
+        },
+        on_base={"a1", "a2"},
+        touched={
+            PARTLY: [
+                ("Release v0.3.8", ("pyproject.toml", "docs/releases/v0.3.8.md", "ROADMAP.md"))
+            ]
+        },
+    )
+
+    assert report.branches == ()
+
+
+def test_a_branch_whose_commits_cannot_be_walked_is_not_reported() -> None:
+    """No commit to name is no finding to hand a reader, and it says so by silence."""
+    assert (
+        _orphaned(
+            adds={PARTLY: [("a1", "landed.txt"), ("a2", "pushed-after.md")]}, on_base={"a1"}
+        ).branches
+        == ()
+    )

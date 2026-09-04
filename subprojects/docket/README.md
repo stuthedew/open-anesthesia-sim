@@ -94,25 +94,44 @@ It surfaced only because that session happened to check the merge file by file.
 `stranded` would have reported the item on the branch; nothing at all watched
 the skill edit beside it, which was the actual behavior change.
 
-`docket stranded` reports it now. **The rule is a branch whose introduced
-content is partly on the base and partly not** — a branch nobody merged has
-landed nothing and is ordinary work in flight, and a branch merged whole never
-reaches the read. The report names the outstanding paths, the commit carrying
-them and the `git checkout` line that recovers each.
+`docket stranded` reports it now. **The rule has two parts**: a branch whose
+introduced content is partly on the base and partly not, *and* which carries a
+commit none of whose paths reached the base at all. The first selects
+candidates — a branch nobody merged has landed nothing and is ordinary work in
+flight, and a branch merged whole never reaches the read. The second is what
+tells a commit nothing took from a commit the merge took and *merged*.
+
+The second part was learned from the check's own first live firing. A branch
+carrying the v0.3.8 release commit was squash-merged as `#312` while `#311` was
+landing edits to the same `ROADMAP.md` prose; the merge wrote the combined text,
+so three of that commit's ten paths matched nothing the base had ever held and
+the branch was reported as carrying lost work — while `main` was *ahead* of it.
+Ten paths touched and seven landed is the signature of a merge that happened,
+and no comparison of the outstanding three can see that. Only counting them
+against the rest of the same commit can.
+
+The report names the commits nothing took, the paths under each, and the
+`git checkout` line that recovers them.
 
 **The branch ref is the only evidence, and that is worth stating because the
 obvious alternative does not work.** GitHub freezes `refs/pull/<n>/head` when
 the pull request closes, so the commit pushed after the merge appears in no
 pull-request ref and no merge-time check could see it. Measured against this
 repository: all 311 pull refs survive their branches being deleted, and
-comparing each merged head against the commit that landed it finds no
-discrepancy in any of the 204 — the loss is invisible from that side. What does
-survive is the branch, precisely because the push recreates it.
+comparing each merged head against the commit that landed it found no
+discrepancy in any of the 204 then merged — the loss is invisible from that
+side. What does survive is the branch, precisely because the push recreates it.
 
-It can raise a false alarm, in the direction chosen deliberately. Two sessions
-running `docket record` write the same tool-dictated line, so one branch can
-hold a blob identical to one the other landed and read as partly landed while
-it is simply live. That costs a glance; the silent direction costs the work.
+That 204 is a sample rather than a proof, and the next merge after it produced
+a shape the sample did not contain. The population a measurement covered is
+part of what it measured.
+
+Both directions of error are still possible and the trade is deliberate. A
+commit pushed after the merge that happens to leave one file in a state the base
+has held is not reported, which is the silent direction and the expensive one;
+it is accepted only because the alternative — the content split on its own —
+fired in every session's digest, which `CLAUDE.md` calls a defect in the check
+rather than coverage.
 
 ### The other loss: a merge that deletes an item nothing deleted
 
