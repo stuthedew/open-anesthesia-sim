@@ -18,7 +18,7 @@ from .checks import analyze
 from .concurrency import conflicts_for, observed_conflicts, parallel_batch
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
-from .model import SELECTABLE_LANES, Item
+from .model import LANE_CROSSING, SELECTABLE_LANES, Item
 from .plan import OfferedReport, features, gate, recommend, set_aside
 from .release import (
     is_untagged,
@@ -511,6 +511,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     if flight.ids:
         print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
     _say_lane_holdouts(items, flight, config, args, lane)
+    _say_answer_lane(items, flight, config, args, plan, lane, picks[0].item)
     if report.advisories:
         print(
             f"{len(report.advisories)} grooming advisory(ies) pending; `docket check` to see them."
@@ -549,6 +550,74 @@ def _say_lane_holdouts(
             f"{', '.join(sorted(i.identifier for i in held.unplaced))}. "
             f"No lane can place these until they declare one."
         )
+
+
+def _say_answer_lane(
+    items: list[Item],
+    flight: FlightReport,
+    config: Config,
+    args: argparse.Namespace,
+    plan: Wave | None,
+    lane: str | None,
+    top: Item,
+) -> None:
+    """Name which lane the unfiltered answer sits in, and the other lane's pick.
+
+    The mirror of `_say_lane_holdouts`, and it exists because that asymmetry
+    is a defect: asking for a lane says what the lane hid, while asking for
+    none said nothing about lanes at all - in the one call that hands over an
+    answer, and the first command a session runs.
+
+    That is where `PL-0D4X` went wrong. A session opened with the prompt "Next
+    workflow item" ran the bare command, was handed the whole queue's top pick,
+    and started it; the pick was product-lane work, correctly ranked, and
+    nothing in front of the session said which half of the project it was in.
+    The digest names both lanes at startup, but it is read once, it scrolls
+    away, and it frames the split as advice "for a second session" rather than
+    as an answer to a lane the prompt has already named.
+
+    So this prints the fact the caller cannot get anywhere else - the lane of
+    the answer they were just given - and the other lane's own pick beside it,
+    which is what makes the mismatch visible without a second command. It says
+    nothing when no boundary is declared, for the reason `Item.lane` fails
+    closed: a project that has not drawn the line gets no lane rather than one
+    drawn on its behalf.
+    """
+    if lane is not None or not config.workflow_paths:
+        return
+
+    def pick_for(wanted: str) -> Item | None:
+        found = recommend(
+            items,
+            flight.ids,
+            effort=args.effort,
+            limit=1,
+            scope=plan.scope if plan is not None else None,
+            lane=wanted,
+            workflow_paths=config.workflow_paths,
+        )
+        return found[0].item if found else None
+
+    def name(wanted: str) -> str:
+        found = pick_for(wanted)
+        return f"{found.identifier} ({found.title})" if found else "nothing startable"
+
+    top_lane = top.lane(config.workflow_paths)
+    if top_lane in SELECTABLE_LANES:
+        other = next(one for one in SELECTABLE_LANES if one != top_lane)
+        print(
+            f"Lane of this answer: {top.identifier} is {top_lane} work. "
+            f"The {other} lane's own pick is {name(other)} - `docket next {other}`."
+        )
+        return
+
+    # Crossing and unplaced work is nobody's lane, so there is no "the other
+    # lane" to name and both are printed. The sentence says which of the two
+    # it is, because they are recovered differently: a crossing item wants a
+    # session that can hold the whole change, an unplaced one wants a `touches`.
+    why = "reaches both halves" if top_lane == LANE_CROSSING else "declares no `touches`"
+    named = "; ".join(f"{one} {name(one)}" for one in SELECTABLE_LANES)
+    print(f"Lane of this answer: {top.identifier} {why}, so no lane places it. By lane: {named}.")
 
 
 def cmd_gate(args: argparse.Namespace) -> int:

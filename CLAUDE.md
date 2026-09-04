@@ -140,7 +140,11 @@ before finishing.
 - Keep a session short and scoped to one topic; start a fresh one for an
   unrelated topic rather than continuing or compacting a long one. Pick up cold
   from the session-start digest, `bin/docket next`, and the one item being
-  worked — not by reading the queue whole.
+  worked — not by reading the queue whole. **A prompt naming a lane ("next
+  workflow item") is `bin/docket next workflow`, run first.** The bare command
+  ranks the whole queue and hands back the other lane's work, correctly ranked
+  and wrong; it names the lane of its own answer, so read that line before the
+  item (`PL-0D4X`).
 - Batch related questions, and related edits, into one turn.
 - Prefer targeted reads over whole-file reads of large documents once you know
   roughly where the section is. Read the whole file when editing it.
