@@ -6,7 +6,8 @@ trace *is* and how a frame updates it is this module's, and the dashboard
 that owns the chart is `simulation_view.py`'s. Nothing here reads
 simulation state, holds a setting, or performs a physiological or unit
 calculation beyond the fraction-to-percent conversion the axis is labelled
-in.
+in. The one derived quantity it draws, the wash-in ratio, is computed and
+bounded by `app/wash_in.py` and only *placed* here.
 
 It is separate from the view for the reason `chart_downsampling.py` is:
 what a trace draws is a presentation-correctness concern rather than a
@@ -31,6 +32,7 @@ import flet_charts as fch
 
 from anesthesia_sim.app.chart_downsampling import first_index_at_or_after, select_envelope_indices
 from anesthesia_sim.app.controller import SimulationHistorySample
+from anesthesia_sim.app.wash_in import is_wash_in, wash_in_ratio
 
 __all__ = [
     "MAX_CHART_POINTS_PER_SERIES",
@@ -45,12 +47,16 @@ __all__ = [
     "PARKED_CONTROL_MARK_X",
     "mixed_venous_value",
     "muscle_value",
+    "WASH_IN_TERMINUS_MARKER",
     "park_control_mark",
+    "park_series",
     "redraw_control_mark",
+    "redraw_points",
     "redraw_reference_band",
     "redraw_reference_line",
     "redraw_series",
     "redraw_visible_window",
+    "redraw_wash_in_segments",
     "sample_elapsed_s",
     "vessel_rich_value",
 ]
@@ -356,22 +362,8 @@ def redraw_series(
 ) -> None:
     """Set one trace to its visible samples, bounded and in percent.
 
-    The points a series already holds are reused: their `x` and `y` are
-    overwritten in place, and the list is extended or truncated only for
-    the difference in count. Building a fresh `fch.LineChartDataPoint`
-    per drawn sample per frame is what PL-010 removed - it cost about
-    6 us each against 0.8 us to move an existing one, and at the
-    per-trace ceiling across six traces that was substantially the whole
-    frame.
-
-    Reuse is only safe because Flet's diff reports an in-place mutation:
-    it records the assignment on the point itself, so the client is sent
-    the moved coordinate rather than nothing. PL-001 declined this
-    optimization while that was unconfirmed, since a mutation the diff
-    missed would leave the chart drawing the previous frame beneath the
-    current frame's readouts. `tests/integration/test_chart_patching.py`
-    holds the guarantee against the real Flet session and says how it
-    was confirmed against a browser.
+    `redraw_points` does the writing and records why the points a series
+    already holds are reused rather than rebuilt.
 
     Every drawn point remains a recorded sample: values are converted
     from fraction to percent, never interpolated or synthesized, and the
@@ -389,26 +381,275 @@ def redraw_series(
     """
 
     values = [value_for(sample) for sample in visible]
-    # Both raise before anything is written, so a trace is never left
-    # holding half of one frame and half of the next.
+    # Raises before anything is written, so a trace is never left holding
+    # half of one frame and half of the next.
     indices = select_envelope_indices(values, MAX_CHART_POINTS_PER_SERIES, index_offset)
 
+    redraw_points(series, [(visible[index].elapsed_s, values[index] * 100.0) for index in indices])
+
+
+def redraw_points(series: fch.LineChartData, coordinates: Sequence[tuple[float, float]]) -> None:
+    """Set one series to exactly these points, reusing the ones it holds.
+
+    The mechanical half of `redraw_series`, factored out because the
+    wash-in ratio is drawn in its own dimensionless unit rather than in
+    percent: the conversion into the axis's unit belongs to the caller
+    that knows which axis it is drawing against, and the point reuse
+    below belongs to every caller equally.
+
+    The points a series already holds are reused: their `x` and `y` are
+    overwritten in place, and the list is extended or truncated only for
+    the difference in count. Building a fresh `fch.LineChartDataPoint`
+    per drawn sample per frame is what PL-010 removed - it cost about
+    6 us each against 0.8 us to move an existing one, and at the
+    per-trace ceiling across six traces that was substantially the whole
+    frame.
+
+    Reuse is only safe because Flet's diff reports an in-place mutation:
+    it records the assignment on the point itself, so the client is sent
+    the moved coordinate rather than nothing. PL-001 declined this
+    optimization while that was unconfirmed, since a mutation the diff
+    missed would leave the chart drawing the previous frame beneath the
+    current frame's readouts. `tests/integration/test_chart_patching.py`
+    holds the guarantee against the real Flet session and says how it
+    was confirmed against a browser.
+
+    Args:
+        series: Series to redraw. Its existing points are mutated.
+        coordinates: Every point to draw, in the chart's own axis units,
+            ordered along the x axis.
+    """
+
     points = series.points
-    reused = min(len(points), len(indices))
+    reused = min(len(points), len(coordinates))
 
     for position in range(reused):
-        index = indices[position]
+        x, y = coordinates[position]
         point = points[position]
-        point.x = visible[index].elapsed_s
-        point.y = values[index] * 100.0
+        point.x = x
+        point.y = y
 
-    if len(indices) > reused:
-        points.extend(
-            fch.LineChartDataPoint(visible[index].elapsed_s, values[index] * 100.0)
-            for index in indices[reused:]
-        )
+    if len(coordinates) > reused:
+        points.extend(fch.LineChartDataPoint(x, y) for x, y in coordinates[reused:])
     elif len(points) > reused:
         # Points past the drawn count are the previous frame's samples,
         # carrying their own time and value. Left in place the chart
         # would draw them as part of the current trace.
         del points[reused:]
+
+
+def park_series(series: fch.LineChartData) -> None:
+    """Draw nothing for this series, without discarding its point controls.
+
+    The counterpart of `park_control_mark` for a trace: the pool of
+    wash-in segments is fixed at construction and its members are moved
+    from frame to frame, so an unused one is emptied rather than removed.
+    Truncating to zero points is what makes it draw nothing; the series
+    itself stays in the chart's `data_series`, where the next frame can
+    fill it again without constructing anything.
+
+    Parking is idempotent - an already-parked series is left with the
+    same empty point list, Flet's diff sees no change, and the client is
+    sent nothing.
+
+    Args:
+        series: Series to empty. Its point list is mutated.
+    """
+
+    redraw_points(series, ())
+
+
+def redraw_wash_in_segments(
+    segment_series: Sequence[fch.LineChartData],
+    history: tuple[SimulationHistorySample, ...],
+    window_start_s: float,
+    extension_ceiling: float,
+) -> int:
+    """Draw F_A/F_I over the visible window, broken where it is not defined.
+
+    One series per *contiguous* stretch of samples inside the wash-in
+    domain `app/wash_in.py` states, rather than one series over every
+    such sample. The difference is the whole reason this function
+    exists: a single polyline through the drawn samples would draw a
+    straight line across the stretch it skipped - a segment joining two
+    real points through values the run never produced, which is the
+    synthesized trace this package's decimation is careful never to
+    create. A broken line asserts nothing about the gap.
+
+    **A stretch is extended by its crossing sample at each end**, where
+    one exists within `extension_ceiling`. Without it the curve stops at
+    the last sample at or below equilibrium, up to one step short of the
+    boundary it stopped at, and a trace halting in clear space short of
+    a line reads as clipped rather than finished. With it the curve
+    meets the equilibrium reference and ends on it.
+
+    The ceiling is what keeps that one out-of-domain point on the plot.
+    A run stepped at 0.1 s crosses equilibrium by a hair - measured
+    across every agent and every supported alveolar ventilation and
+    cardiac output at the maximum fresh gas flow, the first sample above
+    it reaches 1.00235 - but the ratio is not continuous in general:
+    `BreathingCircuit.set_circuit_volume` conserves the agent in the
+    circuit while changing the volume it is divided by, so a circuit
+    volume doubled between two steps halves F_I and doubles the ratio.
+    No interface control does that today, and a rule that holds only
+    because a slider is missing is not one to rely on. A crossing sample
+    above the ceiling is therefore not drawn, and the stretch ends where
+    it did before: not clamped to the ceiling, not interpolated onto it -
+    simply a point outside what this plot can show.
+
+    Each segment is decimated on its own, anchored to its position in the
+    whole run, so a stretch that is not changing keeps choosing the same
+    samples from frame to frame for the reason `chart_downsampling.py`
+    gives. Each is given the full per-series budget: the segments are few
+    and short in any real run, and splitting one budget between them
+    would make a point's chosen sample depend on how many *other*
+    segments happened to be on screen, which is exactly the instability
+    the anchoring exists to remove.
+
+    A stretch one sample long draws a single point and so shows nothing,
+    which is correct: at a 0.1 s step it is a stretch too short for the
+    chart to resolve, and inventing an extent for it would overstate it.
+
+    Args:
+        segment_series: Fixed pool of traces to draw the segments into.
+            Every member is mutated - filled with a segment, or emptied.
+        history: Immutable simulation samples, oldest first, with
+            compartment values as fractions.
+        window_start_s: Earliest simulated time the chart displays, in
+            seconds. Samples older than this are outside the plotted axis
+            range and are not sent.
+        extension_ceiling: Highest ratio a crossing sample may carry and
+            still be drawn, in the chart's own dimensionless unit. The
+            caller owns it because it is a property of the axis rather
+            than of the model.
+
+    Returns:
+        How many segments inside the window the pool could not draw. The
+        pool holds the most recent that fit, so what is dropped is the
+        oldest; a caller displaying the trace must say so rather than
+        letting the curve end without explanation.
+    """
+
+    window_start_index = first_index_at_or_after(history, window_start_s, sample_elapsed_s)
+    segments = _wash_in_segments(
+        history[window_start_index:], window_start_index, extension_ceiling
+    )
+    drawn = segments[-len(segment_series) :] if segment_series else []
+
+    for series, (index_offset, ratios) in zip(segment_series, drawn, strict=False):
+        # Raises before anything is written, so a segment is never left
+        # holding half of one frame and half of the next.
+        indices = select_envelope_indices(ratios, MAX_CHART_POINTS_PER_SERIES, index_offset)
+        redraw_points(
+            series, [(history[index_offset + index].elapsed_s, ratios[index]) for index in indices]
+        )
+        _mark_wash_in_terminus(series, ends_above_equilibrium=not is_wash_in(ratios[-1]))
+
+    for series in segment_series[len(drawn) :]:
+        park_series(series)
+
+    return len(segments) - len(drawn)
+
+
+#: The dot a wash-in stretch ends on when it stopped by crossing equilibrium.
+#:
+#: A line that simply stops is indistinguishable from a line the frame cut
+#: off, and this one stops while still climbing steeply, which is the shape
+#: that reads as clipped. A terminal dot is the ordinary scientific-plotting
+#: answer: it says the series ends here rather than continuing out of view.
+#: It takes the trace's own colour from the chart, so it declares no pair of
+#: its own for `tools/contrast_check.py`.
+WASH_IN_TERMINUS_MARKER: Final = fch.ChartCirclePoint(radius=3.5)
+
+
+def _mark_wash_in_terminus(series: fch.LineChartData, ends_above_equilibrium: bool) -> None:
+    """Put the terminus dot on this stretch's last point, or on none of them.
+
+    Every other point is cleared first, because `redraw_points` reuses the
+    point objects a series already holds: a marker left on whichever index
+    was last in the previous frame would sit in the middle of a stretch
+    that has since grown. The clear reads every point and writes only
+    where a marker is actually set, so a frame that changes nothing sends
+    nothing.
+
+    Args:
+        series: Stretch to mark. Its points' markers are mutated.
+        ends_above_equilibrium: Whether this stretch's last point is the
+            crossing sample rather than the live end of the run. Only a
+            stretch that *stopped* is marked; the growing right-hand end
+            of a run is not an ending, and a dot there would move every
+            frame while saying nothing.
+    """
+
+    for point in series.points:
+        if point.point is not None:
+            point.point = None
+
+    if ends_above_equilibrium and series.points:
+        series.points[-1].point = WASH_IN_TERMINUS_MARKER
+
+
+def _wash_in_segments(
+    visible: tuple[SimulationHistorySample, ...], index_offset: int, extension_ceiling: float
+) -> list[tuple[int, list[float]]]:
+    """Split the visible window into the stretches the chart draws.
+
+    A sample *anchors* a stretch when its ratio is inside the wash-in
+    domain. A sample *extends* one when it has a ratio at all - its
+    denominator is above the floor - that ratio is no higher than
+    `extension_ceiling`, and it neighbours an anchor. So a stretch is a
+    run of in-domain samples plus, at each end, the one crossing sample
+    that shows where it left the domain and that the plot can show.
+
+    Two anchor runs separated by a single extendable sample both reach
+    it, and it is drawn once as each stretch's endpoint. That is the
+    honest rendering of a run that left the domain and returned within
+    0.1 s, and it is the only case where one sample appears twice.
+
+    Args:
+        visible: Simulation samples inside the plotted time range.
+        index_offset: Absolute index, within the whole recorded run, of
+            `visible[0]`.
+        extension_ceiling: Highest ratio a crossing sample may carry and
+            still extend a stretch.
+
+    Returns:
+        One `(absolute start index, ratios)` pair per stretch, oldest
+        first.
+    """
+
+    ratios = [
+        wash_in_ratio(sample.alveolar_concentration_fraction, sample.circuit_concentration_fraction)
+        for sample in visible
+    ]
+    anchored = [ratio is not None and is_wash_in(ratio) for ratio in ratios]
+    extendable = [ratio is not None and ratio <= extension_ceiling for ratio in ratios]
+
+    segments: list[tuple[int, list[float]]] = []
+    position = 0
+
+    while position < len(anchored):
+        if not anchored[position]:
+            position += 1
+
+            continue
+
+        stop = position
+
+        while stop + 1 < len(anchored) and anchored[stop + 1]:
+            stop += 1
+
+        start = position - 1 if position > 0 and extendable[position - 1] else position
+        end = stop + 1 if stop + 1 < len(ratios) and extendable[stop + 1] else stop
+        # Every index from `start` through `end` has a ratio: the anchors
+        # by definition, and the two extensions by the tests above. The
+        # comprehension's filter is what tells the checker so.
+        segments.append(
+            (
+                index_offset + start,
+                [ratio for ratio in ratios[start : end + 1] if ratio is not None],
+            )
+        )
+        position = stop + 1
+
+    return segments

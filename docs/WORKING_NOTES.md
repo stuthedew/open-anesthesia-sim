@@ -63,12 +63,17 @@ appropriate, and its entry here should be deleted rather than left stale.
   solubility and mass-balance closure for isoflurane and desflurane.
 - `simulation_view.py` is tested through a minimal fake `Page`/`Controller`
   pattern documented at the top of `tests/unit/test_simulation_view.py`,
-  which is still where its presentation logic is covered. The two pure
-  modules it delegates to are tested without that pattern: the
-  displayed-value formatters in `tests/unit/test_formatting.py` and the
-  sample selection in `tests/unit/test_chart_downsampling.py`, while
-  `app/chart_series.py` is covered through the view, where a trace can be
-  read back off the chart it was drawn on (PL-WB0X). The one thing that
+  which is still where its presentation logic is covered. The pure modules
+  it delegates to are tested without that pattern: the displayed-value
+  formatters in `tests/unit/test_formatting.py`, the sample selection in
+  `tests/unit/test_chart_downsampling.py`, the recorded control changes in
+  `tests/unit/test_control_timeline.py` and the wash-in ratio and its domain
+  in `tests/unit/test_wash_in.py`, while `app/chart_series.py` is covered
+  through the view, where a trace can be read back off the chart it was
+  drawn on (PL-WB0X). The wash-in ratio is covered twice over on purpose:
+  `tests/reference/test_published_wash_in.py` asserts that the number the
+  chart draws is the number the Yasuda comparison was made on, so the two
+  cannot drift apart (PL-ZRSP). The one thing that
   pattern cannot answer - whether Flet's diff reports what a frame changed -
   is `tests/integration/test_chart_patching.py`'s, which drives a real
   `flet.messaging.session.Session` over a recording connection instead
