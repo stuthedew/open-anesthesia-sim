@@ -5,10 +5,11 @@ priority: P2
 effort: S
 status: done
 classes: infra
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
 feature: dev-tooling
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-03
 closed: 2026-09-04
+pr: 278
 verify: uv run pytest tests/unit/test_doc_check.py && grep -rq 'def test_a_coverage_gate_that_drifted_between_them_is_an_error' tests/unit
 ---
 
