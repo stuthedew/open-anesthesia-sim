@@ -1,14 +1,15 @@
 ---
 id: PL-Q197
 title: Running the app degrades to unresponsive after about a minute: sliders move but stop updating values
-status: done
 priority: P1
 effort: M
+status: done
 classes: defect, safety
 touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, tests/unit/test_chart_downsampling.py, tests/integration/test_chart_patching.py
-verify: uv run pytest tests/integration/test_chart_patching.py tests/unit/test_chart_downsampling.py && grep -q 'def test_a_growing_run_does_not_grow_the_traffic_it_sends' tests/integration/test_chart_patching.py
 added: 2026-09-04
 closed: 2026-09-04
+pr: 297
+verify: uv run pytest tests/integration/test_chart_patching.py tests/unit/test_chart_downsampling.py && grep -q 'def test_a_growing_run_does_not_grow_the_traffic_it_sends' tests/integration/test_chart_patching.py
 ---
 
 **Problem.** Reported by the project owner, 2026-09-04, running `make run`
