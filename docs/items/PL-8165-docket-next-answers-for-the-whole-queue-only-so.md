@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost, infra
 feature: parallel-sessions
+milestone: v0.3.6
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, docket.toml, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
 closed: 2026-09-04

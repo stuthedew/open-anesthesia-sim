@@ -6,11 +6,14 @@ effort: S
 status: done
 classes: safety, science, ux
 feature: teachable-case
+milestone: v0.3.6
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/agents, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-08-25
 closed: 2026-09-04
+pr: 288
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_interface_never_predicts_a_time_to_wake_up' tests/unit/test_simulation_view.py
 ---
+
 **Problem.** A washout curve on its own has no endpoint. A learner turns the
 vaporizer off, watches the alveolar trace fall, and has nothing to read it against -
 so "how much longer does a three-hour case take to wake up than a twenty-minute
