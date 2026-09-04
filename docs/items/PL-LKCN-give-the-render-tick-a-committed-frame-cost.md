@@ -39,7 +39,7 @@ otherwise unrecoverable.
 
 **Where.** A `tools/` script, standard library only, or a `pytest` benchmark
 kept out of the default run. Reads `SimulationView`, `RENDER_INTERVAL_S`,
-`SIMULATION_STEP_S` and `MAX_CHART_POINTS_PER_SERIES`; needs no Flet client.
+`SIMULATION_STEP_S` and `CHART_COLUMN_BUDGET_PER_SERIES`; needs no Flet client.
 
 **What to build, decided at triage 2026-09-02.** The brief left open whether
 the instrument should assert a ceiling, only report, or assert something

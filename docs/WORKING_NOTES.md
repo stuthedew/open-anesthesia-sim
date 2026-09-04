@@ -66,7 +66,8 @@ appropriate, and its entry here should be deleted rather than left stale.
   which is still where its presentation logic is covered. The pure modules
   it delegates to are tested without that pattern: the displayed-value
   formatters in `tests/unit/test_formatting.py`, the sample selection in
-  `tests/unit/test_chart_downsampling.py`, the recorded control changes in
+  `tests/unit/test_chart_downsampling.py`, the run's own recorded history in
+  `tests/unit/test_run_history.py`, the recorded control changes in
   `tests/unit/test_control_timeline.py` and the wash-in ratio and its domain
   in `tests/unit/test_wash_in.py`, while `app/chart_series.py` is covered
   through the view, where a trace can be read back off the chart it was
@@ -82,9 +83,9 @@ appropriate, and its entry here should be deleted rather than left stale.
   `mount()`'s layout composition remains uncovered and has no formatting or
   domain logic to verify.
 - Rendering is bounded and independent of run length: the chart is sent
-  only the samples inside its visible window, decimated to at most
-  `MAX_CHART_POINTS_PER_SERIES` per trace (`app/chart_series.py`) by min/max
-  envelope selection (`app/chart_downsampling.py`), and the loops run at
+  only the samples inside its visible window, reduced to at most
+  `CHART_COLUMN_BUDGET_PER_SERIES` columns per trace (`app/chart_series.py`)
+  by M4 (`app/chart_downsampling.py`), and the loops run at
   separate cadences. **Closed by PL-010, 2026-09-02.** What that left
   standing for another release was the *read* rather than the draw: the
   snapshot still copied every recorded sample on every frame, so the frame
@@ -112,6 +113,24 @@ appropriate, and its entry here should be deleted rather than left stale.
   queued behind a backlog that never drained. Buckets are now anchored to
   absolute sample index; the per-frame count is what
   `test_a_growing_run_does_not_grow_the_traffic_it_sends` holds.
+
+  **Reopened once more and closed by PL-D9WD, 2026-09-04.** The traffic was
+  then bounded and the *work* was not: anchoring fixed which samples a frame
+  chooses, but choosing them still meant one pass over every sample the
+  window spans, and the settled scale list reaches twelve hours. Measured
+  over the whole chart frame - six traces plus the wash-in plot - 1.9 ms at
+  five minutes, 23.8 ms at an hour and 431 ms at twelve, against a 200 ms
+  frame budget. Three separate passes made that up and all three are gone:
+  the window copied its samples out, each trace built a list of one field
+  per sample, and the wash-in plot reclassified every visible sample against
+  its domain. The run is now stored by quantity with a dyadic ladder of M4
+  aggregates over each, so a frame reads a few hundred completed aggregates
+  and touches raw values only at the two unaligned ends of the window: 1.7
+  to 3.4 ms at every width from five minutes to twelve hours, flat. What
+  keeps it flat is `test_reading_a_window_costs_the_same_however_wide_it_is`
+  and `test_a_frame_never_materializes_the_window_as_rows`; the second is
+  there because rows are the obvious shape to reach for and one use of them
+  anywhere in a frame puts the whole cost back.
 
 ## Open thread: the v0.2.8 gate's membership test - PL-MGNC, PL-H8MQ, PL-HXYY
 

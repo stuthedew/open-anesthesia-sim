@@ -41,14 +41,14 @@ from flet.messaging.session import Session
 from flet.pubsub.pubsub_hub import PubSubHub
 
 from anesthesia_sim.app.chart_downsampling import first_index_at_or_after
-from anesthesia_sim.app.chart_series import MAX_CHART_POINTS_PER_SERIES, PARKED_CONTROL_MARK_X
+from anesthesia_sim.app.chart_series import CHART_COLUMN_BUDGET_PER_SERIES, PARKED_CONTROL_MARK_X
 from anesthesia_sim.app.controller import (
     ControlChange,
     ControlInput,
     HistoryWindow,
+    RunHistory,
     SimulationHistorySample,
     SimulationSnapshot,
-    sample_elapsed_s,
 )
 from anesthesia_sim.app.simulation_view import (
     MAX_CHART_CONTROL_MARKS,
@@ -105,15 +105,24 @@ class _ReplayController:
         control_timeline: tuple[ControlChange, ...] = (),
     ) -> None:
         self._samples = samples
+        # The whole run is recorded up front and the cursor bounds what the
+        # view may see, which is what the real controller's append-only
+        # history gives a reader for free: a window is a range, and a range
+        # that stops short of the newest sample reads exactly as it did when
+        # that sample was the newest.
+        self._run = RunHistory.of(samples)
         self._cursor = start
         self._control_timeline = control_timeline
         self.is_running = True
 
     def history_window(self, start_s: float) -> HistoryWindow:
-        recorded = self._samples[: self._cursor]
-        start_index = first_index_at_or_after(recorded, start_s, sample_elapsed_s)
+        # The cursor runs past the recorded run on the last frames of a
+        # replay, exactly as `snapshot` lets it; a window is still a range
+        # within what was recorded.
+        stop_index = min(self._cursor, len(self._run))
+        start_index = min(first_index_at_or_after(self._run.times_s(), start_s), stop_index)
 
-        return HistoryWindow(samples=recorded[start_index:], index_offset=start_index)
+        return HistoryWindow(run=self._run, index_offset=start_index, stop_index=stop_index)
 
     def snapshot(self) -> SimulationSnapshot:
         history = self._samples[: self._cursor]
@@ -316,12 +325,16 @@ def test_a_shorter_trace_removes_the_points_it_no_longer_draws() -> None:
     """
 
     view, session, connection = _mounted_view()
-    # Saturated, but not at an exact count: the width ladder that keeps the
-    # selection stable (PL-Q197) spends somewhere between half the budget and
-    # all of it, so pinning the number would assert the ladder's rung rather
-    # than the buffer behavior under test.
+    # Saturated, but not at an exact count, and bounded in points rather
+    # than columns: the width ladder that keeps the selection stable
+    # (PL-Q197) spends somewhere between half the budget and all of it, and
+    # each column it does spend contributes between two and four of M4's
+    # tuples. Pinning the number would assert the ladder's rung and the
+    # trace's shape rather than the buffer behavior under test.
     drawn_when_saturated = len(view._circuit_series.points)
-    assert MAX_CHART_POINTS_PER_SERIES // 2 <= drawn_when_saturated <= MAX_CHART_POINTS_PER_SERIES
+    assert (
+        CHART_COLUMN_BUDGET_PER_SERIES <= drawn_when_saturated <= 4 * CHART_COLUMN_BUDGET_PER_SERIES
+    )
 
     # A run that has only just started draws every recorded sample, so the
     # trace is far shorter than the saturated one already on screen.
@@ -344,7 +357,7 @@ def test_a_longer_trace_adds_the_points_it_has_gained() -> None:
     view, session, connection = _mounted_view(start=12)
     drawn_at_mount = len(view._circuit_series.points)
     wash_in_at_mount = _wash_in_drawn(view)
-    assert drawn_at_mount < MAX_CHART_POINTS_PER_SERIES
+    assert drawn_at_mount < CHART_COLUMN_BUDGET_PER_SERIES
 
     view._controller = _ReplayController(  # type: ignore[assignment]
         _recorded_run(SATURATED_SAMPLE_COUNT), start=SATURATED_SAMPLE_COUNT // 2
@@ -353,7 +366,7 @@ def test_a_longer_trace_adds_the_points_it_has_gained() -> None:
     session.page.update()
 
     drawn_now = len(view._circuit_series.points)
-    assert MAX_CHART_POINTS_PER_SERIES // 2 <= drawn_now <= MAX_CHART_POINTS_PER_SERIES
+    assert CHART_COLUMN_BUDGET_PER_SERIES <= drawn_now <= 4 * CHART_COLUMN_BUDGET_PER_SERIES
 
     additions = [
         operation for operation in _patch_operations(connection) if operation[0] is Operation.Add

@@ -1766,6 +1766,33 @@ that the end of a trace and the numeric readouts cannot disagree. Selection
 must also preserve the extremes of the samples it omits, so that decimation
 cannot hide an excursion the model produced.
 
+The selection that meets those constraints is **M4** (Jugel U, Jerzak Z,
+Hackenbroich G, Markl V. M4: A Visualization-Oriented Time Series Data
+Aggregation. *Proceedings of the VLDB Endowment*. 2014;7(10):797-808 — held
+in `docs/references/` and read there in full, 2026-09-04). The visible
+window is divided into groups of consecutive samples, and each group
+contributes four recorded samples: its lowest value, its highest, its first
+and its last. Naming the algorithm is part of the constraint rather than
+commentary on it — a chart that says which published reduction it draws can
+be checked against that reduction, and one that says "something that keeps
+the extremes" cannot.
+
+**The chart is not exact, and this document says so rather than implying
+otherwise.** M4's Theorem 1 — that a line visualization of the reduced
+series equals one of the whole series — holds under the condition its § 6
+states: the number of groups drawn must be an integer multiple of the
+chart's pixel-column count. This interface groups on a grid anchored to
+absolute sample index instead, because a grid that followed the viewport
+would move on every scroll and resize and so rewrite the whole chart on
+every frame. It therefore buys stability at the cost of that condition and
+lands in the paper's general case rather than its exact one. What the
+departure costs here is bounded: of the paper's three error classes, the two
+driven by gaps in the sampling cannot arise, because this simulation records
+one sample every step and has no gaps at all, leaving only a spurious pixel
+where the line between two consecutive extrema crosses a column boundary.
+`app/chart_downsampling.py` carries the same statement for a reader of the
+code.
+
 A **reference** is not a trace and is deliberately exempt from the rule
 above: it draws no recorded sample, because it is a published constant
 rather than a modeled quantity. That exemption is bounded by a labelling
