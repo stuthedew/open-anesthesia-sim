@@ -39,6 +39,18 @@ check: sync
 # constants out of `app/` with `ast` rather than importing them, because
 # `app/simulation_view.py` imports Flet.
 	python3 tools/contrast_check.py
+# Under `uv run`, unlike the two lines above, and for a reason that is about
+# the *input* rather than the tool: this one reads every module under
+# `src/anesthesia_sim/` with `ast`, and that source targets 3.14. PEP 695
+# (3.12) type parameters in `app/chart_downsampling.py` are a `SyntaxError` to
+# the 3.11 parser these tools promise to run under, and `ast.parse`'s
+# `feature_version` only ever narrows the accepted syntax - it cannot teach an
+# older parser a newer language. So the parser has to be the one the source is
+# written for. `tools/ignore_check.py` above is the same category for a
+# different reason; the tool itself stays standard-library-only and parses at
+# the floor, which is what `tests/unit/test_tools_portability.py` holds it to.
+# `PL-Y0RZ`.
+	uv run python tools/import_boundary_check.py
 
 fix:
 	uv run ruff format .

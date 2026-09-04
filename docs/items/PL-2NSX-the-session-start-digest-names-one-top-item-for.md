@@ -4,11 +4,12 @@ title: The session-start digest names one Top: item for every session, so two pa
 priority: P2
 effort: S
 status: done
-closed: 2026-09-04
 classes: session-cost, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
+closed: 2026-09-04
+pr: 287
 verify: uv run pytest subprojects/docket/tests/test_cli.py -q -k digest
 ---
 

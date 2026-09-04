@@ -1,15 +1,16 @@
 ---
 id: PL-ZSV6
 title: A triage reply recommends work and drives fixes, when it should summarize what was triaged and where the queue stands
-status: done
 priority: P2
 effort: S
+status: done
 classes: infra, docs
 feature: worker-instructions
 touches: .claude/skills/docket/SKILL.md
-verify: python3 tools/doc_check.py check && grep -qF 'Triage is a queue pass, not a work session' .claude/skills/docket/SKILL.md
 added: 2026-09-04
 closed: 2026-09-04
+pr: 286
+verify: python3 tools/doc_check.py check && grep -qF 'Triage is a queue pass, not a work session' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** `.claude/skills/docket/SKILL.md`'s "Mode: triage" said how to fill
