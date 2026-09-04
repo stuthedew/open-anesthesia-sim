@@ -984,20 +984,50 @@ def _merges_naming(
     counts: an id that led an earlier subject too, most often the capture that
     filed it, was not the merge that landed its work.
 
-    Whatever the subjects do not answer falls back to the item's own file, per
-    `PL-2XTF`. A squash merge takes its subject from the pull request title,
-    which is written by whoever opened it and need not lead with any id - `#220`
-    was created from the Claude Code UI, closed three items, and left `main` red
-    with an error no recovery could clear, because the one subject that landed
-    named none of them. The file always knows: the commit that wrote
-    `status: done` into it *is* the closure, and it carries `(#N)` like every
-    other squash. That is strictly more evidence than the subject scan, not
-    less, and it costs a read only for the ids the cheap pass missed.
+    **Recency is not enough, and the scan's answer is confirmed before it is
+    believed.** Leading a subject proves the commit is *about* the item, never
+    that it *closed* it, and several kinds of commit are about a closed item:
+    the bookkeeping merge that writes its `pr` back, a follow-up fix, a triage
+    that filed it. Measured 2026-09-04 over the 122 closed items on `main` that
+    a leading-id subject names, the unconfirmed scan answered 21 of them with a
+    number that is not their closure - `PL-1TF4` and `PL-J49T` with `250`, whose
+    subject reads "record #249"; `PL-B0YN` and `PL-G1MF` with `188` from "record
+    their pull request" against a true `186`; `PL-YLZQ` with `159`, the commit
+    that triaged it, against a true `204` (`PL-GW37`). The rider closure this
+    was raised for is one shape of that, not the whole of it.
+
+    So each answer is put to the test `_number_closing` already uses on the
+    file: the commit must read `status: done` in its own tree and not in its
+    parent's. That is what distinguishes the closure from every other commit
+    naming the item, it costs two `git show` for each id the scan answered, and
+    it is asked only of items whose `pr` is missing - a handful, not the store.
+    Over the same 122 it agreed with the file reading in every case where both
+    could answer, and disagreed in none.
+
+    Whatever the subjects do not answer - or answer unconfirmably - falls back
+    to the item's own file, per `PL-2XTF`. A squash merge takes its subject from
+    the pull request title, which is written by whoever opened it and need not
+    lead with any id - `#220` was created from the Claude Code UI, closed three
+    items, and left `main` red with an error no recovery could clear, because
+    the one subject that landed named none of them. The file always knows: the
+    commit that wrote `status: done` into it *is* the closure, and it carries
+    `(#N)` like every other squash. That is strictly more evidence than the
+    subject scan, not less, and it costs a read only for the ids the cheap pass
+    missed.
+
+    That fallback has a defect of its own, recorded as `PL-S5LB` rather than
+    fixed here: it walks `git log -- <path>` without rename detection, so for an
+    item whose file was renamed after it closed, the oldest commit the walk can
+    see is the rename, whose parent does not hold the path at all. This change
+    does not introduce it and reduces the wrong answers overall, but it does
+    route more ids into it.
     """
     if not identifiers:
         return ()
     found: dict[str, int] = {}
-    for subject in run(["log", "--format=%s", base], root).splitlines():
+    candidates: dict[str, tuple[str, int]] = {}
+    for line in run(["log", "--format=%H%x1f%s", base], root).splitlines():
+        revision, _, subject = line.partition("\x1f")
         subject = subject.strip()
         match = PR_SUBJECT_RE.search(subject)
         if match is None:
@@ -1005,7 +1035,14 @@ def _merges_naming(
         number = int(match.group(1) or match.group(2))
         for identifier in leading_ids(subject):
             if identifier in identifiers:
-                found.setdefault(identifier, number)
+                candidates.setdefault(identifier, (revision.strip(), number))
+    for identifier, (revision, number) in candidates.items():
+        name = closures[identifier]
+        path = f"{items_dir}/{name}"
+        if _done_at(revision, path, name, root, run) and not _done_at(
+            f"{revision}^", path, name, root, run
+        ):
+            found[identifier] = number
     for identifier in sorted(identifiers - set(found)):
         recovered = _number_closing(closures[identifier], items_dir, base, root, run)
         if recovered is not None:

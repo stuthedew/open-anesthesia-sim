@@ -3,12 +3,13 @@ id: PL-GW37
 title: docket check recovers the wrong pull request for an item closed as a rider on another item's PR, and advises writing that number in
 priority: P2
 effort: S
-status: ready
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_rider_closure_recovers_no_pull_request_number' subprojects/docket/tests/test_vcs.py
+status: done
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_rider_closure_recovers_the_pull_request_that_closed_it' subprojects/docket/tests/test_vcs.py
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-02
+closed: 2026-09-04
 ---
 
 **Problem.** `docket check` recovers a closed item's pull request number by
@@ -97,6 +98,51 @@ Silence is the correct outcome when the guard rejects everything: that is
 already what happens for `PL-KQKM`, and it is what the check does elsewhere
 when the checkout cannot answer.
 
+**Worked 2026-09-04. The guard built is not the one briefed, and the reason is
+measured.** The project owner chose it from three options after the date test
+was shown to fail.
+
+*What was built.* The subject scan keeps its cheap single history read, but its
+answer is now **confirmed** before it is believed: the commit it found must read
+`status: done` in its own tree and not in its parent's - the same test
+`_number_closing` already applies to the file. An unconfirmed hit falls through
+to that file reading rather than being recorded. Two `git show` per id the scan
+answered, asked only of items whose `pr` is missing.
+
+*Why that and not the date test.* Rejecting a commit older than `closed:` keeps
+84 of 122, correctly rejects 6, and **wrongly rejects 32** - a timezone skew,
+since `closed:` is the session's today in UTC and the squash merge carries the
+owner's local date at `-0500`. The confirmation has no such failure: over the
+same 122 it agreed with the file reading wherever both could answer, and
+disagreed nowhere.
+
+*What it fixes, measured over all 209 closed items carrying a `pr`.* Recovery
+goes from **101 correct and 25 wrong** to **114 correct and 12 wrong**, with 20
+fixed and 7 regressed. `PL-YLZQ` - the case this item was raised for - goes from
+`159`, the commit that triaged it, to `204`, the merge that closed it.
+
+*The defect was wider than the brief.* Only `PL-YLZQ` is the rider shape. The
+commoner one is a *later* commit winning by recency: `PL-1TF4` and `PL-J49T`
+recovered `250`, whose subject reads "record #249"; `PL-B0YN` and `PL-G1MF`
+recovered `188` from "record their pull request" against a true `186`. Both
+shapes are one defect - the scan answers with any commit leading with the id,
+and a closure is only one kind - and both are fixed by the same confirmation.
+
+*The seven regressions are two known shapes, each captured rather than fixed
+here.* Four recover the renaming commit, because the fallback walks `git log`
+without rename detection and the parent does not hold the path at all
+(`PL-S5LB`). Three are items whose work landed in one pull request and whose
+`status: done` was written in a later one, so the file reading answers with the
+closure rather than the work (`PL-YDL6`) - the shape `PL-D2GW` closed by
+requiring the two to travel together, so it exists only in items predating that
+rule.
+
+*The brief's named test was not written, deliberately.* It specifies
+`test_a_rider_closure_recovers_no_pull_request_number` - silence for a rider.
+Silence was the best the date test could have managed; the confirmation does
+better, so the test asserts the real number instead. Reality outranks the
+brief here.
+
 **Done when.** `docket check` either recovers a rider-closed item's real
 pull request number or says nothing, and never advises writing in the number
 of a commit that does not contain the item's work.
@@ -104,6 +150,39 @@ of a commit that does not contain the item's work.
 `test_a_rider_closure_recovers_no_pull_request_number`: an item marked done in
 a commit whose subject leads with a different item's id, with an older commit
 naming this one, recovers nothing rather than the older number.
+
+**The date guard proposed above does not work, measured 2026-09-04.** Rejecting
+a recovered commit older than the item's own `closed:` date was expected to
+"suppress the wrong answer and keep every right one". Run against all 122 closed
+items on `origin/main` that carry a `pr` and are named by a leading-id subject,
+it keeps 84, correctly rejects 6 - and **wrongly rejects 32**.
+
+The cause is a timezone skew, not a flaw in the reasoning. A session writes
+`closed:` as its own today in UTC; the squash merge carries the project owner's
+local date at `-0500`, so `%cs` reads one day earlier for anything merged after
+19:00 Central. `PL-MC8Z` is the case in miniature: `closed: 2026-09-04`, merge
+`%cs` 2026-09-03, `pr: 279`, entirely correct and rejected by the test. A guard
+that suppresses 32 correct recoveries to catch 6 wrong ones is worse than none.
+
+**The six wrong answers are also not all riders.** Only `PL-YLZQ` is the shape
+this item describes. The other five are a *later* commit winning by recency -
+`PL-1TF4`/`PL-J49T` recovered `250`, the bookkeeping merge whose subject reads
+"record #249"; `PL-B0YN`/`PL-G1MF` recovered `188` from "record their pull
+request" against a true `186`; `PL-X0RG` recovered `192` from a follow-up fix
+against a true `187`. The defect is therefore wider than the brief states: the
+subject scan answers with *any* commit whose subject leads with the id, and a
+closure is only one of the kinds of commit that do.
+
+**And the fix now available did not exist when this was written.** `PL-2XTF`
+added `_number_closing`, which finds the commit that actually flipped `status:
+done` in the item's own file and rejects later edits by comparing against the
+parent. Run against all six wrong cases it answers all six correctly, `PL-YLZQ`
+included (`204`, the number this item says is right). It is already the
+fallback in `_merges_naming`; it simply never runs for these items, because the
+subject scan answered first and `found.setdefault` kept that answer.
+
+So the remaining question is not how to reject a bad subject-scan hit by date,
+but whether to confirm the hit at all. See the decision below.
 
 The convention half of this - `CLAUDE.md` and the `docket` skill saying to
 lead a closing subject with every id it closes - is already done, so what is

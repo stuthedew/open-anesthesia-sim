@@ -760,6 +760,29 @@ trailing parentheses. One history read for the whole set, taken only when
 something landed, and the newest such commit wins — an id also leads the
 capture that filed it.
 
+**Recency is not enough, so the answer is confirmed before it is believed.**
+Leading a subject proves a commit is *about* an item, never that it *closed*
+it, and several kinds of commit are about a closed one: the merge that writes
+its `pr` back, a follow-up fix, the triage that filed it. Measured 2026-09-04
+over the 122 closed items on this project's `main` that a leading-id subject
+names, the unconfirmed scan answered 21 with a number that is not their
+closure. So each hit is put to the test the file reading already uses — the
+commit must read `status: done` in its own tree and not in its parent's — and
+an unconfirmed hit falls through to that reading instead. Over the same
+history the confirmation agreed with the file reading wherever both could
+answer and disagreed nowhere, and across every closed item carrying a `pr` the
+recovery went from 101 correct and 25 wrong to 114 correct and 12 wrong
+(`PL-GW37`).
+
+Two shapes make up most of what is left, and each has its own item. An item
+whose file was renamed after it closed recovers the renaming commit, because
+the fallback walks `git log` without rename detection and the parent does not
+hold the path at all (`PL-S5LB`). An item whose work landed in one pull
+request but whose `status: done` was written in a later one recovers the
+later number, which carries the closure and none of the work (`PL-YDL6`) —
+the shape `PL-D2GW` closed by requiring the closure to travel in the same
+commit as the work, so it exists only in items predating that rule.
+
 - **The number is recoverable** → an advisory naming it, and the command that
   writes it. Nothing is lost; the way back exists in git, and the field is a
   transcription still owed so the item file carries it too. True at any
