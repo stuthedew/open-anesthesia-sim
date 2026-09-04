@@ -5,10 +5,11 @@ priority: P2
 effort: M
 status: done
 classes: perf, infra
-touches: subprojects/docket/src/docket/verify.py, Makefile
 feature: dev-tooling
+touches: subprojects/docket/src/docket/verify.py, Makefile
 added: 2026-09-03
 closed: 2026-09-04
+pr: 278
 not-delegable: the outcome is a decision to accept a standing cost, so there is no state a command could find different afterwards. A command could only grep this file for its own conclusion, which proves the sentence was written rather than that the cost is acceptable - and whether it is acceptable is the judgment this item exists to record
 ---
 
