@@ -17,20 +17,23 @@ import asyncio
 import contextlib
 import dataclasses
 import re
-from typing import cast
+from typing import Any, cast
 
 import flet as ft
 import flet_charts as fch
 import pytest
 
+from anesthesia_sim.app.chart_downsampling import first_index_at_or_after
 from anesthesia_sim.app.chart_series import MAX_CHART_POINTS_PER_SERIES
 from anesthesia_sim.app.controller import (
     CONTROL_INPUT_UNITS,
     ControlChange,
     ControlInput,
+    HistoryWindow,
     SimulationController,
     SimulationHistorySample,
     SimulationSnapshot,
+    sample_elapsed_s,
 )
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
@@ -93,19 +96,61 @@ class _FakePage:
 
 
 class _FakeController:
-    """Stand-in with a caller-controlled snapshot.
+    """Stand-in with a caller-controlled snapshot and run history.
 
     Isolates view-formatting tests from the simulation engine so the
     accounting-failed branch can be exercised without needing to actually
     violate a physical invariant.
+
+    The snapshot and the history are held apart because the real controller
+    answers for them apart: `snapshot()` is the run's state at one instant,
+    `history_window()` is the part of the run one frame draws. A test with
+    nothing to say about the chart leaves `history` unset and gets a single
+    sample at the snapshot's own simulated time.
     """
 
-    def __init__(self, snapshot: SimulationSnapshot) -> None:
+    def __init__(
+        self,
+        snapshot: SimulationSnapshot,
+        history: tuple[SimulationHistorySample, ...] | None = None,
+    ) -> None:
         self.snapshot_value = snapshot
+        self.history_value = (
+            history
+            if history is not None
+            else (_sample(snapshot.elapsed_s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),)
+        )
         self.is_running = snapshot.is_running
+        self.requested_window_starts: list[float] = []
 
     def snapshot(self) -> SimulationSnapshot:
         return self.snapshot_value
+
+    def advance_to(
+        self, history: tuple[SimulationHistorySample, ...], **snapshot_fields: Any
+    ) -> None:
+        """Move the fake on to a longer run, snapshot and history together.
+
+        Set as a pair for the reason `_fake_controller` builds them as one:
+        the two halves of a frame must describe the same run, or a test
+        watching the chart follow the readouts is watching two runs.
+        """
+
+        self.snapshot_value = _snapshot(history=history, **snapshot_fields)
+        self.history_value = history
+
+    def history_window(self, start_s: float) -> HistoryWindow:
+        """Cut the window the real controller would, by the same search.
+
+        Deliberately not a hand-rolled slice: a fake that located the
+        window differently could let a view test pass against a boundary
+        the real controller never produces.
+        """
+
+        self.requested_window_starts.append(start_s)
+        start_index = first_index_at_or_after(self.history_value, start_s, sample_elapsed_s)
+
+        return HistoryWindow(samples=self.history_value[start_index:], index_offset=start_index)
 
 
 def _sample(
@@ -188,15 +233,39 @@ def _snapshot(
         unaccounted_agent_l=1.5e-13,
         agent_accounting_absolute_error_l=1.5e-13,
         agent_accounting_passes_validation=passes_validation,
-        concentration_history=history,
         control_timeline=control_timeline,
         failure_reason=failure_reason,
     )
 
 
-def _build_view(snapshot: SimulationSnapshot) -> tuple[SimulationView, _FakePage]:
+def _fake_controller(
+    history: tuple[SimulationHistorySample, ...] | None = None, **snapshot_fields: Any
+) -> _FakeController:
+    """A fake controller whose snapshot and history come from one run.
+
+    Built together rather than passed separately because the real
+    controller answers for the two out of the same recorded run. A fixture
+    that let a test hand one run's samples to the chart beside another
+    run's snapshot would prove nothing about the boundary they cross, and
+    would look exactly like one that did.
+    """
+
+    return _FakeController(_snapshot(history=history, **snapshot_fields), history)
+
+
+def _recording_controller(
+    history: tuple[SimulationHistorySample, ...] | None = None, **snapshot_fields: Any
+) -> _RecordingController:
+    """`_fake_controller`, recording `fail()` instead of running."""
+
+    return _RecordingController(_snapshot(history=history, **snapshot_fields), history)
+
+
+def _build_view(
+    history: tuple[SimulationHistorySample, ...] | None = None, **snapshot_fields: Any
+) -> tuple[SimulationView, _FakePage]:
     page = _FakePage()
-    view = SimulationView(page=page, controller=_FakeController(snapshot))
+    view = SimulationView(page=page, controller=_fake_controller(history, **snapshot_fields))
     return view, page
 
 
@@ -476,7 +545,7 @@ def test_the_alveolar_readout_is_labelled_end_tidal_equivalent() -> None:
     `74bec83` until PL-NV9W.
     """
 
-    view, _ = _build_view(_snapshot())
+    view, _ = _build_view()
 
     name, qualifier = _metric_labels_above(view, view._alveolar_concentration_text)
 
@@ -504,7 +573,7 @@ def test_the_header_shows_the_application_name_from_app_metadata() -> None:
     """
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=_FakeController(_snapshot()))
+    view = SimulationView(page=page, controller=_fake_controller())
 
     assert APP_DISPLAY_NAME in _mounted_interface_strings(view, page)
 
@@ -530,7 +599,7 @@ def test_every_readout_reserves_a_qualifier_line_and_an_equal_column() -> None:
     survive.
     """
 
-    view, _ = _build_view(_snapshot())
+    view, _ = _build_view()
 
     panels = view._build_concentration_metrics().controls
 
@@ -567,7 +636,7 @@ def test_no_interface_string_drops_the_end_tidal_equivalent_hedge() -> None:
     """
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=_FakeController(_snapshot()))
+    view = SimulationView(page=page, controller=_fake_controller())
 
     strings = _mounted_interface_strings(view, page)
 
@@ -585,10 +654,9 @@ def test_no_interface_string_drops_the_end_tidal_equivalent_hedge() -> None:
 
 
 def test_refresh_view_formats_every_concentration_metric() -> None:
-    snapshot = _snapshot(
+    view, _ = _build_view(
         history=(_sample(12.5, 0.02345, 0.01234, 0.00456, 0.00789, 0.00321, 0.00012),)
     )
-    view, _ = _build_view(snapshot)
 
     assert view._elapsed_time_text.value == "12.5 s"
     assert view._circuit_concentration_text.value == "2.34%"
@@ -613,7 +681,7 @@ def test_refresh_view_reflects_running_state(
     expected_start_disabled: bool,
     expected_pause_disabled: bool,
 ) -> None:
-    view, _ = _build_view(_snapshot(is_running=is_running))
+    view, _ = _build_view(is_running=is_running)
 
     assert view._status_text.value == expected_status
     assert view._status_text.color == (ACCENT_TEXT if is_running else MUTED)
@@ -627,7 +695,7 @@ def test_refresh_view_populates_chart_series_from_history() -> None:
         _sample(0.1, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06),
         _sample(0.2, 0.02, 0.04, 0.06, 0.08, 0.10, 0.12),
     )
-    view, _ = _build_view(_snapshot(history=history))
+    view, _ = _build_view(history=history)
 
     for series, attribute in (
         (view._circuit_series, "circuit_concentration_fraction"),
@@ -645,7 +713,7 @@ def test_refresh_view_populates_chart_series_from_history() -> None:
 
 
 def test_refresh_view_reports_valid_agent_accounting() -> None:
-    view, _ = _build_view(_snapshot(passes_validation=True))
+    view, _ = _build_view(passes_validation=True)
 
     assert view._agent_accounting_status_text.value == "Valid"
     assert view._agent_accounting_status_text.color == ACCENT_TEXT
@@ -660,7 +728,7 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
 
 
 def test_refresh_view_reports_failed_agent_accounting() -> None:
-    view, _ = _build_view(_snapshot(passes_validation=False))
+    view, _ = _build_view(passes_validation=False)
 
     assert view._agent_accounting_status_text.value == "Validation failed"
     assert view._agent_accounting_status_text.color == WARNING
@@ -668,7 +736,7 @@ def test_refresh_view_reports_failed_agent_accounting() -> None:
 
 
 def test_refresh_view_shows_current_agent_in_subtitle_and_dropdown() -> None:
-    view, _ = _build_view(_snapshot(agent_id="isoflurane", agent_display_name="Isoflurane"))
+    view, _ = _build_view(agent_id="isoflurane", agent_display_name="Isoflurane")
     scheme = AGENT_COLOR_SCHEMES["isoflurane"]
 
     assert view._subtitle_text.value is not None
@@ -683,7 +751,7 @@ def test_refresh_view_shows_current_agent_in_subtitle_and_dropdown() -> None:
 def test_agent_dropdown_options_pair_every_color_with_the_agent_name() -> None:
     """Color is a redundant cue, never the only way to identify an agent."""
 
-    view, _ = _build_view(_snapshot())
+    view, _ = _build_view()
     expected_names = dict(AVAILABLE_AGENTS)
 
     assert {option.key for option in view._agent_dropdown.options} == set(expected_names)
@@ -702,7 +770,7 @@ def test_agent_dropdown_options_pair_every_color_with_the_agent_name() -> None:
 def test_refresh_view_applies_current_agent_color_to_control_and_header(
     agent_id: str, display_name: str
 ) -> None:
-    view, _ = _build_view(_snapshot(agent_id=agent_id, agent_display_name=display_name))
+    view, _ = _build_view(agent_id=agent_id, agent_display_name=display_name)
     scheme = AGENT_COLOR_SCHEMES[agent_id]
 
     assert view._agent_dropdown.value == agent_id
@@ -720,7 +788,7 @@ def test_refresh_view_applies_current_agent_color_to_control_and_header(
 def test_agent_header_badge_is_bordered_against_the_panel(agent_id: str) -> None:
     """Sevoflurane's fill is 1.37:1 on the panel; the edge needs a border."""
 
-    view, _ = _build_view(_snapshot(agent_id=agent_id, agent_display_name=agent_id.title()))
+    view, _ = _build_view(agent_id=agent_id, agent_display_name=agent_id.title())
     scheme = AGENT_COLOR_SCHEMES[agent_id]
 
     border = view._agent_header_badge.border
@@ -753,7 +821,7 @@ def test_every_agent_has_render_objects_in_its_own_identification_color(agent_id
 def test_agent_color_render_objects_survive_a_frame_instead_of_being_rebuilt() -> None:
     """PL-010: the render tick assigns the prebuilt objects, unconditionally."""
 
-    view, _ = _build_view(_snapshot(agent_id="isoflurane", agent_display_name="Isoflurane"))
+    view, _ = _build_view(agent_id="isoflurane", agent_display_name="Isoflurane")
     style = AGENT_RENDER_STYLES["isoflurane"]
 
     assert view._agent_header_badge.border is style.badge_border
@@ -773,9 +841,7 @@ def test_switching_agent_repaints_the_header_badge_and_the_dropdown() -> None:
     that had stopped updating anything would still pass them.
     """
 
-    controller = _FakeController(
-        _snapshot(agent_id="sevoflurane", agent_display_name="Sevoflurane")
-    )
+    controller = _fake_controller(agent_id="sevoflurane", agent_display_name="Sevoflurane")
     view = SimulationView(page=_FakePage(), controller=controller)
 
     controller.snapshot_value = _snapshot(
@@ -808,11 +874,9 @@ def test_refresh_view_scales_slider_and_chart_to_agent_max() -> None:
     the delivered-concentration slider and the chart's y-axis must track it."""
 
     view, _ = _build_view(
-        _snapshot(
-            agent_id="desflurane",
-            agent_display_name="Desflurane",
-            max_delivered_concentration_percent=18.0,
-        )
+        agent_id="desflurane",
+        agent_display_name="Desflurane",
+        max_delivered_concentration_percent=18.0,
     )
 
     assert view._delivered_concentration_slider.max == 18.0
@@ -820,7 +884,7 @@ def test_refresh_view_scales_slider_and_chart_to_agent_max() -> None:
 
 
 def test_refresh_view_disables_agent_dropdown_while_running() -> None:
-    view, _ = _build_view(_snapshot(is_running=True))
+    view, _ = _build_view(is_running=True)
 
     assert view._agent_dropdown.disabled is True
 
@@ -830,7 +894,7 @@ def test_refresh_view_updates_delivered_concentration_label_for_current_agent() 
     sevoflurane" during manual browser verification of agent switching,
     left stale even after selecting a different agent."""
 
-    view, _ = _build_view(_snapshot(agent_id="desflurane", agent_display_name="Desflurane"))
+    view, _ = _build_view(agent_id="desflurane", agent_display_name="Desflurane")
 
     assert view._delivered_concentration_label.value == "Delivered desflurane"
 
@@ -986,7 +1050,7 @@ def _all_series(view: SimulationView) -> tuple[fch.LineChartData, ...]:
 def test_chart_payload_is_bounded_however_long_the_run(sample_count: int) -> None:
     """The render payload must not grow with the length of the run."""
 
-    view, _ = _build_view(_snapshot(history=_run_history(sample_count)))
+    view, _ = _build_view(history=_run_history(sample_count))
 
     for series in _all_series(view):
         assert len(series.points) <= MAX_CHART_POINTS_PER_SERIES
@@ -996,7 +1060,7 @@ def test_chart_sends_only_samples_inside_the_visible_window() -> None:
     """Sending samples the axis clips is payload the client cannot show."""
 
     history = _run_history(6_000)
-    view, _ = _build_view(_snapshot(history=history))
+    view, _ = _build_view(history=history)
 
     window_start_s = view._concentration_chart.min_x
     assert window_start_s > 0.0
@@ -1005,12 +1069,39 @@ def test_chart_sends_only_samples_inside_the_visible_window() -> None:
         assert all(point.x >= window_start_s for point in series.points)
 
 
+def test_the_chart_asks_the_run_for_exactly_the_window_it_draws() -> None:
+    """Asking for less than the axis shows would truncate a trace in silence.
+
+    PL-0VM7 moved the cut from the view to the controller: the view sets
+    its axis, then asks the run for the samples at or after that same left
+    edge. A request for a later time would draw a run that appeared to
+    begin after it did, with nothing on the chart to say so, so the request
+    itself is asserted and not only what came back from it.
+
+    The companion to `test_chart_sends_only_samples_inside_the_visible_window`
+    above: that one holds that nothing outside the window is drawn, this
+    one that nothing inside it is dropped.
+    """
+
+    history = _run_history(6_000)
+    controller = _fake_controller(history=history)
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    (requested_start_s,) = controller.requested_window_starts
+    assert requested_start_s == view._concentration_chart.min_x
+
+    oldest_visible = next(sample for sample in history if sample.elapsed_s >= requested_start_s)
+
+    for series in _all_series(view):
+        assert series.points[0].x == pytest.approx(oldest_visible.elapsed_s)
+
+
 def test_chart_right_edge_matches_the_numeric_readout() -> None:
     """A trace ending before the newest sample would contradict the metrics."""
 
     history = _run_history(6_000)
     latest = history[-1]
-    view, _ = _build_view(_snapshot(history=history))
+    view, _ = _build_view(history=history)
 
     for series, value in (
         (view._circuit_series, latest.circuit_concentration_fraction),
@@ -1032,7 +1123,7 @@ def test_chart_traces_stay_bound_to_their_own_compartment() -> None:
     """Each trace must plot its own quantity, decimation notwithstanding."""
 
     history = _run_history(6_000)
-    view, _ = _build_view(_snapshot(history=history))
+    view, _ = _build_view(history=history)
 
     # Distinct constant multiples in _run_history make a swapped pairing show
     # up as a trace whose values belong to another compartment.
@@ -1054,7 +1145,7 @@ def test_chart_keeps_every_sample_of_a_short_run() -> None:
     """Decimation must not kick in before the budget is actually exceeded."""
 
     history = _run_history(50)
-    view, _ = _build_view(_snapshot(history=history))
+    view, _ = _build_view(history=history)
 
     for series in _all_series(view):
         assert len(series.points) == len(history)
@@ -1063,7 +1154,7 @@ def test_chart_keeps_every_sample_of_a_short_run() -> None:
 def test_chart_points_are_recorded_samples_not_interpolations() -> None:
     history = _run_history(6_000)
     recorded_times = {sample.elapsed_s for sample in history}
-    view, _ = _build_view(_snapshot(history=history))
+    view, _ = _build_view(history=history)
 
     for series in _all_series(view):
         assert all(point.x in recorded_times for point in series.points)
@@ -1079,14 +1170,14 @@ def test_chart_points_are_moved_rather_than_rebuilt_each_frame() -> None:
     `tests/integration/test_chart_patching.py`'s to prove.
     """
 
-    controller = _FakeController(_snapshot(history=_run_history(6_000)))
+    controller = _fake_controller(history=_run_history(6_000))
     view = SimulationView(page=_FakePage(), controller=controller)
 
     held = [list(series.points) for series in _all_series(view)]
     drawn_before = [[(point.x, point.y) for point in points] for points in held]
 
     # 50 further steps: the window slides, so every drawn time changes.
-    controller.snapshot_value = _snapshot(history=_run_history(6_050))
+    controller.advance_to(_run_history(6_050))
     view._refresh_view()
 
     for series, points_held, before in zip(_all_series(view), held, drawn_before, strict=True):
@@ -1176,7 +1267,7 @@ def test_simulation_time_does_not_depend_on_render_cadence() -> None:
 
     reference = SimulationController()
     reference.start()
-    steps_taken = len(stepped_by_the_loop.concentration_history) - 1
+    steps_taken = len(controller.history_window(0.0).samples) - 1
     assert steps_taken > 0
 
     for _ in range(steps_taken):
@@ -1253,7 +1344,7 @@ class _StepFailingController(SimulationController):
 
 def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
     view, _ = _build_view(
-        _snapshot(failure_reason="SimulationNumericalError: the step could not be completed")
+        failure_reason="SimulationNumericalError: the step could not be completed"
     )
 
     assert view._status_text.value == "Stopped — simulation error"
@@ -1270,15 +1361,15 @@ def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
 
 
 def test_refresh_view_does_not_offer_to_resume_a_failed_run() -> None:
-    view, _ = _build_view(_snapshot(failure_reason="SimulationNumericalError: boom"))
+    view, _ = _build_view(failure_reason="SimulationNumericalError: boom")
 
     assert view._start_button.disabled is True
     assert view._pause_button.disabled is True
 
 
 def test_refresh_view_shows_no_notice_for_an_ordinary_run() -> None:
-    for snapshot in (_snapshot(is_running=True), _snapshot(is_running=False)):
-        view, _ = _build_view(snapshot)
+    for is_running in (True, False):
+        view, _ = _build_view(is_running=is_running)
 
         assert view._notice_text.visible is False
         assert view._status_text.value in {"Running", "Paused"}
@@ -1472,8 +1563,12 @@ class _RecordingController(_FakeController):
     the reason, so that is what is recorded here.
     """
 
-    def __init__(self, snapshot: SimulationSnapshot) -> None:
-        super().__init__(snapshot)
+    def __init__(
+        self,
+        snapshot: SimulationSnapshot,
+        history: tuple[SimulationHistorySample, ...] | None = None,
+    ) -> None:
+        super().__init__(snapshot, history)
         self.failures: list[str] = []
 
     def fail(self, reason: str) -> None:
@@ -1488,7 +1583,7 @@ def test_halt_run_stops_the_session_and_records_the_exception_type() -> None:
     `TypeError` from a refactor, and the two want different responses from
     whoever reads the banner.
     """
-    controller = _RecordingController(_snapshot())
+    controller = _recording_controller()
     view = SimulationView(page=_FakePage(), controller=controller)
 
     view._halt_run(ValueError("mass balance violated"))
@@ -1507,7 +1602,7 @@ def test_halt_run_survives_a_render_failure_and_leaves_the_run_stopped() -> None
     recorded, the run is stopped, and nothing propagates to the caller - so
     that the suppression is covered by a test rather than only by a comment.
     """
-    controller = _RecordingController(_snapshot())
+    controller = _recording_controller()
     view = SimulationView(page=_FakePage(), controller=controller)
 
     def _explode() -> None:
@@ -1605,9 +1700,7 @@ def test_every_compartment_is_readable_in_mac_multiples() -> None:
     MAC line built but never placed in the row fails here.
     """
 
-    view, _ = _build_view(
-        _snapshot(history=(_sample(60.0, 0.02, 0.016, 0.008, 0.006, 0.001, 5e-5),))
-    )
+    view, _ = _build_view(history=(_sample(60.0, 0.02, 0.016, 0.008, 0.006, 0.001, 5e-5),))
 
     mac_lines = [
         panel.content.controls[3].value for panel in view._build_concentration_metrics().controls
@@ -1641,9 +1734,7 @@ def test_each_mac_readout_uses_its_own_agent_divisor() -> None:
     construction test.
     """
 
-    controller = _FakeController(
-        _snapshot(history=(_sample(60.0, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06),))
-    )
+    controller = _fake_controller(history=(_sample(60.0, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06),))
     view = SimulationView(page=_FakePage(), controller=controller)
 
     assert view._alveolar_mac_text.value == "3.00 ×MAC"
@@ -1670,7 +1761,7 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
     a confident statement about the wrong agent.
     """
 
-    controller = _FakeController(_snapshot())
+    controller = _fake_controller()
     view = SimulationView(page=_FakePage(), controller=controller)
 
     assert view._mac_reference_text.value == format_mac_reference("Sevoflurane", 2.0)
@@ -1701,7 +1792,7 @@ def test_the_interface_says_what_a_mac_multiple_on_a_compartment_is_not() -> Non
     """
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=_FakeController(_snapshot()))
+    view = SimulationView(page=page, controller=_fake_controller())
     view.mount()
 
     disclosure = " ".join(sorted(_mounted_interface_strings(view, page)))
@@ -1722,7 +1813,7 @@ def test_the_chart_carries_a_mac_axis_beside_its_percent_axis() -> None:
     disclaimer catches.
     """
 
-    view, _ = _build_view(_snapshot())
+    view, _ = _build_view()
 
     assert view._concentration_chart.right_axis is view._mac_axis
     assert view._concentration_chart.left_axis is not None
@@ -1752,7 +1843,7 @@ def test_the_mac_axis_is_rebuilt_only_when_the_agent_or_the_range_moves() -> Non
     consequence against a real Flet session; this pins the guard itself.
     """
 
-    controller = _FakeController(_snapshot())
+    controller = _fake_controller()
     view = SimulationView(page=_FakePage(), controller=controller)
 
     before = view._mac_axis.labels
@@ -1781,7 +1872,7 @@ def test_the_dial_is_readable_in_the_unit_its_compartments_are() -> None:
     of this simulator will want to do.
     """
 
-    view, _ = _build_view(_snapshot())
+    view, _ = _build_view()
 
     assert view._delivered_concentration_text.value == format_percent(0.08)
     assert view._delivered_concentration_mac_text.value == format_mac_multiple(0.08, 2.0)
@@ -1833,7 +1924,7 @@ def test_the_clinical_references_are_drawn_at_the_running_agents_own_values() ->
 
     for agent_id in AGENT_DATA_FILENAMES:
         agent = load_agent_parameters(agent_id)
-        view, _ = _build_view(_snapshot(agent_id=agent_id))
+        view, _ = _build_view(agent_id=agent_id)
 
         deviation = agent.mac_awake.standard_deviation_fraction_of_mac * agent.mac_percent
         centre = agent.mac_awake.fraction_of_mac * agent.mac_percent
@@ -1856,7 +1947,7 @@ def test_the_clinical_references_follow_the_agent_when_it_changes() -> None:
     subtly wrong.
     """
 
-    controller = _FakeController(_snapshot(agent_id="sevoflurane"))
+    controller = _fake_controller(agent_id="sevoflurane")
     view = SimulationView(page=_FakePage(), controller=controller)
 
     sevoflurane = load_agent_parameters("sevoflurane")
@@ -1882,7 +1973,7 @@ def test_the_clinical_references_span_the_visible_window() -> None:
     as a quantity that changed.
     """
 
-    view, _ = _build_view(_snapshot(history=_run_history(6_000)))
+    view, _ = _build_view(history=_run_history(6_000))
     chart = view._concentration_chart
 
     for series in (view._mac_awake_band_series, view._one_mac_line_series):
@@ -1899,7 +1990,7 @@ def test_the_clinical_references_are_not_compartment_traces() -> None:
     annotates.
     """
 
-    view, _ = _build_view(_snapshot())
+    view, _ = _build_view()
 
     plotted = [series for series, _ in view._plotted_series]
     assert view._mac_awake_band_series not in plotted
@@ -1920,9 +2011,7 @@ def test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from() -> Non
 
     for agent_id in AGENT_DATA_FILENAMES:
         agent = load_agent_parameters(agent_id)
-        view, page = _build_view(
-            _snapshot(agent_id=agent_id, agent_display_name=agent.display_name)
-        )
+        view, page = _build_view(agent_id=agent_id, agent_display_name=agent.display_name)
         strings = _mounted_interface_strings(view, page)
 
         expected = format_mac_awake_reference(
@@ -1948,7 +2037,7 @@ def test_the_interface_says_which_trace_the_band_is_read_against() -> None:
     is the specification this sentence is the display-side half of.
     """
 
-    view, page = _build_view(_snapshot())
+    view, page = _build_view()
     prose = " ".join(_mounted_interface_strings(view, page))
 
     assert "vessel-rich trace" in prose
@@ -1970,7 +2059,7 @@ def test_the_interface_never_predicts_a_time_to_wake_up() -> None:
     than from the controls a test remembered to check.
     """
 
-    view, page = _build_view(_snapshot(history=_run_history(6_000)))
+    view, page = _build_view(history=_run_history(6_000))
     strings = _mounted_interface_strings(view, page)
     prose = " ".join(strings).lower()
 
@@ -2029,12 +2118,10 @@ def _control_change(
 
 def test_a_recorded_change_is_marked_on_the_chart_at_its_own_time() -> None:
     view, _ = _build_view(
-        _snapshot(
-            history=_run_history(600),
-            control_timeline=(
-                _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
-            ),
-        )
+        history=_run_history(600),
+        control_timeline=(
+            _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+        ),
     )
 
     mark = view._control_mark_series[0]
@@ -2049,13 +2136,11 @@ def test_a_control_mark_spans_the_running_agents_plotted_range() -> None:
     """
 
     view, _ = _build_view(
-        _snapshot(
-            agent_id="desflurane",
-            history=_run_history(600),
-            control_timeline=(
-                _control_change(12.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=1),
-            ),
-        )
+        agent_id="desflurane",
+        history=_run_history(600),
+        control_timeline=(
+            _control_change(12.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=1),
+        ),
     )
 
     mark = view._control_mark_series[0]
@@ -2066,12 +2151,10 @@ def test_unused_control_marks_are_parked_outside_the_plotted_window() -> None:
     """The pool is fixed, so a mark with nothing to mark must draw nothing."""
 
     view, _ = _build_view(
-        _snapshot(
-            history=_run_history(600),
-            control_timeline=(
-                _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
-            ),
-        )
+        history=_run_history(600),
+        control_timeline=(
+            _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+        ),
     )
 
     chart = view._concentration_chart
@@ -2086,17 +2169,15 @@ def test_a_control_mark_left_by_a_previous_frame_is_parked_when_it_ends() -> Non
     with an adjustment nobody made.
     """
 
-    controller = _FakeController(
-        _snapshot(
-            history=_run_history(600),
-            control_timeline=(
-                _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
-            ),
-        )
+    controller = _fake_controller(
+        history=_run_history(600),
+        control_timeline=(
+            _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+        ),
     )
     view = SimulationView(page=_FakePage(), controller=cast(SimulationController, controller))
 
-    controller.snapshot_value = _snapshot(history=_run_history(600))
+    controller.advance_to(_run_history(600))
     view._refresh_view()
 
     chart = view._concentration_chart
@@ -2111,7 +2192,7 @@ def test_control_marks_are_not_compartment_traces() -> None:
     it is the one that could hide all six compartments at once.
     """
 
-    view, _ = _build_view(_snapshot())
+    view, _ = _build_view()
 
     plotted = [series for series, _ in view._plotted_series]
     order = view._concentration_chart.data_series
@@ -2124,12 +2205,10 @@ def test_control_marks_are_not_compartment_traces() -> None:
 
 def test_the_list_states_what_was_changed_and_to_what() -> None:
     view, _ = _build_view(
-        _snapshot(
-            history=_run_history(600),
-            control_timeline=(
-                _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
-            ),
-        )
+        history=_run_history(600),
+        control_timeline=(
+            _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+        ),
     )
 
     assert view._control_timeline_text.value == ("12.0 s · Fresh gas flow 4.0 L/min -> 2.0 L/min")
@@ -2139,13 +2218,11 @@ def test_the_list_reads_most_recent_first() -> None:
     """A fixed panel has to show the change the reader has just made."""
 
     view, _ = _build_view(
-        _snapshot(
-            history=_run_history(600),
-            control_timeline=(
-                _control_change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
-                _control_change(20.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=2),
-            ),
-        )
+        history=_run_history(600),
+        control_timeline=(
+            _control_change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+            _control_change(20.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=2),
+        ),
     )
 
     lines = view._control_timeline_text.value.splitlines()
@@ -2154,7 +2231,7 @@ def test_the_list_reads_most_recent_first() -> None:
 
 
 def test_a_run_with_no_changes_says_so_rather_than_showing_an_empty_panel() -> None:
-    view, _ = _build_view(_snapshot())
+    view, _ = _build_view()
 
     assert view._control_timeline_text.value == NO_CONTROL_CHANGES_TEXT
     assert not view._control_timeline_overflow_text.visible
@@ -2169,7 +2246,7 @@ def test_changes_the_panel_cannot_list_are_counted_rather_than_dropped() -> None
         )
         for index in range(MAX_LISTED_ADJUSTMENTS + 3)
     )
-    view, _ = _build_view(_snapshot(history=_run_history(600), control_timeline=timeline))
+    view, _ = _build_view(history=_run_history(600), control_timeline=timeline)
 
     assert len(view._control_timeline_text.value.splitlines()) == MAX_LISTED_ADJUSTMENTS
     assert view._control_timeline_overflow_text.visible
@@ -2185,7 +2262,7 @@ def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None
         )
         for index in range(MAX_CHART_CONTROL_MARKS + 2)
     )
-    view, _ = _build_view(_snapshot(history=_run_history(600), control_timeline=timeline))
+    view, _ = _build_view(history=_run_history(600), control_timeline=timeline)
 
     assert view._undrawn_control_marks == 2
     assert "2 not marked on the chart" in view._control_timeline_overflow_text.value
@@ -2200,7 +2277,7 @@ def test_the_most_recent_changes_are_the_ones_marked() -> None:
         )
         for index in range(MAX_CHART_CONTROL_MARKS + 2)
     )
-    view, _ = _build_view(_snapshot(history=_run_history(600), control_timeline=timeline))
+    view, _ = _build_view(history=_run_history(600), control_timeline=timeline)
 
     marked = {mark.points[0].x for mark in view._control_mark_series}
     assert max(marked) == float(MAX_CHART_CONTROL_MARKS + 1)
@@ -2211,14 +2288,12 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once() -> None:
     """One act by the person, however many settings the model was stepped under."""
 
     view, _ = _build_view(
-        _snapshot(
-            history=_run_history(600),
-            control_timeline=(
-                _control_change(10.0, ControlInput.DELIVERED, 0.02, 0.03, adjustment=1),
-                _control_change(10.1, ControlInput.DELIVERED, 0.03, 0.035, adjustment=1),
-                _control_change(10.2, ControlInput.DELIVERED, 0.035, 0.04, adjustment=1),
-            ),
-        )
+        history=_run_history(600),
+        control_timeline=(
+            _control_change(10.0, ControlInput.DELIVERED, 0.02, 0.03, adjustment=1),
+            _control_change(10.1, ControlInput.DELIVERED, 0.03, 0.035, adjustment=1),
+            _control_change(10.2, ControlInput.DELIVERED, 0.035, 0.04, adjustment=1),
+        ),
     )
 
     assert len(view._control_timeline_text.value.splitlines()) == 1
@@ -2235,7 +2310,7 @@ def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins() -> None
     merely available.
     """
 
-    view, _ = _build_view(_snapshot())
+    view, _ = _build_view()
 
     for slider in (
         view._fresh_gas_flow_slider,
@@ -2269,7 +2344,7 @@ def test_the_interface_says_a_control_mark_is_an_input_not_a_measurement() -> No
     backwards.
     """
 
-    view, page = _build_view(_snapshot())
+    view, page = _build_view()
 
     disclosure = " ".join(sorted(_mounted_interface_strings(view, page)))
 

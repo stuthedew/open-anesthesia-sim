@@ -1428,8 +1428,16 @@ class SimulationView:
             self._one_mac_line_series, chart_min_x, chart_max_x, snapshot.agent_mac_percent
         )
 
+        # Two reads of one controller, and they cannot disagree: this
+        # method is synchronous, so no `await` can fall between them and the
+        # simulation loop cannot advance a step in the gap. That is what
+        # keeps the right-hand end of every trace the same sample the
+        # readouts above were formatted from, which `chart_downsampling.py`
+        # states as a property of the display rather than an accident of
+        # ordering. The window asked for is the axis just set, so the samples
+        # that arrive are exactly the ones this frame draws (`PL-0VM7`).
         chart_series.redraw_visible_window(
-            self._plotted_series, snapshot.concentration_history, chart_min_x
+            self._plotted_series, self._controller.history_window(chart_min_x)
         )
 
         adjustments = group_adjustments(snapshot.control_timeline)

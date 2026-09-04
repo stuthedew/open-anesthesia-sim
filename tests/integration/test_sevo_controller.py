@@ -41,7 +41,7 @@ def test_running_controller_advances_patient_and_named_history() -> None:
     _advance_for(controller, duration_s=60.0)
 
     snapshot = controller.snapshot()
-    latest_sample = snapshot.concentration_history[-1]
+    latest_sample = controller.history_window(0.0).samples[-1]
 
     assert snapshot.circuit_concentration_fraction > 0.0
     assert snapshot.alveolar_concentration_fraction > 0.0

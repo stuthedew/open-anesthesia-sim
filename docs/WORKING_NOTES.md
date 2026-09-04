@@ -80,7 +80,13 @@ appropriate, and its entry here should be deleted rather than left stale.
   only the samples inside its visible window, decimated to at most
   `MAX_CHART_POINTS_PER_SERIES` per trace (`app/chart_series.py`) by min/max
   envelope selection (`app/chart_downsampling.py`), and the loops run at
-  separate cadences. **Closed by PL-010, 2026-09-02.** The repaint mechanism
+  separate cadences. **Closed by PL-010, 2026-09-02.** What that left
+  standing for another release was the *read* rather than the draw: the
+  snapshot still copied every recorded sample on every frame, so the frame
+  was bounded downstream of a cost that was not. PL-0VM7 moved the cut to
+  the controller - the view asks `history_window()` for the axis it is
+  about to draw - so the property now holds at the boundary as well as at
+  the chart. The repaint mechanism
   was left unchanged here because no live Flet client was available to
   confirm it; one has now been run - Chromium against the `flet_web` server -
   and an in-place mutation of a `LineChartDataPoint` does repaint. The frame

@@ -40,12 +40,15 @@ from flet.messaging.protocol import (
 from flet.messaging.session import Session
 from flet.pubsub.pubsub_hub import PubSubHub
 
+from anesthesia_sim.app.chart_downsampling import first_index_at_or_after
 from anesthesia_sim.app.chart_series import MAX_CHART_POINTS_PER_SERIES, PARKED_CONTROL_MARK_X
 from anesthesia_sim.app.controller import (
     ControlChange,
     ControlInput,
+    HistoryWindow,
     SimulationHistorySample,
     SimulationSnapshot,
+    sample_elapsed_s,
 )
 from anesthesia_sim.app.simulation_view import (
     MAX_CHART_CONTROL_MARKS,
@@ -86,7 +89,14 @@ class _RecordingConnection(Connection):
 
 
 class _ReplayController:
-    """Serve snapshots from a recorded run, one render tick per call."""
+    """Serve one recorded run to the view, one render tick per frame.
+
+    Answers `snapshot` and `history_window` the way the real controller
+    does: the snapshot is the instant, the window is the part of the run
+    the caller asks for. The cursor advances on the snapshot alone, so both
+    halves of one frame describe the same instant however many times the
+    window is read.
+    """
 
     def __init__(
         self,
@@ -98,6 +108,12 @@ class _ReplayController:
         self._cursor = start
         self._control_timeline = control_timeline
         self.is_running = True
+
+    def history_window(self, start_s: float) -> HistoryWindow:
+        recorded = self._samples[: self._cursor]
+        start_index = first_index_at_or_after(recorded, start_s, sample_elapsed_s)
+
+        return HistoryWindow(samples=recorded[start_index:], index_offset=start_index)
 
     def snapshot(self) -> SimulationSnapshot:
         history = self._samples[: self._cursor]
@@ -129,7 +145,6 @@ class _ReplayController:
             unaccounted_agent_l=1.5e-13,
             agent_accounting_absolute_error_l=1.5e-13,
             agent_accounting_passes_validation=True,
-            concentration_history=history,
             control_timeline=self._control_timeline,
             failure_reason=None,
         )

@@ -2,7 +2,12 @@ import dataclasses
 
 import pytest
 
-from anesthesia_sim.app.controller import CONTROL_INPUT_UNITS, ControlInput, SimulationController
+from anesthesia_sim.app.controller import (
+    CONTROL_INPUT_UNITS,
+    ControlInput,
+    SimulationController,
+    SimulationHistorySample,
+)
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
@@ -241,6 +246,146 @@ def test_start_advance_pause_sequence_is_deterministic() -> None:
     assert first.snapshot() == second.snapshot()
 
 
+def _samples_a_snapshot_carries(controller: SimulationController) -> int:
+    """Count the recorded samples reachable from one `snapshot()`.
+
+    Walked over the fields rather than asserted against a named one,
+    because the defect this guards is a *field* - any field - that carries
+    the run. Naming one would go on passing after it was renamed or
+    replaced by a second copy under another name.
+    """
+
+    snapshot = controller.snapshot()
+    total = 0
+
+    for field in dataclasses.fields(snapshot):
+        value = getattr(snapshot, field.name)
+
+        if isinstance(value, SimulationHistorySample):
+            total += 1
+        elif isinstance(value, tuple | list):
+            total += sum(1 for item in value if isinstance(item, SimulationHistorySample))
+
+    return total
+
+
+def test_a_frame_reads_only_the_window_it_draws() -> None:
+    """PL-0VM7: what crosses this boundary is the window, never the run.
+
+    A frame's cost was proportional to how long the simulation had been
+    running: `snapshot()` copied every sample ever recorded, five times a
+    second, and the chart discarded all but the few hundred inside its
+    axis. Timing is too flaky to assert, so the count of samples crossing
+    the boundary is asserted instead - it is the quantity the cost was
+    proportional to, and it is exact.
+
+    Two runs an order of magnitude apart, read at the same window: a frame
+    of the longer one must not read one sample more than a frame of the
+    shorter.
+    """
+
+    window_s = 30.0
+    drawn: list[int] = []
+    recorded: list[int] = []
+
+    for run_s in (60.0, 600.0):
+        controller = SimulationController()
+        controller.start()
+        _advance_for(controller, run_s)
+
+        elapsed_s = controller.snapshot().elapsed_s
+        start_s = elapsed_s - window_s
+        window = controller.history_window(start_s)
+        whole_run = controller.history_window(0.0)
+
+        assert _samples_a_snapshot_carries(controller) == 0, (
+            "the snapshot is carrying recorded history again"
+        )
+        assert len(window.samples) <= round(window_s / MAXIMUM_SIMULATION_STEP_S) + 1
+        # The window is the run's tail, cut within one step of the time
+        # asked for, and ending on the sample the readouts were built from.
+        assert window.index_offset == len(whole_run.samples) - len(window.samples)
+        assert start_s <= window.samples[0].elapsed_s < start_s + MAXIMUM_SIMULATION_STEP_S
+        assert window.samples[-1].elapsed_s == elapsed_s
+
+        drawn.append(len(window.samples))
+        recorded.append(len(whole_run.samples))
+
+    # The run grew ten-fold; what one frame reads did not. The single
+    # sample of slack is the cut landing at a different point within a
+    # step, not growth: simulated time is accumulated by repeated addition,
+    # so it drifts from the nominal grid as the run lengthens (`PL-VM40`).
+    assert recorded[1] > 9 * recorded[0]
+    assert abs(drawn[1] - drawn[0]) <= 1
+
+
+def test_the_window_ends_on_the_sample_the_readouts_were_built_from() -> None:
+    """The trace's right-hand end and the metrics beside it are one instant.
+
+    Split across two reads by PL-0VM7, so the property that was previously
+    structural - one snapshot carried both - is now asserted. A window
+    ending one sample short of the readouts would draw a chart that
+    disagreed with the numbers printed beside it.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, 12.0)
+
+    snapshot = controller.snapshot()
+    latest = controller.history_window(snapshot.elapsed_s - 5.0).samples[-1]
+
+    assert latest.elapsed_s == pytest.approx(snapshot.elapsed_s)
+    assert latest.circuit_concentration_fraction == snapshot.circuit_concentration_fraction
+    assert latest.alveolar_concentration_fraction == snapshot.alveolar_concentration_fraction
+    assert latest.fat_partial_pressure_fraction == snapshot.fat_partial_pressure_fraction
+
+
+def test_the_window_starts_at_the_time_asked_for_and_never_after_it() -> None:
+    """A cut inside the drawn window would truncate the trace silently.
+
+    The caller passes the left edge of the axis it is about to draw, so a
+    window beginning after that time would show a run that started later
+    than it did, with nothing on the chart to say so. Every sample at or
+    after the requested time must be present, and the offset must locate
+    the first of them within the run.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, 20.0)
+
+    whole_run = controller.history_window(0.0)
+
+    for start_s in (0.0, 0.05, 7.3, 19.9, 20.0):
+        window = controller.history_window(start_s)
+
+        assert window.samples[0].elapsed_s >= start_s
+        assert whole_run.samples[window.index_offset] == window.samples[0]
+        assert window.samples == whole_run.samples[window.index_offset :]
+        assert all(
+            sample.elapsed_s < start_s for sample in whole_run.samples[: window.index_offset]
+        )
+
+
+def test_a_window_beginning_after_the_run_is_empty_rather_than_wrong() -> None:
+    """Asking past the end draws nothing, rather than the newest sample.
+
+    A window clamped to the last sample would put a point on a chart whose
+    axis does not contain it, which is a value drawn outside its own
+    context rather than merely a redundant one.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, 2.0)
+
+    window = controller.history_window(controller.snapshot().elapsed_s + 1.0)
+
+    assert window.samples == ()
+    assert window.index_offset == len(controller.history_window(0.0).samples)
+
+
 def test_reset_pauses_and_clears_concentration_history() -> None:
     controller = SimulationController()
     controller.start()
@@ -255,8 +400,10 @@ def test_reset_pauses_and_clears_concentration_history() -> None:
     assert snapshot.circuit_concentration_fraction == 0.0
     assert snapshot.alveolar_concentration_fraction == 0.0
     assert snapshot.stored_agent_l == 0.0
-    assert len(snapshot.concentration_history) == 1
-    assert snapshot.concentration_history[0].elapsed_s == 0.0
+
+    whole_run = controller.history_window(0.0)
+    assert len(whole_run.samples) == 1
+    assert whole_run.samples[0].elapsed_s == 0.0
 
 
 def test_parameter_changes_do_not_reset_dynamic_state() -> None:
@@ -454,7 +601,7 @@ def test_a_failed_step_adds_nothing_to_the_chart_history() -> None:
     """PL-026 end to end, at the boundary the chart is actually drawn from.
 
     The item's complaint was about what a halted run displays, and the
-    traces are drawn from `concentration_history` rather than from the
+    traces are drawn from the recorded history rather than from the
     compartments directly. A failed step must therefore leave the history
     exactly as long as it was, ending on the same sample: a history one
     entry longer would put a point on the chart that no completed step
@@ -462,16 +609,16 @@ def test_a_failed_step_adds_nothing_to_the_chart_history() -> None:
     """
 
     controller = _controller_one_setting_from_a_failed_step()
-    before = controller.snapshot()
+    before = controller.history_window(0.0)
 
     with pytest.raises(SimulationNumericalError):
         controller.advance(MAXIMUM_SIMULATION_STEP_S)
 
-    after = controller.snapshot()
+    after = controller.history_window(0.0)
 
-    assert len(after.concentration_history) == len(before.concentration_history)
-    assert after.concentration_history[-1] == before.concentration_history[-1]
-    assert after.elapsed_s == before.elapsed_s
+    assert len(after.samples) == len(before.samples)
+    assert after.samples[-1] == before.samples[-1]
+    assert controller.snapshot().elapsed_s == before.samples[-1].elapsed_s
 
 
 def test_a_failed_step_leaves_every_displayed_value_bit_identical() -> None:
@@ -766,8 +913,6 @@ def test_a_recorded_change_points_at_the_last_sample_under_the_old_value() -> No
     controller.set_cardiac_output(4.0)
 
     (change,) = controller.snapshot().control_timeline
-    snapshot = controller.snapshot()
-    assert change.sample_index == len(snapshot.concentration_history) - 1
-    assert snapshot.concentration_history[change.sample_index].elapsed_s == pytest.approx(
-        change.elapsed_s
-    )
+    whole_run = controller.history_window(0.0)
+    assert change.sample_index == len(whole_run.samples) - 1
+    assert whole_run.samples[change.sample_index].elapsed_s == pytest.approx(change.elapsed_s)

@@ -29,8 +29,8 @@ from typing import Final
 
 import flet_charts as fch
 
-from anesthesia_sim.app.chart_downsampling import first_index_at_or_after, select_envelope_indices
-from anesthesia_sim.app.controller import SimulationHistorySample
+from anesthesia_sim.app.chart_downsampling import select_envelope_indices
+from anesthesia_sim.app.controller import HistoryWindow, SimulationHistorySample
 
 __all__ = [
     "MAX_CHART_POINTS_PER_SERIES",
@@ -51,7 +51,6 @@ __all__ = [
     "redraw_reference_line",
     "redraw_series",
     "redraw_visible_window",
-    "sample_elapsed_s",
     "vessel_rich_value",
 ]
 
@@ -81,10 +80,6 @@ type PlottedSeries = tuple[fch.LineChartData, SampleValue]
 # trace-to-quantity pairing a caller builds reads as an explicit table:
 # plotting a compartment's values on another compartment's line would be a
 # presentation-correctness failure, and a table is auditable at a glance.
-def sample_elapsed_s(sample: SimulationHistorySample) -> float:
-    return sample.elapsed_s
-
-
 def circuit_value(sample: SimulationHistorySample) -> float:
     return sample.circuit_concentration_fraction
 
@@ -318,34 +313,27 @@ def park_control_mark(series: fch.LineChartData) -> None:
         point.y = 0.0
 
 
-def redraw_visible_window(
-    plotted: Sequence[PlottedSeries],
-    history: tuple[SimulationHistorySample, ...],
-    window_start_s: float,
-) -> None:
-    """Redraw every trace from the samples inside the visible window.
+def redraw_visible_window(plotted: Sequence[PlottedSeries], window: HistoryWindow) -> None:
+    """Redraw every trace from the samples the caller asked the run for.
 
-    Only samples the chart can actually show are sent, and that window is
-    decimated to a fixed per-trace budget, so the render payload is
-    bounded by the window and the budget rather than by how long the
-    simulation has been running. The controller's own history is read but
-    never modified.
+    The window arrives already cut to the axis the caller is about to draw:
+    the controller answers `history_window` with the samples at or after the
+    chart's own left edge, so nothing outside the plotted range crosses that
+    boundary in the first place and there is nothing to slice off here
+    (`PL-0VM7`). Each trace is then decimated to a fixed per-trace budget,
+    so the render payload is bounded by the window and the budget rather
+    than by how long the simulation has been running.
 
     Args:
         plotted: Every trace to redraw, each paired with the quantity it
             draws.
-        history: Immutable simulation samples, oldest first, with elapsed
-            time in seconds and compartment values as fractions.
-        window_start_s: Earliest simulated time the chart displays, in
-            seconds. Samples older than this are outside the plotted axis
-            range and are not sent.
+        window: The run's samples inside the plotted time range, oldest
+            first, with compartment values as fractions, and the absolute
+            index within the run of the first of them.
     """
 
-    window_start_index = first_index_at_or_after(history, window_start_s, sample_elapsed_s)
-    visible = history[window_start_index:]
-
     for series, value_for in plotted:
-        redraw_series(series, visible, value_for, window_start_index)
+        redraw_series(series, window.samples, value_for, window.index_offset)
 
 
 def redraw_series(

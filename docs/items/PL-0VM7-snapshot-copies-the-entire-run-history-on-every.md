@@ -1,7 +1,7 @@
 ---
 id: PL-0VM7
 title: snapshot() copies the entire run history on every frame
-status: ready
+status: done
 priority: P2
 effort: S
 classes: perf
@@ -9,6 +9,7 @@ feature: teachable-case
 verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_frame_reads_only_the_window_it_draws' tests/integration/test_controller.py
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py
 added: 2026-09-04
+closed: 2026-09-04
 ---
 
 **Problem.** `SimulationController.snapshot` builds
@@ -65,3 +66,39 @@ by the window today, unbounded if a future window is a week wide.
 per-frame cost of the render path is independent of how long the simulation
 has run, and a test holds that — timing is too flaky to assert, so assert the
 count of samples crossing the boundary instead.
+
+**Closed 2026-09-04.** `snapshot()` no longer carries the run. The recorded
+history is answered for by `SimulationController.history_window(start_s)`,
+which returns a `HistoryWindow` - the samples at or after the time asked
+for, and the absolute index within the run of the first of them, so
+decimation stays anchored where `chart_downsampling.py` requires. The view
+sets its axis and then asks for exactly that left edge, so the controller's
+cut and the drawn window are the same cut rather than two that could
+disagree; `redraw_visible_window` no longer slices, and
+`chart_series.sample_elapsed_s` moved to `controller.py`, beside the sample
+whose field it reads, as its only remaining caller.
+
+The two reads cannot disagree because `_refresh_view` is synchronous: the
+simulation loop advances only at an `await`, and none can fall between them
+without changing that method's signature. `test_the_window_ends_on_the_sample_the_readouts_were_built_from`
+asserts the property that used to hold structurally.
+
+Measured on this tree, at the 3 001-sample window
+(`MAX_CHART_WINDOW_S / SIMULATION_STEP_S`): the copy the change removes cost
+0.03 ms at 10 000 samples, 0.71 ms at 100 000 and 4.08 ms at 500 000, and
+grew without bound; the window read that replaces it is 0.016 ms whatever
+the run length.
+
+**The `values`-list half of the Approach was not done, and the reasoning
+should be checked before it is.** `redraw_series` still materializes one
+list of floats per trace per frame. Removing it - by making
+`select_envelope_indices` generic over a sample sequence and an accessor,
+as `first_index_at_or_after` already is - measures at 1.14 ms to 0.85 ms
+per frame across the six traces, about 0.14% of a 200 ms frame at 5 Hz.
+That is a constant-factor win, not the asymptotic one the Approach's
+rationale asks for: the min/max envelope has to read every sample in every
+bucket, so the scan stays O(window) whether or not a list is built, and a
+week-wide window (6 048 000 samples, six traces, five times a second) is
+infeasible either way. What that case needs is bucket extremes maintained
+as samples are appended - the tiered store PL-011 carries - which
+`history_window()` is now the interface for. Filed as `PL-MJ7B`.
