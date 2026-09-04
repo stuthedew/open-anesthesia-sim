@@ -1651,6 +1651,11 @@ def _laned_store(tmp_path: Path) -> Path:
     return items
 
 
+def _raise_to_p1(item: Path) -> None:
+    """Put one laned item at the top of the ranking, whatever its neighbours are."""
+    item.write_text(item.read_text(encoding="utf-8").replace("P2", "P1"), encoding="utf-8")
+
+
 def test_next_takes_a_lane_so_two_sessions_never_rank_onto_one_item(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1670,12 +1675,67 @@ def test_next_takes_a_lane_so_two_sessions_never_rank_onto_one_item(
 def test_next_without_a_lane_still_answers_for_the_whole_queue(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The split adds a way to ask; it does not change the default answer."""
+    """The split adds a way to ask; it does not change the default answer.
+
+    The ranking is what must not change. This once also asserted the word
+    "lane" was absent from the output, and `PL-0D4X` is what that cost: a
+    session prompted for one lane read an answer from the other and had
+    nothing in front of it saying so. The line below is the fix, and it says
+    nothing about which items are offered or in what order.
+    """
     assert _run("next", "--items", str(_laned_store(tmp_path))) == 0
     out = capsys.readouterr().out
 
     assert "PL-PROD" in out and "PL-WORK" in out and "PL-BOTH" in out
-    assert "lane" not in out
+    assert "Set aside" not in out
+
+
+def test_next_without_a_lane_names_the_lane_of_its_answer(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The mismatch a lane-named prompt has to see, in the output it is reading.
+
+    `PL-0D4X`: a session opened with "Next workflow item" ran the bare command
+    and started the product-lane pick it was handed. The digest had named both
+    lanes, but it is read once and scrolls away, so the fact has to be beside
+    the answer rather than upstream of it.
+    """
+    store = _laned_store(tmp_path)
+    _raise_to_p1(store / "PL-PROD-x.md")
+
+    assert _run("next", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+
+    assert "Lane of this answer: PL-PROD is product work." in out
+    assert "The workflow lane's own pick is PL-WORK (Item PL-WORK)" in out
+    assert "`docket next workflow`" in out
+
+
+def test_the_lane_line_names_both_lanes_when_the_answer_is_in_neither(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Crossing work has no "other lane", so both are named rather than one.
+
+    The sentence also says *why* it is unplaced, because the two reasons are
+    recovered differently: a crossing item wants a session that can hold the
+    whole change, an unplaced one wants somebody to write its `touches`.
+    """
+    assert _run("next", "--items", str(_laned_store(tmp_path))) == 0
+    out = capsys.readouterr().out
+
+    assert "PL-BOTH reaches both halves, so no lane places it." in out
+    assert "By lane: product PL-PROD (Item PL-PROD); workflow PL-WORK (Item PL-WORK)" in out
+
+
+def test_the_lane_line_is_silent_when_no_boundary_is_declared(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Fail closed, exactly as `Item.lane` does: no boundary, no lane."""
+    assert _run("next", "--items", str(_store(tmp_path, READY))) == 0
+    out = capsys.readouterr().out
+
+    assert "PL-B1B1" in out
+    assert "Lane of this answer" not in out
 
 
 def test_a_lane_names_the_work_it_set_aside_rather_than_dropping_it(

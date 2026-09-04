@@ -140,7 +140,11 @@ before finishing.
 - Keep a session short and scoped to one topic; start a fresh one for an
   unrelated topic rather than continuing or compacting a long one. Pick up cold
   from the session-start digest, `bin/docket next`, and the one item being
-  worked — not by reading the queue whole.
+  worked — not by reading the queue whole. **A prompt naming a lane ("next
+  workflow item") is `bin/docket next workflow`, run first.** The bare command
+  ranks the whole queue and hands back the other lane's work, correctly ranked
+  and wrong; it names the lane of its own answer, so read that line before the
+  item (`PL-0D4X`).
 - Batch related questions, and related edits, into one turn.
 - Prefer targeted reads over whole-file reads of large documents once you know
   roughly where the section is. Read the whole file when editing it.
@@ -244,6 +248,14 @@ correction rather than handing the question back.
   a thread is still open when the session ends, update `docs/WORKING_NOTES.md`
   too — but only for a thread spanning more than one item, outliving its item,
   or having none. One item's own reasoning goes in that item, at any length.
+- **Housekeeping you are about to do yourself is filed before you do it.** The
+  rule above records what a session will *not* fix; this one covers repository
+  work no item names — resolving a merge, clearing a stale ref, a docs sweep, a
+  lint fix, recovering a stranded item. Every in-flight guard matches a `PL-`
+  id, so unfiled work reads as nobody's to all of them and keeps reading that
+  way after both sessions have pushed. So file the item first, then work under
+  its id. Not for a fix riding inside a commit an id already leads: the line is
+  whether the work takes a commit of its own (`PL-CP74`).
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and

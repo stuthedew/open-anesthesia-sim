@@ -55,3 +55,9 @@ that has since moved.
 
 The block is sequencing only: nothing here is wrong today, and the band stands
 on this item's own classes rather than on the blocker's.
+
+**Block cleared 2026-09-03.** `PL-WB0X` merged as `#263`, so the formatters
+and the chart-series assembly are already in `app/formatting.py` and
+`app/chart_series.py`. The paragraph above is kept as the record of why this
+waited; it no longer holds. Recovered from `origin/claude/what-next-rsmqeu`,
+which was abandoned without a pull request.

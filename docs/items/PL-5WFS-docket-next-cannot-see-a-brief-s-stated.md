@@ -3,11 +3,14 @@ id: PL-5WFS
 title: docket next cannot see a brief's stated prerequisite, so it offers PL-F52R ahead of the PL-WB0X extraction that gates it
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/plan.py, docs/items/
 added: 2026-09-02
+closed: 2026-09-04
+pr: 292
+verify: bin/docket check && grep -q '^blocked-by: PL-VM40' docs/items/PL-SN2C-add-the-playback-multiplier-as-steps-per-tick.md
 ---
 
 **Problem.** Inside the current step, `docket next` ranks by priority band and
@@ -81,3 +84,87 @@ disagreeing with the briefs is a session that rewrites formatters `PL-WB0X`
 v0.4.0 sequencing edit is the deliverable - `PL-WB0X` first, then `PL-DHV7`,
 then `PL-F52R` - and it is worth making before the milestone's first item
 starts rather than after.
+
+**The "one instance" is now four, and they are live (2026-09-03).** This brief
+argued the honest count against a mechanism was one. `PL-WB0X` merged as
+`#263` that morning, which released every item that was waiting behind it, and
+`bin/docket next` immediately offered a top three that its own briefs order
+differently:
+
+| `docket next` rank | Item | What its brief says |
+| --- | --- | --- |
+| 1 | `PL-ZRSP` (plot the F_A/F_I ratio) | "The control-input timeline (`PL-DR1Z`) is what makes that visible, so land this after it." |
+| 2 | `PL-DHV7` (MAC multiples as a display unit) | was "do this after `PL-WB0X` stage 1"; now met |
+| 3 | `PL-VM40` (simulated time from a step count) | no open prerequisite |
+| — | `PL-F52R` (MAC-awake reference band) | depends on `PL-DHV7` for the unit |
+| — | `PL-DR1Z` (control-input timeline) | no open prerequisite; gates `PL-ZRSP` |
+
+So the ranking's first pick is the one item of the three that a brief defers,
+and the item that actually unblocks it (`PL-DR1Z`) is `P2` and offered
+nowhere near the top. `PL-ZRSP`'s deferral is a **safety** statement rather
+than file contention: F_A/F_I is the textbook wash-in curve only while
+inspired concentration is held constant, so without the control-input timeline
+a learner reads a mid-run vaporizer change as uptake. That is the class of
+misreading `CLAUDE.md`'s clinical-output standard names, and it is invisible
+to a ranker that does not read the body.
+
+This is the whole of the current step's work rather than one item, so the cost
+is now paid by every session that picks up `v0.4.0`, and the wrong answer is
+*silent* — `docket next` states a reason and the reason is sound as far as it
+goes. That satisfies `CLAUDE.md`'s test for friction that earns an
+interruption rather than a filing.
+
+Nothing here changes the recommendation the brief already makes: setting
+`blocked-by` on the dependent items costs two field edits and no code. What
+changed is that it is now four items, not one, so "does this recur often
+enough to earn a mechanism" has an answer.
+
+## Decided: option 1 (project owner, 2026-09-04)
+
+**A stated prerequisite gets `blocked-by`. No new field, and no change to the
+ranking.** Three edges declared in this change, each a sequencing block whose
+brief says so in the body:
+
+| Item | Was ranked | Now blocked on | Stated where, before this |
+| --- | --- | --- | --- |
+| `PL-011` (bound the history) | 3rd | `PL-W3DD` | only in `PL-THVN`, a separate item filed to notice it |
+| `PL-RCTQ` (the docs sweep) | 6th | the 8 milestone items it describes | its own "Done when" |
+| `PL-SN2C` (playback multiplier) | 7th | `PL-VM40` | its own "Why it matters" |
+
+**Why not option 2, the weaker `after:` field.** Its case was that `blocked`
+overstates "goes second". That is a statement about a word, and the cheaper fix
+is to define the word: `subprojects/docket/README.md` § "`blocked` means 'not
+first', and that is the whole of it" now says a sequencing dependency is a
+legitimate use, and asks the body to say which kind it is. That removes option
+2's entire justification for one paragraph instead of new surface in the item
+schema, `plan.py`, the checker and `triage`'s rules text.
+
+**Why not a successor-count term in the ranking.** Considered and rejected on
+structure rather than cost. Priority rules in the resource-constrained project
+scheduling literature answer "which of several *eligible* activities do I start
+when *resources are scarce*", minimising makespan; the well-studied families are
+the critical-path rules (LFT, LST) and the successor-count rules (MIS, MTS).
+This queue has the opposite shape - abundant eligible work, effectively one
+worker, and a cost function that is *rework* rather than makespan. The half of
+that model which transfers is the precedence network, which is what `blocked-by`
+already is; the priority-rule half solves contention this queue does not have.
+
+Worth recording that the obvious supporting argument is false: MTS (most total
+successors) is reported among the best-performing rules alongside LFT and LST,
+so "successor-count ordering is a weak heuristic" would not have been a
+defensible reason. See Turkakin OH, Arditi D, Manisali E. Comparison of
+heuristic priority rules in the solution of the resource-constrained project
+scheduling problem. Sustainability 2021;13(17):9956, doi:10.3390/su13179956
+(open access); and Kolisch R. Efficient priority rules for the
+resource-constrained project scheduling problem. J Oper Manag
+1996;14(3):179-192, doi:10.1016/0272-6963(95)00032-1 - which is about
+resource-based slack rules (WCS, ACS) and is not evidence about successor
+counts, despite being cited for it. Bibliographic details verified against
+publisher records; the articles themselves could not be opened from this
+environment, so treat their contents as indirectly verified.
+
+**What is left, and it is not this item.** Declaring an edge is a one-off;
+*noticing* that one is undeclared is the recurring cost, and every instance so
+far was found by a person reading a brief - `PL-9K7K` found one, `PL-THVN`
+found another, this item found a third, and a fourth (`PL-SN2C`) turned up on
+a grep while deciding it. `PL-ZBRB` carries the detector.
