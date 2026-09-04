@@ -1,7 +1,13 @@
 ---
 id: PL-L17Q
 title: tools/contrast_check.py runs in the CI floor job but reads 3.14 source, so one PEP 695 generic in app/ turns it red
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: .github/workflows/quality.yml, Makefile, tools/contrast_check.py
+verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'uv run python tools/contrast_check.py' .github/workflows/quality.yml && ! grep -q 'python3 tools/contrast_check.py' .github/workflows/quality.yml
 added: 2026-09-04
 ---
 
@@ -52,3 +58,17 @@ rather than decided; a sentence in `tools/ruff.toml`'s comment block or in
 **Done when.** No tool in the `floor` job parses a file that `src/` is free to
 write in 3.14 syntax, and the rule above is stated where the next tool author
 will read it.
+
+**Triaged 2026-09-04.** `P2` because it is latent: `floor` is green today and
+only a 3.12+ construct reaching `theme.py` or `simulation_view.py` turns it
+red. Not `safety`/`science` - no clinical value is involved - and `defect`
+rather than `infra` alone, because a check that fails for a reason unrelated
+to the change is the silent-wrong-answer shape rather than a rough edge.
+
+The `verify:` command was run before being written down and fails today for
+the right reason: `tests/unit/test_contrast_check.py` passes (27 tests), the
+`grep` for the moved invocation does not match, and the whole command exits 1.
+Both `grep` halves are the specification rather than one of them - the work is
+a *move*, so asserting the new `uv run python` line without also asserting the
+bare `python3` line is gone would accept a change that runs the tool twice and
+leaves `floor` exactly as red as before.
