@@ -286,6 +286,13 @@ collision. Say that plainly rather than presenting a clean result as a
 guarantee, and treat an item with no `touches` as unanalysed rather than
 safe — fill its `touches` in instead.
 
+The `<id>` form adds what the branches in flight have **already changed**,
+read from the branches rather than from anybody's `touches`. That section is
+the stronger evidence of the two — it fires only where work is underway, and it
+names the file to open. Report the two separately for that reason, and do not
+present a clean observed section as a clean answer: it means no branch has
+touched these files *yet*.
+
 ## Mode: start an item
 
 **First, ask whether anybody else is already on it: `git fetch origin` and
@@ -342,6 +349,37 @@ item at all — so unlike `show`, which names the refs it could not compare, thi
 read cannot name its own gaps. Finding nothing here means nothing; finding
 something is decisive. It is also this harness only: `docket` knows nothing
 about it and must not (`PL-SK88` records why).
+
+**Then ask the other question: *is another session in these files?*** Every
+step above answers "is another session on this item?", and that is not what
+collides. Two sessions on different items are the normal case and neither
+should yield — but they meet at merge if both edit the same file, which is
+what `bin/docket concurrent <id>` exists to say. Run it. It needs no argument
+the session does not already have.
+
+It answers in two parts, and they are different kinds of evidence:
+
+- **Declared overlap** — other items whose `touches` name a path this one
+  names. A prediction written before either was started, so it fires on work
+  nobody has begun and goes stale the moment a branch wanders outside its
+  declaration.
+- **Already changed on a branch in flight** — the files a live branch has
+  *actually* changed, read from the branch itself. This one means the
+  collision has already happened.
+
+**Usually the answer is "proceed, and expect to resolve", not "pick something
+else".** Two unrelated items legitimately touch one file; the point is that
+the second to merge resolves deliberately instead of discovering it. Yield only
+where the overlap is the same logic rather than the same file — and then it is
+`PL-YHD3`'s question, not this one's. What a non-empty answer always changes is
+sequencing: land the smaller change first, and say in the reply which branch
+you expect to resolve against.
+
+Read a clean result the way `concurrent` states it: it rules work out and never
+certifies it. Silence means no branch has touched these files *yet*, and says
+nothing at all about a file this item touches without having declared it —
+which is why filling `touches` in as work begins, below, is what makes the next
+session's answer true.
 
 Then decide where the work happens and act on it — do not ask. Continue here when
 this session's context is an asset (short, already about this item, just
