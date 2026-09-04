@@ -144,40 +144,18 @@ which is why it is written here first.
 
 ## Reaching a source
 
-**Direct HTTP to publishers and indexes is refused, and that is not a block.**
-The egress proxy rejects the tunnel itself, so every route that opens a socket
-to a journal fails the same way. Measured 2026-09-04 against `doi.org`,
-`api.crossref.org`, `api.openalex.org`, `www.sciencedirect.com`,
-`link.springer.com`, `arxiv.org`, and NCBI's own `pubmed.ncbi.nlm.nih.gov` and
-`eutils.ncbi.nlm.nih.gov`: `curl` returned `CONNECT tunnel failed, response
-403` for all eight, and `WebFetch` returned `EGRESS_BLOCKED`. This refusal is
-expected, so it is not the environment misbehaving and not something to route
-around.
+**A refused connection to a journal or an index is expected, and is not a
+block.** The egress proxy rejects direct HTTP to publishers and indexes
+outright - `curl` returns `CONNECT tunnel failed, response 403` and `WebFetch`
+returns `EGRESS_BLOCKED` - so it is not the environment misbehaving under
+**When something errors** below, and there is nothing to report or work around.
+The PubMed MCP server is the route that works.
 
-**The PubMed MCP server is the route that works.** Verified in the same
-session: search returned 23 hits for `"MAC-awake" AND sevoflurane`; metadata
-returned PMID, PMCID, DOI, journal, volume, pages, authors and abstract; and
-full text came back for an open-access article given its PMC id. Full text is
-PubMed Central only, so a paywalled article yields the abstract and no more.
-The server requires that a reply citing what it returned name PubMed and give
-the DOI as a link.
-
-**A search result is not a source.** Search answers when the publishers do not,
-which is what makes its summaries the likeliest thing to be mistaken for a
-reading. In the same measurement a search summary produced the citation
-`Anesthesiology 1994; 84:1484-1492`, which PubMed's citation matcher does not
-resolve. Search for an identifier; read the record through PubMed.
-
-**Full text arrives with its subscripts flattened.** The body comes back as
-plain prose, so `MAC_awake` reads as `MAC` and `ETCO2` as `ETCO`. Take a number
-from it; do not take the symbol that number belongs to from it.
-
-**Say which route a citation came from.** Whenever you write one down — into an
-item, a `**Worked.**` note, or your report — name the route and the depth:
-PubMed metadata, PubMed full text, or a document already held in
-`docs/references/`, and whether you read the full text or only the abstract.
-Once written, a citation taken from a search snippet is indistinguishable from
-one read at the source, and this note is the only thing that tells them apart.
+`.claude/rules/citing-sources.md` carries the rest: what each route returns,
+what it cannot reach, and the obligation to record which route a citation came
+from and how deeply you read. Read it before you write a citation into
+anything. It loads on its own for a session that opens `docs/MODEL.md` or a
+file under `src/anesthesia_sim/data/`, neither of which you may edit.
 
 ## When something errors
 

@@ -37,3 +37,10 @@ route confirmed it, which is what that entry is asking every later entry to do.
 **Done when.** `docs/references/README.md` cannot be read as saying the
 literature is unreachable, and each entry that claims confirmation names the
 route that confirmed it.
+
+**Note, 2026-09-04.** `PL-5DN3` scoped `.claude/rules/citing-sources.md` to
+`docs/references/**` as well as the two paths it was written for, so a session
+opening this file now loads the correct account of the routes alongside the
+wrong one. That lowers the severity and does not close the item: the sentence
+in the file still says what it says, and a rule loaded beside a contradicting
+paragraph is a worse state than either alone.
