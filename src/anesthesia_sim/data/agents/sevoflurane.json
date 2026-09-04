@@ -10,6 +10,11 @@
     },
     "max_delivered_concentration_percent": 8.0,
     "mac_percent": 2.0,
+    "mac_awake": {
+        "fraction_of_mac": 0.34,
+        "standard_deviation_fraction_of_mac": 0.05,
+        "mac_reference_basis": "each patient's own age-adjusted MAC (Katoh 1993, slow washout, descending)"
+    },
     "sources": [
         {
             "citation": "De Wolf AM, Van Zundert TC, De Cooman S, Hendrickx JF. Theoretical effect of hyperventilation on speed of recovery and risk of rehypnotization following recovery - a Gas Man simulation. BMC Anesthesiology. 2012;12:22.",
@@ -40,6 +45,11 @@
             "citation": "Mapleson WW. Effect of age on MAC in humans: a meta-analysis. British Journal of Anaesthesia. 1996;76(2):179-185.",
             "url": "https://doi.org/10.1093/bja/76.2.179",
             "note": "Tier 2, secondary synthesis, cited but not adopted; the source of the age-40 MAC this project's stored value is measured against. Regression of a comprehensive literature survey, reporting MAC at age 40 as 1.8 percent for sevoflurane (95% confidence limits about plus or minus 7 percent for isoflurane and sevoflurane and 10 percent for desflurane), and MAC falling about 6 percent per decade of age. The stored mac_percent of 2 percent is 11.1 percent higher. Not adopted for two reasons: a meta-analysis measures nothing and is tier 2 under docs/MODEL.md's source hierarchy, which admits only tier 1 as the authority for a stored value; and every other parameter in this model is the Gas Man set, so a Mapleson divisor over a Gas Man trajectory would make each displayed MAC multiple a ratio between two parameter lineages. The consequence is displayed and disclosed rather than silently absorbed: against this source the interface's MAC multiples for sevoflurane read 10 percent low, and because the sevoflurane and desflurane errors run in opposite directions a cross-agent comparison at '1 MAC' is displaced by about 22 percent. docs/MODEL.md, 'Known limitations', carries that; ROADMAP.md's planned-milestone item 31 is the route to primary values."
+        },
+        {
+            "citation": "Katoh T, Suguro Y, Kimura T, Ikeda K. Cerebral awakening concentration of sevoflurane and isoflurane predicted during slow and fast alveolar washout. Anesthesia & Analgesia. 1993;77(5):1012-1017.",
+            "url": "https://doi.org/10.1213/00000539-199311000-00024",
+            "note": "Tier 1, primary measurement, and the source of the stored mac_awake. 49 ASA I patients; MAC-awake was determined as the average of the bracketing alveolar concentrations that allow and prevent response to verbal command during recovery, and reported \"as a ratio to age-adjusted MAC\". That ratio is what is stored: it is the form the paper reports, and the only form that stays correct if mac_percent is ever changed or made age-aware. Slow washout (concentration decreased in 15-minute steps, brain assumed equilibrated with alveolar gas) gave 0.34 +/- 0.05 for sevoflurane; fast washout (discontinuation from 0.5 MAC) gave 0.22 +/- 0.07 MAC, significantly smaller, and the paper attributes the difference to end-tidal-to-arterial and arterial-to-cerebral anesthetic differences - which is what this model represents as the alveolar-to-vessel-rich difference. The slow-washout figure is the one stored because it is the *brain* concentration at awakening, and the paper measures that directly rather than leaving it to inference: cerebral concentration at first eye opening during fast washout was 0.34 +/- 0.08 MAC, \"nearly equal to MAC-Awake obtained by slow alveolar washout\". That is why docs/MODEL.md requires the band to be read against the vessel-rich trace. Determination is descending (during washout); the desflurane value in desflurane.json is ascending, and the two are not interchangeable methods. Retrieved from PubMed (PMID 8214700) and verified against the abstract 2026-09-04."
         }
     ]
 }
