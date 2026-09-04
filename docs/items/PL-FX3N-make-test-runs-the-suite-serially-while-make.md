@@ -83,16 +83,30 @@ theoretical here for the reason above - it cannot reach this target.
 default being slow is the entire complaint: nobody types the longer name of the
 faster thing. It would also give the flag a fourth home.
 
-**What it does to `PL-D3M2`,** which is still `needs-decision` and whose subject
-is exactly this kind of drift. There are now two `uv run pytest` lines in the
+**What it does to `PL-D3M2`, which closed in parallel with this and turns out
+to have already handled it.** There are now two `uv run pytest` lines in the
 `Makefile`, so "the Makefile's pytest line" no longer identifies one. They are
 not two legs of one invariant: `check`'s line must stay byte-identical to
 `.github/workflows/quality.yml`'s step because it is the coverage gate run
 twice, while `test`'s shares the flag and nothing else - no `--cov`, no
 threshold, no obligation to the workflow. Drift between `check` and CI voids a
 guarantee silently; drift between `check` and `test` only makes one target
-slow. `PL-D3M2` has been amended to say so, so whatever rule it lands anchors
-to the `check` recipe rather than to a pattern that now matches twice.
+slow.
+
+This branch was written expecting `PL-D3M2` to be open, and amended it to say
+which line a future rule should anchor to. `#278` landed the rule first, and it
+anchors correctly without needing the advice: `check_coverage_gate` keys on
+`--cov-fail-under`, so the `test` recipe - carrying no threshold - never enters
+the comparison. Confirmed on the merge of the two branches rather than
+inferred: `make check` passes with both lines present and `doc_check` reports
+no coverage-gate finding. The amendment on `PL-D3M2` was rewritten to record
+that check instead of the advice it no longer needs.
+
+Worth noting which decision made that work: the looser "compare every pytest
+invocation" rule `PL-D3M2` weighed and rejected would have failed on this
+branch every run, on a difference that is deliberate. The narrow key was chosen
+to keep `drift.yml`'s bare runs out, and it covered an unrelated second line
+for free.
 
 `drift.yml`'s two bare `uv run pytest` invocations are untouched and stay that
 way, for the reason `quality.yml`'s comment already records under `PL-22Z3`.

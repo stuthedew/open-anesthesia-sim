@@ -35,15 +35,6 @@ that nothing performs.
 **Where.** `tools/doc_check.py`, which already parses both files: `workflow_commands`
 yields every `run:` line and `Makefile` target parsing is beside it.
 
-**There are now two `uv run pytest` lines in the `Makefile`, so "the Makefile's
-pytest line" no longer identifies one.** `PL-FX3N` put `-n auto` on the `test`
-target, which shares the flag with the `check` line and nothing else - no
-`--cov`, no threshold, and no obligation to match the workflow. A checker that
-finds the Makefile's pytest invocation by pattern would now find two and could
-compare the wrong one, reporting drift that is deliberate. Anchor the read to
-the `check` target's recipe, and treat `test` as outside the pair; the comment
-above each line says which it is.
-
 **Done when.** A drift between the two commands fails a check rather than
 relying on a reader noticing. Worth deciding whether the rule is "identical
 strings" - simple, exact, and the sort of thing `CLAUDE.md` reserves hard
@@ -90,3 +81,23 @@ implementation - collapsing the missing-side branch fails four.
 to match and chose `-n auto` over a pinned width partly so the two lines could
 stay identical across machines. That was a decision taken to keep a comparison
 possible which nothing performed.
+
+## Checked against `PL-FX3N`, which landed a second Makefile pytest line
+
+`PL-FX3N` put `-n auto` on the `Makefile`'s `test` recipe in a branch open
+while this one was being decided, so there are now two `uv run pytest` lines in
+that file and "the Makefile's pytest line" no longer identifies one.
+
+**`check_coverage_gate` is already right about it, by construction rather than
+by luck.** Keying on `--cov-fail-under` rather than on "every pytest command"
+is exactly what makes the second line invisible to it: `test`'s recipe carries
+no threshold, so it never enters `local` and cannot be compared against
+`quality.yml`. The reasoning recorded above for excluding `drift.yml`'s bare
+runs covers this case unchanged, which is the sign the key was chosen at the
+right level.
+
+Verified rather than reasoned about, on the merge of the two branches: `make
+check` passes with both lines present, and `tools/doc_check.py` reports no
+coverage-gate finding. A blanket "compare every pytest invocation" rule - the
+looser option this item weighed and rejected - would instead have failed on
+`test` versus `quality.yml` every run, on a difference that is deliberate.
