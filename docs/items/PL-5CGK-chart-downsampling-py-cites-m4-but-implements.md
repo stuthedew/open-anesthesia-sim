@@ -48,14 +48,31 @@ concentration history) is the item most likely to consider moving this into a
 store, and DuckDB — which DashQL names as providing `arg_min` — would satisfy
 AM4 while silently dropping the tie-break guarantee.
 
-Worth recording alongside: DashQL's pathological example for the original
-formulation is `f(x) = 42`, a constant function, whose join "will then emit
-the entire input relation". That is this simulator's circuit trace whenever
-the vaporizer is never opened, and what every compartment approaches at
-equilibrium — so the low-duplicate assumption both papers rest on is one this
-data fails, and AM4's shape is what makes that a non-event. Measured
-2026-09-04: a fully plateaued trace draws 188 points from 94 columns, the same
-as a wash-in curve.
+**Whether this data is DashQL's pathological case, measured rather than
+assumed (2026-09-04).** Their example for the original formulation is
+`f(x) = 42`, a constant function, whose join "will then emit the entire input
+relation". Run against the real model at a 0.1 s step, counting what that join
+would emit against M4's promised four tuples per bucket:
+
+| Run | Repeated values | Join emits | We draw |
+| --- | ---: | ---: | ---: |
+| Wash-in at 2%, 20 min | 0.0% | 1.0x | 188 |
+| Two hours at 2% | 0.0% | 1.0x | 282 |
+| Vaporizer never opened, 20 min | 100% | 32.4x | 188 |
+
+So it is the *idle* run that is pathological, and only that one: with the
+vaporizer closed every compartment sits at exactly 0.0 and the join returns
+the whole relation. Any run with agent flowing has **no** ties at all — zero
+across 12 000 and 72 000 samples on all six traces, comfortably inside the
+"under one percent" both papers assume. An earlier draft of this item claimed
+compartments go bit-identical at equilibrium; they do not, at two hours the
+exponential approach still moves the last bits, and that claim is withdrawn.
+
+None of it reaches this implementation, and for a structural reason rather
+than a favourable-data one: no join means ties cannot multiply the output, so
+188 points are drawn in the plateau case and 188 in the wash-in case. It
+matters only for a future formulation that reconstructs a tuple by matching
+on its value.
 
 **Where.**
 
