@@ -59,3 +59,15 @@ test the way the agent-colour claims are pinned, and record the analysis in
 claims a style another trace shares, every trace meets 3:1 against the panel,
 the pairwise ratios under normal vision and simulated dichromacy are recorded in
 `docs/MODEL.md`, and a test asserts them.
+
+**Appended 2026-09-04 by `PL-ZRSP` (plot the F_A/F_I ratio).** The wash-in
+plot that item added carries exactly one trace, in `ALVEOLAR_COLOR`, so it is
+the one place in this interface where this item's arithmetic does *not* bind:
+there is no six-way separation problem on a chart with a single line, and
+nothing stops that line clearing SC 1.4.11's 3:1 against `PANEL` on its own.
+It was left at `ALVEOLAR_COLOR` (2.93) deliberately, because the colour is
+what says the trace is the alveolar compartment expressed against the one
+filling it, and breaking that linkage to gain 0.07 of a ratio looked like the
+worse trade. Worth revisiting as part of this item rather than separately: if
+the palette pass gives the alveolar trace a colour that clears 3:1, both charts
+get it and the question closes itself.

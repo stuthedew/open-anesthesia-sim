@@ -133,12 +133,17 @@ Flet interface: `app/formatting.py` turns a fraction into the strings a
 reader sees — a percent and a multiple of the running agent's 1 MAC — at the
 resolutions `docs/MODEL.md` § "Displayed precision" derives,
 `app/chart_series.py` builds the traces and redraws them from the recorded
-run, and `app/control_timeline.py` turns the recorded control changes into
-the adjustments a reader sees. That last one is a correctness question for a
-reason worth stating: the record is faithful to the run and a drag of one
-slider is several settings in it, so the collapse into one displayed act is
-a claim about what the user did rather than a tidier rendering of what the
-model saw. The MAC divisor reaches the formatter as an argument, from
+run, `app/control_timeline.py` turns the recorded control changes into
+the adjustments a reader sees, and `app/wash_in.py` divides the alveolar
+fraction by the inspired one. The last two are correctness questions for
+reasons worth stating. The control record is faithful to the run and a drag
+of one slider is several settings in it, so the collapse into one displayed
+act is a claim about what the user did rather than a tidier rendering of
+what the model saw. And the wash-in quotient has a domain: it is undefined
+before any agent reaches the circuit and stops being a wash-in fraction
+above 1, so the module returns the value and the reason together and the
+chart draws the trace in segments that break where the domain does —
+`docs/MODEL.md` § "F_A/F_I as a displayed ratio" is the specification. The MAC divisor reaches the formatter as an argument, from
 `SimulationSnapshot.agent_mac_percent`, rather than being looked up: it is
 what makes a displayed multiple agent-specific, so it travels with the value
 it divides. The agent's MAC-awake travels the same way and for the same
@@ -198,10 +203,13 @@ which sample they show. The selection is therefore anchored to absolute
 sample index rather than to position within the window, so appending a
 sample leaves every completed bucket choosing what it already chose
 (PL-Q197). `app/chart_series.py` is the layer above it — it holds the
-per-trace point budget, converts fraction to percent, and moves the points a
-trace already holds — and it is separate for the same reason: which quantity a
-line carries is a correctness claim, and the view passes it in as one
-`PlottedSeries` table declared beside the traces themselves. Stepping and drawing also run as separate loops on separate intervals,
+per-trace point budget, converts each drawn value into its own axis's unit,
+and moves the points a trace already holds — and it is separate for the same
+reason: which quantity a line carries is a correctness claim, and the view
+passes it in as one `PlottedSeries` table declared beside the traces
+themselves. The unit conversion belongs to the caller that knows the axis:
+the six compartment traces are drawn in percent and the wash-in ratio in its
+own dimensionless unit, through one shared point-writing primitive. Stepping and drawing also run as separate loops on separate intervals,
 so simulation time stays a function of steps taken rather than of how long a
 frame took.
 
@@ -477,4 +485,8 @@ and import, run before a push, and reach what those two commands never do.
   `_plotted_series` table. A series that draws no recorded sample — a
   clinical reference, a control mark — stays out of that table by
   construction, and owes the labelling requirement `docs/MODEL.md`
-  § "Interface boundary" puts in place of the sample rule instead.
+  § "Interface boundary" puts in place of the sample rule instead. So does a
+  trace of a *derived* quantity with a domain, such as the wash-in ratio: the
+  table binds a line to one recorded field, and a value that is sometimes
+  absent has no such field to be bound to. It owes its domain in
+  `docs/MODEL.md` and at the point of display instead.

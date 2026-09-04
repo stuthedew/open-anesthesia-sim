@@ -243,8 +243,16 @@ WASH_IN_COLOR = ALVEOLAR_COLOR
 # have to be readable together without scrolling between them.
 WASH_IN_CHART_HEIGHT = 200
 # Gridlines at quarter-fractions, which is the ruling every published wash-in
-# figure carries and the spacing a reader compares against.
+# figure carries and the spacing a reader compares against. The axis is
+# labelled at exactly these values rather than at whatever interval the chart
+# would choose for itself: a rule at 0.25 beside a label at 0.2 puts two
+# different scales on one axis, and a reader taking a value off the nearest
+# gridline would take it off the wrong one.
 WASH_IN_GRID_INTERVAL = 0.25
+# Room for one axis label at `format_wash_in_ratio`'s two decimals. The chart's
+# own default is sized for the single digits the percent axis carries, and
+# wraps "0.25" onto two lines.
+WASH_IN_AXIS_LABEL_SIZE = 34
 # How many separated stretches of wash-in the chart can draw at once. The
 # trace breaks wherever the ratio leaves the domain `app/wash_in.py` states -
 # a vaporizer turned off and later reopened is two stretches, not one line
@@ -267,6 +275,37 @@ AVAILABLE_AGENTS: tuple[tuple[str, str], ...] = tuple(
 # their validated data files.
 if set(AGENT_COLOR_SCHEMES) != set(AGENT_DATA_FILENAMES):
     raise RuntimeError("AGENT_COLOR_SCHEMES must define exactly the built-in volatile agents")
+
+
+def _build_wash_in_axis_labels() -> list[fch.ChartAxisLabel]:
+    """Label the wash-in axis at its own gridlines, in its own resolution.
+
+    Built once at import time rather than per frame: unlike the MAC axis,
+    nothing about this axis depends on the agent or on the run - it is a
+    dimensionless 0 to 1 under every setting, which is the property that
+    makes the plot comparable across agents in the first place.
+
+    The labels go through `format_wash_in_ratio`, so the axis a value is
+    read against and the reading printed beside the plot cannot be at two
+    different resolutions.
+
+    Returns:
+        One label per gridline, from 0 to the plotted maximum.
+    """
+
+    tick_count = round(WASH_IN_PLOTTED_MAXIMUM / WASH_IN_GRID_INTERVAL)
+
+    return [
+        fch.ChartAxisLabel(
+            value=index * WASH_IN_GRID_INTERVAL,
+            label=ft.Text(
+                format_wash_in_ratio(index * WASH_IN_GRID_INTERVAL),
+                color=MUTED,
+                size=METRIC_QUALIFIER_SIZE,
+            ),
+        )
+        for index in range(tick_count + 1)
+    ]
 
 
 @dataclass(frozen=True)
@@ -556,7 +595,15 @@ class SimulationView:
             # why nothing above this maximum is drawn.
             max_y=WASH_IN_PLOTTED_MAXIMUM,
             left_axis=fch.ChartAxis(
-                title=ft.Text("F_A / F_I", color=MUTED, size=METRIC_QUALIFIER_SIZE)
+                title=ft.Text("F_A / F_I", color=MUTED, size=METRIC_QUALIFIER_SIZE),
+                labels=_build_wash_in_axis_labels(),
+                # Both, and for different reasons: `labels` says what the
+                # ticks read, `label_spacing` says which of them are drawn.
+                # Left to choose for itself the chart samples the list at a
+                # coarser interval than the gridlines, so the quarter marks
+                # are ruled and unlabelled.
+                label_spacing=WASH_IN_GRID_INTERVAL,
+                label_size=WASH_IN_AXIS_LABEL_SIZE,
             ),
             horizontal_grid_lines=fch.ChartGridLines(
                 interval=WASH_IN_GRID_INTERVAL, color="#D9E2EC"

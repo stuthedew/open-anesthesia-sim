@@ -92,6 +92,7 @@ from functools import cache
 
 import pytest
 
+from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
 
@@ -210,14 +211,14 @@ PUBLISHED_INSPIRED_PERCENTS = tuple(
 
 
 @cache
-def _wash_in_ratio(
+def _wash_in_system(
     agent_id: str,
     alveolar_ventilation_l_min: float | None = None,
     cardiac_output_l_min: float | None = None,
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
     delivered_fraction: float = DELIVERED_FRACTION,
-) -> float:
-    """Return F_A/F_I after 30 minutes of wash-in at one operating point.
+) -> AgentUptakeSystem:
+    """Return the system after 30 minutes of wash-in at one operating point.
 
     `None` for either patient flow means the reference patient's own default,
     which is what every comparison against a published value uses; the
@@ -248,6 +249,33 @@ def _wash_in_ratio(
 
     for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
         system.advance(SIMULATION_STEP_S)
+
+    return system
+
+
+def _wash_in_ratio(
+    agent_id: str,
+    alveolar_ventilation_l_min: float | None = None,
+    cardiac_output_l_min: float | None = None,
+    fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
+    delivered_fraction: float = DELIVERED_FRACTION,
+) -> float:
+    """F_A/F_I after 30 minutes of wash-in at one operating point.
+
+    F_I is the *circuit* fraction at the moment of measurement, not the
+    vaporizer dial. That is the quantity the published studies measured - an
+    inspired concentration at the airway - and the two are not equal here:
+    alveolar uptake keeps the circuit measurably below the dial for the whole
+    run, so dividing by the dial instead would understate every ratio.
+    """
+
+    system = _wash_in_system(
+        agent_id,
+        alveolar_ventilation_l_min,
+        cardiac_output_l_min,
+        fresh_gas_flow_l_min,
+        delivered_fraction,
+    )
 
     return system.alveoli.concentration_fraction / system.circuit.circuit_concentration_fraction
 
@@ -288,6 +316,34 @@ def test_thirty_minute_ratio_matches_published_human_measurement(
         f"{measurement.standard_deviation} measured in {measurement.cohort_size} "
         f"volunteers ({measurement.source})"
     )
+
+
+@pytest.mark.parametrize("agent_id", sorted({m.agent_id for m in PUBLISHED_MEASUREMENTS}))
+def test_the_displayed_ratio_is_the_quantity_this_file_validates(agent_id: str) -> None:
+    """The interface must draw the number these comparisons were made on.
+
+    Everything above divides the two compartment fractions in place, which
+    is the definition the published studies measured. The interface draws
+    F_A/F_I through `app/wash_in.py`, which adds a domain to it. Two
+    expressions of one quantity is exactly the divergence `CLAUDE.md`
+    warns about - the validated number and the displayed number drifting
+    apart with nothing to notice - so this asserts they are the same
+    number, and that a settled 30-minute wash-in is inside the domain the
+    chart will actually draw.
+
+    It is the only place `tests/reference/` reaches into `app/`, and it
+    reaches into a Flet-free module holding one arithmetic rule. What it
+    buys is that a change to the displayed ratio's definition fails
+    against a human measurement rather than against a unit test alone.
+    """
+
+    system = _wash_in_system(agent_id)
+    reading = read_wash_in(
+        system.alveoli.concentration_fraction, system.circuit.circuit_concentration_fraction
+    )
+
+    assert reading.domain is WashInDomain.WASH_IN
+    assert reading.plotted_ratio == pytest.approx(_wash_in_ratio(agent_id))
 
 
 def test_published_agents_are_ordered_by_solubility() -> None:
