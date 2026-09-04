@@ -31,11 +31,18 @@ import flet as ft
 import flet_charts as fch
 
 from anesthesia_sim.app import chart_series
+from anesthesia_sim.app.control_timeline import (
+    ControlAdjustment,
+    format_adjustment,
+    group_adjustments,
+)
 from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
     format_delivered_label,
+    format_elapsed,
+    format_flow,
     format_mac_awake_reference,
     format_mac_multiple,
     format_mac_reference,
@@ -186,6 +193,37 @@ MAC_AWAKE_BAND_FILL_OPACITY = 0.14
 # the 1 MAC line does not read as a seventh compartment at a glance.
 ONE_MAC_LINE_DASH_PATTERN = [16, 8]
 
+# A control-change mark is furniture like the two references, and takes the
+# same MUTED ink for the same reason: it is not a compartment, and a hue of
+# its own would enter the trace palette's separation problem while implying
+# it were. It needs no second colour channel because it already has a
+# stronger one - it is the only vertical thing on the chart, which no
+# colour-vision deficiency and no greyscale rendering can take away.
+# Reusing MUTED also declares no new pair for `tools/contrast_check.py`:
+# MUTED on PANEL is already measured, as the 1 MAC line.
+CONTROL_MARK_COLOR = MUTED
+# Finer than either reference and than every trace, because a control mark
+# annotates the run rather than showing any part of it: at the density of a
+# case with a dozen adjustments, a mark as heavy as a trace would compete
+# with the curves it exists to be read against.
+CONTROL_MARK_STROKE_WIDTH = 1.0
+CONTROL_MARK_DASH_PATTERN = [3, 5]
+# How many control marks the chart can stand at once. The pool is built at
+# construction and its members are moved from frame to frame, exactly as the
+# traces are (PL-010), so this is a ceiling on control count rather than on
+# how many adjustments a run may record - the list beside the chart shows
+# them whether or not there is a mark left to draw one, and says so when
+# there is not.
+MAX_CHART_CONTROL_MARKS = 24
+# What the list says before anything has been changed. It states the run's
+# state rather than leaving an empty panel, which reads as a panel that has
+# failed to load.
+NO_CONTROL_CHANGES_TEXT = "No settings changed yet in this run."
+# How many adjustments the list shows. A fixed panel beside a chart, not a
+# scrollback: the count of what is not shown is displayed rather than the
+# entries silently ending.
+MAX_LISTED_ADJUSTMENTS = 12
+
 # (agent_id, display_name) for every built-in agent, in AGENT_DATA_FILENAMES
 # order. Loaded once at import time; each file is tiny and this avoids
 # hardcoding display names that already live in the data files.
@@ -269,6 +307,10 @@ class SimulationView:
         # changes nothing about the simulation — there is no core state for
         # it to belong to.
         self._rejected_setting_notice: str | None = None
+        # Adjustments inside the visible window that the fixed pool of chart
+        # marks could not draw. Held so the panel can say so: a chart that
+        # silently stops annotating asserts that nothing more happened.
+        self._undrawn_control_marks = 0
         self._notice_text = ft.Text("", color=WARNING, weight=ft.FontWeight.BOLD, visible=False)
         self._elapsed_time_text = self._build_metric_value("0.0 s")
         # Placeholders come from the formatter rather than from literals, so
@@ -306,7 +348,7 @@ class SimulationView:
         )
 
         self._fresh_gas_flow_text = ft.Text(
-            (f"{initial_snapshot.fresh_gas_flow_l_min:.1f} L/min"), color=INK
+            format_flow(initial_snapshot.fresh_gas_flow_l_min), color=INK
         )
         self._delivered_concentration_text = ft.Text(
             format_percent(initial_snapshot.delivered_concentration_fraction), color=INK
@@ -323,10 +365,10 @@ class SimulationView:
             size=METRIC_SECONDARY_VALUE_SIZE,
         )
         self._alveolar_ventilation_text = ft.Text(
-            (f"{initial_snapshot.alveolar_ventilation_l_min:.1f} L/min"), color=INK
+            format_flow(initial_snapshot.alveolar_ventilation_l_min), color=INK
         )
         self._cardiac_output_text = ft.Text(
-            (f"{initial_snapshot.cardiac_output_l_min:.1f} L/min"), color=INK
+            format_flow(initial_snapshot.cardiac_output_l_min), color=INK
         )
 
         self._circuit_series = chart_series.build_series(color=CIRCUIT_COLOR, stroke_width=3)
@@ -409,9 +451,27 @@ class SimulationView:
             show_min=False,
             show_max=False,
         )
+        # One series per mark, built once. Marks come first in the drawing
+        # order - behind the references and behind every trace - because a
+        # vertical rule crossing the whole plot is the one annotation that
+        # can obscure all six compartments at the moment a reader is trying
+        # to see what the change did to them.
+        self._control_mark_series = [
+            chart_series.build_control_mark(
+                CONTROL_MARK_COLOR, CONTROL_MARK_STROKE_WIDTH, CONTROL_MARK_DASH_PATTERN
+            )
+            for _ in range(MAX_CHART_CONTROL_MARKS)
+        ]
+        self._control_timeline_text = ft.Text(
+            NO_CONTROL_CHANGES_TEXT, color=MUTED, size=METRIC_QUALIFIER_SIZE
+        )
+        self._control_timeline_overflow_text = ft.Text(
+            "", color=MUTED, size=METRIC_QUALIFIER_SIZE, italic=True, visible=False
+        )
         self._concentration_chart = fch.LineChart(
             data_series=[
-                # References first, so every trace is drawn over them. A
+                *self._control_mark_series,
+                # References next, so every trace is drawn over them. A
                 # compartment obscured by a reference band would be the
                 # annotation hiding the run it annotates.
                 self._mac_awake_band_series,
@@ -514,6 +574,7 @@ class SimulationView:
             active_color=ACCENT,
             expand=True,
             on_change=self._handle_fresh_gas_flow_change,
+            on_change_start=self._handle_adjustment_start,
         )
         self._delivered_concentration_slider = ft.Slider(
             min=MIN_DELIVERED_CONCENTRATION_PERCENT,
@@ -530,6 +591,7 @@ class SimulationView:
             active_color=ACCENT,
             expand=True,
             on_change=(self._handle_delivered_concentration_change),
+            on_change_start=self._handle_adjustment_start,
         )
         self._alveolar_ventilation_slider = ft.Slider(
             min=MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -540,6 +602,7 @@ class SimulationView:
             active_color=ACCENT,
             expand=True,
             on_change=(self._handle_alveolar_ventilation_change),
+            on_change_start=self._handle_adjustment_start,
         )
         self._cardiac_output_slider = ft.Slider(
             min=MINIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -550,6 +613,7 @@ class SimulationView:
             active_color=ACCENT,
             expand=True,
             on_change=self._handle_cardiac_output_change,
+            on_change_start=self._handle_adjustment_start,
         )
 
         self._refresh_view()
@@ -603,10 +667,7 @@ class SimulationView:
                         self._build_parameter_controls(),
                         self._build_concentration_metrics(),
                         ft.ResponsiveRow(
-                            controls=[
-                                self._build_chart_panel(),
-                                (self._build_agent_accounting_panel()),
-                            ],
+                            controls=[self._build_chart_panel(), self._build_chart_sidebar()],
                             spacing=12,
                             run_spacing=12,
                         ),
@@ -957,6 +1018,32 @@ class SimulationView:
                         spacing=8,
                         run_spacing=2,
                     ),
+                    # A third legend row, because a control mark is neither
+                    # of the two kinds above it. A compartment trace is a
+                    # modelled quantity and a clinical reference is a
+                    # published constant; this is a record of something the
+                    # *user* did, which is a claim of a different type
+                    # altogether, and a row of its own is what says so
+                    # before a reader has to work it out from the shape.
+                    ft.Row(
+                        controls=[
+                            ft.Text("Run record:", color=MUTED),
+                            self._build_control_mark_legend_item(),
+                            ft.Text(
+                                (
+                                    "A vertical mark is a setting you changed, at the "
+                                    "simulated time it took effect — an input to the run, "
+                                    "not anything measured from the patient. The panel "
+                                    "beside the chart says which setting and to what."
+                                ),
+                                color=MUTED,
+                                italic=True,
+                            ),
+                        ],
+                        wrap=True,
+                        spacing=8,
+                        run_spacing=2,
+                    ),
                     ft.Container(height=CHART_HEIGHT, content=self._concentration_chart),
                 ]
             ),
@@ -966,12 +1053,75 @@ class SimulationView:
             col={"sm": 12, "lg": 9},
         )
 
+    def _build_chart_sidebar(self) -> ft.Container:
+        """Build the column of panels that stands beside the chart.
+
+        The control-input timeline sits under the accounting panel rather
+        than beneath the chart, because it is read *against* the chart: a
+        mark on the plot and the line that says what it was are one piece
+        of information split across two places, and putting them side by
+        side is what lets a reader pair them without scrolling.
+
+        Returns:
+            Responsive column holding the accounting and timeline panels.
+        """
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    self._build_agent_accounting_panel(),
+                    self._build_control_timeline_panel(),
+                ],
+                spacing=12,
+            ),
+            col={"sm": 12, "lg": 3},
+        )
+
+    def _build_control_timeline_panel(self) -> ft.Container:
+        """Build the list of settings changed during this run.
+
+        The record half of the chart's vertical marks. It states what the
+        marks cannot - which control moved, and from what to what - and it
+        is deliberately a record of *inputs*: nothing in it is a measured
+        or a modelled quantity, and nothing about it says what the patient
+        did in response, which is what the traces beside it are for.
+
+        Newest first. The panel is a fixed height beside a chart rather
+        than a scrollback, so the entry a reader has just produced has to
+        be the one they can see; oldest-first would push each new
+        adjustment off the bottom at the moment it was made.
+
+        Returns:
+            Panel holding the run's adjustments, most recent first.
+        """
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text("Control changes", weight=ft.FontWeight.BOLD, color=INK),
+                    ft.Text(
+                        "What was changed during this run, most recent first. "
+                        "Settings only — not a measurement.",
+                        color=MUTED,
+                        size=METRIC_QUALIFIER_SIZE,
+                        italic=True,
+                    ),
+                    self._control_timeline_text,
+                    self._control_timeline_overflow_text,
+                ],
+                spacing=4,
+            ),
+            bgcolor=PANEL,
+            border_radius=COMPACT_PANEL_RADIUS,
+            padding=COMPACT_PANEL_PADDING,
+        )
+
     def _build_agent_accounting_panel(self) -> ft.Container:
         """Build the agent-conservation diagnostic panel.
 
         Returns:
-            Responsive validation panel containing agent amounts in
-            equivalent liters of agent gas.
+            Validation panel containing agent amounts in equivalent liters
+            of agent gas.
         """
 
         return ft.Container(
@@ -986,7 +1136,6 @@ class SimulationView:
             bgcolor=PANEL,
             border_radius=COMPACT_PANEL_RADIUS,
             padding=COMPACT_PANEL_PADDING,
-            col={"sm": 12, "lg": 3},
         )
 
     @staticmethod
@@ -1006,6 +1155,30 @@ class SimulationView:
             controls=[
                 ft.Container(width=24, height=4, bgcolor=color),
                 ft.Text(f"{label} ({line_style})", color=INK),
+            ],
+            spacing=6,
+            tight=True,
+        )
+
+    @staticmethod
+    def _build_control_mark_legend_item() -> ft.Row:
+        """Build the legend entry for a recorded control change.
+
+        Drawn as an upright swatch rather than the flat bar every other
+        entry uses, so the legend carries the same non-colour channel the
+        mark itself does: what makes a control mark unmistakable on the
+        chart is that it is the only vertical thing there, and a legend
+        that showed it as one more horizontal bar would give a reader no
+        way to connect the two.
+
+        Returns:
+            Tightly sized chart legend entry.
+        """
+
+        return ft.Row(
+            controls=[
+                ft.Container(width=3, height=16, bgcolor=CONTROL_MARK_COLOR),
+                ft.Text("Control change (vertical, fine dash)", color=INK),
             ],
             spacing=6,
             tight=True,
@@ -1139,7 +1312,7 @@ class SimulationView:
             self._status_text.color = MUTED
 
         self._refresh_notice(snapshot.failure_reason)
-        self._elapsed_time_text.value = f"{snapshot.elapsed_s:.1f} s"
+        self._elapsed_time_text.value = format_elapsed(snapshot.elapsed_s)
         self._circuit_concentration_text.value = format_percent(
             snapshot.circuit_concentration_fraction
         )
@@ -1180,15 +1353,15 @@ class SimulationView:
             snapshot.fat_partial_pressure_fraction, mac_percent
         )
 
-        self._fresh_gas_flow_text.value = f"{snapshot.fresh_gas_flow_l_min:.1f} L/min"
+        self._fresh_gas_flow_text.value = format_flow(snapshot.fresh_gas_flow_l_min)
         self._delivered_concentration_text.value = format_percent(
             snapshot.delivered_concentration_fraction
         )
         self._delivered_concentration_mac_text.value = format_mac_multiple(
             snapshot.delivered_concentration_fraction, mac_percent
         )
-        self._alveolar_ventilation_text.value = f"{snapshot.alveolar_ventilation_l_min:.1f} L/min"
-        self._cardiac_output_text.value = f"{snapshot.cardiac_output_l_min:.1f} L/min"
+        self._alveolar_ventilation_text.value = format_flow(snapshot.alveolar_ventilation_l_min)
+        self._cardiac_output_text.value = format_flow(snapshot.cardiac_output_l_min)
 
         # Every slider is driven from the snapshot, not left wherever the
         # user dragged it. A refused setting must not leave a control
@@ -1253,6 +1426,81 @@ class SimulationView:
         chart_series.redraw_visible_window(
             self._plotted_series, snapshot.concentration_history, chart_min_x
         )
+
+        adjustments = group_adjustments(snapshot.control_timeline)
+        self._redraw_control_marks(adjustments, chart_min_x, chart_max_x, snapshot)
+        self._refresh_control_timeline(adjustments)
+
+    def _redraw_control_marks(
+        self,
+        adjustments: tuple[ControlAdjustment, ...],
+        chart_min_x: float,
+        chart_max_x: float,
+        snapshot: SimulationSnapshot,
+    ) -> None:
+        """Stand a mark at each adjustment the visible window contains.
+
+        The pool is fixed, so the marks drawn are the *most recent* that
+        fit rather than an arbitrary subset: a reader watching a run is
+        reading the change they just made against the curve it moved. What
+        the pool cannot show is not dropped in silence - the panel beside
+        the chart says how many marks are missing, because a plot that
+        quietly stops annotating is a plot that asserts nothing happened.
+
+        Every mark spans the plotted range, which follows the running
+        agent's dial maximum, so it is taken from the snapshot rather than
+        from the chart control: the two are set in the same frame and this
+        way they cannot be read from different ones.
+        """
+
+        visible = [
+            adjustment
+            for adjustment in adjustments
+            if chart_min_x <= adjustment.started_at_s <= chart_max_x
+        ]
+        drawn = visible[-MAX_CHART_CONTROL_MARKS:]
+        self._undrawn_control_marks = len(visible) - len(drawn)
+
+        for series, adjustment in zip(self._control_mark_series, drawn, strict=False):
+            chart_series.redraw_control_mark(
+                series, adjustment.started_at_s, snapshot.max_delivered_concentration_percent
+            )
+
+        for series in self._control_mark_series[len(drawn) :]:
+            chart_series.park_control_mark(series, chart_min_x)
+
+    def _refresh_control_timeline(self, adjustments: tuple[ControlAdjustment, ...]) -> None:
+        """Write the run's adjustments into the panel beside the chart.
+
+        Most recent first, bounded, and honest about the bound: what the
+        panel cannot fit is counted rather than left off, and so is what
+        the chart could not mark, since a reader comparing the two would
+        otherwise conclude that a change they made was never recorded.
+        """
+
+        if not adjustments:
+            self._control_timeline_text.value = NO_CONTROL_CHANGES_TEXT
+            self._control_timeline_overflow_text.visible = False
+            self._control_timeline_overflow_text.value = ""
+
+            return
+
+        listed = adjustments[-MAX_LISTED_ADJUSTMENTS:]
+        self._control_timeline_text.value = "\n".join(
+            format_adjustment(adjustment) for adjustment in reversed(listed)
+        )
+
+        unlisted = len(adjustments) - len(listed)
+        notes = []
+
+        if unlisted:
+            notes.append(f"{unlisted} earlier change(s) not listed")
+
+        if self._undrawn_control_marks:
+            notes.append(f"{self._undrawn_control_marks} not marked on the chart")
+
+        self._control_timeline_overflow_text.value = "; ".join(notes)
+        self._control_timeline_overflow_text.visible = bool(notes)
 
     def _apply_agent_color_scheme(self, agent_id: str) -> None:
         """Apply the verified agent color to the header and selection control."""
@@ -1355,6 +1603,24 @@ class SimulationView:
 
         agent_id = event.control.value
         self._apply_setting(lambda: self._controller.set_agent(agent_id))
+
+    def _handle_adjustment_start(self, event: ft.Event[ft.Slider]) -> None:
+        """Tell the controller a new user adjustment is beginning.
+
+        A slider reports its value continuously while it is dragged, so one
+        turn of one dial reaches the controller as a run of changes - the
+        same shape two separate turns of that dial arrive in. This is where
+        the difference is known, and the only place it is: the drag has a
+        beginning, and the interface is told about it.
+
+        It changes no simulation state and records nothing on its own, so it
+        does not go through `_apply_setting`: there is no value here for the
+        core to refuse, and nothing on screen that could come to disagree
+        with the snapshot.
+        """
+
+        del event
+        self._controller.begin_control_adjustment()
 
     def _handle_fresh_gas_flow_change(self, event: ft.Event[ft.Slider]) -> None:
         if event.control.value is None:

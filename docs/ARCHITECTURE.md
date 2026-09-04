@@ -53,8 +53,9 @@ src/anesthesia_sim/
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic
 │   ├── formatting.py               # modeled value -> displayed string; Flet-independent
-│   ├── chart_series.py             # builds and redraws the chart's traces and clinical references
+│   ├── chart_series.py             # builds and redraws the chart's traces, references and control marks
 │   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
+│   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; Flet-independent
 │   ├── theme.py                    # UI palette, cited ISO 5360 agent colors, layout constants
 │   └── main.py                     # entry point; builds the Flet page
 └── data/                 # versioned, cited parameter files
