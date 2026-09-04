@@ -7,9 +7,10 @@ status: done
 classes: docs, infra
 feature: worker-instructions
 touches: docs/worker.md
-verify: python3 tools/doc_check.py check && grep -q 'PubMed MCP' docs/worker.md
 added: 2026-09-04
 closed: 2026-09-04
+pr: 305
+verify: python3 tools/doc_check.py check && grep -q 'PubMed MCP' docs/worker.md
 ---
 
 **Problem.** This environment's egress policy refuses direct HTTP to publisher
