@@ -118,12 +118,19 @@ PL-006 the controller read the circuit's stored agent out and put it back
 around `set_circuit_volume`, which left `core/` exposing an unconserving
 primitive publicly and the invariant holding only for the caller that knew
 to compensate. The setter conserves, and the controller forwards. The
-snapshot carries the complete `SimulationHistorySample` record of the run:
-one sample per simulation step, not trimmed (see `docs/items/`). It carries
-the run's `ControlChange` timeline beside it — one entry per setting the
-model was actually stepped under, so re-applying the timeline reproduces
-the run rather than approximating it.
-`app/simulation_view.py` reads only from that snapshot — it builds the
+snapshot is the run's state at one instant: a fixed number of values,
+however long the run has been going. The recorded run itself — one
+`SimulationHistorySample` per simulation step, not trimmed — is answered for
+separately, by `history_window()`, which returns the samples at or after a
+time the caller names. The two were one field until PL-0VM7: the snapshot
+carried every sample ever recorded, so a frame's cost grew with the length
+of the run while the chart discarded all but the few hundred inside its
+axis. The snapshot does carry the run's `ControlChange` timeline — one entry
+per setting the model was actually stepped under, so re-applying the
+timeline reproduces the run rather than approximating it, and a timeline is
+bounded by how often a user touches a control rather than by how long they
+watch.
+`app/simulation_view.py` reads only those two — it builds the
 controls, drives the chart, and wires slider/button callbacks through
 `_apply_setting` to controller setters. It performs no physiological or
 unit calculation of its own. The transformations it does apply are each
@@ -475,7 +482,10 @@ and import, run before a push, and reach what those two commands never do.
 - A new display panel or control → `app/simulation_view.py`, reading only
   fields already on `SimulationSnapshot`/`SimulationHistorySample`; if the UI
   needs a value that doesn't exist yet, add it to those dataclasses in
-  `app/controller.py`, computed in `core/`, never computed in the view.
+  `app/controller.py`, computed in `core/`, never computed in the view. A
+  panel wanting the run rather than the instant asks `history_window()` for
+  the span it draws, and never for the whole run: what crosses that boundary
+  has to stay bounded by the display rather than by the run's length.
 - A new way of *rendering* a value a reader interprets — a unit, a decimal
   count, a marker for what the display cannot resolve → `app/formatting.py`,
   as a pure function with its own test, and with the reason recorded in
