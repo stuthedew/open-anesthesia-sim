@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: perf
 feature: teachable-case
+milestone: v0.3.8
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py
 added: 2026-09-04
 closed: 2026-09-04
