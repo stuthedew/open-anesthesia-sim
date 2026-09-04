@@ -57,7 +57,8 @@ capability-boundary rule above governs.
 | v0.3.4 | Completed | Documentation- and tooling-truth patch: every shipped Python file is byte-identical to v0.3.3 and `src/anesthesia_sim/data/` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The whole release is the project correcting statements it was making about itself. `docs/MODEL.md` had named v0.2.3 as the current released baseline for thirteen releases, and still recorded the operator split as kept on a decision the 2026-09-03 re-scope reversed; both are corrected, and the specification now names no current version at all, because a second copy of one goes stale silently at every release. Two checks that reported a false state were repaired and retired: the top-band advisory no longer counts blocked items a session cannot start, and `doc_check`'s baseline-tag advisory is gone, because a local checkout cannot tell a release never tagged from one tagged since it last fetched. |
 | v0.3.5 | Completed | Gate-measurement patch changing no shipped code at all: `src/` and `src/anesthesia_sim/data/` are byte-identical to v0.3.4 and `docs/MODEL.md` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The release is the project's own quality gate learning what it costs, saying so truthfully, and getting roughly twice as fast. `pytest-xdist` at `-n auto` took the suite from 78 s to 27 s with coverage byte-identical at 100%, `make check` from 115.0 s to 59.2 s and the CI step 28%, and `make test` — the whole-suite target a session reaches for while iterating — followed at 88.5 s to 31.8 s; no test was skipped, disabled or relaxed to pay for it. Two advisories that quoted figures measured once and left to go stale now print what the run actually cost. The two questions those measurements raised — the docket suite's share of the wall clock, and `bin/docket check` becoming the gate's largest item — were decided as accept-with-evidence rather than left open, each carrying the numbers that would have to change to reopen it. And two silent-divergence holes closed: the local and merge coverage gates are held to one command by a check rather than by two comments asking to be kept the same, and the guard that keeps two sessions off one item now reads what files it touches, not only who is on it. |
 | v0.3.6 | Completed | The first two teachable-case items, and the first release since v0.2.3 to change what a learner sees: every compartment is displayed in MAC multiples alongside percent, on a chart that gained a percent axis left and a MAC axis right, and two horizontal clinical references - a band at the running agent's population MAC-awake, one standard deviation either side of the published mean, and a line at its nominal 1 MAC - so the gap between them shows the decrement required for arousal rather than only the endpoint. Display and provenance work rather than model work: no equation, parameter, numerical method or solver step moved, `core/` computes neither reference, and what the agent files gained is three measured constants with primary citations checked against source, stored as fractions of MAC so they survive a change to `mac_percent`. `docs/MODEL.md` records what a MAC multiple on a non-alveolar compartment does and does not assert, that the band is read against the vessel-rich trace and not the alveolar one, and that the interface displays no time-to-wake-up figure of any kind. Alongside them, `core-boundaries` closes: one module may import Pydantic and a check enforces it. The queue itself learned to answer per lane, so two simultaneous sessions no longer rank onto the same item. |
-| v0.3.7 | Completed / current baseline | The run records its own inputs, and the interface stopped degrading under one: every setting change the model was stepped under is now recorded with the simulated time it took effect, marked on the chart as a third kind of series - vertical, labelled as a record of a user input rather than of anything measured - and listed beside it as the acts that produced it. The record is faithful rather than tidy: a slider reports continuously while dragged, so one turn of a dial is several settings the run really was computed under, and the display groups them on a boundary the interface declares rather than on a time threshold the coming playback multiplier would invalidate. Changes superseded within one simulation step collapse into the one the step integrated, because the rest describe a run that did not happen, and the recorded value is read back off the compartment rather than taken from the caller. Alongside it the render stall closed: what saturated the Flutter client was 2 700 discrete control mutations a frame, not data volume, and anchoring the chart's decimation to the run rather than to the moving window leaves a steady frame moving the newest bucket and the final sample. Two features close - `delegation` at 13 of 13 with the stop hook's comparison point corrected, and `provenance` with three review-article PDFs filed as cited references - and three defects in how the queue answers. Display and interface work: no equation, parameter, numerical method or solver step moved, and `core/` neither records the timeline nor knows it exists. |
+| v0.3.7 | Completed | The run records its own inputs, and the interface stopped degrading under one: every setting change the model was stepped under is now recorded with the simulated time it took effect, marked on the chart as a third kind of series - vertical, labelled as a record of a user input rather than of anything measured - and listed beside it as the acts that produced it. The record is faithful rather than tidy: a slider reports continuously while dragged, so one turn of a dial is several settings the run really was computed under, and the display groups them on a boundary the interface declares rather than on a time threshold the coming playback multiplier would invalidate. Changes superseded within one simulation step collapse into the one the step integrated, because the rest describe a run that did not happen, and the recorded value is read back off the compartment rather than taken from the caller. Alongside it the render stall closed: what saturated the Flutter client was 2 700 discrete control mutations a frame, not data volume, and anchoring the chart's decimation to the run rather than to the moving window leaves a steady frame moving the newest bucket and the final sample. Two features close - `delegation` at 13 of 13 with the stop hook's comparison point corrected, and `provenance` with three review-article PDFs filed as cited references - and three defects in how the queue answers. Display and interface work: no equation, parameter, numerical method or solver step moved, and `core/` neither records the timeline nor knows it exists. |
+| v0.3.8 | Completed / current baseline | The wash-in curve the literature teaches from, and the render path that can carry it. F_A/F_I is plotted on its own bounded axis beneath the compartment chart, broken into segments wherever the ratio leaves its domain rather than joined by a line across the gap, labelled as a ratio against modelled inspired rather than against the vaporizer dial, and carrying the constant-F_I caveat in `docs/MODEL.md`: it is the textbook wash-in curve only while the dial is held, and a learner who misses that reads a dial change as uptake. Underneath it, what one frame reads stopped growing with the run. The snapshot carried a copy of every sample ever recorded - 4.08 ms at half a million samples, five times a second - and the chart discarded all but the visible few hundred; the controller now answers for a window cut at the axis the caller is about to draw, so a frame reads at most `MAX_CHART_WINDOW_S / SIMULATION_STEP_S` samples whether the run is a minute or a week old, and the decimation scan reads each sample once where it read about 2.8 times. Display and interface work: no equation, parameter, numerical method or solver step moved, and the ratio is a quotient of two modelled states `core/` already held. Alongside them, the literature route this environment actually has - direct HTTP to publishers is refused, the PubMed server answers - is recorded where a session about to write provenance will read it rather than only where a delegated worker would, and two sessions that discover they are on one item gained a rule for which of them yields. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
@@ -95,103 +96,139 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.3.7
+## Current baseline: v0.3.8
 
-v0.3.7 carries the teachable-case milestone's control-input timeline and the
-fix that made the app usable long enough to reach it. A run now records its own inputs: every
-setting change the model was stepped under, stamped with the simulated time
-it took effect, marked on the chart and listed beside it — so a learner who
-overpressures and then dials back can see where they dialled back, which is
-the difference between a curve and a result they can check. Alongside it, the
-render stall that made the interface unresponsive after about a minute is
-gone, and two features close: `delegation` and `provenance`.
+v0.3.8 puts the curve the uptake literature is taught from on the screen, and
+makes the render path underneath it cost the same on the tenth hour as on the
+first. F_A/F_I now has a plot of its own beneath the compartment chart, so a
+learner can line up what they are watching with the figure in the lecture they
+saw it in — the ratio that makes three agents comparable and that the
+solubility argument is usually made from. Under it, the boundary between the
+controller and the interface stopped handing over the whole recorded run on
+every frame.
 
 **Display and interface work, not model work.** No equation, parameter,
-numerical method or solver step moved. `core/` neither records the timeline
-nor knows it exists; the chart's decimation change alters which recorded
-samples are drawn and never what any of them is.
+numerical method or solver step moved. F_A/F_I is a quotient of two modelled
+states `core/` already held, computed outside it; the window change alters
+which recorded samples cross into the interface and never what any of them is.
 
-**Why this is a patch rather than v0.4.0.** Five of the teachable-case
-feature's nineteen items is not the milestone, and the same reasoning that
-kept v0.3.6 a patch holds here: compressed playback, the case-length time
-base and the run-fitted vertical scale are all still open, and cutting the
-milestone's number now would ship it under its own name with most of it
-missing. The capability-boundary rule under "Versioning decision" governs.
+**The ratio is the wash-in curve only while the dial is held**, and the
+release treats that as a safety property rather than a footnote. Move the
+vaporizer mid-run and F_A/F_I remains a well-defined ratio of two modelled
+states, but it is no longer the curve the textbook plots, and a learner who
+does not notice reads a dial change as uptake. Three things carry that: the
+control-input timeline from v0.3.7 marks where the dial moved, on this plot as
+well as on the chart above it; the axis says the ratio is against modelled
+*inspired* rather than against the vaporizer setting, which are not the same
+quantity while the circuit is still filling; and `docs/MODEL.md` states the
+constant-F_I caveat where the quantity is specified.
+
+**Why this is a patch rather than v0.4.0.** Seven of the teachable-case
+feature's nineteen items is not the milestone, and the reasoning that kept
+v0.3.6 and v0.3.7 patches holds unchanged: compressed playback, the
+case-length time base and the run-fitted vertical scale are all still open,
+and cutting the milestone's number now would ship it under its own name with
+most of it missing. The capability-boundary rule under "Versioning decision"
+governs. What *has* changed is that the milestone's debt gate is now clear at
+21 of 21, so the next release may be it.
 
 ### Release narrative
 
-**A run records its own control inputs (PL-DR1Z).** The controller recorded
-what the compartments did and nothing about why they moved, so a run's inputs
-were unrecoverable the moment they were made. It now keeps a control timeline
-beside the concentration history: one entry per setting the model was
-actually stepped under, carrying the simulated time and history index it took
-effect at, the control's stable identifier, the values before and after, and
-the unit both are in. The property that shaped it is reconstruction — the
-recorded timeline re-applied to a fresh run reproduces that run — which is
-what planned-milestone item 8 needs from the recording half and what the
-replay, save and fork items build on.
+**The wash-in ratio, plotted where it is defined and broken where it is not
+(PL-ZRSP).** F_A/F_I is the cheapest single thing connecting this simulator to
+the literature — both quantities were already modelled and the arithmetic is a
+division — and the work is almost entirely in what the plot refuses to draw.
+The ratio has a domain: it means nothing before agent reaches the circuit, and
+above equilibrium it is the patient returning agent rather than taking it up.
+So the trace is not one polyline through the samples that have a ratio. It is
+one series per *contiguous* stretch inside that domain, because a single line
+would draw a straight segment across the stretch it skipped and assert a
+transition the model never produced. A stretch that stops by crossing
+equilibrium ends on a terminal dot, since a line that simply stops is
+indistinguishable from one the frame clipped. What the fixed pool of segments
+cannot draw is counted and said in words beside the plot rather than dropped
+in silence.
 
-Three consequences of taking that property seriously. The recorded value is
-read back off the compartment rather than taken from the caller, so the
-timeline records what the model runs on rather than what was asked for.
-Recording happens after the core's setter returns, so a refused setting
-records nothing — structurally, not by a check that could be forgotten. And
-changes superseded within one simulation step collapse into the change the
-step actually integrated, because only the value standing when the step runs
-is ever used; a timeline listing the intermediate values would describe a run
-that did not happen.
+**A frame stopped reading the whole run (PL-0VM7).** `snapshot()` built a copy
+of every sample the run had ever recorded and handed it to the view on every
+render frame; the chart then sliced it to the visible window and decimated
+that to at most a few hundred points per trace, discarding the rest. The copy
+was proportional to the length of the run — 0.03 ms at ten thousand samples,
+4.08 ms at five hundred thousand — at five frames a second, allocating and
+discarding tens of megabytes purely to be thrown away, and growing without
+bound for as long as the simulation ran.
 
-**One act by the person is several settings to the model, and the two are
-kept apart.** A slider reports its value continuously while dragged, so one
-turn of the vaporizer dial reaches the model as a run of settings — the same
-shape two separate turns arrive in. The record keeps every one of them,
-because the run really was computed under each. The display groups them into
-*adjustments*, and the grouping is exact rather than inferred: the interface
-declares where a drag begins and each change carries the number it was
-assigned. Nothing guesses at a gesture from the spacing of the entries, and
-nothing may — the playback multiplier this milestone is still to land changes
-how much simulated time one drag spans, so any time threshold would group
-correctly at one rate and wrongly at another.
+The read is now inverted. The controller answers `history_window(start_s)`
+with the samples at or after a time the caller names, paired with the absolute
+index within the run of the first of them so decimation stays anchored where
+it must be. The view sets its axis and then asks for exactly that left edge,
+which is the part that matters for correctness rather than cost: one cut, at
+the boundary the chart actually draws, instead of two that could disagree. A
+cut the controller chose for itself could fall inside the drawn window and
+truncate the trace — a plot beginning later than the run did, with nothing on
+it to say so.
 
-A control mark is a **third kind of chart series**, and the chart says so in
-a legend row of its own: a trace is a modelled quantity, a clinical reference
-is a published constant, and this is a record of what the user did. What
-separates it visually is orientation — the only vertical thing on the plot —
-which needs no hue of its own and survives greyscale and every colour-vision
-deficiency. `docs/MODEL.md` gained § "The control-input timeline" and an
-interface-boundary rule that exempts such a mark from the recorded-sample
-requirement, since it draws no value at all, and puts a labelling requirement
-in its place.
+Splitting one read into two moved a presentation guarantee off structure and
+onto ordering, and the release does not leave that implicit. The right-hand
+end of every trace being the same sample the readouts were formatted from held
+before because one snapshot carried both. It now holds because `_refresh_view`
+is synchronous — the simulation loop advances only at an `await`, and none can
+fall between the two calls without changing that method's signature — and a
+test asserts it directly rather than trusting the reasoning. Both plots are
+drawn from a single window read for the same reason: identical axis numbers in
+one frame is a weaker claim than identical samples.
 
-**The interface stopped degrading to unresponsive (PL-Q197).** What saturated
-the Flutter client was not data volume — about 50 kB a frame — but the number
-of discrete control mutations it had to decode, route and repaint: roughly
-2 700 a frame once decimation engaged, 13 500 a second at the render cadence,
-while Python sat under half a core. Anchoring the decimation to the run
-instead of to the moving window means a steady frame moves the newest bucket
-and the final sample and nothing else. Two regression tests hold it in the
-units that actually failed, and they caught this release's own near-miss: the
-control-mark pool was parking its unused marks relative to the moving window,
-which rewrote 48 point coordinates a frame with nothing on screen to show for
-them.
+**The envelope scan reads each sample once (PL-MJ7B).** The bucket loop
+re-read its two running extremes out of the value sequence on every
+comparison, so a scan that must visit every sample of every bucket read each
+one about 2.8 times. Carrying the extremes as values alongside their indices
+makes it exactly one — 5 625 reads over a 2 000-sample window before, 2 000
+after.
 
-**Two features close.** `delegation` reaches 13 of 13 with the stop hook's
-comparison point corrected: it picked whether a branch existed by whether the
-tracking ref resolved locally, so a merged branch's stale ref made it demand
-a push that would have recreated a dead branch with no content and no pull
-request (PL-WW08). `provenance` closes with the `Review_articles` branch
-resolved and three review-article PDFs filed as cited references under
-`docs/references/` (PL-JX2T).
+The other half of what PL-0VM7 proposed was deliberately not done, and the
+item records why: removing the per-trace value list as well would have meant
+making a clean pure function generic over samples-plus-accessor and rewriting
+eighteen test call sites, for 0.14% of a frame. Its stated motivation — a
+window a week wide — does not survive measurement either way, because min/max
+envelope decimation reads every sample of every bucket whether a list is
+materialized or not. That case needs the bucket extremes maintained as samples
+are appended rather than rescanned, which PL-D9WD then built as an M4
+aggregate cache on a dyadic grid anchored to absolute sample index, merging
+tier to tier without revisiting a raw sample. It landed on `main` after this
+release was cut, so it ships in v0.3.9 rather than here; `history_window()` is
+the interface it reads through.
 
-**Three corrections to how the queue answers.** `docket next` could not see a
-prerequisite stated only in a brief's prose, so it offered an item ahead of
-the extraction that gated it; prerequisites are now declared with `blocked-by`
-and the ranking reads them (PL-5WFS). A session prompted for one lane was
-running the bare command and being handed the other lane's item, correctly
-ranked and wrong; the answer now names the lane it came from (PL-0D4X). And
-housekeeping work that nobody filed carried no item id, which made every
-in-flight guard structurally blind to it (PL-CP74).
+**The literature is reachable, by a door nobody had written down (PL-0XMD,
+PL-5DN3).** Measured while chasing citations: this environment's egress policy
+refuses direct HTTP to publishers and indexes — ScienceDirect, Springer,
+`doi.org`, Crossref, OpenAlex, Semantic Scholar, arXiv — while search engines
+answer. A session that tries the front door, is refused, and concludes the
+literature is unreachable falls back to memory or to a search snippet, and
+neither is distinguishable from a reading once it has been written into a data
+file. The PubMed server is the working route, verified end to end, and a
+citation now says which route it came from.
 
+The rule first landed in `docs/worker.md`, which only a delegated worker
+reads — and the work it exists to protect is precisely the work a worker may
+not touch, since `core/`, the data files and `docs/MODEL.md` are where a cited
+constant and its provenance live. It is now a path-scoped rule that loads when
+a session opens those files, which is the moment it is about to record where a
+number came from.
+
+**Two sessions on one item now know which yields (PL-YHD3).** Everything the
+project had built for parallel sessions was detection; nothing said what the
+second session should do, or which of the two was second. Symmetry was the
+failure mode: reasoning identically from identical evidence, both sessions
+either continue — and the collision proceeds — or both stand down, which is
+worse, because the work is then unstarted and each believes the other has it.
+So the verdict is computed rather than reasoned out: `bin/docket show <id>`
+prints the carrying branches in order, the commit that named the item first
+holding it and a tie breaking on that commit's hash, and both sessions read
+the same order off the same commits. The yielding session hands its work over
+rather than discarding it. One consequence is worth acting on before the
+verdict is ever needed — a branch nobody can fetch is not in the other
+session's copy of the order at all, which is the second reason to push the
+first commit as soon as there is one.
 
 ### The model as it stands
 
