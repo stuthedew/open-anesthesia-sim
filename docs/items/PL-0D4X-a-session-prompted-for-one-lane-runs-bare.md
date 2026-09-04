@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.3.7
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
 closed: 2026-09-04

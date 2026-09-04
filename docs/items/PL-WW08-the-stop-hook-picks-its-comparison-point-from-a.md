@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: delegation
+milestone: v0.3.7
 touches: CLAUDE.md, .claude/settings.json, tools/stop_hook_patch.py, tests/unit/test_stop_hook_patch.py, docs/ARCHITECTURE.md
 added: 2026-09-03
 closed: 2026-09-04
+pr: 300
 verify: uv run pytest tests/unit/test_stop_hook_patch.py && grep -q 'def test_the_correction_is_what_git_actually_answers' tests/unit/test_stop_hook_patch.py && grep -q 'tools/stop_hook_patch.py' .claude/settings.json
 ---
 
