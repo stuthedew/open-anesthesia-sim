@@ -23,7 +23,7 @@ def test_advance_updates_time_and_complete_uptake_system() -> None:
 
     _advance_for(state, duration_s=2.5)
 
-    assert state.elapsed_s == pytest.approx(2.5)
+    assert state.elapsed_s == 2.5
     assert state.uptake_system.circuit.circuit_concentration_fraction > 0.0
     assert state.uptake_system.alveoli.concentration_fraction > 0.0
     assert state.uptake_system.patient.total_agent_amount_l > 0.0
@@ -80,7 +80,109 @@ def test_rejects_a_step_above_the_maximum_simulation_step() -> None:
     assert state.elapsed_s == before_s
 
 
-@pytest.mark.parametrize("elapsed_s", [-0.1, float("nan")])
-def test_rejects_invalid_initial_elapsed_time(elapsed_s: float) -> None:
-    with pytest.raises(SimulationConfigurationError):
-        SimulationState(elapsed_s=elapsed_s)
+def test_elapsed_time_is_the_step_count_times_the_step() -> None:
+    """Simulated time is a function of the steps taken, not of the additions.
+
+    Ten steps of 0.1 s are 1.0 s. Accumulating them instead - `elapsed_s +=
+    simulation_step_s` per step, which this class did before `PL-VM40` -
+    reaches 0.9999999999999999, a value set by the order and number of the
+    additions that produced it rather than by how far the run has gone. The
+    gap is nanoseconds and nothing displayed can show it; what it costs is
+    the element-wise comparison of one run against another that a replayed
+    or forked run rests on.
+
+    Written with the literal step the interface ships rather than with
+    `MAXIMUM_SIMULATION_STEP_S`, because the arithmetic asserted here is
+    that step's: at any other step, 10 of them are not 1.0 s.
+    """
+
+    state = SimulationState()
+
+    for _ in range(10):
+        state.advance(0.1)
+
+    assert state.step_count == 10
+    assert state.elapsed_s == 1.0
+
+
+def test_elapsed_time_holds_where_an_accumulated_sum_has_drifted() -> None:
+    """One minute of stepping, against the sum the old formulation reached.
+
+    The comparison is the point: the sum is what this class would report
+    after the same 600 steps, and it is not 60 s. Constructed at the count
+    rather than stepped 600 times, since the claim is about the arithmetic
+    and not about the model.
+    """
+
+    accumulated_s = 0.0
+
+    for _ in range(600):
+        accumulated_s += 0.1
+
+    state = SimulationState(step_count=600, simulation_step_s=0.1)
+
+    assert state.elapsed_s == 60.0
+    assert accumulated_s != 60.0
+
+
+def test_a_run_keeps_the_step_it_started_at() -> None:
+    """A second cadence would make the recorded history non-uniform.
+
+    Refused rather than accommodated: `elapsed_s` has one step to multiply
+    by, and every reader that maps a sample index to a time reads the
+    spacing as a constant of the run.
+    """
+
+    state = SimulationState()
+    state.advance(0.1)
+
+    with pytest.raises(SimulationConfigurationError, match="cannot switch"):
+        state.advance(0.05)
+
+    assert state.step_count == 1
+    assert state.elapsed_s == 0.1
+
+
+def test_reset_frees_the_step_so_a_fresh_run_may_take_a_different_one() -> None:
+    state = SimulationState()
+    state.advance(0.1)
+
+    state.reset()
+
+    assert state.step_count == 0
+    assert state.simulation_step_s is None
+    assert state.elapsed_s == 0.0
+
+    state.advance(0.05)
+
+    assert state.elapsed_s == 0.05
+
+
+def test_rejects_a_negative_initial_step_count() -> None:
+    with pytest.raises(SimulationConfigurationError, match="step_count"):
+        SimulationState(step_count=-1)
+
+
+def test_rejects_a_fractional_initial_step_count() -> None:
+    """A count that is not whole reaches a time no sequence of steps does."""
+
+    with pytest.raises(SimulationConfigurationError, match="step_count"):
+        SimulationState(step_count=2.5)  # type: ignore[arg-type]
+
+
+def test_rejects_a_step_count_with_no_step_to_multiply_it_by() -> None:
+    """A state part-way through a run has to say what step it took."""
+
+    with pytest.raises(SimulationConfigurationError, match="simulation_step_s"):
+        SimulationState(step_count=10)
+
+
+def test_rejects_an_initial_step_outside_the_applicability_domain() -> None:
+    """The step a state is constructed with is held to the same domain.
+
+    Otherwise a state could be built at a step `advance()` would refuse, and
+    every step it then took would be measured against it.
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="applicability domain"):
+        SimulationState(step_count=1, simulation_step_s=MAXIMUM_SIMULATION_STEP_S * 10.0)

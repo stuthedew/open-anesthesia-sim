@@ -3,7 +3,7 @@ id: PL-SN2C
 title: Add the playback multiplier as steps per tick, with the rate always visible
 priority: P2
 effort: M
-status: blocked
+status: ready
 blocked-by: PL-VM40
 classes: feature, ux
 feature: teachable-case
