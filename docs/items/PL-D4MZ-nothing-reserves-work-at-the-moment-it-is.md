@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: parallel-sessions
+milestone: v0.3.9
 touches: .claude/rules/instruction-writing.md
 added: 2026-09-02
 closed: 2026-09-04
