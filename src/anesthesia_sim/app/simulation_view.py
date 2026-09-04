@@ -36,7 +36,7 @@ from anesthesia_sim.app.control_timeline import (
     format_adjustment,
     group_adjustments,
 )
-from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import HistoryWindow, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
@@ -48,6 +48,7 @@ from anesthesia_sim.app.formatting import (
     format_mac_reference,
     format_percent,
     format_subtitle,
+    format_wash_in_ratio,
     mac_awake_band_percent,
     mac_axis_ticks,
 )
@@ -61,6 +62,7 @@ from anesthesia_sim.app.theme import (
     PRIMARY,
     WARNING,
 )
+from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, WashInDomain, read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
@@ -229,6 +231,65 @@ NO_CONTROL_CHANGES_TEXT = "No settings changed yet in this run."
 # entries silently ending.
 MAX_LISTED_ADJUSTMENTS = 12
 
+# The wash-in trace takes the alveolar compartment's own colour, because it
+# is that compartment expressed against the one filling it: the numerator is
+# the alveolar fraction and nothing else on the second chart competes with
+# it. Reusing it declares no new pair for `tools/contrast_check.py` - ACCENT
+# on PANEL is already measured - and it is what lets a reader carry the
+# alveolar curve from the chart above into the ratio below.
+WASH_IN_COLOR = ALVEOLAR_COLOR
+# Shorter than the compartment chart. The ratio is one trace on a fixed
+# 0-to-1 axis, so it needs no room to separate six curves, and the two plots
+# have to be readable together without scrolling between them.
+WASH_IN_CHART_HEIGHT = 200
+# Gridlines at quarter-fractions, which is the ruling every published wash-in
+# figure carries and the spacing a reader compares against. The axis is
+# labelled at exactly these values rather than at whatever interval the chart
+# would choose for itself: a rule at 0.25 beside a label at 0.2 puts two
+# different scales on one axis, and a reader taking a value off the nearest
+# gridline would take it off the wrong one.
+WASH_IN_GRID_INTERVAL = 0.25
+# The axis stands above equilibrium rather than at it, which is a legibility
+# requirement rather than a spare margin. The trace ends where it crosses
+# `WASH_IN_EQUILIBRIUM_RATIO`, and with the axis topping out there that
+# ending lands on the frame - where a line that stopped and a line the plot
+# cut off look exactly alike. Lifting the axis puts clear space above the
+# ending, so the stop is visibly the trace's own. 1.15 leaves that space
+# without adding a fifth labelled interval: the ruling and the labels stop at
+# 1.00, which is where the readable scale ends, and `show_max` keeps the
+# chart from labelling the top of the frame.
+WASH_IN_AXIS_MAXIMUM = 1.15
+# How far past equilibrium the trace may be drawn so that its ending lands on
+# the line rather than a step short of it. `chart_series.redraw_wash_in_segments`
+# carries the whole reasoning, including why the bound is stated rather than
+# taken from the measured 1.00235 a 0.1 s step actually produces. Set below
+# `WASH_IN_AXIS_MAXIMUM` rather than at it, so even the widest crossing this
+# admits still has clear space above it.
+WASH_IN_TERMINUS_CEILING = 1.05
+# The wash-in curve's asymptote, drawn as the reference it is. A trace that
+# simply halts in open space reads as clipped; one that halts *on a labelled
+# line* reads as having arrived somewhere. It is a definitional anchor rather
+# than a measured value with spread - F_A = F_I is where net uptake stops, by
+# definition - so it is a line and not a band, on the distinction
+# `docs/MODEL.md` § "MAC-awake as a chart reference" draws between the two.
+# MUTED and a wide dash, matching the 1 MAC line on the chart above: this is
+# furniture rather than a second compartment, and it declares no new pair for
+# `tools/contrast_check.py`.
+EQUILIBRIUM_LINE_COLOR = MUTED
+EQUILIBRIUM_LINE_DASH_PATTERN = [16, 8]
+# Room for one axis label at `format_wash_in_ratio`'s two decimals. The chart's
+# own default is sized for the single digits the percent axis carries, and
+# wraps "0.25" onto two lines.
+WASH_IN_AXIS_LABEL_SIZE = 34
+# How many separated stretches of wash-in the chart can draw at once. The
+# trace breaks wherever the ratio leaves the domain `app/wash_in.py` states -
+# a vaporizer turned off and later reopened is two stretches, not one line
+# drawn through the washout between them - and the pool is fixed at
+# construction for the reason the control-mark pool is. Eight is more
+# stretches than a taught case produces inside one chart window; what does
+# not fit is counted and said, never dropped in silence.
+MAX_CHART_WASH_IN_SEGMENTS = 8
+
 # (agent_id, display_name) for every built-in agent, in AGENT_DATA_FILENAMES
 # order. Loaded once at import time; each file is tiny and this avoids
 # hardcoding display names that already live in the data files.
@@ -242,6 +303,37 @@ AVAILABLE_AGENTS: tuple[tuple[str, str], ...] = tuple(
 # their validated data files.
 if set(AGENT_COLOR_SCHEMES) != set(AGENT_DATA_FILENAMES):
     raise RuntimeError("AGENT_COLOR_SCHEMES must define exactly the built-in volatile agents")
+
+
+def _build_wash_in_axis_labels() -> list[fch.ChartAxisLabel]:
+    """Label the wash-in axis at its own gridlines, in its own resolution.
+
+    Built once at import time rather than per frame: unlike the MAC axis,
+    nothing about this axis depends on the agent or on the run - it is a
+    dimensionless 0 to 1 under every setting, which is the property that
+    makes the plot comparable across agents in the first place.
+
+    The labels go through `format_wash_in_ratio`, so the axis a value is
+    read against and the reading printed beside the plot cannot be at two
+    different resolutions.
+
+    Returns:
+        One label per gridline, from 0 to the plotted maximum.
+    """
+
+    tick_count = round(WASH_IN_EQUILIBRIUM_RATIO / WASH_IN_GRID_INTERVAL)
+
+    return [
+        fch.ChartAxisLabel(
+            value=index * WASH_IN_GRID_INTERVAL,
+            label=ft.Text(
+                format_wash_in_ratio(index * WASH_IN_GRID_INTERVAL),
+                color=MUTED,
+                size=METRIC_QUALIFIER_SIZE,
+            ),
+        )
+        for index in range(tick_count + 1)
+    ]
 
 
 @dataclass(frozen=True)
@@ -316,6 +408,7 @@ class SimulationView:
         # marks could not draw. Held so the panel can say so: a chart that
         # silently stops annotating asserts that nothing more happened.
         self._undrawn_control_marks = 0
+        self._undrawn_wash_in_segments = 0
         self._notice_text = ft.Text("", color=WARNING, weight=ft.FontWeight.BOLD, visible=False)
         self._elapsed_time_text = self._build_metric_value("0.0 s")
         # Placeholders come from the formatter rather than from literals, so
@@ -467,6 +560,26 @@ class SimulationView:
             )
             for _ in range(MAX_CHART_CONTROL_MARKS)
         ]
+        # A second pool of marks for the wash-in chart, rather than the same
+        # objects drawn twice: a Flet control belongs to one chart, and the
+        # dial change that invalidates a wash-in reading has to be visible on
+        # the plot being misread, not only on the one above it.
+        self._wash_in_control_mark_series = [
+            chart_series.build_control_mark(
+                CONTROL_MARK_COLOR, CONTROL_MARK_STROKE_WIDTH, CONTROL_MARK_DASH_PATTERN
+            )
+            for _ in range(MAX_CHART_CONTROL_MARKS)
+        ]
+        self._wash_in_segment_series = [
+            chart_series.build_series(color=WASH_IN_COLOR, stroke_width=3)
+            for _ in range(MAX_CHART_WASH_IN_SEGMENTS)
+        ]
+        self._equilibrium_line_series = chart_series.build_reference_line(
+            color=EQUILIBRIUM_LINE_COLOR,
+            stroke_width=1.5,
+            dash_pattern=EQUILIBRIUM_LINE_DASH_PATTERN,
+        )
+        self._wash_in_state_text = ft.Text("", color=MUTED, size=METRIC_QUALIFIER_SIZE)
         self._control_timeline_text = ft.Text(
             NO_CONTROL_CHANGES_TEXT, color=MUTED, size=METRIC_QUALIFIER_SIZE
         )
@@ -497,6 +610,48 @@ class SimulationView:
             ),
             right_axis=self._mac_axis,
             horizontal_grid_lines=fch.ChartGridLines(interval=2, color="#D9E2EC"),
+            vertical_grid_lines=fch.ChartGridLines(interval=60, color="#D9E2EC"),
+            expand=True,
+        )
+        self._wash_in_chart = fch.LineChart(
+            data_series=[
+                *self._wash_in_control_mark_series,
+                self._equilibrium_line_series,
+                *self._wash_in_segment_series,
+            ],
+            min_x=0,
+            max_x=INITIAL_CHART_WINDOW_S,
+            min_y=0,
+            # Fixed, and fixed just above the equilibrium value rather than
+            # at whatever the run reaches. 0 to 1 is the scale every
+            # published wash-in figure uses, which is the whole point of
+            # drawing this curve at all; an axis that grew to fit an
+            # excursion above 1 would redraw the wash-in curve at a smaller
+            # height partway through a lesson, which is a shape change a
+            # reader would read as the model's rather than the axis's.
+            # `WASH_IN_AXIS_MAXIMUM` records why the top is not at 1 exactly,
+            # and `app/wash_in.py` why nothing past the crossing sample is
+            # drawn.
+            max_y=WASH_IN_AXIS_MAXIMUM,
+            left_axis=fch.ChartAxis(
+                title=ft.Text("F_A / F_I", color=MUTED, size=METRIC_QUALIFIER_SIZE),
+                labels=_build_wash_in_axis_labels(),
+                # Both, and for different reasons: `labels` says what the
+                # ticks read, `label_spacing` says which of them are drawn.
+                # Left to choose for itself the chart samples the list at a
+                # coarser interval than the gridlines, so the quarter marks
+                # are ruled and unlabelled.
+                label_spacing=WASH_IN_GRID_INTERVAL,
+                label_size=WASH_IN_AXIS_LABEL_SIZE,
+                # The scale ends at 1.00; the headroom above it is space, not
+                # a tick. Labelling the top of the frame would put "1.15" on
+                # an axis whose every other label is a quarter, and invite it
+                # being read as the range the ratio can reach.
+                show_max=False,
+            ),
+            horizontal_grid_lines=fch.ChartGridLines(
+                interval=WASH_IN_GRID_INTERVAL, color="#D9E2EC"
+            ),
             vertical_grid_lines=fch.ChartGridLines(interval=60, color="#D9E2EC"),
             expand=True,
         )
@@ -1050,6 +1205,8 @@ class SimulationView:
                         run_spacing=2,
                     ),
                     ft.Container(height=CHART_HEIGHT, content=self._concentration_chart),
+                    ft.Divider(height=16, color="#D9E2EC"),
+                    *self._build_wash_in_section(),
                 ]
             ),
             bgcolor=PANEL,
@@ -1057,6 +1214,85 @@ class SimulationView:
             padding=COMPACT_PANEL_PADDING,
             col={"sm": 12, "lg": 9},
         )
+
+    def _build_wash_in_section(self) -> list[ft.Control]:
+        """Build the F_A/F_I plot and everything a reader needs to read it.
+
+        Under the compartment chart rather than beside it, on the same
+        time window, because it is that chart's alveolar and circuit
+        traces expressed as one number: a reader who has just watched
+        them separate is looking for how far apart they are, which is
+        what this plots.
+
+        The prose is not decoration. This is the graph the uptake
+        literature is taught from, so it arrives carrying a reader's
+        expectations about what it means, and three of those have to be
+        corrected at the point of display rather than in a document:
+        which concentration the denominator is, that the curve is the
+        textbook one only while that concentration is held constant, and
+        that the trace is bounded to the wash-in domain and stops
+        outside it. `docs/MODEL.md` § "F_A/F_I as a displayed ratio" is
+        the specification these three sentences are the display-side
+        half of.
+
+        Returns:
+            The controls to append to the chart panel's column.
+        """
+
+        return [
+            ft.Text(
+                "Wash-in: F_A/F_I, alveolar as a fraction of inspired",
+                weight=ft.FontWeight.BOLD,
+                color=INK,
+            ),
+            ft.Text(
+                (
+                    "Vertical axis: dimensionless ratio, 0 to 1 | "
+                    "Horizontal axis: simulated seconds, the same window as above"
+                ),
+                color=MUTED,
+            ),
+            ft.Text(
+                (
+                    "F_I is the modelled inspired concentration, not the vaporizer "
+                    "dial — the dial is what the circuit is filled from, and the "
+                    "circuit only approaches it over its own time constant. Inspired "
+                    "and circuit are one quantity in this model because it has a "
+                    "single perfectly mixed circuit, with no dead space and no "
+                    "separate inspiratory and expiratory limbs."
+                ),
+                color=MUTED,
+                italic=True,
+            ),
+            ft.Text(
+                (
+                    "This is the wash-in curve of the uptake literature only while "
+                    "the inspired concentration is held constant. The vertical marks "
+                    "are where a setting was changed: a rise across one is a dial "
+                    "change, not uptake. The trace stops where no agent has yet "
+                    "reached the circuit, and it ends on the equilibrium line "
+                    "where alveolar reaches inspired — past that the patient is "
+                    "returning agent, which is elimination and not wash-in. "
+                    "Modelled, not measured."
+                ),
+                color=MUTED,
+                italic=True,
+            ),
+            ft.Row(
+                controls=[
+                    self._build_legend_item("F_A/F_I", WASH_IN_COLOR, "solid"),
+                    self._build_legend_item(
+                        "Equilibrium, F_A = F_I", EQUILIBRIUM_LINE_COLOR, "wide dash"
+                    ),
+                    self._build_control_mark_legend_item(),
+                    self._wash_in_state_text,
+                ],
+                wrap=True,
+                spacing=16,
+                run_spacing=6,
+            ),
+            ft.Container(height=WASH_IN_CHART_HEIGHT, content=self._wash_in_chart),
+        ]
 
     def _build_chart_sidebar(self) -> ft.Container:
         """Build the column of panels that stands beside the chart.
@@ -1436,12 +1672,16 @@ class SimulationView:
         # states as a property of the display rather than an accident of
         # ordering. The window asked for is the axis just set, so the samples
         # that arrive are exactly the ones this frame draws (`PL-0VM7`).
-        chart_series.redraw_visible_window(
-            self._plotted_series, self._controller.history_window(chart_min_x)
-        )
+        #
+        # Read once and drawn twice: both plots span the same window, so one
+        # read is what makes them the same *samples* and not merely the same
+        # axis numbers.
+        window = self._controller.history_window(chart_min_x)
+        chart_series.redraw_visible_window(self._plotted_series, window)
 
         adjustments = group_adjustments(snapshot.control_timeline)
         self._redraw_control_marks(adjustments, chart_min_x, chart_max_x, snapshot)
+        self._refresh_wash_in(snapshot, window, chart_min_x, chart_max_x)
         self._refresh_control_timeline(adjustments)
 
     def _redraw_control_marks(
@@ -1474,13 +1714,94 @@ class SimulationView:
         drawn = visible[-MAX_CHART_CONTROL_MARKS:]
         self._undrawn_control_marks = len(visible) - len(drawn)
 
-        for series, adjustment in zip(self._control_mark_series, drawn, strict=False):
-            chart_series.redraw_control_mark(
-                series, adjustment.started_at_s, snapshot.max_delivered_concentration_percent
+        # Both charts, in one pass over one list. A Flet control belongs to
+        # one chart, so the two pools are distinct objects - but which
+        # adjustments they stand for must not be, and drawing them from
+        # separate call sites is how one plot comes to be annotated and the
+        # other not. Each pool spans its own chart's plotted range.
+        for mark_series, top_y in (
+            (self._control_mark_series, snapshot.max_delivered_concentration_percent),
+            (self._wash_in_control_mark_series, WASH_IN_AXIS_MAXIMUM),
+        ):
+            for series, adjustment in zip(mark_series, drawn, strict=False):
+                chart_series.redraw_control_mark(series, adjustment.started_at_s, top_y)
+
+            for series in mark_series[len(drawn) :]:
+                chart_series.park_control_mark(series)
+
+    def _refresh_wash_in(
+        self,
+        snapshot: SimulationSnapshot,
+        window: HistoryWindow,
+        chart_min_x: float,
+        chart_max_x: float,
+    ) -> None:
+        """Redraw the F_A/F_I plot and say what it is currently showing.
+
+        The window is taken from the same two numbers the compartment
+        chart above was just set to, in the same frame, so the two plots
+        can never be showing different spans of the run while sitting one
+        above the other. The samples are the very ones that chart drew,
+        passed down rather than re-read, so the two cannot even differ by
+        a step the run took in between.
+
+        Args:
+            snapshot: The frame being rendered.
+            window: The samples the compartment chart was just drawn from.
+            chart_min_x: Left edge of the visible window, in simulated
+                seconds.
+            chart_max_x: Right edge of the visible window, in simulated
+                seconds.
+        """
+
+        self._wash_in_chart.min_x = chart_min_x
+        self._wash_in_chart.max_x = chart_max_x
+        # Moved in the same frame as the trace that ends on it, so a scroll
+        # can never leave the line ruled across part of the plot while the
+        # curve terminating on it spans the whole of it.
+        chart_series.redraw_reference_line(
+            self._equilibrium_line_series, chart_min_x, chart_max_x, WASH_IN_EQUILIBRIUM_RATIO
+        )
+        self._undrawn_wash_in_segments = chart_series.redraw_wash_in_segments(
+            self._wash_in_segment_series, window, WASH_IN_TERMINUS_CEILING
+        )
+        self._wash_in_state_text.value = self._format_wash_in_state(snapshot)
+
+    def _format_wash_in_state(self, snapshot: SimulationSnapshot) -> str:
+        """State what the wash-in plot is showing at this instant, and why.
+
+        A trace that stops has to say which of its two boundaries it
+        stopped at: "nothing has reached the circuit yet" and "the patient
+        is giving agent back" are opposite situations, and a reader shown
+        only an empty plot would have neither. Where the trace *is*
+        drawing, the number here is the same value its right-hand end
+        stands at, so the plot and the sentence beside it cannot disagree.
+
+        Args:
+            snapshot: The frame being rendered.
+
+        Returns:
+            One line for the row above the plot.
+        """
+
+        reading = read_wash_in(
+            snapshot.alveolar_concentration_fraction, snapshot.circuit_concentration_fraction
+        )
+
+        if reading.plotted_ratio is not None:
+            state = f"Now: F_A/F_I = {format_wash_in_ratio(reading.plotted_ratio)}"
+        elif reading.domain is WashInDomain.NO_INSPIRED_AGENT:
+            state = "Not defined: no agent has reached the circuit yet."
+        else:
+            state = (
+                "Past equilibrium: alveolar exceeds inspired — the patient is "
+                "returning agent, which is elimination and not wash-in."
             )
 
-        for series in self._control_mark_series[len(drawn) :]:
-            chart_series.park_control_mark(series)
+        if self._undrawn_wash_in_segments:
+            state = f"{state} ({self._undrawn_wash_in_segments} earlier stretch(es) not drawn)"
+
+        return state
 
     def _refresh_control_timeline(self, adjustments: tuple[ControlAdjustment, ...]) -> None:
         """Write the run's adjustments into the panel beside the chart.

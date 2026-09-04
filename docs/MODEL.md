@@ -88,6 +88,17 @@ independent compartment. See:
 This is a deliberate simplification, documented here rather than left as an
 unfilled parameter. See "Known limitations."
 
+Inspired gas is likewise not a separate compartment. The circuit is one ideal,
+perfectly mixed volume with no dead space and no separate inspiratory and
+expiratory limbs, so the gas the patient inspires is the circuit gas and the
+inspired fraction is defined as $`F_I \equiv F_C`$, with no second state and no
+transport delay between them. This is what makes the displayed $`F_A/F_I`$
+ratio computable at all — see "F_A/F_I as a displayed ratio" — and it is an
+assumption of the circuit model rather than a property of breathing systems in
+general: a multi-limb system such as Lerou and Booij's three-part model
+separates inspired gas from mean circuit gas, and the identity would not hold
+under it.
+
 The external inputs and outputs are:
 
 - sevoflurane entering through fresh gas;
@@ -161,6 +172,7 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | $`F_D`$ | Delivered fresh-gas sevoflurane fraction | dimensionless |
 | $`F_C`$ | Breathing-circuit sevoflurane fraction | dimensionless |
 | $`F_A`$ | Alveolar sevoflurane fraction | dimensionless |
+| $`F_I`$ | Inspired sevoflurane fraction (one perfectly mixed circuit: $`F_I \equiv F_C`$; not an independent state) | dimensionless |
 | $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless |
 | $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless |
 | $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless |
@@ -1738,6 +1750,8 @@ The Flet interface may:
   constraint below;
 - draw a published clinical constant as a chart reference, at a height the
   chart's own axis gives meaning to, subject to the constraint below;
+- form the ratio of two modelled fractions where this document names it as a
+  displayed quantity, subject to the constraint below;
 - declare where one user adjustment of a control begins, so that the run's
   record of its own inputs can be read as the acts that produced it,
   subject to the constraint below; and
@@ -1762,6 +1776,22 @@ type rather than by colour alone. An unlabelled horizontal line is a modeled
 quantity to a reader who has no reason to think otherwise, which is the
 modeled-versus-measured confusion this document forbids elsewhere arriving
 through the chart. See "MAC-awake as a chart reference".
+
+A **displayed ratio** of two modelled fractions is a trace and is *not*
+exempt from the rule above: every point it draws is still computed from one
+recorded sample, and nothing about it may be interpolated, smoothed or
+averaged. What it needs in addition is a **stated domain**, because a
+quotient of two modelled states can be undefined (a zero denominator) or
+outside what the plot claims to show, and neither case has a number the
+interface may substitute. So: the domain is documented here and enforced in
+one place in code; a sample outside it contributes no point, rather than a
+clamped, extrapolated or defaulted one; the trace breaks where the domain
+does, rather than joining across the samples it skipped, which would draw
+values the run never produced; the display states which two quantities the
+ratio is of, in the terms this document uses for them; and where the trace
+is absent the display says which boundary it stopped at, since an absent
+trace otherwise reads as a run that stopped. See "F_A/F_I as a displayed
+ratio", the only such quantity today.
 
 A **control mark** is a third kind of chart series, and is exempt from the
 trace rule for a different reason again: it draws no value at all. It marks
@@ -1839,7 +1869,12 @@ The interface must show:
   anywhere in the interface; and
 - every setting changed during the current run, each with the simulated time
   it took effect, the control it changed and the values it moved between, and
-  marked on the chart at that time. See "The control-input timeline".
+  marked on the chart at that time. See "The control-input timeline"; and
+- $`F_A/F_I`$ over the run, on a dimensionless axis of its own, labelled as a
+  ratio against the modelled inspired concentration rather than against the
+  vaporizer dial, carrying the control marks above, ruled at the equilibrium
+  the curve approaches, and stating where it is not defined. See "F_A/F_I as a displayed ratio" for the domain it is drawn over
+  and for what the curve does and does not assert.
 
 Arterial concentration is deliberately **not** in this list. Arterial blood is
 flow-limited in this model and holds no independent state: $`F_a \equiv F_A`$
@@ -2202,6 +2237,135 @@ marks and the list a fixed number of lines, so a run may record more
 adjustments than either can show. What is not shown is counted on the
 display. A chart that quietly stops annotating, or a list that quietly
 ends, is a statement that nothing else happened.
+
+### F_A/F_I as a displayed ratio
+
+**What it is.** A second plot under the compartment chart, on the same time
+window, drawing $`F_A/F_I`$ — the modelled alveolar fraction divided by the
+modelled inspired fraction — on a dimensionless axis fixed from 0 to 1. It is
+a *displayed* quantity: `core/` computes it nowhere, no governing equation
+reads it, and it is not recorded in the run's history. `app/wash_in.py` is
+where this section terminates, the way `app/formatting.py` terminates
+"Displayed precision": it holds the arithmetic, the domain, and nothing else,
+and `tests/unit/test_wash_in.py` pins both.
+
+**Why the interface owes it.** This is the curve the uptake literature is
+taught from and the one every wash-in figure a reader has seen is drawn as.
+It is also the quantity this model has been compared against human
+measurement on — "Published wash-in validation test" is $`F_A/F_I`$ at
+30 minutes for all three shipped agents — so the trace and the validation are
+the same number, which
+`test_the_displayed_ratio_is_the_quantity_this_file_validates` asserts rather
+than leaves to inspection. Six absolute concentrations cannot be laid beside a
+published figure; this can.
+
+**The denominator is the modelled inspired concentration, not the vaporizer
+dial.** $`F_I \equiv F_C`$ here, and that identity is an assumption of this
+circuit model rather than a general fact — see "Model boundary". The
+distinction from the dial is not pedantic: the circuit only approaches the
+delivered concentration over its own time constant, so early in a run the two
+differ substantially, and dividing by the dial would understate the ratio for
+as long as that lasted. The interface states which one it is at the point of
+display.
+
+**The curve is the textbook wash-in curve only while the inspired
+concentration is held constant.** Move the vaporizer, or the fresh gas flow,
+mid-run and $`F_A/F_I`$ remains a well-defined ratio of two modelled states
+but stops being a wash-in fraction of anything a reader can name. A rise
+across such a change is the setting moving, not uptake slowing. The control
+marks of "The control-input timeline" are drawn on this plot as well as on the
+compartment chart above it, in the same pass over the same adjustments, so the
+plot that would be misread is the plot that carries the annotation.
+
+**The plotted domain, and why it has two boundaries.** A sample contributes a
+point only where both hold:
+
+1. $`F_I \geq 10^{-4}`$, one displayed unit of concentration. $`F_I`$ is
+   exactly zero before any agent reaches the circuit — at the start of every
+   run, and throughout a run whose vaporizer is never opened — so the quotient
+   is $`0/0`$ there. The floor is derived from
+   `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen beside it, so
+   the ratio is never formed from a denominator the interface itself renders as
+   `0.00%`.
+2. $`F_A/F_I \leq 1`$. $`F_A \leq F_I`$ is exactly the uptake regime: alveolar
+   gas gives agent up to blood, so the alveolar fraction stays below the
+   inspired one and reaches it only at equilibrium. Above 1 the tissues are
+   returning agent faster than it is being delivered, which is elimination and
+   not wash-in. Equilibrium is drawn on the chart as a labelled reference line.
+
+Outside either boundary nothing is drawn. The value is not clamped to the
+axis, not interpolated across, and not replaced by a default: a ratio pinned
+to 1.0 would draw a completed wash-in the run never reached, and a line joining
+the wash-in either side of a washout would draw values the run never produced.
+The trace is therefore a set of segments rather than one polyline, and it
+breaks where the domain does.
+
+**One point past the boundary, so the ending is legible.** A stretch is
+extended by its *crossing* sample at each end — the neighbouring sample that
+has a ratio but sits outside the domain — because without it the curve stops
+at the last sample at or below equilibrium, which is up to one simulation step
+below the line it stopped at. A trace halting in clear space short of a
+boundary is indistinguishable from one the frame cut off, and this one is
+still climbing steeply when it stops; with the crossing sample drawn it meets
+the equilibrium reference and terminates on it, carrying a point marker that
+says the series ended rather than ran out of view.
+
+That extension is bounded by a stated ceiling rather than by a property of the
+model. A run stepped at 0.1 s crosses equilibrium by a hair — measured across
+every shipped agent and every supported alveolar ventilation and cardiac
+output at the maximum fresh gas flow, the first sample above equilibrium
+reaches 1.00235 — but the ratio is not continuous in general:
+`BreathingCircuit.set_circuit_volume` conserves the agent in the circuit while
+changing the volume it is divided by, so a circuit volume doubled between two
+steps halves $`F_I`$ and doubles the ratio. No interface control does that
+today, and a rule holding only because a slider is absent is not one to build
+on. A crossing sample above the ceiling is therefore not drawn at all, and the
+stretch ends where it would have: not clamped onto the ceiling, not
+interpolated onto it.
+
+**A blank stretch says which boundary it is.** "No agent has reached the
+circuit yet" and "the patient is returning agent" are opposite situations, and
+a reader shown only an absent trace has neither. The line beside the plot
+names the case, and where the trace is drawing it carries the same value the
+trace's right-hand end stands at — one evaluation of one rule produces both,
+so the sentence and the curve cannot disagree.
+
+**Why the axis is fixed rather than fitted, and why it does not stop at 1.**
+0 to 1 is the scale of every published wash-in figure, which is the point of
+drawing this curve at all — so that is where the ruling and the labels stop.
+The axis itself stands a little above it, and that headroom is a legibility
+requirement rather than a margin: with the axis topping out at equilibrium the
+trace's ending lands on the frame, where a line that stopped and a line the
+plot cut off look exactly alike. The top of the frame is deliberately
+unlabelled, so the readable scale remains 0 to 1 and the space above it is not
+read as range the ratio can reach. An axis that instead grew to accommodate
+the elimination excursion would redraw the wash-in curve at a smaller height
+partway through a lesson — a shape change a
+reader would attribute to the model rather than to the axis — and it would
+have no stable height to grow to. During elimination the circuit is fed by
+agent-free fresh gas and by rebreathed alveolar gas, so the ratio settles near
+$`1 + \dot V_{\mathrm{FGF}} / \dot V_A`$, which the supported input ranges do
+not bound: measured on sevoflurane, closing the vaporizer at 10 L/min after a
+30-minute wash-in gives 3.47 at the reference adult's 4.0 L/min of alveolar
+ventilation, 1.83 at 12.0, 5.93 at 2.0 and 20.11 at 0.5, against predictions of
+3.50, 1.83, 6.00 and 21.00. Values above 1 are excluded because they are not
+wash-in fractions; that they are also unbounded is why no fitted axis would
+help.
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4.0 -->
+
+**Displayed precision.** Two decimals, and *not* derived from the
+concentration resolution, deliberately: the quotient's own resolution depends
+on its denominator, so a run early in wash-in knows it far less finely than
+one at equilibrium and a single derived figure would over-claim at one end.
+The figure is set instead by what the quantity is read against — Yasuda et al.
+report 0.850, 0.733 and 0.90 with standard deviations of 0.018, 0.027 and 0.01
+— so a third decimal would be finer than the published spread. See "Published
+wash-in validation test".
+
+**What it does not assert.** It is a modelled ratio, not a measurement; it
+carries the alveolar compartment's own limitation, that this model has no
+airway sampling delay and no dead space; and it is not a depth of anesthesia,
+a time to any endpoint, or a prediction for an individual patient.
 
 ### Color contrast, and the standard this interface is held to
 
@@ -2566,6 +2730,8 @@ Version v0.1.0 assumes:
 - partition coefficients are constant;
 - tissue volumes and flow fractions are constant;
 - outgoing pulmonary blood equilibrates with alveolar gas;
+- inspired gas is circuit gas, $`F_I \equiv F_C`$, there being one perfectly
+  mixed circuit with no dead space and no separate limbs (see "Model boundary");
 - tissue venous blood equilibrates with its tissue group;
 - carrier gases do not affect sevoflurane kinetics;
 - temperature is constant;
