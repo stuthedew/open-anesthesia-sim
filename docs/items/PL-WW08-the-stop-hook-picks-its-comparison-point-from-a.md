@@ -72,9 +72,52 @@ own remote ref is behind but the same commits sit on another remote ref. There
 the new form stays silent. That is the right answer — the work is published —
 but it is a real behavioural difference, not an equivalence.
 
-**Not this repository's file.** The hook lives in `~/.claude/`, so it is the
-project owner's to change and the change reaches all of their projects. This
-item records the diagnosis and the exact patch; applying it is theirs.
+**Not the project owner's file either — corrected 2026-09-04.** The paragraph
+this replaces said the hook lives in `~/.claude/`, so it is the owner's to
+change and the change reaches all of their projects. It is not, and it does
+not. In a cloud session `~/.claude/` is provisioned by the Claude Code Remote
+environment manager at container start, and the hook is Anthropic's: it cites
+internal Anthropic source paths (`api-go/ccr/e2e/byoc/`
+`scenario_sign_commit_test.go:117`, `antique/cmd/aq/git.go`) and the public
+issue `anthropics/claude-code#69586`, and it is wired by
+`~/.claude/launcher-settings.json`, which the env-manager writes — the sibling
+`stop-hook-reply-gate.py` says so in its own docstring. Every hook script in
+`~/.claude/` carried this container's start time (04:02, container created
+04:01:55). Editing the copy inside a container is erased at the next one.
+
+Nor does the owner's own machine reach it: "If you have SessionStart hooks in
+your user-level `~/.claude/settings.json`, don't expect them in the cloud.
+User-level settings stay on your machine"
+(https://code.claude.com/docs/en/cloud-environments, "Setup scripts vs.
+SessionStart hooks", read 2026-09-04). A local patch would fix local sessions
+only, and the sessions this fires in are the cloud ones.
+
+An environment **setup script** is the wrong lever too: it runs *before* Claude
+Code launches, and is skipped entirely once the environment cache exists (same
+page, "Environment caching"), so it cannot reliably patch a file the harness
+writes at container start.
+
+**What is left, then.** Two routes reach the stated end state and one does not:
+
+- A repository **SessionStart hook** — which runs *after* Claude Code launches,
+  on every session including resumed (same page) — rewriting the line in
+  `~/.claude/stop-hook-git-check.sh` in this container, guarded on an exact
+  match of the vulnerable text so it no-ops the moment upstream changes. It is
+  the only in-container route: a Stop hook that exits 2 blocks the stop, and no
+  second hook can countermand it.
+- Reporting it upstream, the only fix that reaches every user and every
+  project, and not this repository's to land.
+- Making the false demand *cheap* to disprove — one command instead of four —
+  which leaves it firing, and so fails the same "being routed around" test the
+  item opens with.
+
+**The `verify:` field cannot be satisfied as written.** It greps a file this
+container regenerates, so it fails before the work for the wrong reason
+(checked 2026-09-04: the hook's only `--not --remotes` is the signing block's
+`local_count=`, on a line of its own) and would pass on a container-local edit
+that survives nothing. What it should become depends on which route above is
+taken; it is left alone meanwhile rather than replaced by a second unrun
+command.
 
 **Done when.** Finishing a session on a branch whose pull request has merged
 produces no push demand, and no session spends commands disproving one.
