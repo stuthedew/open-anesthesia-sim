@@ -3,11 +3,13 @@ id: PL-D4MZ
 title: Nothing reserves work at the moment it is recommended, so two sessions handed the same closing recommendation both start it
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: infra
 feature: parallel-sessions
-touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/plan.py
+touches: .claude/rules/instruction-writing.md
 added: 2026-09-02
+closed: 2026-09-04
+verify: python3 tools/doc_check.py check && grep -qF 'post_turn_summary.needs_action' .claude/rules/instruction-writing.md
 ---
 
 **Problem.** Every guard this project holds against two sessions doing one
@@ -157,3 +159,47 @@ to write already exists on the default base, readable from `git show
 origin/<base>:pyproject.toml` with no network beyond a fetch. That is a `make
 check`-tier answer for the single most collision-prone id-less change, and it is
 independent of whatever this item decides.
+
+**Decision, 2026-09-04 (project owner).** Direction one - reserve at
+recommendation time - built as a *read* of `post_turn_summary.needs_action`
+rather than as the new reservation store the brief costed it as. Recorded as a
+bullet in rule 14 of `.claude/rules/instruction-writing.md`, which is where it
+fires: rule 14 requires a closing block of every reply, so the check runs at the
+moment the recommendation is written, in every session, without the `docket`
+skill having to be loaded.
+
+*Why resident rather than routed.* The four dispositions in `CLAUDE.md` were
+weighed. It is not a check or a script, because the decidable half - is there
+another live session holding an open recommendation - is worth nothing without
+the judgment half, which is whether that session's prose describes the same work
+as yours; scripting that would be the guessed-judgment failure `CLAUDE.md`
+warns about. It is not a skill, because the collisions observed came from
+sessions that had no reason to load one: `session_01JwiP9q` was working a
+product item when it closed recommending the v0.3.8 tag. It is not path-scoped,
+because no file read precedes writing a closing block. That leaves resident,
+which is the right answer on `CLAUDE.md`'s own test - a session writing its
+closing block would not think to look anything up. The cost is 18 lines on the
+resident total, against a measured collision cost of one session's release work.
+
+*Why not the other three.* A lease rebuilds by hand the store the harness
+already keeps. Spreading the rank is already implemented in its principled form
+- the digest's `By lane, for a second session:` line is a stable spread, which a
+randomized rank would not be - and it modifies `docket next`, which is not where
+these collisions happen. Doing nothing leans on `PL-YHD3` (which of two sessions
+yields), which resolves two branches carrying one id, and the remainder has no
+id for it to resolve on.
+
+*What it deliberately does not do.* It shrinks the window rather than closing
+it, on the same bound as every other guard here: two sessions writing closing
+blocks in the same minute still collide. The match is a judgment on another
+model's prose. A session still mid-turn has not written its `needs_action` yet.
+So it warns and never certifies - finding nothing means nothing, finding
+something is decisive - which is the same reading `PL-SK88` (the session-title
+read) established for the item-start scan. Its one structural advantage over
+that read is that the field is written by the harness rather than by a rule
+anybody has to follow, so its reliability is bounded by the reading session's
+behavior rather than by the other session's.
+
+*The code half stands alone.* `PL-66FP` (two sessions cut the same release
+independently) carries the decidable guard - `bin/docket release` refusing a
+version already on the default base - and is independent of this decision.
