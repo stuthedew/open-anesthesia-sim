@@ -309,22 +309,16 @@ correction rather than handing the question back.
   where the **web harness says not to open one unless the owner explicitly
   asks**, this bullet is that ask, standing rather than per pull request, so a
   session reading both proceeds rather than stalls.
-- **An `origin/<branch>` ref that resolves locally is not evidence the branch
-  exists; check the remote before obeying a demand to push.** The stop hook
-  picks its comparison point by whether that ref *resolves locally*, not by
-  whether the branch still exists, so a stale one reports everything `main`
-  has gained since as unpushed. A merge deletes the head branch and leaves the
-  ref behind; the harness seeds one for a session branch nothing ever pushed.
-  `git ls-remote --heads origin` says whether the branch exists and `git log
-  origin/main..HEAD` whether there is anything to push — empty means the
-  demand is false, and obeying it recreates a dead branch identical to `main`,
-  with no content and no pull request. Restart a *merged* branch with `git
-  branch -dr origin/<branch> && git fetch origin main && git checkout -B
-  <branch> origin/main`. **Not `git fetch --prune`**: such a ref can be the
-  only surviving copy of an item captured on a branch nobody merged, which is
-  why `fetch_remote` declines to prune and what `bin/docket stranded`
-  recovers. `PL-1Q3S` carries the diagnosis and the upstream half; `PL-PF8H`
-  the never-pushed case.
+- **Never clear a stale `origin/<branch>` ref with `git fetch --prune`.** Such
+  a ref can be the only surviving copy of an item captured on a branch nobody
+  merged, which is why `fetch_remote` declines to prune and what `bin/docket
+  stranded` recovers; `PL-HKF4` came within one prune of exactly that. Restart
+  a *merged* branch with `git branch -dr origin/<branch> && git fetch origin
+  main && git checkout -B <branch> origin/main`. The false demand to push that
+  such a ref used to provoke is handled in code rather than here:
+  `tools/stop_hook_patch.py` corrects the container's stop hook at session
+  start, and prints the commands that disprove one only when it cannot.
+  `PL-WW08` carries that; `PL-1Q3S` and `PL-PF8H` the two ways the ref arises.
 - **Capture intent, and route it by how ready it is.** A **specific change** is
   a queue item, written now. A **feature wanted but not yet ready to build** is
   one unscoped line of intent in `ROADMAP.md`'s "Planned milestones" — filing it
