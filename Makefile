@@ -22,31 +22,15 @@ check: sync
 # the change under it. Measured 2026-09-03: 92.8 s with the flag against
 # 92.4 s without, so the gate is free. `PL-22Z3`.
 #
-# `-n auto` is on this line for that same reason and not in `addopts`: worker
-# startup is a fixed cost the whole suite absorbs and a single scoped test file
-# does not, so a session iterating on one file would pay it and lose.
-#
-# It buys the largest saving measured anywhere in this gate, and it removes no
-# check - every test still runs and coverage is identical. Measured 2026-09-04
-# on this four-core container, same checkout, warm caches:
-#
-#     serial    84.4 s   1224 passed   691 stmts 0 missed, 78 branches 0 partial, 100%
-#     -n auto   29.6 s   1224 passed   691 stmts 0 missed, 78 branches 0 partial, 100%
-#
-# The saving is larger than the CPU accounting alone predicts because about a
-# third of the serial wall clock was already spent waiting rather than
-# computing: `subprojects/docket/tests` shells out to `git` once or twice per
-# test, 532 tests at roughly 30 ms each. Parallelism recovers that wait, which
-# is why it beats every proposal to delete tests instead - deleting the whole
-# docket suite would have returned 29.8 s of a 122 s gate against this line's
-# 54.8 s, and at the cost of the checks (`PL-KCQ7`).
-#
-# `auto` rather than a fixed `-n 4`: GitHub's standard Linux runner is four
-# vCPUs on a public repository and two on a private one, so a hardcoded number
-# oversubscribes the smaller machine and pins the larger one to a number that
-# stops being right when either the runner or this container changes. Test
-# outcomes do not depend on the worker count - the property checked below - and
-# only wall clock does. `PL-WCZV`.
+# `-n auto` is off `addopts` for exactly the same reason, and it is the reason
+# that argument generalizes: a session iterating on one test file would pay
+# worker startup for a handful of tests and lose. Here it is the largest item
+# in this target and the suite otherwise runs on one core of however many the
+# box has - measured 2026-09-03, 1230 tests: 78 s serially against 27 s at
+# `-n auto`, with coverage identical at 691 statements / 78 branches / 100%.
+# Coverage holding is what makes the flag admissible rather than the wall
+# clock, which is why the threshold stays on this line and is not relaxed to
+# pay for the parallelism. `PL-WCZV`.
 	uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
 	bin/docket check
 	python3 tools/doc_check.py check
@@ -67,11 +51,8 @@ fix:
 # CI, where mutating the tree is not the job.
 	bin/docket record
 
-# `-n auto` for the reason the `check` target above gives at length: this is
-# the whole suite too, so worker startup is amortized. A session debugging one
-# file runs `uv run pytest <file>` directly and pays neither. `PL-WCZV`.
 test:
-	uv run pytest -n auto
+	uv run pytest
 
 # Named for the store it validates. `make check` runs `bin/docket check` too;
 # this target exists so a session can validate the store on its own, after

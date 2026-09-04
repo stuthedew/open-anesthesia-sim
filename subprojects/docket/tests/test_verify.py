@@ -27,6 +27,7 @@ from docket.verify import (
     already_passing,
     changed_paths,
     item_commits,
+    landed_workers,
     selects_no_test,
     verify,
     verify_batch,
@@ -695,6 +696,25 @@ def test_a_killed_command_does_not_count_into_the_serial_total(tmp_path: Path) -
     assert report.serial < 1
     assert report.slowest is not None
     assert report.slowest.identifier != "PL-KILL"
+
+
+def test_the_run_says_how_wide_the_pool_that_produced_it_was(tmp_path: Path) -> None:
+    # `serial` cannot be read without it: what the remaining commands cost is
+    # their total divided across the workers, and a report carrying the total
+    # but not the divisor can only guess (`PL-FRGP`).
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(identifier=f"PL-000{n}") for n in range(4)], workers=3)
+
+    assert report.workers == 3
+
+
+def test_a_run_that_chose_its_own_width_still_reports_it(tmp_path: Path) -> None:
+    # The caller usually passes nothing and `landed_workers()` decides, which
+    # is exactly the case a reader of the advisory is in.
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(identifier=f"PL-000{n}") for n in range(4)])
+
+    assert report.workers == landed_workers()
 
 
 def test_a_store_with_no_command_to_run_names_no_costliest_one(tmp_path: Path) -> None:

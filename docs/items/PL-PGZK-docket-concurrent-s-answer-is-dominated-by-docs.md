@@ -1,8 +1,13 @@
 ---
 id: PL-PGZK
 title: docket concurrent's answer is dominated by docs/MODEL.md, which nearly every item touches, so it rules out almost everything and cannot discriminate between real and nominal contention
-status: untriaged
+status: needs-decision
 added: 2026-09-03
+priority: P2
+effort: M
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, docs/items/
 ---
 
 **Problem.** `docket concurrent <id>` reports contention from declared
@@ -26,6 +31,15 @@ without changing a decision.
 **Where.** `subprojects/docket/src/docket/` (whatever computes the overlap),
 and the `touches:` convention itself.
 
+**Decision needed.** Which of the three options below to build. Recommended:
+rank the collisions by how many items declare the shared path, so a hub file
+reads as weak evidence and a rarely-touched source file as strong. It needs no
+change to the `touches:` format, so no existing item has to be rewritten, and
+it degrades gracefully - a path nothing else declares still reads as a hard
+collision. Reject it only if a ranked answer turns out to be one a session
+skims past, in which case the excluded-hub-set option is the fallback, since it
+is the only one that changes what is *reported* rather than how it is ordered.
+
 **Options, not yet decided.** Rank the collisions by how many items declare
 the shared path, so a hub file reads as weak evidence and a rarely-touched
 source file as strong; or let `touches:` name a section rather than a file for
@@ -35,3 +49,14 @@ to try.
 
 **Found.** 2026-09-03, planning the `v0.4.0` implementation order. Not fixed
 in that session.
+
+**Done when.** `bin/docket concurrent` distinguishes contention on a hub path
+from contention on a file few items touch, so a session planning a batch inside
+one milestone gets an answer it can act on rather than a near-universal refusal.
+Measured on the same two probes that produced this finding - `PL-ZRSP` returned
+22 rule-outs of which 16 shared only `docs/MODEL.md`, and `PL-DR1Z` the same
+shape - the reported set discriminates between those two kinds. The command's
+contract is unchanged and restated in the output: it rules work out, it never
+certifies it, so whatever it now reports as weak evidence is still reported
+rather than silently dropped.
+

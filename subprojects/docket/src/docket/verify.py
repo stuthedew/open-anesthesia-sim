@@ -637,6 +637,11 @@ class LandedReport:
     #: this is "how close is any one command to `limit`", which always has an
     #: answer and is the margin `LANDED_TIMEOUT` is chosen against.
     slowest: SlowCommand | None = None
+    #: How wide the pool that produced these numbers was. Carried because
+    #: `serial` cannot be read without it: what the remaining commands cost a
+    #: run is their total divided across the workers, and a report that knows
+    #: the total but not the divisor can only guess (`PL-FRGP`).
+    workers: int = 0
     declined: str = ""
 
     @property
@@ -737,7 +742,8 @@ def already_passing(
         # on: they are reported as lists of ids, and an order that varied run to
         # run would make a stable store look like a changing one.
         started = time.monotonic()
-        with ThreadPoolExecutor(max_workers=workers or landed_workers()) as pool:
+        width = workers or landed_workers()
+        with ThreadPoolExecutor(max_workers=width) as pool:
             results = list(pool.map(probe, candidates))
         elapsed = time.monotonic() - started
 
@@ -821,4 +827,5 @@ def already_passing(
         elapsed=elapsed,
         serial=serial,
         slowest=slowest,
+        workers=width,
     )

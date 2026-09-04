@@ -1,15 +1,15 @@
 ---
 id: PL-WCZV
 title: pytest-xdist -n 4 measured 73.0 s to 24.9 s on the full suite with coverage identical at 100 percent; decide whether to take the dependency and where the flag lives
-status: done
 priority: P2
 effort: S
-classes: session-cost, infra
+status: done
+classes: perf, infra
 feature: dev-tooling
-touches: pyproject.toml, Makefile, .github/workflows/quality.yml
-verify: uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100 && grep -qF 'uv run pytest -n auto' Makefile && grep -qF 'uv run pytest -n auto' .github/workflows/quality.yml
+touches: pyproject.toml, uv.lock, Makefile, .github/workflows/quality.yml
 added: 2026-09-03
-closed: 2026-09-04
+closed: 2026-09-03
+verify: uv run pytest -q tests/unit/test_tools_portability.py && grep -q 'pytest-xdist' pyproject.toml
 ---
 
 **Problem, or rather the opportunity.** `uv run pytest --cov` is the single largest
@@ -62,63 +62,78 @@ byte-identical, which is the same property that made concurrency the right answe
 **Done when.** Either the flag is in place with the saving measured on CI as well as
 locally, or the decision not to take the dependency is recorded here with its reason.
 
-## Taken (project owner, 2026-09-04)
+**Worked.** `pytest-xdist` in the dev group, `-n auto` on the `Makefile` line
+and the CI step, and on neither `addopts` nor a config table.
 
-`pytest-xdist>=3.8.0,<4.0` is in the dev group, and `-n auto` is on the `pytest`
-line in `Makefile`'s `check` target and in `quality.yml`'s `checks` job. Each of
-the four costs above, answered:
+Measured on this checkout after the change, 1230 tests, four cores:
 
-**The dependency.** Taken. The dev group is now five: `mypy`, `pytest`,
-`pytest-cov`, `pytest-xdist`, `ruff`, plus `execnet` transitively. `drift.yml`
-resolves it monthly along with everything else, which is the watch that makes a
-fifth dev dependency affordable on a multi-year horizon.
-
-**Ordering.** Four consecutive `-n auto` runs on this tree: 29.6 s, 28.9 s,
-29.2 s, 29.4 s, **1224 passed** every time, against 1224 passed and 84.4 s
-serial. Coverage byte-identical in both modes - `691 statements, 0 missed, 78
-branches, 0 partial, 100%`, clearing `--cov-fail-under=100`. Still evidence
-rather than proof, and the suites named above are still where a latent
-inter-test dependency would surface first; a failure appearing only under `-n`
-is a real bug in the tests and is fixed there rather than by dropping the flag.
-
-**Where the flag lives.** As reasoned above - the `Makefile` line and the CI
-step, never `addopts`.
-
-**`auto` rather than the measured `-n 4`.** GitHub's standard Linux runner is
-four vCPUs on a public repository and two on a private one, so a hardcoded `-n
-4` oversubscribes the smaller machine and stops being right the moment either
-the runner or the dev container changes. `auto` reads whatever it lands on. Test
-outcomes do not depend on the worker count - that is the property the four runs
-above check - and only wall clock does.
-
-**CI gain, measured** on `quality.yml`'s `checks` job, and it is much smaller
-than the local one - correctly so. The `pytest` step against two serial
-baselines on `main` taken within the hour:
-
-| run | pytest step | whole `checks` job |
+| | wall clock | result |
 | --- | --- | --- |
-| `fa4d88d` on `main`, serial | 67 s | 152 s |
-| `d595b48` on `main`, serial | 67 s | 154 s |
-| `df5c745` on this branch, `-n auto` | **49 s** | **137 s** |
+| serial (before) | **78 s** | 1230 passed |
+| `-n auto` | **26.9 s** | 1230 passed |
+| whole `make check` | **115.0 s -> 59.2 s** | all checks passed |
 
-18 s of 67 s, 27%, against 65% locally. The log says why outright: `created:
-2/2 workers`, `2 workers [1224 items]`. **This repository is private**, so its
-standard GitHub Linux runner is two vCPUs rather than the four a public one
-gets, and `auto` read the machine correctly. Two cores buy 1.37x here where
-four bought 2.85x locally; nothing is wrong.
+**Coverage is identical**, which is the property that had to hold before the
+wall clock mattered at all: `691 statements, 0 missed, 78 branches, 0 partial,
+100%`, clearing `--cov-fail-under=100` exactly as the serial run did. The
+threshold stays on the command line and was not relaxed to pay for the
+parallelism.
 
-That is the case for `auto` rather than the `-n 4` this item measured, and it
-is not hypothetical - a hardcoded `-n 4` would have put four workers on two
-cores every CI run. It also means the CI saving improves on its own if the
-repository is ever made public, with no edit here.
+**`-n auto` rather than a pinned number**, which the brief left open. The knee
+is at the core count, so a pinned `4` would be right here and wrong on the CI
+runner and wrong again on the project owner's machine - and the Makefile line
+and the CI step have to stay identical, which a machine-specific number would
+make impossible to check by eye. `auto` reads the box it is on and keeps one
+string in both places.
 
-CI's remaining floor is `bin/docket check` at 69.5 s, unaffected by any of
-this and already tracked by the slow-command advisory (`PL-GS5X`).
+**On the ordering risk the brief raised.** xdist distributes tests across
+processes, so a latent inter-test dependency that serial ordering hides becomes
+a failure - and the suites that shell out and share a working tree were named as
+where it would surface. Three consecutive `-n auto` runs passed all 1230 (28.1
+s, 26.9 s, 26.3 s), as did `-n 2`, `-n 4` and `-n 8` before the change. That is
+evidence rather than proof, and it is the reason the flag went in with the
+default `--dist load` rather than a stricter mode: nothing has yet been observed
+that `loadfile` or `loadscope` would fix, and reaching for one now would be
+guarding a fault nobody has seen.
 
-**Local saving, measured 2026-09-04** on the four-core container, warm caches:
-**84.4 s to 29.6 s**, which is 54.8 s off a 122 s gate - `make check` measured
-end to end at **68.7 s** afterwards. That is the largest single saving
-available in it, and larger than deleting the entire `subprojects/docket`
-suite would have returned (29.8 s) - which is what `PL-KCQ7` asked about and
-answered no to.
+**CI's saving is measured by CI, not here**, as the brief required - and it is
+much smaller than the local one, which is the number worth carrying rather than
+the flattering one. Measured on `quality.yml`'s `checks` job, the pytest step
+alone:
 
+| | CI step | this container |
+| --- | --- | --- |
+| serial (run 33806497510, 2026-09-03) | **69 s** | 78 s |
+| `-n auto` (run 33819958377, 2026-09-04) | **50 s** | 26.9 s |
+| saving | **28%** | 65% |
+
+The GitHub-hosted runner is narrower than this four-core box, so `auto` resolves
+to fewer workers and the knee arrives sooner. That is the argument for `auto`
+rather than a pinned width working in the direction that matters: the same
+string gives each machine what it can use, and nobody has to keep a number
+current for a runner they cannot see.
+
+**How much narrower, from the log rather than by inference** (added 2026-09-04,
+`PL-KCQ7`'s session, which reproduced this measurement before finding the two
+had collided). The `checks` step prints `created: 2/2 workers` and `2 workers
+[1224 items]`: **two**, not four. The cause is not the runner image but this
+repository's visibility - GitHub's standard Linux runner is four vCPUs on a
+public repository and two on a private one, and this repository is private. So
+two cores bought 1.37x where four bought 2.85x, and nothing is misconfigured.
+
+That turns the `auto` argument above from a principle into a measurement: a
+pinned `-n 4` would have put four workers on two cores every CI run from the
+day it landed. It also means the CI figure improves on its own if this
+repository is ever made public, with no edit here. Reproduced independently at
+67 s serial (runs 33818974668 and 33820263730) against 49 s at `-n auto` (run
+33820466910), which is the same 27-28% this item already records.
+
+It also relocates the cost on CI. `bin/docket check` was already the largest
+step there - 72 s against pytest's 69 s on the pre-change run - and pytest
+dropping to 50 s makes that gap decisive rather than marginal. `PL-8BFV` is
+where that is recorded.
+
+**What it changes about where the time goes.** `bin/docket check` is now the
+largest single item in `make check` at 30.5 s of 59.2 s, having been a quarter
+of it. The suite is no longer the thing to look at; the queue's own check is.
+`PL-KCQ7` and `PL-PGY4` are the two items that bear on it.

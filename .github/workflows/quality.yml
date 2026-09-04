@@ -53,23 +53,14 @@ jobs:
       # The same invocation as `make check`'s pytest line, and it has to stay
       # the same: `core/` is at 100% of statements and branches, and this is
       # what keeps it there. See the comment in the Makefile for why the
-      # threshold is on the command line rather than in a config table.
+      # threshold and `-n auto` are on the command line rather than in a config
+      # table. `-n auto` reads this runner rather than carrying a width pinned
+      # here, so the two lines stay identical across machines of different
+      # sizes - which is what lets "the same invocation" above stay checkable
+      # by eye.
       # `drift.yml` deliberately keeps its bare `uv run pytest`: a coverage
       # failure there would report as a dependency break, which is the opposite
       # of what that workflow is for. `PL-22Z3`.
-      #
-      # `-n auto` reads the runner it lands on rather than naming a number,
-      # and here that is load-bearing rather than tidy: GitHub's standard Linux
-      # runner is four vCPUs on a public repository and two on a private one,
-      # this repository is private, and the log confirms `auto` picked
-      # `2/2 workers`. A hardcoded `-n 4` - the number this was measured at
-      # locally - would put four workers on two cores every run. Measured on
-      # the `checks` job: the step goes 67 s serial to 49 s, 27%, against 65%
-      # on the four-core dev container; two cores buy less, and the figure
-      # improves on its own if this repository is ever made public.
-      #
-      # `drift.yml` keeps its bare `uv run pytest` - it reports rather than
-      # gates and runs monthly, so its wall clock buys nothing. `PL-WCZV`.
       - run: uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
       - run: bin/docket check
       - run: uv run python tools/doc_check.py check
