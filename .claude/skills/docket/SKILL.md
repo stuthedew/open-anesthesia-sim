@@ -246,6 +246,11 @@ have: whether the item is still real, whether the marking is right about a
 milestone whose prose it cannot read, and how it fits what the owner said
 they were trying to do.
 
+**The digest already names both lanes' picks.** Its `By lane, for a second
+session:` line carries each half's top item and how many span both, so the
+choice needs no command: read the lane matching this session and start there.
+Where that line is absent, no boundary is declared and there are no lanes.
+
 **Ask for a lane only when another session is genuinely running.** The owner
 runs two sessions at once precisely so one can take the simulator while the
 other takes the apparatus, and a bare `docket next` in both hands them the same

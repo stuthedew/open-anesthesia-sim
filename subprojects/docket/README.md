@@ -390,11 +390,26 @@ store — that is a fact about the feature, not about which session is asking,
 and counting only the lane's share would make the same feature report a
 different completion in each.
 
+The digest names each lane's pick beside its `Top:` line, because the digest
+is what a session reads *first* — before it would think to ask for a lane, and
+before anything has been said that could tell it which half it is. Naming both
+is what lets the hook avoid guessing:
+
+    By lane, for a second session: product PL-F52R, workflow PL-Y0RZ; 15 in neither lane.
+
+It costs one line in every digest, single-session ones included, which is why
+it reads as an offer rather than an instruction, and why it is omitted entirely
+where no boundary is declared or neither lane has anything startable. The
+spanning count rides the same line: two picks read as the whole queue without
+it.
+
 ### The digest and the ranking cannot disagree
 
 The session digest's `Top:` line is that same answer, from the same ranking
 against the same plan, because the two lines a session reads first have to
-agree. It was a sort of the store by priority alone, which opened every
+agree. The lane line above goes through `recommend` for that reason too — two
+lines in one block ranked by different rules contradict each other where a
+reader can see both at once. It was a sort of the store by priority alone, which opened every
 session with v0.4.0 science work two lines above a beat saying clear v0.2.8's
 gate, and left the reader to work out which of them knew about the plan.
 Deriving it from the plan the digest already carries is what makes that

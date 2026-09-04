@@ -251,6 +251,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         ready,
         _plan(root, items, config),
         _stranded(root, directory, items, args),
+        config.workflow_paths,
     )
     if rendered:
         print(rendered)

@@ -1705,3 +1705,48 @@ def test_an_unknown_lane_is_rejected_by_the_parser(tmp_path: Path) -> None:
     """Only the two sides are selectable; `crossing` is an outcome, not a request."""
     with pytest.raises(SystemExit):
         _run("next", "crossing", "--items", str(_laned_store(tmp_path)))
+
+
+def test_the_digest_names_each_lane_s_pick_for_a_parallel_session(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The digest is read before a session would think to ask for a lane."""
+    assert _run("digest", "--items", str(_laned_store(tmp_path))) == 0
+    out = capsys.readouterr().out
+
+    assert "By lane, for a second session: product PL-PROD, workflow PL-WORK" in out
+    assert "1 in neither lane" in out
+
+
+def test_the_digest_says_nothing_about_lanes_when_no_boundary_is_declared(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A line costing every session's context needs a project that asked for it."""
+    assert _run("digest", "--items", str(_store(tmp_path, READY))) == 0
+    out = capsys.readouterr().out
+
+    assert "Top: PL-B1B1" in out
+    assert "By lane" not in out
+
+
+def test_the_digest_lane_line_names_an_empty_lane_rather_than_omitting_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Silence about one lane reads as 'no lanes here' to the session in it."""
+    items = tmp_path / "docs" / "items"
+    items.mkdir(parents=True)
+    (items.parent / "docket.toml").write_text(
+        '[docket]\nworkflow_paths = ["tools"]\n', encoding="utf-8"
+    )
+    (items / "only-product.md").write_text(
+        "---\nid: PL-PROD\ntitle: Item PL-PROD\npriority: P2\neffort: S\nstatus: ready\n"
+        "classes: perf\ntouches: src/core/blood.py\nadded: 2026-08-01\n---\n\n"
+        "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n",
+        encoding="utf-8",
+    )
+
+    assert _run("digest", "--items", str(items)) == 0
+    out = capsys.readouterr().out
+
+    assert "product PL-PROD, workflow none" in out
+    assert "in neither lane" not in out
