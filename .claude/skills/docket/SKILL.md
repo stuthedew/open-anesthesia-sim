@@ -804,6 +804,17 @@ one is untagged**, because a release cut without a tag leaves a permanent gap
 — `git describe --contains` resolves nothing across its span — and the gap
 cannot be repaired with confidence once the history has moved on.
 
+It **also refuses to cut a version the default branch already holds**, by its
+`docs/releases/` notes file or by its version field (`PL-66FP`, two sessions
+cut v0.3.7 independently). Take that refusal at its word rather than passing
+a different number: it means another session's release has already merged, so
+the work is `git merge origin/main` and then asking again what is left to
+ship. **It sees only a cut that has *landed*.** A second session that has
+pushed its release and not yet merged it is invisible here — a release
+carries no item id, so no in-flight guard reads it — so the offer above is
+still the one place two sessions can duplicate a release without either
+being told.
+
 **Never ask the owner to "tag vX.Y.Z". Paste the commands, filled in:**
 
 ```bash

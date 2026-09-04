@@ -33,6 +33,13 @@ if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
 VERSION_RE = re.compile(r'^(version\s*=\s*")([^"]+)(")', re.M)
 SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 
+#: Where the generated notes are written, and therefore where a release
+#: already cut can be read back from. A constant rather than a setting: it is
+#: one directory, written in one place and read in one, and the value of
+#: having it here is that the write and the duplicate-cut check below cannot
+#: drift into two spellings of the same path.
+NOTES_DIR = "docs/releases"
+
 
 @dataclass(frozen=True)
 class Milestone:
@@ -129,6 +136,22 @@ def is_untagged(version: str, existing: frozenset[str]) -> bool:
     return f"v{name}" not in existing and name not in existing
 
 
+def notes_name(version: str) -> str:
+    """The notes file a version's release is written to, with no leading path."""
+    return f"v{version.strip().lstrip('v')}.md"
+
+
+def version_in(text: str) -> str:
+    """The version a project file declares, or empty where it declares none.
+
+    Separated from `read_version` because the same grammar has to answer for a
+    file on disk and for the same file read out of another ref, and two
+    spellings of one question are two answers waiting to disagree.
+    """
+    match = VERSION_RE.search(text)
+    return match.group(2) if match else ""
+
+
 def read_version(pyproject: Path) -> str:
     """The project's current version, or empty when there is none to read.
 
@@ -139,8 +162,47 @@ def read_version(pyproject: Path) -> str:
     """
     if not pyproject.is_file():
         return ""
-    match = VERSION_RE.search(pyproject.read_text(encoding="utf-8"))
-    return match.group(2) if match else ""
+    return version_in(pyproject.read_text(encoding="utf-8"))
+
+
+def already_released(
+    version: str, notes: frozenset[str], base_version: str, version_file: str
+) -> list[str]:
+    """What on the default branch says this version has already gone out.
+
+    **A release is the one change no in-flight guard can see.** Every one this
+    package has matches a `PL-` id, and a release cut carries none by design -
+    so the change that rewrites the version file, the lock file, the roadmap
+    and a new notes file, which is the most collision-prone in the repository,
+    is the only one nothing watches. Two sessions cut v0.3.7 within an hour
+    that way, and the second one's whole release was discarded at the merge
+    (`PL-66FP`).
+
+    This is the half of that which is *certain*. A notes file or a version
+    field on the default branch is a fact about a merge that has already
+    happened, not an inference from a ref that may have moved since it was
+    fetched - so it can be refused on rather than merely reported, which is
+    what separates it from every other parallel-session read here.
+
+    Both facts are checked rather than either alone. The notes file is the
+    direct evidence and the one a maintainer can see; the version field
+    catches a project that writes its notes somewhere else, or a release
+    landed by hand. Each is returned as a statement about the state of the
+    default branch, so a reader can check it against what they are looking at
+    rather than being told what to conclude.
+
+    Empty means the number is free, and says nothing about whether another
+    session is cutting it right now: that claim needs refs this cannot see.
+    """
+    name = version.strip().lstrip("v")
+    if not name:
+        return []
+    found: list[str] = []
+    if notes_name(name) in notes:
+        found.append(f"{NOTES_DIR}/{notes_name(name)} is on it")
+    if base_version.strip().lstrip("v") == name:
+        found.append(f"its {version_file} already reads {name}")
+    return found
 
 
 @dataclass(frozen=True)

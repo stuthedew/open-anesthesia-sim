@@ -12,6 +12,7 @@ from pathlib import Path
 
 from docket.checks import Report
 from docket.vcs import (
+    BaseRelease,
     Branch,
     BranchState,
     FlightFiles,
@@ -31,6 +32,7 @@ from docket.vcs import (
     merged_pull_requests,
     orphaned,
     precedence,
+    released_on_base,
     stranded,
     tags,
 )
@@ -2082,3 +2084,101 @@ def test_a_branch_whose_commits_cannot_be_walked_is_not_reported() -> None:
         ).branches
         == ()
     )
+
+
+def _base_runner(declared: str = '[project]\nversion = "0.3.8"\n', notes: tuple[str, ...] = ()):
+    """A git holding one base ref, its version file, and its release notes.
+
+    Its own runner rather than `_runner`'s: this read asks git two questions
+    that one asks none of, and threading them through a helper built for the
+    branch walk would make every test there carry arguments it has no use for.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "rev-parse":
+            return f"{BASE}\n" if args[-1] == BASE else ""
+        if args[0] == "show":
+            return declared
+        if args[0] == "ls-tree":
+            return "".join(f"docs/releases/{name}\n" for name in notes)
+        return ""
+
+    return run
+
+
+def test_the_base_reports_the_version_and_the_notes_it_holds() -> None:
+    report = released_on_base(
+        ROOT,
+        version_file="pyproject.toml",
+        notes_dir="docs/releases",
+        runner=_base_runner(notes=("v0.3.7.md", "v0.3.8.md")),
+    )
+
+    assert report == BaseRelease(
+        base=BASE, version="0.3.8", notes=frozenset({"v0.3.7.md", "v0.3.8.md"}), known=True
+    )
+
+
+def test_notes_are_named_without_the_directory_git_prints_them_under() -> None:
+    """The directory is the caller's own constant; repeating it invites two spellings."""
+    report = released_on_base(
+        ROOT,
+        version_file="pyproject.toml",
+        notes_dir="docs/releases",
+        runner=_base_runner(notes=("v0.3.8.md",)),
+    )
+
+    assert report.notes == frozenset({"v0.3.8.md"})
+
+
+def test_a_base_whose_version_file_cannot_be_read_is_unknown_rather_than_empty() -> None:
+    """PL-66FP: a gap in the evidence must not read as a clean bill of health."""
+    report = released_on_base(
+        ROOT, version_file="pyproject.toml", notes_dir="docs/releases", runner=_base_runner("")
+    )
+
+    assert not report.known
+    assert report.notes == frozenset()
+
+
+def test_a_base_holding_no_notes_at_all_is_still_a_real_answer() -> None:
+    """No notes is what a project that has never cut one looks like."""
+    report = released_on_base(
+        ROOT, version_file="pyproject.toml", notes_dir="docs/releases", runner=_base_runner()
+    )
+
+    assert report.known
+    assert report.notes == frozenset()
+
+
+def test_the_base_is_read_from_the_ref_rather_than_the_working_tree() -> None:
+    """The working tree is this session's own cut, which would answer about itself."""
+    log: list[list[str]] = []
+
+    def run(args: list[str], root: Path) -> str:
+        log.append(args)
+        return _base_runner()(args, root)
+
+    released_on_base(ROOT, version_file="pyproject.toml", notes_dir="docs/releases", runner=run)
+
+    assert ["show", f"{BASE}:pyproject.toml"] in log
+    assert ["ls-tree", "--name-only", BASE, "docs/releases/"] in log
+
+
+def test_an_explicit_base_is_read_instead_of_the_default_one() -> None:
+    log: list[list[str]] = []
+
+    def run(args: list[str], root: Path) -> str:
+        log.append(args)
+        return _base_runner()(args, root)
+
+    report = released_on_base(
+        ROOT,
+        version_file="pyproject.toml",
+        notes_dir="docs/releases",
+        base="origin/release",
+        runner=run,
+    )
+
+    assert report.base == "origin/release"
+    assert ["rev-parse", "--verify", "--quiet", BASE] not in log

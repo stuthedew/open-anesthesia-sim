@@ -445,6 +445,61 @@ def test_a_project_that_has_never_tagged_is_not_refused(tmp_path: Path) -> None:
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
 
 
+def test_a_release_the_default_branch_already_holds_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-66FP: two sessions cut v0.3.7, and no guard could see the second one.
+
+    A release carries no item id, so `branches_in_flight` and everything
+    reading it are blind to it. What the default branch already holds is the
+    part of that which is certain, and this is the command proving it is read
+    from git as git actually spells it.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    notes = root / "docs" / "releases"
+    notes.mkdir(parents=True)
+    (notes / "v0.2.6.md").write_text("## v0.2.6\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "Release v0.2.6"], cwd=root, check=True, capture_output=True
+    )
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
+    output = capsys.readouterr().out
+    assert "v0.2.6 is already released on" in output
+    assert "docs/releases/v0.2.6.md is on it" in output
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
+
+
+def test_a_base_already_bumped_to_the_version_refuses_it_too(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The version field catches a release landed without notes this can read."""
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.5", "--items", str(root / "items")]) == 1
+    assert "its pyproject.toml already reads 0.2.5" in capsys.readouterr().out
+
+
+def test_a_dry_run_says_the_release_is_already_out_and_still_shows_the_notes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Withholding the preview would not un-ship what already shipped."""
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.5", "--dry-run", "--items", str(root / "items")]) == 0
+    output = capsys.readouterr().out
+    assert "is already released on" in output
+    assert "PL-D1D1" in output
+
+
+def test_a_version_the_default_branch_has_not_seen_is_cut_as_before(tmp_path: Path) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    assert (root / "docs" / "releases" / "v0.2.6.md").is_file()
+
+
 def test_a_version_file_the_bump_rejects_leaves_the_items_unstamped(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

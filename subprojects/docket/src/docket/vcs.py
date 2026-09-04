@@ -31,6 +31,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from .model import parse_item
+from .release import version_in
 from .store import ID_PATTERN
 
 # The default branch, in the order it is looked for: a branch whose tip that
@@ -1171,6 +1172,72 @@ def is_shallow(root: Path, *, runner: Runner | None = None) -> bool | None:
     if answer == "false":
         return False
     return None
+
+
+@dataclass(frozen=True)
+class BaseRelease:
+    """What the default branch already records as shipped, or that it is unread.
+
+    `known` carries the obligation every read in this module carries.
+    `_run_git` answers a failure with the empty string, so a base this
+    checkout cannot read and a base that has never cut a release arrive here
+    identically - and reporting the first as the second would let a duplicate
+    release through under a check that appeared to have run, which is the one
+    thing a guard must never do.
+
+    The version file is what decides it. A project being cut releases for has
+    one; a ref that cannot produce it is a ref this checkout has no answer
+    about, whether because there is no remote, no network since the clone, or
+    no such branch. An empty `notes` under `known` is the other case and a
+    real answer: the base holds no notes for anything.
+
+    Read from the ref as it stands in this checkout, so it is stale by
+    whatever the last fetch left behind. That is a floor on what the answer
+    can prove, not a flaw in it: what it reports present is present.
+    """
+
+    base: str = ""
+    #: The version the base's own version file declares, unparsed of its `v`.
+    version: str = ""
+    #: Notes file names as they sit in `notes_dir` on the base - `v0.3.7.md`,
+    #: not the path to it, because the directory is the caller's own constant.
+    notes: frozenset[str] = frozenset()
+    known: bool = False
+
+
+def released_on_base(
+    root: Path,
+    *,
+    version_file: str,
+    notes_dir: str,
+    base: str | None = None,
+    runner: Runner | None = None,
+) -> BaseRelease:
+    """Which releases the default branch already holds, read from the ref itself.
+
+    Two reads of one ref rather than of the working tree, and that is the
+    whole point: the working tree is this session's own release in progress,
+    which would answer "yes, already cut" to its own work. The base is what
+    everyone else has, so it is the only place a second copy of a release can
+    be seen from.
+
+    Costs two `git` calls and no network, so a caller that has just fetched
+    gets a current answer and one that cannot fetch still gets a sound one -
+    older, and never wrong about what it names.
+    """
+    run = runner or _run_git
+    ref = base or default_base(root, runner=run)
+
+    declared = run(["show", f"{ref}:{version_file}"], root)
+    if not declared.strip():
+        return BaseRelease(base=ref)
+
+    names = frozenset(
+        line.strip().rsplit("/", 1)[-1]
+        for line in run(["ls-tree", "--name-only", ref, f"{notes_dir}/"], root).splitlines()
+        if line.strip()
+    )
+    return BaseRelease(base=ref, version=version_in(declared), notes=names, known=True)
 
 
 def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:

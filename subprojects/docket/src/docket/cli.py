@@ -21,8 +21,11 @@ from .config import load as load_config
 from .model import LANE_CROSSING, SELECTABLE_LANES, Item
 from .plan import OfferedReport, features, gate, recommend, set_aside
 from .release import (
+    NOTES_DIR,
+    already_released,
     is_untagged,
     milestones,
+    notes_name,
     outstanding_roadmap_edits,
     prepare_bump,
     read_version,
@@ -48,6 +51,7 @@ from .vcs import (
     merged_pull_requests,
     orphaned,
     precedence,
+    released_on_base,
     stranded,
     tags,
 )
@@ -750,6 +754,20 @@ def cmd_release(args: argparse.Namespace) -> int:
 
     version = (args.version or ready.suggested_version).lstrip("v")
     name = f"v{version}"
+
+    # The one change no in-flight guard can see, because it carries no item id
+    # by design (`PL-66FP`). A dry run is allowed through with the warning, on
+    # the same reasoning as the untagged one above: it writes nothing, and
+    # withholding the notes would not un-ship the release that is already out.
+    if not getattr(args, "no_git", False):
+        base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR)
+        evidence = already_released(version, base.notes, base.version, config.version_file)
+        if base.known and evidence:
+            print(_duplicate_warning(name, base.base, evidence))
+            if not args.dry_run:
+                return 1
+            print()
+
     milestone = milestones(stamp(ready.shippable, name))[name]
     notes = release_notes(milestone, args.today or date.today())
 
@@ -780,7 +798,7 @@ def cmd_release(args: argparse.Namespace) -> int:
         original = next(i for i in items if i.identifier == item.identifier)
         write_item(directory, item, replace=directory / original.path)
     previous = bump.write()
-    notes_path = root / "docs" / "releases" / f"{name}.md"
+    notes_path = root / NOTES_DIR / notes_name(version)
     notes_path.parent.mkdir(parents=True, exist_ok=True)
     notes_path.write_text(notes, encoding="utf-8")
     print(f"Bumped {previous} -> {version} in {config.version_file}")
@@ -821,6 +839,35 @@ def _hand_off(root: Path, config: Config, name: str) -> str:
     lines.append(f'  git tag -a {name} <merge commit> -m "{name}"')
     lines.append(f"  git push origin {name}")
     return "\n".join(lines)
+
+
+def _duplicate_warning(name: str, base: str, evidence: list[str]) -> str:
+    """Say which release is already out, on what evidence, and how to move onto it.
+
+    The evidence rather than the verdict alone, because the reader's next
+    question is "says who" and the answer is two files they can go and look
+    at. And the commands rather than "rebase first", for the reason
+    `_untagged_warning` gives: a session told what to intend has to
+    reconstruct how, at the moment it is trying to do something else.
+
+    `git merge` rather than a rebase: the branch is pushed by the time another
+    session could have merged past it, and rewriting a pushed branch is what
+    `CLAUDE.md` refuses.
+    """
+    return "\n".join(
+        [
+            f"{name} is already released on {base}, so cutting it here would write a",
+            "second copy of a release that has shipped:",
+            "",
+            *(f"  {statement}" for statement in evidence),
+            "",
+            "Another session cut it. Take what shipped, then ask what is left:",
+            "",
+            "  git fetch origin",
+            f"  git merge {base}   # take {base}'s side on the version, lock and roadmap files",
+            "  bin/docket release --dry-run",
+        ]
+    )
 
 
 def _untagged_warning(version: str) -> str:

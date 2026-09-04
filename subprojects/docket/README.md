@@ -618,6 +618,30 @@ writes the notes from the items themselves, and stops short of tagging.
 Generated notes cannot claim something the items do not, and nothing shipped
 goes unmentioned because whoever wrote them forgot it.
 
+**A release is the one change no in-flight guard can see.** Every guard here
+matches a `PL-` id — `flight`, `show`, `next`, `concurrent`, the digest,
+`branch_id_check` — and a release cut carries none by design. So the change
+that rewrites the version file, the lock file, the roadmap and a new notes
+file, which is the most collision-prone in the repository, is the only one
+nothing watches. Two sessions cut v0.3.7 within an hour that way, and the
+second one's whole release was discarded at the merge (`PL-66FP`).
+
+`release.already_released` closes the half of that which is *certain*.
+`vcs.released_on_base` reads the default branch's own version file and its
+`docs/releases/` listing — the ref, never the working tree, which is this
+session's cut in progress and would answer about itself — and a version
+either of them already names is refused rather than reported. That refusal is
+what separates it from every other parallel-session read here: a notes file
+on the base is a fact about a merge that has happened, not an inference from
+a ref that may have moved since it was fetched.
+
+**What it does not see is a cut still in flight.** A second session that has
+committed and pushed its release, and not yet merged it, is invisible to
+this: the number is free on the base until the merge lands, and the refs that
+would say otherwise carry no id for `branches_in_flight` to read. The check
+is therefore a floor on the duplicate-release problem rather than a solution
+to it, and the notes above are worded so that a reader is not told otherwise.
+
 **A release writes all of itself or none of it.** Two things reach disk — the
 `milestone:` stamp on every item going out, and the version — and neither
 order is safe while the bump can still fail on the file it is about to
