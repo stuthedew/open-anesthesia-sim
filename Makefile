@@ -33,6 +33,12 @@ check: sync
 # pay for the parallelism. `PL-WCZV`.
 	uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
 	bin/docket check
+# Bare `python3` for the reason the next line uses it, and placed with the
+# provenance checks rather than earlier because that is what it is: `docket
+# check` asks whether the store is sound, this asks whether this branch's work
+# is visible to the guards that read the store. It answers from `git log`
+# alone, so it costs milliseconds wherever it lands. `PL-CP74`.
+	python3 tools/branch_id_check.py
 	python3 tools/doc_check.py check
 # Bare `python3` for the reason `doc_check.py` above uses it: standard library
 # only, so it runs in a checkout with no virtualenv. It reads the color
