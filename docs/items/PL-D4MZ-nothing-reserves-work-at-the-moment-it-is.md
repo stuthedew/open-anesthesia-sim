@@ -97,3 +97,63 @@ real size of the problem a reservation mechanism would be built for, and it
 may be small enough that direction four is the answer. That sequencing is
 itself the recommendation; the design round is worth having only once the
 remainder is known.
+
+**Design round, 2026-09-04: the remainder, measured.** The sequencing above is
+spent. `PL-CP74` (file housekeeping under an id) landed in v0.3.7, `PL-MC8Z`
+(the file-overlap question in the start-an-item guard) in v0.3.5, `PL-QTSB` (an
+in-flight mark on a `docket check` advisory) was dropped, and `PL-YHD3` (which
+of two sessions yields) landed in v0.3.8. So the question this item deferred -
+how big is what is left - is now answerable, and the answer is that it is not
+small, and that it is not shaped the way this brief assumed.
+
+*The remainder is id-less work.* Every collision recorded since the brief was
+written is on work that carries no `PL-` id at the moment it is recommended.
+`PL-66FP` is the worked example: two sessions cut v0.3.7 within the same hour
+on 2026-09-04, one merging as #301 and the other reaching #302 with a duplicate
+version bump, lock, release note, seven `milestone:` stamps, a version-table row
+and a whole baseline section, all of which had to be discarded at the merge.
+`branch_id_check` prints "a release commit, which owes no id" for exactly that
+work, so no id-matching guard could have seen it - and the guards `PL-CP74` and
+`PL-MC8Z` added are id-matchers too. They removed the slice of the problem that
+had ids. What is left is the slice that never had one, which is also the slice
+whose per-collision cost is highest.
+
+*The premise about visibility is false, and that is what changes the answer.*
+This brief says a recommendation "sits in no ref, no branch, no item field and
+no session title, so at the moment the collision is created there is nothing for
+any existing mechanism to see". There is. The harness writes every session's
+closing recommendation to `post_turn_summary.needs_action`, returned by the same
+`list_sessions` call the `docket` skill already makes at item-start for the
+title read `PL-SK88` added. It is written automatically at the end of a turn, so
+it does not depend on any session following a rule; it is absent mid-turn and
+present exactly once a turn has closed, which is when a recommendation exists;
+and it clears when the session is archived, so it expires without anybody
+maintaining an expiry.
+
+Read on 2026-09-04 it carried both collisions:
+
+- Retrospective. `session_012ZXvmV` closed with "Confirm 0.3.7 release or pass"
+  and `session_01XN8mu1` with "confirm version (0.3.7 or other) to cut release",
+  both live at the same time. That is `PL-66FP` visible in the session list
+  before it happened.
+- Live. `session_01M5UJAm` closed with "tag v0.3.8 ... before merging #313" and
+  `session_01JwiP9q` with "git fetch origin main && git tag -a v0.3.8 ... && git
+  push origin v0.3.8". Two sessions, one recommendation, neither able to see the
+  other.
+
+*What that does to the four directions.* Direction one was costed as a new
+reservation store needing an expiry and an abandoned-claim rule; the store
+exists, is populated, and expires on its own, so what it actually costs is one
+field added to a read the skill already performs. Direction three is already
+implemented in its principled form - the digest's `By lane, for a second
+session:` line is a spread, and a stable one, which a randomized rank would not
+be. Direction two remains what it was. Direction four remains available and is
+no longer free: it leans on `PL-YHD3`, which resolves two branches carrying one
+id, and the remainder has no id for it to resolve on.
+
+*The decidable half belongs in code, and it is already an item.* `PL-66FP`
+proposes that `bin/docket release` refuse or warn when the version it is about
+to write already exists on the default base, readable from `git show
+origin/<base>:pyproject.toml` with no network beyond a fetch. That is a `make
+check`-tier answer for the single most collision-prone id-less change, and it is
+independent of whatever this item decides.
