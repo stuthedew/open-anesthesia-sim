@@ -21,7 +21,33 @@ check: sync
 # a session runs while iterating, which would fail for a reason unrelated to
 # the change under it. Measured 2026-09-03: 92.8 s with the flag against
 # 92.4 s without, so the gate is free. `PL-22Z3`.
-	uv run pytest --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
+#
+# `-n auto` is on this line for that same reason and not in `addopts`: worker
+# startup is a fixed cost the whole suite absorbs and a single scoped test file
+# does not, so a session iterating on one file would pay it and lose.
+#
+# It buys the largest saving measured anywhere in this gate, and it removes no
+# check - every test still runs and coverage is identical. Measured 2026-09-04
+# on this four-core container, same checkout, warm caches:
+#
+#     serial    84.4 s   1224 passed   691 stmts 0 missed, 78 branches 0 partial, 100%
+#     -n auto   29.6 s   1224 passed   691 stmts 0 missed, 78 branches 0 partial, 100%
+#
+# The saving is larger than the CPU accounting alone predicts because about a
+# third of the serial wall clock was already spent waiting rather than
+# computing: `subprojects/docket/tests` shells out to `git` once or twice per
+# test, 532 tests at roughly 30 ms each. Parallelism recovers that wait, which
+# is why it beats every proposal to delete tests instead - deleting the whole
+# docket suite would have returned 29.8 s of a 122 s gate against this line's
+# 54.8 s, and at the cost of the checks (`PL-KCQ7`).
+#
+# `auto` rather than a fixed `-n 4`: GitHub's standard Linux runner is four
+# vCPUs on a public repository and two on a private one, so a hardcoded number
+# oversubscribes the smaller machine and pins the larger one to a number that
+# stops being right when either the runner or this container changes. Test
+# outcomes do not depend on the worker count - the property checked below - and
+# only wall clock does. `PL-WCZV`.
+	uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
 	bin/docket check
 	python3 tools/doc_check.py check
 # Bare `python3` for the reason `doc_check.py` above uses it: standard library
@@ -41,8 +67,11 @@ fix:
 # CI, where mutating the tree is not the job.
 	bin/docket record
 
+# `-n auto` for the reason the `check` target above gives at length: this is
+# the whole suite too, so worker startup is amortized. A session debugging one
+# file runs `uv run pytest <file>` directly and pays neither. `PL-WCZV`.
 test:
-	uv run pytest
+	uv run pytest -n auto
 
 # Named for the store it validates. `make check` runs `bin/docket check` too;
 # this target exists so a session can validate the store on its own, after

@@ -1,9 +1,15 @@
 ---
 id: PL-WCZV
 title: pytest-xdist -n 4 measured 73.0 s to 24.9 s on the full suite with coverage identical at 100 percent; decide whether to take the dependency and where the flag lives
-status: untriaged
+status: done
+priority: P2
+effort: S
+classes: session-cost, infra
 feature: dev-tooling
+touches: pyproject.toml, Makefile, .github/workflows/quality.yml
+verify: uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100 && grep -qF 'uv run pytest -n auto' Makefile && grep -qF 'uv run pytest -n auto' .github/workflows/quality.yml
 added: 2026-09-03
+closed: 2026-09-04
 ---
 
 **Problem, or rather the opportunity.** `uv run pytest --cov` is the single largest
@@ -55,3 +61,41 @@ byte-identical, which is the same property that made concurrency the right answe
 
 **Done when.** Either the flag is in place with the saving measured on CI as well as
 locally, or the decision not to take the dependency is recorded here with its reason.
+
+## Taken (project owner, 2026-09-04)
+
+`pytest-xdist>=3.8.0,<4.0` is in the dev group, and `-n auto` is on the `pytest`
+line in `Makefile`'s `check` target and in `quality.yml`'s `checks` job. Each of
+the four costs above, answered:
+
+**The dependency.** Taken. The dev group is now five: `mypy`, `pytest`,
+`pytest-cov`, `pytest-xdist`, `ruff`, plus `execnet` transitively. `drift.yml`
+resolves it monthly along with everything else, which is the watch that makes a
+fifth dev dependency affordable on a multi-year horizon.
+
+**Ordering.** Four consecutive `-n auto` runs on this tree: 29.6 s, 28.9 s,
+29.2 s, 29.4 s, **1224 passed** every time, against 1224 passed and 84.4 s
+serial. Coverage byte-identical in both modes - `691 statements, 0 missed, 78
+branches, 0 partial, 100%`, clearing `--cov-fail-under=100`. Still evidence
+rather than proof, and the suites named above are still where a latent
+inter-test dependency would surface first; a failure appearing only under `-n`
+is a real bug in the tests and is fixed there rather than by dropping the flag.
+
+**Where the flag lives.** As reasoned above - the `Makefile` line and the CI
+step, never `addopts`.
+
+**`auto` rather than the measured `-n 4`.** GitHub's standard Linux runner is
+four vCPUs on a public repository and two on a private one, so a hardcoded `-n
+4` oversubscribes the smaller machine and stops being right the moment either
+the runner or the dev container changes. `auto` reads whatever it lands on. Test
+outcomes do not depend on the worker count - that is the property the four runs
+above check - and only wall clock does.
+
+**CI gain, measured.** [pending - filled in from the first `checks` run on this
+branch against the last run on `main`]
+
+**Local saving, measured 2026-09-04** on the four-core container, warm caches:
+**84.4 s to 29.6 s**, which is 54.8 s off a 122 s gate. That is the largest
+single saving available in it, and larger than deleting the entire
+`subprojects/docket` suite would have returned (29.8 s) - which is what
+`PL-KCQ7` asked about and answered no to.

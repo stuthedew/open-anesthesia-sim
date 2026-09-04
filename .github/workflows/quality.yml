@@ -57,7 +57,14 @@ jobs:
       # `drift.yml` deliberately keeps its bare `uv run pytest`: a coverage
       # failure there would report as a dependency break, which is the opposite
       # of what that workflow is for. `PL-22Z3`.
-      - run: uv run pytest --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
+      #
+      # `-n auto` reads the runner it lands on rather than naming a number:
+      # GitHub's standard Linux runner is four vCPUs on a public repository and
+      # two on a private one, so a hardcoded `-n 4` would oversubscribe the
+      # smaller machine. `drift.yml` keeps its bare `uv run pytest` here too -
+      # it reports rather than gates and runs monthly, so its wall clock buys
+      # nothing. `PL-WCZV`.
+      - run: uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
       - run: bin/docket check
       - run: uv run python tools/doc_check.py check
       - run: uv run python tools/contrast_check.py

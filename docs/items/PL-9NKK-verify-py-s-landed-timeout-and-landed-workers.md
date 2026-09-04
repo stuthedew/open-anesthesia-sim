@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-09-03
 closed: 2026-09-03
+pr: 274
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -rq 'def test_the_run_reports_what_it_cost' subprojects/docket/tests
 ---
 
