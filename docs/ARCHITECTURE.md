@@ -203,6 +203,7 @@ Outside the packaged application, and not imported by it:
 tools/
 ├── contrast_check.py     # computes every declared color pair's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
+├── import_boundary_check.py  # fails the build on a `pydantic` import anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, so the payload/dataclass boundary is measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
@@ -240,6 +241,19 @@ pairs matter, and whether a non-color channel is genuinely redundant, are
 judgments, and `.claude/rules/ui-color.md` carries them. Pairs that fall short
 today are listed against the item that closes each, and a listed shortfall that
 starts passing is an error, so a fix cannot leave its excuse behind.
+
+`tools/import_boundary_check.py` measures the claim `core/parameters.py` makes
+about itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
+dataclass pairs exist so the rest of `core/` never imports Pydantic; nothing
+checked it, so a leak into a compartment would have left that paragraph reading
+as verified while being false — worse than the coupling itself. Its `BOUNDARIES`
+table is the specification, and the tool decides nothing beyond it: which
+packages ought to be confined, and where the exception belongs, are judgments
+written there with the reason beside them. Three further states are errors, each
+closing a way the check could pass while meaning nothing — an allowance naming a
+file that no longer exists, an allowance no longer used, and a declared tree
+matching no source files at all. The boundary covers `app/` as well as `core/`,
+so the rule reads *exactly one module in this package imports Pydantic*.
 
 `tools/ignore_check.py` covers what the type-check gate cannot. `[tool.mypy]
 files` names `src`, `tools` and `subprojects/docket/src`, and every
@@ -319,13 +333,27 @@ then on — which is when an untagged release first costs anything. `docket
 release` is the other half, refusing to cut a release while the previous one is
 untagged, at the moment tags are certainly to hand.
 
-Everything here runs under whatever bare `python3` is on PATH: `make check`
-invokes `python3 tools/doc_check.py check` directly, CI does the same, and
-both have to work in a checkout with no virtualenv. That is why these tools
-import nothing outside the standard library, and why the floor they are held
-to is **Python 3.11** — not the version `pyproject.toml` requires. The floor
-is not a number chosen here: `doc_check.py` imports `docket.roadmap`, so it is
-whatever `subprojects/docket/pyproject.toml` declares in `requires-python`.
+Everything here depends on nothing outside the standard library and parses
+under whatever bare `python3` is on PATH: `make check` invokes `python3
+tools/doc_check.py check` directly, CI does the same, and both have to work in
+a checkout with no virtualenv. That is why the floor these tools are held to is
+**Python 3.11** — not the version `pyproject.toml` requires. The floor is not a
+number chosen here: `doc_check.py` imports `docket.roadmap`, so it is whatever
+`subprojects/docket/pyproject.toml` declares in `requires-python`.
+
+Two of them are nonetheless *invoked* under `uv run python`, and the
+distinction is worth keeping straight, because it is about what a tool reads
+rather than what it needs. `ignore_check.py` shells out to mypy, so it wants
+the virtualenv that gate runs in. `import_boundary_check.py` parses
+`src/anesthesia_sim/`, and that source targets 3.14: `app/chart_downsampling.py`
+opens `def first_index_at_or_after[SampleT](`, PEP 695 syntax that is a
+`SyntaxError` to the 3.11 parser, and `ast.parse`'s `feature_version` only
+narrows the syntax it accepts rather than extending it. A tool that parses
+repository source can only run under an interpreter that understands that
+source. Both still meet the promise above, which is what the portability suite
+holds them to — `contrast_check.py` reads `app/` too and runs bare, and
+`PL-L17Q` is the item saying that it does so only because the two files it
+happens to read carry no 3.12+ syntax yet.
 
 `tools/ruff.toml` is what keeps that true. The repository targets 3.14, where
 PEP 758 makes the parentheses in `except (OSError, TimeoutError):` redundant,

@@ -223,6 +223,14 @@ class _StrictPayload(BaseModel):
     enforces that strictness, the other that each subclass carries a
     docstring, so a payload added later arrives explained rather than
     looking like duplication to whoever meets it next.
+
+    The first bullet above is checked rather than asserted:
+    `tools/import_boundary_check.py`, in `make check`, fails the build on a
+    `pydantic` import anywhere under `src/anesthesia_sim/` other than this
+    module, and names this module as the sole exception. Before it, the
+    claim was prose that nothing re-measured - so a leak into a compartment
+    would have left this paragraph reading as verified while being false,
+    which is worse than the coupling it describes (PL-Y0RZ).
     """
 
     model_config = ConfigDict(extra="forbid")
