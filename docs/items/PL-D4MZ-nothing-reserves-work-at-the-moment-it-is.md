@@ -203,3 +203,22 @@ behavior rather than by the other session's.
 *The code half stands alone.* `PL-66FP` (two sessions cut the same release
 independently) carries the decidable guard - `bin/docket release` refusing a
 version already on the default base - and is independent of this decision.
+
+**First application, 2026-09-04.** The rule caught a duplicate on its first
+real use, against the closing block of the session that wrote it. Two replies
+in this session had already asked the project owner to tag v0.3.8. Running the
+check before repeating it a third time returned three `IDLE` sessions all
+asking for the same thing: `session_016tdyzs` ("merge PR #316 and tag
+v0.3.8"), `session_01HAk6A9` ("(1) tag v0.3.8 or say go to push; (2) confirm
+0.3.9 as version") and `session_01M5UJAm` ("(1) git tag -a v0.3.8 e64ab14 -m
+'v0.3.8' ... (2) merge PR #317"). The request was a fourth copy, and the tag was
+genuinely still missing in all four - so the duplication was not of the work but
+of the *ask*, which is the cheaper half of the same failure and the half that
+happens far more often.
+
+Worth recording because it is the case the brief did not anticipate. It reasoned
+about two sessions both *starting* one piece of work; what the check finds most
+of the time is several sessions queueing the same request at one owner, who then
+has to work out that four lines are one action. The remedy is the same either
+way - name the sessions already asking rather than asking again - and the second
+case is the one that recurs.
