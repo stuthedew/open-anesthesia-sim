@@ -11,6 +11,7 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Final
 
+from anesthesia_sim.app.chart_downsampling import first_index_at_or_after
 from anesthesia_sim.core.exceptions import SimulationExecutionError
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.simulation import SimulationState
@@ -90,7 +91,7 @@ class ControlChange:
     elapsed_s: float
     """Simulated time the change took effect, in seconds."""
     sample_index: int
-    """Index into the run's `concentration_history` the change took effect at.
+    """Index into the run's recorded history the change took effect at.
 
     The change applies to every step computed *after* this sample, so this
     is the last sample recorded under the previous value. It is stored
@@ -118,6 +119,51 @@ class SimulationHistorySample:
     vessel_rich_partial_pressure_fraction: float
     muscle_partial_pressure_fraction: float
     fat_partial_pressure_fraction: float
+
+
+def sample_elapsed_s(sample: SimulationHistorySample) -> float:
+    """Read one sample's simulated time, for searching the run by time.
+
+    Named and module-level rather than a lambda at the one call site
+    because it is the ordering key of `_concentration_history`: the list is
+    ascending in this quantity and in no other, and a search given a
+    different key would return a confidently wrong index into it.
+    """
+
+    return sample.elapsed_s
+
+
+@dataclass(frozen=True, slots=True)
+class HistoryWindow:
+    """The recorded samples spanning one part of a run, with their place in it.
+
+    What `SimulationController.history_window` answers with, and the whole
+    of what the chart is drawn from. A run's history grows for as long as
+    the simulation advances; a window is the bounded part of it a display
+    can actually show, so handing over a window rather than the run keeps
+    the cost of a frame a property of the visible axis rather than of how
+    long the simulation has been running.
+
+    The samples are copied out rather than shared as a view onto the
+    controller's own list. The run advances between frames, and a sequence
+    that changed underneath the caller could leave one trace drawn from two
+    different instants - the stale-state presentation failure `CLAUDE.md`
+    treats as a safety failure rather than a performance one.
+    """
+
+    samples: tuple[SimulationHistorySample, ...]
+    """The window's samples, oldest first. Empty when none fall inside it."""
+
+    index_offset: int
+    """Absolute index, within the whole recorded run, of `samples[0]`.
+
+    Carried because decimation anchors its buckets to the run rather than
+    to the window: `chart_downsampling.select_envelope_indices` needs to
+    know where the window sits, or it rebuckets on every frame and rewrites
+    every drawn point. That module's docstring records what that cost when
+    it happened, and it is why the offset travels with the samples rather
+    than being recomputed by whoever draws them.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,7 +222,6 @@ class SimulationSnapshot:
     unaccounted_agent_l: float
     agent_accounting_absolute_error_l: float
     agent_accounting_passes_validation: bool
-    concentration_history: tuple[SimulationHistorySample, ...]
     control_timeline: tuple[ControlChange, ...]
     """Every setting change this run has seen, oldest first.
 
@@ -387,9 +432,53 @@ class SimulationController:
             unaccounted_agent_l=accounting.unaccounted_agent_l,
             agent_accounting_absolute_error_l=(accounting.absolute_error_l),
             agent_accounting_passes_validation=(accounting.passes_validation),
-            concentration_history=tuple(self._concentration_history),
             control_timeline=self._control_timeline,
             failure_reason=self._failure_reason,
+        )
+
+    def history_window(self, start_s: float) -> HistoryWindow:
+        """The recorded samples at or after `start_s`, with their run offset.
+
+        The read the render path makes, and deliberately not a field of
+        `snapshot()`. A snapshot is the run's state at one instant, which is
+        a fixed number of values however long the run; the history is the
+        run itself. Carrying the history in the snapshot meant copying every
+        sample ever recorded on every frame - work proportional to the run
+        length, five times a second, with all but the visible few hundred
+        samples discarded by the chart immediately (`PL-0VM7`). Asking for
+        the window instead makes what crosses this boundary a property of
+        the visible axis: at the chart's 300 s window and 0.1 s step, at
+        most 3 001 samples, whether the run is a minute or a week old.
+
+        `start_s` is the caller's own left edge rather than a span chosen
+        here, so the samples handed over are exactly the ones that window
+        can show. A cut this method made itself could fall inside the drawn
+        window and truncate the trace, which would understate the run rather
+        than merely slow it down - a plot beginning later than the run did,
+        with nothing on it to say so.
+
+        Located by binary search, so finding the window costs the same on a
+        week-long run as on a minute-long one. A linear scan here would put
+        the unbounded per-frame cost straight back, in the one place the
+        change above was made to remove it.
+
+        Args:
+            start_s: Earliest simulated time to include, in seconds.
+                Samples before it lie outside the caller's window and are
+                not returned. A value at or below zero returns the whole
+                recorded run.
+
+        Returns:
+            The samples at or after `start_s`, oldest first, paired with the
+            absolute index within the run of the first of them.
+        """
+
+        start_index = first_index_at_or_after(
+            self._concentration_history, start_s, sample_elapsed_s
+        )
+
+        return HistoryWindow(
+            samples=tuple(self._concentration_history[start_index:]), index_offset=start_index
         )
 
     def start(self) -> None:

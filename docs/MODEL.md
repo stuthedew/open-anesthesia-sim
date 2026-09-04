@@ -1745,7 +1745,7 @@ The Flet interface may:
 - issue Start, Pause, and Reset commands;
 - halt a run and record why when the core raises, and report a value the
   core refused;
-- render snapshot histories;
+- render the run's recorded history;
 - select which recorded samples a plotted trace draws, subject to the
   constraint below;
 - draw a published clinical constant as a chart reference, at a height the
@@ -1834,7 +1834,8 @@ The Flet interface must not:
   would not undo it: the number would be acted on and the disclaimer would
   not.
 
-The controller exposes immutable snapshots rather than mutable compartment objects.
+The controller exposes immutable snapshots, and immutable windows onto the
+recorded run, rather than mutable compartment objects.
 
 ## Minimum displayed outputs
 

@@ -36,7 +36,7 @@ from anesthesia_sim.app.control_timeline import (
     format_adjustment,
     group_adjustments,
 )
-from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import HistoryWindow, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
@@ -1664,13 +1664,24 @@ class SimulationView:
             self._one_mac_line_series, chart_min_x, chart_max_x, snapshot.agent_mac_percent
         )
 
-        chart_series.redraw_visible_window(
-            self._plotted_series, snapshot.concentration_history, chart_min_x
-        )
+        # Two reads of one controller, and they cannot disagree: this
+        # method is synchronous, so no `await` can fall between them and the
+        # simulation loop cannot advance a step in the gap. That is what
+        # keeps the right-hand end of every trace the same sample the
+        # readouts above were formatted from, which `chart_downsampling.py`
+        # states as a property of the display rather than an accident of
+        # ordering. The window asked for is the axis just set, so the samples
+        # that arrive are exactly the ones this frame draws (`PL-0VM7`).
+        #
+        # Read once and drawn twice: both plots span the same window, so one
+        # read is what makes them the same *samples* and not merely the same
+        # axis numbers.
+        window = self._controller.history_window(chart_min_x)
+        chart_series.redraw_visible_window(self._plotted_series, window)
 
         adjustments = group_adjustments(snapshot.control_timeline)
         self._redraw_control_marks(adjustments, chart_min_x, chart_max_x, snapshot)
-        self._refresh_wash_in(snapshot, chart_min_x, chart_max_x)
+        self._refresh_wash_in(snapshot, window, chart_min_x, chart_max_x)
         self._refresh_control_timeline(adjustments)
 
     def _redraw_control_marks(
@@ -1719,17 +1730,24 @@ class SimulationView:
                 chart_series.park_control_mark(series)
 
     def _refresh_wash_in(
-        self, snapshot: SimulationSnapshot, chart_min_x: float, chart_max_x: float
+        self,
+        snapshot: SimulationSnapshot,
+        window: HistoryWindow,
+        chart_min_x: float,
+        chart_max_x: float,
     ) -> None:
         """Redraw the F_A/F_I plot and say what it is currently showing.
 
         The window is taken from the same two numbers the compartment
         chart above was just set to, in the same frame, so the two plots
         can never be showing different spans of the run while sitting one
-        above the other.
+        above the other. The samples are the very ones that chart drew,
+        passed down rather than re-read, so the two cannot even differ by
+        a step the run took in between.
 
         Args:
             snapshot: The frame being rendered.
+            window: The samples the compartment chart was just drawn from.
             chart_min_x: Left edge of the visible window, in simulated
                 seconds.
             chart_max_x: Right edge of the visible window, in simulated
@@ -1745,10 +1763,7 @@ class SimulationView:
             self._equilibrium_line_series, chart_min_x, chart_max_x, WASH_IN_EQUILIBRIUM_RATIO
         )
         self._undrawn_wash_in_segments = chart_series.redraw_wash_in_segments(
-            self._wash_in_segment_series,
-            snapshot.concentration_history,
-            chart_min_x,
-            WASH_IN_TERMINUS_CEILING,
+            self._wash_in_segment_series, window, WASH_IN_TERMINUS_CEILING
         )
         self._wash_in_state_text.value = self._format_wash_in_state(snapshot)
 
