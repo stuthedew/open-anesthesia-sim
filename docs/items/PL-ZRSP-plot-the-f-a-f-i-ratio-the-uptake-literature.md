@@ -3,11 +3,13 @@ id: PL-ZRSP
 title: Plot the F_A/F_I ratio the uptake literature plots
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, ux
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_trace_stops_where_alveolar_exceeds_inspired' tests/unit/test_wash_in.py
 added: 2026-08-25
+closed: 2026-09-04
 ---
 **Problem.** The wash-in curve every textbook and every uptake lecture shows is
 F_A/F_I against time - the ratio that makes agents comparable and that the
@@ -98,3 +100,104 @@ concentration is held constant - is now something a reader can *check* rather
 than only be told: a mid-run change to the delivered dial is marked on the same
 chart, at the simulated time it took effect. That was the dependency, and it is
 why this item's band followed it.
+
+**`PL-WB0X` had cleared earlier**, as `#263`, so the formatters and the
+chart-series assembly were already in `app/formatting.py` and
+`app/chart_series.py` when this was worked. Neither blocked paragraph above
+holds any longer; both are kept as the record of why this waited.
+
+**`controller.py` drops off `touches:`, and two modules join it.** The ratio is
+a displayed quantity rather than recorded state, so nothing is added to
+`SimulationHistorySample` - which `PL-W3DD` is about to reshape, and which
+would then be carrying a derived value with a defined domain. It is computed at
+the display instead, in a Flet-free `app/wash_in.py` that `docs/MODEL.md`'s new
+section terminates in, the way `app/formatting.py` terminates § "Displayed
+precision".
+
+**Worked 2026-09-04.** The trace is a second plot under the compartment chart,
+on the same time window, on a dimensionless axis fixed 0 to 1. Four decisions
+the brief did not settle:
+
+- **The denominator has a floor.** $`F_I`$ is exactly zero before any agent
+  reaches the circuit, so the quotient is $`0/0`$ at the start of every run and
+  for the whole of a run whose vaporizer is never opened. The floor is the
+  smallest inspired concentration the interface itself reports as non-zero,
+  derived from `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen
+  beside it.
+- **The plotted range stops at 1, and that is a physiological boundary rather
+  than an axis convenience.** $`F_A \le F_I`$ is exactly the uptake regime.
+  Above it the tissues are returning agent faster than it is delivered, which
+  is elimination and not wash-in. Measured on sevoflurane, closing the
+  vaporizer at 10 L/min after a 30-minute wash-in takes the ratio to 3.47 at
+  the reference adult's 4.0 L/min of alveolar ventilation and to 20.11 at
+  0.5 L/min - it settles near $`1 + \dot V_{\mathrm{FGF}} / \dot V_A`$, which
+  the supported input ranges do not bound. So no fitted axis would have helped
+  either.
+- **The trace breaks rather than bridging.** A vaporizer closed and later
+  reopened leaves a stretch outside the domain; one polyline through the drawn
+  samples would draw a straight segment across values the run never produced.
+  It is a fixed pool of segment series, parked when unused, on the pattern
+  `PL-DR1Z` established for the control marks.
+- **One reading, not two functions.** `read_wash_in` returns the plottable
+  value and the domain together, so the trace and the sentence beside it are
+  produced from one evaluation and cannot disagree about the same instant.
+
+The control marks get a second pool on this plot, drawn in the same pass over
+the same adjustments: this trace's whole caveat is that it is the textbook
+curve only while inspired concentration is held constant, and a mark on the
+chart above leaves the plot that is actually being misread unannotated.
+
+`tests/reference/test_published_wash_in.py` now asserts that the number the
+chart draws is the number the Yasuda comparison was made on, so the validated
+quantity and the displayed quantity cannot drift apart.
+
+**Two things found in passing.** The replayed run in
+`tests/integration/test_chart_patching.py` had its alveolar trace *leading* its
+circuit trace - a lung filling a circuit - which no test noticed until a wash-in
+ratio was computed from the pair; its decay constant moves from 0.998 to
+0.9993, and the docstring says why the ordering matters. And the wash-in axis
+first shipped with gridlines at 0.25 and labels at whatever interval the chart
+chose, which is two scales on one axis; it now carries explicit labels and a
+`label_spacing` equal to the gridline interval. `PL-Q4VH` records that the
+compartment chart above still has the milder form of the same problem.
+
+**Verified against the running app.** Chromium over Playwright against the
+`flet_web` server, with the CanvasKit assets rerouted to `flet_web`'s local
+copies because this container cannot reach `gstatic.com`. A 33 s sevoflurane
+wash-in drew `F_A/F_I = 0.30`, against 0.2804 at 30 s and 0.4143 at 60 s
+computed directly from the core. Closing the vaporizer and raising the flow to
+10 L/min then took the trace up to 1.00, where it stopped, with the line beside
+the plot reading "alveolar exceeds inspired - the patient is returning agent,
+which is elimination and not wash-in" and both dial changes marked on both
+plots.
+
+**Appended 2026-09-04, on review of the rendered plot** (project owner: "Stop
+at or just above 1, but so it looks natural and not cut off"). The stop stays;
+what changed is that it now reads as an ending rather than as a clipped edge.
+Three things together, none of which moves the boundary:
+
+- **The trace is drawn one sample past the boundary.** The last sample at or
+  below equilibrium is up to one simulation step below the line it stopped at,
+  so the curve halted in clear space with nothing to show why. It now includes
+  the crossing sample at each end of a stretch, so it meets the equilibrium
+  reference and terminates on it. Bounded by a stated
+  `WASH_IN_TERMINUS_CEILING` rather than by a property of the model: a 0.1 s
+  step crosses by a hair - 1.00235 at worst across every agent and every
+  supported ventilation and cardiac output at maximum flow - but
+  `BreathingCircuit.set_circuit_volume` conserves agent while changing the
+  volume it is divided by, so the ratio is not continuous in general, and a
+  crossing sample above the ceiling is not drawn at all rather than clamped
+  onto it.
+- **Equilibrium is drawn as a labelled reference line.** A trace that halts in
+  open space reads as cut; one that halts on a labelled line reads as having
+  arrived. It is a definitional anchor rather than a measured value with
+  spread, so it is a line and not a band, in MUTED and the same wide dash as
+  the 1 MAC line on the chart above.
+- **The axis stands at 1.15 with the ruling and the labels stopping at 1.00.**
+  With the axis topping out at equilibrium the ending landed on the frame,
+  where a line that stopped and a line the plot cut off look identical. The
+  top of the frame is left unlabelled so the readable scale is still 0 to 1.
+
+A terminal dot marks the last point of a stretch that stopped by crossing,
+and only such a stretch: the live right-hand end of a growing run is not an
+ending, and a dot there would move every frame while saying nothing.

@@ -47,6 +47,7 @@ __all__ = [
     "MAC_DISPLAY_RESOLUTION_MAC",
     "MAC_UNIT_SUFFIX",
     "MAX_MAC_AXIS_INTERVALS",
+    "WASH_IN_DISPLAY_DECIMALS",
     "format_delivered_label",
     "format_elapsed",
     "format_flow",
@@ -55,6 +56,7 @@ __all__ = [
     "format_mac_reference",
     "format_percent",
     "format_subtitle",
+    "format_wash_in_ratio",
     "mac_awake_band_percent",
     "mac_axis_ticks",
     "mac_multiple",
@@ -115,6 +117,19 @@ MAC_UNIT_SUFFIX: Final = " \u00d7MAC"
 MAC_AXIS_STEP_LADDER_MAC: Final = (0.25, 0.5, 1.0, 2.0, 5.0)
 #: Most gaps the MAC axis may be divided into before the next coarser spacing.
 MAX_MAC_AXIS_INTERVALS: Final = 10
+
+# Decimals shown on an F_A/F_I ratio, on the chart's axis and in the reading
+# beside it. Not derived from the concentration resolution above, and
+# deliberately not presented as though it were: the ratio's own resolution
+# depends on its denominator, so a run early in wash-in knows the quotient far
+# less finely than one at equilibrium, and a single derived figure would
+# over-claim at one end or waste a digit at the other. It is instead set by
+# what the quantity is compared against - Yasuda et al. report F_A/F_I at
+# 30 minutes as 0.850, 0.733 and 0.90 with standard deviations of 0.018, 0.027
+# and 0.01 (`docs/MODEL.md` § "Published wash-in validation test"), so a third
+# decimal would be finer than the published spread this trace exists to be read
+# beside.
+WASH_IN_DISPLAY_DECIMALS: Final = 2
 
 
 def format_percent(concentration_fraction: float) -> str:
@@ -446,6 +461,25 @@ def mac_axis_ticks(max_percent: float, mac_percent: float) -> tuple[tuple[float,
         # plotted area.
         for index in range(int(span_mac / step_mac) + 1)
     )
+
+
+def format_wash_in_ratio(wash_in_ratio: float) -> str:
+    """Render an F_A/F_I ratio as the dimensionless number it is.
+
+    No unit suffix and no percent sign, because the quantity has neither:
+    it is one fraction of an atmosphere divided by another, and writing it
+    as a percentage would invite reading it against the concentration axis
+    beside it. `app/wash_in.py` states what the quotient asserts and where
+    it is defined at all; this only writes it down.
+
+    Args:
+        wash_in_ratio: The dimensionless quotient F_A/F_I.
+
+    Returns:
+        The ratio at `WASH_IN_DISPLAY_DECIMALS`.
+    """
+
+    return f"{wash_in_ratio:.{WASH_IN_DISPLAY_DECIMALS}f}"
 
 
 def format_flow(flow_l_min: float) -> str:

@@ -63,6 +63,21 @@ shown rather than selected, because a unit toggle would make the axis a mode.
 The MAC resolution is derived from the percent resolution rather than chosen
 beside it, and works out to 0.01 MAC.
 
+Under that chart is the graph the uptake literature is taught from:
+`F_A/F_I`, the alveolar concentration as a fraction of the inspired one, on a
+dimensionless axis fixed from 0 to 1. It is the same quantity the Yasuda
+comparison above is made on, so the trace can be laid beside a published
+figure. The denominator is the **modelled inspired concentration and not the
+vaporizer dial** — the circuit only approaches the dial over its own time
+constant — and the curve is the textbook one only while that concentration is
+held constant, which is why every setting change is marked on this plot as
+well as on the chart above it. The trace stops rather than inventing a value
+where the ratio is undefined (nothing has reached the circuit yet) or above 1
+(alveolar exceeds inspired, so the patient is returning agent and this is
+elimination), ending on a ruled equilibrium line so the stop reads as an
+arrival rather than a clipped edge, and the line beside the plot says which
+boundary it stopped at.
+
 A MAC multiple here is a **partial-pressure ratio, not a depth of
 anesthesia**, and on the five non-alveolar compartments that distinction is
 the whole point: it says that compartment's partial pressure equals N times
