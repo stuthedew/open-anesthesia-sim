@@ -217,6 +217,7 @@ tools/
 ├── import_boundary_check.py  # fails the build on a `pydantic` import anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, so the payload/dataclass boundary is measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
+├── stop_hook_patch.py    # SessionStart hook: corrects the container stop hook's unpushed-commit test, which picks its comparison point from a ref that merely resolves locally and so demands a push that would recreate a merged branch
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
 ```
 
@@ -229,6 +230,23 @@ is not expanded — no tree draws one today — and `__init__.py` is excluded
 throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
+
+`tools/stop_hook_patch.py` is the one file here that is not a check and does
+not run under `make check`. It is wired as a SessionStart hook in
+`.claude/settings.json`, and it edits a file this repository does not own:
+`~/.claude/stop-hook-git-check.sh`, which a cloud container writes at start and
+runs at every `Stop`. That hook counts unpushed commits against
+`origin/<branch>` whenever that ref *resolves locally*, so a merged branch's
+surviving tracking ref makes it demand a push that would recreate a dead branch
+identical to `main`. The correction counts commits held by no remote ref
+instead. It is a hook rather than a patch the project owner applies because the
+file is not theirs to change: a container rewrites it at every start,
+user-level settings never reach a cloud session, and an environment setup
+script runs before Claude Code launches and is skipped once the environment
+cache exists. The tool matches one whole line and rewrites nothing if it is
+absent or doubled, so an upstream change is a clean miss that reports itself
+rather than a partial edit to a script every stop executes. `PL-WW08` carries
+the diagnosis and the measurements.
 
 `tools/pr_title_check.py` runs only on pull requests, and is the prevention
 half of `PL-2XTF`. A squash merge takes its subject from the pull request
