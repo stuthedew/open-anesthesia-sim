@@ -3,11 +3,12 @@ id: PL-0D4X
 title: A session prompted for one lane runs bare `docket next` and takes the other lane's item
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
+closed: 2026-09-04
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_next_without_a_lane_names_the_lane_of_its_answer' subprojects/docket/tests/test_cli.py
 ---
 **Problem.** A session opened with the prompt "Next workflow item" ran bare
