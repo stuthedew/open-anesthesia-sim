@@ -1158,6 +1158,15 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   step at 0.1 s. The run loop advances a fixed number of steps per tick and
   never catches up to the wall clock: a slow machine runs slower, it does not
   run differently.
+
+  *Landed 2026-09-04.* `SimulationState` holds the step count and the step it
+  is taking, and reports `elapsed_s` as their product. "Fix the step at 0.1 s"
+  ended up fixed *per run* rather than hard-coded: a step differing from the
+  one a run has already taken is refused rather than counted, and reset frees
+  it. The interface's own cadence is still 0.1 s, and a step-refinement study
+  can still take a whole run at a smaller one. `docs/MODEL.md` states the
+  guarantee, and the four things it does not cover, under "The reproducibility
+  guarantee".
 - **A playback multiplier** (queue item PL-SN2C), implemented as steps per
   tick and never as a larger step, with the current rate visible beside the
   clock at all times.
@@ -1783,12 +1792,18 @@ specified.
     parent's state exactly at every recorded sample up to t — asserted
     element-wise, not within a tolerance. Resimulating from a stored point
     while the parent was simulated straight through can diverge *before* the
-    branch point through accumulation order for `elapsed_s`, a different
-    step size, or a different number of steps per frame; that divergence is
-    subtle, will not show up in a nominal test, and destroys the one thing
-    forking is for, since a learner reading the comparison cannot see it. If
-    exactness is unreachable, the divergence must be bounded, documented in
-    `docs/MODEL.md`, and shown to the user rather than implied to be absent.
+    branch point, and that divergence is subtle, will not show up in a
+    nominal test, and destroys the one thing forking is for, since a learner
+    reading the comparison cannot see it. Two of the three causes this note
+    named are closed as of PL-VM40 (v0.4.0's Required scope): accumulation
+    order for `elapsed_s`, since simulated time is now the step count times
+    the run's step, and a different number of steps per frame, since the run
+    loop takes a fixed number per tick and never catches up. What is left is
+    a different step size, which `docs/MODEL.md`'s "The reproducibility
+    guarantee" states it does not cover, and whatever a branch restores from
+    a stored point rather than resimulating. If exactness is unreachable, the
+    divergence must be bounded, documented in `docs/MODEL.md`, and shown to
+    the user rather than implied to be absent.
 
     *Measured 2026-08-25, so the storage question is designed around the
     right cost.* The full dynamic state is six concentrations plus elapsed
