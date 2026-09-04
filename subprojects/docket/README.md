@@ -23,6 +23,7 @@ from shared state. There is no lock, because there is nothing to lock.
 ```bash
 docket new "The induction curve looks wrong" "Colour-blind palette check"
 docket next --effort S       # what to work on, and why
+docket next workflow         # ...confined to one half of the project, for a second session
 docket wave                  # which beat of the plan's cadence is due
 docket list                  # the queue, one line per item
 docket triage                # what is untriaged, and the rules the answers must satisfy
@@ -349,6 +350,47 @@ a band, because the priority field cannot express the phase: `docket check`
 pins `safety` and `science` items to `P1`, so the top band is product work by
 construction and a tie-breaker there would never fire in the case the rule
 exists for. `P0` sits above it: a hotfix outranks the phase.
+
+### Two sessions, one queue: the lanes
+
+`docket next product` and `docket next workflow` answer the same question
+confined to one half of the project — the thing being built, or the apparatus
+building it — so a session on each can rank at the same moment and never be
+handed the same item. `docket next` with no lane is unchanged and remains the
+default: the split is a way of running two sessions at once, not a new way of
+reading the queue.
+
+The side an item falls on is read from its `touches`, against the
+`workflow_paths` a project declares. Every declared path inside them is
+workflow; none inside them is product. The alternative — deriving it from
+`classes`, which already has a `process_classes` list — was measured against
+this repository's own store on 2026-09-04 and put 33 of 145 open items on the
+wrong side, eighteen of them workflow defects that a simulator session would
+then have been offered. `classes` says what *kind* of work an item is, and a
+defect in the tooling carries the same label as a defect in the product;
+`touches` says where it lands, which is the question a lane is asking.
+
+Two answers are not a side, and both are printed rather than filtered away. An
+item reaching *both* halves is set aside from each lane, because no session
+confined to one of them can make the change whole; an item declaring no
+`touches` is set aside because nothing has been said about it. `next` names
+both sets under the ranking, with the count and the ids, and the unfiltered
+ranking still offers them. A lane is a filter, and a filter that silently
+drops a fifth of a queue is how work goes missing for months.
+
+An undeclared `workflow_paths` refuses the lane arguments outright rather than
+answering from the whole queue. A lane that quietly degrades to *everything*
+is the exact failure the split exists to prevent, wearing the flag that was
+supposed to prevent it.
+
+The lane filters and never reorders. `P0`, the roadmap's phase and the
+finish-a-feature preference all apply inside a lane exactly as they do across
+the queue, and how near a feature is to done is still counted from the whole
+store — that is a fact about the feature, not about which session is asking,
+and counting only the lane's share would make the same feature report a
+different completion in each.
+
+### The digest and the ranking cannot disagree
 
 The session digest's `Top:` line is that same answer, from the same ranking
 against the same plan, because the two lines a session reads first have to

@@ -16,10 +16,10 @@ from pathlib import Path
 from . import render
 from .checks import analyze
 from .concurrency import conflicts_for, observed_conflicts, parallel_batch
-from .config import Config
+from .config import CONFIG_NAME, Config
 from .config import load as load_config
-from .model import Item
-from .plan import OfferedReport, features, gate, recommend
+from .model import SELECTABLE_LANES, Item
+from .plan import OfferedReport, features, gate, recommend, set_aside
 from .release import (
     is_untagged,
     milestones,
@@ -462,8 +462,25 @@ def cmd_next(args: argparse.Namespace) -> int:
     command whose name promises the answer ranks strictly by band and leads
     with work the current step excludes. An unreadable or absent roadmap leaves
     `_plan` returning `None`, and the ranking falls back to what it was.
+
+    An optional lane narrows the answer to one half of the project, so a
+    session on the simulator and a session on the apparatus can both ask "what
+    next" and never be handed the same item. The unfiltered answer is
+    unchanged, and remains the default: the split is a tool for running two
+    sessions at once, not a new way to read the queue.
     """
     _, items, config = _load(args)
+    lane = None if args.lane == "all" else args.lane
+    if lane is not None and not config.workflow_paths:
+        print(
+            f"Cannot answer for the '{lane}' lane: no `workflow_paths` are declared in "
+            f"{CONFIG_NAME}, so no item can be placed on either side of the project."
+        )
+        print(
+            "Declare the paths holding the development apparatus there, or ask "
+            "`docket next` without a lane."
+        )
+        return 1
     root = args.items.parent if args.items else find_root()
     report = analyze(
         items, args.today or date.today(), config, offered=_offered(root, items, config, args)
@@ -476,24 +493,61 @@ def cmd_next(args: argparse.Namespace) -> int:
         effort=args.effort,
         limit=args.limit,
         scope=plan.scope if plan is not None else None,
+        lane=lane,
+        workflow_paths=config.workflow_paths,
     )
+    where = f" in the {lane} lane" if lane else ""
     if not picks:
-        print("Nothing is ready to start.")
+        print(f"Nothing is ready to start{where}.")
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
+        _say_lane_holdouts(items, flight, config, args, lane)
         _say_unread(flight)
         return 0
-    print(f"{len(report.open_items)} open. Suggested next:\n")
+    print(f"{len(report.open_items)} open. Suggested next{where}:\n")
     for index, pick in enumerate(picks, start=1):
         print(f"  {index}. {pick.describe()}\n")
     if flight.ids:
         print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
+    _say_lane_holdouts(items, flight, config, args, lane)
     if report.advisories:
         print(
             f"{len(report.advisories)} grooming advisory(ies) pending; `docket check` to see them."
         )
     _say_unread(flight)
     return 0
+
+
+def _say_lane_holdouts(
+    items: list[Item],
+    flight: FlightReport,
+    config: Config,
+    args: argparse.Namespace,
+    lane: str | None,
+) -> None:
+    """Name the startable work no lane could claim, whenever a lane was asked for.
+
+    Printed rather than left implicit because a lane is a filter, and a filter
+    that silently drops a fifth of the queue is how work goes missing. Both
+    kinds are recoverable and the sentences say how: an item reaching both
+    halves is waiting for a session that can hold the whole change, and an item
+    declaring no `touches` is waiting for somebody to write one.
+    """
+    if lane is None:
+        return
+    held = set_aside(items, flight.ids, workflow_paths=config.workflow_paths, effort=args.effort)
+    if held.crossing:
+        print(
+            f"Set aside, reaching both halves ({len(held.crossing)}): "
+            f"{', '.join(sorted(i.identifier for i in held.crossing))}. "
+            f"`docket next` without a lane offers these."
+        )
+    if held.unplaced:
+        print(
+            f"Set aside, declaring no `touches` ({len(held.unplaced)}): "
+            f"{', '.join(sorted(i.identifier for i in held.unplaced))}. "
+            f"No lane can place these until they declare one."
+        )
 
 
 def cmd_gate(args: argparse.Namespace) -> int:
@@ -1071,6 +1125,13 @@ def build_parser() -> argparse.ArgumentParser:
     new.set_defaults(func=cmd_new)
 
     nxt = add("next", "what to work on now, and why")
+    nxt.add_argument(
+        "lane",
+        nargs="?",
+        default="all",
+        choices=("all", *SELECTABLE_LANES),
+        help="narrow to one half of the project, so two sessions do not collide",
+    )
     nxt.add_argument(
         "--effort",
         choices=("S", "M", "L"),

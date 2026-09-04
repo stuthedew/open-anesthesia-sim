@@ -4,12 +4,13 @@ title: Express compartment concentrations in MAC multiples as a display unit
 priority: P1
 effort: M
 status: done
-closed: 2026-09-04
 classes: safety, science
 feature: teachable-case
-verify: uv run pytest tests/unit/test_formatting.py tests/unit/test_simulation_view.py && grep -q 'def test_every_compartment_is_readable_in_mac_multiples' tests/unit/test_simulation_view.py && grep -q 'def test_the_mac_resolution_is_derived_from_the_percent_resolution' tests/unit/test_formatting.py
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md, tests/unit/test_formatting.py
 added: 2026-08-25
+closed: 2026-09-04
+pr: 283
+verify: uv run pytest tests/unit/test_formatting.py tests/unit/test_simulation_view.py && grep -q 'def test_every_compartment_is_readable_in_mac_multiples' tests/unit/test_simulation_view.py && grep -q 'def test_the_mac_resolution_is_derived_from_the_percent_resolution' tests/unit/test_formatting.py
 ---
 
 **Problem.** Every compartment is displayed as a percentage of an

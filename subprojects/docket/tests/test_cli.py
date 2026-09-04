@@ -1627,3 +1627,81 @@ def test_record_refuses_a_merge_without_the_number_it_is(
 
     assert "needs the number that merge is" in capsys.readouterr().out
     assert _work_pr(work) == ""
+
+
+def _laned_store(tmp_path: Path) -> Path:
+    """A store split across the boundary, with one item on each side of it."""
+    items = tmp_path / "docs" / "items"
+    items.mkdir(parents=True)
+    (items.parent / "docket.toml").write_text(
+        '[docket]\nworkflow_paths = ["tools", ".claude"]\n', encoding="utf-8"
+    )
+    brief = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
+    for ident, touches in (
+        ("PL-PROD", "src/core/blood.py"),
+        ("PL-WORK", "tools/doc_check.py"),
+        ("PL-BOTH", "tools/doc_check.py, src/core/blood.py"),
+    ):
+        (items / f"{ident}-x.md").write_text(
+            f"---\nid: {ident}\ntitle: Item {ident}\npriority: P2\neffort: S\n"
+            f"status: ready\nclasses: perf\ntouches: {touches}\nadded: 2026-08-01\n"
+            f"---\n\n{brief}",
+            encoding="utf-8",
+        )
+    return items
+
+
+def test_next_takes_a_lane_so_two_sessions_never_rank_onto_one_item(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = str(_laned_store(tmp_path))
+
+    assert _run("next", "product", "--items", store) == 0
+    product = capsys.readouterr().out
+    assert _run("next", "workflow", "--items", store) == 0
+    workflow = capsys.readouterr().out
+
+    assert "PL-PROD" in product and "PL-WORK" not in product
+    assert "PL-WORK" in workflow and "PL-PROD" not in workflow
+    assert "in the product lane" in product
+    assert "in the workflow lane" in workflow
+
+
+def test_next_without_a_lane_still_answers_for_the_whole_queue(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The split adds a way to ask; it does not change the default answer."""
+    assert _run("next", "--items", str(_laned_store(tmp_path))) == 0
+    out = capsys.readouterr().out
+
+    assert "PL-PROD" in out and "PL-WORK" in out and "PL-BOTH" in out
+    assert "lane" not in out
+
+
+def test_a_lane_names_the_work_it_set_aside_rather_than_dropping_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A filter that silently drops part of a queue is how work goes missing."""
+    assert _run("next", "workflow", "--items", str(_laned_store(tmp_path))) == 0
+    out = capsys.readouterr().out
+
+    assert "Set aside, reaching both halves (1): PL-BOTH" in out
+    assert "`docket next` without a lane offers these" in out
+
+
+def test_a_lane_is_refused_when_no_boundary_is_declared(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Fail closed. A lane that quietly answers from the whole queue is the bug."""
+    store = str(_store(tmp_path, READY))
+
+    assert _run("next", "workflow", "--items", store) == 1
+    out = capsys.readouterr().out
+    assert "no `workflow_paths` are declared" in out
+    assert "PL-B1B1" not in out
+
+
+def test_an_unknown_lane_is_rejected_by_the_parser(tmp_path: Path) -> None:
+    """Only the two sides are selectable; `crossing` is an outcome, not a request."""
+    with pytest.raises(SystemExit):
+        _run("next", "crossing", "--items", str(_laned_store(tmp_path)))

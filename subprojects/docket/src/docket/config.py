@@ -97,6 +97,18 @@ class Config:
     #: defaulting the other way would hand one to every project that never
     #: read this setting.
     protected_paths: tuple[str, ...] = ()
+    #: Paths holding the apparatus the project is built *with*, as against the
+    #: product it builds. `docket next workflow` and `docket next product`
+    #: split the queue on this so two sessions can run at once without racing
+    #: for the same item, reading each item's `touches` against it.
+    #:
+    #: Empty by default, and fail-closed like `protected_paths`: with no
+    #: boundary declared, every item is unplaceable and the lane arguments are
+    #: refused rather than quietly answering from the whole queue. A lane that
+    #: silently degrades to "everything" is worse than no lane at all - it is
+    #: the failure the split exists to prevent, wearing the flag that was
+    #: supposed to prevent it.
+    workflow_paths: tuple[str, ...] = ()
     version_file: str = "pyproject.toml"
     #: The plan `docket wave` reads: the release train, the milestone
     #: sections, and the debt list each one records when it is scoped.
@@ -187,6 +199,7 @@ def load(root: Path) -> Config:
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
         known_classes=_tuple(section.get("known_classes"), defaults.known_classes),
         protected_paths=_tuple(section.get("protected_paths"), defaults.protected_paths),
+        workflow_paths=_tuple(section.get("workflow_paths"), defaults.workflow_paths),
         gate_paths=_tuple(section.get("gate_paths"), defaults.gate_paths),
         check_command=str(section.get("check_command", defaults.check_command)),
         version_file=str(section.get("version_file", defaults.version_file)),
