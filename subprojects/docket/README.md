@@ -937,6 +937,38 @@ it, and was the one person told nothing — the cost arrived in one step and was
 then paid by every later session's `make check`. The advisory closes either
 way: narrow the command, or accept a cost you have now seen.
 
+**And it says what narrowing would leave, rather than that the command sets the
+floor.** Those are different statements and the second was wrong. A pool cannot
+finish before its slowest member — true, but only the *binding* constraint
+while the rest of the work fits underneath it, and this store outgrew that.
+With 49 commands totalling 34 s across eight workers, about 4 s of aggregate
+work sat behind a 6.9 s slowest member and the slowest member really was the
+floor. At 78 commands totalling 175 s the aggregate is ~22 s against a 27 s
+slowest member, and removing the named command measured **28.6 s → 23.7 s** — a
+sixth of what "sets the floor for every `make check`" invites a reader to
+expect (`PL-FRGP`).
+
+So the bound is computed rather than asserted, from the serial total and the
+pool's width:
+
+```
+PL-GS5X (29s) is the costliest `verify:` command this check runs: against a
+0.7s median and 33s for the whole run. Narrowing it cannot take the run below
+about 21s: the other 81 commands are 164s of work across 8 workers, so the
+pool is bounded by the size of the queue as well as by its slowest member —
+narrow the command if it can be narrowed, or accept the cost knowing what it is
+```
+
+It is a **lower bound rather than a prediction**: a pool never packs perfectly,
+so the real run lands above it. That is the honest shape — this can say what
+narrowing cannot buy, and must not promise what it will. Both regimes fall out
+of the one arithmetic: where the queue is small the bound is near zero and
+narrowing genuinely collapses the run; where the queue is large the bound is
+most of the elapsed time, and the reader learns that before spending an
+afternoon on it. Where the run recorded no width, or the named commands are the
+whole of it, the sentence stops early rather than dividing by a number nobody
+measured.
+
 The line is a ratio against the median command rather than a number of
 seconds, so it needs no re-tuning as the suite grows: measured on this store
 2026-09-02, a healthy store's slowest command was 14x its median, and adding

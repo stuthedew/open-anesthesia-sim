@@ -21,7 +21,17 @@ check: sync
 # a session runs while iterating, which would fail for a reason unrelated to
 # the change under it. Measured 2026-09-03: 92.8 s with the flag against
 # 92.4 s without, so the gate is free. `PL-22Z3`.
-	uv run pytest --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
+#
+# `-n auto` is off `addopts` for exactly the same reason, and it is the reason
+# that argument generalizes: a session iterating on one test file would pay
+# worker startup for a handful of tests and lose. Here it is the largest item
+# in this target and the suite otherwise runs on one core of however many the
+# box has - measured 2026-09-03, 1230 tests: 78 s serially against 27 s at
+# `-n auto`, with coverage identical at 691 statements / 78 branches / 100%.
+# Coverage holding is what makes the flag admissible rather than the wall
+# clock, which is why the threshold stays on this line and is not relaxed to
+# pay for the parallelism. `PL-WCZV`.
+	uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
 	bin/docket check
 	python3 tools/doc_check.py check
 # Bare `python3` for the reason `doc_check.py` above uses it: standard library
