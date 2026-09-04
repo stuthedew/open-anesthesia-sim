@@ -1,14 +1,15 @@
 ---
 id: PL-D9WD
 title: Build an M4 aggregate cache on a fixed dyadic grid
-status: ready
+status: done
 priority: P2
 effort: M
 classes: perf
 feature: teachable-case
 verify: uv run pytest tests/unit/test_chart_downsampling.py && grep -q 'def test_aggregates_merge_without_revisiting_samples' tests/unit/test_chart_downsampling.py
-touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/controller.py
+touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_chart_downsampling.py, tests/unit/test_run_history.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py, docs/MODEL.md
 added: 2026-09-04
+closed: 2026-09-04
 ---
 
 **Problem.** Decimation rescans every sample in the visible window on every
@@ -188,3 +189,58 @@ are maintained incrementally rather than rescanned, every drawn point is
 still a recorded sample with its own timestamp, and the departure from
 Theorem 1's exactness condition is written down where a reader of the chart
 code will find it.
+
+
+**What landed, 2026-09-04.**
+
+The ladder is `chart_downsampling.M4AggregateCache`: tier *t* holds buckets
+of `FINEST_CACHED_BUCKET_SAMPLES * 2**t` samples, anchored to absolute
+index, and only completed buckets enter it. A window is read as the
+completed buckets tiling it plus a raw scan of the unaligned remainder at
+each of its two ends, so the read is bounded by a constant of the grain and
+contains neither the run length nor the window width.
+`test_reading_a_window_costs_the_same_however_wide_it_is` asserts that as a
+count of values read rather than as a duration.
+
+**Three passes over the window made up the cost, not one.** The rescan was
+81% of it; the other 19% would have kept the frame proportional to the width
+shown whatever the cache did. So `RunHistory` replaces the controller's
+`list[SimulationHistorySample]`, storing the run by quantity with one cache
+each: the window stopped copying its samples out, each trace stopped
+building a list of one field per sample, and the wash-in plot stopped
+reclassifying every visible sample against its domain - the stretches of
+that domain are now maintained as samples arrive.
+`test_a_frame_never_materializes_the_window_as_rows` is what stops a row
+walk being reintroduced, which is the likeliest regression here because rows
+are the obvious shape to reach for.
+
+Whole chart frame, six traces plus the wash-in plot, on this container:
+
+| Window | Before | After |
+| ---: | ---: | ---: |
+| 5 min | 1.9 ms | 1.7 ms |
+| 15 min | 5.6 ms | 2.8 ms |
+| 1 h | 23.8 ms | 3.0 ms |
+| 4 h | 138.9 ms | 3.4 ms |
+| 12 h | 431.1 ms | 2.6 ms |
+
+Recording costs 4.6 us per sample across all seven caches, which at the
+0.1 s step is 46 us of CPU per second of simulated time.
+
+**Memory fell rather than rose**, which the retention argument above did not
+predict: 264 B per sample as a list of frozen dataclasses against 127 B as
+seven caches with their ladders, measured over 200 000 samples. Columns of
+doubles cost less than rows of objects by more than the ladder costs.
+
+**The column arithmetic above over-predicted what M4 costs, and `PL-CG7J` is
+not a prerequisite after all.** The brief reasoned that four tuples per
+group against two would halve the columns affordable at a fixed traffic
+budget, which would have made per-trace show/hide part of how the chart
+affords resolution. Measured on the recording connection at a 150-column
+budget, a steady frame sends 24 patch operations - the same 24 the min/max
+envelope sent - and a compartment trace draws 182 points where the
+300-point envelope drew about 190. The reason is in the algorithm rather
+than in the measurement: M4's four tuples collapse to two on a monotone
+stretch, since a rising bucket's lowest value *is* its first sample, and
+these traces are monotone almost everywhere. `PL-CG7J` remains worth having
+for its own sake and is no longer sequenced against this.
