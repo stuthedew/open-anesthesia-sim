@@ -178,6 +178,7 @@ workflow_paths = [
   "subprojects",
   "tests/unit/test_contrast_check.py",
   "tests/unit/test_doc_check.py",
+  "tests/unit/test_import_boundary_check.py",
   "tools",
 ]
 

@@ -106,8 +106,8 @@ make run
 make check       # ruff format --check, ruff check, mypy (strict), the
                  # type: ignore checker, pytest across every core under a
                  # 100% statement and branch coverage gate on
-                 # src/anesthesia_sim/core/, then the docket and
-                 # documentation checkers
+                 # src/anesthesia_sim/core/, then the docket,
+                 # documentation, contrast and import-boundary checkers
 make fix         # ruff format, ruff check --fix, and write any pull
                  # request number a landed closure is owed
 make test        # pytest across every core, without the coverage gate
@@ -132,9 +132,16 @@ a `type: ignore` that suppresses nothing — the guarantee `RUF100` gives for
 live directives look inert. It shells out to mypy, so unlike the two scripts
 below it needs the project virtualenv.
 
-The last two are stdlib-only scripts in `tools/`, so they run in a bare
-checkout. `tools/doc_check.py` also has a `candidates` mode that prints the
-documentation lines mentioning anything a diff changed, for the sweep a
+`tools/import_boundary_check.py` is the same shape for a different invariant:
+`core/parameters.py` is the one module allowed to import Pydantic, so that the
+compartments, the controller and the interface hold plain frozen dataclasses
+rather than validation models. That was prose in a docstring and nothing
+measured it. Like `ignore_check.py` it needs the project interpreter, though
+for an unrelated reason — it parses `src/`, and `src/` targets 3.14.
+
+`tools/doc_check.py` and `tools/contrast_check.py` are stdlib-only scripts that
+run in a bare checkout. `doc_check.py` also has a `candidates` mode that prints
+the documentation lines mentioning anything a diff changed, for the sweep a
 change needs before it is complete.
 
 Running in a bare checkout means running under whatever `python3` is on PATH,
@@ -152,10 +159,10 @@ Those tests approximate the older interpreter; `.github/workflows/quality.yml`'s
 runtime behavior together rather than one at a time.
 
 `make check` mirrors the checks run in CI (`.github/workflows/quality.yml`)
-and must pass before a change is considered complete. It runs those last two
-commands under whatever `python3` is on your PATH rather than under a pinned
-interpreter, so on a machine already at 3.14 the `floor` job is the only place
-they meet the older one.
+and must pass before a change is considered complete. It runs those two
+stdlib-only commands under whatever `python3` is on your PATH rather than under
+a pinned interpreter, so on a machine already at 3.14 the `floor` job is the
+only place they meet the older one.
 
 Both CI jobs check out the full history (`fetch-depth: 0`), which a local
 clone usually does not have. Three checks need it and say so rather than

@@ -65,6 +65,14 @@ jobs:
       - run: bin/docket check
       - run: uv run python tools/doc_check.py check
       - run: uv run python tools/contrast_check.py
+      # Deliberately not repeated in the `floor` job below, unlike the three
+      # lines above. That job runs the tools under the 3.11 floor to prove they
+      # need no virtualenv; this one reads `src/anesthesia_sim/` with `ast`,
+      # and that source targets 3.14, so the 3.11 parser cannot read its input
+      # - a `SyntaxError` on `app/chart_downsampling.py`'s PEP 695 generics
+      # rather than anything about the tool. The Makefile comment on the same
+      # line carries the reasoning. `PL-Y0RZ`.
+      - run: uv run python tools/import_boundary_check.py
 
       # The pull-request title check lived here and moved to its own workflow,
       # `.github/workflows/pr-title.yml`, under `PL-3V8K`: it has to run on
