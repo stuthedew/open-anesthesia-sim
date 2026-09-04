@@ -105,6 +105,39 @@ of a commit that does not contain the item's work.
 a commit whose subject leads with a different item's id, with an older commit
 naming this one, recovers nothing rather than the older number.
 
+**The date guard proposed above does not work, measured 2026-09-04.** Rejecting
+a recovered commit older than the item's own `closed:` date was expected to
+"suppress the wrong answer and keep every right one". Run against all 122 closed
+items on `origin/main` that carry a `pr` and are named by a leading-id subject,
+it keeps 84, correctly rejects 6 - and **wrongly rejects 32**.
+
+The cause is a timezone skew, not a flaw in the reasoning. A session writes
+`closed:` as its own today in UTC; the squash merge carries the project owner's
+local date at `-0500`, so `%cs` reads one day earlier for anything merged after
+19:00 Central. `PL-MC8Z` is the case in miniature: `closed: 2026-09-04`, merge
+`%cs` 2026-09-03, `pr: 279`, entirely correct and rejected by the test. A guard
+that suppresses 32 correct recoveries to catch 6 wrong ones is worse than none.
+
+**The six wrong answers are also not all riders.** Only `PL-YLZQ` is the shape
+this item describes. The other five are a *later* commit winning by recency -
+`PL-1TF4`/`PL-J49T` recovered `250`, the bookkeeping merge whose subject reads
+"record #249"; `PL-B0YN`/`PL-G1MF` recovered `188` from "record their pull
+request" against a true `186`; `PL-X0RG` recovered `192` from a follow-up fix
+against a true `187`. The defect is therefore wider than the brief states: the
+subject scan answers with *any* commit whose subject leads with the id, and a
+closure is only one of the kinds of commit that do.
+
+**And the fix now available did not exist when this was written.** `PL-2XTF`
+added `_number_closing`, which finds the commit that actually flipped `status:
+done` in the item's own file and rejects later edits by comparing against the
+parent. Run against all six wrong cases it answers all six correctly, `PL-YLZQ`
+included (`204`, the number this item says is right). It is already the
+fallback in `_merges_naming`; it simply never runs for these items, because the
+subject scan answered first and `found.setdefault` kept that answer.
+
+So the remaining question is not how to reject a bad subject-scan hit by date,
+but whether to confirm the hit at all. See the decision below.
+
 The convention half of this - `CLAUDE.md` and the `docket` skill saying to
 lead a closing subject with every id it closes - is already done, so what is
 left is only the guard that catches a session forgetting.
