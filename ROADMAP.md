@@ -1189,9 +1189,15 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   traceable from the display (queue item PL-DHV7).
 - **A case-length time base**: minutes rather than seconds, selectable 15,
   30 and 60 minute scales plus a fit-the-run scale (queue item PL-SSBP).
-- **A vertical scale that fits the run** (queue item PL-CC23) rather than the
-  vaporizer's dial maximum. In MAC mode the axis becomes agent-independent, which is what
-  makes a cross-agent comparison honest.
+- **A vertical scale denominated in MAC** (queue item PL-CC23) rather than in
+  the vaporizer's dial maximum, which is what makes a cross-agent comparison
+  honest. Scoped as "fits the run" and decided otherwise (project owner,
+  2026-09-04): a fitted axis rescales a rising curve mid-lesson, and the item's
+  own requirement that the rule be stable within a run rules it out. The axis
+  is fixed at 0 to 3 x MAC for every agent - three being exactly desflurane's
+  dial maximum in MAC - with a trace above the ceiling named rather than left
+  to draw as a plateau. `docs/MODEL.md` s "The chart's vertical range is
+  denominated in MAC, and fixed" carries the reasoning.
 - **A recorded control-input timeline** (queue item PL-DR1Z): every fresh gas
   flow, vaporizer
   dial, alveolar ventilation and cardiac-output change stamped with the

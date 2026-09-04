@@ -115,9 +115,12 @@ MAC_UNIT_SUFFIX: Final = " \u00d7MAC"
 
 # Candidate spacings for the chart's MAC axis, coarsest last. `mac_axis_ticks`
 # takes the first that keeps the axis within `MAX_MAC_AXIS_INTERVALS`, so the
-# spacing is a function of the plotted range rather than of the agent: all
-# three shipped agents land on 0.5 MAC at the current dial-maximum axis, which
-# is what lets a reader carry one mental scale from one agent to the next.
+# spacing is a function of the plotted range rather than of the agent. Since
+# PL-CC23 that range is `CHART_AXIS_TOP_MAC` for every agent, so the ladder
+# selects 0.5 MAC for all of them by construction rather than by coincidence -
+# which is what lets a reader carry one mental scale from one agent to the
+# next. It remains a ladder rather than a constant because the range is the
+# input: a chart drawn over a different span picks its own spacing.
 MAC_AXIS_STEP_LADDER_MAC: Final = (0.25, 0.5, 1.0, 2.0, 5.0)
 #: Most gaps the MAC axis may be divided into before the next coarser spacing.
 MAX_MAC_AXIS_INTERVALS: Final = 10
