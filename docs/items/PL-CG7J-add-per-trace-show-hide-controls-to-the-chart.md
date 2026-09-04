@@ -50,6 +50,19 @@ The filter must preserve pairing, and the test must cover the filtered case.
 A hidden trace must also disappear from any legend, so the chart never labels
 a line it is not drawing.
 
+**Promoted by the M4 decision, 2026-09-04.** `PL-D9WD` now draws all four M4
+aggregates rather than min and max, which roughly halves the number of chart
+columns affordable at a given traffic budget — about 46 columns across six
+traces, on PL-Q197's measured cost. That is too coarse to read. Since cost is
+linear in traces drawn, hiding traces is what returns the resolution: two
+traces instead of six buys about 138 columns for the same traffic.
+
+So this stops being an independent nicety and becomes part of how the chart
+affords resolution at all. Sequence it with `PL-D9WD` rather than after it,
+and expect the pair to be judged together — M4 at six traces and M4 at two
+are different-looking charts, and only the second is the one a learner
+comparing two compartments would actually use.
+
 **Done when.** Each of the six traces can be shown or hidden, hiding one
 removes its points from the client rather than blanking them, the pairing
 test covers a filtered table, and the legend agrees with what is drawn.

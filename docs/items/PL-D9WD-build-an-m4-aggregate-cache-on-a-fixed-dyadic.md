@@ -97,24 +97,59 @@ That does not make first and last worthless — it means the gap between
 min/max and full M4 is narrower for this data than for the paper's industrial
 series.
 
-**So separate what is stored from what is drawn.** Store all four aggregates
-per bucket, each with the sample index it came from: storage is not the
-binding constraint (~80 MB for a simulated week against 1.60 GB of raw
-samples), and storing them keeps every later option open. *Drawing* all four
-doubles the point count, and `PL-Q197` established that the client is patched
-at about two operations per drawn point that moves, so drawn points are the
-scarce resource and not bytes. The draw-time subset is therefore a separate
-decision from the cache's contents, and the paper supports taking it
-seriously: §6 finds min/max "on average ... higher data efficiency than all
-aggregation based techniques, including M4", precisely because M4 spends four
-tuples per group where min/max spends two.
+**What drawing all four costs, stated plainly.** `PL-Q197` established that
+the client is patched at about two operations per drawn point that moves, so
+drawn points are the scarce resource here and bytes are not. M4 spends up to
+four tuples per group where min/max spends two — §6 measures exactly that,
+finding min/max has "on average ... higher data efficiency than all
+aggregation based techniques, including M4". At a fixed traffic budget,
+choosing M4 therefore **halves the number of columns**.
 
-**Decided by the project owner, 2026-09-04: cache all four, draw min and max
-to start.** The two drawn per bucket stay what `select_envelope_indices`
-already selects, so nothing about the rendered chart changes when the cache
-lands — this item is a performance change, not a visual one. Moving to all
-four later is a draw-time switch with no migration, because the aggregates
-are already stored. Revisit it if E3 is ever actually observed on a trace.
+The arithmetic, using PL-Q197's measured cost: a rebuild is about
+`2 x points x traces` operations, so `48 x buckets` for M4 across six traces
+against `24 x buckets` for min/max. The ~2 200-operation rebuild measured
+today buys roughly 46 M4 columns, or 92 min/max ones.
+
+**Forty-six columns is too coarse, and the way out is fewer traces rather
+than fewer aggregates.** Cost is linear in traces drawn, so `PL-CG7J`
+(per-trace show/hide, which Gas Man has) is what returns the resolution: two
+traces instead of six buys ~138 columns at the same traffic. That promotes
+`PL-CG7J` from a nice feature to part of how this chart affords resolution at
+all, and the two should be sequenced together rather than independently.
+
+**A budget in columns, not points.** `MAX_CHART_POINTS_PER_SERIES` is
+currently a per-trace *point* ceiling, which was the right parameter for
+min/max and is the wrong one for M4: the algorithm is parameterised by `w`,
+the number of groups, and its point count is a consequence of up to four
+tuples per group after deduplication. The constant should be renamed and
+re-expressed as a column budget when this lands, so the code reads in the
+paper's own terms rather than in the ones the superseded algorithm used.
+
+**Decided by the project owner, 2026-09-04: implement actual M4 — cache all
+four and draw all four.** This reverses a weaker recommendation made earlier
+the same day (draw min and max, keep first and last cached against a later
+need), and the reversal is right for a reason the paper states outright.
+
+§4.3, on the errors min/max-only aggregation produces: *"Note that these
+errors are independent of the resolution of the desired raster image, i.e.,
+of the chosen number of groups."* Min/max is not M4 with fewer points. It is
+a different algorithm carrying a defect that **no amount of extra resolution
+removes**, so the earlier recommendation traded a permanent error class for a
+point count — a trade that only ever looks favourable while the error is
+unobserved.
+
+Two further reasons the drawn set should be the real one:
+
+- **Provenance.** This project's whole discipline is that a displayed value
+  is traceable to what produced it. "The chart implements M4 (Jugel et al.
+  2014)" is auditable against a paper held in `docs/references/`. "Something
+  M4-like, with min/max only" is auditable against nothing, and the
+  difference is invisible in the rendered output — which is exactly the kind
+  of claim that decays into a wrong one over a few years.
+- **It converges and min/max does not.** Every later improvement — a larger
+  budget, fewer traces drawn (`PL-CG7J`), a cheaper transport (`PL-YDKJ`) —
+  moves an M4 chart toward Theorem 1's exactness. None of them moves a
+  min/max chart anywhere, per the quotation above.
 
 **Carrying the sample index is a correctness requirement, not an
 optimization.** `chart_downsampling.py` guarantees a drawn point is always a
@@ -125,6 +160,11 @@ have to be withdrawn — which would change what every drawn point claims.
 **Note the current code is MinMax, not M4.** `select_envelope_indices`
 selects min and max per bucket plus the window's global first and last, so it
 is the paper's MinMax with endpoint handling, and E3 applies to it today.
+Under the decision above it is replaced rather than extended: per bucket, the
+tuples at first, last, argmin and argmax, deduplicated and in ascending time
+order. `PL-Q197`'s stability guards move with it — they assert a property of
+the selection, not of min/max specifically — but the two tests pinning drawn
+counts will need their bounds re-derived from a column budget.
 
 **Where.**
 
