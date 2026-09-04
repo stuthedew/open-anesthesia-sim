@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import CONTROL_INPUT_UNITS, ControlInput, SimulationController
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
@@ -507,3 +507,267 @@ def test_a_failed_step_leaves_every_displayed_value_bit_identical() -> None:
     assert after.exhausted_agent_l == before.exhausted_agent_l
     assert after.stored_agent_l == before.stored_agent_l
     assert after.agent_accounting_passes_validation
+
+
+def test_a_setting_change_is_recorded_with_the_time_it_took_effect() -> None:
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, 1.0)
+
+    controller.set_fresh_gas_flow(3.0)
+
+    (change,) = controller.snapshot().control_timeline
+    assert change.control is ControlInput.FRESH_GAS_FLOW
+    assert change.elapsed_s == pytest.approx(1.0)
+    assert change.previous_value == pytest.approx(4.0)
+    assert change.new_value == pytest.approx(3.0)
+    assert change.unit == "L/min"
+
+
+def test_every_control_records_under_its_own_stable_identifier() -> None:
+    """The stored identifiers are the timeline's contract with future runs.
+
+    They are asserted as literal strings rather than against the enum,
+    because the enum is what a rename would move and these are what a
+    recorded run would then no longer be readable under. PL-9SH6 and
+    PL-3TLK rename two of the setters underneath them in v0.4.1.
+    """
+
+    controller = SimulationController()
+
+    controller.set_fresh_gas_flow(3.0)
+    controller.set_delivered_concentration(0.03)
+    controller.set_alveolar_ventilation(5.0)
+    controller.set_cardiac_output(4.0)
+    controller.set_circuit_volume(8.0)
+
+    assert [change.control.value for change in controller.snapshot().control_timeline] == [
+        "fresh_gas_flow",
+        "delivered",
+        "alveolar_ventilation",
+        "cardiac_output",
+        "circuit_volume",
+    ]
+
+
+def test_every_recorded_control_carries_its_declared_unit() -> None:
+    controller = SimulationController()
+
+    controller.set_fresh_gas_flow(3.0)
+    controller.set_delivered_concentration(0.03)
+    controller.set_alveolar_ventilation(5.0)
+    controller.set_cardiac_output(4.0)
+    controller.set_circuit_volume(8.0)
+
+    for change in controller.snapshot().control_timeline:
+        assert change.unit == CONTROL_INPUT_UNITS[change.control]
+
+
+def test_the_delivered_dial_is_recorded_as_the_fraction_the_core_holds() -> None:
+    """Recording the interface's percent would break re-application.
+
+    The timeline's claim is that re-applying it reproduces the run, and
+    re-applying means calling the setter, which takes a fraction. A record
+    of 3.0 where the model holds 0.03 would be a hundredfold error handed
+    to whatever replays it.
+    """
+
+    controller = SimulationController()
+
+    controller.set_delivered_concentration(0.03)
+
+    (change,) = controller.snapshot().control_timeline
+    assert change.new_value == pytest.approx(0.03)
+    assert change.new_value == pytest.approx(controller.snapshot().delivered_concentration_fraction)
+
+
+def test_a_setting_equal_to_the_one_in_place_records_nothing() -> None:
+    """A slider re-entering a position it already holds is not a change."""
+
+    controller = SimulationController()
+    current = controller.snapshot().fresh_gas_flow_l_min
+
+    controller.set_fresh_gas_flow(current)
+
+    assert controller.snapshot().control_timeline == ()
+
+
+def test_a_refused_setting_records_nothing() -> None:
+    """It never took effect, so it is not part of the run.
+
+    The guarantee is structural rather than incidental: the recorder runs
+    after the core's setter returns, so a raise reaches the interface with
+    the timeline untouched.
+    """
+
+    controller = SimulationController()
+
+    with pytest.raises(SimulationConfigurationError):
+        controller.set_delivered_concentration(0.5)
+
+    assert controller.snapshot().control_timeline == ()
+    assert not controller.has_failed
+
+
+def test_changes_within_one_step_collapse_to_what_the_model_integrated() -> None:
+    """Only the value standing when a step runs is ever integrated.
+
+    A dial dragged from 2% through 3% to 4% between two steps is one change
+    from 2% to 4% as far as the run is concerned, and a timeline that
+    listed the intermediate value would describe a run that never happened.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, 1.0)
+
+    controller.set_delivered_concentration(0.03)
+    controller.set_delivered_concentration(0.04)
+
+    (change,) = controller.snapshot().control_timeline
+    assert change.previous_value == pytest.approx(0.02)
+    assert change.new_value == pytest.approx(0.04)
+    assert change.elapsed_s == pytest.approx(1.0)
+
+
+def test_a_change_undone_within_one_step_leaves_no_entry() -> None:
+    """Returning to the step's own value means the model saw no change."""
+
+    controller = SimulationController()
+
+    controller.set_delivered_concentration(0.03)
+    controller.set_delivered_concentration(0.02)
+
+    assert controller.snapshot().control_timeline == ()
+
+
+def test_the_same_control_changed_across_two_steps_records_both() -> None:
+    """Each step the run was computed under is its own recorded setting."""
+
+    controller = SimulationController()
+    controller.start()
+
+    controller.set_delivered_concentration(0.03)
+    _advance_for(controller, 1.0)
+    controller.set_delivered_concentration(0.04)
+
+    first, second = controller.snapshot().control_timeline
+    assert (first.previous_value, first.new_value) == pytest.approx((0.02, 0.03))
+    assert (second.previous_value, second.new_value) == pytest.approx((0.03, 0.04))
+    assert first.sample_index == 0
+    assert second.sample_index == 10
+
+
+def test_consecutive_changes_to_one_control_are_one_adjustment() -> None:
+    """One drag of one slider reads as one act, however many steps it spans."""
+
+    controller = SimulationController()
+    controller.start()
+
+    controller.set_fresh_gas_flow(3.0)
+    _advance_for(controller, 1.0)
+    controller.set_fresh_gas_flow(2.0)
+
+    timeline = controller.snapshot().control_timeline
+    assert {change.adjustment for change in timeline} == {1}
+
+
+def test_a_declared_boundary_separates_two_drags_of_one_control() -> None:
+    """Timing cannot separate them; the input boundary can.
+
+    Two turns of the same dial arrive as a run of changes to one control,
+    exactly as one turn does. Only the interface knows where the first
+    gesture ended, and `begin_control_adjustment` is how it says so.
+    """
+
+    controller = SimulationController()
+    controller.start()
+
+    controller.set_fresh_gas_flow(3.0)
+    _advance_for(controller, 60.0)
+    controller.begin_control_adjustment()
+    controller.set_fresh_gas_flow(2.0)
+
+    first, second = controller.snapshot().control_timeline
+    assert first.adjustment == 1
+    assert second.adjustment == 2
+
+
+def test_changing_a_different_control_starts_a_new_adjustment() -> None:
+    controller = SimulationController()
+
+    controller.set_fresh_gas_flow(3.0)
+    controller.set_cardiac_output(4.0)
+
+    first, second = controller.snapshot().control_timeline
+    assert first.adjustment == 1
+    assert second.adjustment == 2
+
+
+def test_reset_clears_the_control_timeline_with_the_run() -> None:
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, 1.0)
+    controller.set_fresh_gas_flow(3.0)
+
+    controller.reset()
+
+    assert controller.snapshot().control_timeline == ()
+
+
+def test_reset_restarts_adjustment_numbering() -> None:
+    """A run's adjustments are numbered from its own beginning.
+
+    Carrying the count across a reset would make the first adjustment of a
+    fresh run read as the fourth of something the reader cannot see.
+    """
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(3.0)
+    controller.set_cardiac_output(4.0)
+
+    controller.reset()
+    controller.set_fresh_gas_flow(2.0)
+
+    (change,) = controller.snapshot().control_timeline
+    assert change.adjustment == 1
+
+
+def test_changing_agent_clears_the_control_timeline() -> None:
+    """A new agent is a new run, and the old run's inputs are not its own."""
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(3.0)
+
+    controller.set_agent("isoflurane")
+
+    assert controller.snapshot().control_timeline == ()
+
+
+def test_the_constructor_overrides_are_not_recorded_as_changes() -> None:
+    """Initial conditions are what the run starts from, not inputs to it."""
+
+    controller = SimulationController(fresh_gas_flow_l_min=3.0, cardiac_output_l_min=4.0)
+
+    assert controller.snapshot().control_timeline == ()
+
+
+def test_a_recorded_change_points_at_the_last_sample_under_the_old_value() -> None:
+    """The mark belongs on the sample the run changed *after*.
+
+    A chart mark placed from a recomputed index could drift from the sample
+    the model actually changed at; this is why the index is stored.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, 2.0)
+
+    controller.set_cardiac_output(4.0)
+
+    (change,) = controller.snapshot().control_timeline
+    snapshot = controller.snapshot()
+    assert change.sample_index == len(snapshot.concentration_history) - 1
+    assert snapshot.concentration_history[change.sample_index].elapsed_s == pytest.approx(
+        change.elapsed_s
+    )

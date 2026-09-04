@@ -37,12 +37,16 @@ __all__ = [
     "PlottedSeries",
     "SampleValue",
     "alveolar_value",
+    "build_control_mark",
     "build_reference_line",
     "build_series",
     "circuit_value",
     "fat_value",
+    "PARKED_CONTROL_MARK_X",
     "mixed_venous_value",
     "muscle_value",
+    "park_control_mark",
+    "redraw_control_mark",
     "redraw_reference_band",
     "redraw_reference_line",
     "redraw_series",
@@ -215,6 +219,103 @@ def redraw_reference_band(
 
     redraw_reference_line(series, start_x, end_x, upper_y)
     series.below_line_cutoff_y = lower_y
+
+
+def build_control_mark(
+    color: str, stroke_width: float, dash_pattern: list[int] | None = None
+) -> fch.LineChartData:
+    """Build one vertical mark for a recorded control change.
+
+    A third kind of series, and separate from both constructors above for
+    the same reason they are separate from each other. A trace draws
+    recorded samples; a reference draws a published constant; a control
+    mark draws neither - it says only that the run's inputs changed here,
+    which is an event on the time axis rather than a value on the
+    concentration one. It carries no `SampleValue`, so it can never join
+    the `PlottedSeries` table, and its two points are moved rather than
+    rebuilt for the reason `redraw_series` gives.
+
+    What separates it visually from every other series is its
+    *orientation*: nothing else on this chart is vertical. That is the
+    non-colour channel `.claude/rules/ui-color.md`'s judgment 2 requires
+    of an encoding carrying meaning, and it survives greyscale and every
+    colour-vision deficiency, so the mark is not competing for separation
+    in a palette that six traces have already exhausted.
+
+    Args:
+        color: Hexadecimal line color.
+        stroke_width: Line width in display pixels.
+        dash_pattern: Optional alternating dash and gap lengths
+            in display pixels.
+
+    Returns:
+        Configured two-point Flet line-chart series.
+    """
+
+    return fch.LineChartData(
+        points=[fch.LineChartDataPoint(0.0, 0.0), fch.LineChartDataPoint(0.0, 0.0)],
+        color=color,
+        stroke_width=stroke_width,
+        dash_pattern=dash_pattern,
+        curved=False,
+        point=False,
+    )
+
+
+def redraw_control_mark(series: fch.LineChartData, x: float, top_y: float) -> None:
+    """Stand one control mark at a simulated time, spanning the plot height.
+
+    Full height rather than a tick at the axis, because the time it marks
+    has to be readable against every trace: a change to cardiac output
+    shows in the vessel-rich curve and a change to fresh gas flow in the
+    circuit curve, and a mark a reader has to project upwards from the
+    axis is one they will project onto the wrong point of the wrong trace.
+
+    Args:
+        series: Mark to move. Its two points are mutated.
+        x: Simulated time the change took effect, in seconds.
+        top_y: Top of the plotted range, in the chart's own percent unit.
+    """
+
+    bottom, top = series.points
+    bottom.x = x
+    bottom.y = 0.0
+    top.x = x
+    top.y = top_y
+
+
+#: Where a mark with nothing to mark is put. A negative simulated time is
+#: outside the plotted range under every window the chart shows - its left
+#: edge is `max(0.0, ...)` and so never negative - and it is a *constant*,
+#: which is the property that matters. Parking relative to the moving window
+#: instead would rewrite both points of every unused mark on every frame of a
+#: scrolling run: 48 client operations a frame with nothing on screen to show
+#: for them, which is what `test_a_scrolling_window_rebuilds_only_at_a_bucket_boundary`
+#: caught (PL-Q197's budget, measured against 24 parked marks).
+PARKED_CONTROL_MARK_X: Final = -1.0
+
+
+def park_control_mark(series: fch.LineChartData) -> None:
+    """Move one control mark out of sight, for a frame with no change to mark.
+
+    Parked rather than removed: the pool of marks is fixed at construction
+    and its members are moved from frame to frame, exactly as the traces
+    are, so that a run full of adjustments costs no per-frame control
+    construction. A parked mark is collapsed to a single point *and* put
+    outside the plotted range, so it draws nothing whether the client
+    clips first or renders a degenerate segment first.
+
+    Parking is idempotent: an already-parked mark is written the same
+    values, Flet's diff sees no change, and the client is sent nothing. A
+    frame with no adjustments to mark therefore costs nothing at all.
+
+    Args:
+        series: Mark to park. Its two points are mutated.
+    """
+
+    for point in series.points:
+        point.x = PARKED_CONTROL_MARK_X
+        point.y = 0.0
 
 
 def redraw_visible_window(

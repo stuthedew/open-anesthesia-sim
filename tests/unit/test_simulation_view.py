@@ -17,6 +17,7 @@ import asyncio
 import contextlib
 import dataclasses
 import re
+from typing import cast
 
 import flet as ft
 import flet_charts as fch
@@ -24,6 +25,9 @@ import pytest
 
 from anesthesia_sim.app.chart_series import MAX_CHART_POINTS_PER_SERIES
 from anesthesia_sim.app.controller import (
+    CONTROL_INPUT_UNITS,
+    ControlChange,
+    ControlInput,
     SimulationController,
     SimulationHistorySample,
     SimulationSnapshot,
@@ -40,7 +44,10 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app.simulation_view import (
     AGENT_RENDER_STYLES,
     AVAILABLE_AGENTS,
+    MAX_CHART_CONTROL_MARKS,
+    MAX_LISTED_ADJUSTMENTS,
     METRIC_GRID_COLUMNS,
+    NO_CONTROL_CHANGES_TEXT,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     SimulationView,
@@ -130,6 +137,7 @@ def _snapshot(
     max_delivered_concentration_percent: float = 8.0,
     agent_mac_percent: float | None = None,
     agent_mac_awake: MacAwakeReference | None = None,
+    control_timeline: tuple[ControlChange, ...] = (),
     failure_reason: str | None = None,
 ) -> SimulationSnapshot:
     """Build a snapshot for the view, defaulting MAC from the named agent.
@@ -181,6 +189,7 @@ def _snapshot(
         agent_accounting_absolute_error_l=1.5e-13,
         agent_accounting_passes_validation=passes_validation,
         concentration_history=history,
+        control_timeline=control_timeline,
         failure_reason=failure_reason,
     )
 
@@ -1998,3 +2007,271 @@ def test_the_interface_never_predicts_a_time_to_wake_up() -> None:
     # The band's own line says what it is not, in terms.
     assert "not a time to wake-up" in prose
     assert "not a prediction for any individual patient" in prose
+
+
+def _control_change(
+    elapsed_s: float,
+    control: ControlInput,
+    previous_value: float,
+    new_value: float,
+    adjustment: int,
+) -> ControlChange:
+    return ControlChange(
+        elapsed_s=elapsed_s,
+        sample_index=round(elapsed_s * 10),
+        adjustment=adjustment,
+        control=control,
+        previous_value=previous_value,
+        new_value=new_value,
+        unit=CONTROL_INPUT_UNITS[control],
+    )
+
+
+def test_a_recorded_change_is_marked_on_the_chart_at_its_own_time() -> None:
+    view, _ = _build_view(
+        _snapshot(
+            history=_run_history(600),
+            control_timeline=(
+                _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+            ),
+        )
+    )
+
+    mark = view._control_mark_series[0]
+    assert [point.x for point in mark.points] == [12.0, 12.0]
+
+
+def test_a_control_mark_spans_the_running_agents_plotted_range() -> None:
+    """A mark short of the top would leave a trace above it unannotated.
+
+    The range follows the agent's dial maximum, so this also pins the mark
+    to the same snapshot the axis was built from.
+    """
+
+    view, _ = _build_view(
+        _snapshot(
+            agent_id="desflurane",
+            history=_run_history(600),
+            control_timeline=(
+                _control_change(12.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=1),
+            ),
+        )
+    )
+
+    mark = view._control_mark_series[0]
+    assert [point.y for point in mark.points] == [0.0, view._concentration_chart.max_y]
+
+
+def test_unused_control_marks_are_parked_outside_the_plotted_window() -> None:
+    """The pool is fixed, so a mark with nothing to mark must draw nothing."""
+
+    view, _ = _build_view(
+        _snapshot(
+            history=_run_history(600),
+            control_timeline=(
+                _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+            ),
+        )
+    )
+
+    chart = view._concentration_chart
+    for mark in view._control_mark_series[1:]:
+        assert all(point.x < chart.min_x for point in mark.points)
+
+
+def test_a_control_mark_left_by_a_previous_frame_is_parked_when_it_ends() -> None:
+    """A reset clears the timeline, and the marks have to follow it.
+
+    A mark surviving the run that recorded it would annotate a fresh run
+    with an adjustment nobody made.
+    """
+
+    controller = _FakeController(
+        _snapshot(
+            history=_run_history(600),
+            control_timeline=(
+                _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+            ),
+        )
+    )
+    view = SimulationView(page=_FakePage(), controller=cast(SimulationController, controller))
+
+    controller.snapshot_value = _snapshot(history=_run_history(600))
+    view._refresh_view()
+
+    chart = view._concentration_chart
+    assert all(point.x < chart.min_x for point in view._control_mark_series[0].points)
+
+
+def test_control_marks_are_not_compartment_traces() -> None:
+    """A mark reads no sample, so it belongs to neither the table nor the palette.
+
+    It is also drawn before every trace and before both references: a
+    vertical rule crosses the whole plot, so of the three kinds of series
+    it is the one that could hide all six compartments at once.
+    """
+
+    view, _ = _build_view(_snapshot())
+
+    plotted = [series for series, _ in view._plotted_series]
+    order = view._concentration_chart.data_series
+
+    for mark in view._control_mark_series:
+        assert mark not in plotted
+        assert order.index(mark) < min(order.index(each) for each in plotted)
+        assert order.index(mark) < order.index(view._mac_awake_band_series)
+
+
+def test_the_list_states_what_was_changed_and_to_what() -> None:
+    view, _ = _build_view(
+        _snapshot(
+            history=_run_history(600),
+            control_timeline=(
+                _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+            ),
+        )
+    )
+
+    assert view._control_timeline_text.value == ("12.0 s · Fresh gas flow 4.0 L/min -> 2.0 L/min")
+
+
+def test_the_list_reads_most_recent_first() -> None:
+    """A fixed panel has to show the change the reader has just made."""
+
+    view, _ = _build_view(
+        _snapshot(
+            history=_run_history(600),
+            control_timeline=(
+                _control_change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+                _control_change(20.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=2),
+            ),
+        )
+    )
+
+    lines = view._control_timeline_text.value.splitlines()
+    assert lines[0].startswith("20.0 s")
+    assert lines[1].startswith("10.0 s")
+
+
+def test_a_run_with_no_changes_says_so_rather_than_showing_an_empty_panel() -> None:
+    view, _ = _build_view(_snapshot())
+
+    assert view._control_timeline_text.value == NO_CONTROL_CHANGES_TEXT
+    assert not view._control_timeline_overflow_text.visible
+
+
+def test_changes_the_panel_cannot_list_are_counted_rather_than_dropped() -> None:
+    """A list that quietly stops asserts that nothing earlier happened."""
+
+    timeline = tuple(
+        _control_change(
+            float(index), ControlInput.FRESH_GAS_FLOW, 4.0, 4.0 - index * 0.1, adjustment=index + 1
+        )
+        for index in range(MAX_LISTED_ADJUSTMENTS + 3)
+    )
+    view, _ = _build_view(_snapshot(history=_run_history(600), control_timeline=timeline))
+
+    assert len(view._control_timeline_text.value.splitlines()) == MAX_LISTED_ADJUSTMENTS
+    assert view._control_timeline_overflow_text.visible
+    assert "3 earlier change(s) not listed" in view._control_timeline_overflow_text.value
+
+
+def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None:
+    """Same rule for the plot: a chart that stops annotating is a claim."""
+
+    timeline = tuple(
+        _control_change(
+            float(index), ControlInput.FRESH_GAS_FLOW, 4.0, 4.0 - index * 0.01, adjustment=index + 1
+        )
+        for index in range(MAX_CHART_CONTROL_MARKS + 2)
+    )
+    view, _ = _build_view(_snapshot(history=_run_history(600), control_timeline=timeline))
+
+    assert view._undrawn_control_marks == 2
+    assert "2 not marked on the chart" in view._control_timeline_overflow_text.value
+
+
+def test_the_most_recent_changes_are_the_ones_marked() -> None:
+    """The reader is comparing the change they just made against the curve."""
+
+    timeline = tuple(
+        _control_change(
+            float(index), ControlInput.FRESH_GAS_FLOW, 4.0, 4.0 - index * 0.01, adjustment=index + 1
+        )
+        for index in range(MAX_CHART_CONTROL_MARKS + 2)
+    )
+    view, _ = _build_view(_snapshot(history=_run_history(600), control_timeline=timeline))
+
+    marked = {mark.points[0].x for mark in view._control_mark_series}
+    assert max(marked) == float(MAX_CHART_CONTROL_MARKS + 1)
+    assert 0.0 not in marked
+
+
+def test_a_drag_of_one_slider_is_marked_and_listed_once() -> None:
+    """One act by the person, however many settings the model was stepped under."""
+
+    view, _ = _build_view(
+        _snapshot(
+            history=_run_history(600),
+            control_timeline=(
+                _control_change(10.0, ControlInput.DELIVERED, 0.02, 0.03, adjustment=1),
+                _control_change(10.1, ControlInput.DELIVERED, 0.03, 0.035, adjustment=1),
+                _control_change(10.2, ControlInput.DELIVERED, 0.035, 0.04, adjustment=1),
+            ),
+        )
+    )
+
+    assert len(view._control_timeline_text.value.splitlines()) == 1
+    assert view._control_mark_series[0].points[0].x == 10.0
+    chart = view._concentration_chart
+    assert all(point.x < chart.min_x for point in view._control_mark_series[1].points)
+
+
+def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins() -> None:
+    """Without it two turns of one dial are one adjustment on the record.
+
+    The interface is the only party that knows where a gesture ended, so
+    the wiring is what makes the controller's grouping correct rather than
+    merely available.
+    """
+
+    view, _ = _build_view(_snapshot())
+
+    for slider in (
+        view._fresh_gas_flow_slider,
+        view._delivered_concentration_slider,
+        view._alveolar_ventilation_slider,
+        view._cardiac_output_slider,
+    ):
+        assert slider.on_change_start == view._handle_adjustment_start
+
+
+def test_a_declared_boundary_reaches_the_controller() -> None:
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+
+    controller.start()
+    controller.set_fresh_gas_flow(3.0)
+    controller.advance(SIMULATION_STEP_S)
+    view._handle_adjustment_start(cast(ft.Event[ft.Slider], None))
+    controller.set_fresh_gas_flow(2.0)
+
+    assert {change.adjustment for change in controller.snapshot().control_timeline} == {1, 2}
+
+
+def test_the_interface_says_a_control_mark_is_an_input_not_a_measurement() -> None:
+    """The one misreading a vertical rule on a patient chart invites.
+
+    Every other mark on this plot is either a modelled quantity or a
+    published constant; this one is a record of what the user did, and a
+    reader who takes it for an event in the patient has read the run
+    backwards.
+    """
+
+    view, page = _build_view(_snapshot())
+
+    disclosure = " ".join(sorted(_mounted_interface_strings(view, page)))
+
+    assert "not anything measured from the patient" in disclosure
+    assert "Settings only — not a measurement." in disclosure
