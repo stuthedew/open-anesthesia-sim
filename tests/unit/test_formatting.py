@@ -22,10 +22,12 @@ from anesthesia_sim.app.formatting import (
     MAC_UNIT_SUFFIX,
     MAX_MAC_AXIS_INTERVALS,
     format_delivered_label,
+    format_mac_awake_reference,
     format_mac_multiple,
     format_mac_reference,
     format_percent,
     format_subtitle,
+    mac_awake_band_percent,
     mac_axis_ticks,
     mac_multiple,
 )
@@ -378,3 +380,144 @@ def test_format_mac_reference_states_the_divisor_the_readouts_used() -> None:
 
         assert agent.display_name.lower() in reference
         assert f"{agent.mac_percent:.1f}%" in reference
+
+
+def test_the_mac_awake_band_is_the_stored_fraction_scaled_by_the_stored_mac() -> None:
+    """The band's height is a fraction times a divisor, and nothing else.
+
+    Checked against every shipped agent rather than one literal, because the
+    property that matters is that the band is placed by *that agent's* two
+    values. Independently calculated here from the data files: the expected
+    edges are recomputed from the file rather than restated, so a corrected
+    value in a data file moves the assertion with it instead of failing as a
+    stale literal.
+    """
+
+    for agent_id in AGENT_DATA_FILENAMES:
+        agent = load_agent_parameters(agent_id)
+        mac_awake = agent.mac_awake
+
+        lower, upper = mac_awake_band_percent(
+            fraction_of_mac=mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+            mac_percent=agent.mac_percent,
+        )
+
+        deviation_percent = mac_awake.standard_deviation_fraction_of_mac * agent.mac_percent
+        centre_percent = mac_awake.fraction_of_mac * agent.mac_percent
+
+        assert lower == pytest.approx(centre_percent - deviation_percent)
+        assert upper == pytest.approx(centre_percent + deviation_percent)
+        assert 0.0 < lower < upper < agent.mac_percent
+
+
+def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() -> None:
+    """The denominator trap, pinned as arithmetic.
+
+    Desflurane's published MAC-awake of 2.60% is 36% of a MAC of about 7.25%
+    - Rampil's 18-30 year figure - while this project stores Rampil's 31-65
+    year figure of 6.0%. Importing the *percent* would place the band at
+    2.60% where the fraction places it at 2.16%, 20% too high, and a
+    reference drawn too high is crossed too soon by a falling trace: it
+    teaches an earlier wake-up than the literature supports.
+    `docs/MODEL.md` § "MAC-awake as a chart reference" carries the reasoning.
+
+    This is what makes the fraction the stored form rather than a schema
+    preference, so it is tested as a value the interface must not be able to
+    produce.
+    """
+
+    desflurane = load_agent_parameters("desflurane")
+    mac_awake = desflurane.mac_awake
+
+    lower, upper = mac_awake_band_percent(
+        fraction_of_mac=mac_awake.fraction_of_mac,
+        standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+        mac_percent=desflurane.mac_percent,
+    )
+    centre = (lower + upper) / 2.0
+
+    assert centre == pytest.approx(2.16)
+    # Song et al.'s non-jaundiced control arm, measured in the population the
+    # 31-65 year divisor describes. The band lands on it to within the
+    # concentration readouts' own resolution.
+    assert abs(centre - 2.17) < CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+    # Chortkoff's absolute percent, which the stored fraction must not
+    # reproduce: it belongs to a different population's MAC.
+    assert centre != pytest.approx(2.60)
+    # And the mistake of dividing that absolute percent by the stored MAC.
+    assert mac_awake.fraction_of_mac != pytest.approx(2.60 / desflurane.mac_percent, abs=1e-3)
+
+
+def test_the_mac_awake_band_refuses_inputs_it_cannot_place_honestly() -> None:
+    """An obvious failure rather than a plausible-looking band.
+
+    A non-positive divisor has no meaningful multiple, and a lower edge at or
+    below zero is not a concentration. `_MacAwakePayload` already makes both
+    unreachable from a shipped data file, so one arriving here means
+    something upstream is wrong and the band must not be drawn anyway.
+    """
+
+    with pytest.raises(ValueError, match="mac_percent"):
+        mac_awake_band_percent(
+            fraction_of_mac=0.34, standard_deviation_fraction_of_mac=0.05, mac_percent=0.0
+        )
+
+    with pytest.raises(ValueError, match="lower edge"):
+        mac_awake_band_percent(
+            fraction_of_mac=0.05, standard_deviation_fraction_of_mac=0.05, mac_percent=2.0
+        )
+
+
+def test_the_mac_awake_band_arguments_are_keyword_only() -> None:
+    """A transposition the type system cannot catch, refused by the signature.
+
+    The mean and its standard deviation are two dimensionless numbers of the
+    same magnitude and the same type. Positionally, swapping them draws a
+    band centred on the spread rather than the mean, with no error anywhere.
+    """
+
+    with pytest.raises(TypeError):
+        mac_awake_band_percent(0.34, 0.05, 2.0)  # type: ignore[call-arg]
+
+
+def test_format_mac_awake_reference_names_both_free_parameters() -> None:
+    """The band has two free parameters, so both are on the display.
+
+    A MAC multiple has one divisor and `format_mac_reference` names it. The
+    band is a published fraction *applied to* that divisor, so a reader has
+    two things to be able to disagree with, and the line states the fraction,
+    the percent it lands at, and the edges it spans.
+    """
+
+    reference = format_mac_awake_reference(
+        "Sevoflurane",
+        fraction_of_mac=0.34,
+        standard_deviation_fraction_of_mac=0.05,
+        mac_percent=2.0,
+    )
+
+    assert reference == "MAC-awake sevoflurane = 0.34 \u00d7MAC (0.68%), band ±1 SD 0.58–0.78%"
+
+    for agent_id in AGENT_DATA_FILENAMES:
+        agent = load_agent_parameters(agent_id)
+        mac_awake = agent.mac_awake
+        rendered = format_mac_awake_reference(
+            agent.display_name,
+            fraction_of_mac=mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+            mac_percent=agent.mac_percent,
+        )
+        lower, upper = mac_awake_band_percent(
+            fraction_of_mac=mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+            mac_percent=agent.mac_percent,
+        )
+
+        assert agent.display_name.lower() in rendered
+        assert f"{mac_awake.fraction_of_mac:.{MAC_DISPLAY_DECIMALS}f}{MAC_UNIT_SUFFIX}" in rendered
+        assert f"{lower:.{CONCENTRATION_DISPLAY_DECIMALS}f}" in rendered
+        assert f"{upper:.{CONCENTRATION_DISPLAY_DECIMALS}f}" in rendered
+        # The endpoint, named. MAC-awake is responsiveness to command; MAC is
+        # immobility to incision, and the two read alike unless said.
+        assert "MAC-awake" in rendered

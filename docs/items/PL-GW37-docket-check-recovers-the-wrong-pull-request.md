@@ -4,12 +4,13 @@ title: docket check recovers the wrong pull request for an item closed as a ride
 priority: P2
 effort: S
 status: done
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_rider_closure_recovers_the_pull_request_that_closed_it' subprojects/docket/tests/test_vcs.py
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-02
 closed: 2026-09-04
+pr: 285
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_rider_closure_recovers_the_pull_request_that_closed_it' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** `docket check` recovers a closed item's pull request number by

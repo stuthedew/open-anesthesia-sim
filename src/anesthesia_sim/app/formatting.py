@@ -48,10 +48,12 @@ __all__ = [
     "MAC_UNIT_SUFFIX",
     "MAX_MAC_AXIS_INTERVALS",
     "format_delivered_label",
+    "format_mac_awake_reference",
     "format_mac_multiple",
     "format_mac_reference",
     "format_percent",
     "format_subtitle",
+    "mac_awake_band_percent",
     "mac_axis_ticks",
     "mac_multiple",
 ]
@@ -265,6 +267,126 @@ def format_mac_reference(agent_display_name: str, mac_percent: float) -> str:
     """
 
     return f"1 MAC {agent_display_name.lower()} = {mac_percent:.1f}%"
+
+
+def mac_awake_band_percent(
+    *, fraction_of_mac: float, standard_deviation_fraction_of_mac: float, mac_percent: float
+) -> tuple[float, float]:
+    """Place the MAC-awake band on the chart's percent axis, as (lower, upper).
+
+    The stored value is a fraction of the agent's own MAC; the chart plots
+    percent of one atmosphere. This is that one multiplication, in the one
+    place, so the band's height on a labelled axis is testable without a
+    chart around it. `docs/MODEL.md` § "MAC-awake as a chart reference"
+    states what the band asserts and which trace it is read against.
+
+    Multiplying the *fraction* by the stored `mac_percent` — rather than
+    storing an absolute percent — is what keeps the band's height and the
+    axis it is drawn on consistent by construction. The population a
+    published MAC-awake percent was measured in has its own MAC, and
+    desflurane's is not this project's: Chortkoff's 2.60% sits against a MAC
+    of 7.25%, so importing that percent onto an axis scaled by a MAC of 6.0%
+    would raise the band by 20% and teach a later wake-up than the source
+    supports.
+
+    Every argument is keyword-only. The fraction and its standard deviation
+    are two dimensionless numbers of the same magnitude, so a positional
+    call is one transposition away from drawing a band ten times too wide
+    centered on the spread rather than the mean, with nothing in the type
+    system to catch it.
+
+    Args:
+        fraction_of_mac: Population MAC-awake as a fraction of this
+            agent's 1 MAC, from
+            `SimulationSnapshot.agent_mac_awake.fraction_of_mac`.
+        standard_deviation_fraction_of_mac: That population's standard
+            deviation, in the same fraction-of-MAC unit. The band is one
+            standard deviation either side of the mean, so it spans
+            roughly the middle two thirds of the population rather than
+            its full range.
+        mac_percent: The running agent's 1 MAC as a percent of one
+            atmosphere. Passed in beside the fraction it scales, for the
+            reason `mac_multiple` gives: the divisor is what makes the
+            number agent-specific.
+
+    Returns:
+        The band's lower and upper edges, both as a percent of one
+        atmosphere, lower first.
+
+    Raises:
+        ValueError: If `mac_percent` is not strictly positive, or if the
+            band's lower edge would not be. Neither is drawable, and
+            `CLAUDE.md` requires an obvious failure over a
+            plausible-looking number. The loader's `_MacAwakePayload`
+            already makes both unreachable from a shipped data file, so
+            one arriving here means something upstream is wrong.
+    """
+
+    if not mac_percent > 0.0:
+        raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
+
+    lower_fraction = fraction_of_mac - standard_deviation_fraction_of_mac
+
+    if not lower_fraction > 0.0:
+        raise ValueError(
+            "the MAC-awake band's lower edge must be strictly positive, got "
+            f"{fraction_of_mac!r} - {standard_deviation_fraction_of_mac!r}"
+        )
+
+    upper_fraction = fraction_of_mac + standard_deviation_fraction_of_mac
+
+    return lower_fraction * mac_percent, upper_fraction * mac_percent
+
+
+def format_mac_awake_reference(
+    agent_display_name: str,
+    *,
+    fraction_of_mac: float,
+    standard_deviation_fraction_of_mac: float,
+    mac_percent: float,
+) -> str:
+    """State what the MAC-awake band was drawn from, in one line.
+
+    The same requirement `format_mac_reference` answers for the MAC axis:
+    a clinically meaningful mark on the display is traceable to the exact
+    values that produced it. The band has two free parameters rather than
+    one — a published fraction and the divisor it is applied to — so both
+    are named, together with the percent they land at, and a reader who
+    disagrees with either can see which one they disagree with.
+
+    The fraction is shown at the MAC readouts' own resolution and the
+    percents at the concentration readouts', so the line carries no digit
+    the rest of the interface does not already stand behind.
+
+    Args:
+        agent_display_name: Running agent's display name.
+        fraction_of_mac: Population MAC-awake as a fraction of that
+            agent's 1 MAC.
+        standard_deviation_fraction_of_mac: That population's standard
+            deviation, in the same unit.
+        mac_percent: That agent's 1 MAC as a percent of one atmosphere.
+
+    Returns:
+        A one-line statement of the band's centre and its edges.
+
+    Raises:
+        ValueError: For the inputs `mac_awake_band_percent` refuses.
+    """
+
+    lower_percent, upper_percent = mac_awake_band_percent(
+        fraction_of_mac=fraction_of_mac,
+        standard_deviation_fraction_of_mac=standard_deviation_fraction_of_mac,
+        mac_percent=mac_percent,
+    )
+    centre_percent = fraction_of_mac * mac_percent
+    decimals = CONCENTRATION_DISPLAY_DECIMALS
+
+    return (
+        f"MAC-awake {agent_display_name.lower()} = "
+        f"{fraction_of_mac:.{MAC_DISPLAY_DECIMALS}f}{MAC_UNIT_SUFFIX} "
+        f"({centre_percent:.{decimals}f}%), "
+        f"band ±1 SD {lower_percent:.{decimals}f}–{upper_percent:.{decimals}f}%"
+    )
 
 
 def mac_axis_ticks(max_percent: float, mac_percent: float) -> tuple[tuple[float, str], ...]:

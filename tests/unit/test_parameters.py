@@ -1,3 +1,5 @@
+import importlib.resources
+import json
 from copy import deepcopy
 from typing import Any
 
@@ -8,6 +10,7 @@ from pydantic import ValidationError as PydanticValidationError
 from anesthesia_sim.core import parameters as parameters_module
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
+    AGENT_DATA_FILENAMES,
     load_agent_parameters,
     load_reference_adult_parameters,
     load_sevoflurane_parameters,
@@ -25,6 +28,11 @@ def _valid_agent_payload() -> dict[str, object]:
         "tissue_gas_partition_coefficients": {"vessel_rich": 1.0, "muscle": 2.0, "fat": 10.0},
         "max_delivered_concentration_percent": 8.0,
         "mac_percent": 2.0,
+        "mac_awake": {
+            "fraction_of_mac": 0.34,
+            "standard_deviation_fraction_of_mac": 0.05,
+            "mac_reference_basis": "test basis only",
+        },
         "sources": [
             {
                 "citation": "Test citation",
@@ -460,7 +468,7 @@ def test_every_payload_model_forbids_unknown_keys() -> None:
     strict_base = parameters_module._StrictPayload
     subclasses = strict_base.__subclasses__()
 
-    assert len(subclasses) == 6, "a payload model was added or removed; update this count"
+    assert len(subclasses) == 7, "a payload model was added or removed; update this count"
 
     for model in subclasses:
         assert model.model_config.get("extra") == "forbid", model.__name__
@@ -477,3 +485,118 @@ def test_every_payload_model_forbids_unknown_keys() -> None:
     assert declared_payload_models == {model.__name__ for model in subclasses}, (
         "a payload model does not inherit _StrictPayload"
     )
+
+
+def test_every_agent_carries_a_mac_awake_fraction_below_its_mac() -> None:
+    """MAC-awake is a lower endpoint than MAC, for every shipped agent.
+
+    Awakening happens at a lower concentration than immobility to incision,
+    so a stored band reaching 1 MAC is a data error rather than an unusual
+    agent. Checked against the shipped files, not a synthetic payload,
+    because that is what the chart actually draws.
+    """
+
+    for agent_id in AGENT_DATA_FILENAMES:
+        agent = load_agent_parameters(agent_id)
+        mac_awake = agent.mac_awake
+
+        assert 0.0 < mac_awake.fraction_of_mac < 1.0
+        assert 0.0 < mac_awake.standard_deviation_fraction_of_mac
+        assert 0.0 < mac_awake.fraction_of_mac - mac_awake.standard_deviation_fraction_of_mac
+        assert mac_awake.fraction_of_mac + mac_awake.standard_deviation_fraction_of_mac < 1.0
+        assert mac_awake.mac_reference_basis.strip()
+
+
+def test_rejects_a_mac_awake_band_reaching_zero() -> None:
+    """A lower edge at or below zero is not a concentration."""
+
+    payload = _valid_agent_payload()
+    payload["mac_awake"] = {
+        "fraction_of_mac": 0.05,
+        "standard_deviation_fraction_of_mac": 0.05,
+        "mac_reference_basis": "test basis only",
+    }
+
+    with pytest.raises(SimulationConfigurationError, match="must be positive"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_a_mac_awake_band_reaching_one_mac() -> None:
+    """An upper edge at 1 MAC would erase the decrement the chart exists to show.
+
+    The band and the 1 MAC line are drawn so the gap between them reads as
+    the decrement required for arousal. A band touching the anesthetizing
+    reference is not a rendering nuisance; it contradicts what MAC-awake is.
+    """
+
+    payload = _valid_agent_payload()
+    payload["mac_awake"] = {
+        "fraction_of_mac": 0.96,
+        "standard_deviation_fraction_of_mac": 0.05,
+        "mac_reference_basis": "test basis only",
+    }
+
+    with pytest.raises(SimulationConfigurationError, match="below 1 MAC"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_a_mac_awake_fraction_above_one() -> None:
+    """The stored value is a fraction of MAC, so it cannot exceed one."""
+
+    payload = _valid_agent_payload()
+    payload["mac_awake"] = {
+        "fraction_of_mac": 2.6,
+        "standard_deviation_fraction_of_mac": 0.05,
+        "mac_reference_basis": "test basis only",
+    }
+
+    with pytest.raises(SimulationConfigurationError, match="mac_awake"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_a_mac_awake_block_missing_its_reference_basis() -> None:
+    """A fraction with no stated denominator is the wrong-context failure.
+
+    `_StrictPayload` also forbids an *extra* key here, so a file recording
+    the denominator under a name the loader does not know fails rather than
+    silently dropping it.
+    """
+
+    payload = _valid_agent_payload()
+    payload["mac_awake"] = {"fraction_of_mac": 0.34, "standard_deviation_fraction_of_mac": 0.05}
+
+    with pytest.raises(SimulationConfigurationError, match="mac_reference_basis"):
+        parse_agent_parameters(payload)
+
+    payload["mac_awake"] = {
+        "fraction_of_mac": 0.34,
+        "standard_deviation_fraction_of_mac": 0.05,
+        "mac_reference_basis": "test basis only",
+        "mac_awake_percent": 0.68,
+    }
+
+    with pytest.raises(SimulationConfigurationError, match="mac_awake_percent"):
+        parse_agent_parameters(payload)
+
+
+def test_no_agent_file_stores_mac_awake_as_a_percent() -> None:
+    """The stored form is the fraction, and only the fraction.
+
+    A shipped file that also carried an absolute percent would give a later
+    reader two values to choose between, one of which is anchored to a MAC
+    this project does not use. `_StrictPayload` already refuses the key; this
+    states the intent so a schema change has to argue with it.
+    """
+
+    for agent_id, filename in AGENT_DATA_FILENAMES.items():
+        document = json.loads(
+            (importlib.resources.files("anesthesia_sim.data.agents").joinpath(filename)).read_text(
+                encoding="utf-8"
+            )
+        )
+
+        assert set(document["mac_awake"]) == {
+            "fraction_of_mac",
+            "standard_deviation_fraction_of_mac",
+            "mac_reference_basis",
+        }, agent_id

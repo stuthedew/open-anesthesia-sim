@@ -438,9 +438,7 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
         mac_percent=model.mac_percent,
         mac_awake=MacAwakeReference(
             fraction_of_mac=model.mac_awake.fraction_of_mac,
-            standard_deviation_fraction_of_mac=(
-                model.mac_awake.standard_deviation_fraction_of_mac
-            ),
+            standard_deviation_fraction_of_mac=(model.mac_awake.standard_deviation_fraction_of_mac),
             mac_reference_basis=model.mac_awake.mac_reference_basis,
         ),
         sources=_sources_to_tuple(model.sources),

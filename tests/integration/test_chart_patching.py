@@ -42,6 +42,7 @@ from flet.pubsub.pubsub_hub import PubSubHub
 from anesthesia_sim.app.chart_series import MAX_CHART_POINTS_PER_SERIES
 from anesthesia_sim.app.controller import SimulationHistorySample, SimulationSnapshot
 from anesthesia_sim.app.simulation_view import RENDER_INTERVAL_S, SIMULATION_STEP_S, SimulationView
+from anesthesia_sim.core.parameters import load_agent_parameters
 
 # One render tick covers this many recorded simulation samples.
 SAMPLES_PER_RENDER_TICK = round(RENDER_INTERVAL_S / SIMULATION_STEP_S)
@@ -93,6 +94,7 @@ class _ReplayController:
             agent_display_name="Sevoflurane",
             max_delivered_concentration_percent=8.0,
             agent_mac_percent=2.0,
+            agent_mac_awake=load_agent_parameters("sevoflurane").mac_awake,
             circuit_volume_l=6.0,
             fresh_gas_flow_l_min=4.0,
             delivered_concentration_fraction=0.08,
