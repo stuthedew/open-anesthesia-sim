@@ -1,8 +1,15 @@
 ---
 id: PL-5DN3
 title: The literature-route rule lands in docs/worker.md, which only delegated workers read, while the model-spec-accuracy items that need it are not delegable
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: docs, infra
+feature: worker-instructions
+touches: .claude/rules/citing-sources.md, docs/worker.md
+verify: python3 tools/doc_check.py check && test -f .claude/rules/citing-sources.md && grep -q 'PubMed MCP' .claude/rules/citing-sources.md && ! grep -q 'api.crossref.org' docs/worker.md
 added: 2026-09-04
+closed: 2026-09-04
 ---
 
 **Problem.** `PL-0XMD` put the literature-route rule - direct HTTP to
@@ -52,3 +59,21 @@ session - `make check` reports the total, currently 530 lines.
 publishers is refused and the PubMed MCP server is the route, and is asked to
 record which route and what depth a citation came from - and `docs/worker.md`
 does not state the same thing twice.
+
+**Worked.** Built as the `.claude/rules/` disposition rather than the resident
+`CLAUDE.md` one the brief weighed alongside it: `paths:` frontmatter defers the
+file, so it costs zero resident lines, which the alternative could not match.
+Scoped to `docs/references/**` as well as the two paths the brief named - that
+directory is where a citation is written down, and it is where `PL-P5NB` found
+the same wrong lesson already in the tree.
+
+The recording obligation is phrased as the convention the data files already
+carry ("Retrieved from PubMed (PMID 2001020) and verified against the abstract
+2026-09-04") rather than as a new form of words. Thirteen of the twenty-six
+`sources` entries under `src/anesthesia_sim/data/` named a route or a depth
+when this landed, so the rule makes an existing half-followed practice
+compulsory instead of introducing one.
+
+`docs/worker.md` keeps only what a worker uniquely needs - that a refused
+`CONNECT` is expected and is not a block, which no other document tells them -
+and points at the rule for the rest. Its section went from 36 lines to 15.
