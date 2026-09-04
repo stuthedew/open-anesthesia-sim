@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date
 
 from docket.model import Item
-from docket.plan import effort_total, features, gate, recommend
+from docket.plan import effort_total, features, gate, recommend, set_aside
 from docket.roadmap import Scope, milestone_scope, parse_milestones
 
 
@@ -22,6 +22,7 @@ def _item(
     feature: str = "",
     effort: str = "S",
     classes: tuple[str, ...] = ("perf",),
+    touches: tuple[str, ...] = ("a.py",),
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -30,7 +31,7 @@ def _item(
         effort=effort,
         status=status,
         classes=classes,
-        touches=("a.py",),
+        touches=touches,
         blocked_by=(),
         feature=feature,
         milestone="",
@@ -435,3 +436,108 @@ def test_the_gate_is_stable_for_a_given_store() -> None:
 
     assert first == [i.identifier for i in gate(list(reversed(items)), "", DEBT_CLASSES).items]
     assert first == ["PL-0001", "PL-0002", "PL-0003"]
+
+
+WORKFLOW = ("tools", ".claude")
+
+
+def test_a_lane_offers_only_its_own_half_of_the_project() -> None:
+    """The whole point: two sessions asking at once must not be handed one item."""
+    items = [
+        _item("PL-PROD", touches=("src/core/blood.py",)),
+        _item("PL-WORK", touches=("tools/doc_check.py",)),
+    ]
+
+    product = recommend(items, lane="product", workflow_paths=WORKFLOW)
+    workflow = recommend(items, lane="workflow", workflow_paths=WORKFLOW)
+
+    assert [p.item.identifier for p in product] == ["PL-PROD"]
+    assert [p.item.identifier for p in workflow] == ["PL-WORK"]
+
+
+def test_no_lane_ranks_the_whole_queue_exactly_as_before() -> None:
+    """The unfiltered answer is the default and is not changed by the split existing."""
+    items = [
+        _item("PL-PROD", touches=("src/core/blood.py",)),
+        _item("PL-WORK", touches=("tools/doc_check.py",)),
+        _item("PL-BOTH", touches=("tools/doc_check.py", "src/core/blood.py")),
+    ]
+
+    picks = recommend(items, workflow_paths=WORKFLOW)
+
+    assert {p.item.identifier for p in picks} == {"PL-PROD", "PL-WORK", "PL-BOTH"}
+
+
+def test_work_reaching_both_halves_is_offered_to_neither_lane() -> None:
+    items = [_item("PL-BOTH", touches=("tools/doc_check.py", "src/core/blood.py"))]
+
+    assert recommend(items, lane="product", workflow_paths=WORKFLOW) == []
+    assert recommend(items, lane="workflow", workflow_paths=WORKFLOW) == []
+
+
+def test_a_lane_filters_and_never_reorders() -> None:
+    """A lane changes what is eligible, not what the project's priorities are."""
+    items = [
+        _item("PL-LOW", priority="P3", touches=("tools/a.py",)),
+        _item("PL-HOT", priority="P0", touches=("tools/b.py",)),
+        _item("PL-MID", priority="P2", touches=("tools/c.py",)),
+    ]
+
+    picks = recommend(items, lane="workflow", workflow_paths=WORKFLOW)
+
+    assert [p.item.identifier for p in picks] == ["PL-HOT", "PL-MID", "PL-LOW"]
+
+
+def test_feature_progress_is_read_from_the_whole_store_not_from_the_lane() -> None:
+    """How near a feature is to done is a fact about the feature, not about who asks.
+
+    Counting only the lane's items would make the same feature report a
+    different completion in each session, and the ranking rests on that number.
+    """
+    items = [
+        _item("PL-DONE", status="done", feature="alpha", touches=("src/core/a.py",)),
+        _item("PL-OPEN", feature="alpha", touches=("tools/a.py",)),
+        _item("PL-ALON", touches=("tools/b.py",)),
+    ]
+
+    picks = recommend(items, lane="workflow", workflow_paths=WORKFLOW)
+
+    assert picks[0].item.identifier == "PL-OPEN"
+    assert "Finishes 'alpha'" in picks[0].reason
+
+
+def test_set_aside_names_what_a_lane_could_not_claim_and_why() -> None:
+    """A filter that silently drops a fifth of the queue is how work goes missing."""
+    items = [
+        _item("PL-PROD", touches=("src/core/blood.py",)),
+        _item("PL-BOTH", touches=("tools/a.py", "src/core/b.py")),
+        _item("PL-NONE", touches=()),
+    ]
+
+    held = set_aside(items, workflow_paths=WORKFLOW)
+
+    assert [i.identifier for i in held.crossing] == ["PL-BOTH"]
+    assert [i.identifier for i in held.unplaced] == ["PL-NONE"]
+    assert held.total == 2
+
+
+def test_set_aside_applies_the_same_exclusions_the_ranking_did() -> None:
+    """A count drawn from a different population describes a different ranking."""
+    items = [
+        _item("PL-BOTH", touches=("tools/a.py", "src/core/b.py")),
+        _item("PL-FLY", touches=("tools/c.py", "src/core/d.py")),
+        _item("PL-BIG", effort="L", touches=("tools/e.py", "src/core/f.py")),
+        _item("PL-BLOK", status="blocked", touches=("tools/g.py", "src/core/h.py")),
+    ]
+
+    held = set_aside(items, {"PL-FLY"}, workflow_paths=WORKFLOW, effort="S")
+
+    assert [i.identifier for i in held.crossing] == ["PL-BOTH"]
+
+
+def test_an_undeclared_boundary_places_nothing_in_a_lane() -> None:
+    """Fail closed: with no boundary, no item is on either side of it."""
+    items = [_item("PL-WORK", touches=("tools/doc_check.py",))]
+
+    assert recommend(items, lane="workflow") == []
+    assert recommend(items, lane="product") == []

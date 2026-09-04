@@ -60,6 +60,24 @@ LIST_FIELDS = ("classes", "touches", "blocked-by")
 # nothing that large has a brief precise enough to be worked without judgment.
 DELEGABLE_EFFORTS = ("S", "M")
 
+# The two halves of a project, as `docket next` divides them so that two
+# sessions can run at once without racing for the same item.
+#
+# `CROSSING` and `UNPLACED` are the honest answers to a question the paths
+# cannot settle: an item reaching both halves belongs to whichever session can
+# hold the whole change, and an item declaring no `touches` has told nobody
+# anything. Neither is offered to a single-lane session, and neither is hidden
+# - `next` names them, and the unfiltered ranking still offers them.
+LANE_PRODUCT = "product"
+LANE_WORKFLOW = "workflow"
+LANE_CROSSING = "crossing"
+LANE_UNPLACED = "unplaced"
+
+#: The lanes a caller may ask `recommend` for. `CROSSING` and `UNPLACED` are
+#: outcomes of the test rather than requests: asking for the work nobody can
+#: place is asking for a queue, which `list` already answers.
+SELECTABLE_LANES = (LANE_PRODUCT, LANE_WORKFLOW)
+
 
 def _front_matter_pairs(text: str) -> tuple[list[tuple[str, str]], str] | None:
     """Every `key: value` line of the front matter, in file order, with the body.
@@ -195,6 +213,40 @@ class Item:
         """Whether this improves how the project is developed, not the product."""
         return bool(self.classes) and all(c in PROCESS_CLASSES for c in self.classes)
 
+    def lane(self, workflow_paths: tuple[str, ...]) -> str:
+        """Which half of the project this work sits in, from its declared paths.
+
+        Decided from `touches` rather than from `classes`, and the difference
+        is not academic. `classes` describes what *kind* of work an item is -
+        a defect, a refactor - which is orthogonal to what it edits: a bug in
+        this package and a bug in the simulator are both `defect`. Measured
+        against this store on 2026-09-04, the `classes` reading placed 33 of
+        145 open items on the wrong side, eighteen of them workflow defects
+        that a simulator session would then have been offered. `touches` is
+        already declared on 142 of those 145, already validated, and already
+        the field the conflict graph and the delegation guard read.
+
+        Four answers, and the two that are not a side are deliberate:
+
+        - `LANE_WORKFLOW` - every declared path is workflow apparatus.
+        - `LANE_PRODUCT` - no declared path is.
+        - `LANE_CROSSING` - some are and some are not, so the change cannot be
+          made whole by a session confined to either side.
+        - `LANE_UNPLACED` - nothing is declared, so this cannot be answered.
+
+        Empty `workflow_paths` returns `LANE_UNPLACED` for everything, which
+        fails closed: a project that has not drawn the boundary gets no lane
+        rather than a lane drawn by the tool on its behalf.
+        """
+        if not workflow_paths or not self.touches:
+            return LANE_UNPLACED
+        inside = [is_under(path, workflow_paths) for path in self.touches]
+        if all(inside):
+            return LANE_WORKFLOW
+        if not any(inside):
+            return LANE_PRODUCT
+        return LANE_CROSSING
+
     @property
     def safety_classes(self) -> tuple[str, ...]:
         return tuple(c for c in self.classes if c in SAFETY_CLASSES)
@@ -251,7 +303,7 @@ class Item:
             return "no `verify:` command"
         if not self.touches:
             return "declares no `touches`"
-        protected = [path for path in self.touches if _is_protected(path, protected_paths)]
+        protected = [path for path in self.touches if is_under(path, protected_paths)]
         if protected:
             return f"touches protected path(s) {', '.join(protected)}"
         if self.effort not in DELEGABLE_EFFORTS:
@@ -271,18 +323,23 @@ class Item:
         return (band, effort, self.identifier)
 
 
-def _is_protected(path: str, protected_paths: tuple[str, ...]) -> bool:
-    """Whether one declared path falls inside the protected set.
+def is_under(path: str, roots: tuple[str, ...]) -> bool:
+    """Whether one declared path falls inside any of `roots`.
 
     Compared as `/`-separated path prefixes rather than as strings, so that
-    `core/` protects `core/blood.py` while `docs/MODEL.md` does not also
-    protect a hypothetical `docs/MODEL.md.bak`. Matching by bare string prefix
-    would silently protect the wrong things and, worse, silently fail to
-    protect the right ones.
+    `core/` covers `core/blood.py` while `docs/MODEL.md` does not also cover a
+    hypothetical `docs/MODEL.md.bak`. Matching by bare string prefix would
+    silently include the wrong things and, worse, silently fail to include the
+    right ones.
+
+    Shared by the two path partitions this package draws - what delegation may
+    not modify, and which half of the project an item belongs to - because a
+    second copy of this comparison is a second chance to get the trailing
+    slash wrong in only one of them.
     """
     candidate = path.strip().strip("/")
-    for protected in protected_paths:
-        target = protected.strip().strip("/")
+    for root in roots:
+        target = root.strip().strip("/")
         if not target:
             continue
         if candidate == target or candidate.startswith(target + "/"):

@@ -126,6 +126,61 @@ known_classes = [
   "ux",
 ]
 
+# The boundary CLAUDE.md's "two standards, deliberately unequal" already draws,
+# written down so `docket next workflow` and `docket next product` can act on
+# it. An item's `touches` decides its side: all inside means workflow, none
+# inside means product, and a mix is set aside for a session that can hold the
+# whole change. Two simultaneous sessions then never rank onto the same item.
+#
+# Decided from `touches` rather than from `classes`. Measured against this
+# store on 2026-09-04, the `classes` reading - "process work is an item whose
+# classes are all in `process_classes`" - put 33 of 145 open items on the wrong
+# side, because `classes` says what *kind* of work an item is and a defect in
+# this repository's tooling carries the same `defect` label as a defect in the
+# simulator. Eighteen workflow defects would have been offered to a simulator
+# session. `touches` is declared on 142 of those 145 and is already what the
+# conflict graph and the delegation guard read.
+#
+# Four entries are here for reasons the directory names do not carry:
+#
+# - `tests/unit/test_doc_check.py` and `tests/unit/test_contrast_check.py` test
+#   `tools/` scripts, and only live in the simulator's test tree because that
+#   is where pytest is configured to look. Without them, eight items that are
+#   plainly one script and its own test would cross the boundary.
+# - `Makefile` and `.github` are the same apparatus `gate_paths` names, and are
+#   listed again rather than derived from it: `gate_paths` answers "may a
+#   delegated diff touch this", which is a different question that could
+#   reasonably change without this one changing with it.
+#
+# Deliberately absent, and each is a judgment rather than an oversight:
+#
+# - `ROADMAP.md` and `docs/releases/` are product direction. They name
+#   simulator milestones and what shipped in them, so a session scoping the
+#   next release is doing product work even though no `src/` file moves. Four
+#   items reaching both a tool and the roadmap are set aside as a result, which
+#   is the right answer: changing how the release train is *written* and
+#   changing what it *says* are two jobs.
+# - `docs/ARCHITECTURE.md` and `README.md` are written for a reader of the
+#   simulator, which CLAUDE.md holds to the specialist standard.
+workflow_paths = [
+  ".claude",
+  ".github",
+  ".gitignore",
+  ".mailmap",
+  "AGENTS.md",
+  "CLAUDE.md",
+  "CONTRIBUTING.md",
+  "Makefile",
+  "docket.toml",
+  "docs/WORKING_NOTES.md",
+  "docs/items",
+  "docs/worker.md",
+  "subprojects",
+  "tests/unit/test_contrast_check.py",
+  "tests/unit/test_doc_check.py",
+  "tools",
+]
+
 version_file = "pyproject.toml"
 
 # ROADMAP.md: "The next release number is chosen for the capability boundary it
