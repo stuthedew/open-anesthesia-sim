@@ -39,6 +39,8 @@ from typing import Final
 from anesthesia_sim.app_metadata import APP_VERSION
 
 __all__ = [
+    "CHART_AXIS_TOP_MAC",
+    "CHART_GRID_INTERVAL_MAC",
     "CONCENTRATION_DISPLAY_DECIMALS",
     "CONCENTRATION_DISPLAY_RESOLUTION_PERCENT",
     "FLOW_DISPLAY_DECIMALS",
@@ -48,6 +50,8 @@ __all__ = [
     "MAC_UNIT_SUFFIX",
     "MAX_MAC_AXIS_INTERVALS",
     "WASH_IN_DISPLAY_DECIMALS",
+    "chart_axis_top_percent",
+    "chart_grid_interval_percent",
     "format_delivered_label",
     "format_elapsed",
     "format_flow",
@@ -117,6 +121,47 @@ MAC_UNIT_SUFFIX: Final = " \u00d7MAC"
 MAC_AXIS_STEP_LADDER_MAC: Final = (0.25, 0.5, 1.0, 2.0, 5.0)
 #: Most gaps the MAC axis may be divided into before the next coarser spacing.
 MAX_MAC_AXIS_INTERVALS: Final = 10
+
+# Top of the compartment chart, as a multiple of the running agent's 1 MAC.
+#
+# The axis is denominated in MAC and is therefore the *same ruler for every
+# agent*, which is the whole point of it: until PL-CC23 the top was the
+# agent's vaporizer dial maximum, which is 3.00 MAC of desflurane, 4.00 of
+# sevoflurane and 4.17 of isoflurane, so the same case plotted under two
+# agents was drawn at two scales differing by 1.39x. A learner comparing
+# desflurane's wash-in to sevoflurane's was comparing shapes that had been
+# silently rescaled, which is a misreading no label prevents.
+#
+# Three is not a round number chosen for tidiness. It is exactly
+# desflurane's dial maximum (18 % / 6 % = 3.00), so the shared ceiling is
+# anchored to a real device limit rather than to a preference, and the agent
+# whose vaporizer is most limited gets no dead band at the top of its plot.
+# It also puts 1 MAC at one third of the plot height - comfortably inside it
+# rather than on the frame, which a 2 MAC ceiling could not do - and leaves
+# the 2-3x MAC range that overpressure induction works in on the plot.
+#
+# **Fixed, and fixed for the whole session rather than only within a run.**
+# An axis that grew to fit an excursion would redraw a rising curve at a
+# smaller height partway through a lesson, and a reader would attribute that
+# shape change to the model rather than to the axis. `docs/MODEL.md`'s "Why
+# the axis is fixed rather than fitted" settled the same question for the
+# wash-in plot; the reasoning transfers, and being fixed across the session
+# as well means two consecutive runs are comparable too.
+#
+# Sevoflurane and isoflurane can be dialled above this ceiling - 8 % is
+# 4.00 MAC and is the standard inhalational-induction setting - so a trace
+# can leave the top of the plot. That is reported rather than left to look
+# like a plateau; see `simulation_view.OFF_SCALE_NOTICE_TEMPLATE`.
+CHART_AXIS_TOP_MAC: Final = 3.0
+
+# Spacing of the compartment chart's horizontal rules, in MAC. Denominated in
+# MAC for the same reason the ceiling is: until PL-CC23 the interval was a
+# fixed 2 *percent*, which rules sevoflurane every 0.5 MAC, isoflurane every
+# 1.67 MAC and desflurane every 0.33 MAC - nine lines on one plot and three
+# on another, none of them at a value a reader is looking for. At half a MAC
+# the rules land on the same values `mac_axis_ticks` labels, so every gridline
+# on the plot is one the axis names.
+CHART_GRID_INTERVAL_MAC: Final = 0.5
 
 # Decimals shown on an F_A/F_I ratio, on the chart's axis and in the reading
 # beside it. Not derived from the concentration resolution above, and
@@ -404,6 +449,59 @@ def format_mac_awake_reference(
         f"({centre_percent:.{decimals}f}%), "
         f"band ±1 SD {lower_percent:.{decimals}f}–{upper_percent:.{decimals}f}%"
     )
+
+
+def chart_axis_top_percent(mac_percent: float) -> float:
+    """Give the compartment chart's axis top, in percent, for one agent.
+
+    The chart plots percent, so the ceiling has to be handed over in
+    percent — but it is *chosen* in MAC, at `CHART_AXIS_TOP_MAC`, which
+    is what makes it the same ruler for every agent. That constant
+    carries why three, why fixed, and what it replaced.
+
+    Args:
+        mac_percent: The running agent's 1 MAC as a percent of one
+            atmosphere.
+
+    Returns:
+        Top of the chart's percent axis.
+
+    Raises:
+        ValueError: If `mac_percent` is not strictly positive. A
+            non-positive divisor would give an axis of zero or negative
+            height, and a chart drawn against one would place every
+            trace somewhere meaningless rather than failing.
+    """
+
+    if not mac_percent > 0.0:
+        raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
+
+    return CHART_AXIS_TOP_MAC * mac_percent
+
+
+def chart_grid_interval_percent(mac_percent: float) -> float:
+    """Give the compartment chart's horizontal rule spacing, in percent.
+
+    The same conversion `chart_axis_top_percent` makes, for the same
+    reason and against `CHART_GRID_INTERVAL_MAC`: the chart's grid
+    interval is a percent, and the spacing that percent stands for is a
+    MAC multiple, so every agent is ruled at the same fractions of MAC.
+
+    Args:
+        mac_percent: The running agent's 1 MAC as a percent of one
+            atmosphere.
+
+    Returns:
+        Spacing between the chart's horizontal rules, in percent.
+
+    Raises:
+        ValueError: If `mac_percent` is not strictly positive.
+    """
+
+    if not mac_percent > 0.0:
+        raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
+
+    return CHART_GRID_INTERVAL_MAC * mac_percent
 
 
 def mac_axis_ticks(max_percent: float, mac_percent: float) -> tuple[tuple[float, str], ...]:
