@@ -96,9 +96,27 @@ default `--dist load` rather than a stricter mode: nothing has yet been observed
 that `loadfile` or `loadscope` would fix, and reaching for one now would be
 guarding a fault nobody has seen.
 
-**CI's saving is measured by CI, not here**, as the brief required - the runner
-is smaller than this four-core container. The first run of this pull request is
-the measurement.
+**CI's saving is measured by CI, not here**, as the brief required - and it is
+much smaller than the local one, which is the number worth carrying rather than
+the flattering one. Measured on `quality.yml`'s `checks` job, the pytest step
+alone:
+
+| | CI step | this container |
+| --- | --- | --- |
+| serial (run 33806497510, 2026-09-03) | **69 s** | 78 s |
+| `-n auto` (run 33819958377, 2026-09-04) | **50 s** | 26.9 s |
+| saving | **28%** | 65% |
+
+The GitHub-hosted runner is narrower than this four-core box, so `auto` resolves
+to fewer workers and the knee arrives sooner. That is the argument for `auto`
+rather than a pinned width working in the direction that matters: the same
+string gives each machine what it can use, and nobody has to keep a number
+current for a runner they cannot see.
+
+It also relocates the cost on CI. `bin/docket check` was already the largest
+step there - 72 s against pytest's 69 s on the pre-change run - and pytest
+dropping to 50 s makes that gap decisive rather than marginal. `PL-8BFV` is
+where that is recorded.
 
 **What it changes about where the time goes.** `bin/docket check` is now the
 largest single item in `make check` at 30.5 s of 59.2 s, having been a quarter
