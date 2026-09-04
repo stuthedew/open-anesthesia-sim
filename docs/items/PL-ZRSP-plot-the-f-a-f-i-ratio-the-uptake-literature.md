@@ -7,10 +7,12 @@ status: done
 classes: science, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md
-verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_trace_stops_where_alveolar_exceeds_inspired' tests/unit/test_wash_in.py
 added: 2026-08-25
 closed: 2026-09-04
+pr: 306
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_trace_stops_where_alveolar_exceeds_inspired' tests/unit/test_wash_in.py
 ---
+
 **Problem.** The wash-in curve every textbook and every uptake lecture shows is
 F_A/F_I against time - the ratio that makes agents comparable and that the
 solubility argument is usually taught from. The application plots six absolute

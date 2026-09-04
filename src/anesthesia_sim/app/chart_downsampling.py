@@ -218,17 +218,27 @@ def select_envelope_indices(
         if start >= stop:
             continue
 
-        lowest = start
-        highest = start
+        lowest = highest = start
+        # The two running extremes are carried as values as well as as
+        # indices, so a comparison costs no read of its own. Reading
+        # `values[lowest]` and `values[highest]` back on every step made
+        # this scan about 2.8 reads per sample where one is enough; the
+        # scan itself stays proportional to the window, because visiting
+        # every sample of every bucket is what makes an envelope an
+        # envelope (PL-MJ7B). `test_the_envelope_scan_reads_each_sample_once`
+        # holds the constant at one.
+        lowest_value = highest_value = values[start]
 
         for index in range(start + 1, stop):
             value = values[index]
 
-            if value < values[lowest]:
+            if value < lowest_value:
                 lowest = index
+                lowest_value = value
 
-            if value > values[highest]:
+            if value > highest_value:
                 highest = index
+                highest_value = value
 
         selected.add(lowest)
         selected.add(highest)
