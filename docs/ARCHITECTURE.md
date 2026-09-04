@@ -53,8 +53,9 @@ src/anesthesia_sim/
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic
 │   ├── formatting.py               # modeled value -> displayed string; Flet-independent
-│   ├── chart_series.py             # builds and redraws the chart's traces and clinical references
+│   ├── chart_series.py             # builds and redraws the chart's traces, references and control marks
 │   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
+│   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; Flet-independent
 │   ├── theme.py                    # UI palette, cited ISO 5360 agent colors, layout constants
 │   └── main.py                     # entry point; builds the Flet page
 └── data/                 # versioned, cited parameter files
@@ -117,18 +118,26 @@ around `set_circuit_volume`, which left `core/` exposing an unconserving
 primitive publicly and the invariant holding only for the caller that knew
 to compensate. The setter conserves, and the controller forwards. The
 snapshot carries the complete `SimulationHistorySample` record of the run:
-one sample per simulation step, not trimmed (see `docs/items/`).
+one sample per simulation step, not trimmed (see `docs/items/`). It carries
+the run's `ControlChange` timeline beside it — one entry per setting the
+model was actually stepped under, so re-applying the timeline reproduces
+the run rather than approximating it.
 `app/simulation_view.py` reads only from that snapshot — it builds the
 controls, drives the chart, and wires slider/button callbacks through
 `_apply_setting` to controller setters. It performs no physiological or
-unit calculation of its own. The two transformations it does apply are
-each their own module, because each is a presentation-*correctness*
-question rather than a layout one and each must be readable and testable
-without a Flet interface: `app/formatting.py` turns a fraction into the
-strings a reader sees — a percent and a multiple of the running agent's
-1 MAC — at the resolutions `docs/MODEL.md` § "Displayed precision" derives,
-and `app/chart_series.py` builds the traces and redraws them from the
-recorded run. The MAC divisor reaches the formatter as an argument, from
+unit calculation of its own. The transformations it does apply are each
+their own module, because each is a presentation-*correctness* question
+rather than a layout one and each must be readable and testable without a
+Flet interface: `app/formatting.py` turns a fraction into the strings a
+reader sees — a percent and a multiple of the running agent's 1 MAC — at the
+resolutions `docs/MODEL.md` § "Displayed precision" derives,
+`app/chart_series.py` builds the traces and redraws them from the recorded
+run, and `app/control_timeline.py` turns the recorded control changes into
+the adjustments a reader sees. That last one is a correctness question for a
+reason worth stating: the record is faithful to the run and a drag of one
+slider is several settings in it, so the collapse into one displayed act is
+a claim about what the user did rather than a tidier rendering of what the
+model saw. The MAC divisor reaches the formatter as an argument, from
 `SimulationSnapshot.agent_mac_percent`, rather than being looked up: it is
 what makes a displayed multiple agent-specific, so it travels with the value
 it divides. The agent's MAC-awake travels the same way and for the same
@@ -137,6 +146,9 @@ the chart's MAC-awake band is the one multiplied by the other and pairing
 two agents' values would place a correct number at the wrong height. A
 reference is built and moved by `app/chart_series.py` but is deliberately
 not a member of the view's trace-to-compartment table: it reads no sample.
+A control mark is a third kind of series on the same terms and for a
+stronger version of the reason — it draws no value at all, only a simulated
+time — and it is likewise outside that table.
 
 **Failure direction:** every failure `core/` reports is a subclass of
 `AnesthesiaSimulationError` (`core/exceptions.py`), never a bare
@@ -461,4 +473,7 @@ and import, run before a push, and reach what those two commands never do.
   `docs/MODEL.md` § "Displayed precision".
 - A new chart series, or a change to how one is drawn → `app/chart_series.py`,
   with the trace paired to its quantity in `SimulationView`'s
-  `_plotted_series` table.
+  `_plotted_series` table. A series that draws no recorded sample — a
+  clinical reference, a control mark — stays out of that table by
+  construction, and owes the labelling requirement `docs/MODEL.md`
+  § "Interface boundary" puts in place of the sample rule instead.
