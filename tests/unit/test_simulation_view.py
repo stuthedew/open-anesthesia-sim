@@ -29,6 +29,7 @@ from anesthesia_sim.app.controller import (
     ControlChange,
     ControlInput,
     HistoryWindow,
+    RecordedQuantity,
     RunHistory,
     SimulationController,
     SimulationHistorySample,
@@ -51,13 +52,14 @@ from anesthesia_sim.app.simulation_view import (
     MAX_LISTED_ADJUSTMENTS,
     METRIC_GRID_COLUMNS,
     NO_CONTROL_CHANGES_TEXT,
+    NO_TRACES_SHOWN_TEXT,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     WASH_IN_AXIS_MAXIMUM,
     WASH_IN_TERMINUS_CEILING,
     SimulationView,
 )
-from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, MUTED, WARNING
+from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, INK, MUTED, WARNING
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, read_wash_in, wash_in_ratio
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.alveolar import AlveolarCompartment
@@ -1182,6 +1184,254 @@ def test_chart_traces_stay_bound_to_their_own_compartment() -> None:
 
         for point in series.points:
             assert point.y == pytest.approx(by_time[point.x] * 100.0)
+
+
+def _set_trace_shown(view: SimulationView, quantity: RecordedQuantity, shown: bool) -> None:
+    """Click one compartment's checkbox, the way a reader would.
+
+    Through the control's own `on_change` rather than through the view's
+    handler, so the wiring between a box and the trace it stands for is part
+    of what every test below asserts. A closure bound to the wrong trace is
+    exactly the kind of mistake that would leave every other assertion here
+    passing.
+    """
+
+    trace = view._trace(quantity)
+    trace.checkbox.value = shown
+    handler = trace.checkbox.on_change
+    assert handler is not None
+    handler(ft.Event(name="change", control=trace.checkbox))
+
+
+def test_chart_traces_stay_bound_to_their_own_compartment_when_some_are_hidden() -> None:
+    """The pairing has to survive the filter, which is what could break it.
+
+    Filtering is exactly the operation that could misalign the table: over
+    two parallel sequences - the series in one, the quantities in another -
+    a filter applied to one and not the other would draw one compartment's
+    values on another compartment's line, and every drawn point would still
+    be a real recorded sample. `_CompartmentTrace` carries the pair as one
+    object so that cannot happen, and this is what holds it.
+    """
+
+    history = _run_history(6_000)
+    view, _ = _build_view(history=history)
+
+    for hidden in (RecordedQuantity.CIRCUIT, RecordedQuantity.MUSCLE):
+        _set_trace_shown(view, hidden, False)
+
+    for quantity, attribute in (
+        (RecordedQuantity.ALVEOLAR, "alveolar_concentration_fraction"),
+        (RecordedQuantity.MIXED_VENOUS, "mixed_venous_concentration_fraction"),
+        (RecordedQuantity.VESSEL_RICH, "vessel_rich_partial_pressure_fraction"),
+        (RecordedQuantity.FAT, "fat_partial_pressure_fraction"),
+    ):
+        series = view._trace(quantity).series
+        by_time = {sample.elapsed_s: getattr(sample, attribute) for sample in history}
+
+        assert series.points
+
+        for point in series.points:
+            assert point.y == pytest.approx(by_time[point.x] * 100.0)
+
+    # The pairing itself is unchanged: what a trace draws does not depend on
+    # whether the reader is currently looking at it.
+    assert len(view._plotted_series) == len(view._compartment_traces)
+    assert len(view._visible_plotted_series) == 4
+
+
+def test_a_hidden_trace_is_not_drawn_rather_than_drawn_empty() -> None:
+    """Removed, not emptied: an empty series is one the client still holds.
+
+    That is the render-cost half of this control - what reaches the client
+    each frame is about two patch operations per drawn point whose chosen
+    sample moved (`PL-Q197`), so cost is linear in the traces drawn - and it
+    is also what stops a trace that is no longer redrawn from sitting on the
+    chart showing the frame it was last drawn in.
+    """
+
+    view, _ = _build_view(history=_run_history(600))
+    fat = view._trace(RecordedQuantity.FAT)
+
+    assert fat.series in view._concentration_chart.data_series
+
+    _set_trace_shown(view, RecordedQuantity.FAT, False)
+
+    assert fat.series not in view._concentration_chart.data_series
+    assert fat.plotted not in view._visible_plotted_series
+
+    # Nothing else moved: the other five traces, both references and every
+    # control mark are still on the chart.
+    for trace in view._compartment_traces:
+        if trace is not fat:
+            assert trace.series in view._concentration_chart.data_series
+
+    for furniture in (
+        view._mac_awake_band_series,
+        view._one_mac_line_series,
+        *view._control_mark_series,
+    ):
+        assert furniture in view._concentration_chart.data_series
+
+
+def test_the_drawing_order_survives_a_trace_being_hidden() -> None:
+    """Rebuilding the series list must not reorder what is left of it.
+
+    Marks are drawn before the references and the references before every
+    trace, so no annotation can obscure the run it annotates. That ordering
+    is a property of `_chart_data_series`, and hiding a trace is what makes
+    it rebuild.
+    """
+
+    view, _ = _build_view(history=_run_history(600))
+    _set_trace_shown(view, RecordedQuantity.CIRCUIT, False)
+
+    order = view._concentration_chart.data_series
+    drawn = [series for series, _ in view._visible_plotted_series]
+
+    assert len(drawn) == 5
+
+    for mark in view._control_mark_series:
+        assert order.index(mark) < order.index(view._mac_awake_band_series)
+
+    for reference in (view._mac_awake_band_series, view._one_mac_line_series):
+        assert order.index(reference) < min(order.index(each) for each in drawn)
+
+
+def test_a_hidden_trace_stops_being_redrawn_and_is_current_again_when_shown() -> None:
+    """Hidden costs nothing per frame; shown again is never a stale curve.
+
+    A trace left out of `redraw_visible_window` keeps the points of the
+    frame it was last drawn in - that is what makes hiding one free, and it
+    is why it must also come off the chart. What must never reach a reader
+    is those points: `_handle_trace_visibility_change` redraws before it
+    puts the trace back, so a trace returning to the plot is already
+    current with the readouts beside it.
+    """
+
+    controller = _fake_controller(_run_history(200))
+    view = SimulationView(page=_FakePage(), controller=controller)
+    fat = view._trace(RecordedQuantity.FAT)
+
+    _set_trace_shown(view, RecordedQuantity.FAT, False)
+    frozen = [(point.x, point.y) for point in fat.series.points]
+
+    later = _run_history(400)
+    controller.advance_to(later)
+    view._refresh_view()
+
+    # The run moved on and this trace did not - and nothing on screen is
+    # showing these points, because the series is off the chart.
+    assert [(point.x, point.y) for point in fat.series.points] == frozen
+    assert view._alveolar_series.points[-1].x == pytest.approx(later[-1].elapsed_s)
+
+    _set_trace_shown(view, RecordedQuantity.FAT, True)
+
+    assert fat.series in view._concentration_chart.data_series
+    assert fat.series.points[-1].x == pytest.approx(later[-1].elapsed_s)
+    assert fat.series.points[-1].y == pytest.approx(later[-1].fat_partial_pressure_fraction * 100.0)
+
+
+def test_the_legend_says_exactly_which_traces_are_drawn() -> None:
+    """A legend naming a line the chart is not drawing misstates the run.
+
+    The entry is the control, so there is no second list of six to fall out
+    of step - and this holds the three channels an entry carries against the
+    chart's own series list: the box, the swatch, and the label's weight.
+    """
+
+    view, _ = _build_view(history=_run_history(600))
+    _set_trace_shown(view, RecordedQuantity.MUSCLE, False)
+    _set_trace_shown(view, RecordedQuantity.MIXED_VENOUS, False)
+
+    drawn = view._concentration_chart.data_series
+
+    for trace in view._compartment_traces:
+        on_chart = trace.series in drawn
+
+        assert trace.visible is on_chart
+        assert trace.checkbox.value is on_chart
+        assert trace.swatch.bgcolor == (trace.color if on_chart else None)
+        assert trace.checkbox.label_style is not None
+        assert trace.checkbox.label_style.color == (INK if on_chart else MUTED)
+        # A hidden compartment is still named, so the box that brings it
+        # back is findable - and its concentration is in the readouts
+        # whether or not its curve is on the plot.
+        assert trace.checkbox.label is not None
+        assert trace.label in trace.checkbox.label
+
+
+def test_the_chart_says_so_when_no_compartment_is_drawn() -> None:
+    """A blank plot reads as a display that has failed, not as an empty view."""
+
+    view, page = _build_view(history=_run_history(600))
+
+    assert view._hidden_traces_text.visible is False
+    # In the assembled panel whether or not it is currently shown, so the
+    # line exists to be revealed rather than being built on demand.
+    assert NO_TRACES_SHOWN_TEXT in _mounted_interface_strings(view, page)
+
+    for trace in view._compartment_traces:
+        _set_trace_shown(view, trace.quantity, False)
+
+    assert view._visible_plotted_series == ()
+    assert view._hidden_traces_text.visible is True
+
+    _set_trace_shown(view, RecordedQuantity.ALVEOLAR, True)
+
+    assert view._hidden_traces_text.visible is False
+
+
+def test_hiding_a_trace_changes_only_what_is_drawn() -> None:
+    """Every compartment's value stays on the display, and so does the run.
+
+    `docs/MODEL.md`'s minimum displayed outputs require all six
+    concentrations, and they are the readouts rather than the traces - so a
+    reader looking at two curves is looking at a chosen view of six modelled
+    compartments and not at a model with two. Hiding one also leaves the
+    rest of the frame untouched, which is what makes this a choice about
+    what is drawn rather than about what is computed.
+    """
+
+    history = _run_history(600)
+    view, _ = _build_view(history=history)
+    before = {
+        trace.quantity: [(point.x, point.y) for point in trace.series.points]
+        for trace in view._compartment_traces
+    }
+
+    _set_trace_shown(view, RecordedQuantity.FAT, False)
+
+    for trace in view._compartment_traces:
+        if trace.quantity is not RecordedQuantity.FAT:
+            assert [(point.x, point.y) for point in trace.series.points] == before[trace.quantity]
+
+    latest = history[-1]
+
+    for text, value in (
+        (view._circuit_concentration_text, latest.circuit_concentration_fraction),
+        (view._muscle_concentration_text, latest.muscle_partial_pressure_fraction),
+        (view._fat_concentration_text, latest.fat_partial_pressure_fraction),
+    ):
+        assert text.value == format_percent(value)
+
+
+def test_every_compartment_has_exactly_one_trace() -> None:
+    """The table is the whole pairing, so a missing entry is a lost compartment."""
+
+    view, _ = _build_view()
+
+    assert {trace.quantity for trace in view._compartment_traces} == {
+        RecordedQuantity.CIRCUIT,
+        RecordedQuantity.ALVEOLAR,
+        RecordedQuantity.MIXED_VENOUS,
+        RecordedQuantity.VESSEL_RICH,
+        RecordedQuantity.MUSCLE,
+        RecordedQuantity.FAT,
+    }
+
+    with pytest.raises(KeyError):
+        view._trace(RecordedQuantity.WASH_IN_RATIO)
 
 
 def test_chart_keeps_every_sample_of_a_short_run() -> None:

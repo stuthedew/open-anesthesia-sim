@@ -491,8 +491,12 @@ and import, run before a push, and reach what those two commands never do.
   as a pure function with its own test, and with the reason recorded in
   `docs/MODEL.md` § "Displayed precision".
 - A new chart series, or a change to how one is drawn → `app/chart_series.py`,
-  with the trace paired to its quantity in `SimulationView`'s
-  `_plotted_series` table. A series that draws no recorded sample — a
+  with a new *compartment* trace declared in `SimulationView`'s
+  `_compartment_traces` table, which is where the series, the quantity it
+  draws, the legend entry that names it and whether it is currently shown are
+  written as one record. `_plotted_series` is that table's trace-to-quantity
+  pairing and `_visible_plotted_series` the subset a frame draws; neither is
+  edited directly. A series that draws no recorded sample — a
   clinical reference, a control mark — stays out of that table by
   construction, and owes the labelling requirement `docs/MODEL.md`
   § "Interface boundary" puts in place of the sample rule instead. So does a

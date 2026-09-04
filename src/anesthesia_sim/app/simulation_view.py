@@ -169,6 +169,23 @@ VESSEL_RICH_COLOR = "#DC2626"
 MUSCLE_COLOR = "#D97706"
 FAT_COLOR = "#64748B"
 
+# The colour swatch every legend entry draws, at one size across all three
+# legend rows so that a reader scanning down them compares marks rather than
+# shapes. `_build_band_legend_item` is the one deliberate exception: a band's
+# extent is exactly what distinguishes it from a line.
+LEGEND_SWATCH_WIDTH = 24
+LEGEND_SWATCH_HEIGHT = 4
+# What the chart says when a reader has unchecked every compartment. The
+# checkboxes state which traces are drawn, so a plot missing one or two is
+# already explained where the reader is looking; a plot missing all six is a
+# blank panel, and a blank panel reads as a display that has failed rather
+# than as one showing what it was asked for. `NO_CONTROL_CHANGES_TEXT` is the
+# same call made for the empty control-input list.
+NO_TRACES_SHOWN_TEXT = (
+    "No compartment traces are shown. Check a compartment above to draw it — "
+    "the readouts and the run itself are unaffected."
+)
+
 # The two chart references are furniture rather than data, and are drawn in
 # the interface's own ink and label colour rather than in a seventh and
 # eighth hue. A new hue would enter the trace palette's separation problem
@@ -378,6 +395,60 @@ AGENT_RENDER_STYLES: Final[dict[str, _AgentRenderStyle]] = {
 }
 
 
+@dataclass
+class _CompartmentTrace:
+    """One compartment trace: what it draws, how it is drawn, and whether it is.
+
+    Everything that has to agree about a single compartment, held together in
+    one object. Before this the same trace was described in three places -
+    the colour and dash pattern where the series was built, the compartment it
+    draws in the `PlottedSeries` table, and the name and line-style words in a
+    hand-written legend row six hundred lines away - and keeping the three in
+    agreement was left to whoever remembered. A legend that names a line the
+    chart is not drawing misstates the run as surely as a wrong number does,
+    which is why this is one record rather than three lists.
+
+    **The pairing travels as one object, which is what makes filtering safe.**
+    `plotted` manufactures the `(series, quantity)` pair from this record's own
+    fields, so a filter over these records - which is how a hidden trace is
+    left out of a frame - cannot reorder or misalign the pairing the way a
+    filter over two parallel sequences could. That is the specific hazard
+    `test_chart_traces_stay_bound_to_their_own_compartment` guards, and it now
+    covers the filtered table too.
+
+    Attributes:
+        quantity: The one recorded quantity this trace draws.
+        label: The compartment's name, as the legend and its control say it.
+        color: The trace's line colour, and its legend swatch's fill.
+        line_style: The dash pattern in words, for the legend. Kept beside
+            the pattern it describes rather than in the legend's own code,
+            so "dotted" cannot come to describe a line that is not.
+        series: The chart series this trace is drawn as.
+        swatch: The legend's colour mark for it. Filled while the trace is
+            drawn and empty while it is not.
+        checkbox: The control that shows and hides it, whose label is this
+            trace's legend text.
+        visible: Whether the chart is currently drawing it. Presentation
+            state only: it is never read by the simulation and changes
+            nothing the model computes.
+    """
+
+    quantity: RecordedQuantity
+    label: str
+    color: str
+    line_style: str
+    series: fch.LineChartData
+    swatch: ft.Container
+    checkbox: ft.Checkbox
+    visible: bool = True
+
+    @property
+    def plotted(self) -> chart_series.PlottedSeries:
+        """This trace paired with the one quantity it draws."""
+
+        return (self.series, self.quantity)
+
+
 class SimulationView:
     """Render and update the volatile-agent patient interface.
 
@@ -474,21 +545,56 @@ class SimulationView:
             format_flow(initial_snapshot.cardiac_output_l_min), color=INK
         )
 
-        self._circuit_series = chart_series.build_series(color=CIRCUIT_COLOR, stroke_width=3)
-        self._alveolar_series = chart_series.build_series(
-            color=ALVEOLAR_COLOR, stroke_width=3, dash_pattern=[10, 4]
+        # Every compartment trace, in the order they are drawn and listed.
+        # One table rather than three: `_CompartmentTrace` records why the
+        # series, the compartment it draws, and the legend entry that names
+        # it are declared together and never separately.
+        self._compartment_traces: tuple[_CompartmentTrace, ...] = (
+            self._build_compartment_trace(
+                RecordedQuantity.CIRCUIT, "Circuit", CIRCUIT_COLOR, 3, "solid"
+            ),
+            self._build_compartment_trace(
+                RecordedQuantity.ALVEOLAR, "Alveolar", ALVEOLAR_COLOR, 3, "long dash", [10, 4]
+            ),
+            self._build_compartment_trace(
+                RecordedQuantity.MIXED_VENOUS,
+                "Mixed venous",
+                MIXED_VENOUS_COLOR,
+                2,
+                "short dash",
+                [4, 3],
+            ),
+            self._build_compartment_trace(
+                RecordedQuantity.VESSEL_RICH, "Vessel-rich", VESSEL_RICH_COLOR, 2, "solid"
+            ),
+            self._build_compartment_trace(
+                RecordedQuantity.MUSCLE, "Muscle", MUSCLE_COLOR, 2, "dotted", [2, 3]
+            ),
+            self._build_compartment_trace(
+                RecordedQuantity.FAT, "Fat", FAT_COLOR, 2, "dash-dot", [12, 4, 2, 4]
+            ),
         )
-        self._mixed_venous_series = chart_series.build_series(
-            color=MIXED_VENOUS_COLOR, stroke_width=2, dash_pattern=[4, 3]
-        )
-        self._vessel_rich_series = chart_series.build_series(
-            color=VESSEL_RICH_COLOR, stroke_width=2
-        )
-        self._muscle_series = chart_series.build_series(
-            color=MUSCLE_COLOR, stroke_width=2, dash_pattern=[2, 3]
-        )
-        self._fat_series = chart_series.build_series(
-            color=FAT_COLOR, stroke_width=2, dash_pattern=[12, 4, 2, 4]
+        # One stable handle per trace, as the two references below have.
+        # Looked up by the quantity each draws rather than by position, so
+        # reordering the table cannot silently rebind a name onto another
+        # compartment's line - which is the same pairing failure the table
+        # itself exists to make impossible.
+        self._circuit_series = self._trace(RecordedQuantity.CIRCUIT).series
+        self._alveolar_series = self._trace(RecordedQuantity.ALVEOLAR).series
+        self._mixed_venous_series = self._trace(RecordedQuantity.MIXED_VENOUS).series
+        self._vessel_rich_series = self._trace(RecordedQuantity.VESSEL_RICH).series
+        self._muscle_series = self._trace(RecordedQuantity.MUSCLE).series
+        self._fat_series = self._trace(RecordedQuantity.FAT).series
+        # Said only when every compartment has been unchecked. Held rather
+        # than built inline because its visibility is written by
+        # `_apply_trace_visibility`, which is the one writer of everything
+        # that has to agree with what the chart is drawing.
+        self._hidden_traces_text = ft.Text(
+            NO_TRACES_SHOWN_TEXT,
+            color=MUTED,
+            size=METRIC_QUALIFIER_SIZE,
+            italic=True,
+            visible=False,
         )
         # The two clinical references. Deliberately not members of
         # `_plotted_series` below: nothing reads a sample to place them, and
@@ -503,26 +609,6 @@ class SimulationView:
         self._one_mac_line_series = chart_series.build_reference_line(
             color=ONE_MAC_LINE_COLOR, stroke_width=1.5, dash_pattern=ONE_MAC_LINE_DASH_PATTERN
         )
-        # Which quantity each trace draws, declared beside the traces
-        # themselves so that the line and the compartment it stands for are
-        # read together. This table is the whole trace-to-quantity pairing:
-        # an entry naming the wrong reader would plot one compartment's
-        # values on another compartment's line, which misstates the run as
-        # surely as a wrong number would. Nothing in the type system can
-        # catch that - `flet_charts` ships no stubs, so a chart series is
-        # `Any` to the checker - so
-        # `test_chart_traces_stay_bound_to_their_own_compartment` is what
-        # holds it, by giving each compartment a distinct multiple and
-        # reading the drawn points back.
-        self._plotted_series: tuple[chart_series.PlottedSeries, ...] = (
-            (self._circuit_series, RecordedQuantity.CIRCUIT),
-            (self._alveolar_series, RecordedQuantity.ALVEOLAR),
-            (self._mixed_venous_series, RecordedQuantity.MIXED_VENOUS),
-            (self._vessel_rich_series, RecordedQuantity.VESSEL_RICH),
-            (self._muscle_series, RecordedQuantity.MUSCLE),
-            (self._fat_series, RecordedQuantity.FAT),
-        )
-
         # Two rulers against one set of traces. The plotted points stay in
         # percent - `chart_series.redraw_series` converts nothing else - and
         # the MAC axis is a relabelling of the same coordinate, so the two
@@ -592,20 +678,7 @@ class SimulationView:
             "", color=MUTED, size=METRIC_QUALIFIER_SIZE, italic=True, visible=False
         )
         self._concentration_chart = fch.LineChart(
-            data_series=[
-                *self._control_mark_series,
-                # References next, so every trace is drawn over them. A
-                # compartment obscured by a reference band would be the
-                # annotation hiding the run it annotates.
-                self._mac_awake_band_series,
-                self._one_mac_line_series,
-                self._circuit_series,
-                self._alveolar_series,
-                self._mixed_venous_series,
-                self._vessel_rich_series,
-                self._muscle_series,
-                self._fat_series,
-            ],
+            data_series=self._chart_data_series(),
             min_x=0,
             max_x=INITIAL_CHART_WINDOW_S,
             min_y=0,
@@ -782,6 +855,151 @@ class SimulationView:
         )
 
         self._refresh_view()
+
+    def _build_compartment_trace(
+        self,
+        quantity: RecordedQuantity,
+        label: str,
+        color: str,
+        stroke_width: float,
+        line_style: str,
+        dash_pattern: list[int] | None = None,
+    ) -> _CompartmentTrace:
+        """Build one compartment's trace, its legend swatch, and its control.
+
+        All three from one call, so the colour and the dash pattern a trace
+        is drawn with and the ones its legend entry claims cannot be written
+        twice and drift apart.
+
+        The control is a checkbox carrying the legend's own text as its
+        label, which is what makes it a labelled control to a screen reader
+        and to a pointer rather than a bare box, and what stops the interface
+        holding two lists of the same six compartments.
+
+        Args:
+            quantity: The recorded quantity this trace draws.
+            label: The compartment's name, as the legend says it.
+            color: Line colour, and the legend swatch's fill.
+            stroke_width: Line width in display pixels.
+            dash_pattern: Alternating dash and gap lengths in display
+                pixels, or None for a solid line.
+            line_style: The same pattern in words, for the legend.
+
+        Returns:
+            The trace, ready to be drawn and to be shown or hidden.
+        """
+
+        trace = _CompartmentTrace(
+            quantity=quantity,
+            label=label,
+            color=color,
+            line_style=line_style,
+            series=chart_series.build_series(
+                color=color, stroke_width=stroke_width, dash_pattern=dash_pattern
+            ),
+            swatch=ft.Container(
+                width=LEGEND_SWATCH_WIDTH, height=LEGEND_SWATCH_HEIGHT, bgcolor=color
+            ),
+            checkbox=ft.Checkbox(
+                value=True,
+                label=f"{label} ({line_style})",
+                label_style=ft.TextStyle(color=INK),
+                # Deliberately not one of the six trace colours, and not the
+                # slider accent either. This row has already spent its whole
+                # colour budget on six compartments - `.claude/rules/ui-color.md`
+                # judgment 3 - so a coloured box beside a coloured swatch
+                # would compete for the one channel that carries compartment
+                # identity. INK is the interface's own ink, reads as furniture,
+                # and is the pair `tools/contrast_check.py` already measures
+                # against PANEL at the text minimum, comfortably above SC
+                # 1.4.11's 3:1 for a control.
+                active_color=INK,
+                check_color=PANEL,
+                semantics_label=f"Draw the {label} compartment on the chart",
+            ),
+        )
+        trace.checkbox.on_change = lambda event: self._handle_trace_visibility_change(trace, event)
+
+        return trace
+
+    def _trace(self, quantity: RecordedQuantity) -> _CompartmentTrace:
+        """The one trace that draws this quantity.
+
+        Args:
+            quantity: The recorded quantity to find the trace for.
+
+        Returns:
+            Its trace.
+
+        Raises:
+            KeyError: If no trace draws it, which would mean the table has
+                lost a compartment rather than that a caller asked wrongly.
+        """
+
+        for trace in self._compartment_traces:
+            if trace.quantity is quantity:
+                return trace
+
+        raise KeyError(f"no compartment trace draws {quantity}")
+
+    @property
+    def _plotted_series(self) -> tuple[chart_series.PlottedSeries, ...]:
+        """Every trace paired with the compartment it draws, hidden ones included.
+
+        The whole trace-to-quantity pairing: an entry naming the wrong
+        quantity would plot one compartment's values on another
+        compartment's line, which misstates the run as surely as a wrong
+        number would. Nothing in the type system can catch that -
+        `flet_charts` ships no stubs, so a chart series is `Any` to the
+        checker - so `test_chart_traces_stay_bound_to_their_own_compartment`
+        is what holds it, by giving each compartment a distinct multiple and
+        reading the drawn points back.
+
+        Hidden traces are included because what a trace *draws* does not
+        change with whether it is currently on the chart. `_visible_plotted_series`
+        is the frame's subset.
+        """
+
+        return tuple(trace.plotted for trace in self._compartment_traces)
+
+    @property
+    def _visible_plotted_series(self) -> tuple[chart_series.PlottedSeries, ...]:
+        """The pairing above, filtered to the traces the reader is looking at.
+
+        The filter is over whole records, each carrying its own series and
+        its own quantity, so it cannot misalign the pairing - see
+        `_CompartmentTrace`.
+        """
+
+        return tuple(trace.plotted for trace in self._compartment_traces if trace.visible)
+
+    def _chart_data_series(self) -> list[fch.LineChartData]:
+        """Every series the compartment chart holds, in drawing order.
+
+        Marks first - behind the references and behind every trace - because
+        a vertical rule crossing the whole plot is the one annotation that
+        can obscure all six compartments at the moment a reader is trying to
+        see what the change did to them. References next, so every trace is
+        drawn over them: a compartment obscured by a reference band would be
+        the annotation hiding the run it annotates.
+
+        A hidden trace is **absent** from this list rather than present and
+        empty. That is what stops the client holding its points at all,
+        which is the whole render-cost half of this control; leaving it in
+        place with an empty point list would keep the series, keep diffing
+        it, and leave a trace that is no longer redrawn one bug away from
+        showing the frame it was last drawn in.
+
+        Returns:
+            The chart's series list.
+        """
+
+        return [
+            *self._control_mark_series,
+            self._mac_awake_band_series,
+            self._one_mac_line_series,
+            *(trace.series for trace in self._compartment_traces if trace.visible),
+        ]
 
     def mount(self) -> None:
         """Mount the complete patient simulation dashboard."""
@@ -1114,21 +1332,39 @@ class SimulationView:
                         spacing=8,
                         run_spacing=2,
                     ),
+                    # The compartment legend, which is also the control that
+                    # shows and hides each trace - `_build_trace_legend_item`
+                    # records why those are one row and not two. Labelled
+                    # like the two rows under it, so the three kinds of mark
+                    # read as three kinds.
                     ft.Row(
                         controls=[
-                            self._build_legend_item("Circuit", CIRCUIT_COLOR, "solid"),
-                            self._build_legend_item("Alveolar", ALVEOLAR_COLOR, "long dash"),
-                            self._build_legend_item(
-                                "Mixed venous", MIXED_VENOUS_COLOR, "short dash"
+                            ft.Text("Compartments:", color=MUTED),
+                            *(
+                                self._build_trace_legend_item(trace)
+                                for trace in self._compartment_traces
                             ),
-                            self._build_legend_item("Vessel-rich", VESSEL_RICH_COLOR, "solid"),
-                            self._build_legend_item("Muscle", MUSCLE_COLOR, "dotted"),
-                            self._build_legend_item("Fat", FAT_COLOR, "dash-dot"),
                         ],
                         wrap=True,
                         spacing=16,
                         run_spacing=6,
                     ),
+                    # What unchecking one does, and - the part that matters -
+                    # what it does not. A reader looking at two curves has to
+                    # know they are looking at a chosen view of six modelled
+                    # compartments rather than at a model with two, and that
+                    # the run is the same run either way.
+                    ft.Text(
+                        (
+                            "Unchecking a compartment removes its trace from the plot "
+                            "only. Its concentration stays in the readouts above, and "
+                            "the simulation is unchanged — this chooses what is drawn, "
+                            "not what is modelled."
+                        ),
+                        color=MUTED,
+                        italic=True,
+                    ),
+                    self._hidden_traces_text,
                     # The references get their own legend row rather than
                     # joining the six above. They are not compartments, and a
                     # single row would invite reading them as a seventh and
@@ -1399,12 +1635,39 @@ class SimulationView:
 
         return ft.Row(
             controls=[
-                ft.Container(width=24, height=4, bgcolor=color),
+                ft.Container(width=LEGEND_SWATCH_WIDTH, height=LEGEND_SWATCH_HEIGHT, bgcolor=color),
                 ft.Text(f"{label} ({line_style})", color=INK),
             ],
             spacing=6,
             tight=True,
         )
+
+    @staticmethod
+    def _build_trace_legend_item(trace: _CompartmentTrace) -> ft.Row:
+        """Build one compartment's legend entry, which is also its control.
+
+        One row rather than a legend beside a separate row of checkboxes.
+        Two lists of the same six compartments is exactly how a legend comes
+        to name a line the chart is not drawing - they agree only while
+        somebody keeps them agreeing. Here the entry *is* the state: the box,
+        the swatch and the label are written in one place,
+        `_apply_trace_visibility`, from the same flag the chart's own series
+        list is built from, so there is no second copy to fall out of step.
+
+        The swatch carries the trace's colour while it is drawn and nothing
+        while it is not, so the legend never shows a line the plot does not
+        have. Its size does not change with the state: this is a control a
+        reader clicks repeatedly, and a row that reflowed under the cursor
+        would move the next box out from under it.
+
+        Args:
+            trace: The compartment whose entry this is.
+
+        Returns:
+            Tightly sized legend entry and visibility control.
+        """
+
+        return ft.Row(controls=[trace.swatch, trace.checkbox], spacing=6, tight=True)
 
     @staticmethod
     def _build_control_mark_legend_item() -> ft.Row:
@@ -1681,8 +1944,13 @@ class SimulationView:
         # Read once and drawn twice: both plots span the same window, so one
         # read is what makes them the same *samples* and not merely the same
         # axis numbers.
+        # Only the traces the reader has left shown. A hidden trace costs
+        # nothing here and holds nothing on the client, because
+        # `_chart_data_series` has taken it off the chart as well - the two
+        # go together, and `chart_series.redraw_visible_window` says why
+        # doing one without the other would leave a stale curve drawn.
         window = self._controller.history_window(chart_min_x)
-        chart_series.redraw_visible_window(self._plotted_series, window)
+        chart_series.redraw_visible_window(self._visible_plotted_series, window)
 
         adjustments = group_adjustments(snapshot.control_timeline)
         self._redraw_control_marks(adjustments, chart_min_x, chart_max_x, snapshot)
@@ -1840,6 +2108,67 @@ class SimulationView:
 
         self._control_timeline_overflow_text.value = "; ".join(notes)
         self._control_timeline_overflow_text.visible = bool(notes)
+
+    def _apply_trace_visibility(self) -> None:
+        """Put exactly the shown traces on the chart, and say the legend's part.
+
+        The one writer of everything that has to agree about which
+        compartments are drawn: the chart's series list, each entry's
+        checkbox, swatch and label, and the line said when none is drawn.
+        They are written from one flag in one pass, which is what makes the
+        legend's agreement with the plot a property of the code rather than
+        of somebody's diligence.
+
+        **Called when visibility changes and at no other time.** Reassigning
+        the chart's series list is the whole-list churn `_mac_axis_basis`
+        guards the axis against, and nothing about it belongs on a render
+        tick: `visible` is only ever moved by a reader clicking a box.
+
+        **A trace being shown again still holds the points of the frame it
+        was last drawn in.** The caller must redraw before calling this, so
+        that a stale curve is never on the chart even momentarily -
+        `_handle_trace_visibility_change` is the caller and records the
+        ordering.
+        """
+
+        self._concentration_chart.data_series = self._chart_data_series()
+
+        for trace in self._compartment_traces:
+            trace.checkbox.value = trace.visible
+            trace.checkbox.label_style = ft.TextStyle(color=INK if trace.visible else MUTED)
+            trace.swatch.bgcolor = trace.color if trace.visible else None
+
+        self._hidden_traces_text.visible = not any(
+            trace.visible for trace in self._compartment_traces
+        )
+
+    def _handle_trace_visibility_change(
+        self, trace: _CompartmentTrace, event: ft.Event[ft.Checkbox]
+    ) -> None:
+        """Show or hide one compartment trace at the reader's request.
+
+        The flag lives in the view rather than in the controller, for the
+        reason `_rejected_setting_notice` does: which traces someone is
+        looking at changes nothing about the simulation and must not.
+        Identical inputs still produce identical results whatever is on
+        screen, so nothing here reads or writes model state, and this is
+        not routed through `_apply_setting` - there is no value for the core
+        to refuse.
+
+        Args:
+            trace: The compartment whose box was clicked.
+            event: The checkbox event carrying its new state.
+        """
+
+        trace.visible = bool(event.control.value)
+        # Redrawn before it is put back on the chart, never after. A trace
+        # hidden for a while still carries the points of the frame it was
+        # last drawn in, and adding it to the chart first would put that
+        # stale curve one raise away from reaching the client. Nothing is
+        # sent until `update()`, so a reader sees only the finished frame.
+        self._refresh_view()
+        self._apply_trace_visibility()
+        self._page.update()
 
     def _apply_agent_color_scheme(self, agent_id: str) -> None:
         """Apply the verified agent color to the header and selection control."""
