@@ -18,9 +18,9 @@ from branch names, so it is checked rather than left to memory.
 from __future__ import annotations
 
 from collections.abc import Collection
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from .model import EFFORTS, PRIORITIES, Item
+from .model import EFFORTS, LANE_CROSSING, LANE_UNPLACED, PRIORITIES, Item
 from .roadmap import IN_SCOPE, OUT_OF_SCOPE, UNPLACED, Scope
 
 
@@ -179,6 +179,72 @@ class OfferedReport:
     declined: str = ""
 
 
+@dataclass(frozen=True)
+class SetAside:
+    """Startable work a lane could not claim, so that no lane hides any.
+
+    A lane is a filter, and a filter that drops 19% of a queue without saying
+    so is how work goes missing for months. The two reasons are separated
+    because they call for different repairs: `crossing` needs a session that
+    can hold both halves, while `unplaced` needs somebody to write a
+    `touches` line.
+    """
+
+    #: Startable items reaching both halves of the project.
+    crossing: list[Item] = field(default_factory=list)
+    #: Startable items declaring no `touches`, so no lane can place them.
+    unplaced: list[Item] = field(default_factory=list)
+
+    @property
+    def total(self) -> int:
+        return len(self.crossing) + len(self.unplaced)
+
+
+def set_aside(
+    items: list[Item],
+    in_flight: Collection[str] | None = None,
+    *,
+    workflow_paths: tuple[str, ...] = (),
+    effort: str | None = None,
+) -> SetAside:
+    """What a lane filter would drop, split by why it could not be placed.
+
+    Takes the same exclusions `recommend` does - in flight, and the effort
+    filter - so the count reported beside a ranking describes that ranking,
+    rather than a queue neither session was looking at.
+    """
+    held = [
+        item
+        for item in _startable(items, in_flight, effort=effort)
+        if item.lane(workflow_paths) in (LANE_CROSSING, LANE_UNPLACED)
+    ]
+    return SetAside(
+        crossing=[i for i in held if i.lane(workflow_paths) == LANE_CROSSING],
+        unplaced=[i for i in held if i.lane(workflow_paths) == LANE_UNPLACED],
+    )
+
+
+def _startable(
+    items: list[Item], in_flight: Collection[str] | None = None, *, effort: str | None = None
+) -> list[Item]:
+    """Work that could be begun now, before any lane narrows it.
+
+    Shared by `recommend` and `set_aside` so the two cannot disagree about
+    what "startable" means - the set-aside count is only honest if it is
+    counted from the same population the ranking drew from.
+    """
+    flight = in_flight or set()
+    return [
+        item
+        for item in items
+        if item.is_open
+        and not item.is_untriaged
+        and item.status != "blocked"
+        and item.identifier not in flight
+        and (effort is None or item.effort == effort)
+    ]
+
+
 def recommend(
     items: list[Item],
     in_flight: Collection[str] | None = None,
@@ -186,6 +252,8 @@ def recommend(
     effort: str | None = None,
     limit: int = 3,
     scope: Scope | None = None,
+    lane: str | None = None,
+    workflow_paths: tuple[str, ...] = (),
 ) -> list[Recommendation]:
     """Rank the work worth starting now.
 
@@ -202,16 +270,22 @@ def recommend(
     carrying the milestone that names it, because "is this really out of
     scope?" is a judgment and hiding the item would be a verdict this cannot
     support - where saying which milestone names its id is a fact it can.
+
+    A `lane` narrows the candidates to one half of the project before any of
+    that runs, so two sessions can rank simultaneously without arriving at the
+    same item. It filters and never reorders: a lane changes which work is
+    eligible, not what the project's priorities are, so the `P0` rule, the
+    roadmap's phase and the finish-a-feature preference apply inside a lane
+    exactly as they do across the whole queue. The feature-progress reading is
+    deliberately computed from *all* items rather than from the lane's, since
+    how near a feature is to done is a fact about the feature and not about
+    who is looking at it. Work the lane cannot place is dropped here and
+    counted by `set_aside`, never silently discarded.
     """
-    flight = in_flight or set()
     startable = [
         item
-        for item in items
-        if item.is_open
-        and not item.is_untriaged
-        and item.status != "blocked"
-        and item.identifier not in flight
-        and (effort is None or item.effort == effort)
+        for item in _startable(items, in_flight, effort=effort)
+        if lane is None or item.lane(workflow_paths) == lane
     ]
     underway = {
         item.identifier: feature

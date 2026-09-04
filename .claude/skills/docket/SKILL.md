@@ -188,6 +188,8 @@ Triggered by "what should we work on next", "I have some time", "what's left".
 docket wave            # which beat of the plan is due - read this first
 docket status          # features first - lead with this
 docket next            # the specific next item, with its reason
+docket next product    # ...the simulator only, when a second session has the apparatus
+docket next workflow   # ...the apparatus only, when a second session has the simulator
 ```
 
 **Start above the queue.** `docket wave` says where the project stands on the
@@ -243,6 +245,35 @@ a section names only to exclude it is placed by nobody. Lead the reply with its 
 have: whether the item is still real, whether the marking is right about a
 milestone whose prose it cannot read, and how it fits what the owner said
 they were trying to do.
+
+**The digest already names both lanes' picks.** Its `By lane, for a second
+session:` line carries each half's top item and how many span both, so the
+choice needs no command: read the lane matching this session and start there.
+Where that line is absent, no boundary is declared and there are no lanes.
+
+**Ask for a lane only when another session is genuinely running.** The owner
+runs two sessions at once precisely so one can take the simulator while the
+other takes the apparatus, and a bare `docket next` in both hands them the same
+item. So: told this session is the workflow one — or the product one — ask for
+that lane and stay in it. Told nothing, ask for neither. A lane narrows the
+queue, and narrowing it for a session that is the only one running is how the
+next piece of work is worse than the one the whole queue would have offered.
+
+Two lanes and no more, because two sessions can hold a repository between them
+and four cannot. `product` is what `CLAUDE.md` holds to the specialist standard
+— the simulator and the documentation a reader of it needs. `workflow` is the
+apparatus that exists so sessions can be productive. The boundary is
+`docket.toml`'s `workflow_paths`, read against each item's `touches`, and it is
+a fact in the files rather than a judgment to re-make per item.
+
+**Say what the lane set aside, and never treat it as absent.** `next` prints
+the work no lane could claim: items reaching *both* halves, which need a
+session that can hold the whole change, and items declaring no `touches`, which
+nobody can place. Both stay in the queue and the unfiltered `docket next` still
+offers them. When the reply offers a lane's answer, say the set-aside count in
+the same breath — "PL-K7QX is the workflow lane's pick; three items span both
+halves and are waiting for a session that can take the lot." An item invisible
+in both lanes and mentioned in neither is how work goes missing for months.
 
 **Work the roadmap places nowhere ranks on its band alone.** `docket next`
 sorts in-scope work above unplaced work above out-of-scope work, so an item no
