@@ -30,8 +30,8 @@ from typing import Final
 
 import flet_charts as fch
 
-from anesthesia_sim.app.chart_downsampling import first_index_at_or_after, select_envelope_indices
-from anesthesia_sim.app.controller import SimulationHistorySample
+from anesthesia_sim.app.chart_downsampling import select_envelope_indices
+from anesthesia_sim.app.controller import HistoryWindow, SimulationHistorySample
 from anesthesia_sim.app.wash_in import is_wash_in, wash_in_ratio
 
 __all__ = [
@@ -57,7 +57,6 @@ __all__ = [
     "redraw_series",
     "redraw_visible_window",
     "redraw_wash_in_segments",
-    "sample_elapsed_s",
     "vessel_rich_value",
 ]
 
@@ -87,10 +86,6 @@ type PlottedSeries = tuple[fch.LineChartData, SampleValue]
 # trace-to-quantity pairing a caller builds reads as an explicit table:
 # plotting a compartment's values on another compartment's line would be a
 # presentation-correctness failure, and a table is auditable at a glance.
-def sample_elapsed_s(sample: SimulationHistorySample) -> float:
-    return sample.elapsed_s
-
-
 def circuit_value(sample: SimulationHistorySample) -> float:
     return sample.circuit_concentration_fraction
 
@@ -324,34 +319,27 @@ def park_control_mark(series: fch.LineChartData) -> None:
         point.y = 0.0
 
 
-def redraw_visible_window(
-    plotted: Sequence[PlottedSeries],
-    history: tuple[SimulationHistorySample, ...],
-    window_start_s: float,
-) -> None:
-    """Redraw every trace from the samples inside the visible window.
+def redraw_visible_window(plotted: Sequence[PlottedSeries], window: HistoryWindow) -> None:
+    """Redraw every trace from the samples the caller asked the run for.
 
-    Only samples the chart can actually show are sent, and that window is
-    decimated to a fixed per-trace budget, so the render payload is
-    bounded by the window and the budget rather than by how long the
-    simulation has been running. The controller's own history is read but
-    never modified.
+    The window arrives already cut to the axis the caller is about to draw:
+    the controller answers `history_window` with the samples at or after the
+    chart's own left edge, so nothing outside the plotted range crosses that
+    boundary in the first place and there is nothing to slice off here
+    (`PL-0VM7`). Each trace is then decimated to a fixed per-trace budget,
+    so the render payload is bounded by the window and the budget rather
+    than by how long the simulation has been running.
 
     Args:
         plotted: Every trace to redraw, each paired with the quantity it
             draws.
-        history: Immutable simulation samples, oldest first, with elapsed
-            time in seconds and compartment values as fractions.
-        window_start_s: Earliest simulated time the chart displays, in
-            seconds. Samples older than this are outside the plotted axis
-            range and are not sent.
+        window: The run's samples inside the plotted time range, oldest
+            first, with compartment values as fractions, and the absolute
+            index within the run of the first of them.
     """
 
-    window_start_index = first_index_at_or_after(history, window_start_s, sample_elapsed_s)
-    visible = history[window_start_index:]
-
     for series, value_for in plotted:
-        redraw_series(series, visible, value_for, window_start_index)
+        redraw_series(series, window.samples, value_for, window.index_offset)
 
 
 def redraw_series(
@@ -460,10 +448,7 @@ def park_series(series: fch.LineChartData) -> None:
 
 
 def redraw_wash_in_segments(
-    segment_series: Sequence[fch.LineChartData],
-    history: tuple[SimulationHistorySample, ...],
-    window_start_s: float,
-    extension_ceiling: float,
+    segment_series: Sequence[fch.LineChartData], window: HistoryWindow, extension_ceiling: float
 ) -> int:
     """Draw F_A/F_I over the visible window, broken where it is not defined.
 
@@ -513,11 +498,11 @@ def redraw_wash_in_segments(
     Args:
         segment_series: Fixed pool of traces to draw the segments into.
             Every member is mutated - filled with a segment, or emptied.
-        history: Immutable simulation samples, oldest first, with
-            compartment values as fractions.
-        window_start_s: Earliest simulated time the chart displays, in
-            seconds. Samples older than this are outside the plotted axis
-            range and are not sent.
+        window: The run's samples inside the plotted time range, oldest
+            first, with compartment values as fractions, and the absolute
+            index within the run of the first of them. Already cut to the
+            axis by the controller (`PL-0VM7`), so nothing outside the
+            plotted range reaches here to be sliced off.
         extension_ceiling: Highest ratio a crossing sample may carry and
             still be drawn, in the chart's own dimensionless unit. The
             caller owns it because it is a property of the axis rather
@@ -530,18 +515,20 @@ def redraw_wash_in_segments(
         letting the curve end without explanation.
     """
 
-    window_start_index = first_index_at_or_after(history, window_start_s, sample_elapsed_s)
-    segments = _wash_in_segments(
-        history[window_start_index:], window_start_index, extension_ceiling
-    )
+    segments = _wash_in_segments(window.samples, window.index_offset, extension_ceiling)
     drawn = segments[-len(segment_series) :] if segment_series else []
 
     for series, (index_offset, ratios) in zip(segment_series, drawn, strict=False):
         # Raises before anything is written, so a segment is never left
         # holding half of one frame and half of the next.
         indices = select_envelope_indices(ratios, MAX_CHART_POINTS_PER_SERIES, index_offset)
+        # A segment's own offset stays absolute, because that is what
+        # anchors its decimation to the run; reading the samples back out
+        # of the window means subtracting where the window itself starts.
+        within_window = index_offset - window.index_offset
         redraw_points(
-            series, [(history[index_offset + index].elapsed_s, ratios[index]) for index in indices]
+            series,
+            [(window.samples[within_window + index].elapsed_s, ratios[index]) for index in indices],
         )
         _mark_wash_in_terminus(series, ends_above_equilibrium=not is_wash_in(ratios[-1]))
 
