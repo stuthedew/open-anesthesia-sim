@@ -36,6 +36,22 @@ class SimulationSnapshot:
     agent_id: str
     agent_display_name: str
     max_delivered_concentration_percent: float
+    agent_mac_percent: float
+    """The running agent's 1 MAC, as a percent of one atmosphere.
+
+    Exposed because the interface displays every compartment in multiples
+    of it as well as in percent, so it is the divisor of a clinically
+    meaningful displayed value rather than only the starting position of
+    the vaporizer dial. It travels in the snapshot, beside the
+    concentrations it scales and the agent it belongs to, so a readout
+    cannot be produced from one agent's concentration and another agent's
+    MAC — which would be the correct number under the wrong label that
+    `CLAUDE.md` treats as a safety failure.
+
+    `docs/MODEL.md` § "MAC multiples as a display unit" states what the
+    quotient asserts, and § "Delivery-limit and MAC parameters" holds the
+    value's provenance.
+    """
     circuit_volume_l: float
     fresh_gas_flow_l_min: float
     delivered_concentration_fraction: float
@@ -144,6 +160,7 @@ class SimulationController:
         self._max_delivered_concentration_percent = (
             agent_parameters.max_delivered_concentration_percent
         )
+        self._agent_mac_percent = agent_parameters.mac_percent
         self._state = SimulationState(uptake_system=uptake_system)
         self._concentration_history: list[SimulationHistorySample] = [self._build_history_sample()]
 
@@ -227,6 +244,7 @@ class SimulationController:
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
             max_delivered_concentration_percent=(self._max_delivered_concentration_percent),
+            agent_mac_percent=self._agent_mac_percent,
             circuit_volume_l=circuit.circuit_volume_l,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
             delivered_concentration_fraction=(circuit.delivered_concentration_fraction),
