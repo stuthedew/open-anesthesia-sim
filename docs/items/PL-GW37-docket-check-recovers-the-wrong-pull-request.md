@@ -3,12 +3,13 @@ id: PL-GW37
 title: docket check recovers the wrong pull request for an item closed as a rider on another item's PR, and advises writing that number in
 priority: P2
 effort: S
-status: ready
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_rider_closure_recovers_no_pull_request_number' subprojects/docket/tests/test_vcs.py
+status: done
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_rider_closure_recovers_the_pull_request_that_closed_it' subprojects/docket/tests/test_vcs.py
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-02
+closed: 2026-09-04
 ---
 
 **Problem.** `docket check` recovers a closed item's pull request number by
@@ -96,6 +97,51 @@ makes it affordable where the diff-based test considered first is not.
 Silence is the correct outcome when the guard rejects everything: that is
 already what happens for `PL-KQKM`, and it is what the check does elsewhere
 when the checkout cannot answer.
+
+**Worked 2026-09-04. The guard built is not the one briefed, and the reason is
+measured.** The project owner chose it from three options after the date test
+was shown to fail.
+
+*What was built.* The subject scan keeps its cheap single history read, but its
+answer is now **confirmed** before it is believed: the commit it found must read
+`status: done` in its own tree and not in its parent's - the same test
+`_number_closing` already applies to the file. An unconfirmed hit falls through
+to that file reading rather than being recorded. Two `git show` per id the scan
+answered, asked only of items whose `pr` is missing.
+
+*Why that and not the date test.* Rejecting a commit older than `closed:` keeps
+84 of 122, correctly rejects 6, and **wrongly rejects 32** - a timezone skew,
+since `closed:` is the session's today in UTC and the squash merge carries the
+owner's local date at `-0500`. The confirmation has no such failure: over the
+same 122 it agreed with the file reading wherever both could answer, and
+disagreed nowhere.
+
+*What it fixes, measured over all 209 closed items carrying a `pr`.* Recovery
+goes from **101 correct and 25 wrong** to **114 correct and 12 wrong**, with 20
+fixed and 7 regressed. `PL-YLZQ` - the case this item was raised for - goes from
+`159`, the commit that triaged it, to `204`, the merge that closed it.
+
+*The defect was wider than the brief.* Only `PL-YLZQ` is the rider shape. The
+commoner one is a *later* commit winning by recency: `PL-1TF4` and `PL-J49T`
+recovered `250`, whose subject reads "record #249"; `PL-B0YN` and `PL-G1MF`
+recovered `188` from "record their pull request" against a true `186`. Both
+shapes are one defect - the scan answers with any commit leading with the id,
+and a closure is only one kind - and both are fixed by the same confirmation.
+
+*The seven regressions are two known shapes, each captured rather than fixed
+here.* Four recover the renaming commit, because the fallback walks `git log`
+without rename detection and the parent does not hold the path at all
+(`PL-S5LB`). Three are items whose work landed in one pull request and whose
+`status: done` was written in a later one, so the file reading answers with the
+closure rather than the work (`PL-YDL6`) - the shape `PL-D2GW` closed by
+requiring the two to travel together, so it exists only in items predating that
+rule.
+
+*The brief's named test was not written, deliberately.* It specifies
+`test_a_rider_closure_recovers_no_pull_request_number` - silence for a rider.
+Silence was the best the date test could have managed; the confirmation does
+better, so the test asserts the real number instead. Reality outranks the
+brief here.
 
 **Done when.** `docket check` either recovers a rider-closed item's real
 pull request number or says nothing, and never advises writing in the number
