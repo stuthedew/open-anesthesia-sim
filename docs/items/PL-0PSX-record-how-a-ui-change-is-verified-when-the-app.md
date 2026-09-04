@@ -105,3 +105,28 @@ drop it as a duplicate of `PL-CQRL` with the recipe above folded in. Either
 way the `Decision needed.` as posed no longer has a question in it, and the
 title and Problem statement must not stand as they are — a session reading
 them will believe something false and skip a check it could have run.
+
+**The block is wider than rendering, and there is a working route (measured
+2026-09-04).** This brief frames the limitation as Flet's client failing to
+fetch CanvasKit from `www.gstatic.com`. The same egress policy also refuses
+**primary literature**: `CONNECT` was rejected for ScienceDirect, Springer,
+`doi.org`, Crossref, OpenAlex, Semantic Scholar and arXiv, and `curl` is blocked
+on the same policy.
+
+That matters beyond layout. `PL-F52R` (the MAC-awake band) required MAC-awake
+values sourced from the primary literature and said explicitly that they "must
+not be taken from memory" - and a citation recorded from a search-result snippet
+is indistinguishable, in the data file, from one read at the source. The same
+applies to every remaining `model-spec-accuracy` item, `PL-6Q8N` above all.
+
+**The PubMed MCP server works and is the route to record here.** Verified
+end-to-end in the same session: search returns hits (`"MAC-awake" AND
+sevoflurane`, 23 results) and metadata retrieval returns abstract, journal,
+volume/issue/pages and DOI. So the honest instruction is not "you cannot reach
+the literature" - it is "direct HTTP to publishers is refused; use the PubMed
+MCP server, and say in the reply which route a citation came from and whether
+full text or only the abstract was read".
+
+Recording both halves is the point. A session told only that the environment is
+restricted concludes the literature is unreachable and falls back to memory,
+which is the specific failure the safety-critical standard forbids.

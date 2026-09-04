@@ -3,7 +3,8 @@ id: PL-011
 title: Bound the controller's concentration history
 priority: P2
 effort: S
-status: ready
+status: blocked
+blocked-by: PL-W3DD
 classes: perf
 feature: teachable-case
 touches: src/anesthesia_sim/app/controller.py
@@ -40,3 +41,17 @@ exactly, so decide the retention policy before, not after, that design.
 
 **Done when.** Memory growth over a long run is bounded, or the retention
 policy is documented and deliberate rather than accidental.
+
+**Blocked on `PL-W3DD` (2026-09-04, project owner, deciding `PL-5WFS`).**
+Sequencing only: nothing here is wrong today, and this item's own band and
+class are unchanged. `PL-W3DD` re-keys `SimulationHistorySample` by substance,
+and the cap above is sized against the record it replaces — "a slotted
+dataclass of seven floats", and the 2.3-6.6 GB that number bounds. A
+per-substance mapping carries a dict or a nested structure per sample, so both
+figures stop describing the record they are about. Land `PL-W3DD` first and
+measure the cap against the shape that ships.
+
+`PL-THVN` carries the diagnosis. The dependency was invisible to the ranking
+before this edit: `bin/docket next` offered this item 3rd and `PL-W3DD` 9th,
+both `P2`, because the ranking reads front matter and the dependency was
+stated only in a third item's prose.

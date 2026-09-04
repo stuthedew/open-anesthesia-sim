@@ -3,7 +3,8 @@ id: PL-SN2C
 title: Add the playback multiplier as steps per tick, with the rate always visible
 priority: P2
 effort: M
-status: ready
+status: blocked
+blocked-by: PL-VM40
 classes: feature, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
@@ -53,3 +54,14 @@ the elapsed-time readout at all times, including at 1x.
 of wall clock; the simulation step is 0.1 s at every multiplier, asserted by test;
 the recorded history is element-wise identical at every multiplier, asserted by
 test; and the active rate is visible whenever the clock is.
+
+**Blocked on `PL-VM40` (2026-09-04, project owner, deciding `PL-5WFS`).**
+Sequencing only, and it is this item's own statement rather than a new
+judgment: the paragraph above already says it depends on `PL-VM40`, "without
+which the number of steps taken is machine-dependent and the run is not
+reproducible at any rate". That sentence lived in prose, where the ranking
+cannot read it; this field is the same statement where `bin/docket next` can.
+
+The order was correct before this edit only by accident — `PL-VM40` is `P1`
+and this is `P2`, so the band happened to separate them. Nothing would have
+held if either had been re-banded.
