@@ -187,9 +187,9 @@ Triggered by "what should we work on next", "I have some time", "what's left".
 ```bash
 docket wave            # which beat of the plan is due - read this first
 docket status          # features first - lead with this
-docket next            # the specific next item, with its reason
-docket next product    # ...the simulator only, when a second session has the apparatus
-docket next workflow   # ...the apparatus only, when a second session has the simulator
+docket next            # the specific next item, with its reason and its lane
+docket next product    # ...the simulator only
+docket next workflow   # ...the apparatus only
 ```
 
 **Start above the queue.** `docket wave` says where the project stands on the
@@ -251,11 +251,23 @@ session:` line carries each half's top item and how many span both, so the
 choice needs no command: read the lane matching this session and start there.
 Where that line is absent, no boundary is declared and there are no lanes.
 
-**Ask for a lane only when another session is genuinely running.** The owner
-runs two sessions at once precisely so one can take the simulator while the
-other takes the apparatus, and a bare `docket next` in both hands them the same
-item. So: told this session is the workflow one — or the product one — ask for
-that lane and stay in it. Told nothing, ask for neither. A lane narrows the
+**A prompt that names a lane has already asked for it.** "Next workflow item",
+"what's next on the simulator", "workflow lane" — that is `docket next
+workflow` or `docket next product`, run as the first command, and the session
+stays in that lane. It does not wait on establishing that a second session
+exists: naming the lane *is* the instruction, and the owner does not restate
+why they want it. `PL-0D4X` is what the older reading cost — a session prompted
+"Next workflow item" ran the bare command, was handed the product lane's pick,
+and started it.
+
+`docket next` now names the lane of its own answer and the other lane's pick,
+so a bare call in a lane-named session says so in its own output. Read that
+line before the item.
+
+**Otherwise ask for a lane only when another session is genuinely running.**
+The owner runs two sessions at once precisely so one can take the simulator
+while the other takes the apparatus, and a bare `docket next` in both hands
+them the same item. Told nothing at all, ask for neither: a lane narrows the
 queue, and narrowing it for a session that is the only one running is how the
 next piece of work is worse than the one the whole queue would have offered.
 
