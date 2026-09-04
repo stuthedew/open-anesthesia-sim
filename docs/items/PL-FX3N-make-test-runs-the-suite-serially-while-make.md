@@ -7,9 +7,10 @@ status: done
 classes: perf, infra
 feature: dev-tooling
 touches: Makefile, README.md
-verify: python3 tools/doc_check.py check && grep -qE 'uv run pytest -n auto$' Makefile
 added: 2026-09-04
 closed: 2026-09-04
+pr: 280
+verify: python3 tools/doc_check.py check && grep -qE 'uv run pytest -n auto$' Makefile
 ---
 
 **Problem.** `PL-WCZV` put `-n auto` on `make check`'s `pytest` line and on the

@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/concurrency.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_concurrency.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-02
 closed: 2026-09-04
+pr: 279
 verify: uv run pytest subprojects/docket/tests/test_concurrency.py subprojects/docket/tests/test_vcs.py && grep -qF 'is another session in these files' .claude/skills/docket/SKILL.md && grep -q 'def test_observed_overlap_reports_the_branch_changing_the_file' subprojects/docket/tests/test_concurrency.py
 ---
 

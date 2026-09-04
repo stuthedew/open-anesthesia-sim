@@ -24,6 +24,51 @@ before; immediately after the push it moved into "Excluded, already in flight"
 and `PL-DR1Z` took the top slot. Nobody was implementing `PL-DHV7`, and the
 session that annotated it was in the same breath recommending someone start it.
 
+**Measured again 2026-09-04, and it is worse than one item.** A triage session
+ran `bin/docket next`: it excluded nine items as in flight, and **eight of the
+nine marks come from commits whose entire diff is inside `docs/items/`**. Only
+`PL-FX3N` was actually being implemented on a branch.
+
+| Commit | Diff | Ids it marked |
+| --- | --- | --- |
+| `fe474d4` "PL-HKF4, PL-PGZK, PL-5WFS, PL-22Z3: recover the stranded capture" | 7 files, all `docs/items/` | 4 |
+| `d36dabd` "PL-WW08, PL-PMT7: recover two captures stranded on abandoned branches" | 5 files, all `docs/items/` | 2 |
+| `067110a` "PL-55JM: capture drift.yml's two serial pytest runs" | 1 file, the item itself | 1 |
+| `33b79c6` "PL-N5WZ: record `pr: 265`" | 1 file, a `docket record` write | 1 |
+
+Three of the eight are open and startable, and were hidden from every session's
+`docket next` for it: `PL-5WFS` (a brief's stated blocker is invisible to
+`next`), `PL-HKF4` (`doc_check`'s tag advisory prints an unpasteable
+`<merge commit>`), `PL-PGZK` (`concurrent`'s answer is dominated by docs).
+
+**A batch commit hides a batch of items.** `fe474d4` marked four ids at once.
+The `CLAUDE.md` rule that a closure leads with every id it closes, and
+`stranded`'s own recovery workflow, both produce multi-id subjects - so one
+housekeeping push routinely removes several items from the queue together.
+
+**"Self-healing on merge" does not hold for the branch that produces most of
+them.** Both branches carrying six of the eight marks belong to archived
+sessions whose last recorded action was *asking whether to open a pull
+request*; neither ever did. A branch nobody merges never heals, so the harm is
+bounded by nothing - which is the same accumulation `PL-64LS` built `docket
+stranded` to recover from. That materially weakens this item's own "not urgent"
+in the paragraph above.
+
+**Triage is self-defeating under this.** The point of triaging an item to
+`ready` is to let `docket next` offer it; the triage commit is what then hides
+it from `docket next` until merge. `PL-55JM` also demonstrates the read side:
+it carried the mark, so `bin/docket triage` told that session to skip the only
+item it had to do. Proceeding took three independent checks that the tool could
+have made itself - the branch's copy of the item file was byte-identical to
+`main`'s, the commit that marked it changed nothing but that file, and the live
+session on that branch was working `PL-FX3N`.
+
+**The diff read this evidence supports is narrower than option 1 below.** Every
+one of the eight false marks is a commit changing *only* `docs/items/`, so
+"confined to `docs/items/`" alone separates all eight without needing to inspect
+which part of an item's file changed. That is one `git show --stat` per
+candidate commit and no body-vs-frontmatter parsing.
+
 **Why it matters.** The two rules it sits between are both mandatory and both
 frequently exercised: `CLAUDE.md` requires a finding to be captured before the
 session ends, requires a behavior change to land in the session that asks for
