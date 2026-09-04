@@ -1,10 +1,13 @@
 ---
 id: PL-3D2M
 title: A pull request merged at a stale head silently drops later commits on the same branch, and nothing outside the item store notices
-status: untriaged
+status: needs-decision
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py
 added: 2026-09-04
+priority: P2
+effort: M
+classes: defect, infra
 ---
 
 **Problem.** A pull request can be merged at a head older than the branch's
@@ -41,6 +44,11 @@ repository. `subprojects/docket/src/docket/vcs.py` already holds the merged/
 unmerged reasoning `stranded` and `branches_in_flight` are built on, and
 `_work_already_on_base` already asks the content question a squash merge
 requires, so the machinery exists.
+
+**Decision needed.** Detect it in `stranded`/the digest by reusing the existing
+merged-versus-unmerged walk, or check at merge time against the GitHub API?
+The first is cheap and needs no new state; the second is more timely but makes
+`docket` learn about this harness, which `PL-SK88` says it must not.
 
 **Approach, not yet decided.** Cheapest first: have `stranded` (or the digest)
 report a branch whose pull request is *merged* while the branch ref still holds
