@@ -1,7 +1,10 @@
 ---
 id: PL-0PSX
 title: Record how a UI change is verified when the app cannot be rendered in a remote session
-status: needs-decision
+status: dropped
+closed: 2026-09-04
+not-delegable: Nothing to verify. The item is dropped because its premise is false, not because work was done; the disproof is the rendered frame recorded in PL-F52R and in the append below, and the recipe it asked for is held by PL-CQRL.
+reason: Premise disproved, and what remains is already held by two other items. The Problem statement says the app cannot be rendered from a Claude Code web session; it can, and this item's own Approach named the check that settles it. flet_web ships CanvasKit locally and FLET_WEB_NO_CDN=true points the Flutter bootstrap at it, so no egress-policy change is needed from the owner - which was the one branch of the Decision only they could act on. Rendered and driven on 2026-09-04 during PL-F52R; the working recipe is in the append below and on PL-CQRL. What is left splits cleanly and neither half is lost: PL-CQRL (record how to drive this app in a browser from a container session) carries the recipe and proposes a skill as its home, and PL-7J96 (make the interface renderable in a check) carries the genuine residual - that a rendered frame still has to be judged by a person. Dropped with the project owner's agreement, 2026-09-04.
 added: 2026-09-04
 priority: P2
 effort: M
