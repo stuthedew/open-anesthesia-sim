@@ -1316,10 +1316,71 @@ def test_simulation_time_does_not_depend_on_render_cadence() -> None:
     for _ in range(steps_taken):
         reference.advance(SIMULATION_STEP_S)
 
-    assert stepped_by_the_loop.elapsed_s == pytest.approx(reference.snapshot().elapsed_s)
-    assert stepped_by_the_loop.alveolar_concentration_fraction == pytest.approx(
-        reference.snapshot().alveolar_concentration_fraction
+    # Exact rather than approximate: the same steps under the same settings
+    # are the same arithmetic, and simulated time is the step count times
+    # the step (`PL-VM40`). An approximate match here would pass over
+    # precisely the drift this asserts the absence of.
+    assert stepped_by_the_loop.elapsed_s == reference.snapshot().elapsed_s
+    assert (
+        stepped_by_the_loop.alveolar_concentration_fraction
+        == reference.snapshot().alveolar_concentration_fraction
     )
+
+
+def test_the_run_loop_takes_one_step_per_tick_and_never_catches_up(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A late tick must cost the run real time, never change its trajectory.
+
+    How many steps a tick takes is a constant of the loop rather than a
+    function of how long the tick took, so a host that wakes it late leaves
+    the run behind the wall clock and it stays behind. The alternative -
+    stepping until simulated time catches up with elapsed real time - would
+    make the number of steps a run takes a property of the machine, which is
+    what docs/MODEL.md's reproducibility guarantee forbids.
+
+    Driven through a tick that returns at once, so what is asserted is
+    exactly "one step per wakeup", with no real time in it: the tests above
+    deliberately claim less, because how many ticks land in a slice of real
+    time is up to the host.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+
+    ticks = 7
+    real_sleep = asyncio.sleep
+    wakeups = 0
+
+    async def tick(interval_s: float) -> None:
+        nonlocal wakeups
+        wakeups += 1
+        # Past the budget the tick parks, so the step count is exact rather
+        # than a race between the driver's cancel and one more step.
+        await real_sleep(0.0 if wakeups <= ticks else 3600.0)
+
+    async def drive() -> None:
+        task = asyncio.create_task(view._run_simulation_timer())
+
+        for _ in range(ticks * 100):
+            if wakeups > ticks:
+                break
+
+            await real_sleep(0)
+
+        task.cancel()
+
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    monkeypatch.setattr(asyncio, "sleep", tick)
+    asyncio.run(drive())
+
+    assert wakeups == ticks + 1
+    assert controller.snapshot().elapsed_s == ticks * SIMULATION_STEP_S
+    assert len(controller.history_window(0.0).samples) == ticks + 1
 
 
 # --- PL-018: a core failure must never leave a stale "Running" display ----

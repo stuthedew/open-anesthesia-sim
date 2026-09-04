@@ -2018,11 +2018,18 @@ class SimulationView:
     async def _run_simulation_timer(self) -> None:
         """Advance the running simulation one fixed step per tick.
 
-        Stepping is deliberately separate from drawing. Simulation time stays
-        a function of how many steps have been taken, never of wall-clock
-        time or of how long a redraw took, so a slow or skipped frame cannot
-        change the trajectory: identical inputs still produce identical
-        results.
+        Stepping is deliberately separate from drawing, and how many steps a
+        tick takes is a constant of this loop rather than a function of how
+        long the tick actually took. A host that wakes the loop late leaves
+        the run behind the wall clock, and it stays behind: no tick takes
+        extra steps to make up the difference, and nothing here reads a
+        clock. So a slow machine, a busy event loop or a skipped frame makes
+        the run *slower* and never *different* - identical inputs still
+        produce an identical trajectory, sample for sample. That is the
+        reproducibility guarantee `docs/MODEL.md` states under "Time", and
+        the property a run compared against another run rests on; the
+        alternative, stepping until simulated time catches up to elapsed
+        real time, would make the trajectory a property of the machine.
 
         The loop survives a failed step rather than returning: the task is
         started once, at mount, so a loop that exits could never be
