@@ -442,6 +442,14 @@ work already there.
 An item that should not be done becomes `status: dropped` with a `reason`.
 Never delete the file: the reason is what stops the finding being re-raised.
 
+**An item whose next step is a decision is triaged to `needs-decision`, not
+answered.** Triage sets fields; it does not resolve the question an item poses.
+Answering one means reading the code around it, weighing the alternatives and
+recording a conclusion - a work session's shape, spent on one item out of the
+queue this pass exists to describe. `needs-decision` is what the store has for
+it, and `bin/docket gate` counts it, so the question reaches the owner through
+the queue rather than through the reply.
+
 ### The `verify:` command, and running it before writing it down
 
 Triaging an item to `ready` means naming the command that proves it done.
@@ -546,6 +554,42 @@ Reaching a close with nothing to record means the command was never run, and
 the cutover are untouched, deliberately — backfilling one onto merged work
 means writing a command with nothing left to run it against.
 
+### What the reply says, and what it must not
+
+**Triage is a queue pass, not a work session, and its reply is a summary rather
+than a to-do list** (project owner, 2026-09-04). Two things, then it stops:
+
+1. **What was triaged** - each item by id and glossed title, the fields it
+   landed on, one line of why. A dropped item says what its `reason` was; one
+   left `needs-decision` says what the open question is.
+2. **Where the queue stands as a result** - `bin/docket status`, at feature
+   altitude, which is the altitude that makes a queue legible. Counts are not a
+   summary on their own; say what shape they describe.
+
+**Nothing else.** No ranking of what to work on, no release offer, no "and
+while I was in there". `bin/docket next` answers "what next" in the session that
+asks it, and this is not that session. Rule 14 of
+`.claude/rules/instruction-writing.md` is met here by its own escape clause -
+when nothing genuinely needs the owner, say so in one line rather than inventing
+items to fill the block. On a normal pass that is the expected ending, not a
+failure to find anything.
+
+**Do not work the finding.** Committing and pushing the triage edits is routine,
+not something to recommend. What must not happen is the pass becoming the fix: a
+branch opened for an item it just triaged, a design question resolved, a pull
+request shepherded through review. The pull is strongest where the finding is
+most interesting, and interesting is not the test.
+
+**Escalate only a `P0` or a compounding-friction finding** - `CLAUDE.md`'s three
+tests: a check passing while its guarantee is void, an advisory being routed
+around, something upstream of every other command. Name it in a sentence or two
+and hand over the means to act on it *elsewhere* - `bin/docket next` where the
+queue already holds the work, or the exact line to paste into a fresh session,
+per **Mode: recommend what to work on** above. Not a diagnosis, not a patch, not
+a branch. A pass where nothing pressing surfaced ends without this section;
+reaching for something because the reply feels thin is how the summary turns
+back into a to-do list.
+
 ## Mode: freeze a milestone's debt gate
 
 Triggered by scoping a milestone — scoping is the act that freezes the list.
@@ -590,8 +634,8 @@ under its own name with most of it missing.
 
 But the digest says it in *every* session, including the ones where it is
 beside the point. Offer it when the owner is choosing what to work on or has
-just finished something. Not in a design round, a question about one
-mechanism, or a review of one change — there it is noise appended to a reply
+just finished something. Not in a design round, a triage pass, a
+question about one mechanism, or a review of one change — there it is noise appended to a reply
 that was about something else, and it quietly converts ideation into
 implementation, which the two modes above say not to do.
 
