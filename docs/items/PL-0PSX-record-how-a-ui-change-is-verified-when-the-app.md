@@ -49,3 +49,56 @@ the better outcome if it is available.
 
 **Done when.** A session that needs to see the interface knows, before trying,
 whether it can - and knows what to do instead when it cannot.
+
+**Appended 2026-09-04 (PL-F52R) — the Problem statement's conclusion is false,
+and this item's own Approach is what disproved it.** The Approach above says to
+"check first whether the environment's egress policy can simply allow
+`www.gstatic.com`, or whether Flet can be pointed at a locally served
+CanvasKit — either would remove the limitation rather than document it". That
+check has now been run, and the second branch is available, free, and needs no
+policy change from the owner.
+
+**What is true and what is not.** The measurement is right: the agent proxy
+does refuse `www.gstatic.com`, and without a flag the browser stops at the
+Flutter splash with no error anywhere — which is why the wrong conclusion is an
+easy one to reach. What does not follow is "a remote one cannot". `flet_web`
+already ships the renderer locally, at
+`.venv/lib/python3.14/site-packages/flet_web/web/canvaskit/`, and
+`FLET_WEB_NO_CDN=true` is the flag that makes Flutter's bootstrap use it
+instead of the CDN. Nothing is fetched from `gstatic` when it is set.
+
+**Rendered here on 2026-09-04, with the run driven and the chart read.**
+
+```
+FLET_FORCE_WEB_SERVER=true FLET_WEB_NO_CDN=true \
+  FLET_SERVER_PORT=8551 FLET_SERVER_IP=127.0.0.1 uv run python <entry>.py
+```
+
+Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, headless,
+with `--no-sandbox --no-proxy-server --remote-debugging-port=9222`, driven over
+the DevTools protocol with the `websockets` package the project venv already
+carries — `Page.navigate`, `Emulation.setDeviceMetricsOverride`,
+`Input.dispatchMouseEvent` to press Start by coordinate (Flutter draws to a
+canvas, so there is no DOM to click), and `Page.captureScreenshot` with a
+`clip` for a zoomed region. Playwright is not required and is not installed.
+The run reached 31.5 s of simulated time with all six traces drawn.
+
+**So the "Why it matters" is inverted too.** `PL-F52R` is named there as an
+item carrying a claim only a rendered frame settles. That frame was rendered,
+it settled the claim, and it also found what no unit test would have: the
+MAC-awake band spans 2.5 % of the plot height and reads as a thick line rather
+than a band. That finding went to `PL-CC23`. The remaining three interface
+items are not blocked either.
+
+**What is left of this item.** The want is still real — a session should know
+how to see the interface without deriving it — but that is `PL-CQRL` (record
+how to drive this app in a browser from a container session), captured
+2026-09-02, which already holds the recipe and proposes a skill as its home.
+`PL-CQRL` predates this capture and says in terms that a live client *is*
+available; this item was written without it. Two dispositions, both the
+owner's: retitle and re-scope this one around what a remote session genuinely
+cannot do (there is still no way to judge a rendered frame automatically), or
+drop it as a duplicate of `PL-CQRL` with the recipe above folded in. Either
+way the `Decision needed.` as posed no longer has a question in it, and the
+title and Problem statement must not stand as they are — a session reading
+them will believe something false and skip a check it could have run.

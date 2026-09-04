@@ -53,7 +53,7 @@ src/anesthesia_sim/
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic
 │   ├── formatting.py               # modeled value -> displayed string; Flet-independent
-│   ├── chart_series.py             # builds and redraws the chart's traces from the run
+│   ├── chart_series.py             # builds and redraws the chart's traces and clinical references
 │   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
 │   ├── theme.py                    # UI palette, cited ISO 5360 agent colors, layout constants
 │   └── main.py                     # entry point; builds the Flet page
@@ -131,7 +131,12 @@ and `app/chart_series.py` builds the traces and redraws them from the
 recorded run. The MAC divisor reaches the formatter as an argument, from
 `SimulationSnapshot.agent_mac_percent`, rather than being looked up: it is
 what makes a displayed multiple agent-specific, so it travels with the value
-it divides.
+it divides. The agent's MAC-awake travels the same way and for the same
+reason, as `SimulationSnapshot.agent_mac_awake` beside that divisor, because
+the chart's MAC-awake band is the one multiplied by the other and pairing
+two agents' values would place a correct number at the wrong height. A
+reference is built and moved by `app/chart_series.py` but is deliberately
+not a member of the view's trace-to-compartment table: it reads no sample.
 
 **Failure direction:** every failure `core/` reports is a subclass of
 `AnesthesiaSimulationError` (`core/exceptions.py`), never a bare

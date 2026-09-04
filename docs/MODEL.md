@@ -945,6 +945,12 @@ in the places a reader trusts most.
 | 1 MAC, 40-year-old adult (sevoflurane) | 2.0 | percent | `data/agents/sevoflurane.json` · `mac_percent` |
 | 1 MAC, 40-year-old adult (isoflurane) | 1.2 | percent | `data/agents/isoflurane.json` · `mac_percent` |
 | 1 MAC, 40-year-old adult (desflurane) | 6.0 | percent | `data/agents/desflurane.json` · `mac_percent` |
+| MAC-awake (sevoflurane) | 0.34 | fraction of 1 MAC | `data/agents/sevoflurane.json` · `mac_awake.fraction_of_mac` |
+| MAC-awake standard deviation (sevoflurane) | 0.05 | fraction of 1 MAC | `data/agents/sevoflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
+| MAC-awake (isoflurane) | 0.31 | fraction of 1 MAC | `data/agents/isoflurane.json` · `mac_awake.fraction_of_mac` |
+| MAC-awake standard deviation (isoflurane) | 0.05 | fraction of 1 MAC | `data/agents/isoflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
+| MAC-awake (desflurane) | 0.36 | fraction of 1 MAC | `data/agents/desflurane.json` · `mac_awake.fraction_of_mac` |
+| MAC-awake standard deviation (desflurane) | 0.063 | fraction of 1 MAC | `data/agents/desflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
 
 The reference patient weight identifies which patient the volumes and flows
 describe; no equation in this model consumes it (`PatientParameters.weight_kg`
@@ -1710,7 +1716,9 @@ The Flet interface may:
   core refused;
 - render snapshot histories;
 - select which recorded samples a plotted trace draws, subject to the
-  constraint below; and
+  constraint below;
+- draw a published clinical constant as a chart reference, at a height the
+  chart's own axis gives meaning to, subject to the constraint below; and
 - display mass-balance status.
 
 A plotted trace need not draw every recorded sample — the recorded history
@@ -1721,6 +1729,17 @@ plotted value, and the most recent recorded sample must always be drawn, so
 that the end of a trace and the numeric readouts cannot disagree. Selection
 must also preserve the extremes of the samples it omits, so that decimation
 cannot hide an excursion the model produced.
+
+A **reference** is not a trace and is deliberately exempt from the rule
+above: it draws no recorded sample, because it is a published constant
+rather than a modeled quantity. That exemption is bounded by a labelling
+requirement in its place. A reference must state the value and the divisor
+it was drawn from, must name the compartment it is to be read against, and
+must be visually distinguishable in kind from a compartment trace — by mark
+type rather than by colour alone. An unlabelled horizontal line is a modeled
+quantity to a reader who has no reason to think otherwise, which is the
+modeled-versus-measured confusion this document forbids elsewhere arriving
+through the chart. See "MAC-awake as a chart reference".
 
 The Flet interface must not:
 
@@ -1736,7 +1755,13 @@ The Flet interface must not:
 - present a run halted by a failure as though it were paused; or
 - display a concentration at a finer resolution than "Displayed precision"
   justifies, or render a value the model does not resolve as though it were
-  a value the model asserts.
+  a value the model asserts; or
+- predict when the simulated patient would wake, or display a
+  time-to-awakening figure of any kind. The MAC-awake reference is a
+  labelled population band precisely because a per-patient prediction is a
+  claim this model does not support, and a disclaimer beside such a number
+  would not undo it: the number would be acted on and the disclaimer would
+  not.
 
 The controller exposes immutable snapshots rather than mutable compartment objects.
 
@@ -1763,7 +1788,13 @@ The interface must show:
 - every concentration above, and the delivered concentration, additionally as
   a multiple of the running agent's 1 MAC, with that agent's 1 MAC in percent
   stated on the display. See "MAC multiples as a display unit" for what the
-  multiple asserts and for why both units are shown rather than selected.
+  multiple asserts and for why both units are shown rather than selected; and
+- the running agent's population MAC-awake on the chart, as a band labelled
+  with the fraction and the divisor it was drawn from and with the trace it is
+  to be read against, alongside that agent's nominal 1 MAC as a visually
+  distinct line. See "MAC-awake as a chart reference" for what the band
+  asserts, what it does not, and why no time-to-wake-up figure is displayed
+  anywhere in the interface.
 
 Arterial concentration is deliberately **not** in this list. Arterial blood is
 flow-limited in this model and holds no independent state: $`F_a \equiv F_A`$
@@ -1906,6 +1937,144 @@ on the display rather than only the vaporizer's starting position. "Delivery-
 limit and MAC parameters" carries the provenance and the size of the gap
 against the primary literature, including the consequence for the
 cross-agent comparison this unit exists to support.
+
+### MAC-awake as a chart reference
+
+The compartment chart carries two horizontal clinical references: a **band**
+at the running agent's population MAC-awake, and a **line** at its nominal
+1 MAC. Neither is a modeled quantity. Both are published constants drawn at a
+height the chart's own percent axis gives meaning to, and `core/` computes
+neither — no governing equation reads MAC-awake, exactly as none reads
+`mac_percent`.
+
+**Why two rather than one.** Chortkoff et al. state that "along with
+pharmacokinetics, the ratio of the awakening concentration to the
+anesthetizing concentration (MAC-awake/MAC) determines time to awakening".
+Drawing both makes that ratio the visible gap between them, so the chart
+shows the *decrement required for arousal* rather than only the endpoint —
+which is what makes a twenty-minute case and a three-hour one answerable side
+by side, and is the context-sensitive emergence lesson stated geometrically.
+
+**The mark type carries the distinction, not the colour.** The two references
+differ in epistemic status and the marks say so: MAC-awake is a measured
+population value with real spread, so it is a band; 1 MAC is a definitional
+anchor rather than a distribution of the same kind, so it is a line.
+Band-versus-line survives greyscale and every colour-vision deficiency, which
+"Color contrast" below requires of any encoding carrying meaning, and it is a
+stronger separation than any colour pair. Both are drawn in the interface's
+own ink and label colours rather than in a seventh and eighth hue, so neither
+reads as another compartment.
+
+**What the band asserts.** MAC-awake is the concentration at which half of a
+population responds to verbal command. That is a *different endpoint* from
+MAC, which is immobility to a standardized surgical incision, and the label
+says which. The band's extent is one standard deviation either side of the
+published mean, so it spans roughly the middle two thirds of a population and
+not its range.
+
+**What the band does not assert, and what the interface therefore never
+shows.** It is not a prediction for the patient on the screen, and the
+interface displays no time-to-wake-up figure of any kind. A readout of the
+form "time to wake-up: 14 min" would read as a per-patient prediction that
+this model does not support, and no surrounding disclaimer undoes that: the
+number would be acted on and the disclaimer would not. A band is the strongest
+claim the evidence carries, which is why it is the form the reference takes.
+
+**Which trace the band is read against, and why that is the load-bearing
+part.** The band must be read against the **vessel-rich** trace. This model
+has no effect-site compartment and defines $`F_a \equiv F_A`$ (see "Model
+boundary"), so the alveolar trace is the fastest curve on the chart and the
+furthest from where responsiveness actually returns. Measured on a 3-hour
+1 MAC sevoflurane case with the vaporizer turned off at 10 L/min, the
+alveolar trace crosses the band's centre at 2.83 min and the vessel-rich
+trace at 6.51 min — 2.30 times later.
+
+<!-- derived: 2.83 min from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+
+The primary literature makes this a question of *which number is correct*
+rather than only of how one is read. Katoh et al. determined sevoflurane and
+isoflurane MAC-awake by both a slow, equilibrated washout and a fast one, and
+the two disagree: 0.34 and 0.31 of MAC by slow washout against 0.22 for both
+by fast washout. The paper attributes the difference to
+end-tidal-to-arterial and arterial-to-cerebral anesthetic differences — which
+is precisely what this model represents as the alveolar-to-vessel-rich
+difference — and measures the brain concentration directly rather than
+leaving it to inference: cerebral concentration at first eye opening during
+fast washout was 0.34 of MAC for sevoflurane and 0.30 for isoflurane,
+"nearly equal to MAC-Awake obtained by slow alveolar washout". The stored
+values are therefore the slow-washout ones, and the trace they belong against
+is the vessel-rich one.
+
+<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
+<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
+
+**Every way of getting this wrong runs in the same direction, and it is the
+consequential one.** Concentration falls during emergence, so a trace crosses
+a higher reference sooner and a faster-falling trace crosses any reference
+sooner. Three distinct errors therefore all shorten the apparent time to
+awakening — reading the band against the alveolar trace instead of the
+vessel-rich one, drawing the slow-washout value against a fast-washout
+alveolar trace where 0.22 would be the matching figure, and the denominator
+mistake below. A learner who takes any of them away concludes that emergence
+is faster than this model says, and carries into practice the belief that a
+patient is more awake than they are. That is why the reference is specified
+here rather than left to the chart.
+
+**The value is stored as a fraction of MAC, never as a percent of one
+atmosphere, and that is a safety decision rather than a schema preference.**
+Each source expresses MAC-awake as a ratio to MAC — Katoh explicitly "as a
+ratio to age-adjusted MAC" — and a published *percent* is anchored to
+whichever MAC its own population was measured against. Desflurane is the
+worked example: Chortkoff's MAC-awake of 2.60% is 36% of a MAC of about
+7.25%, which is Rampil's 18-30 year figure, while this project stores
+Rampil's 31-65 year figure of 6.0%. Dividing the absolute percent by the
+stored MAC would give 0.433 rather than the published 0.36 — 20% high, and
+therefore a band drawn 20% too high and crossed too soon. Storing the
+fraction removes the trap outright, and stays correct if `mac_percent` is
+ever changed or made age-aware.
+
+<!-- derived: 0.433 from data/agents/desflurane.json mac_percent = 6, mac_awake.fraction_of_mac = 0.36 -->
+
+Because a fraction with no stated denominator is the correct number in the
+wrong context, each agent's `mac_awake.mac_reference_basis` records the MAC
+its fraction was derived against, and the interface states the divisor it is
+multiplied by. Applying the fraction to this project's own `mac_percent` is
+what keeps the band and the axis consistent by construction, and it
+corroborates independently for desflurane: 0.36 of the stored 6.0% is 2.16%,
+against the 2.17% Song et al. measured in the non-jaundiced control arm of a
+population that the 31-65 year divisor describes.
+
+<!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
+
+**The 1 MAC line is the nominal value, not the dialled one.** A fixed
+reference stays comparable across runs, which is what makes two cases of
+different length answerable side by side; a line tracking the concentration
+the learner happened to dial would only restate where the trace already
+starts. It is the flat adult `mac_percent` and is labelled as a reference
+adult rather than as a patient-specific value: this model has no age
+parameter, while Katoh expressed MAC-awake as a ratio to age-adjusted MAC.
+
+One consequence is expected rather than a rendering fault: on a short case
+the vessel-rich trace never reaches the 1 MAC line, because it never
+equilibrated. That is true of the patient and is worth teaching.
+
+**What the references inherit, and one methodological limitation.** The
+fractions are tier 1, from primary measurements in humans; `mac_percent` is
+tier 3, so the *absolute height* of both references inherits every limitation
+"Delivery-limit and MAC parameters" records for the divisor, and the
+interface displays that divisor so a reader who disagrees with it can see
+that they do. Separately, the three fractions were not determined by one
+method: Katoh's slow-washout arm is *descending*, while Chortkoff and Song
+both determined desflurane MAC-awake by *ascending* stepwise equilibration.
+All three are equilibrated determinations rather than fast-washout ones,
+which is why all three belong against the vessel-rich trace, but ascending
+and descending determinations are not interchangeable and no
+descending-washout desflurane MAC-awake was found. The three fractions
+(0.31 isoflurane, 0.34 sevoflurane, 0.36 desflurane) sit in a narrow range,
+so each agent carries its own value rather than one fraction covering all
+three.
+
+<!-- provenance: data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36 -->
 
 ### Color contrast, and the standard this interface is held to
 
@@ -2307,6 +2476,7 @@ This model does not model:
 - ECMO;
 - hypothermia;
 - age-dependent MAC;
+- individual variation in awakening concentration (the chart's MAC-awake band is a population value at one standard deviation, never a threshold for the simulated patient — see "MAC-awake as a chart reference");
 - anesthetic potency;
 - BIS, eBIS, or hypnosis;
 - nociceptive response;
