@@ -2132,7 +2132,7 @@ def test_the_list_states_what_was_changed_and_to_what() -> None:
         )
     )
 
-    assert view._control_timeline_text.value == ("12.0 s · Fresh gas flow 4.0 L/min → 2.0 L/min")
+    assert view._control_timeline_text.value == ("12.0 s · Fresh gas flow 4.0 L/min -> 2.0 L/min")
 
 
 def test_the_list_reads_most_recent_first() -> None:

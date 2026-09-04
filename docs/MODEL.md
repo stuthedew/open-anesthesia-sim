@@ -1550,6 +1550,15 @@ Changing ventilation does not alter existing circuit or alveolar stores.
 
 Changing delivered concentration does not alter existing circuit concentration.
 
+### The control-input record
+
+Every change to a runtime control that the model actually runs under is
+recorded against the simulated time it took effect, alongside the
+concentration history, and cleared with it. What that record is for, what
+it does and does not assert, and why it is shaped the way it is are under
+"The control-input timeline" below, with the display rules the rest of the
+interface section carries.
+
 ### Supported input ranges
 
 Each control is supported over a closed interval, endpoints included, and a
@@ -1698,6 +1707,8 @@ Reset must:
 - set simulation time to zero;
 - clear circuit, alveolar, blood, and tissue agent amounts;
 - clear concentration and mass-accounting history;
+- clear the recorded control-input timeline, which belongs to the run that
+  recorded it;
 - reset cumulative delivered and exhausted amounts;
 - restore the mass-balance residual to zero;
 - clear any recorded failure state, so a session halted by a failed step
@@ -1718,7 +1729,10 @@ The Flet interface may:
 - select which recorded samples a plotted trace draws, subject to the
   constraint below;
 - draw a published clinical constant as a chart reference, at a height the
-  chart's own axis gives meaning to, subject to the constraint below; and
+  chart's own axis gives meaning to, subject to the constraint below;
+- declare where one user adjustment of a control begins, so that the run's
+  record of its own inputs can be read as the acts that produced it,
+  subject to the constraint below; and
 - display mass-balance status.
 
 A plotted trace need not draw every recorded sample — the recorded history
@@ -1740,6 +1754,25 @@ type rather than by colour alone. An unlabelled horizontal line is a modeled
 quantity to a reader who has no reason to think otherwise, which is the
 modeled-versus-measured confusion this document forbids elsewhere arriving
 through the chart. See "MAC-awake as a chart reference".
+
+A **control mark** is a third kind of chart series, and is exempt from the
+trace rule for a different reason again: it draws no value at all. It marks
+a simulated time on the horizontal axis and asserts nothing about the
+vertical one. It is bounded by its own labelling requirement in place of
+the exemption: a control mark must be visually distinguishable in kind from
+both a trace and a reference by something other than colour, must be
+identified on the display as a record of a user input rather than of
+anything measured or modelled, and must be accompanied by a statement of
+which control moved and to what — a bare mark says an unspecified something
+happened, which invites the reader to supply their own explanation for the
+change in the curves beside it. See "The control-input timeline".
+
+Declaring where an adjustment begins is a statement about the *input
+device* and not about the model: it changes no simulation state, records no
+value, and must not alter what is recorded or what the model computes. It
+exists because a slider reports continuously while dragged, so the
+interface is the only party that can distinguish one turn of a control from
+two.
 
 The Flet interface must not:
 
@@ -1794,7 +1827,10 @@ The interface must show:
   to be read against, alongside that agent's nominal 1 MAC as a visually
   distinct line. See "MAC-awake as a chart reference" for what the band
   asserts, what it does not, and why no time-to-wake-up figure is displayed
-  anywhere in the interface.
+  anywhere in the interface; and
+- every setting changed during the current run, each with the simulated time
+  it took effect, the control it changed and the values it moved between, and
+  marked on the chart at that time. See "The control-input timeline".
 
 Arterial concentration is deliberately **not** in this list. Arterial blood is
 flow-limited in this model and holds no independent state: $`F_a \equiv F_A`$
@@ -2075,6 +2111,88 @@ so each agent carries its own value rather than one fraction covering all
 three.
 
 <!-- provenance: data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36 -->
+
+### The control-input timeline
+
+**What it is.** A record of the settings a run was given, kept beside the
+concentration history and cleared with it. Each entry is one change the
+model actually ran under: the simulated time it took effect, the index of
+the history sample it took effect at, which control, the values before and
+after, and the unit both are in.
+
+**Why the model needs one at all.** A curve without its inputs is not a
+result anybody can check. The exercises this simulator exists to support
+are all of the form "change one thing and look at what happened" —
+overpressure then dial back, drop the flow, halve the cardiac output — and a
+learner who cannot see where they dialled back cannot read their own
+experiment. The stronger requirement is reconstruction: the recorded
+timeline, re-applied to a fresh run at the recorded times, must reproduce
+the run it describes. That is what makes a recorded run a result rather
+than a picture of one, and it is what the design decisions below are for.
+
+**Recorded values are the model's, not the interface's.** Each value is
+read back off the compartment that holds it after the core has accepted it,
+in the unit the core is set in — so the delivered dial is stored as a
+fraction of one atmosphere and displayed as the percent every other
+concentration on the page is displayed as, converted once at the display.
+A record of what was *asked for* rather than of what took effect would
+diverge from the run the first time the two differed, and the core rejects
+an out-of-range setting rather than clamping it precisely so that they
+cannot differ silently.
+
+**A refused setting is not recorded**, because it never took effect. The
+recording happens after the core's setter returns, so this is structural
+rather than a check that could be forgotten.
+
+**Only what the model saw is recorded.** A setting equal to the one already
+in place is not a change. Neither is one superseded before the next
+simulation step: only the value standing when a step runs is integrated, so
+a control moved twice between two steps is one change from the first value
+to the last, and one moved and moved back within a step is no change at
+all. Recording the intermediate values would describe a run that did not
+happen; omitting the collapse would leave the timeline a record of the
+input device rather than of the simulation.
+
+**What a displayed adjustment is, and why it is not the same object.** A
+slider reports its value continuously while it is dragged, so one turn of
+one control reaches the model as a run of settings — each of them a setting
+the run really was computed under, and all of them one act by the person.
+The record keeps every setting, because reconstruction needs them; the
+display groups them into adjustments, because a reader needs the act. The
+grouping is exact rather than inferred: the interface declares where an
+adjustment begins, at the moment a drag starts, and every change carries
+the number it was assigned. Nothing infers a gesture from the spacing of
+the entries, and nothing may: a playback multiplier changes how much
+simulated time one drag spans, so any threshold would group correctly at
+one rate and wrongly at another. A change arriving with no adjustment
+declared — a keyboard press on a slider, a programmatic call — becomes an
+adjustment of its own, which is the honest reading of a discrete input.
+
+A displayed adjustment states the interval it spans and how many settings
+the model was stepped under during it. The count is displayed rather than
+hidden because an adjustment made over eight settings is not the same run
+as one made in a single step, even where the endpoints match.
+
+**What it asserts, and what it does not.** That the named control moved
+between the stated values over the stated simulated interval. It says
+nothing about the patient. It is a record of an *input*, never of a
+measurement or of a modelled quantity, which is why the chart's marks are
+labelled as such and why the list beside them says so in terms: a vertical
+rule on a chart of patient concentrations is otherwise an invitation to
+read an event into the curves.
+
+**Stability of the recorded identifiers.** Each control is recorded under a
+fixed string chosen from the domain — `fresh_gas_flow`, `delivered`,
+`alveolar_ventilation`, `cardiac_output`, `circuit_volume` — rather than
+from whatever the accessor that applies it is called. An identifier taken
+from the code would retire the vocabulary of every already-recorded run the
+next time the code was renamed.
+
+**Bounds are displayed, not silent.** The chart carries a fixed number of
+marks and the list a fixed number of lines, so a run may record more
+adjustments than either can show. What is not shown is counted on the
+display. A chart that quietly stops annotating, or a list that quietly
+ends, is a statement that nothing else happened.
 
 ### Color contrast, and the standard this interface is held to
 

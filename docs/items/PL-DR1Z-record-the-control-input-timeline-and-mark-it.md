@@ -3,11 +3,13 @@ id: PL-DR1Z
 title: Record the control-input timeline and mark it on the chart
 priority: P1
 effort: M
-status: ready
 classes: feature, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-08-25
+status: done
+closed: 2026-09-04
+verify: uv run pytest tests/integration/test_controller.py tests/unit/test_simulation_view.py && grep -q 'def test_a_recorded_change_is_marked_on_the_chart_at_its_own_time' tests/unit/test_simulation_view.py
 ---
 **Problem.** The controller records concentrations. Nothing records *why* they
 moved. Once a fresh gas flow, vaporizer dial, ventilation or cardiac-output change
@@ -59,3 +61,35 @@ mid-run dial change visible. A `P1` waiting on a `P2` is what `docket check`
 refuses, and correctly: whatever gates safety-classed work is that work's
 schedule. The band follows the dependency rather than a fresh judgment about
 this item's own value.
+
+**Closed 2026-09-04.** Recorded in the controller, marked on the chart, listed
+beside it, and specified in `docs/MODEL.md` § "The control-input timeline".
+Five things the brief did not anticipate, each of which changed the design:
+
+1. **A slider reports continuously while dragged**, so one turn of one control
+   reaches the model as a run of settings. The record keeps all of them, because
+   the model was stepped under all of them and the reconstruction property is
+   what this item is for; the display groups them into one *adjustment*. The
+   grouping is exact rather than inferred - `begin_control_adjustment` declares
+   the boundary from the input device - because no time threshold survives
+   `PL-VM40`'s playback multiplier, which changes how much simulated time one
+   drag spans.
+2. **A change superseded within one simulation step was never integrated**, so
+   recording it would describe a run that did not happen. Changes collapse per
+   step, and a change undone within a step leaves no entry.
+3. **`set_circuit_volume` is recorded too**, though it has no slider. It changes
+   the run, so a timeline omitting it would not reconstruct one; five controls
+   rather than the brief's four.
+4. **The recorded value is read back off the compartment**, not taken from the
+   caller. The core rejects rather than clamps today, so the two agree - but a
+   record of what was *asked for* would diverge silently the day that changed.
+5. **`→` has no glyph in the Flutter client** and drew as a replacement box, so
+   the direction of the change reached the reader as a missing character. Found
+   by rendering the running app; no test here would have caught it, since every
+   assertion compares strings the same font-less process produced.
+   `test_a_rendered_line_uses_only_glyphs_the_interface_can_draw` is the guard.
+
+Verified against the running app (`FLET_FORCE_WEB_SERVER=true
+FLET_WEB_NO_CDN=true`, Chromium over the DevTools protocol, per `PL-CQRL`): a
+103 s run with four adjustments drew four marks at the right times and listed
+them correctly, most recent first.

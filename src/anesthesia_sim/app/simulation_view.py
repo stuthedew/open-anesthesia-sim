@@ -205,8 +205,13 @@ CONTROL_MARK_COLOR = MUTED
 # Finer than either reference and than every trace, because a control mark
 # annotates the run rather than showing any part of it: at the density of a
 # case with a dozen adjustments, a mark as heavy as a trace would compete
-# with the curves it exists to be read against.
-CONTROL_MARK_STROKE_WIDTH = 1.0
+# with the curves it exists to be read against. Heavier than the vertical
+# grid lines, though, and dashed where they are solid: measured against a
+# rendered frame, a mark at a hair's width beside a 60 s gridline is
+# findable but not immediately separable from it, and a reader who cannot
+# tell an annotation from an axis decoration reads the time off the wrong
+# one.
+CONTROL_MARK_STROKE_WIDTH = 1.5
 CONTROL_MARK_DASH_PATTERN = [3, 5]
 # How many control marks the chart can stand at once. The pool is built at
 # construction and its members are moved from frame to frame, exactly as the

@@ -194,8 +194,15 @@ def format_adjustment(adjustment: ControlAdjustment) -> str:
         when = f"{when}–{format_elapsed(adjustment.ended_at_s)}"
 
     label = CONTROL_INPUT_LABELS[adjustment.control]
+    # ASCII rather than U+2192. The Flutter client this interface renders in
+    # has no glyph for the arrow and draws a replacement box in its place,
+    # which is the direction of the change - the one thing this line exists
+    # to state - reaching the reader as a missing character. Found by
+    # rendering the running app, which no test in this repository would have
+    # caught: every assertion here compares strings the same font-less
+    # process produced.
     moved = (
-        f"{format_control_value(adjustment.control, adjustment.from_value)} → "
+        f"{format_control_value(adjustment.control, adjustment.from_value)} -> "
         f"{format_control_value(adjustment.control, adjustment.to_value)}"
     )
 

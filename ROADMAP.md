@@ -1179,6 +1179,18 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   would need a field added — and every past sample migrated or left with a
   meaningless default — when it lands. A tuple form costs nothing today and
   needs no such migration later.
+
+  *Landed 2026-09-04 as a frozen `ControlChange` record rather than a literal
+  tuple, preserving the property this paragraph asks for.* The migration
+  argument is about a struct with **one field per control**; a record with one
+  `control` field holding a stable identifier has the same immunity — nitrous
+  oxide adds an identifier and migrates nothing — while carrying what the
+  entry actually needs, which is more than three values: the item's own brief
+  requires the old value as well as the new, and the implementation adds the
+  history index the mark is placed from, the unit both values are in, and the
+  adjustment a drag's several settings belong to. A bare 3-tuple could not
+  hold those and would have had to grow into an unnamed 7-tuple. See
+  `docs/MODEL.md` § "The control-input timeline".
 - **`SimulationHistorySample` keyed by substance, not by six flat named
   compartment floats** (queue item PL-W3DD). There is exactly one substance
   today, so this changes representation, not behavior. It matters because item 12

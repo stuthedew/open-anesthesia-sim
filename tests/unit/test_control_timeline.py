@@ -135,7 +135,7 @@ def test_a_single_change_reads_as_the_instant_it_was() -> None:
 
     (adjustment,) = group_adjustments(timeline)
 
-    assert format_adjustment(adjustment) == "12.0 s · Fresh gas flow 4.0 L/min → 2.0 L/min"
+    assert format_adjustment(adjustment) == "12.0 s · Fresh gas flow 4.0 L/min -> 2.0 L/min"
 
 
 def test_a_multi_setting_adjustment_states_its_span_and_its_count() -> None:
@@ -147,7 +147,7 @@ def test_a_multi_setting_adjustment_states_its_span_and_its_count() -> None:
     (adjustment,) = group_adjustments(timeline)
 
     assert format_adjustment(adjustment) == (
-        "10.0 s–10.2 s · Delivered agent 2.00% → 4.00% (2 settings)"
+        "10.0 s–10.2 s · Delivered agent 2.00% -> 4.00% (2 settings)"
     )
 
 
@@ -161,6 +161,27 @@ def test_a_rendered_adjustment_carries_a_unit_on_both_of_its_values() -> None:
 
     for adjustment in group_adjustments(timeline):
         rendered = format_adjustment(adjustment)
-        before, after = rendered.split(" → ")
+        before, after = rendered.split(" -> ")
         assert before.endswith(("L/min", "%", "L"))
         assert after.endswith(("L/min", "%", "L"))
+
+
+def test_a_rendered_line_uses_only_glyphs_the_interface_can_draw() -> None:
+    """The arrow is the one that bit: U+2192 draws as a replacement box.
+
+    No test in this repository renders a font, so this cannot check what
+    the client can draw - it pins the characters a rendered frame has
+    confirmed instead. `·`, `–` and `%` were read off a real frame on
+    2026-09-04; `→` was read off the same frame as tofu, which put the
+    direction of the change - the whole point of the line - in front of the
+    reader as a missing character.
+    """
+
+    timeline = (
+        _change(10.0, ControlInput.DELIVERED, 0.02, 0.03, adjustment=1),
+        _change(10.2, ControlInput.DELIVERED, 0.03, 0.04, adjustment=1),
+    )
+    confirmed = set(" ·–->()sL/min%0123456789.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+    for adjustment in group_adjustments(timeline):
+        assert set(format_adjustment(adjustment)) <= confirmed
