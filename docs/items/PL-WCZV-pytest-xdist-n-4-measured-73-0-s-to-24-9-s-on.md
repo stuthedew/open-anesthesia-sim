@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: perf, infra
 feature: dev-tooling
+milestone: v0.3.5
 touches: pyproject.toml, uv.lock, Makefile, .github/workflows/quality.yml
 added: 2026-09-03
 closed: 2026-09-03
