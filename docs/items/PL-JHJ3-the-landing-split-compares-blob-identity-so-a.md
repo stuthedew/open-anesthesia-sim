@@ -1,14 +1,16 @@
 ---
 id: PL-JHJ3
 title: The landing split compares blob identity, so a squash that merged content reads as unlanded and two sessions writing one record line read as landed
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.3.9
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md
 added: 2026-09-04
 closed: 2026-09-04
+pr: 317
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_stranded_is_silent_when_the_merge_took_the_commit_and_merged_it' subprojects/docket/tests/test_cli.py
 ---
 

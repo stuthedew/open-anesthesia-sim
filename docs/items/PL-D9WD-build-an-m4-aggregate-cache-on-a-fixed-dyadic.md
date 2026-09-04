@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: perf
 feature: teachable-case
+milestone: v0.3.9
 touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_chart_downsampling.py, tests/unit/test_run_history.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py, docs/MODEL.md
 added: 2026-09-04
 closed: 2026-09-04
