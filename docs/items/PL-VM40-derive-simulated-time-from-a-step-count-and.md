@@ -9,8 +9,10 @@ feature: teachable-case
 touches: src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, ROADMAP.md, tests/unit/test_simulation.py, tests/unit/test_simulation_view.py, tests/integration/test_sevo_controller.py
 added: 2026-08-25
 closed: 2026-09-04
+pr: 316
 verify: uv run pytest tests/unit/test_simulation.py && grep -q 'def test_elapsed_time_is_the_step_count_times_the_step' tests/unit/test_simulation.py
 ---
+
 **Problem.** Two separate things make a run irreproducible. `SimulationState.advance`
 accumulates `self.elapsed_s += simulation_step_s` per step, so the clock depends on
 the order and count of the additions that reached it rather than on how far the

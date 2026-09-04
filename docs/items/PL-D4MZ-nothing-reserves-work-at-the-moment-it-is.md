@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: .claude/rules/instruction-writing.md
 added: 2026-09-02
 closed: 2026-09-04
+pr: 318
 verify: python3 tools/doc_check.py check && grep -qF 'post_turn_summary.needs_action' .claude/rules/instruction-writing.md
 ---
 
