@@ -31,6 +31,7 @@ from anesthesia_sim.app.controller import (
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
+    format_mac_awake_reference,
     format_mac_multiple,
     format_mac_reference,
     format_percent,
@@ -49,7 +50,12 @@ from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import SimulationNumericalError
-from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.parameters import (
+    AGENT_DATA_FILENAMES,
+    MacAwakeReference,
+    load_agent_parameters,
+    load_reference_adult_parameters,
+)
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -123,16 +129,19 @@ def _snapshot(
     agent_display_name: str = "Sevoflurane",
     max_delivered_concentration_percent: float = 8.0,
     agent_mac_percent: float | None = None,
+    agent_mac_awake: MacAwakeReference | None = None,
     failure_reason: str | None = None,
 ) -> SimulationSnapshot:
     """Build a snapshot for the view, defaulting MAC from the named agent.
 
-    `agent_mac_percent` resolves from the data file rather than from a
-    literal so that a test naming an agent cannot accidentally pair that
-    agent's concentrations with another agent's MAC - which is the
-    presentation failure the MAC readouts have to be proof against, and
-    would be a fixture that proved the opposite of what it looked like.
-    Pass it explicitly only to test a divisor the data files do not hold.
+    `agent_mac_percent` and `agent_mac_awake` both resolve from the data
+    file rather than from a literal so that a test naming an agent cannot
+    accidentally pair that agent's concentrations with another agent's MAC,
+    or its chart with another agent's MAC-awake band - which is the
+    presentation failure the MAC readouts and the reference band have to be
+    proof against, and would be a fixture that proved the opposite of what
+    it looked like. Pass either explicitly only to test a value the data
+    files do not hold.
     """
 
     if history is None:
@@ -140,6 +149,9 @@ def _snapshot(
 
     if agent_mac_percent is None:
         agent_mac_percent = load_agent_parameters(agent_id).mac_percent
+
+    if agent_mac_awake is None:
+        agent_mac_awake = load_agent_parameters(agent_id).mac_awake
 
     latest = history[-1]
 
@@ -150,6 +162,7 @@ def _snapshot(
         agent_display_name=agent_display_name,
         max_delivered_concentration_percent=max_delivered_concentration_percent,
         agent_mac_percent=agent_mac_percent,
+        agent_mac_awake=agent_mac_awake,
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=4.0,
         delivered_concentration_fraction=0.08,
@@ -1796,3 +1809,192 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
     alveolar_mac = snapshot.alveolar_concentration_fraction * 100.0 / 6.0
     assert 0.0 < alveolar_mac < 1.0
     assert view._delivered_concentration_mac_text.value == "1.00 ×MAC"
+
+
+def test_the_clinical_references_are_drawn_at_the_running_agents_own_values() -> None:
+    """Both references are placed by the running agent's own two constants.
+
+    The band is `mac_awake.fraction_of_mac` times `mac_percent`, and the line
+    is `mac_percent`. Placing either from another agent's value would be a
+    correct number at the wrong height on a labelled axis, which
+    `CLAUDE.md` counts as a presentation failure rather than a cosmetic one.
+    Checked across every shipped agent so the pairing cannot hold for the
+    default and not the others.
+    """
+
+    for agent_id in AGENT_DATA_FILENAMES:
+        agent = load_agent_parameters(agent_id)
+        view, _ = _build_view(_snapshot(agent_id=agent_id))
+
+        deviation = agent.mac_awake.standard_deviation_fraction_of_mac * agent.mac_percent
+        centre = agent.mac_awake.fraction_of_mac * agent.mac_percent
+
+        band = view._mac_awake_band_series
+        assert all(point.y == pytest.approx(centre + deviation) for point in band.points)
+        assert band.below_line_cutoff_y == pytest.approx(centre - deviation)
+
+        for point in view._one_mac_line_series.points:
+            assert point.y == pytest.approx(agent.mac_percent)
+
+
+def test_the_clinical_references_follow_the_agent_when_it_changes() -> None:
+    """A reference left at the previous agent's height would misread the run.
+
+    The chart is agent-switchable and the MAC axis already rebuilds on a
+    change; the references have to move with it. Sevoflurane and desflurane
+    differ by a factor of three in MAC, so a reference that failed to move
+    would sit at a third or triple its correct height rather than being
+    subtly wrong.
+    """
+
+    controller = _FakeController(_snapshot(agent_id="sevoflurane"))
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    sevoflurane = load_agent_parameters("sevoflurane")
+    assert view._one_mac_line_series.points[0].y == pytest.approx(sevoflurane.mac_percent)
+
+    desflurane = load_agent_parameters("desflurane")
+    controller.snapshot_value = _snapshot(agent_id="desflurane")
+    view._refresh_view()
+
+    assert view._one_mac_line_series.points[0].y == pytest.approx(desflurane.mac_percent)
+
+    centre = desflurane.mac_awake.fraction_of_mac * desflurane.mac_percent
+    deviation = desflurane.mac_awake.standard_deviation_fraction_of_mac * desflurane.mac_percent
+    assert view._mac_awake_band_series.points[0].y == pytest.approx(centre + deviation)
+    assert view._mac_awake_band_series.below_line_cutoff_y == pytest.approx(centre - deviation)
+
+
+def test_the_clinical_references_span_the_visible_window() -> None:
+    """A reference ruled across part of the chart would read as ending.
+
+    Both marks are constants that hold for the whole run, so each has to span
+    the plotted range exactly - a line stopping short would invite reading it
+    as a quantity that changed.
+    """
+
+    view, _ = _build_view(_snapshot(history=_run_history(6_000)))
+    chart = view._concentration_chart
+
+    for series in (view._mac_awake_band_series, view._one_mac_line_series):
+        assert [point.x for point in series.points] == [chart.min_x, chart.max_x]
+
+
+def test_the_clinical_references_are_not_compartment_traces() -> None:
+    """A reference must not enter the trace-to-compartment table, or the palette.
+
+    `_plotted_series` binds each trace to the one quantity it draws and is
+    what `test_chart_traces_stay_bound_to_their_own_compartment` audits. A
+    reference reads no sample, so it belongs to neither. It is also drawn
+    *before* every trace, so an annotation can never obscure the run it
+    annotates.
+    """
+
+    view, _ = _build_view(_snapshot())
+
+    plotted = [series for series, _ in view._plotted_series]
+    assert view._mac_awake_band_series not in plotted
+    assert view._one_mac_line_series not in plotted
+
+    order = view._concentration_chart.data_series
+    assert order.index(view._mac_awake_band_series) < min(order.index(each) for each in plotted)
+    assert order.index(view._one_mac_line_series) < min(order.index(each) for each in plotted)
+
+
+def test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from() -> None:
+    """Two free parameters, both on the display.
+
+    `format_mac_reference` names the MAC axis's one divisor for the same
+    reason. The band is a published fraction applied to that divisor, so a
+    reader has two things they might disagree with and both are stated.
+    """
+
+    for agent_id in AGENT_DATA_FILENAMES:
+        agent = load_agent_parameters(agent_id)
+        view, page = _build_view(
+            _snapshot(agent_id=agent_id, agent_display_name=agent.display_name)
+        )
+        strings = _mounted_interface_strings(view, page)
+
+        expected = format_mac_awake_reference(
+            agent.display_name,
+            fraction_of_mac=agent.mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=(agent.mac_awake.standard_deviation_fraction_of_mac),
+            mac_percent=agent.mac_percent,
+        )
+
+        assert expected in strings
+        assert format_mac_reference(agent.display_name, agent.mac_percent) in strings
+
+
+def test_the_interface_says_which_trace_the_band_is_read_against() -> None:
+    """The one instruction without which a correct band teaches the wrong thing.
+
+    This model has no effect-site compartment and defines the arterial
+    fraction as the alveolar one, so the alveolar trace is the fastest curve
+    on the chart. Measured on a 3-hour 1 MAC sevoflurane washout it crosses
+    the band's centre 2.3 times sooner than the vessel-rich trace does, so a
+    band read against it teaches an early wake-up - the direction with
+    clinical consequence. `docs/MODEL.md` § "MAC-awake as a chart reference"
+    is the specification this sentence is the display-side half of.
+    """
+
+    view, page = _build_view(_snapshot())
+    prose = " ".join(_mounted_interface_strings(view, page))
+
+    assert "vessel-rich trace" in prose
+    # The endpoint, distinguished from MAC's own.
+    assert "respond to command" in prose
+    assert "immobility to incision" in prose
+    # And the extent, so the band is not read as a threshold.
+    assert "±1 SD" in prose or "1 SD" in prose
+
+
+def test_the_interface_never_predicts_a_time_to_wake_up() -> None:
+    """The claim the band exists *instead of*, checked against the whole tree.
+
+    A readout of the form "time to wake-up: 14 min" reads as a per-patient
+    prediction this model does not support, and no surrounding disclaimer
+    undoes that - the number would be acted on and the disclaimer would not.
+    The band is the strongest claim the evidence carries, so this asserts the
+    stronger one is absent from everywhere in the assembled interface rather
+    than from the controls a test remembered to check.
+    """
+
+    view, page = _build_view(_snapshot(history=_run_history(6_000)))
+    strings = _mounted_interface_strings(view, page)
+    prose = " ".join(strings).lower()
+
+    # The hazard itself: any string that mentions waking *and* carries a
+    # duration is a time prediction however it is worded, and this catches a
+    # phrasing nobody thought to enumerate.
+    duration = re.compile(
+        r"\d+(?:\.\d+)?\s*(?:s|sec|secs|second|seconds|min|mins|minute|minutes|h|hr|hour|hours)\b"
+    )
+
+    for value in strings:
+        lowered = value.lower()
+        if any(word in lowered for word in ("wake", "awaken", "arousal", "emergence")):
+            assert duration.search(lowered) is None, value
+
+    # And the named forms, each of which must appear only under a negation if
+    # it appears at all - the band's own disclaimer says "not a time to
+    # wake-up", which is the sentence that makes the claim absent rather than
+    # a claim being made.
+    for forbidden in (
+        "time to wake",
+        "time to awaken",
+        "wake-up time",
+        "wakeup time",
+        "emergence time",
+        "time to emergence",
+        "predicted wake",
+        "will wake",
+    ):
+        for match in re.finditer(re.escape(forbidden), prose):
+            preceding = prose[max(0, match.start() - 12) : match.start()]
+            assert "not " in preceding, (forbidden, preceding)
+
+    # The band's own line says what it is not, in terms.
+    assert "not a time to wake-up" in prose
+    assert "not a prediction for any individual patient" in prose

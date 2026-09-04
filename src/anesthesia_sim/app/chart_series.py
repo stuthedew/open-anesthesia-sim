@@ -37,11 +37,14 @@ __all__ = [
     "PlottedSeries",
     "SampleValue",
     "alveolar_value",
+    "build_reference_line",
     "build_series",
     "circuit_value",
     "fat_value",
     "mixed_venous_value",
     "muscle_value",
+    "redraw_reference_band",
+    "redraw_reference_line",
     "redraw_series",
     "redraw_visible_window",
     "sample_elapsed_s",
@@ -119,6 +122,93 @@ def build_series(
         curved=False,
         point=False,
     )
+
+
+def build_reference_line(
+    color: str, stroke_width: float, dash_pattern: list[int] | None = None
+) -> fch.LineChartData:
+    """Build one horizontal reference mark for the compartment chart.
+
+    A reference is not a trace, and the difference is the reason this is a
+    separate constructor rather than `build_series` with two points. A trace
+    draws recorded samples; a reference draws a published constant at a
+    height the chart's own axis gives meaning to, and it carries no
+    `SampleValue` because there is no sample to read. Keeping the two apart
+    is what stops a reference being added to the `PlottedSeries` table, where
+    every entry is checked against the compartment it draws.
+
+    Two points are enough for a horizontal line, and
+    `redraw_reference_line` moves them rather than rebuilding them, for the
+    reason `redraw_series` gives.
+
+    Args:
+        color: Hexadecimal line color.
+        stroke_width: Line width in display pixels.
+        dash_pattern: Optional alternating dash and gap lengths
+            in display pixels.
+
+    Returns:
+        Configured two-point Flet line-chart series.
+    """
+
+    return fch.LineChartData(
+        points=[fch.LineChartDataPoint(0.0, 0.0), fch.LineChartDataPoint(0.0, 0.0)],
+        color=color,
+        stroke_width=stroke_width,
+        dash_pattern=dash_pattern,
+        curved=False,
+        point=False,
+    )
+
+
+def redraw_reference_line(
+    series: fch.LineChartData, start_x: float, end_x: float, y: float
+) -> None:
+    """Span one reference mark across the visible window at a constant height.
+
+    Both endpoints are moved on every frame rather than only when the window
+    scrolls. The height depends on the running agent, so a reference left at
+    the previous agent's value would sit at a wrong height on a labelled
+    axis — the correct number in the wrong context that `CLAUDE.md` treats
+    as a safety failure — and four in-place assignments per frame is not a
+    cost worth trading a staleness class against. `redraw_series` records
+    why an in-place assignment reaches the client.
+
+    Args:
+        series: Reference mark to move. Its two points are mutated.
+        start_x: Left edge of the visible window, in simulated seconds.
+        end_x: Right edge of the visible window, in simulated seconds.
+        y: Constant height, in the chart's own percent unit.
+    """
+
+    left, right = series.points
+    left.x = start_x
+    left.y = y
+    right.x = end_x
+    right.y = y
+
+
+def redraw_reference_band(
+    series: fch.LineChartData, start_x: float, end_x: float, lower_y: float, upper_y: float
+) -> None:
+    """Span one reference *band* across the visible window between two heights.
+
+    The band is one series drawn at its upper edge with the area beneath it
+    filled down to `lower_y`: `below_line_cutoff_y` is what makes the fill a
+    bounded band rather than everything under a line. The stroke stays on the
+    upper edge, so the fill's own boundary is what marks the lower one.
+
+    Args:
+        series: Band to move. Its two points are mutated, and its fill
+            cutoff is set to the lower edge.
+        start_x: Left edge of the visible window, in simulated seconds.
+        end_x: Right edge of the visible window, in simulated seconds.
+        lower_y: Lower edge of the band, in the chart's percent unit.
+        upper_y: Upper edge of the band, in the chart's percent unit.
+    """
+
+    redraw_reference_line(series, start_x, end_x, upper_y)
+    series.below_line_cutoff_y = lower_y
 
 
 def redraw_visible_window(
