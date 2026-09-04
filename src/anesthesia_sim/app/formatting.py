@@ -19,6 +19,19 @@ The displayed resolution is a property of the display alone. Everything
 upstream carries full binary64 - the compartment states, every integration
 step, every `SimulationHistorySample` - and the rounding happens exactly
 once, here.
+
+Two display units, one resolution. A compartment is shown as a percent of
+one atmosphere and as a multiple of the running agent's 1 MAC, which is the
+unit clinicians reason in and the only one that means the same thing when
+the agent changes. The second is the first divided by a per-agent constant,
+so `MAC_DISPLAY_DECIMALS` is *derived* from
+`CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen beside it -
+one stated resolution governs both, and re-deriving the percent resolution
+propagates to the MAC readout without a second derivation. What that
+division does and does not assert is `docs/MODEL.md` § "MAC multiples as a
+display unit"; it is a statement about a partial pressure, never about a
+depth of anesthesia, and the divisor is a tier-3 parameter whose provenance
+the interface displays.
 """
 
 from typing import Final
@@ -29,9 +42,18 @@ __all__ = [
     "CONCENTRATION_DISPLAY_DECIMALS",
     "CONCENTRATION_DISPLAY_RESOLUTION_PERCENT",
     "FLOW_DISPLAY_DECIMALS",
+    "MAC_AXIS_STEP_LADDER_MAC",
+    "MAC_DISPLAY_DECIMALS",
+    "MAC_DISPLAY_RESOLUTION_MAC",
+    "MAC_UNIT_SUFFIX",
+    "MAX_MAC_AXIS_INTERVALS",
     "format_delivered_label",
+    "format_mac_multiple",
+    "format_mac_reference",
     "format_percent",
     "format_subtitle",
+    "mac_axis_ticks",
+    "mac_multiple",
 ]
 
 # Displayed resolution for every modeled concentration and relative partial
@@ -53,6 +75,42 @@ CONCENTRATION_DISPLAY_RESOLUTION_PERCENT: Final = 10.0**-CONCENTRATION_DISPLAY_D
 # readouts beside them. Flet's default is 0, which would make a slider's own
 # label disagree with the text next to it mid-drag.
 FLOW_DISPLAY_DECIMALS: Final = 1
+
+# Decimals shown on a MAC multiple, and the resolution that follows. This is
+# *derived*, not chosen: a MAC multiple is a percent divided by the agent's
+# own `mac_percent`, so the percent resolution above already fixes how finely
+# the quotient is known, and stating a second independent resolution would
+# mean re-deriving two numbers whenever the first is re-derived (the reason is
+# in `docs/MODEL.md` § "Displayed precision"). The rule is one line: the
+# finest power of ten that is nowhere finer than the percent resolution
+# converted into MAC. That conversion is agent-specific — 0.01 percentage
+# points is 0.005 MAC for sevoflurane, 0.0083 for isoflurane and 0.0017 for
+# desflurane — so the binding agent is the one with the largest quotient,
+# isoflurane at 0.0083 MAC, and 0.01 is the finest power of ten at or above
+# it. `test_the_mac_resolution_is_derived_from_the_percent_resolution` in
+# `tests/unit/test_formatting.py` re-runs that arithmetic against every
+# shipped agent, so adding an agent or changing the percent resolution fails
+# there rather than silently over-claiming here.
+MAC_DISPLAY_DECIMALS: Final = 2
+#: Smallest difference in MAC multiples the readouts resolve.
+MAC_DISPLAY_RESOLUTION_MAC: Final = 10.0**-MAC_DISPLAY_DECIMALS
+
+# The unit written after a MAC multiple. The multiplication sign is doing
+# safety work rather than typographic work: "0.80 MAC" is read as a depth of
+# anesthesia, and "0.80 ×MAC" as what the number actually is — a partial
+# pressure expressed as a multiple of the concentration that would be 1 MAC.
+# `docs/MODEL.md` § "MAC multiples as a display unit" states the convention
+# the interface is holding a reader to here.
+MAC_UNIT_SUFFIX: Final = " \u00d7MAC"
+
+# Candidate spacings for the chart's MAC axis, coarsest last. `mac_axis_ticks`
+# takes the first that keeps the axis within `MAX_MAC_AXIS_INTERVALS`, so the
+# spacing is a function of the plotted range rather than of the agent: all
+# three shipped agents land on 0.5 MAC at the current dial-maximum axis, which
+# is what lets a reader carry one mental scale from one agent to the next.
+MAC_AXIS_STEP_LADDER_MAC: Final = (0.25, 0.5, 1.0, 2.0, 5.0)
+#: Most gaps the MAC axis may be divided into before the next coarser spacing.
+MAX_MAC_AXIS_INTERVALS: Final = 10
 
 
 def format_percent(concentration_fraction: float) -> str:
@@ -93,6 +151,177 @@ def format_percent(concentration_fraction: float) -> str:
         return f"<{resolution:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
 
     return f"{rendered}%"
+
+
+def mac_multiple(concentration_fraction: float, mac_percent: float) -> float:
+    """Convert a concentration fraction to multiples of the agent's 1 MAC.
+
+    The whole arithmetic of the second display unit, in one place, so the
+    transformation `docs/MODEL.md` § "MAC multiples as a display unit"
+    specifies can be read and tested without a formatter or a control
+    around it.
+
+    What the returned number asserts is narrower than it looks, and the
+    specification section named above is where that is stated in full.
+    In short: it is this compartment's partial pressure expressed as a
+    multiple of the *alveolar* concentration that would be 1 MAC. On the
+    alveolar compartment that is the conventional reading. On the
+    circuit, mixed venous, vessel-rich, muscle and fat compartments it is
+    a partial-pressure ratio and nothing more — MAC is defined for an
+    alveolar concentration in a nominal 40-year-old, and this model has
+    no age, no second agent, and no depth-of-anesthesia endpoint.
+
+    Args:
+        concentration_fraction: Dimensionless concentration fraction
+            from zero through one.
+        mac_percent: The running agent's 1 MAC as a percent of one
+            atmosphere, from `SimulationSnapshot.agent_mac_percent`.
+            Passed in rather than looked up: the divisor is what makes
+            the number agent-specific, so it travels with the value it
+            divides instead of being reachable from a module-level
+            default that could outlive an agent change.
+
+    Returns:
+        The concentration as a multiple of the agent's 1 MAC.
+
+    Raises:
+        ValueError: If `mac_percent` is not strictly positive. A
+            non-positive divisor cannot produce a meaningful multiple,
+            and `CLAUDE.md` requires an obvious failure over a
+            plausible-looking number — the loader's `PositivePercent`
+            already makes one unreachable from a shipped data file, so
+            one arriving here means something upstream is wrong.
+    """
+
+    if not mac_percent > 0.0:
+        raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
+
+    return concentration_fraction * 100.0 / mac_percent
+
+
+def format_mac_multiple(concentration_fraction: float, mac_percent: float) -> str:
+    """Render a concentration fraction as a MAC multiple with its unit.
+
+    The same three rules `format_percent` follows, for the same reasons,
+    at this unit's own derived resolution: round rather than truncate,
+    mark a positive value that rounds to zero as below the resolution
+    instead of showing it as `0.00`, and leave an impossible negative
+    visible as the anomaly it is.
+
+    The below-resolution form matters more here than in percent, not
+    less. 0.01 MAC is 0.02 percentage points of sevoflurane and 0.06 of
+    desflurane, so a compartment clears this unit's last digit later than
+    it clears the percent readout beside it — and a `0.00 ×MAC` on a fat
+    compartment that the percent line already shows filling would be the
+    two readouts contradicting each other.
+
+    Args:
+        concentration_fraction: Dimensionless concentration fraction
+            from zero through one.
+        mac_percent: The running agent's 1 MAC as a percent of one
+            atmosphere.
+
+    Returns:
+        The MAC multiple at the displayed resolution with its unit, or
+        the below-resolution form for a positive value that rounds to
+        zero.
+
+    Raises:
+        ValueError: If `mac_percent` is not strictly positive.
+    """
+
+    multiple = mac_multiple(concentration_fraction, mac_percent)
+    rendered = f"{multiple:.{MAC_DISPLAY_DECIMALS}f}"
+
+    if multiple > 0.0 and float(rendered) == 0.0:
+        resolution = MAC_DISPLAY_RESOLUTION_MAC
+
+        return f"<{resolution:.{MAC_DISPLAY_DECIMALS}f}{MAC_UNIT_SUFFIX}"
+
+    return f"{rendered}{MAC_UNIT_SUFFIX}"
+
+
+def format_mac_reference(agent_display_name: str, mac_percent: float) -> str:
+    """State the divisor every MAC multiple on screen was produced with.
+
+    `CLAUDE.md` requires a clinically meaningful displayed value to be
+    traceable to the exact transformation that produced it, and a MAC
+    multiple has exactly one free parameter. Naming it on the display,
+    beside the axis it scales, is what makes the readouts traceable
+    without opening a data file: a reader who disagrees with the divisor
+    can see that they disagree, and can convert back.
+
+    The value is deliberately shown to one decimal, which is the
+    precision the three stored values actually carry. `docs/MODEL.md`
+    § "Delivery-limit and MAC parameters" holds their provenance and the
+    limitation that follows from it.
+
+    Args:
+        agent_display_name: Running agent's display name.
+        mac_percent: That agent's 1 MAC as a percent of one atmosphere.
+
+    Returns:
+        A one-line statement of the agent's 1 MAC in percent.
+    """
+
+    return f"1 MAC {agent_display_name.lower()} = {mac_percent:.1f}%"
+
+
+def mac_axis_ticks(max_percent: float, mac_percent: float) -> tuple[tuple[float, str], ...]:
+    """Place the chart's MAC axis labels against a percent-valued axis.
+
+    The chart plots percent and always has: a MAC axis is the same
+    traces read against a second ruler, not a second set of points, so
+    nothing here converts a plotted value and the two axes cannot come
+    to disagree about a trace. Each tick is returned as the percent
+    position it sits at and the MAC number written beside it.
+
+    Ticks land on round MAC values rather than on round percentages,
+    which is the point of the axis — a reader looks for 1 MAC, not for
+    whatever multiple 2% happens to be. The spacing comes from
+    `MAC_AXIS_STEP_LADDER_MAC`, taking the finest that keeps the axis
+    within `MAX_MAC_AXIS_INTERVALS`, so a wider plotted range coarsens
+    the labels instead of crowding them.
+
+    Args:
+        max_percent: Top of the chart's percent axis, which is what the
+            MAC axis is placed against.
+        mac_percent: The running agent's 1 MAC as a percent of one
+            atmosphere.
+
+    Returns:
+        Ticks from zero upward, each as (percent position, MAC label).
+        Empty if the plotted range is not positive, which leaves the
+        axis unlabelled rather than inventing a scale for it.
+
+    Raises:
+        ValueError: If `mac_percent` is not strictly positive.
+    """
+
+    if not mac_percent > 0.0:
+        raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
+
+    if not max_percent > 0.0:
+        return ()
+
+    span_mac = max_percent / mac_percent
+    step_mac = next(
+        (step for step in MAC_AXIS_STEP_LADDER_MAC if span_mac / step <= MAX_MAC_AXIS_INTERVALS),
+        MAC_AXIS_STEP_LADDER_MAC[-1],
+    )
+    # One decimal for a half-MAC step, two for a quarter-MAC one, none for
+    # the whole-MAC steps: derived from the spacing rather than fixed, so a
+    # label never shows a digit the spacing cannot move.
+    decimals = max(0, len(f"{step_mac:.2f}".rstrip("0").partition(".")[2]))
+
+    return tuple(
+        (index * step_mac * mac_percent, f"{index * step_mac:.{decimals}f}")
+        # `int()` truncates toward zero, so the last tick is the last one
+        # at or below the top of the axis; `+ 1` makes the range inclusive
+        # of it. A tick above `max_percent` would be drawn outside the
+        # plotted area.
+        for index in range(int(span_mac / step_mac) + 1)
+    )
 
 
 def format_subtitle(agent_display_name: str) -> str:
