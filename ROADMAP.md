@@ -191,9 +191,12 @@ making a clean pure function generic over samples-plus-accessor and rewriting
 eighteen test call sites, for 0.14% of a frame. Its stated motivation — a
 window a week wide — does not survive measurement either way, because min/max
 envelope decimation reads every sample of every bucket whether a list is
-materialized or not. That case needs bucket extremes maintained as samples are
-appended, which is the tiered store PL-011 carries, and `history_window()` is
-now the interface it would implement.
+materialized or not. That case needs the bucket extremes maintained as samples
+are appended rather than rescanned, which PL-D9WD then built as an M4
+aggregate cache on a dyadic grid anchored to absolute sample index, merging
+tier to tier without revisiting a raw sample. It landed on `main` after this
+release was cut, so it ships in v0.3.9 rather than here; `history_window()` is
+the interface it reads through.
 
 **The literature is reachable, by a door nobody had written down (PL-0XMD,
 PL-5DN3).** Measured while chasing citations: this environment's egress policy

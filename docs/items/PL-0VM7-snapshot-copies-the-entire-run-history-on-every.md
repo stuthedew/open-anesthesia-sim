@@ -104,3 +104,10 @@ week-wide window (6 048 000 samples, six traces, five times a second) is
 infeasible either way. What that case needs is bucket extremes maintained
 as samples are appended - the tiered store PL-011 carries - which
 `history_window()` is now the interface for. Filed as `PL-MJ7B`.
+
+**Superseded in part, 2026-09-04.** The reasoning above names `PL-011` as
+where incrementally maintained bucket extremes would live. `PL-D9WD` built
+them first, as an M4 aggregate cache on a dyadic grid anchored to absolute
+sample index, merging tier to tier without revisiting a raw sample. The
+measurement and the trade recorded above stand; the forward reference does
+not.
