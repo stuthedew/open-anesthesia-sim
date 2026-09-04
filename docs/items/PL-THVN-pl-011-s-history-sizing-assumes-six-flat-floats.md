@@ -1,14 +1,15 @@
 ---
 id: PL-THVN
 title: PL-011's history sizing assumes six flat floats per sample, which PL-W3DD's per-substance mapping invalidates inside the same milestone
-status: ready
+status: done
 priority: P2
 effort: S
 classes: docs
 feature: teachable-case
 touches: docs/items/PL-011-bound-the-controller-s-concentration-history.md, docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
-verify: python3 tools/doc_check.py check && grep -q 'PL-W3DD' docs/items/PL-011-bound-the-controller-s-concentration-history.md
+verify: python3 tools/doc_check.py check && grep -q '^blocked-by: PL-W3DD' docs/items/PL-011-bound-the-controller-s-concentration-history.md
 added: 2026-09-03
+closed: 2026-09-04
 ---
 
 **Problem.** `PL-011` (bound the controller's concentration history) sizes the
@@ -54,3 +55,25 @@ carries a per-sample size measured against the shipped record shape.
 **Found.** Session auditing which open items the v0.4.1 `core/` pass would
 invalidate, 2026-09-03. Not a v0.4.1 interaction — an intra-v0.4.0 one found on
 the way past.
+
+**Correction to the "Approach" above (2026-09-04).** It says `bin/docket
+concurrent` "should stop offering the two as independent - neither declares the
+other in `touches`". Both *do* declare `src/anesthesia_sim/app/controller.py`,
+and `bin/docket concurrent PL-011` already lists `PL-W3DD` under "Cannot run
+alongside". So the diagnosis was wrong about the mechanism while right about
+the consequence.
+
+What `touches` expresses is **symmetric contention** — these two edit one file,
+so whoever merges second resolves. The missing information is **directional**:
+`PL-W3DD` must land first, and no arrangement of `touches` can say that. Only
+`blocked-by` carries direction, and only `blocked-by` reaches the ranking, which
+is why `PL-011` sat 3rd and `PL-W3DD` 9th while both were `ready`.
+
+It was also indistinguishable in the output: `PL-W3DD` was one of ten rows
+against `controller.py`, nine of which are ordinary contention. `PL-PGZK`
+carries the wider version of that problem.
+
+The sequencing half is now done — `PL-011` carries `blocked-by: PL-W3DD` as of
+this change. What remains for this item is the second half of its own "Done
+when": whichever lands second records a per-sample size measured against the
+shipped record shape.
