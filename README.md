@@ -74,7 +74,9 @@ held constant, which is why every setting change is marked on this plot as
 well as on the chart above it. The trace stops rather than inventing a value
 where the ratio is undefined (nothing has reached the circuit yet) or above 1
 (alveolar exceeds inspired, so the patient is returning agent and this is
-elimination), and the line beside the plot says which.
+elimination), ending on a ruled equilibrium line so the stop reads as an
+arrival rather than a clipped edge, and the line beside the plot says which
+boundary it stopped at.
 
 A MAC multiple here is a **partial-pressure ratio, not a depth of
 anesthesia**, and on the five non-alveolar compartments that distinction is

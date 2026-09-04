@@ -170,3 +170,34 @@ computed directly from the core. Closing the vaporizer and raising the flow to
 the plot reading "alveolar exceeds inspired - the patient is returning agent,
 which is elimination and not wash-in" and both dial changes marked on both
 plots.
+
+**Appended 2026-09-04, on review of the rendered plot** (project owner: "Stop
+at or just above 1, but so it looks natural and not cut off"). The stop stays;
+what changed is that it now reads as an ending rather than as a clipped edge.
+Three things together, none of which moves the boundary:
+
+- **The trace is drawn one sample past the boundary.** The last sample at or
+  below equilibrium is up to one simulation step below the line it stopped at,
+  so the curve halted in clear space with nothing to show why. It now includes
+  the crossing sample at each end of a stretch, so it meets the equilibrium
+  reference and terminates on it. Bounded by a stated
+  `WASH_IN_TERMINUS_CEILING` rather than by a property of the model: a 0.1 s
+  step crosses by a hair - 1.00235 at worst across every agent and every
+  supported ventilation and cardiac output at maximum flow - but
+  `BreathingCircuit.set_circuit_volume` conserves agent while changing the
+  volume it is divided by, so the ratio is not continuous in general, and a
+  crossing sample above the ceiling is not drawn at all rather than clamped
+  onto it.
+- **Equilibrium is drawn as a labelled reference line.** A trace that halts in
+  open space reads as cut; one that halts on a labelled line reads as having
+  arrived. It is a definitional anchor rather than a measured value with
+  spread, so it is a line and not a band, in MUTED and the same wide dash as
+  the 1 MAC line on the chart above.
+- **The axis stands at 1.15 with the ruling and the labels stopping at 1.00.**
+  With the axis topping out at equilibrium the ending landed on the frame,
+  where a line that stopped and a line the plot cut off look identical. The
+  top of the frame is left unlabelled so the readable scale is still 0 to 1.
+
+A terminal dot marks the last point of a stretch that stopped by crossing,
+and only such a stretch: the live right-hand end of a growing run is not an
+ending, and a dot there would move every frame while saying nothing.

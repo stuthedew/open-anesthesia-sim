@@ -1871,8 +1871,8 @@ The interface must show:
   marked on the chart at that time. See "The control-input timeline"; and
 - $`F_A/F_I`$ over the run, on a dimensionless axis of its own, labelled as a
   ratio against the modelled inspired concentration rather than against the
-  vaporizer dial, carrying the control marks above, and stating where it is not
-  defined. See "F_A/F_I as a displayed ratio" for the domain it is drawn over
+  vaporizer dial, carrying the control marks above, ruled at the equilibrium
+  the curve approaches, and stating where it is not defined. See "F_A/F_I as a displayed ratio" for the domain it is drawn over
   and for what the curve does and does not assert.
 
 Arterial concentration is deliberately **not** in this list. Arterial blood is
@@ -2290,7 +2290,7 @@ point only where both hold:
    gas gives agent up to blood, so the alveolar fraction stays below the
    inspired one and reaches it only at equilibrium. Above 1 the tissues are
    returning agent faster than it is being delivered, which is elimination and
-   not wash-in.
+   not wash-in. Equilibrium is drawn on the chart as a labelled reference line.
 
 Outside either boundary nothing is drawn. The value is not clamped to the
 axis, not interpolated across, and not replaced by a default: a ratio pinned
@@ -2299,6 +2299,29 @@ the wash-in either side of a washout would draw values the run never produced.
 The trace is therefore a set of segments rather than one polyline, and it
 breaks where the domain does.
 
+**One point past the boundary, so the ending is legible.** A stretch is
+extended by its *crossing* sample at each end — the neighbouring sample that
+has a ratio but sits outside the domain — because without it the curve stops
+at the last sample at or below equilibrium, which is up to one simulation step
+below the line it stopped at. A trace halting in clear space short of a
+boundary is indistinguishable from one the frame cut off, and this one is
+still climbing steeply when it stops; with the crossing sample drawn it meets
+the equilibrium reference and terminates on it, carrying a point marker that
+says the series ended rather than ran out of view.
+
+That extension is bounded by a stated ceiling rather than by a property of the
+model. A run stepped at 0.1 s crosses equilibrium by a hair — measured across
+every shipped agent and every supported alveolar ventilation and cardiac
+output at the maximum fresh gas flow, the first sample above equilibrium
+reaches 1.00235 — but the ratio is not continuous in general:
+`BreathingCircuit.set_circuit_volume` conserves the agent in the circuit while
+changing the volume it is divided by, so a circuit volume doubled between two
+steps halves $`F_I`$ and doubles the ratio. No interface control does that
+today, and a rule holding only because a slider is absent is not one to build
+on. A crossing sample above the ceiling is therefore not drawn at all, and the
+stretch ends where it would have: not clamped onto the ceiling, not
+interpolated onto it.
+
 **A blank stretch says which boundary it is.** "No agent has reached the
 circuit yet" and "the patient is returning agent" are opposite situations, and
 a reader shown only an absent trace has neither. The line beside the plot
@@ -2306,10 +2329,17 @@ names the case, and where the trace is drawing it carries the same value the
 trace's right-hand end stands at — one evaluation of one rule produces both,
 so the sentence and the curve cannot disagree.
 
-**Why the axis is fixed rather than fitted.** 0 to 1 is the axis of every
-published wash-in figure, which is the point of drawing this curve at all. An
-axis that grew to accommodate the elimination excursion would redraw the
-wash-in curve at a smaller height partway through a lesson — a shape change a
+**Why the axis is fixed rather than fitted, and why it does not stop at 1.**
+0 to 1 is the scale of every published wash-in figure, which is the point of
+drawing this curve at all — so that is where the ruling and the labels stop.
+The axis itself stands a little above it, and that headroom is a legibility
+requirement rather than a margin: with the axis topping out at equilibrium the
+trace's ending lands on the frame, where a line that stopped and a line the
+plot cut off look exactly alike. The top of the frame is deliberately
+unlabelled, so the readable scale remains 0 to 1 and the space above it is not
+read as range the ratio can reach. An axis that instead grew to accommodate
+the elimination excursion would redraw the wash-in curve at a smaller height
+partway through a lesson — a shape change a
 reader would attribute to the model rather than to the axis — and it would
 have no stable height to grow to. During elimination the circuit is fed by
 agent-free fresh gas and by rebreathed alveolar gas, so the ratio settles near

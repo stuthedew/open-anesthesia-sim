@@ -51,10 +51,12 @@ from anesthesia_sim.app.simulation_view import (
     NO_CONTROL_CHANGES_TEXT,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
+    WASH_IN_AXIS_MAXIMUM,
+    WASH_IN_TERMINUS_CEILING,
     SimulationView,
 )
 from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, MUTED, WARNING
-from anesthesia_sim.app.wash_in import WASH_IN_PLOTTED_MAXIMUM, read_wash_in, wash_in_ratio
+from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, read_wash_in, wash_in_ratio
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
@@ -2318,7 +2320,7 @@ def test_the_wash_in_trace_draws_the_ratio_and_not_a_percent() -> None:
 
     assert expected is not None
     assert _wash_in_points(view)[-1] == (latest.elapsed_s, pytest.approx(expected))
-    assert view._wash_in_chart.max_y == WASH_IN_PLOTTED_MAXIMUM
+    assert view._wash_in_chart.max_y == WASH_IN_AXIS_MAXIMUM
 
 
 def test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit() -> None:
@@ -2339,9 +2341,76 @@ def test_the_wash_in_trace_stops_when_alveolar_exceeds_inspired() -> None:
 
     drawn_times = [x for x, _ in _wash_in_points(view)]
 
+    # A ratio of 3.0 is far past the terminus ceiling, so it is not drawn at
+    # all - not clamped onto the ceiling, and not interpolated onto it.
     assert 2.0 not in drawn_times
+    assert max(y for _, y in _wash_in_points(view)) <= WASH_IN_TERMINUS_CEILING
     assert "alveolar exceeds inspired" in cast(str, view._wash_in_state_text.value)
     assert "elimination" in cast(str, view._wash_in_state_text.value)
+
+
+def test_the_wash_in_trace_ends_on_the_equilibrium_line_it_crossed() -> None:
+    """A curve that halts a step short of the line it stopped at reads as clipped.
+
+    The last sample at or below equilibrium is up to one simulation step
+    below it, so a trace ending there stops in clear space with nothing to
+    show why. Drawing the crossing sample puts the ending on the line. It
+    is one point outside the plotted domain and it is bounded: what admits
+    it is `WASH_IN_TERMINUS_CEILING`, not a promise about the model.
+    """
+
+    crossing = _sample(2.0, 0.0800, 0.0801, 0.02, 0.02, 0.01, 0.01)
+    view, _ = _build_view(_snapshot(history=(*_run_history(20), crossing)))
+
+    last_x, last_y = _wash_in_points(view)[-1]
+
+    assert last_x == 2.0
+    assert WASH_IN_EQUILIBRIUM_RATIO < last_y <= WASH_IN_TERMINUS_CEILING
+    assert view._wash_in_chart.max_y > last_y, "the ending must not sit on the frame"
+
+
+def test_a_stopped_wash_in_trace_ends_in_a_terminus_marker() -> None:
+    """A line that merely stops cannot be told from one the frame cut off."""
+
+    crossing = _sample(2.0, 0.0800, 0.0801, 0.02, 0.02, 0.01, 0.01)
+    view, _ = _build_view(_snapshot(history=(*_run_history(20), crossing)))
+
+    drawn = [series for series in view._wash_in_segment_series if series.points]
+
+    assert len(drawn) == 1
+    assert drawn[0].points[-1].point is not None
+    assert all(point.point is None for point in drawn[0].points[:-1])
+
+
+def test_a_growing_wash_in_trace_carries_no_terminus_marker() -> None:
+    """The live right-hand end of a run is not an ending.
+
+    Marking it would put a dot on a point that moves every frame, and
+    would say the curve had stopped when it is still being drawn.
+    """
+
+    view, _ = _build_view(_snapshot(history=_run_history(20)))
+
+    drawn = [series for series in view._wash_in_segment_series if series.points]
+
+    assert len(drawn) == 1
+    assert all(point.point is None for point in drawn[0].points)
+
+
+def test_the_equilibrium_line_spans_the_window_at_one() -> None:
+    """The reference the trace ends on, ruled where the ratio reaches one."""
+
+    view, _ = _build_view(_snapshot(history=_run_history(6_000)))
+    line = view._equilibrium_line_series
+
+    assert [point.y for point in line.points] == [
+        WASH_IN_EQUILIBRIUM_RATIO,
+        WASH_IN_EQUILIBRIUM_RATIO,
+    ]
+    assert [point.x for point in line.points] == [
+        view._wash_in_chart.min_x,
+        view._wash_in_chart.max_x,
+    ]
 
 
 def test_the_wash_in_trace_breaks_rather_than_drawing_across_a_gap() -> None:
@@ -2411,7 +2480,7 @@ def test_a_control_change_is_marked_on_the_wash_in_plot_too() -> None:
     assert marked == [1.0]
     # And it spans this chart's own range, not the percent chart's.
     top = max(point.y for point in view._wash_in_control_mark_series[0].points)
-    assert top == WASH_IN_PLOTTED_MAXIMUM
+    assert top == WASH_IN_AXIS_MAXIMUM
 
 
 def test_the_wash_in_reading_is_the_value_the_trace_ends_at() -> None:
@@ -2441,6 +2510,7 @@ def test_the_wash_in_plot_says_what_its_denominator_is() -> None:
     assert "not the vaporizer dial" in strings
     assert "no dead space" in strings
     assert "held constant" in strings
+    assert "Equilibrium, F_A = F_I" in strings
 
 
 def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments() -> None:

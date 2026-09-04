@@ -17,8 +17,9 @@ import pytest
 from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
 from anesthesia_sim.app.wash_in import (
     WASH_IN_DENOMINATOR_FLOOR_FRACTION,
-    WASH_IN_PLOTTED_MAXIMUM,
+    WASH_IN_EQUILIBRIUM_RATIO,
     WashInDomain,
+    is_wash_in,
     read_wash_in,
     wash_in_ratio,
 )
@@ -96,7 +97,28 @@ def test_equilibrium_is_inside_the_domain() -> None:
     reading = read_wash_in(0.02, 0.02)
 
     assert reading.domain is WashInDomain.WASH_IN
-    assert reading.plotted_ratio == WASH_IN_PLOTTED_MAXIMUM
+    assert reading.plotted_ratio == WASH_IN_EQUILIBRIUM_RATIO
+
+
+def test_the_domain_predicate_and_the_reading_share_one_boundary() -> None:
+    """One comparison, in one place.
+
+    The chart classifies a sample with `is_wash_in` and the caption with
+    `read_wash_in`, so a second copy of `<= 1` in either would be a
+    boundary that could move in one and not the other.
+    """
+
+    assert is_wash_in(WASH_IN_EQUILIBRIUM_RATIO)
+    assert is_wash_in(0.0)
+    assert not is_wash_in(WASH_IN_EQUILIBRIUM_RATIO * 1.0001)
+
+    for alveolar, inspired in ((0.0, 0.02), (0.017, 0.02), (0.02, 0.02), (0.021, 0.02)):
+        ratio = wash_in_ratio(alveolar, inspired)
+
+        assert ratio is not None
+        assert is_wash_in(ratio) == (
+            read_wash_in(alveolar, inspired).domain is WashInDomain.WASH_IN
+        )
 
 
 @pytest.mark.parametrize(

@@ -41,6 +41,11 @@ than nothing at all:
    claim is "this is the textbook wash-in graph" would teach a wash-in that
    went past completion.
 
+`WASH_IN_EQUILIBRIUM_RATIO` is the second boundary and is a *modelled*
+value rather than a plotting choice: it is where net uptake stops, which is
+why the chart draws it as a labelled reference and ends the trace on it
+rather than at the top of a frame.
+
 Neither rule invents a value, substitutes a default, or clamps one into
 range: where the ratio is outside its domain, `read_wash_in` returns no
 number to draw and says which rule excluded it, so the interface can state
@@ -58,9 +63,10 @@ from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCE
 
 __all__ = [
     "WASH_IN_DENOMINATOR_FLOOR_FRACTION",
-    "WASH_IN_PLOTTED_MAXIMUM",
+    "WASH_IN_EQUILIBRIUM_RATIO",
     "WashInDomain",
     "WashInReading",
+    "is_wash_in",
     "read_wash_in",
     "wash_in_ratio",
 ]
@@ -74,10 +80,10 @@ __all__ = [
 #: a second constant behind to go stale. Rule 1 of the module docstring.
 WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = CONCENTRATION_DISPLAY_RESOLUTION_PERCENT / 100.0
 
-#: Largest ratio this application plots as a wash-in fraction. Rule 2 of the
-#: module docstring: it is the equilibrium value, and above it the run is
-#: eliminating agent rather than taking it up.
-WASH_IN_PLOTTED_MAXIMUM: Final = 1.0
+#: Where net uptake stops: $`F_A = F_I`$, the wash-in curve's asymptote and
+#: rule 2 of the module docstring. Above it the run is eliminating agent
+#: rather than taking it up.
+WASH_IN_EQUILIBRIUM_RATIO: Final = 1.0
 
 
 class WashInDomain(StrEnum):
@@ -143,6 +149,23 @@ def wash_in_ratio(
     return alveolar_concentration_fraction / inspired_concentration_fraction
 
 
+def is_wash_in(ratio: float) -> bool:
+    """Whether a computed quotient is inside the uptake regime.
+
+    The second boundary of the module docstring's domain, as a predicate,
+    so the chart and `read_wash_in` classify a sample by the same rule
+    rather than each carrying its own copy of the comparison.
+
+    Args:
+        ratio: A quotient from `wash_in_ratio`.
+
+    Returns:
+        `True` at or below `WASH_IN_EQUILIBRIUM_RATIO`.
+    """
+
+    return ratio <= WASH_IN_EQUILIBRIUM_RATIO
+
+
 def read_wash_in(
     alveolar_concentration_fraction: float, inspired_concentration_fraction: float
 ) -> WashInReading:
@@ -168,7 +191,7 @@ def read_wash_in(
     if ratio is None:
         return WashInReading(WashInDomain.NO_INSPIRED_AGENT, None)
 
-    if ratio > WASH_IN_PLOTTED_MAXIMUM:
+    if not is_wash_in(ratio):
         return WashInReading(WashInDomain.ELIMINATION, None)
 
     return WashInReading(WashInDomain.WASH_IN, ratio)
