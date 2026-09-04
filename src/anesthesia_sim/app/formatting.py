@@ -152,7 +152,7 @@ MAX_MAC_AXIS_INTERVALS: Final = 10
 # as well means two consecutive runs are comparable too.
 #
 # Sevoflurane and isoflurane can be dialled above this ceiling - 8 % is
-# 4.00 MAC and is the standard inhalational-induction setting - so a trace
+# 4.00 MAC and is a common inhalational-induction setting - so a trace
 # can leave the top of the plot. That is reported rather than left to look
 # like a plateau; see `simulation_view.OFF_SCALE_NOTICE_TEMPLATE`.
 CHART_AXIS_TOP_MAC: Final = 3.0

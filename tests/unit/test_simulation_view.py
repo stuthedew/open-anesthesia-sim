@@ -1262,7 +1262,7 @@ def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat(
 
     The old axis was the agent's dial maximum and so could not be
     exceeded. A ceiling at 3 MAC can be: sevoflurane's 8% dial is
-    4.00 MAC and is the standard inhalational-induction setting. A
+    4.00 MAC and is a common inhalational-induction setting. A
     clipped trace draws as a horizontal line at the top of the plot, and
     a horizontal line reads as a plateau — so a reader would conclude the
     concentration stopped rising at 3 MAC when the model says it did not.
