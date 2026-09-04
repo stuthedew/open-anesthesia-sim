@@ -761,7 +761,7 @@ def _flight_repo(tmp_path: Path, subject: str) -> Path:
 
     Real git, for the reason `_branched_repo` uses it: the injected-runner
     tests in `test_vcs.py` assert the rules, and only a real checkout proves
-    that `--source`, `%cs` and the merge-base guard are spelled in a way git
+    that `--source`, `%cI` and the merge-base guard are spelled in a way git
     accepts. The commit dates are fixed so the reported age is too.
     """
     root = tmp_path / "repo"
@@ -820,8 +820,98 @@ def test_show_marks_an_item_a_branch_has_in_flight(
     assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
 
     out = capsys.readouterr().out
-    assert "IN FLIGHT on a branch - do not start PL-0001 again." in out
+    assert f"IN FLIGHT on {BRANCH}" in out
+    assert "do not start PL-0001 again." in out
     assert "PL-0001" in out.splitlines()[0]
+
+
+def test_show_does_not_tell_a_session_to_stop_working_its_own_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The false alarm the precedence read removes.
+
+    Re-reading the item you are implementing is the commonest reason to run
+    `show` twice, and the answer was "do not start it again" - a warning about
+    the reader's own work, printed at the moment a session is most likely to
+    look and least able to act on it.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+    subprocess.run(["git", "checkout", "-q", BRANCH], cwd=root, check=True, capture_output=True)
+
+    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"IN FLIGHT on this branch ({BRANCH})" in out
+    assert "do not start" not in out
+
+
+def test_show_reads_a_branch_ahead_of_its_tracking_ref_as_this_session(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The case a name comparison gets wrong, against real refs.
+
+    `git log --source` credits a commit two refs reach to one of them, and
+    which one is not the command-line order - so a branch one merge ahead of
+    its own tracking ref has its claim reported under `origin/...` and a check
+    on the branch *name* concludes somebody else is holding it. That is a
+    session told to stand down from its own work, which is the failure the
+    containment test exists to prevent.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+    remote = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True, capture_output=True)
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    git("remote", "add", "origin", str(remote))
+    git("push", "-q", "origin", "main", BRANCH)
+    git("checkout", "-q", BRANCH)
+    (root / "items" / "later.txt").write_text("unpushed\n")
+    git("add", "-A")
+    git("commit", "-qm", "carry on without pushing")
+
+    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert "IN FLIGHT on this branch" in out
+    assert "do not start" not in out
+
+
+def test_show_says_which_branch_holds_an_item_two_are_carrying(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-YHD3: the second session is told it is the second, from real refs.
+
+    Real git rather than an injected runner, because what is being proved here
+    is that two branches carrying one item produce one order git can actually
+    be asked for - the earliest commit naming the item, read through
+    `--source` and `%cI`, against a checkout whose HEAD is the later of the
+    two.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+    later = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-21T09:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-21T09:00:00+00:00",
+    }
+
+    def git(*args: str, env: dict[str, str] | None = None) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=env)
+
+    git("checkout", "-qb", "claude/pl-0001-second", "main")
+    (root / "items" / "second.txt").write_text("the other session\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-0001 Do the thing as well", env=later)
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert "PL-0001 is on 2 branches" in out
+    assert "which session yields" in out
+    assert f"holds it  {BRANCH}" in out
+    assert "yields    claude/pl-0001-second (this branch)" in out
+    assert "This branch yields" in out
+    assert "named it 2026-08-20 12:00 UTC" in out
 
 
 def test_triage_names_an_item_already_in_flight(

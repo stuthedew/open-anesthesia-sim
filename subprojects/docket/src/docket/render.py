@@ -12,7 +12,7 @@ here and the one that compounds.
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import date
+from datetime import UTC, date
 
 from .checks import DONE_WHEN, REQUIRED_BRIEF, Report, brief_gaps
 from .concurrency import undeclared
@@ -21,7 +21,16 @@ from .model import PRIORITIES, SELECTABLE_LANES, Item
 from .plan import Feature, Gate, effort_total, recommend, set_aside
 from .release import PLANNED, RESERVED, Readiness, release_offer
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
-from .vcs import CURRENT, PULL, RESTART, Branch, BranchState, FlightReport, StrandedReport
+from .vcs import (
+    CURRENT,
+    PULL,
+    RESTART,
+    BranchState,
+    Carrier,
+    FlightReport,
+    Precedence,
+    StrandedReport,
+)
 
 
 def _plural(count: int, singular: str, plural: str) -> str:
@@ -376,11 +385,11 @@ def format_stranded(report: StrandedReport) -> str:
     return "\n".join(lines)
 
 
-def _since(branch: Branch, today: date) -> str:
+def _since(last_commit: date | None, today: date) -> str:
     """How long a branch has been sitting, in the words the reader judges with."""
-    if branch.last_commit is None:
+    if last_commit is None:
         return "no commit of its own this checkout can read"
-    days = (today - branch.last_commit).days
+    days = (today - last_commit).days
     if days <= 0:
         return "last commit today"
     return f"last commit {_plural(days, 'day', 'days')} ago"
@@ -404,7 +413,9 @@ def format_flight(report: FlightReport, today: date) -> str:
         lines.append("")
         width = max(len(branch.name) for branch in report.branches)
         for branch in report.branches:
-            lines.append(f"{branch.item_id}  {branch.name:<{width}}  {_since(branch, today)}")
+            lines.append(
+                f"{branch.item_id}  {branch.name:<{width}}  {_since(branch.last_commit, today)}"
+            )
         lines.append("")
         lines.append(
             "A live session and a branch nobody will merge look the same here; "
@@ -422,6 +433,81 @@ def format_flight(report: FlightReport, today: date) -> str:
             f"{base} on the history this checkout holds, so what {carried} is unknown:"
         )
         lines.extend(f"  {name}" for name in report.unreadable)
+    return "\n".join(lines)
+
+
+def _staked(carrier: Carrier, today: date) -> str:
+    """When a branch claimed the item, on one clock, and how long since it moved.
+
+    Normalized to UTC rather than printed as git wrote it. Two sessions can be
+    in two zones, and two timestamps a reader has to convert before comparing
+    are two timestamps a reader will compare wrongly - which here would mean
+    reading the wrong branch as the one that continues.
+    """
+    when = (
+        "when it named the item could not be read"
+        if carrier.staked is None
+        else f"named it {carrier.staked.when.astimezone(UTC):%Y-%m-%d %H:%M} UTC"
+    )
+    return f"{when}; {_since(carrier.last_commit, today)}"
+
+
+def format_precedence(order: Precedence, today: date) -> str:
+    """Who is carrying an item, and - where more than one is - which session yields.
+
+    **The verdict is printed rather than left to be worked out, and that is the
+    whole reason this exists.** Two sessions that discover each other reason
+    from the same evidence and can still reach opposite conclusions, and the
+    expensive outcome is not both continuing but both standing down: the item
+    is then unstarted and each session believes the other has it. A rule stated
+    as prose cannot rule that out. One computed here, from an order over
+    commits, can - so the answer arrives as an answer.
+
+    The single-carrier cases are the common ones and they are one line each.
+    The one worth the change is a carrier that is *this* branch: `show` used to
+    tell a session re-reading its own item not to start it again, which is a
+    false alarm at exactly the moment a session is most likely to look.
+    """
+    if not order.carriers:
+        return ""
+    item = order.item_id
+    if len(order.carriers) == 1:
+        only = order.carriers[0]
+        if only.mine:
+            return f"  IN FLIGHT on this branch ({only.ref}) - {item} is this session's own work."
+        return (
+            f"  IN FLIGHT on {only.ref} ({_since(only.last_commit, today)}) "
+            f"- do not start {item} again."
+        )
+
+    lines = [
+        f"  {item} is on {_plural(len(order.carriers), 'branch', 'branches')}. Whichever named "
+        "it first holds it, and a",
+        "  tie breaks on that commit's hash, so which session yields reads the same in",
+        "  every checkout:",
+        "",
+    ]
+    for position, carrier in enumerate(order.carriers):
+        verdict = "holds it" if position == 0 else "yields  "
+        here = " (this branch)" if carrier.mine else ""
+        lines.append(f"    {verdict}  {carrier.ref}{here}")
+        lines.append(f"                {_staked(carrier, today)}")
+    lines.append("")
+    if order.yields:
+        lines.append("  This branch yields: stop, and hand over what you have already found.")
+    elif order.mine is not None:
+        lines.append(f"  This branch holds {item}; the others are the ones that yield.")
+    else:
+        lines.append(f"  This branch carries none of them - do not start {item} again.")
+    if order.unreadable:
+        # The order is over the refs that could be read, and a ref beyond a
+        # truncated clone's horizon is the normal state of an agent's
+        # container. Saying so is the same refusal to present a partial reading
+        # as a complete one that `format_unread` makes for the rest.
+        lines.append(
+            f"  ({_plural(len(order.unreadable), 'ref', 'refs')} went unread, so this order "
+            "is over what could be read.)"
+        )
     return "\n".join(lines)
 
 
