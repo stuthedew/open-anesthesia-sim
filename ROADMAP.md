@@ -133,13 +133,24 @@ real time, which is a property of the machine and deliberately not of the
 model. A guarantee stated without them would be the more impressive sentence
 and the less true one.
 
-**Why this is a patch rather than v0.4.0.** Ten of the teachable-case
-feature's nineteen items is not the milestone, and the reasoning that kept
-v0.3.6, v0.3.7 and v0.3.8 patches holds unchanged: the playback multiplier,
-the case-length time base and the run-fitted vertical scale are all still
-open, and cutting the milestone's number now would ship it under its own name
-with most of it missing. The capability-boundary rule under "Versioning
-decision" governs.
+**Why this is a patch rather than v0.4.0.** Eleven of the teachable-case
+feature's twenty items is not the milestone, and the reasoning that kept
+v0.3.6, v0.3.7 and v0.3.8 patches holds unchanged: the playback multiplier
+and the case-length time base are both still open, and cutting the
+milestone's number now would ship it under its own name with most of it
+missing. The capability-boundary rule under "Versioning decision" governs.
+
+**The eleventh is the one item in that count this release does not
+describe.** `PL-CC23`, the MAC-scaled vertical axis, landed on `main` after
+v0.3.9 was cut and before the cut merged, so its code sits inside the span
+this version's tag reports while the item itself is recorded under the next
+one; `docs/releases/v0.3.9.md` lists the six the version bump drew a line
+around. v0.3.8 disclosed the same mismatch about the aggregate cache, in the
+same direction and for the same reason: the bump in `pyproject.toml` is the
+boundary the notes are generated from and the tag is the boundary `git
+describe` answers from, and a release cut on one day and merged on another
+cannot make those one boundary. Said here rather than left for a reader to
+reconstruct from two dates.
 
 ### Release narrative
 
@@ -1178,9 +1189,15 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   traceable from the display (queue item PL-DHV7).
 - **A case-length time base**: minutes rather than seconds, selectable 15,
   30 and 60 minute scales plus a fit-the-run scale (queue item PL-SSBP).
-- **A vertical scale that fits the run** (queue item PL-CC23) rather than the
-  vaporizer's dial maximum. In MAC mode the axis becomes agent-independent, which is what
-  makes a cross-agent comparison honest.
+- **A vertical scale denominated in MAC** (queue item PL-CC23) rather than in
+  the vaporizer's dial maximum, which is what makes a cross-agent comparison
+  honest. Scoped as "fits the run" and decided otherwise (project owner,
+  2026-09-04): a fitted axis rescales a rising curve mid-lesson, and the item's
+  own requirement that the rule be stable within a run rules it out. The axis
+  is fixed at 0 to 3 x MAC for every agent - three being exactly desflurane's
+  dial maximum in MAC - with a trace above the ceiling named rather than left
+  to draw as a plateau. `docs/MODEL.md` s "The chart's vertical range is
+  denominated in MAC, and fixed" carries the reasoning.
 - **A recorded control-input timeline** (queue item PL-DR1Z): every fresh gas
   flow, vaporizer
   dial, alveolar ventilation and cardiac-output change stamped with the
