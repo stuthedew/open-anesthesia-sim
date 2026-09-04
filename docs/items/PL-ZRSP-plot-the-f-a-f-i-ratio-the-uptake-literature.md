@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, ux
 feature: teachable-case
+milestone: v0.3.8
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md
 added: 2026-08-25
 closed: 2026-09-04
