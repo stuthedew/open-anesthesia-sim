@@ -3,11 +3,13 @@ id: PL-TJJY
 title: The chart's y-axis is the vaporizer dial maximum, so the clinical range and the MAC-awake band are compressed into the bottom eighth of the plot
 priority: P2
 effort: M
-status: needs-decision
+status: dropped
 classes: ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-09-04
+closed: 2026-09-04
+reason: Duplicate of PL-CC23, which states the same defect and the same cause and was already ready. Captured before checking the feature's own list, which is the miss PL-TH7P exists to close. The measurement this item added - the MAC-awake band spanning 2.5 percent of the plot height at 1 MAC sevoflurane - has been folded into PL-CC23 rather than lost with the file.
 ---
 
 **Problem.** `SimulationView` sets `max_y` to
