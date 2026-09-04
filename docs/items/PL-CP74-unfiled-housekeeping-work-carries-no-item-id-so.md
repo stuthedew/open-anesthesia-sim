@@ -4,11 +4,12 @@ title: Unfiled housekeeping work carries no item id, so every in-flight guard is
 priority: P2
 effort: S
 status: done
-closed: 2026-09-04
 classes: infra
 feature: parallel-sessions
 touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, .claude/skills/docket/SKILL.md, CLAUDE.md, docs/ARCHITECTURE.md, Makefile, .github/workflows/quality.yml
 added: 2026-09-02
+closed: 2026-09-04
+pr: 296
 verify: uv run pytest tests/unit/test_branch_id_check.py -q && python3 tools/doc_check.py check && grep -qiF 'file the item first' .claude/skills/docket/SKILL.md CLAUDE.md
 ---
 
