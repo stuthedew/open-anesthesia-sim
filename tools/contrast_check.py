@@ -184,7 +184,9 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "PANEL",
         AA_TEXT,
         "1.4.3",
-        "the agent-accounting status word when validation fails (simulation_view.py:736)",
+        "the agent-accounting status word when validation fails "
+        "(`_build_agent_accounting_panel`), and the notice naming a compartment "
+        "trace that is above the top of the chart (`_off_scale_text`)",
     ),
     Requirement(
         "sevoflurane.foreground",

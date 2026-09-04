@@ -14,6 +14,8 @@ is where a displayed value can be read off the control that carries it.
 import pytest
 
 from anesthesia_sim.app.formatting import (
+    CHART_AXIS_TOP_MAC,
+    CHART_GRID_INTERVAL_MAC,
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     MAC_AXIS_STEP_LADDER_MAC,
@@ -21,6 +23,8 @@ from anesthesia_sim.app.formatting import (
     MAC_DISPLAY_RESOLUTION_MAC,
     MAC_UNIT_SUFFIX,
     MAX_MAC_AXIS_INTERVALS,
+    chart_axis_top_percent,
+    chart_grid_interval_percent,
     format_delivered_label,
     format_mac_awake_reference,
     format_mac_multiple,
@@ -521,3 +525,79 @@ def test_format_mac_awake_reference_names_both_free_parameters() -> None:
         # The endpoint, named. MAC-awake is responsiveness to command; MAC is
         # immobility to incision, and the two read alike unless said.
         assert "MAC-awake" in rendered
+
+
+@pytest.mark.parametrize(
+    ("mac_percent", "expected_top", "expected_interval"),
+    [
+        (2.0, 6.0, 1.0),  # sevoflurane
+        (1.2, 3.6, 0.6),  # isoflurane
+        (6.0, 18.0, 3.0),  # desflurane
+    ],
+)
+def test_the_chart_ceiling_and_rules_are_the_agent_s_mac_scaled(
+    mac_percent: float, expected_top: float, expected_interval: float
+) -> None:
+    """Independently calculated: the constant times the agent's 1 MAC.
+
+    Desflurane's 18.0 is the one worth reading twice. It is also that
+    agent's vaporizer dial maximum, so the number is unchanged from the
+    rule PL-CC23 replaced while the reason for it is entirely different —
+    a coincidence of 18 % / 6 % = 3.00 rather than agreement between the
+    two rules.
+    """
+
+    assert chart_axis_top_percent(mac_percent) == pytest.approx(expected_top)
+    assert chart_grid_interval_percent(mac_percent) == pytest.approx(expected_interval)
+
+
+def test_the_chart_axis_spans_the_same_mac_range_whatever_the_agent() -> None:
+    """The invariant the axis exists to hold, stated in the unit it holds it in.
+
+    Read in MAC the ceiling is one number for every agent — that is what
+    makes two agents' wash-in curves the same shape for the same case.
+    Stated here as a property over a range of 1 MAC values rather than
+    over the three shipped agents, so it constrains the *rule* rather
+    than today's data files.
+    """
+
+    for mac_percent in (0.5, 1.2, 2.0, 6.0, 12.0):
+        assert chart_axis_top_percent(mac_percent) / mac_percent == pytest.approx(
+            CHART_AXIS_TOP_MAC
+        )
+        assert chart_grid_interval_percent(mac_percent) / mac_percent == pytest.approx(
+            CHART_GRID_INTERVAL_MAC
+        )
+
+
+def test_the_chart_ceiling_leaves_one_mac_inside_the_plot_with_room_to_overpressure() -> None:
+    """The two constraints that chose 3 rather than 2 or 4.
+
+    1 MAC must sit inside the plot rather than on its frame, and the
+    2-3x MAC range that overpressure induction works in must be on the
+    plot. A ceiling of 2 would put the 1 MAC line at half height with no
+    room above it for the technique; the assertions below are what stop
+    the constant drifting back toward either edge.
+    """
+
+    assert CHART_AXIS_TOP_MAC >= 3.0, "overpressure at 2-3x MAC must stay on the plot"
+    assert 1.0 / CHART_AXIS_TOP_MAC <= 0.34, "1 MAC must not sit near the top of the frame"
+    # The rules have to divide the ceiling exactly, or the topmost gap is a
+    # different size from the rest and reads as a scale change at the top.
+    assert (CHART_AXIS_TOP_MAC / CHART_GRID_INTERVAL_MAC) % 1 == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("bad_mac_percent", [0.0, -1.0, -0.001])
+def test_the_chart_axis_refuses_a_non_positive_mac(bad_mac_percent: float) -> None:
+    """An axis of zero or negative height places every trace meaninglessly.
+
+    Failing is the required behavior: a chart drawn against such an axis
+    would still render, and every value on it would be somewhere a reader
+    could read a number off.
+    """
+
+    with pytest.raises(ValueError, match="strictly positive"):
+        chart_axis_top_percent(bad_mac_percent)
+
+    with pytest.raises(ValueError, match="strictly positive"):
+        chart_grid_interval_percent(bad_mac_percent)

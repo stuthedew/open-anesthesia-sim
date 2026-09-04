@@ -36,8 +36,11 @@ from anesthesia_sim.app.controller import (
     SimulationSnapshot,
 )
 from anesthesia_sim.app.formatting import (
+    CHART_AXIS_TOP_MAC,
+    CHART_GRID_INTERVAL_MAC,
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
+    chart_axis_top_percent,
     format_mac_awake_reference,
     format_mac_multiple,
     format_mac_reference,
@@ -875,9 +878,23 @@ def test_switching_agent_repaints_the_header_badge_and_the_dropdown() -> None:
     assert view._agent_dropdown.focused_border_color == scheme.foreground
 
 
-def test_refresh_view_scales_slider_and_chart_to_agent_max() -> None:
-    """Real vaporizer caps differ per agent (e.g. desflurane 18% vs isoflurane 5%);
-    the delivered-concentration slider and the chart's y-axis must track it."""
+def test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does() -> None:
+    """Two ceilings that used to be one, and had to stop being one.
+
+    Real vaporizer caps differ per agent, so the delivered-concentration
+    slider must track the dial: it is a control standing for a real
+    device, and offering 8% of desflurane would be offering a setting the
+    vaporizer does not have.
+
+    The chart's ceiling is a different question and PL-CC23 separated
+    them. An axis at the dial maximum is 3.00 MAC of desflurane and 4.17
+    of isoflurane, so the same case drawn under two agents was drawn at
+    two scales. Desflurane is the agent that makes this test worth
+    reading: 3 MAC *is* 18%, so the number below is unchanged and the
+    reason for it is not - which is exactly the coincidence that would
+    let the old rule creep back unnoticed. Isoflurane is asserted beside
+    it because there the two ceilings visibly part company.
+    """
 
     view, _ = _build_view(
         agent_id="desflurane",
@@ -886,7 +903,61 @@ def test_refresh_view_scales_slider_and_chart_to_agent_max() -> None:
     )
 
     assert view._delivered_concentration_slider.max == 18.0
-    assert view._concentration_chart.max_y == 18.0
+    assert view._concentration_chart.max_y == pytest.approx(18.0)
+    assert view._concentration_chart.max_y == pytest.approx(CHART_AXIS_TOP_MAC * 6.0)
+
+    view, _ = _build_view(
+        agent_id="isoflurane",
+        agent_display_name="Isoflurane",
+        max_delivered_concentration_percent=5.0,
+    )
+
+    assert view._delivered_concentration_slider.max == 5.0
+    assert view._concentration_chart.max_y == pytest.approx(3.6), "1.2% MAC x 3, not the 5% dial"
+
+
+def test_the_axis_top_is_the_same_mac_multiple_for_every_agent() -> None:
+    """The property the whole item exists for: one ruler, three agents.
+
+    Read as a *multiple of the running agent's 1 MAC*, the chart's ceiling
+    must be identical whichever agent is selected - that is what makes a
+    desflurane wash-in and a sevoflurane wash-in the same shape when they
+    are the same case. Before PL-CC23 the three spans were 3.00, 4.00 and
+    4.17 MAC, a 1.39x silent rescale between the extremes.
+
+    Asserted against the shipped agent files rather than against inlined
+    numbers, so a new agent joins this guarantee by existing. The
+    gridlines are checked in the same pass because a ruler is its
+    ceiling *and* its spacing: rules at whole percentages would land on
+    0.33 MAC intervals for desflurane, and a reader looks for MAC.
+    """
+
+    spans_mac: set[float] = set()
+    intervals_mac: set[float] = set()
+
+    for agent_id in ("sevoflurane", "isoflurane", "desflurane"):
+        mac_percent = load_agent_parameters(agent_id).mac_percent
+        view, _ = _build_view(agent_id=agent_id, agent_display_name=agent_id.title())
+
+        spans_mac.add(round(view._concentration_chart.max_y / mac_percent, 6))
+        intervals_mac.add(
+            round(view._concentration_chart.horizontal_grid_lines.interval / mac_percent, 6)
+        )
+
+        # Every agent's axis carries the identical ladder of MAC labels,
+        # which is the reader-facing half of the same guarantee.
+        assert [label.label.value for label in view._mac_axis.labels] == [
+            "0.0",
+            "0.5",
+            "1.0",
+            "1.5",
+            "2.0",
+            "2.5",
+            "3.0",
+        ]
+
+    assert spans_mac == {CHART_AXIS_TOP_MAC}
+    assert intervals_mac == {CHART_GRID_INTERVAL_MAC}
 
 
 def test_refresh_view_disables_agent_dropdown_while_running() -> None:
@@ -1184,6 +1255,111 @@ def test_chart_traces_stay_bound_to_their_own_compartment() -> None:
 
         for point in series.points:
             assert point.y == pytest.approx(by_time[point.x] * 100.0)
+
+
+def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat() -> None:
+    """The failure mode PL-CC23's fixed ceiling introduces, and its guard.
+
+    The old axis was the agent's dial maximum and so could not be
+    exceeded. A ceiling at 3 MAC can be: sevoflurane's 8% dial is
+    4.00 MAC and is the standard inhalational-induction setting. A
+    clipped trace draws as a horizontal line at the top of the plot, and
+    a horizontal line reads as a plateau — so a reader would conclude the
+    concentration stopped rising at 3 MAC when the model says it did not.
+    That is a wrong clinical reading of a correct model, which is why the
+    plot says so rather than relying on the reader noticing.
+    """
+
+    # 8% circuit is 4 MAC of sevoflurane, against a 6% (3 MAC) ceiling.
+    # Alveolar at 5% stays inside it, which is what makes this a test of
+    # *which* compartments are named rather than only that something was.
+    history = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.08, 0.05, 0.01, 0.01, 0.0, 0.0),
+    )
+    view, _ = _build_view(agent_id="sevoflurane", agent_display_name="Sevoflurane", history=history)
+
+    assert view._off_scale_text.visible is True
+    assert "Circuit" in view._off_scale_text.value
+    assert "Alveolar" not in view._off_scale_text.value
+    # The notice has to say where the unclipped number is, or it reports a
+    # problem and leaves the reader without the value.
+    assert "readouts above" in view._off_scale_text.value
+    assert "3.00 \u00d7MAC" in view._off_scale_text.value
+
+
+def test_the_off_scale_notice_stays_silent_for_a_run_inside_the_axis() -> None:
+    """An advisory that fires on an ordinary run is one nobody reads.
+
+    A 1 MAC maintenance case is the common case and sits at a third of
+    the plot height, nowhere near the ceiling.
+    """
+
+    history = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.02, 0.018, 0.015, 0.014, 0.01, 0.005),
+    )
+    view, _ = _build_view(agent_id="sevoflurane", agent_display_name="Sevoflurane", history=history)
+
+    assert view._off_scale_text.visible is False
+    assert view._off_scale_text.value == ""
+
+
+def test_a_trace_exactly_at_the_ceiling_is_not_reported_off_scale() -> None:
+    """Isoflurane is where a naive comparison would report noise as a defect.
+
+    Its ceiling is 3 x 1.2%, which in binary floating point is
+    3.5999999999999996 rather than 3.6 — so a trace sitting exactly at
+    3 MAC is arithmetically *above* the axis by 4e-16. Comparing against
+    the displayed resolution rather than against zero is what stops the
+    notice firing on a run that reaches the ceiling and no further, and a
+    notice that fires on an in-range run is one a reader learns to ignore
+    before the induction that needed it.
+    """
+
+    at_ceiling = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.036, 0.0, 0.0, 0.0, 0.0, 0.0),
+    )
+    view, _ = _build_view(
+        agent_id="isoflurane", agent_display_name="Isoflurane", history=at_ceiling
+    )
+
+    assert view._off_scale_text.visible is False
+
+    # ...and the tolerance is not so wide that it swallows a real excursion:
+    # 3.62% clears the ceiling by more than the readouts can resolve.
+    above_ceiling = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.0362, 0.0, 0.0, 0.0, 0.0, 0.0),
+    )
+    view, _ = _build_view(
+        agent_id="isoflurane", agent_display_name="Isoflurane", history=above_ceiling
+    )
+
+    assert view._off_scale_text.visible is True
+
+
+def test_a_hidden_trace_is_not_named_as_off_scale() -> None:
+    """A hidden series keeps the points of the frame it was last drawn in.
+
+    So a notice read from the series table without the visibility filter
+    would name a compartment the reader has taken off the chart and
+    cannot see — pointing at a trace that is not there.
+    """
+
+    history = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.08, 0.01, 0.01, 0.01, 0.0, 0.0),
+    )
+    view, _ = _build_view(agent_id="sevoflurane", agent_display_name="Sevoflurane", history=history)
+
+    assert view._off_scale_text.visible is True
+
+    _set_trace_shown(view, RecordedQuantity.CIRCUIT, False)
+    view._refresh_view()
+
+    assert view._off_scale_text.visible is False
 
 
 def _set_trace_shown(view: SimulationView, quantity: RecordedQuantity, shown: bool) -> None:
@@ -2172,7 +2348,7 @@ def test_the_chart_carries_a_mac_axis_beside_its_percent_axis() -> None:
     assert view._concentration_chart.right_axis is view._mac_axis
     assert view._concentration_chart.left_axis is not None
 
-    ticks = mac_axis_ticks(8.0, 2.0)
+    ticks = mac_axis_ticks(chart_axis_top_percent(2.0), 2.0)
 
     # `value` is the position in the chart's own percent coordinate and
     # `label` the MAC number written there. Asserting both together is what

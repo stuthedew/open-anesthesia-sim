@@ -44,7 +44,10 @@ from anesthesia_sim.app.controller import (
 )
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
+    CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     FLOW_DISPLAY_DECIMALS,
+    chart_axis_top_percent,
+    chart_grid_interval_percent,
     format_delivered_label,
     format_elapsed,
     format_flow,
@@ -184,6 +187,27 @@ LEGEND_SWATCH_HEIGHT = 4
 NO_TRACES_SHOWN_TEXT = (
     "No compartment traces are shown. Check a compartment above to draw it — "
     "the readouts and the run itself are unaffected."
+)
+
+# Said when a drawn trace goes above the top of the plot, naming which.
+#
+# A fixed axis can be exceeded, and `CHART_AXIS_TOP_MAC` is exceeded by a
+# technique rather than by an edge case: sevoflurane's 8% dial is 4.00 MAC and
+# is the standard inhalational-induction setting, so the circuit trace leaving
+# the frame is a thing a lesson will do on purpose. What must not happen is
+# that it leave *quietly* — a trace clipped at the ceiling draws as a
+# horizontal line, and a horizontal line is what a plateau looks like. A
+# reader would conclude the concentration had stopped rising at 3 MAC, which
+# is a wrong clinical reading of a correct model.
+#
+# So the plot says so, and says where the true value is. The alternative
+# considered and rejected was growing the axis to fit: that redraws the
+# curve at a smaller height partway through the induction it is being used
+# to teach, which trades a visible cut-off for an invisible rescale.
+OFF_SCALE_NOTICE_TEMPLATE = (
+    "Above the top of the plot: {compartments}. The axis stops at {top} and these "
+    "traces are cut off there — their values are in the readouts above, which are "
+    "not clipped."
 )
 
 # The two chart references are furniture rather than data, and are drawn in
@@ -589,6 +613,15 @@ class SimulationView:
         # than built inline because its visibility is written by
         # `_apply_trace_visibility`, which is the one writer of everything
         # that has to agree with what the chart is drawing.
+        # The companion to the notice above, and held for the same reason:
+        # both report something the plot is not showing, and both are written
+        # by exactly one method so the words and the picture cannot part.
+        # This one is written per frame, by `_refresh_off_scale_notice`,
+        # because whether a trace is off scale is a property of the samples
+        # rather than of the checkboxes.
+        self._off_scale_text = ft.Text(
+            "", color=WARNING, size=METRIC_QUALIFIER_SIZE, italic=True, visible=False
+        )
         self._hidden_traces_text = ft.Text(
             NO_TRACES_SHOWN_TEXT,
             color=MUTED,
@@ -625,13 +658,14 @@ class SimulationView:
         # per-frame churn PL-010 removed from the traces, arriving by
         # another door. `tests/integration/test_chart_patching.py` is what
         # measures that, and it fails if this guard is dropped.
-        self._mac_axis_basis = (
-            initial_snapshot.max_delivered_concentration_percent,
-            initial_snapshot.agent_mac_percent,
-        )
+        # One number, where this used to be two. The plotted range is now
+        # `CHART_AXIS_TOP_MAC` times this very quantity, so the agent's 1 MAC
+        # is the only thing either the ticks or the ceiling depend on, and
+        # the two cannot come to disagree about the scale they describe.
+        self._mac_axis_basis = initial_snapshot.agent_mac_percent
         self._mac_axis = fch.ChartAxis(
             title=ft.Text("multiples of 1 MAC", color=MUTED, size=METRIC_QUALIFIER_SIZE),
-            labels=self._build_mac_axis_labels(*self._mac_axis_basis),
+            labels=self._build_mac_axis_labels(self._mac_axis_basis),
             # The MAC ticks are the whole point of the axis, so the ends of
             # the percent range must not add two more at whatever multiples
             # they happen to fall on: isoflurane's 5% dial maximum is
@@ -682,12 +716,18 @@ class SimulationView:
             min_x=0,
             max_x=INITIAL_CHART_WINDOW_S,
             min_y=0,
-            max_y=initial_snapshot.max_delivered_concentration_percent,
+            # Denominated in MAC rather than in the agent's dial maximum, so
+            # every agent is drawn against one ruler; `CHART_AXIS_TOP_MAC`
+            # carries why, and why it does not move during a run.
+            max_y=chart_axis_top_percent(initial_snapshot.agent_mac_percent),
             left_axis=fch.ChartAxis(
                 title=ft.Text("percent", color=MUTED, size=METRIC_QUALIFIER_SIZE)
             ),
             right_axis=self._mac_axis,
-            horizontal_grid_lines=fch.ChartGridLines(interval=2, color="#D9E2EC"),
+            horizontal_grid_lines=fch.ChartGridLines(
+                interval=chart_grid_interval_percent(initial_snapshot.agent_mac_percent),
+                color="#D9E2EC",
+            ),
             vertical_grid_lines=fch.ChartGridLines(interval=60, color="#D9E2EC"),
             expand=True,
         )
@@ -1365,6 +1405,7 @@ class SimulationView:
                         italic=True,
                     ),
                     self._hidden_traces_text,
+                    self._off_scale_text,
                     # The references get their own legend row rather than
                     # joining the six above. They are not compartments, and a
                     # single row would invite reading them as a seventh and
@@ -1787,16 +1828,24 @@ class SimulationView:
         self._delivered_concentration_slider.value = (
             snapshot.delivered_concentration_fraction * 100.0
         )
-        self._concentration_chart.max_y = snapshot.max_delivered_concentration_percent
-        # The divisor and the plotted range both change with the agent, so a
-        # MAC axis carried over from the previous agent would label the same
-        # traces against the wrong scale. Rebuilt only when one of the two
-        # actually moves, for the reason recorded at `_mac_axis_basis`.
-        mac_axis_basis = (snapshot.max_delivered_concentration_percent, snapshot.agent_mac_percent)
+        # The ceiling and the rules move with the agent because both are
+        # multiples of its 1 MAC - which is exactly what keeps the *scale*
+        # still: 0 to 3 MAC, ruled every half MAC, whichever agent is
+        # running. Set every frame like the slider above, because they are
+        # cheap scalars; the axis labels below are not, and are guarded.
+        self._concentration_chart.max_y = chart_axis_top_percent(snapshot.agent_mac_percent)
+        self._concentration_chart.horizontal_grid_lines.interval = chart_grid_interval_percent(
+            snapshot.agent_mac_percent
+        )
+        # The divisor is what every tick is placed against, so a MAC axis
+        # carried over from the previous agent would label the same traces
+        # against the wrong scale. Rebuilt only when it actually moves, for
+        # the reason recorded at `_mac_axis_basis`.
+        mac_axis_basis = snapshot.agent_mac_percent
 
         if mac_axis_basis != self._mac_axis_basis:
             self._mac_axis_basis = mac_axis_basis
-            self._mac_axis.labels = self._build_mac_axis_labels(*mac_axis_basis)
+            self._mac_axis.labels = self._build_mac_axis_labels(mac_axis_basis)
 
         self._mac_reference_text.value = format_mac_reference(
             snapshot.agent_display_name, snapshot.agent_mac_percent
@@ -1952,10 +2001,66 @@ class SimulationView:
         window = self._controller.history_window(chart_min_x)
         chart_series.redraw_visible_window(self._visible_plotted_series, window)
 
+        # After the traces are drawn and before anything else reads them:
+        # the notice is about the points this frame actually put on the
+        # chart, so it is written from those rather than re-derived from
+        # the snapshot, which would let the words and the picture disagree.
+        self._refresh_off_scale_notice(snapshot)
+
         adjustments = group_adjustments(snapshot.control_timeline)
         self._redraw_control_marks(adjustments, chart_min_x, chart_max_x, snapshot)
         self._refresh_wash_in(snapshot, window, chart_min_x, chart_max_x)
         self._refresh_control_timeline(adjustments)
+
+    def _refresh_off_scale_notice(self, snapshot: SimulationSnapshot) -> None:
+        """Say which drawn traces are above the top of the plot, if any.
+
+        The axis is fixed at `CHART_AXIS_TOP_MAC`, so unlike the old
+        dial-maximum ceiling it can be exceeded — and the setting that
+        exceeds it, sevoflurane at 8%, is a technique rather than an
+        accident. A clipped trace draws as a horizontal line at the
+        ceiling, which is indistinguishable from a plateau, so leaving
+        this unsaid would let a reader conclude the concentration stopped
+        rising when the model says it did not.
+
+        Read from the series' own points rather than from the snapshot.
+        The snapshot carries only the newest sample, and a trace that rose
+        above the axis earlier in the visible window is still drawn
+        clipped now; the points are what the frame put on the chart.
+        Hidden traces are skipped because a hidden series keeps the points
+        of the frame it was last drawn in, which would otherwise report a
+        compartment the reader is not looking at.
+
+        Args:
+            snapshot: The frame's state, for the agent's 1 MAC — the only
+                thing the ceiling depends on.
+        """
+
+        top_percent = chart_axis_top_percent(snapshot.agent_mac_percent)
+        # A trace is off scale only once it clears the ceiling by more than
+        # the readouts can resolve. Below that the excursion is invisible in
+        # every number on the display, and the comparison would instead be
+        # reporting floating-point noise: isoflurane's ceiling is 3 x 1.2,
+        # which is 3.5999999999999996 rather than 3.6.
+        off_scale = [
+            trace.label
+            for trace in self._compartment_traces
+            if trace.visible
+            and any(
+                point.y - top_percent > CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+                for point in trace.series.points
+            )
+        ]
+
+        self._off_scale_text.visible = bool(off_scale)
+        self._off_scale_text.value = (
+            OFF_SCALE_NOTICE_TEMPLATE.format(
+                compartments=", ".join(off_scale),
+                top=format_mac_multiple(top_percent / 100.0, snapshot.agent_mac_percent),
+            )
+            if off_scale
+            else ""
+        )
 
     def _redraw_control_marks(
         self,
@@ -1973,10 +2078,12 @@ class SimulationView:
         the chart says how many marks are missing, because a plot that
         quietly stops annotating is a plot that asserts nothing happened.
 
-        Every mark spans the plotted range, which follows the running
-        agent's dial maximum, so it is taken from the snapshot rather than
-        from the chart control: the two are set in the same frame and this
-        way they cannot be read from different ones.
+        Every mark spans the plotted range, which is `CHART_AXIS_TOP_MAC`
+        multiples of the running agent's 1 MAC, so it is derived from the
+        snapshot rather than read off the chart control: the two are set
+        in the same frame and this way they cannot be read from different
+        ones. A mark drawn to the old dial-maximum ceiling would now stand
+        a third of a plot-height above the top of the frame.
         """
 
         visible = [
@@ -1993,7 +2100,7 @@ class SimulationView:
         # separate call sites is how one plot comes to be annotated and the
         # other not. Each pool spans its own chart's plotted range.
         for mark_series, top_y in (
-            (self._control_mark_series, snapshot.max_delivered_concentration_percent),
+            (self._control_mark_series, chart_axis_top_percent(snapshot.agent_mac_percent)),
             (self._wash_in_control_mark_series, WASH_IN_AXIS_MAXIMUM),
         ):
             for series, adjustment in zip(mark_series, drawn, strict=False):
@@ -2433,15 +2540,21 @@ class SimulationView:
         return ft.Text(initial_value, size=METRIC_SECONDARY_VALUE_SIZE, color=MUTED)
 
     @staticmethod
-    def _build_mac_axis_labels(max_percent: float, mac_percent: float) -> list[fch.ChartAxisLabel]:
-        """Build the chart's MAC axis labels for one agent and range.
+    def _build_mac_axis_labels(mac_percent: float) -> list[fch.ChartAxisLabel]:
+        """Build the chart's MAC axis labels for one agent.
 
         The placement is `formatting.mac_axis_ticks`, which is Flet-free
         and tested on its own; this only wraps each tick in the control
         the chart draws it with.
 
+        The range is derived here rather than passed in, from the same
+        `chart_axis_top_percent` the chart's own ceiling is set from, so
+        the ticks cannot be placed against a range the plot is not drawn
+        at. Before PL-CC23 the two arrived as separate arguments and the
+        top was the agent's dial maximum, which is what made the ruler
+        agent-specific.
+
         Args:
-            max_percent: Top of the chart's percent axis.
             mac_percent: Running agent's 1 MAC as a percent of one
                 atmosphere.
 
@@ -2454,5 +2567,5 @@ class SimulationView:
             fch.ChartAxisLabel(
                 value=percent, label=ft.Text(label, color=MUTED, size=METRIC_QUALIFIER_SIZE)
             )
-            for percent, label in mac_axis_ticks(max_percent, mac_percent)
+            for percent, label in mac_axis_ticks(chart_axis_top_percent(mac_percent), mac_percent)
         ]

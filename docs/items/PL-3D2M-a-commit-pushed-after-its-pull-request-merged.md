@@ -1,14 +1,15 @@
 ---
 id: PL-3D2M
 title: A commit pushed after its pull request merged lands nowhere, and nothing outside the item store notices
+priority: P2
+effort: M
 status: done
+classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md
 added: 2026-09-04
 closed: 2026-09-04
-priority: P2
-effort: M
-classes: defect, infra
+pr: 313
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_pushed_to_after_its_pull_request_merged_is_reported' subprojects/docket/tests/test_vcs.py
 ---
 
