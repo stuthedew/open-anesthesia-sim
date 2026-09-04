@@ -5,11 +5,12 @@ priority: P3
 effort: S
 status: done
 classes: perf
-touches: subprojects/docket/tests
 feature: dev-tooling
-verify: python3 tools/doc_check.py check && grep -qF 'Decided: leave it (project owner, 2026-09-04)' docs/items/PL-KCQ7-40-percent-of-the-suite-s-wall-clock-29-2-s-of.md
+touches: subprojects/docket/tests
 added: 2026-09-03
 closed: 2026-09-04
+pr: 277
+verify: python3 tools/doc_check.py check && grep -qF 'Decided: leave it (project owner, 2026-09-04)' docs/items/PL-KCQ7-40-percent-of-the-suite-s-wall-clock-29-2-s-of.md
 ---
 
 **Problem.** Measured 2026-09-03 on four cores, before `PL-WCZV` put `-n auto`
