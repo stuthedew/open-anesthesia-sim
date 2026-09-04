@@ -31,7 +31,10 @@ from anesthesia_sim.app.controller import (
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
+    format_mac_multiple,
+    format_mac_reference,
     format_percent,
+    mac_axis_ticks,
 )
 from anesthesia_sim.app.simulation_view import (
     AGENT_RENDER_STYLES,
@@ -119,10 +122,24 @@ def _snapshot(
     agent_id: str = "sevoflurane",
     agent_display_name: str = "Sevoflurane",
     max_delivered_concentration_percent: float = 8.0,
+    agent_mac_percent: float | None = None,
     failure_reason: str | None = None,
 ) -> SimulationSnapshot:
+    """Build a snapshot for the view, defaulting MAC from the named agent.
+
+    `agent_mac_percent` resolves from the data file rather than from a
+    literal so that a test naming an agent cannot accidentally pair that
+    agent's concentrations with another agent's MAC - which is the
+    presentation failure the MAC readouts have to be proof against, and
+    would be a fixture that proved the opposite of what it looked like.
+    Pass it explicitly only to test a divisor the data files do not hold.
+    """
+
     if history is None:
         history = (_sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),)
+
+    if agent_mac_percent is None:
+        agent_mac_percent = load_agent_parameters(agent_id).mac_percent
 
     latest = history[-1]
 
@@ -132,6 +149,7 @@ def _snapshot(
         agent_id=agent_id,
         agent_display_name=agent_display_name,
         max_delivered_concentration_percent=max_delivered_concentration_percent,
+        agent_mac_percent=agent_mac_percent,
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=4.0,
         delivered_concentration_fraction=0.08,
@@ -366,7 +384,7 @@ def _metric_labels_above(view: SimulationView, value_text: ft.Text) -> tuple[ft.
     """
 
     for panel in view._build_concentration_metrics().controls:
-        name_control, qualifier_control, panel_value_text = panel.content.controls
+        name_control, qualifier_control, panel_value_text, _mac_text = panel.content.controls
         if panel_value_text is value_text:
             return name_control, qualifier_control
 
@@ -495,10 +513,17 @@ def test_every_readout_reserves_a_qualifier_line_and_an_equal_column() -> None:
     panels = view._build_concentration_metrics().controls
 
     for panel in panels:
-        name, qualifier, _value = panel.content.controls
+        name, qualifier, value, second_unit = panel.content.controls
         assert name.value, "a readout with no name"
         assert qualifier.value, "a readout that does not hold its gloss line open"
         assert qualifier.size < name.size
+        # The MAC line is under the reading rather than above it, so it holds
+        # the *bottom* of every block level for the same reason the gloss
+        # holds the top: "Simulated time" has no second unit, and a panel that
+        # simply omitted the line would sit shorter than the six beside it and
+        # break the shared baseline in the other direction.
+        assert second_unit.value, "a readout that does not hold its second-unit line open"
+        assert second_unit.size < value.size
         assert panel.col == 1, "a readout given more of the row than its neighbours"
 
     assert max(METRIC_GRID_COLUMNS.values()) == len(panels)
@@ -1545,3 +1570,229 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
         "in the model; if they differ on the display this test is no longer "
         "measuring what it claims"
     )
+
+
+def test_every_compartment_is_readable_in_mac_multiples() -> None:
+    """PL-DHV7's own acceptance criterion, read off the assembled grid.
+
+    The whole point of the second unit is that it is on *every* graphed
+    compartment rather than on the alveolar readout alone: a MAC multiple
+    on the vessel-rich, muscle and fat traces is what makes a wash-in
+    comparable across agents, and it is the unit the reference simulator
+    plots in. Asserted against the panels rather than the controls, so a
+    MAC line built but never placed in the row fails here.
+    """
+
+    view, _ = _build_view(
+        _snapshot(history=(_sample(60.0, 0.02, 0.016, 0.008, 0.006, 0.001, 5e-5),))
+    )
+
+    mac_lines = [
+        panel.content.controls[3].value for panel in view._build_concentration_metrics().controls
+    ]
+
+    # "Simulated time" holds the line open without a value; the six
+    # compartments each carry one.
+    assert sum(1 for line in mac_lines if line and "MAC" in line) == 6
+    assert view._circuit_mac_text.value == "1.00 ×MAC"
+    assert view._alveolar_mac_text.value == "0.80 ×MAC"
+    assert view._mixed_venous_mac_text.value == "0.40 ×MAC"
+    assert view._vessel_rich_mac_text.value == "0.30 ×MAC"
+    assert view._muscle_mac_text.value == "0.05 ×MAC"
+    assert view._fat_mac_text.value == "<0.01 ×MAC"
+
+
+def test_each_mac_readout_uses_its_own_agent_divisor() -> None:
+    """The failure this readout has to be proof against, stated as a test.
+
+    A MAC multiple is a concentration divided by the running agent's own
+    1 MAC, and the same concentration is a different multiple under each
+    agent: 6% is 3 MAC of sevoflurane and 1 MAC of desflurane. A divisor
+    left over from the previously selected agent would therefore produce
+    a plausible number under the correct label, which is the presentation
+    failure `CLAUDE.md` treats as a safety failure rather than a cosmetic
+    one.
+
+    Switching the snapshot rather than building two views is deliberate,
+    for the reason the header-repaint test gives: a `_refresh_view` that
+    had stopped re-reading the divisor would still pass a per-agent
+    construction test.
+    """
+
+    controller = _FakeController(
+        _snapshot(history=(_sample(60.0, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06),))
+    )
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    assert view._alveolar_mac_text.value == "3.00 ×MAC"
+
+    controller.snapshot_value = _snapshot(
+        agent_id="desflurane",
+        agent_display_name="Desflurane",
+        max_delivered_concentration_percent=18.0,
+        history=(_sample(60.0, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06),),
+    )
+    view._refresh_view()
+
+    assert view._alveolar_mac_text.value == "1.00 ×MAC"
+    assert view._fat_mac_text.value == "1.00 ×MAC"
+
+
+def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
+    """The divisor is the one free parameter, so the display carries it.
+
+    `CLAUDE.md` requires a clinically meaningful value to be traceable to
+    the exact transformation that produced it, and PL-DHV7's "done when"
+    names this explicitly: the agent's `mac_percent` has to be traceable
+    from the display. It also has to follow an agent change, or it becomes
+    a confident statement about the wrong agent.
+    """
+
+    controller = _FakeController(_snapshot())
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    assert view._mac_reference_text.value == format_mac_reference("Sevoflurane", 2.0)
+
+    controller.snapshot_value = _snapshot(
+        agent_id="desflurane",
+        agent_display_name="Desflurane",
+        max_delivered_concentration_percent=18.0,
+    )
+    view._refresh_view()
+
+    assert view._mac_reference_text.value == format_mac_reference("Desflurane", 6.0)
+
+
+def test_the_interface_says_what_a_mac_multiple_on_a_compartment_is_not() -> None:
+    """The convention has to be stated where the numbers are read.
+
+    A MAC multiple on a tissue compartment means "this partial pressure
+    equals N times the alveolar concentration that would be 1 MAC", not
+    "the patient is at N MAC of anesthetic depth" — the two read the same
+    on a label and are not the same claim, which is the hard half of
+    PL-DHV7. MAC is also defined for a nominal 40-year-old without
+    adjustment for age or a second agent, neither of which this model has.
+
+    Asserted against the whole mounted tree rather than one control, for
+    the reason the end-tidal hedge is: the claim is about what the
+    interface says, not about where it says it.
+    """
+
+    page = _FakePage()
+    view = SimulationView(page=page, controller=_FakeController(_snapshot()))
+    view.mount()
+
+    disclosure = " ".join(sorted(_mounted_interface_strings(view, page)))
+
+    assert "not a depth of anesthesia" in disclosure
+    assert "40-year-old" in disclosure
+    assert "1 MAC sevoflurane = 2.0%" in disclosure
+
+
+def test_the_chart_carries_a_mac_axis_beside_its_percent_axis() -> None:
+    """Two rulers, one set of traces, and no unit mode between them.
+
+    The plotted points stay in percent, so the MAC axis is a relabelling
+    of the same coordinate rather than a second series — which is what
+    makes it impossible for the two axes to disagree about where a trace
+    is. A unit toggle would instead make the axis unit a hidden mode, and
+    a chart read under the wrong assumed unit is a misreading no
+    disclaimer catches.
+    """
+
+    view, _ = _build_view(_snapshot())
+
+    assert view._concentration_chart.right_axis is view._mac_axis
+    assert view._concentration_chart.left_axis is not None
+
+    ticks = mac_axis_ticks(8.0, 2.0)
+
+    # `value` is the position in the chart's own percent coordinate and
+    # `label` the MAC number written there. Asserting both together is what
+    # makes this a test of the *pairing*: a MAC number placed at the wrong
+    # percent would be a correctly labelled axis reading the wrong scale.
+    assert [label.value for label in view._mac_axis.labels] == pytest.approx(
+        [percent for percent, _ in ticks]
+    )
+    assert [label.label.value for label in view._mac_axis.labels] == [text for _, text in ticks]
+    assert [label.label.value for label in view._mac_axis.labels][:3] == ["0.0", "0.5", "1.0"]
+    assert view._mac_axis.labels[2].value == pytest.approx(2.0), "1 MAC sevoflurane is not at 2%"
+
+
+def test_the_mac_axis_is_rebuilt_only_when_the_agent_or_the_range_moves() -> None:
+    """A per-frame axis rebuild is the churn PL-010 removed, by another door.
+
+    The labels depend on the agent and the plotted range and on nothing
+    that moves during a run, where the render loop runs several times a
+    second. Rebuilding them per frame would allocate a control per tick
+    per frame and send the client an add-and-remove of the whole axis each
+    time. `tests/integration/test_chart_patching.py` measures the
+    consequence against a real Flet session; this pins the guard itself.
+    """
+
+    controller = _FakeController(_snapshot())
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    before = view._mac_axis.labels
+    view._refresh_view()
+
+    assert view._mac_axis.labels is before, "the axis was rebuilt for an unchanged frame"
+
+    controller.snapshot_value = _snapshot(
+        agent_id="desflurane",
+        agent_display_name="Desflurane",
+        max_delivered_concentration_percent=18.0,
+    )
+    view._refresh_view()
+
+    assert view._mac_axis.labels is not before
+    assert [label.label.value for label in view._mac_axis.labels][-1] == "3.0"
+    assert view._mac_axis.labels[-1].value == pytest.approx(18.0)
+
+
+def test_the_dial_is_readable_in_the_unit_its_compartments_are() -> None:
+    """The one control a reader sets, in the units of the traces it fills.
+
+    Without it the delivered concentration would be the only value on the
+    page that could not be compared with the compartments it drives — and
+    "open the vaporizer to 1 MAC" is the single most common thing a reader
+    of this simulator will want to do.
+    """
+
+    view, _ = _build_view(_snapshot())
+
+    assert view._delivered_concentration_text.value == format_percent(0.08)
+    assert view._delivered_concentration_mac_text.value == format_mac_multiple(0.08, 2.0)
+    assert view._delivered_concentration_mac_text.value == "4.00 ×MAC"
+
+
+def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
+    """Patient inputs, model selection, calculation, units, formatting, display.
+
+    `CLAUDE.md` asks for the whole path to be tested where it matters, and
+    a MAC readout adds a transformation to it that the percent readout
+    does not have. A real controller, a real step and the real formatter,
+    read off the control the user actually looks at.
+    """
+
+    controller = SimulationController(agent_id="desflurane")
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    controller.start()
+
+    for _ in range(600):
+        controller.advance(SIMULATION_STEP_S)
+
+    view._refresh_view()
+
+    snapshot = controller.snapshot()
+
+    assert snapshot.agent_mac_percent == 6.0
+    assert view._alveolar_mac_text.value == format_mac_multiple(
+        snapshot.alveolar_concentration_fraction, 6.0
+    )
+    # The dial starts at the agent's own 1 MAC, so after a minute of wash-in
+    # the alveolar compartment is somewhere below it and above nothing.
+    alveolar_mac = snapshot.alveolar_concentration_fraction * 100.0 / 6.0
+    assert 0.0 < alveolar_mac < 1.0
+    assert view._delivered_concentration_mac_text.value == "1.00 ×MAC"

@@ -54,11 +54,23 @@ the interface exposes, so a finer readout would present solver noise as model
 output. A positive value too small to show reads `<0.01%`, so an empty
 compartment stays distinguishable from an unresolved one.
 
-Each agent's MAC is used only to pick a clinically sensible starting dial
-position. The simulator does not model anesthetic depth: there is no
-effect-site compartment, and no MAC-fraction, BIS, or other depth readout is
-predicted or displayed. Also not modeled: agents beyond these three, IV
-anesthetics, metabolism, or any decision support. See
+Every compartment is also displayed as a multiple of the running agent's
+1 MAC, written `×MAC`, and the chart carries both units as two axes on one
+set of traces. That is the unit that survives an agent change — 2% is 1 MAC
+of sevoflurane and about a third of a MAC of desflurane — so a percent axis
+alone silently changes meaning when the agent does. Both units are always
+shown rather than selected, because a unit toggle would make the axis a mode.
+The MAC resolution is derived from the percent resolution rather than chosen
+beside it, and works out to 0.01 MAC.
+
+A MAC multiple here is a **partial-pressure ratio, not a depth of
+anesthesia**, and on the five non-alveolar compartments that distinction is
+the whole point: it says that compartment's partial pressure equals N times
+the alveolar concentration that would be 1 MAC. The simulator models no
+anesthetic depth — no effect-site compartment, no BIS, no age adjustment, no
+summing of MAC across agents — and the divisor is a tier-3 value the display
+names on screen so it can be converted back. Also not modeled: agents beyond
+these three, IV anesthetics, metabolism, or any decision support. See
 [`docs/MODEL.md`](docs/MODEL.md) for the full model specification, including
 equations, units, parameter provenance, and known limitations, and
 [`ROADMAP.md`](ROADMAP.md) for version history and planned milestones.
