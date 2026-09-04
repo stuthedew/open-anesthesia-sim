@@ -16,6 +16,8 @@ from docket.vcs import (
     BranchState,
     FlightFiles,
     FlightReport,
+    OrphanedBranch,
+    OrphanedReport,
     StrandedItem,
     StrandedReport,
     behind_remote,
@@ -27,6 +29,7 @@ from docket.vcs import (
     files_in_flight,
     lost,
     merged_pull_requests,
+    orphaned,
     precedence,
     stranded,
     tags,
@@ -46,12 +49,27 @@ def _when(day: str) -> str:
     return day if "T" in day else f"{day}T00:00:00+00:00"
 
 
+def _blob(entry: str | tuple[str, str]) -> str:
+    """The blob an `adds` entry names, whether or not it also names a path."""
+    return entry[0] if isinstance(entry, tuple) else entry
+
+
+def _path(entry: str | tuple[str, str]) -> str:
+    """The path an `adds` entry names, or one derived from its blob.
+
+    Most tests care only whether a blob landed, so they pass the blob alone and
+    the path is noise; the ones about `orphaned` report paths to a reader and
+    have to name them.
+    """
+    return entry[1] if isinstance(entry, tuple) else f"some/{entry}"
+
+
 def _runner(
     refs: list[str],
     merged: list[str] | None = None,
     commits: dict[str, list[tuple[str, ...]]] | None = None,
     unrelated: tuple[str, ...] = (),
-    adds: dict[str, list[str]] | None = None,
+    adds: dict[str, list[str] | list[tuple[str, str]]] | None = None,
     on_base: set[str] | None = None,
     log: list[list[str]] | None = None,
     ran_out: tuple[str, ...] = (),
@@ -106,12 +124,23 @@ def _runner(
                 }
                 return f"{args[-2]}\n" if args[-2] in held else "0123456789abcdef\n"
             return "" if args[-1] in unrelated else "0123456789abcdef\n"
+        if args[0] == "rev-list" and "--objects" in args:
+            # The object walk the landing split reads, in the shape git writes
+            # it: one oid per line, a path after it for anything but a commit.
+            return "\n".join(f"{blob} some/path/{blob}" for blob in sorted(on_base or set()))
         if args[0] == "diff":
             return "\n".join(
-                f":000000 100644 {'0' * 40} {blob} A\tsome/file"
-                for blob in (adds or {}).get(args[-2], [])
+                f":000000 100644 {'0' * 40} {_blob(entry)} A\t{_path(entry)}"
+                for entry in (adds or {}).get(args[-2], [])
             )
         if args[0] == "log":
+            if "--name-only" in args:
+                # Which commit touched which path is plumbing rather than a
+                # rule, so it is proved against real git in `test_cli.py` and
+                # answered with silence here. `orphaned`'s own report keeps the
+                # paths separate from this walk for exactly that reason: they
+                # come from the tree comparison and do not depend on it.
+                return ""
             wanted = [arg for arg in args if arg.startswith("--find-object=")]
             if wanted:
                 held = wanted[0].split("=", 1)[1] in (on_base or set())
@@ -137,7 +166,7 @@ def _in_flight(
     merged: list[str] | None = None,
     commits: dict[str, list[tuple[str, str]]] | None = None,
     unrelated: tuple[str, ...] = (),
-    adds: dict[str, list[str]] | None = None,
+    adds: dict[str, list[str] | list[tuple[str, str]]] | None = None,
     on_base: set[str] | None = None,
     ran_out: tuple[str, ...] = (),
 ) -> tuple[Branch, ...]:
@@ -202,6 +231,12 @@ def test_a_squash_merged_branch_is_judged_against_the_history_not_the_tip() -> N
     Every item this store captures is edited again by the triage pass that
     follows it, so a branch judged against the default branch's *tip* would be
     back to reporting in flight one merge after the one that finished it.
+
+    The walk is over the base's *objects*, which is every blob its history has
+    held, and it is asked once for all of them rather than once per blob -
+    measured at 0.033 s against 0.62 s for the seventeen `--find-object` walks
+    it replaced on this repository. What the assertion pins is that the
+    comparison is against the history and never against the base's tree.
     """
     calls: list[list[str]] = []
     branches_in_flight(
@@ -215,7 +250,7 @@ def test_a_squash_merged_branch_is_judged_against_the_history_not_the_tip() -> N
         ),
     )
 
-    assert ["log", "-1", "--format=%H", "--find-object=a1", BASE] in calls
+    assert ["rev-list", "--objects", BASE] in calls
     assert not [args for args in calls if args[0] == "diff" and BASE in args]
 
 
@@ -663,10 +698,14 @@ def _store() -> Report:
     return Report(items=[parse_item(DIGEST_ITEM)])
 
 
-def _digest(stranded: StrandedReport | None = None, flight: FlightReport | None = None) -> str:
+def _digest(
+    stranded: StrandedReport | None = None,
+    flight: FlightReport | None = None,
+    left: OrphanedReport | None = None,
+) -> str:
     from docket.render import format_digest
 
-    return format_digest(_store(), flight, None, None, stranded)
+    return format_digest(_store(), flight, None, None, stranded, (), left)
 
 
 def test_the_digest_names_an_item_only_a_branch_holds() -> None:
@@ -1862,3 +1901,124 @@ def test_precedence_finds_nothing_where_no_branch_carries_the_item() -> None:
     assert order.carriers == ()
     assert order.holder is None
     assert not order.yields
+
+
+# A branch whose pull request merged and which was then pushed to again: the
+# base holds `landed.txt` and has never held `pushed-after.md`.
+PARTLY = "claude/pl-k7qx-partly-landed"
+
+
+def _orphaned(
+    adds: dict[str, list[tuple[str, str]]],
+    on_base: set[str],
+    refs: list[str] | None = None,
+    merged: list[str] | None = None,
+) -> OrphanedReport:
+    return orphaned(ROOT, runner=_runner(refs or [PARTLY], merged, adds=adds, on_base=on_base))
+
+
+def test_a_branch_pushed_to_after_its_pull_request_merged_is_reported() -> None:
+    """The failure this exists for: one commit that no merge will ever take.
+
+    A pull request merges the head it was opened against. A commit pushed to
+    the branch afterwards is merged by nothing, conflicts with nothing and
+    fails no check - and unless it happened to touch `docs/items/`, nothing in
+    this project noticed before `orphaned` (`PL-3D2M`).
+    """
+    report = _orphaned(
+        adds={PARTLY: [("a1", "landed.txt"), ("a2", "pushed-after.md")]}, on_base={"a1"}
+    )
+
+    assert [branch.ref for branch in report.branches] == [PARTLY]
+    assert report.branches[0].outstanding == ("pushed-after.md",)
+    assert report.branches[0].landed == ("landed.txt",)
+
+
+def test_a_branch_that_has_landed_nothing_is_ordinary_work_in_flight() -> None:
+    """The signature of a live session, and the one this must stay silent on.
+
+    Measured on this repository the day the rule was written: the single live
+    branch introduced seventeen paths and the default branch held none of
+    them. A rule that fired there would fire in most sessions and be read past
+    in all of them.
+    """
+    assert (
+        _orphaned(adds={PARTLY: [("a1", "one.txt"), ("a2", "two.txt")]}, on_base=set()).branches
+        == ()
+    )
+
+
+def test_a_branch_whose_work_all_landed_never_reaches_the_report() -> None:
+    """It is excluded as landed before this read begins, not cleared by it."""
+    assert (
+        _orphaned(
+            adds={PARTLY: [("a1", "one.txt"), ("a2", "two.txt")]}, on_base={"a1", "a2"}
+        ).branches
+        == ()
+    )
+
+
+def test_a_ref_whose_commits_went_unread_is_named_rather_than_answered() -> None:
+    """The truncated clone an agent session starts from, reported as a gap."""
+    report = orphaned(
+        ROOT,
+        runner=_runner(
+            [PARTLY], adds={PARTLY: [("a1", "landed.txt")]}, on_base={"a1"}, unrelated=(PARTLY,)
+        ),
+    )
+
+    assert report.branches == ()
+    assert report.unreadable == (PARTLY,)
+
+
+def test_a_checkout_that_can_read_no_ref_declines_rather_than_answering() -> None:
+    """Nothing read is not the same claim as nothing found."""
+    report = orphaned(ROOT, runner=_runner([], merged=[]))
+
+    assert not report.known
+    assert "no branch refs" in report.declined
+
+
+def test_a_checkout_whose_every_branch_has_merged_answers_cleanly() -> None:
+    """The opposite case, which an empty candidate list reports identically.
+
+    Git listing nothing and git listing only merged branches are opposite
+    answers - a check that could not run, and one that ran and found the
+    repository sound - so `_Refs` counts the listing before the filter.
+    """
+    report = orphaned(ROOT, runner=_runner([PARTLY], merged=[PARTLY]))
+
+    assert report.known
+    assert report.branches == ()
+
+
+def test_the_digest_names_a_commit_pushed_after_its_pull_request_merged() -> None:
+    """The other half of the line above, for everything that is not an item.
+
+    A dropped commit touching `docs/items/` reached the next session through
+    the stranded line; one touching a skill, a rule or `src/` reached nobody
+    (`PL-3D2M`). Both now arrive the same way, in text every session reads
+    before it does anything else.
+    """
+    left = OrphanedReport(
+        branches=(
+            OrphanedBranch(
+                ref="claude/pl-k7qx-do-the-thing",
+                landed=("work.py",),
+                outstanding=("rule.md", "docs/items/PL-ZSV6-a-rule.md"),
+                commits=(),
+            ),
+        ),
+        refs_read=1,
+    )
+
+    stated = [line for line in _digest(left=left).splitlines() if "pl-k7qx" in line]
+
+    assert len(stated) == 1
+    assert "2 files" in stated[0]
+    assert "bin/docket stranded" in stated[0]
+
+
+def test_the_digest_stays_silent_when_no_branch_has_been_left_behind() -> None:
+    """The ordinary case, and the one a line resent every turn must not cost."""
+    assert "after its pull request merged" not in _digest(left=OrphanedReport(refs_read=2))
