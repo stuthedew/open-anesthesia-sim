@@ -36,7 +36,12 @@ from anesthesia_sim.app.control_timeline import (
     format_adjustment,
     group_adjustments,
 )
-from anesthesia_sim.app.controller import HistoryWindow, SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import (
+    HistoryWindow,
+    RecordedQuantity,
+    SimulationController,
+    SimulationSnapshot,
+)
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
@@ -510,12 +515,12 @@ class SimulationView:
         # holds it, by giving each compartment a distinct multiple and
         # reading the drawn points back.
         self._plotted_series: tuple[chart_series.PlottedSeries, ...] = (
-            (self._circuit_series, chart_series.circuit_value),
-            (self._alveolar_series, chart_series.alveolar_value),
-            (self._mixed_venous_series, chart_series.mixed_venous_value),
-            (self._vessel_rich_series, chart_series.vessel_rich_value),
-            (self._muscle_series, chart_series.muscle_value),
-            (self._fat_series, chart_series.fat_value),
+            (self._circuit_series, RecordedQuantity.CIRCUIT),
+            (self._alveolar_series, RecordedQuantity.ALVEOLAR),
+            (self._mixed_venous_series, RecordedQuantity.MIXED_VENOUS),
+            (self._vessel_rich_series, RecordedQuantity.VESSEL_RICH),
+            (self._muscle_series, RecordedQuantity.MUSCLE),
+            (self._fat_series, RecordedQuantity.FAT),
         )
 
         # Two rulers against one set of traces. The plotted points stay in

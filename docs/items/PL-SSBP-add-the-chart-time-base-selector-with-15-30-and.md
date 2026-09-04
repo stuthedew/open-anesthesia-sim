@@ -46,9 +46,18 @@ item can ship 15/30/60 plus "Fit run" as it stands. Anything past about an
 hour cannot, until per-bucket extremes are computed once and kept instead of
 rederived each frame — which `PL-Q197` made possible by anchoring buckets to
 absolute sample index, since a completed bucket's extremes never change
-again. `PL-D9WD` is that cache. Either split the upper scales out or take
-`PL-D9WD` first; do not ship a selector offering a scale that stalls the
-interface.
+again. `PL-D9WD` is that cache.
+
+**That cache landed on 2026-09-04, so the constraint is lifted.** Measured
+over the whole chart frame - six traces plus the wash-in plot - the cost is
+now 1.7 ms at five minutes, 2.8 ms at fifteen, 3.0 ms at an hour and 2.6 ms
+at twelve, against the 200 ms frame budget: flat, because a frame reads
+completed aggregates rather than the samples the window spans. Every scale
+on the settled list is affordable, and there is no longer a reason to split
+the upper ones out. What this item still owes the upper scales is its own:
+`MAX_CHART_WINDOW_S` is 300 s today, so nothing above five minutes has been
+rendered yet, and a twelve-hour axis has label and tick decisions a
+five-minute one does not.
 
 **Done when.** The user can choose a time base from a list, the chart window
 takes that width, and a run shorter than the selected scale still shows whole.
