@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, session-cost
 feature: planning-cadence
+milestone: v0.4.1
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-09-05
 closed: 2026-09-05

@@ -1,14 +1,16 @@
 ---
 id: PL-BWTB
 title: PL-GS5X's Done when requires the tolerance PL-X9KD sets, but PL-X9KD is blocked-by PL-GS5X, so as written neither can finish
-status: done
-added: 2026-09-05
-closed: 2026-09-05
 priority: P2
 effort: S
+status: done
 classes: defect, docs
-touches: docs/items/PL-GS5X-replace-the-operator-split-with-the-exact.md
 feature: numerical-domain
+milestone: v0.4.1
+touches: docs/items/PL-GS5X-replace-the-operator-split-with-the-exact.md
+added: 2026-09-05
+closed: 2026-09-05
+pr: 356
 verify: python3 tools/doc_check.py check && grep -qF 'Corrected 2026-09-05 (`PL-BWTB`)' docs/items/PL-GS5X-replace-the-operator-split-with-the-exact.md
 ---
 
