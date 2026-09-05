@@ -4,14 +4,16 @@ title: Sweep MODEL.md and README for the new unit, time base and run rate
 priority: P2
 effort: S
 status: done
-closed: 2026-09-05
-blocked-by: PL-VM40, PL-SN2C, PL-SSBP, PL-CC23, PL-DR1Z, PL-ZRSP, PL-R3KB, PL-W3DD
 classes: docs
-verify: python3 tools/doc_check.py check && grep -qF 'A time base is a view control and reaches no model state.' docs/MODEL.md
 feature: teachable-case
 touches: docs/MODEL.md, README.md
+blocked-by: PL-VM40, PL-SN2C, PL-SSBP, PL-CC23, PL-DR1Z, PL-ZRSP, PL-R3KB, PL-W3DD
 added: 2026-08-25
+closed: 2026-09-05
+pr: 352
+verify: python3 tools/doc_check.py check && grep -qF 'A time base is a view control and reaches no model state.' docs/MODEL.md
 ---
+
 **Problem.** The v0.3.0 milestone changes what the interface asserts: a second
 displayed unit, a case-length time base, a run-rate control, a recorded input
 timeline, and a reference band. `docs/MODEL.md`'s "Interface boundary", "Minimum
