@@ -183,10 +183,23 @@ reply which branch it came off.
 **The same command's second half is not about items at all, and it is not a
 judgment call in the same way.** It names a branch whose pull request already
 took part of its work and left the rest - a commit pushed after the merge,
-which nothing merges and nothing else reports (`PL-3D2M`). Recover it the way
-`CLAUDE.md`'s merged-branch rule says: restart the branch on the merged `main`
-and carry the commit forward as a new pull request, never by pushing to the
-merged branch again, which is what lost it.
+which nothing merges and nothing else reports (`PL-3D2M`). Restart the branch
+on the merged `main` and carry the commit forward as a new pull request, never
+by pushing to the merged branch again, which is what lost it:
+
+```bash
+git branch -dr origin/<branch>
+git fetch origin main
+git checkout -B <branch> origin/main
+```
+
+**Delete that one ref by name; never `git fetch --prune`.** A stale
+`origin/<branch>` can be the only surviving copy of an item captured on a
+branch nobody merged, which is why `fetch_remote` does not prune and what
+`stranded` recovers - `PL-HKF4` came within one prune of exactly that.
+`.claude/hooks/no-prune-guard.sh` refuses the call and prints these three
+commands, which is why the prohibition is no longer resident in `CLAUDE.md`
+(`PL-JK0M`); `PL-1Q3S` and `PL-PF8H` are the two ways such a ref arises.
 
 ## Mode: housekeeping nobody filed
 
@@ -915,11 +928,13 @@ reconstruct three commands at the moment they are trying to do something else.
    that is also an ordinary word is reported only where a line marks it as
    code, and the output names which terms those were.
 
-   Spend the judgment on what neither can decide: whether each statement is
-   still *true*. Stale documentation is a safety issue here — a reader who
-   trusts a wrong statement about which agent is running or what a value
-   means can reach a wrong clinical conclusion from a correct number. Say in
-   the reply which files were checked.
+   Landing a change is not finishing it. Spend the judgment on what neither
+   can decide: whether each statement is still *true*. Stale documentation is
+   a safety issue here rather than tidiness — a reader who trusts a wrong
+   statement about which agent is running, what a value means, or what the
+   interface displays can reach a wrong clinical conclusion from a correct
+   number. Say in the reply which files were checked, not merely that the docs
+   were updated.
 3. Capture anything found but not fixed as its own item.
 4. **Report gate progress if the item is one the gate contains.** Membership is
    decidable rather than a judgment: `bin/docket wave` prints the gate's open

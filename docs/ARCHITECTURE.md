@@ -468,7 +468,7 @@ and import, run before a push, and reach what those two commands never do.
 
 ## Wired hooks (`.claude/hooks/`)
 
-The three scripts `.claude/settings.json` wires as hooks live in
+The four scripts `.claude/settings.json` wires as hooks live in
 `.claude/hooks/`, not in `tools/`, and the reason is a guard rather than tidiness.
 `.claude` is a *protected directory* in Claude Code's own list, so a write to
 anything under it is never auto-approved: it prompts, or in auto mode routes to
@@ -478,9 +478,9 @@ paths](https://code.claude.com/docs/en/permission-modes#protected-paths), read
 runs before allow rules are evaluated — so the directory is the guard, and
 putting a hook anywhere else silently leaves it out. `stop_hook_patch.py` sat
 in `tools/` until `PL-W4H9`, which is exactly the gap that item names: a script
-that rewrites another hook, editable without review. `docket-digest.sh` and
-`docket-branch-guard.sh` are documented where their behavior is, in their own
-headers.
+that rewrites another hook, editable without review. `docket-digest.sh`,
+`docket-branch-guard.sh` and `no-prune-guard.sh` are documented where their
+behavior is, in their own headers.
 
 `.claude/hooks/stop_hook_patch.py` is the one hook here that is not a check and
 does not run under `make check`. It is wired as a SessionStart hook, and it
