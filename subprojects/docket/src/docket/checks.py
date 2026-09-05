@@ -29,7 +29,7 @@ from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .plan import OfferedReport
 from .release import SEMVER_RE, version_key
 from .store import ID_PATTERN, ID_RE
-from .vcs import ClosureReport, LostReport, PullRequestHistory
+from .vcs import ClosureReport, LostReport, PullRequestHistory, RecordReport
 from .verify import LandedReport
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
@@ -997,6 +997,71 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
         )
 
 
+def _check_records(report: Report, records: RecordReport | None) -> None:
+    """Hold a closed item's `verify:` to the command that was actually run.
+
+    **The decision this enforces.** A closed item's command records what proved
+    the work; it is not a live assertion about the tree. That is not a
+    preference between two readings - it is the only one the field can bear.
+    Measured over this store, 14 of the 179 closed items carrying a command no
+    longer resolve, and not one of the 14 is a defect: each is later work
+    correctly consuming the state its predecessor established. Four are
+    `grep '^blocked-by: PL-...'` against an item file, which pass exactly while
+    the blocker is unresolved and are written in the expectation of stopping.
+    A field whose commands are designed to become false cannot be read as a
+    standing claim.
+
+    **So the hazard is the repair, not the rot.** A session meeting a dead
+    command helpfully re-points it at whatever covers the ground now - and the
+    item then names a command that never ran against the work it claims to
+    prove. That is the failure `CLAUDE.md` names for tooling: output that looks
+    authoritative and is not, arrived at from a true record rather than an
+    absent one. Nothing else here stops it, because every other reading of
+    `verify:` asks about *open* items.
+
+    **An error rather than an advisory, because the rule is exact.** Whether
+    the field differs from the base's is decidable without judgment, and the
+    reading is one-sided: `_changed_items` returns nothing where it cannot
+    resolve a merge base, so this under-reports on a truncated checkout and
+    never accuses a branch of an edit it did not make.
+
+    The escape hatch needs no flag and is deliberately visible. An item that is
+    genuinely not done is reopened, and a reopened item is not `done` in the
+    working tree, so the field is writable again the moment its status admits
+    the work is not finished.
+    """
+    if records is None:  # a caller that did not ask; every command but `check`
+        return
+    if not records.known:
+        report.declined.append(
+            f"whether a closed item's recorded `verify:` was rewritten here: {records.declined}"
+        )
+        return
+    recorded = records.commands
+    for item in report.items:
+        if item.status != "done":
+            continue
+        was = recorded.get(item.identifier)
+        if was is None or was == item.verify:
+            continue
+        if not was:
+            report.errors.append(
+                f"{_where(item)}: closed on `{records.base}` recording no `verify:`, and this "
+                f"branch adds `{item.verify}`. The work has merged, so there is nothing left "
+                "to run the command against and it records nothing about what proved the "
+                "item; leave the field empty and put the correction in the body"
+            )
+        else:
+            report.errors.append(
+                f"{_where(item)}: closed on `{records.base}` recording `verify: {was}`, and "
+                f"this branch changes it to `{item.verify}`. A closed item's command is the "
+                "record of what was run, not a live command - re-pointing one replaces the "
+                "command that proved the work with one that never ran it. Restore the "
+                "recorded command; where the item is genuinely not done, reopen it and the "
+                "field is writable again"
+            )
+
+
 def _groom(report: Report, today: date, config: Config, offered: frozenset[str] | None) -> None:
     """Detect the conditions that make a grooming pass worth someone's time."""
     stale = [
@@ -1170,16 +1235,18 @@ def analyze(
     offered: OfferedReport | None = None,
     landed: LandedReport | None = None,
     closures: ClosureReport | None = None,
+    records: RecordReport | None = None,
     lost: LostReport | None = None,
     version: str | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
-    `history`, `offered`, `landed` and `closures` are the inputs that cannot be
-    read from the store, so they are passed in rather than fetched here: this
-    module stays pure and testable, and the caller decides whether asking git,
-    ranking the queue or running the items' own commands is worth it. Omitting
-    any of them skips the check that needs it rather than failing it.
+    `history`, `offered`, `landed`, `closures` and `records` are the inputs that
+    cannot be read from the store, so they are passed in rather than fetched
+    here: this module stays pure and testable, and the caller decides whether
+    asking git, ranking the queue or running the items' own commands is worth
+    it. Omitting any of them skips the check that needs it rather than failing
+    it.
 
     `offered` is the ids `next` would suggest. It is supplied by the three
     commands that put advisories in front of a person - `check`, `digest` and
@@ -1202,6 +1269,7 @@ def analyze(
     _check_slow_commands(report, landed)
     _note_cost(report, landed)
     _check_closures(report, closures)
+    _check_records(report, records)
     _check_lost(report, lost)
     _groom(report, today, settings, ids)
     # Said once, for both advisories above that read `offered`, and said even

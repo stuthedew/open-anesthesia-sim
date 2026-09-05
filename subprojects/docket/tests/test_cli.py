@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from docket.cli import build_parser, main, merge_shared
-from docket.vcs import lost
+from docket.vcs import lost, records_on_base
 from docket.verify import LANDED_GUARD
 
 READY = """---
@@ -2295,3 +2295,100 @@ def test_the_digest_lane_line_names_an_empty_lane_rather_than_omitting_it(
 
     assert "product PL-PROD, workflow none" in out
     assert "in neither lane" not in out
+
+
+# --- reading a closed item's recorded `verify:` from real git ----------------
+#
+# `test_vcs.py` injects git and asserts the narrowing; this asserts the command
+# spellings, which a stub cannot. Three of them are new here - a `...` diff, a
+# working-tree diff, and an `ls-tree` of the items directory - and a
+# misspelling in any of them fails silently, because `_run_git` answers a
+# failed command with empty output and an empty answer is "nothing rewritten".
+
+RECORDED_ITEM = """---
+id: PL-K7QX
+title: Do the thing
+priority: P2
+effort: S
+status: done
+classes: perf
+touches: a.py
+added: 2026-08-01
+closed: 2026-08-02
+pr: 148
+verify: pytest recorded
+---
+
+**Problem.** x
+
+**Why it matters.** y
+
+**Done when.** z
+"""
+
+
+def _verify_record_repo(tmp_path: Path) -> Path:
+    """A checkout whose default branch holds one closed item, with a branch off it."""
+    root = tmp_path / "repo"
+    (root / "docs" / "items").mkdir(parents=True)
+    (root / "docs" / "items" / "PL-K7QX-a.md").write_text(RECORDED_ITEM, encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "checkout", "-qb", "work"], cwd=root, check=True, capture_output=True)
+    return root
+
+
+def _rewrite_verify(root: Path, command: str) -> None:
+    path = root / "docs" / "items" / "PL-K7QX-a.md"
+    path.write_text(
+        path.read_text(encoding="utf-8").replace("verify: pytest recorded", f"verify: {command}"),
+        encoding="utf-8",
+    )
+
+
+def test_an_untouched_closed_item_is_not_read_from_a_real_checkout(tmp_path: Path) -> None:
+    root = _verify_record_repo(tmp_path)
+
+    assert records_on_base(root, {"PL-K7QX": "PL-K7QX-a.md"}).records == ()
+
+
+def test_an_uncommitted_rewrite_is_read_from_a_real_checkout(tmp_path: Path) -> None:
+    # `make check` runs before the commit, which is when restoring the recorded
+    # command costs nothing.
+    root = _verify_record_repo(tmp_path)
+    _rewrite_verify(root, "pytest rewritten")
+
+    assert records_on_base(root, {"PL-K7QX": "PL-K7QX-a.md"}).commands == {
+        "PL-K7QX": "pytest recorded"
+    }
+
+
+def test_a_committed_rewrite_is_read_from_a_real_checkout(tmp_path: Path) -> None:
+    # And CI runs after it, on a pull request, where the edit is committed and
+    # the working-tree diff is empty.
+    root = _verify_record_repo(tmp_path)
+    _rewrite_verify(root, "pytest rewritten")
+    subprocess.run(["git", "commit", "-qam", "rewrite"], cwd=root, check=True, capture_output=True)
+
+    assert records_on_base(root, {"PL-K7QX": "PL-K7QX-a.md"}).commands == {
+        "PL-K7QX": "pytest recorded"
+    }
+
+
+def test_a_retitled_item_is_still_found_in_a_real_checkout(tmp_path: Path) -> None:
+    # Retitling renames the file, so the base does not hold the tree's path.
+    root = _verify_record_repo(tmp_path)
+    _rewrite_verify(root, "pytest rewritten")
+    subprocess.run(
+        ["git", "mv", "docs/items/PL-K7QX-a.md", "docs/items/PL-K7QX-b.md"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+    assert records_on_base(root, {"PL-K7QX": "PL-K7QX-b.md"}).commands == {
+        "PL-K7QX": "pytest recorded"
+    }
