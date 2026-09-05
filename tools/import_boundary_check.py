@@ -1,19 +1,31 @@
 #!/usr/bin/env python3
-"""Hold `src/anesthesia_sim/` to the one module allowed to import Pydantic.
+"""Hold `src/anesthesia_sim/` to the import boundaries declared in `BOUNDARIES`.
 
-`core/parameters.py` pairs each `_...Payload` Pydantic model with a public,
-frozen, Pydantic-independent dataclass, and `_StrictPayload`'s docstring says
-what that pairing buys: *the rest of `core/` never imports Pydantic.* A payload
-validates one JSON document and is discarded; what every other module holds is
-a plain dataclass.
+A boundary names a package, the tree it is confined within, and the modules
+permitted to import it - which may be no module at all. Two invariants are
+declared today, and they are confined for unrelated reasons.
 
-Nothing measured it. The invariant held on 2026-09-04 - `pydantic` appeared in
-exactly two lines of that one file - but any later change could import it into
-a compartment, the controller or the interface and every gate would stay green.
-The failure that makes this worth a tool is not the coupling on its own: it is
-that the docstring asserting the property would go on asserting it, reading as
-verified when it is not. `CLAUDE.md` names this shape - a claim answerable by
-reading the tree belongs in a script rather than in prose nobody re-measures.
+**Pydantic, to one module.** `core/parameters.py` pairs each `_...Payload`
+Pydantic model with a public, frozen, Pydantic-independent dataclass, and
+`_StrictPayload`'s docstring says what that pairing buys: *the rest of `core/`
+never imports Pydantic.* A payload validates one JSON document and is
+discarded; what every other module holds is a plain dataclass.
+
+**The wall clock and the process generator, to nothing under `core/`.**
+`CLAUDE.md` requires simulation time to be explicit state and never the wall
+clock, and `docs/MODEL.md` "The reproducibility guarantee" states that a run is
+a function of its inputs and of the number of steps taken and of nothing else.
+A compartment reaching for `time`, `datetime` or `random` breaks that promise
+by an amount the machine chooses rather than the model.
+
+Nothing measured either. Both held on 2026-09-04 - `pydantic` appeared in
+exactly two lines of that one file, and no module under `core/` imported a
+clock or a generator - but any later change could import one and every gate
+would stay green. The failure that makes this worth a tool is not the coupling
+on its own: it is that the docstring and the guarantee asserting the property
+would go on asserting it, reading as verified when it is not. `CLAUDE.md` names
+this shape - a claim answerable by reading the tree belongs in a script rather
+than in prose nobody re-measures.
 
 **What this decides.** Whether a module outside a boundary's allowed list
 imports that boundary's package, whether an allowance still names a file that
@@ -24,15 +36,18 @@ module ought to hold the exception. Those are judgments; they live in
 `BOUNDARIES` below, written by a person with the reason beside them, and this
 file only evaluates them.
 
-**Why the boundary covers `app/` too, and not only `core/`.** The pairs exist
-for `core/`, so `core/` is the boundary that has an argument behind it. The
-interface is included anyway because nothing supplies a reason for the
-asymmetry: `app/` consumes parameters through the same seam functions, as
-already-validated frozen dataclasses, so an import there would be a new
-coupling buying nothing. One allowed-module list also makes the rule statable
-in a sentence - *exactly one module in this package imports Pydantic* - which
-is a rule a reader can hold, where "forbidden here, permitted there" is a rule
-they have to look up.
+**Why the trees differ, and the asymmetry is the point.** The Pydantic
+boundary covers `app/` as well as `core/`: the pairs exist for `core/`, but
+nothing supplies a reason to exempt the interface, which consumes parameters
+through the same seam functions as already-validated frozen dataclasses, so an
+import there would be a new coupling buying nothing. One allowed-module list
+also makes the rule statable in a sentence - *exactly one module in this
+package imports Pydantic* - which is a rule a reader can hold, where "forbidden
+here, permitted there" is a rule they have to look up. The clock boundary stops
+at `core/` for the opposite reason: `app/` is where a clock legitimately
+belongs, and the same guarantee says so - *the interface schedules its ticks
+with the wall clock*, and what it must not do is let a tick's real duration
+reach the run.
 
 **Every import counts, including one guarded by `TYPE_CHECKING`.** Such an
 import creates no runtime dependency, so a narrower check could pass it. It is
@@ -82,10 +97,11 @@ class Boundary:
 
 
 #: The specification. Each entry names a package, the tree it is confined
-#: within, the modules permitted to import it, and the reason the confinement
-#: is worth enforcing. Adding a dependency that must not spread means adding it
-#: here; widening one means adding a path to `allowed` and saying why in the
-#: same commit.
+#: within, the modules permitted to import it - an empty `allowed` confines it
+#: out of that tree entirely - and the reason the confinement is worth
+#: enforcing. Adding a dependency that must not spread means adding it here;
+#: widening one means adding a path to `allowed` and saying why in the same
+#: commit.
 BOUNDARIES: tuple[Boundary, ...] = (
     Boundary(
         package="pydantic",
@@ -98,6 +114,46 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "and is discarded at the seam (`parse_agent_parameters()`, "
             "`parse_reference_adult_parameters()`). `_StrictPayload`'s docstring asserts this, "
             "and PL-Y0RZ is why it is measured rather than remembered"
+        ),
+    ),
+    Boundary(
+        package="time",
+        tree="src/anesthesia_sim/core",
+        allowed=(),
+        why=(
+            "`CLAUDE.md` requires simulation time to be explicit state and never the wall "
+            'clock, and `docs/MODEL.md` "The reproducibility guarantee" promises that a run '
+            "is a function of its inputs and of the number of steps taken and of nothing "
+            "else. A compartment that reads a clock makes two runs of identical inputs "
+            "differ by whatever the machine was doing, which is not a quantity the model "
+            "owns. The interface schedules its ticks with the wall clock, which is why the "
+            "confinement is `core/` rather than the whole package; PL-J833 is why it is "
+            "measured rather than remembered"
+        ),
+    ),
+    Boundary(
+        package="datetime",
+        tree="src/anesthesia_sim/core",
+        allowed=(),
+        why=(
+            "the same guarantee as `time`, by the other route into it: `datetime.now()` and "
+            "`datetime.today()` read the same clock, and a `timedelta` derived from two of "
+            "them is a duration nobody passed in. A timestamp a compartment takes for "
+            "itself is not an input to the run, so no caller can hold it fixed and no "
+            "recorded history can be reproduced from what the run records"
+        ),
+    ),
+    Boundary(
+        package="random",
+        tree="src/anesthesia_sim/core",
+        allowed=(),
+        why=(
+            "an unseeded generator breaks the same guarantee a clock does. `random`'s "
+            "module-level functions share one process-global generator, so a compartment "
+            "reaching for one takes its seed from whatever else in the process touched it "
+            "first - reproducible neither across runs nor across machines. Stochastic "
+            "behaviour, if the model ever wants it, arrives as a seed passed in with the "
+            "other inputs, where a caller can hold it fixed"
         ),
     ),
 )
@@ -260,14 +316,20 @@ def format_report(report: Report, boundaries: Sequence[Boundary] = BOUNDARIES) -
 
     if report.violations:
         lines.append("")
-        lines.append("Imported outside the modules its boundary allows:")
+        lines.append("Imported where its boundary does not allow it:")
         for violation in report.violations:
             lines.append(
                 f"  {violation.path}:{violation.imported.line}: {violation.imported.statement}"
             )
         for boundary in dict.fromkeys(violation.boundary for violation in report.violations):
-            allowed = ", ".join(boundary.allowed)
-            lines.append(f"  {boundary.package} is allowed only in {allowed}, because")
+            if boundary.allowed:
+                allowed = ", ".join(boundary.allowed)
+                lines.append(f"  {boundary.package} is allowed only in {allowed}, because")
+            else:
+                lines.append(
+                    f"  {boundary.package} is permitted in no module under "
+                    f"{boundary.tree}/, because"
+                )
             lines.append(f"    {boundary.why}.")
 
     if report.unenforced:
