@@ -1,6 +1,6 @@
 ---
 paths:
-  - "src/anesthesia_sim/core/**"
+  - "/src/anesthesia_sim/core/**"
 ---
 
 # The bar for `core/`: it should read like the domain
