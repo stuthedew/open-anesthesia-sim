@@ -24,6 +24,7 @@ import flet_charts as fch
 import pytest
 
 from anesthesia_sim.app.chart_series import CHART_COLUMN_BUDGET_PER_SERIES
+from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import (
     CONTROL_INPUT_UNITS,
     ControlChange,
@@ -41,6 +42,8 @@ from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
     chart_axis_top_percent,
+    format_case_discard_warning,
+    format_elapsed,
     format_mac_awake_reference,
     format_mac_multiple,
     format_mac_reference,
@@ -51,13 +54,17 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app.simulation_view import (
     AGENT_RENDER_STYLES,
     AVAILABLE_AGENTS,
+    KEEP_CURRENT_CASE_TEMPLATE,
     MAX_CHART_CONTROL_MARKS,
     MAX_LISTED_ADJUSTMENTS,
     METRIC_GRID_COLUMNS,
+    NEW_CASE_CARRYOVER_TEMPLATE,
+    NEW_CASE_IS_NOT_A_VIEW_TEXT,
     NO_CONTROL_CHANGES_TEXT,
     NO_TRACES_SHOWN_TEXT,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
+    START_NEW_CASE_TEMPLATE,
     WASH_IN_AXIS_MAXIMUM,
     WASH_IN_TERMINUS_CEILING,
     SimulationView,
@@ -95,12 +102,38 @@ class _FakePage:
         # What `mount()` handed over, kept so a test can read the assembled
         # tree back. A real Page renders these; this one only holds them.
         self.controls: list[object] = []
+        # The dialog stack, in the order `show_dialog` was called. A real
+        # Page also drops a dialog from this list when the *client* reports
+        # its dismissal, which no test has a client to do; keeping every
+        # dialog is what lets a test see that a second one was never opened.
+        self.dialogs: list[ft.AlertDialog] = []
 
     def add(self, *controls: object) -> None:
         self.controls.extend(controls)
 
     def update(self) -> None:
         self.update_calls += 1
+
+    def show_dialog(self, dialog: ft.AlertDialog) -> None:
+        """Open a dialog, marking it open as the real Page does."""
+
+        dialog.open = True
+        self.dialogs.append(dialog)
+
+    def pop_dialog(self) -> ft.AlertDialog | None:
+        """Close the topmost open dialog, as the real Page does.
+
+        Deliberately does not call `dialog.update()`, which the real one
+        does and which needs a live client. What a test is reading here is
+        the `open` flag, and that is set the same way.
+        """
+
+        for dialog in reversed(self.dialogs):
+            if dialog.open:
+                dialog.open = False
+                return dialog
+
+        return None
 
 
 class _FakeController:
@@ -1004,6 +1037,13 @@ def test_start_pause_reset_handlers_drive_the_real_controller() -> None:
 
 
 def test_agent_dropdown_handler_switches_the_real_controller() -> None:
+    """The selector still reaches the controller, on a run with nothing to lose.
+
+    A controller that has never been started holds no elapsed time and no
+    recorded input, so this is the path `_handle_agent_change` takes without
+    asking. The paths that do ask are below.
+    """
+
     page = _FakePage()
     controller = SimulationController()
     view = SimulationView(page=page, controller=controller)
@@ -1015,6 +1055,244 @@ def test_agent_dropdown_handler_switches_the_real_controller() -> None:
     assert view._agent_dropdown.value == "desflurane"
     assert view._subtitle_text.value is not None
     assert "Desflurane" in view._subtitle_text.value
+    assert page.dialogs == []
+
+
+def _paused_run_with_history(elapsed_s: float = 60.0) -> SimulationController:
+    """A real, paused run holding both elapsed time and a recorded input.
+
+    Both halves deliberately: `SimulationSnapshot.has_recorded_run` reads
+    the two together, and a fixture carrying only one would leave the other
+    unexercised by every test built on it.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_to(controller, elapsed_s=elapsed_s)
+    controller.set_fresh_gas_flow(2.0)
+    controller.pause()
+
+    return controller
+
+
+def _select_agent(
+    controller: SimulationController, agent_id: str = "desflurane"
+) -> tuple[SimulationView, _FakePage]:
+    """Mount a view over a controller and pick an agent from the dropdown."""
+
+    page = _FakePage()
+    view = SimulationView(page=page, controller=controller)
+    view._agent_dropdown.value = agent_id
+    view._handle_agent_change(ft.Event(name="select", control=view._agent_dropdown))
+
+    return view, page
+
+
+def _click_dialog_action(view: SimulationView, label: str) -> None:
+    """Press the open confirmation's button carrying `label`.
+
+    Through the button's own `on_click` rather than by calling the handler,
+    so that the wiring is part of what these tests hold: a dialog whose
+    destructive button called the declining handler would pass every
+    assertion made against the handlers alone.
+    """
+
+    dialog = view._new_case_dialog
+    assert dialog is not None
+
+    for action in dialog.actions:
+        if getattr(action, "content", None) == label:
+            handler = action.on_click
+            assert handler is not None
+            handler(ft.Event(name="click", control=action))
+            return
+
+    raise AssertionError(f"the confirmation has no action labelled {label!r}")
+
+
+def test_a_recorded_run_is_not_discarded_before_the_reader_has_answered() -> None:
+    """Selecting an agent must rebuild nothing until it has been confirmed.
+
+    The defect PL-R3KB records: the dropdown called `set_agent` directly, so
+    a paused run with forty minutes of history behind it was gone at the
+    moment of the click, with no statement that it had happened.
+    """
+
+    controller = _paused_run_with_history()
+    before = controller.snapshot()
+    samples_before = controller.history_window(0.0).sample_count
+
+    view, page = _select_agent(controller)
+
+    after = controller.snapshot()
+    assert after.agent_id == before.agent_id
+    assert after.elapsed_s == before.elapsed_s
+    assert controller.history_window(0.0).sample_count == samples_before
+    assert len(page.dialogs) == 1
+    assert page.dialogs[0].open is True
+    # The selector reads the agent that is actually running, not the one
+    # being offered, for as long as the question is open.
+    assert view._agent_dropdown.value == before.agent_id
+
+
+def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched() -> None:
+    """Declining costs nothing: the run, its history and the dropdown stand."""
+
+    controller = _paused_run_with_history()
+    before = controller.snapshot()
+    samples_before = controller.history_window(0.0).sample_count
+
+    view, page = _select_agent(controller)
+    _click_dialog_action(view, KEEP_CURRENT_CASE_TEMPLATE.format(agent="sevoflurane"))
+
+    after = controller.snapshot()
+    assert after.agent_id == "sevoflurane"
+    assert after.elapsed_s == before.elapsed_s
+    assert after.control_timeline == before.control_timeline
+    assert controller.history_window(0.0).sample_count == samples_before
+    assert view._agent_dropdown.value == "sevoflurane"
+    assert view._subtitle_text.value is not None
+    assert "Sevoflurane" in view._subtitle_text.value
+    assert page.dialogs[0].open is False
+    assert view._new_case_dialog is None
+
+
+def test_a_confirmed_agent_change_starts_the_new_case() -> None:
+    """Confirming does what the selector used to do on its own."""
+
+    controller = _paused_run_with_history()
+    view, page = _select_agent(controller)
+
+    _click_dialog_action(view, START_NEW_CASE_TEMPLATE.format(agent="desflurane"))
+
+    after = controller.snapshot()
+    assert after.agent_id == "desflurane"
+    assert after.elapsed_s == 0.0
+    assert after.control_timeline == ()
+    assert controller.history_window(0.0).sample_count == 1
+    assert view._agent_dropdown.value == "desflurane"
+    assert view._delivered_concentration_label.value == "Delivered desflurane"
+    assert page.dialogs[0].open is False
+
+
+def test_the_dismissal_that_follows_a_confirmed_switch_does_not_undo_it() -> None:
+    """Flet reports a dismissal after the button that closed the dialog.
+
+    That report reaches the declining branch, so without the guard in
+    `_resolve_new_case` it would run over the case that had just started and
+    put the selector back to the agent it had just replaced.
+    """
+
+    controller = _paused_run_with_history()
+    view, _ = _select_agent(controller)
+    _click_dialog_action(view, START_NEW_CASE_TEMPLATE.format(agent="desflurane"))
+
+    view._handle_new_case_dismissed(ft.Event(name="dismiss", control=view._agent_dropdown))
+
+    assert controller.snapshot().agent_id == "desflurane"
+    assert view._agent_dropdown.value == "desflurane"
+
+
+def test_dismissing_the_confirmation_keeps_the_current_case() -> None:
+    """A dialog closed by anything but its buttons has chosen nothing."""
+
+    controller = _paused_run_with_history()
+    before = controller.snapshot()
+    view, _ = _select_agent(controller)
+
+    view._handle_new_case_dismissed(ft.Event(name="dismiss", control=view._agent_dropdown))
+
+    assert controller.snapshot().agent_id == before.agent_id
+    assert controller.snapshot().elapsed_s == before.elapsed_s
+    assert view._agent_dropdown.value == before.agent_id
+
+
+def test_reselecting_the_running_agent_discards_nothing_and_asks_nothing() -> None:
+    """A dropdown opened and closed on the same option reports a selection.
+
+    Which used to destroy the run outright - the same discard, from a gesture
+    that changed nothing on screen at all.
+    """
+
+    controller = _paused_run_with_history()
+    before = controller.snapshot()
+
+    view, page = _select_agent(controller, agent_id="sevoflurane")
+
+    after = controller.snapshot()
+    assert after.agent_id == before.agent_id
+    assert after.elapsed_s == before.elapsed_s
+    assert after.control_timeline == before.control_timeline
+    assert page.dialogs == []
+    assert view._new_case_dialog is None
+
+
+def test_the_confirmation_quotes_the_time_and_the_changes_the_panel_shows() -> None:
+    """What is about to be lost is stated in the run's own displayed terms.
+
+    The elapsed time through `format_elapsed`, so the warning and the clock
+    cannot read at two resolutions, and the control changes counted as the
+    panel beside the chart groups them, so a reader checking one against the
+    other finds the same number rather than the raw entries behind it.
+    """
+
+    controller = _paused_run_with_history()
+    snapshot = controller.snapshot()
+    view, _ = _select_agent(controller)
+
+    dialog = view._new_case_dialog
+    assert dialog is not None
+    content = cast(ft.Column, dialog.content)
+    warning = cast(ft.Text, content.controls[1])
+
+    assert warning.value == format_case_discard_warning(
+        "Sevoflurane", snapshot.elapsed_s, len(group_adjustments(snapshot.control_timeline))
+    )
+    assert warning.value is not None
+    assert format_elapsed(snapshot.elapsed_s) in warning.value
+
+
+def test_the_confirmation_names_both_agents_and_what_survives_the_switch() -> None:
+    """A reader deciding this needs the agent they are leaving and the one
+    they would start, and needs to know that the discard stops at the run."""
+
+    controller = _paused_run_with_history()
+    view, _ = _select_agent(controller)
+
+    dialog = view._new_case_dialog
+    assert dialog is not None
+    title = cast(ft.Text, dialog.title)
+    content = cast(ft.Column, dialog.content)
+    strings = [cast(ft.Text, control).value for control in content.controls]
+
+    assert title.value == "Start a new desflurane case?"
+    assert strings[0] == NEW_CASE_IS_NOT_A_VIEW_TEXT
+    assert strings[1] is not None
+    assert "sevoflurane" in strings[1]
+    assert strings[2] == NEW_CASE_CARRYOVER_TEMPLATE.format(agent="desflurane")
+    assert dialog.modal is True
+
+
+def test_the_confirmations_trailing_action_is_the_one_that_keeps_the_case() -> None:
+    """The press a reader makes without reading must not destroy the run.
+
+    A dialog's trailing action is where a default press lands, so the
+    declining button holds that position and carries the filled style. This
+    pins the arrangement rather than leaving it to whoever next edits the
+    action list.
+    """
+
+    controller = _paused_run_with_history()
+    view, _ = _select_agent(controller)
+
+    dialog = view._new_case_dialog
+    assert dialog is not None
+    discard, keep = dialog.actions
+
+    assert discard.content == "Discard and start desflurane"
+    assert isinstance(discard, ft.OutlinedButton)
+    assert keep.content == "Keep the sevoflurane case"
+    assert isinstance(keep, ft.FilledButton)
 
 
 def test_fresh_gas_flow_slider_forwards_value_to_controller() -> None:

@@ -23,7 +23,7 @@ alternative — an asyncio task dying behind a display that still reads
 """
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Final
 
@@ -48,6 +48,7 @@ from anesthesia_sim.app.formatting import (
     FLOW_DISPLAY_DECIMALS,
     chart_axis_top_percent,
     chart_grid_interval_percent,
+    format_case_discard_warning,
     format_delivered_label,
     format_elapsed,
     format_flow,
@@ -277,6 +278,41 @@ NO_CONTROL_CHANGES_TEXT = "No settings changed yet in this run."
 # entries silently ending.
 MAX_LISTED_ADJUSTMENTS = 12
 
+# What the confirmation says before a new case replaces a recorded one, in
+# the order a reader meets it. Three statements rather than one paragraph,
+# because they answer three different questions and a reader stops at the
+# first that satisfies them: why this is a new case at all, what is about to
+# be lost, and what survives. The middle one is built per case by
+# `formatting.format_case_discard_warning`, which quotes the run's own
+# elapsed time and control-change count.
+#
+# `NEW_CASE_CARRYOVER_TEMPLATE` is a claim about `SimulationController.set_agent`
+# and has to stay true with it: that method preserves the circuit and patient
+# settings and takes the delivered concentration from the new agent's own
+# `mac_percent`.
+NEW_CASE_TITLE_TEMPLATE = "Start a new {agent} case?"
+NEW_CASE_IS_NOT_A_VIEW_TEXT = (
+    "Changing agent starts a new case. This model does not simulate switching "
+    "between volatile agents, so a run cannot be continued under a different one."
+)
+NEW_CASE_CARRYOVER_TEMPLATE = (
+    "Circuit volume, fresh gas flow, alveolar ventilation and cardiac output "
+    "carry over. Delivered {agent} starts at that agent's own 1 MAC."
+)
+# Both buttons name their outcome rather than answering a question, so
+# neither can be pressed on the reading that "OK" confirms whatever was on
+# screen. The declining one is also the *default*: it is the filled button
+# and it sits where a dialog's primary action sits, so the press a reader
+# makes without reading is the one that keeps their case. Placing the
+# destructive action there instead would put an unrecoverable loss under
+# exactly the reflex this dialog exists to interrupt.
+KEEP_CURRENT_CASE_TEMPLATE = "Keep the {agent} case"
+START_NEW_CASE_TEMPLATE = "Discard and start {agent}"
+# Wide enough for the discard warning to fall in two or three lines rather
+# than a column of fragments; the dialog is text and has no chart to size to.
+NEW_CASE_DIALOG_WIDTH = 420
+NEW_CASE_DIALOG_SPACING = 12
+
 # The wash-in trace takes the alveolar compartment's own colour, because it
 # is that compartment expressed against the one filling it: the numerator is
 # the alveolar fraction and nothing else on the second chart competes with
@@ -342,6 +378,11 @@ MAX_CHART_WASH_IN_SEGMENTS = 8
 AVAILABLE_AGENTS: tuple[tuple[str, str], ...] = tuple(
     (agent_id, load_agent_parameters(agent_id).display_name) for agent_id in AGENT_DATA_FILENAMES
 )
+
+# The same names, keyed for the one lookup that has an agent id and no
+# snapshot to read the name off: the agent a reader has just selected, which
+# is not the one the controller is answering for until they confirm it.
+AGENT_DISPLAY_NAMES: Final[Mapping[str, str]] = dict(AVAILABLE_AGENTS)
 
 # Adding a built-in agent without a verified identification color would make
 # the selector silently lose a safety cue. Fail at startup instead. This check
@@ -509,6 +550,15 @@ class SimulationView:
         # silently stops annotating asserts that nothing more happened.
         self._undrawn_control_marks = 0
         self._undrawn_wash_in_segments = 0
+        # The agent a reader has asked for and not yet confirmed, and the
+        # dialog asking them. Held here rather than passed through the
+        # button callbacks because Flet hands a callback its own control and
+        # nothing else, and because this pair *is* the state "a destructive
+        # confirmation is open": `_resolve_new_case` clears the first, which
+        # is what makes answering the dialog idempotent when Flet reports
+        # the dismissal that follows a button press.
+        self._pending_agent_id: str | None = None
+        self._new_case_dialog: ft.AlertDialog | None = None
         self._notice_text = ft.Text("", color=WARNING, weight=ft.FontWeight.BOLD, visible=False)
         self._elapsed_time_text = self._build_metric_value("0.0 s")
         # Placeholders come from the formatter rather than from literals, so
@@ -2373,11 +2423,195 @@ class SimulationView:
         self._refresh_and_render()
 
     def _handle_agent_change(self, event: ft.Event[ft.Dropdown]) -> None:
+        """Treat a new selection as a request to start a new case.
+
+        Nothing here rebuilds simulation state. Choosing an agent used to
+        call `SimulationController.set_agent` straight from the dropdown,
+        which always begins a new run: a control that reads as "show me this
+        agent" discarded the case, its chart history and its recorded inputs,
+        with no statement that it had happened and nothing to undo it with.
+        What a selection does now depends on what there is to lose, and the
+        three outcomes are deliberately different:
+
+        - the agent already running, which a dropdown opened and closed on
+          the same option reports as a selection: nothing at all, and no
+          dialog either, since there is no new case to offer;
+        - a run holding nothing recorded, which both a fresh session and
+          Reset leave: the new case starts at once, because a confirmation
+          that fires when nothing is at stake is the one nobody reads when
+          something is;
+        - anything else: `_confirm_new_case`, and no state rebuilt until it
+          is answered.
+        """
+
         if event.control.value is None:
             return
 
         agent_id = event.control.value
+        snapshot = self._controller.snapshot()
+
+        if agent_id == snapshot.agent_id:
+            return
+
+        if not snapshot.has_recorded_run:
+            self._start_new_case(agent_id)
+            return
+
+        self._confirm_new_case(snapshot, agent_id)
+
+    def _start_new_case(self, agent_id: str) -> None:
+        """Rebuild the simulation around a different agent.
+
+        Through `_apply_setting` like every other forwarded setting: the core
+        can refuse the agent - a data file that will not load is the case that
+        matters - and a raise escaping into Flet's event dispatch would leave
+        the dropdown reading one agent while the run continued under another.
+        """
+
         self._apply_setting(lambda: self._controller.set_agent(agent_id))
+
+    def _confirm_new_case(self, snapshot: SimulationSnapshot, agent_id: str) -> None:
+        """Ask, before a recorded run and its history are discarded.
+
+        The selection is put back to the running agent *as the dialog opens*
+        rather than when it is answered. A dropdown reading "Desflurane" over
+        a header badge, a delivered-agent label, a MAC divisor and six
+        readouts that are all still sevoflurane is the correct number under
+        the wrong label `CLAUDE.md` treats as a safety failure, and it would
+        stand for as long as the reader takes to decide. Nothing is lost by
+        reverting it: the agent being offered is named in the dialog's title
+        and in the button that accepts it, which is where a reader deciding
+        this will be looking.
+        """
+
+        self._pending_agent_id = agent_id
+        self._agent_dropdown.value = snapshot.agent_id
+        self._new_case_dialog = self._build_new_case_dialog(snapshot, agent_id)
+        self._page.show_dialog(self._new_case_dialog)
+        self._page.update()
+
+    def _build_new_case_dialog(self, snapshot: SimulationSnapshot, agent_id: str) -> ft.AlertDialog:
+        """Build the confirmation for one proposed new case.
+
+        Built per request rather than held and re-shown. `Page.show_dialog`
+        raises on a dialog still in its stack, and a dialog leaves that stack
+        only when the client reports its dismissal, so a held instance would
+        make a destructive confirmation depend on a callback that may not have
+        arrived - and the failure mode is a raise out of the dropdown's own
+        event handler. One control tree per user gesture is the cost.
+
+        `bgcolor` is set rather than left to the Flet theme so that the three
+        text colours stand on the surface `tools/contrast_check.py` measures
+        them against. A dialog painted in a theme surface would put INK,
+        WARNING and MUTED on a background no declared requirement covers.
+
+        `modal=True` so the run's controls cannot be reached around it: a
+        reader who starts the run while being asked whether to discard it
+        would answer the question about a different run from the one it
+        describes.
+        """
+
+        current_agent = snapshot.agent_display_name
+        new_agent = AGENT_DISPLAY_NAMES[agent_id]
+
+        return ft.AlertDialog(
+            modal=True,
+            bgcolor=PANEL,
+            title=ft.Text(
+                NEW_CASE_TITLE_TEMPLATE.format(agent=new_agent.lower()),
+                color=INK,
+                weight=ft.FontWeight.BOLD,
+            ),
+            content=ft.Column(
+                [
+                    ft.Text(NEW_CASE_IS_NOT_A_VIEW_TEXT, color=INK),
+                    ft.Text(
+                        format_case_discard_warning(
+                            current_agent,
+                            snapshot.elapsed_s,
+                            len(group_adjustments(snapshot.control_timeline)),
+                        ),
+                        color=WARNING,
+                        weight=ft.FontWeight.BOLD,
+                    ),
+                    ft.Text(
+                        NEW_CASE_CARRYOVER_TEMPLATE.format(agent=new_agent.lower()), color=MUTED
+                    ),
+                ],
+                tight=True,
+                spacing=NEW_CASE_DIALOG_SPACING,
+                width=NEW_CASE_DIALOG_WIDTH,
+            ),
+            # Destructive first, safe last: the trailing action is the one a
+            # dialog's default press lands on, and it is the one that keeps
+            # the case. It is also the only filled button on screen -
+            # `ft.FilledButton` rather than the `ft.Button` the transport
+            # controls use, which this theme draws as a pale tonal fill that
+            # reads *quieter* than an outline. A safe default that looks like
+            # the secondary choice is the arrangement's whole point undone.
+            # See the button templates for the rest of the judgment.
+            actions=[
+                ft.OutlinedButton(
+                    content=START_NEW_CASE_TEMPLATE.format(agent=new_agent.lower()),
+                    on_click=self._handle_new_case_confirmed,
+                ),
+                ft.FilledButton(
+                    content=KEEP_CURRENT_CASE_TEMPLATE.format(agent=current_agent.lower()),
+                    on_click=self._handle_new_case_declined,
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+            on_dismiss=self._handle_new_case_dismissed,
+        )
+
+    def _handle_new_case_confirmed(self, event: ft.Event[ft.OutlinedButton]) -> None:
+        del event
+        self._resolve_new_case(confirmed=True)
+
+    def _handle_new_case_declined(self, event: ft.Event[ft.Button]) -> None:
+        del event
+        self._resolve_new_case(confirmed=False)
+
+    def _handle_new_case_dismissed(self, event: ft.Event[ft.DialogControl]) -> None:
+        """Treat any other way out of the dialog as declining.
+
+        A dialog closed by anything but its two buttons - the escape key, the
+        client tearing it down - has been answered by someone who chose
+        nothing, and the only reading of that which cannot destroy a run is
+        that the case stands.
+        """
+
+        del event
+        self._resolve_new_case(confirmed=False)
+
+    def _resolve_new_case(self, confirmed: bool) -> None:
+        """Answer the open confirmation once, whichever way it was answered.
+
+        Every route out of the dialog arrives here - either button, and the
+        dismissal Flet reports afterwards - so the pending selection is
+        cleared before anything acts on it and a second arrival finds nothing
+        to do. Without that, the dismissal following a confirmed switch would
+        run the declining branch over the case that had just started and put
+        the dropdown back to the agent it had just replaced.
+        """
+
+        agent_id = self._pending_agent_id
+        self._pending_agent_id = None
+
+        if agent_id is None:
+            return
+
+        self._new_case_dialog = None
+        self._page.pop_dialog()
+
+        if confirmed:
+            self._start_new_case(agent_id)
+            return
+
+        # Declining rebuilds nothing. The dropdown was put back when the
+        # dialog opened; this is the frame that shows it, and the run, the
+        # history and the timeline are as they were.
+        self._refresh_and_render()
 
     def _handle_adjustment_start(self, event: ft.Event[ft.Slider]) -> None:
         """Tell the controller a new user adjustment is beginning.
