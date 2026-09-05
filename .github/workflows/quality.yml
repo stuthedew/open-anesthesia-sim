@@ -11,12 +11,37 @@ on:
     branches: [main]
   pull_request:
 
+# A second push to the same pull request makes the first run's answer
+# irrelevant before it finishes. What cancelling buys is no longer the minute
+# - the repository is public and standard runners are free - but the runner
+# slot: a superseded run holds one, and the push that matters queues behind
+# it. Measured over an 18-hour window before this was added, 5 of 51 quality
+# runs were superseded while still running.
+#
+# `cancel-in-progress` is conditional rather than a flat `true` on purpose.
+# `github.ref` is `refs/pull/N/merge` under `pull_request`, so each pull
+# request gets its own lane; but it is `refs/heads/main` under the `push`
+# trigger above, and cancelling there would mean a merge landing while an
+# earlier merge was still being verified silently drops that commit's only
+# check. Every commit on `main` keeps its own run. `PL-QD9K`.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions:
   contents: read
 
 jobs:
   checks:
     runs-on: ubuntu-latest
+    # The default is 360 minutes. `bin/docket check --verify` shells out to
+    # every open item's own `verify:` command - 321 of them at present, and
+    # the Makefile notes that some are literal `sleep`s - so a single item can
+    # introduce a hang that nothing else here would bound. 15 rather than
+    # twice the observed 3m44s: a cold uv cache and a slow runner both stretch
+    # the honest case, and a timeout that fires on a healthy run is a defect
+    # in the timeout rather than a saving. `PL-FSH9`.
+    timeout-minutes: 15
 
     steps:
       # `fetch-depth: 0` rather than the action's default of 1, because three
@@ -118,6 +143,9 @@ jobs:
   # lazily-imported branch these two commands never touch.
   floor:
     runs-on: ubuntu-latest
+    # Observed at 8 seconds. 5 minutes is far past any honest run and still
+    # 355 minutes short of the default, which is the point. `PL-FSH9`.
+    timeout-minutes: 5
 
     steps:
       # `fetch-depth: 0` rather than the action's default of 1, because three
