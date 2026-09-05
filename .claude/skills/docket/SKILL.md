@@ -588,6 +588,12 @@ work already there.
 An item that should not be done becomes `status: dropped` with a `reason`.
 Never delete the file: the reason is what stops the finding being re-raised.
 
+**Dropping an item closes it.** `dropped` is one of `CLOSED_STATUSES` beside
+`done` in `subprojects/docket/src/docket/model.py`, so a triage pass pushed
+onto an open pull request owes that title the dropped id exactly as a close-out
+does. Retitle before pushing, per **Mode: close out an item** step 1
+(`PL-X1S4`).
+
 **An item whose next step is a decision is triaged to `needs-decision`, not
 answered.** Triage sets fields; it does not resolve the question an item poses.
 Answering one means reading the code around it, weighing the alternatives and
@@ -884,6 +890,16 @@ reconstruct three commands at the moment they are trying to do something else.
    (`PL-GW37`). **Do not write `commit:`** - the field is retired (`PL-T63T`),
    because a squash-merge discards the branch commit while the pull request
    number outlives it.
+
+   **Retitle an open pull request to lead with the same ids, and do it
+   before pushing the closure.** `pr-title` runs on `synchronize` as well as
+   `edited`, so a closure pushed under the old title is checked against a
+   title written before it existed. The check fails correctly, the retitle
+   clears it, and what is left on the pull request is a red run beside a
+   green one that tells a later reader nothing (`PL-X1S4`). A session knows
+   what its commit closes before it pushes, so the ordering costs nothing.
+   Nothing is owed where no pull request is open yet: the title leads with
+   the ids when it is opened.
 
    **Leave `pr` empty; it is written after the merge, by command.** The number
    cannot be known before the pull request is open, and `docket check` owes a
