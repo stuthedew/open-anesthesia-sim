@@ -1,13 +1,16 @@
 ---
 id: PL-X3WZ
 title: A commit that only annotates an item's brief marks it IN FLIGHT, so docket next hides an item nobody is working
-status: needs-decision
-added: 2026-09-03
 priority: P2
 effort: M
+status: done
 classes: defect, infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/SKILL.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
+added: 2026-09-03
+closed: 2026-09-05
+pr: 324
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_commit_that_only_writes_to_the_queue_is_not_work' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** `docket flight` recovers in-flight state by parsing commit
@@ -124,3 +127,49 @@ longer marks that item `IN FLIGHT`, and a commit carrying its implementation
 still does; `docket next` offers the annotated item on the branch that
 annotated it. Whichever route is taken, `.claude/skills/docket/SKILL.md`'s
 statement of the trade the mark makes says what the mark now means.
+
+---
+
+**Decided 2026-09-05: the diff, per the recommendation above, and the cost
+objection turned out not to arise.** The route this item costed out was a
+`git show --stat` per candidate commit, which is what made the choice look
+close. It is not needed: `_unmerged_commits` already runs one `git log` over
+every unmerged ref to read the subjects, and `--name-only` folds the paths
+into that same walk. Measured on this repository - 4.6 ms to 8.8 ms over 50
+commits, 9.5 ms to 25.1 ms over 200 - against roughly 4 ms of process spawn
+*each* for the per-commit form. The subject marker was not taken; nothing
+recommended it once the diff read cost a few milliseconds.
+
+The rule is the narrow one this item's evidence supports: a commit whose whole
+diff sits inside the configured queue directory stakes no claim. No
+frontmatter-versus-body parse, which would in any case have failed on the
+capture and triage commits, since both write frontmatter.
+
+**Applied to both reads, not only to `next`.** `branches_in_flight` asks
+whether an item is startable and `precedence` asks which of two sessions
+yields; a branch that only recorded a note is carrying nothing, so it is a
+rival in neither. Split, they would have ordered a live session behind a
+commit nobody was working from.
+
+**It fails toward keeping the mark, deliberately.** A merge prints no paths
+under `--name-only`, and a path git quoted does not match the prefix; neither
+is evidence of annotation, so both keep their claim. An item wrongly left
+marked is one a session picks around; an item wrongly unmarked is two sessions
+on one piece of work (`PL-PRHN`).
+
+**Measured after the change, on this checkout.** `bin/docket flight` went from
+four items to one, and the one is `PL-66FP`, the only branch actually
+implementing anything. `PL-3833`, `PL-K1DL` and `PL-P3B6` lost their marks.
+
+**The residual, which is real and was live at the time of writing.** `PL-P3B6`
+was being implemented by a session whose only *pushed* commit filed two items
+and changed nothing else - a capture by this rule and a live claim in fact.
+Three things bound it: a branch named `claude/pl-p3b6-...` would have carried
+the claim in its name, which is read whatever the diff says; `list_sessions`
+sees a session that has committed nothing at all, which is functionally this
+case and is the guard built for it; and the mark returns on the first commit
+outside the queue. `.claude/skills/docket/SKILL.md` now says so where it asks
+for that first push. Two refinements were tested against the eight false marks
+and rejected: "changes only the item file it leads with" misreads a capture and
+a `docket record` write, and "creates a new item file" misreads the `docket
+record` write while not recovering `PL-P3B6` either.

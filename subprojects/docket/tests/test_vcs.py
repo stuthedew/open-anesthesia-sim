@@ -12,7 +12,9 @@ from pathlib import Path
 
 from docket.checks import Report
 from docket.vcs import (
+    BaseRelease,
     Branch,
+    BranchCut,
     BranchState,
     FlightFiles,
     FlightReport,
@@ -25,12 +27,14 @@ from docket.vcs import (
     branches_in_flight,
     closed_by,
     closures_on_base,
+    cuts_in_flight,
     default_base,
     files_in_flight,
     lost,
     merged_pull_requests,
     orphaned,
     precedence,
+    released_on_base,
     stranded,
     tags,
 )
@@ -82,6 +86,12 @@ def _runner(
     refs holding one commit - a local branch and its own tracking ref - which
     is what tells one piece of work from two. Left out, each ref's commits get
     hashes of their own.
+
+    **Fields after the hash are the paths that commit changed**, which is what
+    tells a commit implementing an item from one merely recording it. Left out,
+    a commit changes `src/changed.py` - work, which is what every test written
+    before that reading meant by a commit. A commit naming *no* paths is a
+    merge, which git writes exactly that way under `--name-only`.
 
     `head` is the branch this checkout has checked out, which is how
     `precedence` tells the reader's own claim from somebody else's.
@@ -137,11 +147,12 @@ def _runner(
                 for entry in (adds or {}).get(args[-2], [])
             )
         if args[0] == "log":
-            if "--name-only" in args:
+            if "--name-only" in args and "--source" not in args:
                 # `orphaned` decides on this walk - a commit *none* of whose
                 # paths reached the base - so the fake has to answer it. The
                 # record shape is git's: \x1e opens each, then the hash, \x1f,
-                # the subject, then one path per line.
+                # the subject, then one path per line. `--source` is what tells
+                # it from the flight walk below, which reads paths too.
                 walked = args[-2]
                 return "".join(
                     "\x1e{}\x1f{}\n{}\n".format(f"{walked}@{position}", subject, "\n".join(paths))
@@ -161,6 +172,17 @@ def _runner(
                     off_the_end = ref in ran_out and position == len(entries) - 1
                     parent = "" if off_the_end else "0f1e2d3"
                     lines.append(f"{ref}\x1f{_when(day)}\x1f{parent}\x1f{commit}\x1f{subject}")
+                    # git writes the paths under the commit they belong to, and
+                    # a blank line between the two, which is the shape the walk
+                    # has to survive parsing.
+                    # An entry that names its paths gets exactly those, so a
+                    # single empty one says "none" - a merge, which is what
+                    # git prints for one under `--name-only`.
+                    named = tuple(path for path in entry[3:] if path)
+                    paths = named if len(entry) > 3 else ("src/changed.py",)
+                    if paths:
+                        lines.append("")
+                        lines.extend(paths)
             return "\n".join(lines)
         return ""
 
@@ -170,7 +192,7 @@ def _runner(
 def _in_flight(
     refs: list[str],
     merged: list[str] | None = None,
-    commits: dict[str, list[tuple[str, str]]] | None = None,
+    commits: dict[str, list[tuple[str, ...]]] | None = None,
     unrelated: tuple[str, ...] = (),
     adds: dict[str, list[str] | list[tuple[str, str]]] | None = None,
     on_base: set[str] | None = None,
@@ -345,6 +367,120 @@ def test_a_subject_leading_with_two_ids_puts_both_in_flight() -> None:
     )
 
     assert [b.item_id for b in found] == ["PL-J295", "PL-N7R9"]
+
+
+QUEUE_ONLY = "docs/items/PL-K7QX-do-the-thing.md"
+HARNESS = "origin/claude/roadmap-release-write-failure-nhsjwo"
+
+
+def test_a_commit_that_only_writes_to_the_queue_is_not_work() -> None:
+    """The failure this reading exists for, in its commonest shape.
+
+    `CLAUDE.md` requires a finding to be captured before a session ends and
+    requires the leading id on every subject, so recording a note into an
+    item's brief produces a subject indistinguishable from one implementing
+    it. Read as work, the item left `docket next` for every session until the
+    branch merged - and the branches producing most of these were abandoned,
+    so they never merged (queue item PL-X3WZ).
+    """
+    found = _in_flight(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-03", "PL-K7QX: record a scope note", "c1", QUEUE_ONLY)]},
+    )
+
+    assert found == ()
+
+
+def test_a_commit_reaching_past_the_queue_is_work() -> None:
+    """A closure writes the item and the code in one commit, and is work."""
+    found = _in_flight(
+        [HARNESS],
+        commits={
+            HARNESS: [("2026-09-03", "PL-K7QX: do the thing", "c1", QUEUE_ONLY, "src/thing.py")]
+        },
+    )
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
+
+
+def test_one_recovery_commit_hides_none_of_the_items_it_names() -> None:
+    """A batch subject hid a batch of items: four ids, one push, all startable.
+
+    `bin/docket stranded`'s own workflow and the rule that a closure leads with
+    every id it closes both produce multi-id subjects, so one housekeeping
+    commit routinely took several items out of the queue together.
+    """
+    subject = "PL-HKF4, PL-PGZK, PL-5WFS, PL-22Z3: recover the stranded capture"
+    found = _in_flight(
+        [HARNESS],
+        commits={
+            HARNESS: [
+                ("2026-09-04", subject, "c1", "docs/items/PL-HKF4-a.md", "docs/items/PL-PGZK-b.md")
+            ]
+        },
+    )
+
+    assert found == ()
+
+
+def test_a_commit_naming_no_paths_keeps_its_claim() -> None:
+    """A merge prints no paths, and silence is not evidence of annotation.
+
+    Of the two errors available this is the cheaper one: an item wrongly left
+    marked is one a session picks around, while an item wrongly unmarked is two
+    sessions on one piece of work.
+    """
+    found = _in_flight(
+        [HARNESS], commits={HARNESS: [("2026-09-03", "PL-K7QX: merge main", "c1", "")]}
+    )
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
+
+
+def test_a_branch_named_for_the_item_carries_it_however_it_committed() -> None:
+    """What covers the session that starts an item by filling in its fields.
+
+    A `touches` fill or a `verify:` command is annotation by the diff and a
+    claim in fact. The branch name is read whatever the diff says, so a session
+    that names its own branch is still visible; a harness-named branch is not,
+    which is why the skill asks for the id in the branch name.
+    """
+    named = "claude/pl-k7qx-do-the-thing"
+    found = _in_flight(
+        [named], commits={named: [("2026-09-03", "PL-K7QX: fill in touches", "c1", QUEUE_ONLY)]}
+    )
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
+
+
+def test_a_branch_that_annotated_and_then_implemented_is_in_flight() -> None:
+    """One implementing commit is enough; the annotations beside it change nothing."""
+    found = _in_flight(
+        [HARNESS],
+        commits={
+            HARNESS: [
+                ("2026-09-04", "PL-K7QX: record what the fix will need", "c2", QUEUE_ONLY),
+                ("2026-09-03", "PL-K7QX: add the failing test", "c1", "tests/test_thing.py"),
+            ]
+        },
+    )
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
+
+
+def test_the_queue_directory_is_read_from_the_project_setting() -> None:
+    """A project keeping its queue elsewhere gets the same reading, not a default.
+
+    Hardcoding `docs/items` would read every commit in such a project as work,
+    which is the behavior this replaces.
+    """
+    runner = _runner(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-03", "PL-K7QX: capture it", "c1", "tracker/PL-K7QX-a.md")]},
+    )
+
+    assert branches_in_flight(ROOT, items_dir="tracker", runner=runner).ids == set()
+    assert branches_in_flight(ROOT, items_dir="docs/items", runner=runner).ids == {"PL-K7QX"}
 
 
 def test_the_last_commit_is_dated_so_a_stale_branch_can_be_told_apart() -> None:
@@ -1779,6 +1915,26 @@ def test_precedence_orders_by_the_earliest_commit_not_the_newest() -> None:
     assert order.holder.ref == FIRST
 
 
+def test_precedence_does_not_make_a_carrier_of_a_branch_that_only_annotated() -> None:
+    """The two reads answer the same question and must not disagree about it.
+
+    `branches_in_flight` asks whether an item is startable and `precedence`
+    asks which of two sessions yields; a branch that merely recorded a note
+    is carrying nothing, so it is a rival in neither. Left in here it would
+    order a real session behind a commit nobody is working from.
+    """
+    annotating = "origin/claude/some-triage-pass-abcdef"
+    order = _precedence(
+        [annotating, FIRST],
+        {
+            annotating: [("2026-09-04T09:00:00+00:00", "PL-K7QX: triage", "cccc333", QUEUE_ONLY)],
+            FIRST: [EARLY],
+        },
+    )
+
+    assert [carrier.ref for carrier in order.carriers] == [FIRST]
+
+
 def test_precedence_breaks_a_tie_on_the_commit_hash() -> None:
     """Two commits can share a second, and a tie both sessions cannot break is the defect."""
     same = "2026-09-04T10:00:00+00:00"
@@ -2082,3 +2238,246 @@ def test_a_branch_whose_commits_cannot_be_walked_is_not_reported() -> None:
         ).branches
         == ()
     )
+
+
+def _base_runner(declared: str = '[project]\nversion = "0.3.8"\n', notes: tuple[str, ...] = ()):
+    """A git holding one base ref, its version file, and its release notes.
+
+    Its own runner rather than `_runner`'s: this read asks git two questions
+    that one asks none of, and threading them through a helper built for the
+    branch walk would make every test there carry arguments it has no use for.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "rev-parse":
+            return f"{BASE}\n" if args[-1] == BASE else ""
+        if args[0] == "show":
+            return declared
+        if args[0] == "ls-tree":
+            return "".join(f"docs/releases/{name}\n" for name in notes)
+        return ""
+
+    return run
+
+
+def test_the_base_reports_the_version_and_the_notes_it_holds() -> None:
+    report = released_on_base(
+        ROOT,
+        version_file="pyproject.toml",
+        notes_dir="docs/releases",
+        runner=_base_runner(notes=("v0.3.7.md", "v0.3.8.md")),
+    )
+
+    assert report == BaseRelease(
+        base=BASE, version="0.3.8", notes=frozenset({"v0.3.7.md", "v0.3.8.md"}), known=True
+    )
+
+
+def test_notes_are_named_without_the_directory_git_prints_them_under() -> None:
+    """The directory is the caller's own constant; repeating it invites two spellings."""
+    report = released_on_base(
+        ROOT,
+        version_file="pyproject.toml",
+        notes_dir="docs/releases",
+        runner=_base_runner(notes=("v0.3.8.md",)),
+    )
+
+    assert report.notes == frozenset({"v0.3.8.md"})
+
+
+def test_a_base_whose_version_file_cannot_be_read_is_unknown_rather_than_empty() -> None:
+    """PL-66FP: a gap in the evidence must not read as a clean bill of health."""
+    report = released_on_base(
+        ROOT, version_file="pyproject.toml", notes_dir="docs/releases", runner=_base_runner("")
+    )
+
+    assert not report.known
+    assert report.notes == frozenset()
+
+
+def test_a_base_holding_no_notes_at_all_is_still_a_real_answer() -> None:
+    """No notes is what a project that has never cut one looks like."""
+    report = released_on_base(
+        ROOT, version_file="pyproject.toml", notes_dir="docs/releases", runner=_base_runner()
+    )
+
+    assert report.known
+    assert report.notes == frozenset()
+
+
+def test_the_base_is_read_from_the_ref_rather_than_the_working_tree() -> None:
+    """The working tree is this session's own cut, which would answer about itself."""
+    log: list[list[str]] = []
+
+    def run(args: list[str], root: Path) -> str:
+        log.append(args)
+        return _base_runner()(args, root)
+
+    released_on_base(ROOT, version_file="pyproject.toml", notes_dir="docs/releases", runner=run)
+
+    assert ["show", f"{BASE}:pyproject.toml"] in log
+    assert ["ls-tree", "--name-only", BASE, "docs/releases/"] in log
+
+
+def test_an_explicit_base_is_read_instead_of_the_default_one() -> None:
+    log: list[list[str]] = []
+
+    def run(args: list[str], root: Path) -> str:
+        log.append(args)
+        return _base_runner()(args, root)
+
+    report = released_on_base(
+        ROOT,
+        version_file="pyproject.toml",
+        notes_dir="docs/releases",
+        base="origin/release",
+        runner=run,
+    )
+
+    assert report.base == "origin/release"
+    assert ["rev-parse", "--verify", "--quiet", BASE] not in log
+
+
+def _cut_runner(
+    notes: dict[str, list[str]],
+    merged: tuple[str, ...] = (),
+    head: str = "",
+    when: str = "2026-09-04T11:34:00+00:00",
+):
+    """A git whose refs each carry the release-notes paths `notes` gives them.
+
+    Every ref also adds a blob of its own that the base has never held, which
+    is what keeps `_unlanded_refs` from reading it as landed - the release
+    files alone would not, since a merged release's notes are on the base by
+    then, which is the case `on_base` exists for.
+    """
+    refs = list(notes)
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "rev-parse":
+            if args[-1] == BASE:
+                return f"{BASE}\n"
+            return f"{args[-1]}@tip\n" if args[-1] in refs else ""
+        if args[0] == "for-each-ref":
+            if any(arg.startswith("--merged=") for arg in args):
+                return "\n".join(merged)
+            return "\n".join(refs)
+        if args[0] == "merge-base":
+            # `cuts_in_flight` asks whether HEAD contains a ref's tip; git
+            # echoes the merge base, so a tip HEAD holds comes back unchanged.
+            if args[-1] == "HEAD":
+                return f"{args[-2]}\n" if args[-2] == f"{head}@tip" else "elsewhere\n"
+            return "fork\n"
+        if args[0] == "rev-list":
+            return "onbase some/path\n"
+        if args[0] == "diff" and "--name-only" in args:
+            ref = args[2].split("...")[-1]
+            return "".join(f"{path}\n" for path in notes.get(ref, []))
+        if args[0] == "diff":
+            ref = args[-2]
+            return f":000000 100644 {'0' * 40} {ref}blob A\tsome/{ref}\n"
+        if args[0] == "log":
+            return f"{when}\n"
+        return ""
+
+    return run
+
+
+def test_a_ref_carrying_release_notes_the_base_lacks_is_cutting_that_version() -> None:
+    """PL-66FP: the notes file is the one artifact a release cut cannot happen without."""
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner({"origin/claude/a": ["docs/releases/v0.3.9.md"]}),
+    )
+
+    assert report.branches == (
+        BranchCut(ref="origin/claude/a", versions=("0.3.9",), cut=date(2026, 9, 4), mine=False),
+    )
+
+
+def test_a_version_the_base_already_holds_is_not_in_flight() -> None:
+    """The squash-merge case: the branch stays unlanded long after its release merged.
+
+    Measured 2026-09-04 against this repository - the branch whose v0.3.9
+    release had merged twenty minutes earlier was still listed by
+    `_unlanded_refs`, so without this the guard fires on every release after
+    the first and nobody reads it.
+    """
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        on_base=frozenset({"v0.3.9.md"}),
+        runner=_cut_runner({"origin/claude/a": ["docs/releases/v0.3.9.md"]}),
+    )
+
+    assert report.branches == ()
+
+
+def test_this_checkouts_own_cut_is_marked_rather_than_reported_as_a_rival() -> None:
+    """Telling a session to yield to itself is the one answer this must never give."""
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner({"claude/mine": ["docs/releases/v0.4.0.md"]}, head="claude/mine"),
+    )
+
+    assert [branch.mine for branch in report.branches] == [True]
+
+
+def test_a_ref_touching_no_release_notes_is_not_cutting_anything() -> None:
+    report = cuts_in_flight(
+        ROOT, notes_dir="docs/releases", runner=_cut_runner({"origin/claude/a": []})
+    )
+
+    assert report.branches == ()
+
+
+def test_every_version_a_ref_carries_is_named() -> None:
+    """A branch that cut twice is two collisions, not one."""
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner(
+            {"origin/claude/a": ["docs/releases/v0.3.9.md", "docs/releases/v0.4.0.md"]}
+        ),
+    )
+
+    assert report.branches[0].versions == ("0.3.9", "0.4.0")
+
+
+def test_a_merged_ref_is_not_read_at_all() -> None:
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner(
+            {"origin/claude/a": ["docs/releases/v0.3.9.md"]}, merged=("origin/claude/a",)
+        ),
+    )
+
+    assert report.branches == ()
+
+
+def test_an_unreadable_ref_is_named_rather_than_reported_clean() -> None:
+    """A gap in the evidence is not a clean bill of health."""
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "merge-base" and args[-1] != "HEAD":
+            return ""
+        return _cut_runner({"origin/claude/a": ["docs/releases/v0.3.9.md"]})(args, root)
+
+    report = cuts_in_flight(ROOT, notes_dir="docs/releases", runner=run)
+
+    assert report.unreadable == ("origin/claude/a",)
+    assert report.branches == ()
+
+
+def test_a_cut_whose_date_cannot_be_read_is_reported_without_one() -> None:
+    """The date separates a live session from an abandoned branch; its absence is not fatal."""
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner({"origin/claude/a": ["docs/releases/v0.3.9.md"]}, when=""),
+    )
+
+    assert report.branches[0].cut is None

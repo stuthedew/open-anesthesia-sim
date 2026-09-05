@@ -38,6 +38,7 @@ docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch
 docket record                # write every pull request number the base is owed
 docket check                 # validate the store; exits non-zero on errors
+docket check --verify        # ...and replay every open item's `verify:` command
 ```
 
 ### Capture costs nothing
@@ -253,6 +254,24 @@ is a worse failure than the blindness being fixed. Measured over 120 commits of
 this project's history: 79 subjects contained an id, 64 led with one, and every
 one of the difference was bookkeeping rather than implementation. A subject may
 lead with two ids, because one branch may carry two items, and then both count.
+
+**A leading id is a claim only where the commit reached past the queue.**
+Bookkeeping leads with ids too, and has to: capturing a finding, triaging an
+item, recovering a stranded one and recording a merged pull request number all
+carry the id of the item they concern and none of them is work in progress.
+Measured on the parent project 2026-09-04: of nine items reported in flight,
+eight were marked by commits whose entire diff was inside the queue directory
+and one branch was actually implementing something — and three of the eight
+were open, startable, and hidden from every session for it. So the paths are
+read alongside the subject, from the same `git log` rather than a `git show`
+per commit, and a commit that only wrote to the queue stakes no claim.
+
+It fails toward keeping the mark. A merge prints no paths under `--name-only`,
+and a path git quoted does not match the prefix; neither is evidence of
+bookkeeping, so both keep their claim. What it cannot see is a session that
+*starts* an item by pushing only a `touches` fill — annotation by the diff and
+a claim in fact. A branch named for its item still carries the claim in its
+name, which is read whatever the diff says.
 
 **A branch is finished when its content has landed, not when its commits
 have.** The squash trap `stranded` describes above reaches this read from the
@@ -617,6 +636,56 @@ ship one whose work is unfinished, then bumps the single version string,
 writes the notes from the items themselves, and stops short of tagging.
 Generated notes cannot claim something the items do not, and nothing shipped
 goes unmentioned because whoever wrote them forgot it.
+
+**A release is the one change no in-flight guard can see.** Every guard here
+matches a `PL-` id — `flight`, `show`, `next`, `concurrent`, the digest,
+`branch_id_check` — and a release cut carries none by design. So the change
+that rewrites the version file, the lock file, the roadmap and a new notes
+file, which is the most collision-prone in the repository, is the only one
+nothing watches. Two sessions cut v0.3.7 within an hour that way, and the
+second one's whole release was discarded at the merge (`PL-66FP`).
+
+`release.already_released` closes the half of that which is *certain*.
+`vcs.released_on_base` reads the default branch's own version file and its
+`docs/releases/` listing — the ref, never the working tree, which is this
+session's cut in progress and would answer about itself — and a version
+either of them already names is refused rather than reported. That refusal is
+what separates it from every other parallel-session read here: a notes file
+on the base is a fact about a merge that has happened, not an inference from
+a ref that may have moved since it was fetched.
+
+**The base is not enough on its own, and this is the part that had to be
+measured rather than assumed.** Both collisions this closes were between two
+*unmerged* cuts: the session that lost the v0.3.7 race cut from a checkout
+that did not yet hold an item merged eight minutes before the winning release
+landed, so its `origin/main` read the old version whenever it looked. A
+base-only check would have passed it, and would have passed the second race
+the same day.
+
+So `vcs.cuts_in_flight` reads the other half from the refs. It reuses
+`_unlanded_refs`, which is what makes it survive a squash merge, and
+subtracts the notes the base already holds - without that subtraction the
+branch whose v0.3.9 release had merged twenty minutes earlier was still
+listed, and a guard that fires on every release after the first is one nobody
+reads. A ref `HEAD` contains is marked `mine` rather than reported, for the
+reason `Carrier.mine` gives.
+
+`cmd_release` refuses on *any* unmerged cut, not only one of the version being
+written: two concurrent releases under different numbers is the worse case,
+since both stamp `milestone:` onto an overlapping set of items and whichever
+merges second claims work the first already shipped. It reports the date the
+notes were written, because that is the only thing separating a live session
+from a branch nobody will merge, and leaves that judgment to the reader the
+way `flight` and `stranded` do.
+
+**And it fetches first**, which is the step without which neither question is
+worth asking. This is the rarest command here and the most expensive to get
+wrong, which is what makes one network read proportionate where the digest's
+would not be; `--no-fetch` is there for a caller that has already refreshed or
+cannot. The digest carries the same answer on its `Releasable:` line, computed
+only where a release is actually being offered, because the offer is where a
+duplicate release starts - refusing at `release` alone leaves the second
+session having already raised it and been approved.
 
 **A release writes all of itself or none of it.** Two things reach disk — the
 `milestone:` stamp on every item going out, and the version — and neither
@@ -1035,11 +1104,16 @@ led such a subject, eleven were capture or triage commits ("PL-8HJ2 Capture
 that make release always ends in a red test") and two were implementations. An
 advisory wrong five times in six is one every session learns to skim past.
 
-So `check` runs each open item's own `verify:` command instead — the item's own
-statement of what would prove it done — and reports the ones that pass. Scoped
-to `ready` and `needs-decision`, and to `check` alone: it is the only check
-here that *executes* the project rather than reading it, and `next` and the
-digest are asked on every session start.
+So `check --verify` runs each open item's own `verify:` command instead — the
+item's own statement of what would prove it done — and reports the ones that
+pass. Scoped to `ready` and `needs-decision`, and behind a flag: it is the only
+check here that *executes* the project rather than reading it. `next` and the
+digest are asked on every session start, and a bare `check` is a pre-commit
+gate, which is the wrong moment for this — the finding is about work that has
+already *merged*, so a `make check` on a feature branch was spending about half
+its wall clock asking about a state its own commit could not have changed.
+Measured 2026-09-05 on four cores, `make check` went 60.0 s → 29.5 s. CI passes
+the flag and answers on the same events it always did (`PL-P3B6`).
 
 **It reports two findings rather than a verdict**, because a passing command is
 consistent with two states no exit status can separate:
@@ -1140,13 +1214,15 @@ The wall clock is set by the slowest single command as much as by the number of
 them, which is worth knowing before writing a `verify:` — a full-suite `pytest
 --cov` run is tens of seconds on its own, and once one is in the pool a second
 costs a fraction of that. Each command is capped at two minutes so one wedged
-run cannot hang `make check`.
+run cannot hang the check.
 
 **So a command far enough above the typical one is named, with what it cost.**
 The person who writes a heavy `verify:` is the only one placed to reconsider
 it, and was the one person told nothing — the cost arrived in one step and was
-then paid by every later session's `make check`. The advisory closes either
-way: narrow the command, or accept a cost you have now seen.
+then paid by every later run. The advisory closes either way: narrow the
+command, or accept a cost you have now seen. It is CI that pays it now rather
+than each session, which lowers the stakes without removing them: the pool is
+still bounded by the size of the queue, and that bound still only ever grows.
 
 **And it says what narrowing would leave, rather than that the command sets the
 floor.** Those are different statements and the second was wrong. A pool cannot

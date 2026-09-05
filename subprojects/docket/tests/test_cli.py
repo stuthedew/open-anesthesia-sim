@@ -10,6 +10,7 @@ import pytest
 
 from docket.cli import build_parser, main, merge_shared
 from docket.vcs import lost
+from docket.verify import LANDED_GUARD
 
 READY = """---
 id: PL-B1B1
@@ -40,6 +41,21 @@ def _run(*args: str) -> int:
     return main([*args, "--no-git", "--today", "2026-08-24"])
 
 
+@pytest.fixture(autouse=True)
+def _no_inherited_guard(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear the re-entry guard this suite may have inherited.
+
+    The same fixture `test_verify.py` carries, and needed here for the same
+    reason once `check --verify` became a thing CI runs: that run sets
+    `DOCKET_SKIP_LANDED` for every command it executes, and one of those
+    commands is `PL-P3B6`'s own `verify:`, which runs this file. Without this,
+    `test_check_replays_verify_commands_when_asked` reads the declined report
+    meant for a nested run and fails in CI while passing by hand - which is the
+    environment-dependent result the guard's own check exists to make visible.
+    """
+    monkeypatch.delenv(LANDED_GUARD, raising=False)
+
+
 def test_new_captures_several_ideas_in_one_call(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -67,6 +83,55 @@ def test_check_exits_nonzero_on_a_broken_store(tmp_path: Path) -> None:
 
 def test_check_exits_zero_on_a_clean_store(tmp_path: Path) -> None:
     assert _run("check", "--items", str(_store(tmp_path, READY))) == 0
+
+
+#: A `ready` item - one of `LANDED_STATUSES` - whose `verify:` command leaves a
+#: file behind. Whether that file exists after a run is the only direct evidence
+#: that the command was executed, which is what the two tests below turn on.
+#:
+#: It fails after marking, deliberately. A command exiting 0 would be reported
+#: as already passing, which is an error, so the run's exit status would then
+#: answer "did the replay find something" rather than "did the replay happen" -
+#: and the marker is the thing under test. Failing is also the shape a `ready`
+#: item's command is supposed to have before its work exists.
+MARKING = """---
+id: PL-M4RK
+title: An item whose command leaves a trace
+priority: P1
+effort: S
+status: ready
+classes: perf
+touches: a.py
+verify: touch ran.marker && false
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def test_check_does_not_replay_verify_commands_unless_asked(tmp_path: Path) -> None:
+    """The store validation is the gate; the replay is not (`PL-P3B6`).
+
+    Running every open item's command was 31 s of `make check`'s 67 s, for a
+    finding about work that had already *merged* - which a pre-commit gate on a
+    feature branch cannot have changed. The command still runs in CI, which
+    passes `--verify`.
+    """
+    store = _store(tmp_path, MARKING)
+
+    assert _run("check", "--items", str(store)) == 0
+    assert not (tmp_path / "ran.marker").exists()
+
+
+def test_check_replays_verify_commands_when_asked(tmp_path: Path) -> None:
+    """The other half: `--verify` is what CI runs, so it has to still do it."""
+    store = _store(tmp_path, MARKING)
+
+    assert _run("check", "--verify", "--items", str(store)) == 0
+    assert (tmp_path / "ran.marker").exists()
 
 
 def test_digest_is_silent_on_an_empty_store(
@@ -443,6 +508,176 @@ def test_a_project_that_has_never_tagged_is_not_refused(tmp_path: Path) -> None:
     root = _release_repo(tmp_path)
 
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+
+
+def test_a_release_the_default_branch_already_holds_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-66FP: two sessions cut v0.3.7, and no guard could see the second one.
+
+    A release carries no item id, so `branches_in_flight` and everything
+    reading it are blind to it. What the default branch already holds is the
+    part of that which is certain, and this is the command proving it is read
+    from git as git actually spells it.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    notes = root / "docs" / "releases"
+    notes.mkdir(parents=True)
+    (notes / "v0.2.6.md").write_text("## v0.2.6\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "Release v0.2.6"], cwd=root, check=True, capture_output=True
+    )
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
+    output = capsys.readouterr().out
+    assert "v0.2.6 is already released on" in output
+    assert "docs/releases/v0.2.6.md is on it" in output
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
+
+
+def test_a_base_already_bumped_to_the_version_refuses_it_too(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The version field catches a release landed without notes this can read."""
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.5", "--items", str(root / "items")]) == 1
+    assert "its pyproject.toml already reads 0.2.5" in capsys.readouterr().out
+
+
+def test_a_dry_run_says_the_release_is_already_out_and_still_shows_the_notes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Withholding the preview would not un-ship what already shipped."""
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.5", "--dry-run", "--items", str(root / "items")]) == 0
+    output = capsys.readouterr().out
+    assert "is already released on" in output
+    assert "PL-D1D1" in output
+
+
+def test_a_version_the_default_branch_has_not_seen_is_cut_as_before(tmp_path: Path) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    assert (root / "docs" / "releases" / "v0.2.6.md").is_file()
+
+
+def _side_cut(root: Path, version: str) -> None:
+    """A second branch carrying a release nobody has merged, left off the base."""
+    base = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    subprocess.run(["git", "checkout", "-qb", "sidecut"], cwd=root, check=True, capture_output=True)
+    notes = root / "docs" / "releases"
+    notes.mkdir(parents=True, exist_ok=True)
+    (notes / f"v{version}.md").write_text(f"## v{version}\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", f"Release v{version}"], cwd=root, check=True, capture_output=True
+    )
+    subprocess.run(["git", "checkout", "-q", base], cwd=root, check=True, capture_output=True)
+
+
+def test_a_release_another_branch_is_already_cutting_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-66FP: the half the default branch cannot see, which is the half that raced.
+
+    The v0.3.7 collision was between two *unmerged* cuts, so a check reading
+    only the base would have passed both.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    _side_cut(root, "0.2.6")
+
+    assert main(["release", "0.2.6", "--no-fetch", "--items", str(root / "items")]) == 1
+    output = capsys.readouterr().out
+    assert "A release is already being cut on a branch nothing has merged" in output
+    assert "sidecut is cutting v0.2.6" in output
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
+
+
+def test_a_cut_of_a_different_version_is_refused_too(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Two concurrent releases under different numbers is the worse case, not the safer one.
+
+    Both stamp `milestone:` onto an overlapping set of items, so whichever
+    merges second claims work the first already shipped.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    _side_cut(root, "0.2.6")
+
+    assert main(["release", "0.3.0", "--no-fetch", "--items", str(root / "items")]) == 1
+    assert "sidecut is cutting v0.2.6" in capsys.readouterr().out
+
+
+def test_a_dry_run_names_the_parallel_cut_and_still_shows_the_notes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+    _side_cut(root, "0.2.6")
+
+    assert (
+        main(["release", "0.2.6", "--no-fetch", "--dry-run", "--items", str(root / "items")]) == 0
+    )
+    output = capsys.readouterr().out
+    assert "already being cut" in output
+    assert "PL-D1D1" in output
+
+
+def test_a_cut_this_checkout_is_carrying_does_not_refuse_it_to_itself(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A session told to yield to itself would stop for nobody."""
+    root = _release_repo(tmp_path, "v0.2.5")
+    _side_cut(root, "0.2.6")
+    subprocess.run(["git", "merge", "-q", "sidecut"], cwd=root, check=True, capture_output=True)
+
+    assert main(["release", "0.3.0", "--no-fetch", "--items", str(root / "items")]) == 0
+    assert "already being cut" not in capsys.readouterr().out
+
+
+def test_a_release_refreshes_the_refs_before_deciding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PL-66FP: without this, neither release guard is worth asking.
+
+    The session that lost the v0.3.7 race cut from a checkout that did not yet
+    hold an item merged eight minutes before the winning release landed, so
+    every ref it could read was older than the collision it was in. The item
+    assumed the session-start fetch was enough; it was not.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    fetched: list[Path] = []
+    monkeypatch.setattr("docket.cli.fetch_remote", lambda where: fetched.append(where))
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    assert fetched == [root]
+
+
+def test_no_fetch_is_honored_for_a_caller_that_refreshed_or_cannot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+    fetched: list[Path] = []
+    monkeypatch.setattr("docket.cli.fetch_remote", lambda where: fetched.append(where))
+
+    assert main(["release", "0.2.6", "--no-fetch", "--items", str(root / "items")]) == 0
+    assert fetched == []
+
+
+def test_no_git_skips_the_release_guards_entirely(tmp_path: Path) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+    _side_cut(root, "0.2.6")
+
+    assert main(["release", "0.2.6", "--no-git", "--items", str(root / "items")]) == 0
 
 
 def test_a_version_file_the_bump_rejects_leaves_the_items_unstamped(
@@ -891,13 +1126,19 @@ def test_stranded_says_so_when_it_was_told_not_to_ask_git(
 BRANCH = "roadmap-release-write-failure-nhsjwo"
 
 
-def _flight_repo(tmp_path: Path, subject: str) -> Path:
+def _flight_repo(tmp_path: Path, subject: str, wrote: str = "src/scratch.txt") -> Path:
     """A repository whose one live branch is named the way the harness names one.
 
     Real git, for the reason `_branched_repo` uses it: the injected-runner
     tests in `test_vcs.py` assert the rules, and only a real checkout proves
-    that `--source`, `%cI` and the merge-base guard are spelled in a way git
-    accepts. The commit dates are fixed so the reported age is too.
+    that `--source`, `%cI`, `--name-only` and the merge-base guard are spelled
+    in a way git accepts. The commit dates are fixed so the reported age is too.
+
+    `wrote` is the file the branch's commit changes, which is what says whether
+    that commit was implementing the item its subject leads with or only
+    recording something into the queue. It defaults outside the store, because
+    a commit that reaches past the queue is what every test here but one means
+    by a branch mid-item.
     """
     root = tmp_path / "repo"
     (root / "items").mkdir(parents=True)
@@ -920,7 +1161,9 @@ def _flight_repo(tmp_path: Path, subject: str) -> Path:
     git("add", "-A")
     git("commit", "-qm", "base", env=dated)
     git("checkout", "-qb", BRANCH)
-    (root / "items" / "scratch.txt").write_text("work in progress\n")
+    written = root / wrote
+    written.parent.mkdir(parents=True, exist_ok=True)
+    written.write_text("work in progress\n")
     git("add", "-A")
     git("commit", "-qm", subject, env=dated)
     git("checkout", "-q", "main")
@@ -938,6 +1181,23 @@ def test_flight_finds_work_on_a_branch_whose_name_carries_no_id(
     out = capsys.readouterr().out
     assert "PL-K7QX  roadmap-release-write-failure-nhsjwo" in out
     assert "last commit 3 days ago" in out
+
+
+def test_flight_ignores_a_branch_that_only_wrote_to_the_queue(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Against real git: `--name-only` output, parsed, decides the claim.
+
+    `test_vcs.py` asserts the rule against an injected runner. What this adds
+    is that git actually prints the paths under the commit they belong to in
+    the shape the walk parses, on this checkout's git - the half a fake cannot
+    prove (queue item PL-X3WZ).
+    """
+    root = _flight_repo(tmp_path, "PL-K7QX Do the thing", wrote="items/PL-K7QX-a-note.md")
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "flight"]) == 0
+
+    assert "PL-K7QX" not in capsys.readouterr().out
 
 
 def test_show_marks_an_item_a_branch_has_in_flight(
