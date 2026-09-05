@@ -3,10 +3,12 @@ id: PL-VZ8P
 title: pytest -n auto leaves about 20 percent on the table because much of the suite waits on subprocesses rather than CPU
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: session-cost, infra
 feature: dev-tooling
 touches: Makefile, .github/workflows/quality.yml
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_makes_doubled_dollar_is_not_read_as_a_drift' tests/unit/test_doc_check.py
+closed: 2026-09-05
 added: 2026-09-05
 ---
 
@@ -44,7 +46,7 @@ left above noise.
 **Where.** The pytest line in `Makefile`'s `check` target, the identical line in
 `.github/workflows/quality.yml`'s `checks` job, and `make test`.
 
-**Decision needed.** Which is why this is `needs-decision` rather than `ready`.
+**Decision taken** (project owner, 2026-09-05): option 2, the computed rule.
 A pinned `-n 8` contradicts a stated design principle: the `Makefile` comment
 says `-n auto` "reads this runner rather than carrying a width pinned here, so
 the two lines stay identical across machines of different sizes", and `PL-D3M2`
@@ -62,6 +64,35 @@ out, and the choice is the project owner's:
 `-n logical` is not a fourth option: it was measured and equals `-n auto` here,
 because psutil is absent so xdist falls back to `os.cpu_count()`.
 
-**Done when.** The pytest invocation in `Makefile` and `quality.yml` carries
-whichever form the owner picks, with the measurements above in a comment beside
-it, and coverage still reports 730/92/100%.
+**What landed.** `-n $(python3 -c 'import os; print(os.cpu_count() * 2)')
+--dist worksteal` in `Makefile`'s `check` target and `quality.yml`'s `checks`
+job, with the measurements in a comment beside it. `python3` rather than `nproc`
+because `nproc` is GNU coreutils and absent on macOS, and because
+`os.cpu_count()` is exactly what xdist's own `auto` falls back to here - so the
+line is literally twice what `auto` would have picked.
+
+Re-measured on the merged base, 1577 tests rather than the 1534 the table above
+was taken on: **34.2 s -> 26.3 s**, a larger win than first measured, because the
+suite grew by 43 mostly I/O-bound tests.
+
+Two things the decision turned out to carry that the item did not foresee:
+
+- **`make test` keeps `-n auto`.** A computed width resolves to an integer, and
+  `--pdb` rejects an integer - verified 2026-09-05, `-n auto --pdb` passes and
+  `-n 8 --pdb` errors with `--pdb is incompatible with distributing tests`. That
+  copy-safety is a documented property of that target (`PL-FX3N`), and `check`
+  can spend it only because it is a gate that takes no arguments. `make test`
+  takes `--dist worksteal` alone, which `--pdb` tolerates.
+- **`PL-D3M2` was never a by-eye promise - it was already a check, and the
+  change broke it.** `tools/doc_check.py`'s `check_coverage_gate` compares the
+  two lines by exact string equality, and its docstring said `-n auto` had been
+  chosen partly to keep them identical. A computed width is spelled `$$(...)`
+  in a recipe and `$(...)` in a workflow, so `make check` failed on the one
+  character Make requires. Fixed where the check lives rather than beside it:
+  the Makefile side collapses `$$` to `$` first, which is a documented rule of
+  Make rather than a judgment, so the comparison stays exact and every other
+  difference is still a drift. A first attempt added a parallel test under
+  `tests/unit/` and was deleted as duplication once the existing check
+  surfaced.
+
+**Done when.** Landed.
