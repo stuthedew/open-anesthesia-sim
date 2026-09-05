@@ -1,14 +1,16 @@
 ---
 id: PL-YYL2
 title: ROADMAP item 29 says nine items carry v0.4.1 and names PL-P0BB, which closed in v0.3.2, so eight remain
-status: done
-added: 2026-09-05
-closed: 2026-09-05
 priority: P3
 effort: S
+status: done
 classes: docs, defect
-touches: ROADMAP.md
 feature: planning-cadence
+milestone: v0.4.1
+touches: ROADMAP.md
+added: 2026-09-05
+closed: 2026-09-05
+pr: 356
 verify: python3 tools/doc_check.py check && grep -qF 'Corrected 2026-09-05 (`PL-YYL2`)' ROADMAP.md
 ---
 
