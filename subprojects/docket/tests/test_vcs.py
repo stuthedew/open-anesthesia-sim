@@ -12,7 +12,9 @@ from pathlib import Path
 
 from docket.checks import Report
 from docket.vcs import (
+    BaseRelease,
     Branch,
+    BranchCut,
     BranchState,
     FlightFiles,
     FlightReport,
@@ -25,12 +27,14 @@ from docket.vcs import (
     branches_in_flight,
     closed_by,
     closures_on_base,
+    cuts_in_flight,
     default_base,
     files_in_flight,
     lost,
     merged_pull_requests,
     orphaned,
     precedence,
+    released_on_base,
     stranded,
     tags,
 )
@@ -2234,3 +2238,246 @@ def test_a_branch_whose_commits_cannot_be_walked_is_not_reported() -> None:
         ).branches
         == ()
     )
+
+
+def _base_runner(declared: str = '[project]\nversion = "0.3.8"\n', notes: tuple[str, ...] = ()):
+    """A git holding one base ref, its version file, and its release notes.
+
+    Its own runner rather than `_runner`'s: this read asks git two questions
+    that one asks none of, and threading them through a helper built for the
+    branch walk would make every test there carry arguments it has no use for.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "rev-parse":
+            return f"{BASE}\n" if args[-1] == BASE else ""
+        if args[0] == "show":
+            return declared
+        if args[0] == "ls-tree":
+            return "".join(f"docs/releases/{name}\n" for name in notes)
+        return ""
+
+    return run
+
+
+def test_the_base_reports_the_version_and_the_notes_it_holds() -> None:
+    report = released_on_base(
+        ROOT,
+        version_file="pyproject.toml",
+        notes_dir="docs/releases",
+        runner=_base_runner(notes=("v0.3.7.md", "v0.3.8.md")),
+    )
+
+    assert report == BaseRelease(
+        base=BASE, version="0.3.8", notes=frozenset({"v0.3.7.md", "v0.3.8.md"}), known=True
+    )
+
+
+def test_notes_are_named_without_the_directory_git_prints_them_under() -> None:
+    """The directory is the caller's own constant; repeating it invites two spellings."""
+    report = released_on_base(
+        ROOT,
+        version_file="pyproject.toml",
+        notes_dir="docs/releases",
+        runner=_base_runner(notes=("v0.3.8.md",)),
+    )
+
+    assert report.notes == frozenset({"v0.3.8.md"})
+
+
+def test_a_base_whose_version_file_cannot_be_read_is_unknown_rather_than_empty() -> None:
+    """PL-66FP: a gap in the evidence must not read as a clean bill of health."""
+    report = released_on_base(
+        ROOT, version_file="pyproject.toml", notes_dir="docs/releases", runner=_base_runner("")
+    )
+
+    assert not report.known
+    assert report.notes == frozenset()
+
+
+def test_a_base_holding_no_notes_at_all_is_still_a_real_answer() -> None:
+    """No notes is what a project that has never cut one looks like."""
+    report = released_on_base(
+        ROOT, version_file="pyproject.toml", notes_dir="docs/releases", runner=_base_runner()
+    )
+
+    assert report.known
+    assert report.notes == frozenset()
+
+
+def test_the_base_is_read_from_the_ref_rather_than_the_working_tree() -> None:
+    """The working tree is this session's own cut, which would answer about itself."""
+    log: list[list[str]] = []
+
+    def run(args: list[str], root: Path) -> str:
+        log.append(args)
+        return _base_runner()(args, root)
+
+    released_on_base(ROOT, version_file="pyproject.toml", notes_dir="docs/releases", runner=run)
+
+    assert ["show", f"{BASE}:pyproject.toml"] in log
+    assert ["ls-tree", "--name-only", BASE, "docs/releases/"] in log
+
+
+def test_an_explicit_base_is_read_instead_of_the_default_one() -> None:
+    log: list[list[str]] = []
+
+    def run(args: list[str], root: Path) -> str:
+        log.append(args)
+        return _base_runner()(args, root)
+
+    report = released_on_base(
+        ROOT,
+        version_file="pyproject.toml",
+        notes_dir="docs/releases",
+        base="origin/release",
+        runner=run,
+    )
+
+    assert report.base == "origin/release"
+    assert ["rev-parse", "--verify", "--quiet", BASE] not in log
+
+
+def _cut_runner(
+    notes: dict[str, list[str]],
+    merged: tuple[str, ...] = (),
+    head: str = "",
+    when: str = "2026-09-04T11:34:00+00:00",
+):
+    """A git whose refs each carry the release-notes paths `notes` gives them.
+
+    Every ref also adds a blob of its own that the base has never held, which
+    is what keeps `_unlanded_refs` from reading it as landed - the release
+    files alone would not, since a merged release's notes are on the base by
+    then, which is the case `on_base` exists for.
+    """
+    refs = list(notes)
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "rev-parse":
+            if args[-1] == BASE:
+                return f"{BASE}\n"
+            return f"{args[-1]}@tip\n" if args[-1] in refs else ""
+        if args[0] == "for-each-ref":
+            if any(arg.startswith("--merged=") for arg in args):
+                return "\n".join(merged)
+            return "\n".join(refs)
+        if args[0] == "merge-base":
+            # `cuts_in_flight` asks whether HEAD contains a ref's tip; git
+            # echoes the merge base, so a tip HEAD holds comes back unchanged.
+            if args[-1] == "HEAD":
+                return f"{args[-2]}\n" if args[-2] == f"{head}@tip" else "elsewhere\n"
+            return "fork\n"
+        if args[0] == "rev-list":
+            return "onbase some/path\n"
+        if args[0] == "diff" and "--name-only" in args:
+            ref = args[2].split("...")[-1]
+            return "".join(f"{path}\n" for path in notes.get(ref, []))
+        if args[0] == "diff":
+            ref = args[-2]
+            return f":000000 100644 {'0' * 40} {ref}blob A\tsome/{ref}\n"
+        if args[0] == "log":
+            return f"{when}\n"
+        return ""
+
+    return run
+
+
+def test_a_ref_carrying_release_notes_the_base_lacks_is_cutting_that_version() -> None:
+    """PL-66FP: the notes file is the one artifact a release cut cannot happen without."""
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner({"origin/claude/a": ["docs/releases/v0.3.9.md"]}),
+    )
+
+    assert report.branches == (
+        BranchCut(ref="origin/claude/a", versions=("0.3.9",), cut=date(2026, 9, 4), mine=False),
+    )
+
+
+def test_a_version_the_base_already_holds_is_not_in_flight() -> None:
+    """The squash-merge case: the branch stays unlanded long after its release merged.
+
+    Measured 2026-09-04 against this repository - the branch whose v0.3.9
+    release had merged twenty minutes earlier was still listed by
+    `_unlanded_refs`, so without this the guard fires on every release after
+    the first and nobody reads it.
+    """
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        on_base=frozenset({"v0.3.9.md"}),
+        runner=_cut_runner({"origin/claude/a": ["docs/releases/v0.3.9.md"]}),
+    )
+
+    assert report.branches == ()
+
+
+def test_this_checkouts_own_cut_is_marked_rather_than_reported_as_a_rival() -> None:
+    """Telling a session to yield to itself is the one answer this must never give."""
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner({"claude/mine": ["docs/releases/v0.4.0.md"]}, head="claude/mine"),
+    )
+
+    assert [branch.mine for branch in report.branches] == [True]
+
+
+def test_a_ref_touching_no_release_notes_is_not_cutting_anything() -> None:
+    report = cuts_in_flight(
+        ROOT, notes_dir="docs/releases", runner=_cut_runner({"origin/claude/a": []})
+    )
+
+    assert report.branches == ()
+
+
+def test_every_version_a_ref_carries_is_named() -> None:
+    """A branch that cut twice is two collisions, not one."""
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner(
+            {"origin/claude/a": ["docs/releases/v0.3.9.md", "docs/releases/v0.4.0.md"]}
+        ),
+    )
+
+    assert report.branches[0].versions == ("0.3.9", "0.4.0")
+
+
+def test_a_merged_ref_is_not_read_at_all() -> None:
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner(
+            {"origin/claude/a": ["docs/releases/v0.3.9.md"]}, merged=("origin/claude/a",)
+        ),
+    )
+
+    assert report.branches == ()
+
+
+def test_an_unreadable_ref_is_named_rather_than_reported_clean() -> None:
+    """A gap in the evidence is not a clean bill of health."""
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "merge-base" and args[-1] != "HEAD":
+            return ""
+        return _cut_runner({"origin/claude/a": ["docs/releases/v0.3.9.md"]})(args, root)
+
+    report = cuts_in_flight(ROOT, notes_dir="docs/releases", runner=run)
+
+    assert report.unreadable == ("origin/claude/a",)
+    assert report.branches == ()
+
+
+def test_a_cut_whose_date_cannot_be_read_is_reported_without_one() -> None:
+    """The date separates a live session from an abandoned branch; its absence is not fatal."""
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner({"origin/claude/a": ["docs/releases/v0.3.9.md"]}, when=""),
+    )
+
+    assert report.branches[0].cut is None

@@ -31,6 +31,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from .model import parse_item
+from .release import version_in
 from .store import ID_PATTERN
 
 # The default branch, in the order it is looked for: a branch whose tip that
@@ -1273,6 +1274,188 @@ def is_shallow(root: Path, *, runner: Runner | None = None) -> bool | None:
     if answer == "false":
         return False
     return None
+
+
+@dataclass(frozen=True)
+class BaseRelease:
+    """What the default branch already records as shipped, or that it is unread.
+
+    `known` carries the obligation every read in this module carries.
+    `_run_git` answers a failure with the empty string, so a base this
+    checkout cannot read and a base that has never cut a release arrive here
+    identically - and reporting the first as the second would let a duplicate
+    release through under a check that appeared to have run, which is the one
+    thing a guard must never do.
+
+    The version file is what decides it. A project being cut releases for has
+    one; a ref that cannot produce it is a ref this checkout has no answer
+    about, whether because there is no remote, no network since the clone, or
+    no such branch. An empty `notes` under `known` is the other case and a
+    real answer: the base holds no notes for anything.
+
+    Read from the ref as it stands in this checkout, so it is stale by
+    whatever the last fetch left behind. That is a floor on what the answer
+    can prove, not a flaw in it: what it reports present is present.
+    """
+
+    base: str = ""
+    #: The version the base's own version file declares, unparsed of its `v`.
+    version: str = ""
+    #: Notes file names as they sit in `notes_dir` on the base - `v0.3.7.md`,
+    #: not the path to it, because the directory is the caller's own constant.
+    notes: frozenset[str] = frozenset()
+    known: bool = False
+
+
+def released_on_base(
+    root: Path,
+    *,
+    version_file: str,
+    notes_dir: str,
+    base: str | None = None,
+    runner: Runner | None = None,
+) -> BaseRelease:
+    """Which releases the default branch already holds, read from the ref itself.
+
+    Two reads of one ref rather than of the working tree, and that is the
+    whole point: the working tree is this session's own release in progress,
+    which would answer "yes, already cut" to its own work. The base is what
+    everyone else has, so it is the only place a second copy of a release can
+    be seen from.
+
+    Costs two `git` calls and no network, so a caller that has just fetched
+    gets a current answer and one that cannot fetch still gets a sound one -
+    older, and never wrong about what it names.
+    """
+    run = runner or _run_git
+    ref = base or default_base(root, runner=run)
+
+    declared = run(["show", f"{ref}:{version_file}"], root)
+    if not declared.strip():
+        return BaseRelease(base=ref)
+
+    names = frozenset(
+        line.strip().rsplit("/", 1)[-1]
+        for line in run(["ls-tree", "--name-only", ref, f"{notes_dir}/"], root).splitlines()
+        if line.strip()
+    )
+    return BaseRelease(base=ref, version=version_in(declared), notes=names, known=True)
+
+
+@dataclass(frozen=True)
+class BranchCut:
+    """One ref carrying a release the default branch has not taken.
+
+    `mine` is this checkout's own cut seen from outside - a local branch, its
+    tracking ref, or a branch pushed under a third name - decided by whether
+    `HEAD` contains the ref's tip rather than by comparing names, for the
+    reason `Carrier.mine` gives: a session told to yield to itself would stop
+    for nobody.
+
+    `cut` dates the commit that wrote the notes, not the ref's tip, because
+    the question a reader has is how old the *release* is. It separates a live
+    session from a branch nobody will merge, and this reports it rather than
+    deciding between them, the way `flight` and `stranded` do.
+    """
+
+    ref: str
+    #: Versions without their `v`, so they compare against a version string.
+    versions: tuple[str, ...]
+    cut: date | None = None
+    mine: bool = False
+
+
+@dataclass(frozen=True)
+class CutsInFlight:
+    """Which refs are cutting a release nobody has merged, or which could not be read.
+
+    **This is the guard no `PL-` id can carry.** A release cut carries none by
+    design, so `branches_in_flight` and everything reading it are blind to the
+    widest write in the repository, and two sessions cut v0.3.7 within an hour
+    (`PL-66FP`). The evidence here is the notes file a ref introduces, which is
+    the one artifact a cut cannot happen without.
+
+    `unreadable` carries the obligation it carries everywhere else here: a ref
+    whose history this checkout does not hold is named, never reported clean.
+    """
+
+    branches: tuple[BranchCut, ...] = ()
+    unreadable: tuple[str, ...] = ()
+    base: str = ""
+
+
+def cuts_in_flight(
+    root: Path,
+    *,
+    notes_dir: str,
+    on_base: frozenset[str] = frozenset(),
+    include_remote: bool = True,
+    runner: Runner | None = None,
+) -> CutsInFlight:
+    """Every release being cut on a ref the default branch has not taken.
+
+    **`on_base` is what makes the answer usable, and leaving it out breaks
+    this.** A squash merge keeps none of the branch's commits, so a merged
+    release branch stays "unlanded" by `_work_already_on_base`'s test whenever
+    it carries anything else the base did not take - measured 2026-09-04, the
+    branch whose v0.3.9 release had merged twenty minutes earlier was still
+    listed. A three-dot diff then reports its notes file forever, and a guard
+    that fires on every release after the first is one nobody reads. So a
+    version the base already holds is not in flight, by definition, and the
+    caller passes what the base holds.
+
+    Read from refs, so it is stale by exactly one fetch and blind to a session
+    that has pushed nothing. Both are floors on what it can prove rather than
+    flaws in it: what it names, it names on evidence a second checkout would
+    read identically.
+    """
+    run = runner or _run_git
+    base = default_base(root, runner=run)
+    refs = _unlanded_refs(base, root, run, include_remote=include_remote)
+
+    found: list[BranchCut] = []
+    for name in refs.unlanded:
+        versions = tuple(
+            sorted(
+                {
+                    version
+                    for line in run(
+                        ["diff", "--name-only", f"{base}...{name}", "--", f"{notes_dir}/"], root
+                    ).splitlines()
+                    if (leaf := line.strip().rsplit("/", 1)[-1])
+                    and leaf not in on_base
+                    and (version := leaf.removesuffix(".md").lstrip("v"))
+                }
+            )
+        )
+        if not versions:
+            continue
+        tip = run(["rev-parse", name], root).strip()
+        found.append(
+            BranchCut(
+                ref=name,
+                versions=versions,
+                cut=_cut_date(name, notes_dir, versions[0], root, run),
+                mine=bool(tip) and run(["merge-base", tip, "HEAD"], root).strip() == tip,
+            )
+        )
+
+    return CutsInFlight(
+        branches=tuple(sorted(found, key=lambda entry: entry.ref)),
+        unreadable=tuple(sorted(refs.unreadable)),
+        base=base,
+    )
+
+
+def _cut_date(ref: str, notes_dir: str, version: str, root: Path, run: Runner) -> date | None:
+    """When the notes for a version were written on a ref, or `None` if unreadable."""
+    stamp = run(
+        ["log", "-1", "--format=%cI", ref, "--", f"{notes_dir}/v{version}.md"], root
+    ).strip()
+    try:
+        return datetime.fromisoformat(stamp).astimezone(UTC).date()
+    except ValueError:
+        return None
 
 
 def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
