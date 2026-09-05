@@ -1,8 +1,14 @@
 ---
 id: PL-XNHJ
 title: RunHistory stores an elapsed time per sample that is an affine function of the sample index for every live run
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: perf
+feature: teachable-case
+touches: src/anesthesia_sim/app/controller.py, tests/unit/test_run_history.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_run_history.py && grep -q 'def test_elapsed_times_of_a_uniform_run_are_not_stored' tests/unit/test_run_history.py
 ---
 
 **Problem.** `RunHistory._elapsed_s` is an `array("d")` holding one
@@ -32,5 +38,11 @@ rather than merely iterable - which a small computed sequence satisfies.
 **Done when.** Either the elapsed times of a uniformly-sampled run are computed
 rather than stored, with the general case still accepted, or the redundancy is
 recorded as a deliberate choice with its 8 B/sample cost stated.
+
+**Which branch closes it.** The `verify:` command proves the first: the
+elapsed times are computed and `tests/unit/test_run_history.py` still holds the
+general case. If the measurement argues for keeping the array, that is
+`status: dropped` carrying the 8 B/sample cost in `reason:`, which is where this
+store records a deliberate no - not a `done` with nothing changed.
 
 **Found.** Measuring per-sample retention for `PL-8GLL`, 2026-09-05.

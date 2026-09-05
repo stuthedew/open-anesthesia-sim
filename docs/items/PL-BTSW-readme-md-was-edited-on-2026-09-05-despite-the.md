@@ -1,9 +1,13 @@
 ---
 id: PL-BTSW
 title: README.md was edited on 2026-09-05 despite the freeze, and the edit left an unwrapped line
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+classes: docs, defect
 feature: project-introduction
 touches: README.md
+blocked-by: PL-N092
 added: 2026-09-05
 ---
 

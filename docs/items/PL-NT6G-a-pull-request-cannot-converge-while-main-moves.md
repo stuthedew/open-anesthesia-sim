@@ -1,7 +1,12 @@
 ---
 id: PL-NT6G
 title: A pull request cannot converge while main moves, because auto-merge updates the branch only once
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: infra
+feature: parallel-sessions
+touches: .github/workflows/quality.yml
 added: 2026-09-05
 ---
 
@@ -36,6 +41,13 @@ compounding friction under `CLAUDE.md`'s three tests.
 **Where.** Repository settings rather than the tree: the branch-protection
 rule on `main` requiring branches to be up to date before merging, and whether
 GitHub's merge queue should be enabled for the repository.
+
+**Decision needed.** Which of the four below governs how a pull request here
+reaches a green, up-to-date head while `main` keeps moving - and it is a
+question about the repository's settings, so nobody but the project owner can
+answer it. The recommendation from this brief is 3, the merge queue: it is the
+mechanism GitHub built for this shape, and 1 and 2 both scale with the number of
+concurrent sessions, which is the thing that has been growing.
 
 **The options, none of them decided.** Only the project owner can act on any
 of these; they are recorded so the question is not reconstructed next time.

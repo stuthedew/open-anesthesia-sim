@@ -1,10 +1,16 @@
 ---
 id: PL-3BC5
 title: make check cannot tell a session that its branch now closes an item whose id leads no commit subject, so the mismatch is only found by pr-title in CI
-status: untriaged
-feature: documentation-standard
-touches: tools/pr_title_check.py, tools/branch_id_check.py, Makefile
+priority: P2
+effort: S
+status: dropped
+classes: infra
+feature: dev-tooling
+touches: tools/pr_title_check.py, tools/branch_id_check.py, tests/unit/test_pr_title_check.py, Makefile
 added: 2026-09-05
+closed: 2026-09-05
+reason: Duplicate of PL-J3BB (make check cannot run tools/pr_title_check.py, so a branch that closes an item after its pull request opened goes red in CI with nothing locally to catch it), captured 2026-09-03 with the same diagnosis, the same location and the same cost. Two things this item added are carried into PL-J3BB's Approach rather than lost here: the recurrence evidence, three failed `pr-title` runs across two occurrences on #339 with the second arriving after that session had already been caught by the first; and a third approach neither of PL-J3BB's two has, which is to print the ids a title must lead with rather than to obtain the title. PL-J3BB carries the work
+verify: uv run pytest tests/unit/test_pr_title_check.py && grep -q 'def test_local_advisory_names_the_ids_the_title_must_lead_with' tests/unit/test_pr_title_check.py
 ---
 
 **Problem.** `tools/pr_title_check.py` refuses a pull request whose title does
