@@ -1,8 +1,17 @@
 ---
 id: PL-H588
 title: expert-review.md's src/** and tests/** also match subprojects/docket/, so the simulator's specialist standard loads on the apparatus
-status: untriaged
+status: dropped
 added: 2026-09-05
+closed: 2026-09-05
+reason: Overtaken by PL-WWDT, which removed the globs entirely. The project owner
+  required the expert-review standard to reach a design round, so the file lost its
+  `paths:` and is now resident; there is no `src/**` or `tests/**` left to reach
+  `subprojects/docket/`. The risk this item named - the specialist standard applied
+  to the apparatus - is now larger rather than smaller, since the file loads
+  everywhere, and is held instead by the scope paragraph in its opening lines, which
+  is the mitigation `PL-6SBB` prescribes. Its `docs/**` half is moot for the same
+  reason. Reopen if that paragraph proves insufficient in practice.
 ---
 
 **Problem.** `.claude/rules/expert-review.md` declares `paths: ["src/**",

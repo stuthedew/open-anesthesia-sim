@@ -761,23 +761,23 @@ failure is today:
   that name. The collision was already real: the freeze was loading on the
   queue tool's reference manual, alongside `apparatus-standard.md`, whose own
   text says every sentence of it is wrong when applied to a `README.md`.
-- `PL-H588` - `expert-review.md`'s `src/**` and `tests/**` reach
-  `subprojects/docket/src/` and `tests/`. Live and unfixed: the simulator's
-  specialist standard loads on the apparatus, which is `PL-6SBB`'s leak
-  running the other way, and the tie-break in `CLAUDE.md` ("the simulator
-  wins") resolves it the wrong way there. Its `docs/**` half needs no depth
-  at all - it already reaches `docs/worker.md`, which `apparatus-standard.md`
-  claims by name, and `docs/items/`.
+- `PL-H588` (dropped) - `expert-review.md`'s `src/**` and `tests/**` reached
+  `subprojects/docket/src/` and `tests/`, so the simulator's specialist
+  standard loaded on the apparatus: `PL-6SBB`'s leak running the other way,
+  with the tie-break in `CLAUDE.md` ("the simulator wins") resolving it the
+  wrong way there. Overtaken the same day by `PL-WWDT`, which deleted that
+  file's `paths:` outright - see the thread below.
 - `PL-LLWN` - the class fix, and a check holding every entry to a leading
   `/`. The remaining globs match one file today and widen silently the moment
   a second file of that name appears, which `subprojects/` exists to make
   likely.
 
-**Order.** `PL-H588` first: it is the only one wrong today, and it carries a
-judgment the check cannot make - what `docs/**` is meant to reach, which
-`CLAUDE.md` answers for neither `docs/items/` nor `docs/releases/`. `PL-LLWN`
-after it, so the check lands on globs that are already correct rather than
-failing the tree it is added to.
+**Order.** `PL-LLWN` is what is left, and it is now the whole of it: the two
+live instances are closed, so the check lands on globs that are already
+correct rather than failing the tree it is added to. It has one fewer rule to
+police than when this thread was written - `expert-review.md` carries no
+`paths:` at all now - and one more that was written anchored from the start,
+`.claude/rules/sources-and-docstrings.md`.
 
 **Excluded deliberately.** Whether a rule's glob describes the *right* set of
 files is judgment, differs per rule, and is the "worse than no tool" case if
@@ -785,3 +785,44 @@ scripted; `PL-LLWN`'s check decides anchoring only. `PL-3V4N` is a separate
 defect in the same file - a path-scoped rule fires on a *read*, so the freeze
 is missed entirely by a session that edits `README.md` without opening it -
 and anchoring neither helps nor hinders it.
+
+## Open thread: which moment a rule has to reach, not which tree it governs - PL-WWDT, PL-H588
+
+`PL-WWDT` came out of the thread above and changed how the routing question is
+asked here. The globs thread treated `paths:` as a question about *scope* -
+which part of the tree a rule governs. The project owner's correction on
+2026-09-05 was that the prior question is *when*: "I absolutely want expert
+standard to apply in design round as well. That's equally if not more critical
+because I'm relying on you to help me decide on best approach to implementation
+of my ideas for features."
+
+That is not a scoping preference, it is the four dispositions applied properly.
+`docs/resident-instructions.md` already names three moments a path-scoped rule
+cannot reach - "receives a request, decides an approach, or writes a reply" -
+and its "What stays resident" section had a group for the first and the third
+and none for the second. `.claude/rules/expert-review.md`, the file that says
+what an approach is judged against, was the one sitting in the missing group.
+
+**The consequence for `PL-H588`, which is why the two threads are one.** The
+recommendation this session first made - narrow `expert-review.md`'s `docs/**`
+so it stops reaching the apparatus - was wrong, and wrong in the dangerous
+direction. `docs/**` matches `docs/items/**`, which was the only way the rule
+reached a design round at all; narrowing it would have removed the standard
+from the conversation while looking like a tidy-up. A glob that is
+over-broad by accident can be doing load-bearing work, and the fix is to
+establish the delivery first and scope second, never the reverse.
+
+**What is settled.** Split a rule by the moment it must fire, then scope what
+is left. `expert-review.md` lost its `paths:` and is resident; the
+code-and-provenance half went to `.claude/rules/sources-and-docstrings.md`,
+which fires with a file already open. Resident cost +4721 characters, recorded
+in the ledger with the argument.
+
+**What is still open.** Whether the resident half should be compressed. It was
+moved verbatim rather than rewritten, deliberately - `CLAUDE.md` forbids
+deleting a rule for being wordy, and compressing another author's list while
+moving it is how a rule gets lost quietly. A separate pass could cut it with
+the list in front of the owner. The other open half is whether the scope
+paragraph now at the top of the file is enough to keep the specialist standard
+off the apparatus, which is the risk `PL-H588` named and which making the file
+resident makes larger rather than smaller; nothing but practice will say.

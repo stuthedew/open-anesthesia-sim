@@ -19,11 +19,13 @@ depth, and a leading `/` is what anchors it:
 | `"/zzdir/**"` | fires | does not fire |
 
 `PL-ZQ35` fixed the one entry where the collision was already real
-(`readme-hold.md`'s `README.md`, against three files of that name) and
-`PL-H588` carries the one that is live but unfixed (`expert-review.md`
-reaching `subprojects/docket/src/` and `tests/`). The rest are latent: they
+(`readme-hold.md`'s `README.md`, against three files of that name).
+`PL-H588` carried a second live instance (`expert-review.md` reaching
+`subprojects/docket/src/` and `tests/`) and was dropped when `PL-WWDT` made
+that file resident, deleting its `paths:` outright. The rest are latent: they
 match one file today and would silently widen the moment a second file of that
-name appears anywhere in the tree.
+name appears anywhere in the tree. `.claude/rules/sources-and-docstrings.md`,
+added by `PL-WWDT`, is the first rule written anchored from the start.
 
 **Why it matters.** Both failure directions are silent, and a rule is trusted
 in a way a check is not. A rule that fires where it should not is read as
