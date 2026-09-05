@@ -1,14 +1,15 @@
 ---
 id: PL-1M5B
 title: PL-W3DD's Where claims chart_downsampling.py consumes the sample accessors, but that module is generic over SampleT and imports nothing from controller.py
-status: done
 priority: P3
 effort: S
+status: done
 classes: docs
 touches: docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
-verify: python3 tools/doc_check.py check && grep -q 'is \*not\* affected' docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
 added: 2026-09-03
 closed: 2026-09-05
+pr: 343
+verify: python3 tools/doc_check.py check && grep -q 'is \*not\* affected' docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
 ---
 
 **Problem.** `PL-W3DD`'s "Where" section names
