@@ -688,6 +688,20 @@ Reaching a close with nothing to record means the command was never run, and
 the cutover are untouched, deliberately — backfilling one onto merged work
 means writing a command with nothing left to run it against.
 
+**Once the item is closed the command is a record, and it is not rewritten.** A
+closed `verify:` says what was run — it failed before the work and passed after,
+on a tree that no longer exists — rather than what still runs today. It stops
+resolving as a matter of course: 14 of the 179 closed items carrying one no
+longer do, and each of the 14 is later work correctly consuming what its
+predecessor established, four of them `grep '^blocked-by: PL-…'` commands
+written in the expectation of stopping. So a dead command on a closed item is
+not a defect and there is nothing to repair. Re-pointing one replaces the
+command that proved the work with one that never ran it, which is why `docket
+check` errors on the attempt and on backfilling a command onto an item closed
+without one. Where an item is genuinely not done, reopen it and the field is
+writable again; which tree the command passed on is recoverable from the item's
+`pr` (`PL-JZ1D`).
+
 ### What the reply says, and what it must not
 
 **Triage is a queue pass, not a work session, and its reply is a summary rather

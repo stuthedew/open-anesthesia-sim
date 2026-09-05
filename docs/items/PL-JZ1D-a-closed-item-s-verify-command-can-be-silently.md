@@ -3,11 +3,13 @@ id: PL-JZ1D
 title: A closed item's verify: command can be silently invalidated by later work, and nothing notices
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: delegation
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
+closed: 2026-09-05
+verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_vcs.py && grep -q 'def test_rewriting_a_closed_item_s_verify_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `docket check` runs the `verify:` command of every *open* item,
@@ -78,3 +80,43 @@ commands a diff touches, the `doc_check candidates` shape) fires exactly when a
 person should decide; candidate 3 is a rule rather than a check and fires only
 if the session notices. Running every closed command on every `make check` is
 ruled out by `CLAUDE.md`'s "a check earns its place every run".
+
+**Decided (2026-09-05): the record, not a live command — and the answer is
+enforced against the *repair* rather than against the rot.**
+
+The measurement settled it. Across this store, 14 of the 179 closed items
+carrying a command no longer resolve, and not one of the 14 is a defect: each
+is later work correctly consuming the state its predecessor established.
+`PL-5WFS`, `PL-9K7K`, `PL-QTN6` and `PL-THVN` are `grep '^blocked-by: PL-…'`
+against an item file, which pass exactly while the blocker is unresolved —
+commands written in the expectation of stopping. `PL-YLZQ` greps for "Decided,
+not yet implemented", removed when the decision was implemented. A field whose
+commands are designed to become false cannot be read as a standing claim about
+the tree.
+
+That disposes of candidates 2 and 3, and not on principle: a diff-scoped check
+would have fired on all 14 and changed no decision on any of them, which is
+`CLAUDE.md`'s definition of a check to retire rather than add.
+
+Candidate 1's *reading* is right and its *mechanism* is not needed. Stamping a
+SHA re-introduces exactly what retired `commit:` (`PL-T63T`) — a squash-merge
+discards the branch commit — and the tree is already recorded by `pr:`, which
+outlives the squash and which 246 of the 248 closed items carry. The way back
+from a closed command to the tree it last passed on exists today.
+
+What had no guard was the opposite direction. A session meeting a dead command
+re-points it at whatever covers the ground now, and the item then names a
+command that never ran against the work it claims to prove: a false provenance
+where there was a true one, which is worse than an absent one because it looks
+authoritative. `records_on_base` reads what the base recorded for each closed
+item this checkout changed, and `docket check` errors where a branch changes
+it, or adds one to an item closed without a command. An error rather than an
+advisory because the rule is exact, and one-sided — the two diffs behind it
+return nothing where no merge base resolves, so a truncated checkout
+under-reports and no branch is accused of an edit it did not make. Reopening
+the item is the way out and needs no flag.
+
+`PL-MJ7B`'s own record needed no correction, which is the decision's first
+consequence rather than an omission: the command it carries was run, watched
+to fail, and passed on the tree that closed it. It reads as stale only against
+the wrong question.
