@@ -1,8 +1,14 @@
 ---
 id: PL-TFWR
 title: "A session cannot delete a remote branch: the git proxy drops the deletion ref, so every branch cleanup has to be handed to the project owner"
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: infra, docs
+feature: dev-tooling
+touches: CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
+verify: python3 tools/doc_check.py check && grep -qF 'git push origin --delete' CLAUDE.md
 ---
 
 **Problem.** `git push origin --delete <branch>` and `git push origin :<branch>`

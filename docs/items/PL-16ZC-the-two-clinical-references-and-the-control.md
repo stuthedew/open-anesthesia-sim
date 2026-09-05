@@ -1,24 +1,21 @@
 ---
 id: PL-16ZC
 title: The two clinical references and the control marks have no show/hide control, though the chart's traces now do
-status: untriaged
+priority: P3
+effort: M
+status: needs-decision
+classes: ux
+feature: teachable-case
+touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-04
 ---
-
-**Problem.** The two clinical references and the control marks have no show/hide control, though the chart's traces now do
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `PL-CG7J` gave each of the six compartment traces a checkbox in
 the legend. The two clinical references — the MAC-awake band and the 1 MAC
 line — and the control marks got none, so the chart's furniture is the one
 thing a reader cannot take off it.
 
-**Why it might matter.** The MAC-awake band is a *filled region* across the
+**Why it matters, if it does.** The MAC-awake band is a *filled region* across the
 whole plot, and the comparison `PL-CG7J` exists to enable is reading two
 compartment traces against each other closely. A band lying across both is
 exactly what would be in the way. The control marks are vertical rules
@@ -38,6 +35,11 @@ work here, and it is why this is not simply four more checkboxes.
 deliberately *not* members of `_plotted_series` — they read no sample — so
 they need their own record rather than joining that one.
 
-**Decide first.** Whether this is wanted at all. A chart whose every element
+**Decision needed.** Whether this is wanted at all. A chart whose every element
 is optional is a chart with no stated content, and the references exist to
 stop a trace being read without its clinical anchor.
+
+**Done when.** The project has decided whether the references and the control
+marks are hideable at all. If they are, hiding one takes its legend row and its
+provenance line with it, so no panel states the provenance of a mark that is not
+on the plot; if they are not, this item records the reason and closes.

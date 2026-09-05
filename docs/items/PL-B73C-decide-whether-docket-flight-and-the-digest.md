@@ -1,7 +1,12 @@
 ---
 id: PL-B73C
 title: Decide whether docket flight and the digest should name unlanded refs carrying no item id at all
-status: untriaged
+priority: P3
+effort: M
+status: needs-decision
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py
 added: 2026-09-04
 ---
 
@@ -40,3 +45,12 @@ machinery.
 **Done when.** Either the report names unattributed unlanded refs with a
 suppression rule that keeps the digest quiet in the steady state, or this item
 records the decision not to and why, so it is not rediscovered.
+
+**Decision needed.** Whether `flight` and the digest should name an unlanded ref
+attributable to no item at all, and if so what keeps the steady state quiet:
+age, as the abandoned-branch qualifier already does; a push-date floor; naming
+it in `flight`, which is asked for deliberately, but never in the digest, which
+is resent unasked; or an allow-list of refs somebody has already decided about,
+which is the most promising and the most machinery. Answering "no" is a
+legitimate outcome and closes the item, provided the reason is recorded here so
+it is not rediscovered.

@@ -1,8 +1,14 @@
 ---
 id: PL-J833
 title: Nothing stops core/ importing a wall clock, so the never-wall-clock rule is prose rather than a check
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: infra, docs
+feature: core-guard-coverage
+touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py
 added: 2026-09-04
+verify: uv run pytest tests/unit/test_import_boundary_check.py && grep -q 'datetime' tools/import_boundary_check.py
 ---
 
 **Problem.** `CLAUDE.md` requires simulation time to be explicit state and never

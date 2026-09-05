@@ -1,7 +1,12 @@
 ---
 id: PL-7790
 title: A session that starts an item by pushing only queue-file edits stakes no claim docket next can see
-status: untriaged
+priority: P3
+effort: M
+status: needs-decision
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, .claude/skills/docket/SKILL.md
 added: 2026-09-05
 ---
 
@@ -50,3 +55,11 @@ walk that calls it; `.claude/skills/docket/SKILL.md` if the guidance changes.
 "started this item" without reintroducing the false marks, or the case is
 measured over enough sessions to say the branch-name and `list_sessions` cover
 is sufficient and this is closed as accepted.
+
+**Decision needed.** Whether to keep looking for a reading that separates
+"filed this item" from "started this item", or to accept the branch-name and
+`list_sessions` cover and close this as understood. Both refinements tried
+against `PL-X3WZ`'s eight false marks reintroduced them, so anything that
+recovers this case has to read something other than the paths - which is the
+work, and is why the question is worth answering before it is started rather
+than during.

@@ -1,8 +1,14 @@
 ---
 id: PL-B2NS
 title: doc_check candidates matches short identifiers against ordinary prose, so one function named settle produced 30 false lines
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, session-cost
+feature: dev-tooling
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_candidates_does_not_report_an_identifier_used_as_ordinary_prose' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `python3 tools/doc_check.py candidates --base <ref>` prints the
@@ -38,3 +44,23 @@ this project writes code references in backticks throughout.
 **Done when.** A diff adding a common-word identifier produces candidate output
 whose lines are about the code, and the check still finds a documentation line
 that names a renamed symbol in prose.
+
+**Three more captures of the same noise, folded in at triage 2026-09-05.**
+The `settle` measurement above is one of four; the others were filed
+separately and dropped into this item, because all four are one decision
+about which terms enter the search and one fix in the same function.
+
+- `PL-MZJS`: a changed file contributes its *stem* as a bare word. For
+  `subprojects/docket/src/docket/render.py` that word is `render`, which runs
+  through `ROADMAP.md`, `docs/MODEL.md` and `docs/ARCHITECTURE.md` in its
+  ordinary English sense. Measured on `PL-YHD3`'s two-file diff: 37 lines
+  reported for `render.py`, none of them about the module.
+- `PL-03GZ`: a diff touching `settings.json`, or a test carrying a helper
+  named `_run`, emits around 200 lines naming nothing relevant.
+- `PL-5ZP5`: the search also draws terms from a touched *item's* declared
+  `touches`, so editing one queue file floods the sweep with every
+  documentation line mentioning that item's paths.
+
+So the fix has to decide about three kinds of term - an identifier, a file
+stem, and a path read out of an item's front matter - and the **Done when.**
+above is met only when all three produce output about the code.

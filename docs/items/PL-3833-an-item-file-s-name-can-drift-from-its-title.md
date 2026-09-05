@@ -1,17 +1,19 @@
 ---
 id: PL-3833
 title: An item file's name can drift from its title and nothing checks it, so the store carries a stale slug until some unrelated rewrite happens to fix it
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
+feature: dev-tooling
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-04
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_filename_that_does_not_match_its_title_is_reported' subprojects/docket/tests/test_checks.py
 ---
 
-**Problem.** An item file's name can drift from its title and nothing checks it, so the store carries a stale slug until some unrelated rewrite happens to fix it
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
+**Problem.** An item file's name can drift from its title and nothing checks
+it, so the store carries a stale slug until some unrelated rewrite happens to
+fix it
 
 **Observed 2026-09-04, closing `PL-D4MZ`.** On `origin/main`, `PL-3D2M` was
 titled "A commit pushed after its pull request merged lands nowhere..." while

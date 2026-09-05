@@ -1,17 +1,18 @@
 ---
 id: PL-Q4VH
 title: The compartment chart labels its percent axis at a different interval from the gridlines it rules
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, ux
+feature: presentation-safety
+touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-04
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_percent_axis_labels_the_values_it_rules' tests/unit/test_simulation_view.py
 ---
 
-**Problem.** The compartment chart labels its percent axis at a different interval from the gridlines it rules
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
+**Problem.** The compartment chart labels its percent axis at a different
+interval from the gridlines it rules
 
 **Observed 2026-09-04, while landing `PL-ZRSP` (the F_A/F_I trace).** The
 compartment chart rules horizontal gridlines every 2 percentage points

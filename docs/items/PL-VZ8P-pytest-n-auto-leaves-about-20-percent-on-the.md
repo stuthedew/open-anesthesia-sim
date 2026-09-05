@@ -7,9 +7,10 @@ status: done
 classes: session-cost, infra
 feature: dev-tooling
 touches: Makefile, .github/workflows/quality.yml
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_makes_doubled_dollar_is_not_read_as_a_drift' tests/unit/test_doc_check.py
-closed: 2026-09-05
 added: 2026-09-05
+closed: 2026-09-05
+pr: 328
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_makes_doubled_dollar_is_not_read_as_a_drift' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `-n auto` sets one worker per CPU, which is right for a CPU-bound
