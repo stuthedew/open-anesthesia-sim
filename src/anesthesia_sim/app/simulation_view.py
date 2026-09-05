@@ -56,10 +56,17 @@ from anesthesia_sim.app.formatting import (
     format_mac_multiple,
     format_mac_reference,
     format_percent,
+    format_playback_rate,
     format_subtitle,
     format_wash_in_ratio,
     mac_awake_band_percent,
     mac_axis_ticks,
+)
+from anesthesia_sim.app.playback import (
+    DEFAULT_PLAYBACK_RATE,
+    SUPPORTED_PLAYBACK_RATES,
+    PlaybackRate,
+    playback_rate_for,
 )
 from anesthesia_sim.app.theme import (
     ACCENT,
@@ -96,6 +103,18 @@ from anesthesia_sim.core.supported_ranges import (
 # `test_the_shipped_step_is_within_the_maximum_simulation_step` holds the
 # relationship, so a cadence and a limit cannot drift apart unnoticed.
 SIMULATION_STEP_S = 0.1
+# How often the simulation loop wakes, in *real* seconds. Numerically equal to
+# the step above and conceptually unrelated to it: one is a property of the
+# model's numerics and the other of this host's event loop. They are named
+# apart because the playback multiplier is the ratio between them - a tick
+# advances `rate.steps_per_tick(...)` steps of `SIMULATION_STEP_S`, which is
+# `multiplier` times faster than real time only because a tick is one step
+# long. Spelling the equality out is what lets that derivation be checked
+# (`app/playback.py`, and
+# `test_a_tick_is_one_simulation_step_of_real_time`) rather than assumed;
+# re-tuning the wakeup for the host would otherwise silently falsify every
+# rate the interface displays.
+SIMULATION_TICK_INTERVAL_S = SIMULATION_STEP_S
 # Render cadence, deliberately independent of the simulation step. The two
 # were previously the same 10 Hz tick, which made every redraw a gate on the
 # next simulation step and on servicing the next button press.
@@ -845,6 +864,47 @@ class SimulationView:
         self._pause_button = ft.Button(content="Pause", disabled=True, on_click=self._handle_pause)
         self._reset_button = ft.OutlinedButton(content="Reset", on_click=self._handle_reset)
 
+        # How fast the run is played. This is a *view* control and nothing
+        # else: it decides how many steps a tick takes and never how large a
+        # step is, so it reaches no model state and leaves identical inputs
+        # producing an identical run (`app/playback.py`, and docs/MODEL.md
+        # § "Interface boundary"). Two consequences follow from that and are
+        # deliberate. It is never disabled - unlike the agent dropdown, which
+        # is, because choosing an agent discards the case - since the reason
+        # to reach for it is usually to slow a running case down and watch
+        # something. And Reset leaves it alone, like every other user
+        # setting: `SimulationController.reset` clears dynamic state and
+        # preserves settings, and a rate silently snapping back to 1x would
+        # be a mode change nobody asked for.
+        self._playback_rate: PlaybackRate = DEFAULT_PLAYBACK_RATE
+        # Rendered by the same function as the dropdown's own options, so the
+        # rate the control reports and the rate the clock reports cannot
+        # differ. It is drawn on the "Simulated time" panel rather than only
+        # here beside the transport controls because a rate is a mode, and
+        # the hazard is a clock read without it: `docs/MODEL.md` requires
+        # the rate wherever simulated time is shown.
+        self._playback_rate_text = self._build_metric_secondary_value(
+            format_playback_rate(self._playback_rate.multiplier)
+        )
+        self._playback_rate_dropdown = ft.Dropdown(
+            value=str(self._playback_rate.multiplier),
+            options=[
+                ft.dropdown.Option(
+                    key=str(rate.multiplier), text=format_playback_rate(rate.multiplier)
+                )
+                for rate in SUPPORTED_PLAYBACK_RATES
+            ],
+            width=150,
+            filled=True,
+            fill_color=PANEL,
+            bgcolor=PANEL,
+            color=INK,
+            border_color=MUTED,
+            focused_border_color=INK,
+            label="Playback",
+            on_select=self._handle_playback_rate_change,
+        )
+
         initial_agent_colors = AGENT_COLOR_SCHEMES[initial_snapshot.agent_id]
         initial_agent_style = AGENT_RENDER_STYLES[initial_snapshot.agent_id]
         self._agent_dropdown = ft.Dropdown(
@@ -1123,6 +1183,7 @@ class SimulationView:
                                         self._start_button,
                                         self._pause_button,
                                         self._reset_button,
+                                        self._playback_rate_dropdown,
                                         self._status_text,
                                     ],
                                     spacing=8,
@@ -1276,7 +1337,20 @@ class SimulationView:
         return ft.ResponsiveRow(
             columns=METRIC_GRID_COLUMNS,
             controls=[
-                self._build_metric_panel("Simulated time", None, self._elapsed_time_text, None),
+                self._build_metric_panel(
+                    "Simulated time",
+                    None,
+                    self._elapsed_time_text,
+                    # The playback rate, in the slot the other six panels give
+                    # to a MAC multiple. It is not a second unit for the value
+                    # above it - simulated time has one unit and this is not
+                    # another reading of it - but it is the one thing a reader
+                    # needs in order to know what the clock beside it means,
+                    # and this is where a reader of this row is already
+                    # looking. Drawn at every rate including 1x, so that a
+                    # blank line never has to be read as "real time".
+                    self._playback_rate_text,
+                ),
                 self._build_metric_panel(
                     "Circuit", "inspired", self._circuit_concentration_text, self._circuit_mac_text
                 ),
@@ -2422,6 +2496,35 @@ class SimulationView:
         self._rejected_setting_notice = None
         self._refresh_and_render()
 
+    def _handle_playback_rate_change(self, event: ft.Event[ft.Dropdown]) -> None:
+        """Play the run at the selected multiple of real time.
+
+        Nothing here touches the simulation. The rate is read on the next
+        tick as a number of steps, so a change takes effect without the loop
+        being restarted, without a step being resized, and without a step in
+        progress being interrupted - the run continues from exactly the step
+        it had reached, at exactly the step size it has been taking.
+
+        Changing it mid-run is the expected use rather than an edge case: a
+        reader plays the uptake phase fast and drops back to real time to
+        watch a control change take effect. Because the rate never reaches
+        the model, a run played at three rates is the same run as one played
+        at one, sample for sample.
+        """
+
+        if event.control.value is None:
+            return
+
+        # `playback_rate_for` raises on a multiplier the interface does not
+        # offer rather than defaulting to one, and the raise is deliberately
+        # not caught here: a value arriving from this dropdown that is not in
+        # `SUPPORTED_PLAYBACK_RATES` means the control and that list have
+        # diverged, which is a defect to surface. It cannot be a user error -
+        # the options are the list.
+        self._playback_rate = playback_rate_for(int(event.control.value))
+        self._playback_rate_text.value = format_playback_rate(self._playback_rate.multiplier)
+        self._refresh_and_render()
+
     def _handle_agent_change(self, event: ft.Event[ft.Dropdown]) -> None:
         """Treat a new selection as a request to start a new case.
 
@@ -2686,10 +2789,10 @@ class SimulationView:
             pass
 
     async def _run_simulation_timer(self) -> None:
-        """Advance the running simulation one fixed step per tick.
+        """Advance the running simulation by the playback rate's steps per tick.
 
         Stepping is deliberately separate from drawing, and how many steps a
-        tick takes is a constant of this loop rather than a function of how
+        tick takes is *the reader's setting* rather than a function of how
         long the tick actually took. A host that wakes the loop late leaves
         the run behind the wall clock, and it stays behind: no tick takes
         extra steps to make up the difference, and nothing here reads a
@@ -2701,21 +2804,45 @@ class SimulationView:
         alternative, stepping until simulated time catches up to elapsed
         real time, would make the trajectory a property of the machine.
 
+        The playback rate does not weaken that guarantee, because it changes
+        only how many steps a tick takes. Every step is
+        `SIMULATION_STEP_S`, at every rate: a rate that resized the step
+        would make the same case read differently depending on how fast it
+        was watched, which is a determinism failure regardless of the solver
+        (`PL-SN2C`). So a run played at 60x records the history a run played
+        at 1x records, element for element, and reaches it sixty times
+        sooner in real time.
+
+        The rate is read once per tick rather than held, so a change takes
+        effect on the next wakeup and never part-way through a burst: a tick
+        is all-or-nothing at one rate, which keeps the number of steps a
+        tick took a fact about that tick rather than about when the dropdown
+        happened to be opened.
+
         The loop survives a failed step rather than returning: the task is
         started once, at mount, so a loop that exits could never be
         restarted and Reset would leave the interface permanently dead.
         Halting clears `is_running`, so the loop idles until the user
-        starts a fresh run.
+        starts a fresh run. A step that raises part-way through a burst
+        abandons the rest of it, which is the same rule one step per tick
+        already followed - `AgentUptakeSystem.advance` rolls the failed step
+        back, so the run stops on the last completed step and the steps that
+        would have followed it in this tick are never taken.
         """
 
         while True:
-            await asyncio.sleep(SIMULATION_STEP_S)
+            await asyncio.sleep(SIMULATION_TICK_INTERVAL_S)
 
             if not self._controller.is_running:
                 continue
 
+            steps = self._playback_rate.steps_per_tick(
+                tick_interval_s=SIMULATION_TICK_INTERVAL_S, simulation_step_s=SIMULATION_STEP_S
+            )
+
             try:
-                self._controller.advance(SIMULATION_STEP_S)
+                for _ in range(steps):
+                    self._controller.advance(SIMULATION_STEP_S)
             except Exception as error:  # broad by design - see _halt_run
                 self._halt_run(error)
 
