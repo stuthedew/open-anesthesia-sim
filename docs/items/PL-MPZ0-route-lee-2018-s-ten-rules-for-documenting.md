@@ -19,7 +19,7 @@ audited one at a time against the tree, and only the gaps were routed.
 
 | Rule | State here | Disposition |
 | --- | --- | --- |
-| 1. Comment as you code | Exceeded. `Makefile` and `pyproject.toml` carry measurement and reasoning inline; `PL-JK0M` (route or justify the 548 resident instruction lines) is the standing pressure in the other direction | Declined as written — see below |
+| 1. Comment as you code | Coverage is near-total: every module and class under `src/` carries a docstring and 160 of 172 public functions do | Already practice |
 | 2. Examples, doubling as tests | `tests/reference/test_published_wash_in.py` is the paper's own recommendation, against Yasuda et al. rather than against the code | Already practice |
 | 3. Quickstart | README carries Requirements, Setup, Running and Development | Owned by `PL-N092`, behind the README freeze |
 | 4. README basics | Install, test, license, docs map and per-target `make` descriptions all present | Already practice |
@@ -30,15 +30,33 @@ audited one at a time against the tree, and only the gaps were routed.
 | 9. Error messages that carry state and a fix | Split: `core/supported_ranges.py` is exemplary, `core/validation.py` names the parameter and nothing else | → `.claude/rules/expert-review.md`, `PL-T137` |
 | 10. Say how to cite the software | Absent when this audit ran against `af1804b`; `PL-8DDG` landed `CITATION.cff` as #338 while this branch was open | Already practice, concurrently |
 
-**Why rules 1 and 8 are declined rather than deferred.** Rule 1's advice is to
-err toward more comments. That advice is calibrated for the paper's stated
-audience — biologists with no software training — and inverting this
-repository's actual failure mode is not a neutral cost: `CLAUDE.md` holds the
-workflow apparatus to staying streamlined, and the resident instruction total
-is measured on every run precisely because prose accretes. Rule 8 asks for
-Sphinx or an equivalent site. Its verification half — doctest, examples that
-run — is the valuable part and is already covered by `tests/reference/` against
-published data; the site half is apparatus for an audience that does not exist.
+**Rule 1 is already practice, and two drafts of this item said otherwise before
+the project owner corrected each.** Both errors are recorded because the second
+is easy to repeat.
+
+The first declined rule 1 citing the *apparatus* side of `CLAUDE.md`'s two
+standards — "polishing it past sufficient", the resident instruction total,
+`PL-JK0M` — for a rule that governs `src/` and `tests/`, which are the product
+side. That is the wrong half of a split `CLAUDE.md` draws deliberately, and
+`PL-6SBB` is the scoping fix that came out of it.
+
+The second declined it citing `PL-XXBD`, reading that item as asking for fewer
+comments. It does not. `PL-XXBD` asks that each comment communicate
+efficiently — fluff is the defect — which is a claim about how a comment is
+*written*, not about how many exist. The two are independent axes, and Lee's
+rule 1 is on the coverage one: comment as you code, land in the Goldilocks
+zone. Measured 2026-09-05, that is met — every module and class under `src/`
+carries a docstring and 160 of 172 public functions do — so "when in doubt, err
+on the side of more" has almost no doubt left to arbitrate. Nothing in it
+argues against `PL-XXBD`; Lee makes the same point himself, that readers "will
+get lost in the sea of comments".
+
+So there is nothing in rule 1 to adopt and nothing to decline.
+
+**Rule 8** asks for Sphinx or an equivalent site, and is the one genuine
+decline. Its verification half — doctest, examples that run — is the valuable
+part and is already covered by `tests/reference/` against published data; the
+site half is apparatus for an audience that does not exist.
 
 **Where.** `.claude/rules/expert-review.md` § "What a docstring and an error
 message owe a reader", added 2026-09-05. Path-scoped to `src/**`, `docs/**` and

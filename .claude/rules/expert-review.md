@@ -113,11 +113,11 @@ message naming only the parameter leaves a rejected setting untraceable to the
 input that produced it, which `CLAUDE.md`'s safety-critical standard treats as
 part of the value rather than as presentation.
 
-**Neither is an argument for more prose.** Lee's first rule recommends erring
-toward more comments. This repository's failure mode is the opposite one, and
-what is adopted above is two specific obligations, each replacing prose with a
-fact a reader cannot get anywhere else. His eighth rule — a generated
-documentation site — is declined on the same ground: there is no external API
-consumer to serve it to, and `tests/reference/` already does what its
-verification half asks for, against published data rather than against the
-code's own claims.
+**Both are facts, not a license for commentary.** Each obligation above puts
+something in the docstring or the message that a reader cannot get anywhere
+else — which condition is refused, which value failed it. Neither is served by
+words around it, and `PL-XXBD` is the standing pass on comments that pad rather
+than communicate. Lee's eighth rule — a generated documentation site — is
+declined outright: there is no external API consumer to serve it to, and
+`tests/reference/` already does what its verification half asks for, against
+published data rather than against the code's own claims.
