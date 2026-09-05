@@ -916,3 +916,73 @@ def test_a_recorded_change_points_at_the_last_sample_under_the_old_value() -> No
     whole_run = controller.history_window(0.0)
     assert change.sample_index == len(whole_run.samples) - 1
     assert whole_run.samples[change.sample_index].elapsed_s == pytest.approx(change.elapsed_s)
+
+
+def test_a_run_nobody_has_touched_holds_nothing_to_discard() -> None:
+    """The state a fresh session leaves, and the state `reset()` returns to.
+
+    `SimulationSnapshot.has_recorded_run` is what lets the interface tell a
+    destructive agent change from a harmless one, so the two ends of it are
+    pinned rather than left to a caller's reading.
+    """
+
+    controller = SimulationController()
+
+    assert controller.snapshot().has_recorded_run is False
+
+
+def test_an_advanced_run_holds_something_to_discard() -> None:
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+
+    assert controller.snapshot().has_recorded_run is True
+
+
+def test_a_setting_changed_before_the_run_starts_is_something_to_discard() -> None:
+    """Elapsed time alone would miss this one.
+
+    A vaporizer turned before Start is a recorded input at zero simulated
+    time, and it is part of the case a reader set up; a check reading only
+    the clock would call this run empty and discard it without asking.
+    """
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(2.0)
+
+    snapshot = controller.snapshot()
+    assert snapshot.elapsed_s == 0.0
+    assert snapshot.control_timeline != ()
+    assert snapshot.has_recorded_run is True
+
+
+def test_reset_returns_a_run_to_holding_nothing_to_discard() -> None:
+    """Reset is the way to make an agent change cost nothing.
+
+    Not incidental: it is what a reader who wants a different agent and does
+    not want their case is told to do, so it has to actually clear both
+    halves of the predicate.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+    controller.set_fresh_gas_flow(2.0)
+    controller.reset()
+
+    assert controller.snapshot().has_recorded_run is False
+
+
+def test_set_agent_leaves_a_new_run_holding_nothing_to_discard() -> None:
+    """A switch that has just been paid for must not immediately re-arm.
+
+    Confirming a new case and then re-opening the selector would otherwise
+    ask about a case with nothing in it.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+    controller.set_agent("desflurane")
+
+    assert controller.snapshot().has_recorded_run is False
