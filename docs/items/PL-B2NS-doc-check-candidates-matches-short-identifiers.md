@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
 closed: 2026-09-05
+pr: 335
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_candidates_does_not_report_an_identifier_used_as_ordinary_prose' tests/unit/test_doc_check.py
 ---
 

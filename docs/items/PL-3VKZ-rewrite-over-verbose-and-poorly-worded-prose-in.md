@@ -1,10 +1,14 @@
 ---
 id: PL-3VKZ
 title: Rewrite over-verbose and poorly worded prose in the human-facing markdown documents
-status: untriaged
+priority: P2
+effort: L
+status: ready
+classes: docs
 feature: prose-quality
-touches: docs, ROADMAP.md
+touches: docs/MODEL.md, docs/ARCHITECTURE.md, docs/maintainer.md, ROADMAP.md
 added: 2026-09-05
+not-delegable: prose quality is judged by a reader, and no command separates trimmed prose from padded prose. The two that could run are worse than none - a line-count ceiling is met by deleting a paragraph to reach a number, which is why `check_resident_instructions` refuses one, and `doc_check.py check` passes today. `docs/MODEL.md` is a protected path besides
 ---
 
 **Problem.** The human-facing markdown documents are, in the project owner's
@@ -36,8 +40,18 @@ Two exclusions, both deliberate:
   a limitation or a provenance note. Where a passage is long because the
   science is, it stays long.
 
-`docs/WORKING_NOTES.md` needs a scope decision of its own at triage: it is a
-working log of open threads rather than a document with a reader, so "too
-verbose" may not be a defect in it at all.
+**`docs/WORKING_NOTES.md` is out of scope, decided at triage (2026-09-05).**
+Its reader is the next session rather than a person deciding what the simulator
+is, and `docket.toml`'s `workflow_paths` already counts it as apparatus rather
+than product - so `CLAUDE.md`'s "working reliably and staying streamlined"
+governs it, not the specialist prose standard this item applies. Length there
+is a symptom of a thread still being open, and it is paid off by closing the
+thread rather than by rewriting the note.
 
-**Done when.**
+**Done when.** `docs/MODEL.md`, `ROADMAP.md`, `docs/ARCHITECTURE.md` and
+`docs/maintainer.md` have each been read end to end and cut for a human
+reader: no paragraph restating the one above it, no clause that adds nothing,
+no section that could be a sentence. Every equation, unit, assumption,
+limitation and provenance note in `docs/MODEL.md` still says what it said, and
+`make check` passes, so no citation, package-map entry or math block was broken
+by the edit.
