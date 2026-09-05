@@ -152,3 +152,32 @@ is the one who will read it: its third deliverable used to ask for
 RK4 oracle's own solution, not the split's, and re-pinning them would convert
 `test_independent_solution_matches_pinned_reference_states` into a
 self-comparison. `PL-X9KD` is corrected; leave those states alone.
+**Amendment, 2026-09-05 (project owner): the propagator takes the interval as
+an argument.** This item's shape is unchanged — `build_system_matrix` is still
+the deliverable, and `core/` still reads as the transcribed equations, which is
+the bar it was written against. One thing is added: `propagate` accepts the
+interval it advances rather than being called only at `SIMULATION_STEP_S`.
+
+That is a one-parameter change here and the whole of the architecture
+downstream. The retired harness's own `propagate` already worked over
+arbitrary horizons — it was written to verify against 60 s and 3600 s runs — so
+this is a matter of not narrowing it on the way in, rather than of building
+anything more.
+
+*Why it is not the readability compromise it sounds like.* The final paragraph
+of `docs/MODEL.md` § "Selected method (as implemented)" says the fixed 0.1 s
+step is unaffected by an exact solver and justifies it by determinism. That is
+false, and `PL-ZHTT` carries the correction: "step-size divergence" is a
+property of the split's `O(dt)` error, and an exact propagator has none, so a
+fixed width protects against nothing. Determinism is instead carried by an
+explicit canonical evaluation rule, which is `PL-P1Z3`.
+
+*What it unblocks.* `PL-T691` makes the run its control-input timeline plus
+keyframes, which removes the sample store entirely — measured 2026-09-05 at
+~140 KiB for a 30-day ICU case against 3.16 GB today, with frame cost of 3.3 ms
+at a 1 h window and 3.6 ms at 30 days. `PL-2FM6` and `PL-8LXM` remove
+`RunHistory` and `chart_downsampling.py` behind it, and `ROADMAP.md` items 9
+to 12 (save, replay, comparison, forking) stop needing a snapshot-interval
+design at all.
+
+Nothing above changes what a reviewer sees when they open `core/`.
