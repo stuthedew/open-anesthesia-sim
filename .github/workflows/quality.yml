@@ -60,6 +60,56 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The floor section, and it runs FIRST - before uv exists on this runner.
+      #
+      # `tools/` and `subprojects/docket/` promise to run under a bare `python3`
+      # with no virtualenv and no install step; that is why they depend on
+      # nothing outside the standard library, and `make check`'s last two lines
+      # are exactly that invocation. This was a separate `floor` job until
+      # `PL-D551`, which merged it here: it billed a whole minute for eight
+      # seconds of work, and a job is also a slot against the account's
+      # concurrent-job cap, which is what throttles parallel sessions once
+      # minutes stop being the binding constraint.
+      #
+      # **Order is the whole design.** Running these before `astral-sh/setup-uv`
+      # makes the no-virtualenv claim stronger than the separate job did rather
+      # than weaker: that job merely *assumed* isolation from a parallel one,
+      # while here no virtualenv and no `UV_*` variable exists yet to leak from.
+      # It also fails fast - a broken doc reference costs one billable minute
+      # instead of five, because the suite below never starts. Anything moved
+      # above this section that installs a toolchain silently voids the proof.
+      #
+      # Both portability suites stay. They run before a push, they name the
+      # offending file and import where a traceback here would not, and they
+      # reach a file or a lazily-imported branch these commands never touch.
+      # What this performs is the run itself, which settles imports, syntax and
+      # runtime behavior together and needs no allowlist kept current as the
+      # standard library moves.
+
+      # `python-version:` is set here rather than inherited, which is the
+      # opposite of the choice made for `setup-uv` below and for the same
+      # reason. Left unset, the action reads `.python-version` - the project
+      # interpreter, the one version this section exists not to test. The floor
+      # itself is not chosen here either: it is what
+      # `subprojects/docket/pyproject.toml` declares in `requires-python`, and
+      # `tests/unit/test_tools_portability.py` holds this pin to it so the two
+      # cannot drift. It is also the file's only concrete `python-version:`
+      # pin, which that suite asserts, so a second one added anywhere here
+      # fails it rather than silently splitting the floor in two.
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      - run: python3 tools/doc_check.py check
+      - run: python3 tools/branch_id_check.py
+      - run: python3 tools/rules_paths_check.py
+      # Bare, unlike the `checks` job above: this job installs no `uv`, so
+      # every `verify:` command would be "not found" and the replay would
+      # decline rather than answer. What is being proved here is that the
+      # command runs at all under the 3.11 floor with no virtualenv.
+      - run: bin/docket check
+      - run: python3 tools/contrast_check.py
+
       # No `python-version:` input on purpose. It sets UV_PYTHON, which
       # overrides `.python-version`, so CI would resolve its own interpreter
       # instead of the pinned one. The interpreter is named once, in
@@ -99,15 +149,16 @@ jobs:
       # coverage: this is the job and these are the events it ran on before
       # (`PL-P3B6`). CI wall clock is not what that item was optimizing.
       - run: bin/docket check --verify
-      # Repeated in the `floor` job below, unlike the line after it: this
+      # Repeated from the floor section above, unlike the line after it: this
       # one reads `git log` and the branch name, never project source, so
       # the 3.11 parser has nothing it cannot read. `PL-CP74`.
       - run: uv run python tools/branch_id_check.py
       - run: uv run python tools/doc_check.py check
       - run: uv run python tools/contrast_check.py
-      # Deliberately not repeated in the `floor` job below, unlike the three
-      # lines above. That job runs the tools under the 3.11 floor to prove they
-      # need no virtualenv; this one reads `src/anesthesia_sim/` with `ast`,
+      # Deliberately absent from the floor section above, unlike the three
+      # lines before it. That section runs the tools under the 3.11 floor to
+      # prove they need no virtualenv; this one reads `src/anesthesia_sim/`
+      # with `ast`,
       # and that source targets 3.14, so the 3.11 parser cannot read its input
       # - a `SyntaxError` on `app/chart_downsampling.py`'s PEP 695 generics
       # rather than anything about the tool. The Makefile comment on the same
@@ -119,68 +170,12 @@ jobs:
       # `pull_request: edited` so that renaming a title can clear it, and
       # adding `edited` to this trigger would re-run everything above on every
       # body edit.
+      #
+      # `PL-D551` folded the `floor` job into this one and deliberately stopped
+      # there. Folding the title check back in as well - which `PL-9HDH`
+      # proposed, to reclaim its billable minute - would restore exactly the
+      # defect `PL-3V8K` and `PL-0ZP8` both diagnosed: this trigger excludes
+      # `edited`, so the rename the check asks for would fire no event and
+      # could never clear the failure it caused. One billable minute is the
+      # correct price for that, and `PL-9HDH` is dropped saying so.
 
-  # The other half of what `checks` proves, and the half that was missing.
-  # Everything above runs under the virtualenv on the interpreter
-  # `.python-version` pins. But `tools/` and `subprojects/docket/` promise to
-  # run under a bare `python3` with no virtualenv and no install step - that is
-  # why they depend on nothing outside the standard library, and `make check`'s
-  # last two lines are exactly that invocation. Nothing here exercised it:
-  # `checks` reaches doc_check through `uv run python`, and `bin/docket check`
-  # through whatever system python the runner image happens to ship, neither of
-  # them the declared floor.
-  #
-  # So both portability suites were approximating a run CI never performed -
-  # `tests/unit/test_tools_portability.py` gating syntax through
-  # `ast.parse(feature_version=...)` and reading the wrong interpreter's
-  # `sys.stdlib_module_names`, `subprojects/docket/tests/test_portability.py`
-  # keeping an import allowlist by hand. This job performs the run instead,
-  # which settles imports, syntax and runtime behavior together and needs no
-  # list kept current as the standard library moves.
-  #
-  # The suites stay. They run before a push, they name the offending file and
-  # import where a traceback here would not, and they reach a file or a
-  # lazily-imported branch these two commands never touch.
-  floor:
-    runs-on: ubuntu-latest
-    # Observed at 8 seconds. 5 minutes is far past any honest run and still
-    # 355 minutes short of the default, which is the point. `PL-FSH9`.
-    timeout-minutes: 5
-
-    steps:
-      # `fetch-depth: 0` rather than the action's default of 1, because three
-      # checks here need history and were silently not running without it.
-      # `bin/docket check` declines the recorded-pull-request read on a
-      # truncated clone, `tools/doc_check.py` declines the release-tag read,
-      # and the missing-`pr` read - which does not decline - reported correct
-      # provenance as lost, turning `main` red on 97573ae and 3b37a75 for a
-      # number recoverable from a commit the depth-1 clone no longer held.
-      # `PL-99Y4` fixed that conflation at the source; this is the other half,
-      # giving the checks somewhere they can actually answer. Measured on the
-      # full history first: all three go from "not checked" to passing, so
-      # this adds coverage rather than failures. 0 fetches tags too, which is
-      # what the release-tag read wants.
-      - uses: actions/checkout@v7.0.1
-        with:
-          fetch-depth: 0
-
-      # `python-version:` is set here rather than inherited, which is the
-      # opposite of the choice above and for the same reason. Left unset, the
-      # action reads `.python-version` - the project interpreter, the one
-      # version this job exists not to test. The floor itself is not chosen
-      # here either: it is what `subprojects/docket/pyproject.toml` declares in
-      # `requires-python`, and `tests/unit/test_tools_portability.py` holds
-      # this pin to it so the two cannot drift.
-      - uses: actions/setup-python@v7.0.0
-        with:
-          python-version: '3.11'
-
-      - run: python3 tools/doc_check.py check
-      - run: python3 tools/branch_id_check.py
-      - run: python3 tools/rules_paths_check.py
-      # Bare, unlike the `checks` job above: this job installs no `uv`, so
-      # every `verify:` command would be "not found" and the replay would
-      # decline rather than answer. What is being proved here is that the
-      # command runs at all under the 3.11 floor with no virtualenv.
-      - run: bin/docket check
-      - run: python3 tools/contrast_check.py
