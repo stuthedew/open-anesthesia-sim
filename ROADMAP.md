@@ -2187,7 +2187,16 @@ enflurane, ether, xenon; not nitrous oxide, which is covered by items 6-7
 above) remain an unscoped later idea, to be added back here as its own item
 once someone is ready to scope it.
 
-None of items 1-31 mix scientific-core and UI/tooling concerns within a
+32. Make the repository presentable to a first-time visitor, as one pass
+    immediately before it is made public. The project owner deferred the README
+    rewrite here on 2026-09-05 rather than running it as soon as its scope was
+    settled, and expects a number of similar human-facing pieces to collect at
+    the same point: written to one reader over one week they cohere in a way
+    the same documents written singly over months do not. `PL-XYRN` is the gate
+    this places, holds the decision of when to go public, and is what deferred
+    items are blocked on.
+
+None of items 1-32 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
