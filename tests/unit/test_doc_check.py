@@ -1135,6 +1135,43 @@ def test_a_coverage_gate_that_drifted_between_them_is_an_error(tmp_path: Path) -
     assert any("the coverage gate differs between the Makefile and CI" in m for m in errors)
 
 
+#: The same gate spelled for each file: Make doubles `$` in a recipe to pass one
+#: through to the shell, so a command carrying a shell substitution genuinely
+#: differs by that one character while being the same command.
+SUBSTITUTED_CI = (
+    "uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') "
+    "--dist worksteal --cov=demo.core --cov-branch --cov-fail-under=100"
+)
+SUBSTITUTED_MAKE = SUBSTITUTED_CI.replace("$(", "$$(")
+
+
+def test_makes_doubled_dollar_is_not_read_as_a_drift(tmp_path: Path) -> None:
+    """The escape is Make's, not a difference in what runs (`PL-VZ8P`).
+
+    Before this, moving the worker count from `-n auto` to a shell substitution
+    failed the check on the one character Make requires - an error about the two
+    gates disagreeing when they agree exactly.
+    """
+    root = _gated(_repo(tmp_path), make=SUBSTITUTED_MAKE, ci=SUBSTITUTED_CI)
+
+    assert _errors(root) == []
+
+
+def test_a_real_drift_inside_a_substituted_command_is_still_caught(tmp_path: Path) -> None:
+    """The normalization must not become a way for drift to hide.
+
+    Only `$$` collapses; everything else still compares exactly, so a threshold
+    that moved on one side alone is an error however the line is spelled.
+    """
+    root = _gated(
+        _repo(tmp_path),
+        make=SUBSTITUTED_MAKE,
+        ci=SUBSTITUTED_CI.replace("--cov-fail-under=100", "--cov-fail-under=99"),
+    )
+
+    assert any("the coverage gate differs between the Makefile and CI" in m for m in _errors(root))
+
+
 def test_the_drift_error_names_both_commands(tmp_path: Path) -> None:
     # A reader has to see which side changed; naming only the rule would make
     # them diff two files by hand to find out.
