@@ -1,9 +1,17 @@
 ---
 id: PL-YYL2
 title: ROADMAP item 29 says nine items carry v0.4.1 and names PL-P0BB, which closed in v0.3.2, so eight remain
-status: untriaged
+status: done
 added: 2026-09-05
+closed: 2026-09-05
+priority: P3
+effort: S
+classes: docs, defect
+touches: ROADMAP.md
+feature: planning-cadence
+verify: python3 tools/doc_check.py check && grep -qF 'Corrected 2026-09-05 (`PL-YYL2`)' ROADMAP.md
 ---
+
 **Problem.** `ROADMAP.md`'s planned-milestone item 29 says "Nine items carry
 it: `PL-P0BB`, `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and six under
 `core-domain-language`", and the timeline's v0.4.1 row repeats the nine by id.
