@@ -253,6 +253,7 @@ tools/
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
+├── rules_paths_check.py  # refuses a `.claude/rules/*.md` `paths:` entry that does not begin with `/`, because an unanchored glob also matches its name at any depth and `./` matches nothing at all, so a rule's real scope can differ silently from the one it declares
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
 ```
 
@@ -459,7 +460,8 @@ gate rather than an older parser, and the wrong interpreter's
 `sys.stdlib_module_names`. `.github/workflows/quality.yml`'s `floor` job
 performs the run they stand in for: `actions/setup-python` at the declared
 floor, then `python3 tools/doc_check.py check`, `python3 tools/branch_id_check.py`,
-`bin/docket check` and `python3 tools/contrast_check.py` under it.
+`python3 tools/rules_paths_check.py`, `bin/docket check` and
+`python3 tools/contrast_check.py` under it.
 That decides syntax, imports and runtime behavior at once, with no list to keep
 current. A fourth test holds the job's pinned version to `requires-python`, so
 raising the floor cannot leave CI exercising an interpreter the project no

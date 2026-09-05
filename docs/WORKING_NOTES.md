@@ -742,7 +742,7 @@ and says the same thing about sequencing. Repository topics were proposed in
 the same discussion and not applied; they are independent of the wording and
 can be set whenever.
 
-## Open thread: `.claude/rules/` path globs are unanchored - PL-ZQ35, PL-H588, PL-LLWN
+## Settled: `.claude/rules/` path globs are unanchored - PL-ZQ35, PL-H588, PL-LLWN
 
 Measured on 2026-09-05 while closing `PL-ZQ35`: a `paths:` entry in a
 `.claude/rules/*.md` file matches its name at **any depth** unless it begins
@@ -772,12 +772,18 @@ failure is today:
   a second file of that name appears, which `subprojects/` exists to make
   likely.
 
-**Order.** `PL-LLWN` is what is left, and it is now the whole of it: the two
-live instances are closed, so the check lands on globs that are already
-correct rather than failing the tree it is added to. It has one fewer rule to
-police than when this thread was written - `expert-review.md` carries no
-`paths:` at all now - and one more that was written anchored from the start,
-`.claude/rules/sources-and-docstrings.md`.
+**Closed 2026-09-05.** `PL-LLWN` added `tools/rules_paths_check.py`, wired
+into `make check` and CI's `floor` job, and anchored the nine entries that were
+still bare. The rule is exact - every `paths:` entry begins with `/` - so it is
+a hard error, and the message names the replacement spelling rather than only
+the offence. The `./` row above is called out separately in it, since "add a
+leading slash" reads as cosmetic against an entry that matches nothing.
+
+What the check deliberately does not do is decide whether a glob describes the
+*right* set of files; that is judgment and differs per rule. `PL-DNYL` is the
+one decidable piece left beside it: an anchored entry whose literal prefix
+resolves to nothing is a rule that silently never fires, and the tree can
+answer that.
 
 **Excluded deliberately.** Whether a rule's glob describes the *right* set of
 files is judgment, differs per rule, and is the "worse than no tool" case if
@@ -818,11 +824,14 @@ code-and-provenance half went to `.claude/rules/sources-and-docstrings.md`,
 which fires with a file already open. Resident cost +4721 characters, recorded
 in the ledger with the argument.
 
-**What is still open.** Whether the resident half should be compressed. It was
-moved verbatim rather than rewritten, deliberately - `CLAUDE.md` forbids
-deleting a rule for being wordy, and compressing another author's list while
-moving it is how a rule gets lost quietly. A separate pass could cut it with
-the list in front of the owner. The other open half is whether the scope
-paragraph now at the top of the file is enough to keep the specialist standard
-off the apparatus, which is the risk `PL-H588` named and which making the file
-resident makes larger rather than smaller; nothing but practice will say.
+**Compression: declined** (project owner, 2026-09-05, "leave it"). The
+resident half stays as moved - verbatim, +4721 characters. Do not re-open this
+as a tidy-up; it was put to the owner with the number attached and answered.
+
+**What is still open.** Whether the scope paragraph now at the top of
+`expert-review.md` is enough to keep the specialist standard off the apparatus.
+That is the risk `PL-H588` named, and making the file resident makes it larger
+rather than smaller: the standard now loads on every session, including one
+working only in `subprojects/docket/`. Nothing but practice will say, and the
+symptom to watch for is a session over-investing in the apparatus while citing
+the right file - which is `PL-6SBB` exactly, in the other direction.

@@ -9,6 +9,7 @@ feature: project-introduction
 touches: .claude/rules/readme-hold.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 350
 verify: python3 tools/doc_check.py check && grep -qF 'subprojects/docket/README.md' .claude/rules/readme-hold.md && grep -qF '"/README.md"' .claude/rules/readme-hold.md
 ---
 
