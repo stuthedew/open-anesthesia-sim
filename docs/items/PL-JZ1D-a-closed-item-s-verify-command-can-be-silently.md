@@ -3,11 +3,12 @@ id: PL-JZ1D
 title: A closed item's verify: command can be silently invalidated by later work, and nothing notices
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: delegation
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
+verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_vcs.py && grep -q 'def test_rewriting_a_closed_item_s_verify_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `docket check` runs the `verify:` command of every *open* item,
