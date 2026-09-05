@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: worker-instructions
+milestone: v0.4.0
 touches: CLAUDE.md
 added: 2026-09-05
 closed: 2026-09-05

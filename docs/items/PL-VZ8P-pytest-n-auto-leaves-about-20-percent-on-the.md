@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost, infra
 feature: dev-tooling
+milestone: v0.4.0
 touches: Makefile, .github/workflows/quality.yml
 added: 2026-09-05
 closed: 2026-09-05

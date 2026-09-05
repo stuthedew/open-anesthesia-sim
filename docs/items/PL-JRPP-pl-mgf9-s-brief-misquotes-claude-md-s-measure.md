@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: worker-instructions
+milestone: v0.4.0
 touches: docs/items/PL-MGF9-the-process-work-grooming-advisory-only.md
 added: 2026-09-05
 closed: 2026-09-05

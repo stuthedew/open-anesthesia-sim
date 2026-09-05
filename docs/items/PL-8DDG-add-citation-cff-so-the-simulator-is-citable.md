@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: project-introduction
+milestone: v0.4.0
 touches: CITATION.cff
 added: 2026-09-05
 closed: 2026-09-05

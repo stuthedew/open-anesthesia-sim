@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: planning-cadence
+milestone: v0.4.0
 touches: docs/items
 added: 2026-09-05
 closed: 2026-09-05
