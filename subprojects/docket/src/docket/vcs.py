@@ -1820,6 +1820,133 @@ def _items_at(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, st
 
 
 @dataclass(frozen=True)
+class BaseRecord:
+    """What the default base's copy of one closed item records as its proof."""
+
+    identifier: str
+    verify: str
+
+
+@dataclass(frozen=True)
+class RecordReport:
+    """What the base recorded as the `verify:` of the closed items changed here.
+
+    A closed item's command is a record of an experiment that was performed:
+    this command was run, it failed before the work and passed after. It is a
+    fact about a tree that no longer exists, not a claim about `main` today,
+    and it stops resolving as a matter of course - measured over this store,
+    14 of the 179 closed items carrying one no longer resolve, and every one
+    of the 14 is a later change correctly consuming the state the earlier item
+    established. Four are `grep '^blocked-by: PL-...'` commands whose blocker
+    was resolved, which is to say commands written to stop resolving.
+
+    So the reading this supports is not "has the command rotted" - it has, and
+    that is the system working - but "is this branch about to rewrite one".
+    Re-pointing a closed command at whatever covers the ground now replaces the
+    command that proved the work with one that never ran it, which is a false
+    provenance where there was a true one.
+
+    `declined` carries the same meaning it does everywhere else here: a check
+    that could not run, reported as such rather than as a clean result.
+    """
+
+    base: str = ""
+    #: One entry per closed item this checkout changed that the base also reads
+    #: `done`. An id absent from the base, open on it, or untouched here is
+    #: absent from this, so a missing entry is "nothing to compare" rather than
+    #: "compared and matched".
+    records: tuple[BaseRecord, ...] = ()
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+    @property
+    def commands(self) -> dict[str, str]:
+        return {record.identifier: record.verify for record in self.records}
+
+
+def _changed_items(root: Path, base: str, items_dir: str, run: Runner) -> set[str]:
+    """The item ids this checkout has changed, committed on the branch or not.
+
+    Two diffs, because `make check` runs at two moments and each is blind to
+    the other's case. `<base>...HEAD` is what the branch's commits changed,
+    which is what CI sees on a pull request; `HEAD` is what the working tree
+    holds and has not committed, which is what a session sees running `make
+    check` before committing - the moment an edit can still be undone cheaply.
+
+    Neither is `<base>` against the working tree, which would have been one
+    call for both. That form also lists the files *the base* changed and this
+    branch did not, so a branch merely behind `main` would be asked to answer
+    for somebody else's edit. A check that accuses the wrong branch is one
+    every session learns to route around, which is the failure `CLAUDE.md`
+    reserves its retirement rule for.
+
+    A `...` with no merge base to resolve returns nothing, because `_run_git`
+    answers a failed command with empty output. That is the safe direction: the
+    caller then under-reports, which leaves the tree exactly as it is today,
+    rather than reporting a rewrite that did not happen.
+    """
+    changed: set[str] = set()
+    for revision in (f"{base}...HEAD", "HEAD"):
+        for line in run(["diff", "--name-only", revision, "--", items_dir], root).splitlines():
+            path = line.strip()
+            match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path else None
+            if match is not None:
+                changed.add(match.group(1))
+    return changed
+
+
+def records_on_base(
+    root: Path,
+    closed: Mapping[str, str],
+    *,
+    items_dir: str = "docs/items",
+    runner: Runner | None = None,
+) -> RecordReport:
+    """What the default base records as the `verify:` of each closed item changed here.
+
+    `closed` maps an item id to the file name holding it, for every item that
+    reads `done` in the working tree. Narrowing that to the ones this checkout
+    actually changed happens here rather than in the caller, because it is a
+    question about git rather than about the store: the store cannot tell
+    which of two hundred closed items this branch has an opinion about, and
+    asking after all of them would be a `git show` each on every `make check`.
+
+    Resolution is by id, never by path. Retitling an item renames its file, so
+    the working tree's path need not exist on the base at all and a comparison
+    by path would read the rename as an item the base does not hold - the gap
+    `closures_on_base` accepts, closed here because one `ls-tree` answers it
+    for the whole store and is read only when something changed.
+
+    Needs no history behind the base: one tree listing and one `git show` per
+    changed closed item, which is what lets it answer in the shallow clone an
+    agent session starts from.
+    """
+    run = runner or _run_git
+    base = default_base(root, runner=run)
+    if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
+        return RecordReport(declined="no default branch this checkout can read")
+    changed = _changed_items(root, base, items_dir, run) & set(closed)
+    if not changed:
+        return RecordReport(base=base)
+    at_base = _items_at(base, root, items_dir, run)
+    records: list[BaseRecord] = []
+    for identifier in sorted(changed):
+        path = at_base.get(identifier)
+        if path is None:  # closed here, and the base has never held the item
+            continue
+        text = run(["show", f"{base}:{path}"], root)
+        if not text:
+            continue
+        recorded = parse_item(text, path.rsplit("/", 1)[-1])
+        if recorded.status == "done":
+            records.append(BaseRecord(identifier=identifier, verify=recorded.verify))
+    return RecordReport(base=base, records=tuple(records))
+
+
+@dataclass(frozen=True)
 class ClosedByReport:
     """Which items one commit closed, or why that could not be read.
 

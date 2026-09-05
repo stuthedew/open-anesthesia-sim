@@ -1982,9 +1982,50 @@ def _git(root: Path, *args: str) -> list[str]:
 
 # What a diff changes that documentation is likely to name: a definition, a
 # data-file key, or the file itself.
-DEFINITION_RE = re.compile(r"^[-+]\s*(?:async\s+)?(?:def|class)\s+(\w+)")
+#
+# `DEFINITION_RE` requires the punctuation that makes a line a declaration
+# rather than a sentence. Without it, a wrapped prose line beginning "class
+# describes the deliverable" reads as a class named `describes`, so editing a
+# single queue item seeded the search with an ordinary English word and
+# returned 26 lines about nothing (`PL-B2NS`).
+DEFINITION_RE = re.compile(r"^[-+]\s*(?:async\s+)?(?:def|class)\s+(\w+)\s*[(:]")
 JSON_KEY_RE = re.compile(r'^[-+]\s*"(\w+)"\s*:')
 REMOVED_HEADING_RE = re.compile(r"^-#{1,6}\s+(.+?)\s*#*\s*$")
+
+# A term's shape decides how it is searched for, because the two shapes carry
+# different risk. `doc_check.py`, `changed_tokens` and `TreeMap` cannot be
+# written by accident in an English sentence, so they are searched for as bare
+# words wherever they appear. A term that is *also* an ordinary word -
+# `settle`, `render`, `check`, `model` - is searched for only where the line
+# marks it as code, which this project does with backticks throughout.
+#
+# Searching the second kind as bare words is the defect this rule exists to
+# fix: one function named `settle` returned 30 lines of unrelated prose, a
+# module named `render.py` returned 37, and one JSON file whose keys are
+# English words returned over 900 (`PL-B2NS`).
+#
+# The line between them is shape alone: a term that is a single run of letters
+# is one prose can write by accident, and anything else - an underscore, an
+# internal capital, a digit, a dot, a slash, a hyphen - is a shape it does
+# not. A leading capital is not enough on its own, because `Gate` and `Scope`
+# are class names here and ordinary words in `ROADMAP.md`.
+ORDINARY_WORD_RE = re.compile(r"[A-Za-z][a-z]*")
+
+# The term is the tail or the head of a dotted or slashed reference:
+# `docket.render`, `tools/render`, `render.py`. The word character on the far
+# side of the separator is required so that a sentence ending "...how we
+# render." does not read as code.
+QUALIFIED_LEFT_RE = re.compile(r"\w[./]$")
+QUALIFIED_RIGHT_RE = re.compile(r"[./]\w")
+
+# Past this many lines for one term, the output has stopped being a shortlist:
+# a reader skims it, and the genuine candidates beside it get skimmed too. The
+# ceiling applies only to a term that is also an ordinary word, where a large
+# count is evidence that the word is common rather than that the symbol is
+# widely documented - one settings key named `check` matched 80 lines of
+# `docket check`. A distinctive term with eighty hits has eighty genuine
+# references, and a rename needs every one of them, so it is never capped.
+CROWDED_TERM_LIMIT = 10
 
 
 def _changed_paths(root: Path, base: str) -> list[str]:
@@ -2016,12 +2057,51 @@ def changed_tokens(root: Path, base: str, documents: Iterable[Path]) -> dict[str
         else:
             name = PurePosixPath(relative)
             found = {name.name, name.stem}
+            # A key is a term only where the file declaring it is a data file.
+            # The same `"key":` shape inside a changed markdown file is
+            # somebody's example, and the tree holds no such key.
+            patterns = (DEFINITION_RE, JSON_KEY_RE) if name.suffix == ".json" else (DEFINITION_RE,)
             for line in diff:
-                for pattern in (DEFINITION_RE, JSON_KEY_RE):
+                for pattern in patterns:
                     if (match := pattern.match(line)) is not None:
                         found.add(match.group(1))
         tokens[relative] = {token for token in found if len(token) > 3}
     return tokens
+
+
+def is_distinctive(term: str) -> bool:
+    """Is this a shape an English sentence cannot produce by accident?"""
+    return ORDINARY_WORD_RE.fullmatch(term) is None
+
+
+def _marks_code(line: str, start: int, end: int) -> bool:
+    """Does the line present this occurrence as code rather than as English?"""
+    before, after = line[:start], line[end:]
+    return (
+        # An odd number of backticks to the left puts the occurrence inside a
+        # code span. A line closing a span it did not open reads as prose,
+        # which is the safe way round: this decides what to *report*, and a
+        # term of this kind is the one whose bare matches are noise.
+        before.count("`") % 2 == 1
+        or after.startswith("(")
+        or QUALIFIED_LEFT_RE.search(before) is not None
+        or QUALIFIED_RIGHT_RE.match(after) is not None
+    )
+
+
+def mentions(term: str, line: str) -> bool:
+    """Does this line name the term as code, rather than use it as a word?
+
+    A distinctive term counts wherever it stands as a word, so a line reading
+    `changed_tokens returns` is reported without needing backticks. A term
+    that is also an ordinary word counts only where the line marks it as code.
+    Both are word-bounded, so `mine` no longer matches "determine".
+    """
+    distinctive = is_distinctive(term)
+    for match in re.finditer(rf"(?<!\w){re.escape(term)}(?!\w)", line):
+        if distinctive or _marks_code(line, match.start(), match.end()):
+            return True
+    return False
 
 
 def format_candidates(root: Path, base: str) -> str:
@@ -2033,28 +2113,52 @@ def format_candidates(root: Path, base: str) -> str:
 
     lines = [f"Documentation to review for the diff against {base}:", ""]
     total = 0
+    narrowed: set[str] = set()
     for relative, wanted in tokens.items():
         # One entry per documentation line, however many tokens hit it, so a
         # rename does not print the same line a dozen times.
         hits: dict[tuple[Path, int], str] = {}
+        crowded: list[str] = []
         for token in sorted(wanted):
-            for doc, doc_text in documents.items():
-                if doc == Path(relative):
-                    continue
-                for number, line in enumerate(doc_text.splitlines(), start=1):
-                    if token in line:
-                        hits.setdefault((doc, number), token)
-        if not hits:
+            distinctive = is_distinctive(token)
+            if not distinctive:
+                narrowed.add(token)
+            found = [
+                (doc, number)
+                for doc, doc_text in documents.items()
+                if doc != Path(relative)
+                for number, line in enumerate(doc_text.splitlines(), start=1)
+                if mentions(token, line)
+            ]
+            if not distinctive and len(found) > CROWDED_TERM_LIMIT:
+                crowded.append(
+                    f"    ({token}) matches {len(found)} lines marked as code - a word in "
+                    "this tree rather than a shortlist. Grep for it if the change touched it."
+                )
+                continue
+            for key in found:
+                hits.setdefault(key, token)
+        if not hits and not crowded:
             continue
         total += len(hits)
         lines.append(f"  {relative}")
         lines.extend(
             f"    {doc}:{number}  ({token})" for (doc, number), token in sorted(hits.items())
         )
+        lines.extend(crowded)
         lines.append("")
 
     if not total:
         lines.append("  Nothing in the documentation mentions anything this diff changed.")
+        lines.append("")
+    if narrowed:
+        # Name them, so a reader who suspects a miss knows the one word to
+        # grep for by hand rather than distrusting the whole list.
+        lines.append(
+            "Also ordinary English, so searched only where a line marks it as code: "
+            + ", ".join(sorted(narrowed))
+            + "."
+        )
         lines.append("")
     lines.append(
         "These are candidates, not findings: the mechanical half already ran in "

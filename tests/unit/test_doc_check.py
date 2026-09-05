@@ -535,6 +535,141 @@ def test_candidates_mode_is_quiet_when_nothing_changed(
     assert "nothing to sweep" in capsys.readouterr().out
 
 
+# --- which terms enter the candidate search, and how they are matched -------
+#
+# `candidates` is judged by the ratio, not by recall alone: a list that is
+# mostly prose trains a session to skim it, and the genuine lines get skimmed
+# with them. So each rule below has a test that the noise is gone and a test
+# that the signal survived it.
+
+# Line 6 uses two identifier names in their English sense; line 7 names one of
+# them as code. Only line 7 is a candidate.
+PROSE_README = README + (
+    "\nThe run does not settle until the compartments determine equilibrium.\n"
+    "The `settle` helper is what decides that.\n"
+)
+
+
+def test_candidates_does_not_report_an_identifier_used_as_ordinary_prose(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """One function named `settle` returned 30 lines of unrelated prose."""
+    root = _repo(tmp_path, readme=PROSE_README)
+    _git_init(root)
+
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text(
+        "def settle() -> None:\n    return None\n\n\ndef mine() -> None:\n    return None\n",
+        encoding="utf-8",
+    )
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
+    output = capsys.readouterr().out
+    # The sentence using "settle" as a verb, and "determine" as a word that
+    # merely contains `mine`, are both left out.
+    assert "README.md:6" not in output
+    # ...and the tool says which terms it narrowed, so a reader who suspects a
+    # miss knows the word to grep for rather than distrusting the whole list.
+    assert "searched only where a line marks it as code" in output
+    assert "mine" in output
+
+
+def test_candidates_reports_a_common_word_identifier_where_a_line_marks_it_as_code(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The half that must survive the fix: a renamed symbol named in prose."""
+    root = _repo(tmp_path, readme=PROSE_README)
+    _git_init(root)
+
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text("def settle() -> None:\n    return None\n", encoding="utf-8")
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
+    assert "README.md:7" in capsys.readouterr().out
+
+
+def test_candidates_reports_a_distinctive_identifier_without_backticks(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`snake_case` cannot be written by accident, so it needs no marking."""
+    readme = README + "\nThe settle_run helper decides when a run has finished.\n"
+    root = _repo(tmp_path, readme=readme)
+    _git_init(root)
+
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text("def settle_run() -> None:\n    return None\n", encoding="utf-8")
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
+    output = capsys.readouterr().out
+    assert "README.md:6  (settle_run)" in output
+    # `thing`, the changed file's stem, is the only term narrowed to code
+    # context; the snake_case name was matched as a bare word.
+    assert "as code: thing." in output
+
+
+def test_candidates_does_not_read_a_prose_line_beginning_class_as_a_definition(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A wrapped sentence is not a declaration, however it happens to start."""
+    root = _repo(tmp_path, readme=README + "\nWhat the table describes is the stored value.\n")
+    note = root / "docs" / "items" / "PL-0001-a-note.md"
+    note.parent.mkdir(parents=True, exist_ok=True)
+    note.write_text("A note.\n", encoding="utf-8")
+    _git_init(root)
+
+    note.write_text(
+        "The item's safety\nclass describes the deliverable, not the subject.\n", encoding="utf-8"
+    )
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
+    # `describes` never became a term, so it is neither a hit nor a narrowing.
+    assert "describes" not in capsys.readouterr().out
+
+
+def test_candidates_takes_a_json_key_only_from_a_json_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A `"key":` line in a changed markdown file is somebody's example."""
+    root = _repo(tmp_path)
+    note = root / "docs" / "items" / "PL-0002-a-note.md"
+    note.parent.mkdir(parents=True, exist_ok=True)
+    note.write_text("A note.\n", encoding="utf-8")
+    _git_init(root)
+
+    note.write_text(
+        '```json\n{\n    "tissue_gas_partition_coefficients": {"fat": 3.0}\n}\n```\n',
+        encoding="utf-8",
+    )
+    data = root / "src" / "anesthesia_sim" / "data" / "agents" / "demo.json"
+    data.write_text(
+        json.dumps({**DATA, "blood_gas_partition_coefficient": 0.6}, indent=4), encoding="utf-8"
+    )
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
+    output = capsys.readouterr().out
+    # The key the data file declares is a term; the same shape quoted in the
+    # note is not, so only the data file draws the provenance row.
+    assert "(blood_gas_partition_coefficient)" in output
+    assert "tissue_gas_partition_coefficients" not in output
+
+
+def test_candidates_summarizes_a_term_too_common_to_be_a_shortlist(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Eighty lines of `docket check` for one settings key is not a shortlist."""
+    roadmap = ROADMAP + "".join(f"- `check` again, line {n}.\n" for n in range(12))
+    root = _repo(tmp_path, roadmap=roadmap)
+    _git_init(root)
+
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text("def check() -> None:\n    return None\n", encoding="utf-8")
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
+    output = capsys.readouterr().out
+    assert "(check) matches 12 lines marked as code" in output
+    assert "ROADMAP.md:" not in output
+
+
 # --- release train ----------------------------------------------------------
 
 

@@ -3,11 +3,12 @@ id: PL-B2NS
 title: doc_check candidates matches short identifiers against ordinary prose, so one function named settle produced 30 false lines
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, session-cost
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+closed: 2026-09-05
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_candidates_does_not_report_an_identifier_used_as_ordinary_prose' tests/unit/test_doc_check.py
 ---
 
