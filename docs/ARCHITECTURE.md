@@ -267,16 +267,26 @@ throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
 
-`tools/pr_title_check.py` runs only on pull requests, and is the prevention
-half of `PL-2XTF`. A squash merge takes its subject from the pull request
-title, so a title naming none of the items it closes lands a subject that
-`docket check` cannot trace a closure back to. That happened once: a
-UI-generated title closed three items, `main` went red with errors no recovery
-could clear, and the numbers had to be read off GitHub by hand. The recovery
-half now falls back to each item's own file history, and this half stops the
-bad subject reaching `main` while the title can still be edited. Both are
-wanted — recovery alone leaves the wrong subject on `main` for good, and the
-check alone leaks when a merger retypes the subject in the squash dialog.
+`tools/pr_title_check.py` is the prevention half of `PL-2XTF`. A squash merge
+takes its subject from the pull request title, so a title naming none of the
+items it closes lands a subject that `docket check` cannot trace a closure back
+to. That happened once: a UI-generated title closed three items, `main` went
+red with errors no recovery could clear, and the numbers had to be read off
+GitHub by hand. The recovery half now falls back to each item's own file
+history, and this half stops the bad subject reaching `main` while the title
+can still be edited. Both are wanted — recovery alone leaves the wrong subject
+on `main` for good, and the check alone leaks when a merger retypes the subject
+in the squash dialog.
+
+It runs in `.github/workflows/pr-title.yml`, which takes the title from
+`PR_TITLE`, and in `make check` and `make pr-title`, which pass `--discover`
+and read it from the branch's own open pull request instead (`PL-J3BB`). It
+was CI-only until then, which made it the one gate a session could not run
+before pushing: the check compares the title against *what the branch closes*,
+and a branch closes more items as it goes, so a correct title goes stale the
+moment the next item closes on it. Every way the lookup can fail — no token, no
+network, no pull request open yet — is a silent skip, so `make check` stays
+green offline.
 
 `tools/branch_id_check.py` is the same shape of guard aimed at the other end of
 the same problem, and the two do not overlap: the title check asks whether a
