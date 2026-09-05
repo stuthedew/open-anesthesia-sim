@@ -32,6 +32,7 @@ from anesthesia_sim.app.formatting import (
     format_mac_multiple,
     format_mac_reference,
     format_percent,
+    format_playback_rate,
     format_subtitle,
     mac_awake_band_percent,
     mac_axis_ticks,
@@ -666,3 +667,41 @@ def test_the_discard_warning_says_the_loss_is_final() -> None:
 
     assert "discarded" in warning
     assert "cannot be undone" in warning
+
+
+def test_the_playback_rate_is_stated_at_every_rate_including_real_time() -> None:
+    """A rate is a mode, and the label's absence must never be the signal.
+
+    Rendering nothing at 1x would make "no label" mean real time, which is
+    a convention a reader has to have been taught. `PL-SN2C` requires the
+    multiplier beside the clock at all times for exactly that reason.
+    """
+
+    assert format_playback_rate(1) == "1\u00d7 real time"
+    assert format_playback_rate(60) == "60\u00d7 real time"
+
+
+def test_the_playback_rate_uses_the_multiplication_sign_the_readouts_use() -> None:
+    """One typographic convention for a multiple, across the whole display.
+
+    The MAC readouts already write a multiple with U+00D7; a rate written
+    with a lowercase "x" beside them would read as a different kind of
+    quantity.
+    """
+
+    assert "\u00d7" in format_playback_rate(60)
+    assert "x" not in format_playback_rate(60)
+
+
+def test_the_playback_rate_is_not_a_second_reading_of_the_clock() -> None:
+    """It names a pace, so it must not carry a unit of simulated time.
+
+    A second string ending in "s" beside `format_elapsed` invites a reader
+    to take it as another elapsed time - the modeled-versus-context
+    confusion arriving through a label rather than through a number.
+    """
+
+    rate = format_playback_rate(60)
+
+    assert not rate.endswith(" s")
+    assert rate != format_elapsed(60.0)

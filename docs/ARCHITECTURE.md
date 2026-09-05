@@ -53,6 +53,7 @@ src/anesthesia_sim/
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic
 │   ├── formatting.py               # modeled value -> displayed string; Flet-independent
+│   ├── playback.py                 # playback rate -> whole simulation steps per tick; Flet-independent
 │   ├── chart_series.py             # builds and redraws the chart's traces, references and control marks
 │   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; Flet-independent
@@ -141,16 +142,22 @@ reader sees — a percent and a multiple of the running agent's 1 MAC — at the
 resolutions `docs/MODEL.md` § "Displayed precision" derives,
 `app/chart_series.py` builds the traces and redraws them from the recorded
 run, `app/control_timeline.py` turns the recorded control changes into
-the adjustments a reader sees, and `app/wash_in.py` divides the alveolar
-fraction by the inspired one. The last two are correctness questions for
-reasons worth stating. The control record is faithful to the run and a drag
+the adjustments a reader sees, `app/playback.py` turns the playback rate a
+reader selects into the number of whole simulation steps a tick takes, and
+`app/wash_in.py` divides the alveolar fraction by the inspired one. The last
+three are correctness questions for reasons worth stating. The control record is faithful to the run and a drag
 of one slider is several settings in it, so the collapse into one displayed
 act is a claim about what the user did rather than a tidier rendering of
 what the model saw. And the wash-in quotient has a domain: it is undefined
 before any agent reaches the circuit and stops being a wash-in fraction
 above 1, so the module returns the value and the reason together and the
 chart draws the trace in segments that break where the domain does —
-`docs/MODEL.md` § "F_A/F_I as a displayed ratio" is the specification. The MAC divisor reaches the formatter as an argument, from
+`docs/MODEL.md` § "F_A/F_I as a displayed ratio" is the specification. And a
+playback rate is realised only as a step *count*, never as a larger step, so
+the module derives the count from the rate and refuses a rate that does not
+land on a whole number of steps: the alternative is a run advancing at a rate
+other than the one it displays, which is a presentation failure that looks
+like a working feature. The MAC divisor reaches the formatter as an argument, from
 `SimulationSnapshot.agent_mac_percent`, rather than being looked up: it is
 what makes a displayed multiple agent-specific, so it travels with the value
 it divides. The agent's MAC-awake travels the same way and for the same

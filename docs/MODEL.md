@@ -146,8 +146,9 @@ count and the step together, so a fresh run may take a different one.
 
 **A run is a function of its inputs and of the number of steps taken, and of
 nothing else.** The interface schedules its ticks with the wall clock, but
-how many steps a tick takes is fixed: no tick takes extra steps to make up
-simulated time a slow tick lost, and the run loop reads no clock. A machine
+how many steps a tick takes is a setting the reader chooses and never a
+measurement the loop makes: no tick takes extra steps to make up simulated
+time a slow tick lost, and the run loop reads no clock. A machine
 that wakes the loop late, drops a frame, or runs the whole session slowly
 therefore produces a run that reaches a given step *later in real time* and
 is identical in every recorded sample. It runs slower; it does not run
@@ -160,6 +161,19 @@ within a tolerance — and recorded sample *n* is at simulated time *n* times
 the step in both. This is the property a comparison of one run against
 another rests on, including the planned comparison of a branched run against
 the run it branched from at every sample they share.
+
+**Playing a run faster does not make it a different run.** The interface
+offers a playback rate — how much simulated time advances per second of real
+time — and it is implemented as the number of *whole steps* a tick takes,
+never as a larger step. The same case played at real time and at three
+hundred times real time is therefore the same steps, in the same order, at
+the same size: element-wise identical recorded histories, reached at
+different real times. A rate that resized the step instead would fall under
+the first of the four exclusions immediately below — it would be a second
+numerical solution of the same equations rather than the same run watched
+faster — and
+it would make a displayed value a function of how fast the reader happened
+to be watching, which is a determinism failure no label repairs.
 
 Four things it does not cover, none of them a defect:
 
@@ -635,19 +649,30 @@ could not step from, so the same step would fail again; the caller must stop
 either way. What the rollback settles is what the caller may *show* while
 stopped.
 
-Two constants describe the step, and they are different kinds of statement:
+Three constants sit at 0.1 s, and they are three different kinds of
+statement:
 
 ```text
-MAXIMUM_SIMULATION_STEP_S = 0.1   # core/uptake_system.py
-SIMULATION_STEP_S         = 0.1   # app/simulation_view.py
+MAXIMUM_SIMULATION_STEP_S  = 0.1   # core/uptake_system.py
+SIMULATION_STEP_S          = 0.1   # app/simulation_view.py
+SIMULATION_TICK_INTERVAL_S = 0.1   # app/simulation_view.py
 ```
 
 `MAXIMUM_SIMULATION_STEP_S` is the model's supported domain, closed at its
 endpoint: any positive step at or below it is supported, and both
 `AgentUptakeSystem.advance()` and `SimulationState.advance()` refuse a larger
-one. `SIMULATION_STEP_S` is the interface's own tick cadence, which sits at
-that ceiling deliberately. "Supported simulation step" below derives the
-bound and says why the two coincide.
+one. `SIMULATION_STEP_S` is the step the interface takes, which sits at that
+ceiling deliberately; "Supported simulation step" below derives the bound and
+says why those two coincide.
+
+`SIMULATION_TICK_INTERVAL_S` is not a step at all: it is how often the run
+loop wakes, in *real* seconds. It equals the step only because a tick that
+takes one step is what real-time playback means here, and the two are named
+apart because the playback rate is the ratio between them — a tick takes
+`multiplier × tick interval ÷ step` whole steps. Spelling that out is what
+makes "60× real time" a claim a test can check rather than a label beside a
+loop; re-tuning the wakeup for a host without re-deriving the rates would
+otherwise falsify every rate on screen and fail nowhere.
 
 ### Selected method (as implemented)
 
@@ -715,9 +740,9 @@ document that the splitting error justifies — "Displayed precision" and
 are the live ones. This paragraph is an interim correction (`PL-B875`) rather
 than the rewrite; `PL-GS5X` owns that.
 
-The fixed 0.1 s step is unaffected either way. `ROADMAP.md` scopes v0.4.0's
-playback multiplier as steps per tick with the step fixed at 0.1 s, and fixes
-it there for *determinism* — removing the step-size divergence and the
+The fixed 0.1 s step is unaffected either way. The playback multiplier is
+implemented as steps per tick with the step fixed at 0.1 s, and it is fixed
+there for *determinism* — removing the step-size divergence and the
 machine-speed dependence that make a run irreproducible on another computer —
 rather than for accuracy, so an exact solver does not change that design. The
 measurements above are carried in queue item PL-6GS0; they were produced by the
@@ -1619,6 +1644,11 @@ identically holds the model to one trajectory twice, which is a weaker claim
 than the one "The reproducibility guarantee" makes — that how the ticks fell
 cannot reach the run.
 
+The bursts a **playback rate** produces are a case of this and are tested as
+one, against the rates the interface actually offers rather than against
+invented burst sizes, so that a rate added to that ladder is covered on the
+day it is added.
+
 ## Runtime controls
 
 The following settings may change during a run without resetting state:
@@ -1849,6 +1879,8 @@ The Flet interface may:
 - convert fractions to percent;
 - collect user settings;
 - issue Start, Pause, and Reset commands;
+- choose how many simulation steps each tick of its own loop takes, so that a
+  run can be played faster than real time, subject to the constraint below;
 - halt a run and record why when the core raises, and report a value the
   core refused;
 - render the run's recorded history;
@@ -1960,6 +1992,34 @@ exists because a slider reports continuously while dragged, so the
 interface is the only party that can distinguish one turn of a control from
 two.
 
+**A playback rate is a number of steps, never a step size, and it has to be
+on screen.** The two compartments that make uptake and distribution worth
+teaching cannot be watched in real time — sevoflurane's muscle group has a
+time constant of about 135 min at the reference settings and fat about 42 h
+— so the interface may play a run faster by taking more steps per tick. Two
+things bound it, and they are of different kinds.
+
+The first is arithmetic. The step size is fixed, and the rate is realised
+*only* as how many of those steps a tick takes; a rate that does not land on
+a whole number of steps is refused rather than rounded, because the
+alternatives are a step of a different size or a run advancing at a rate
+other than the one displayed. This is what keeps a faster playback inside
+"The reproducibility guarantee" rather than making it a second numerical
+solution: identical inputs still produce identical recorded histories, and
+two learners comparing the same case at different speeds are comparing the
+same arithmetic.
+
+The second is human factors, and it is why the rate is a required displayed
+output rather than a preference. A rate is a **mode**, and a clock advancing
+at sixty times real time beside numbers that look like a live case is
+misreadable at a glance. So the rate must be shown wherever simulated time
+is shown, and at every rate including real time — an absent label at 1x
+would make the label's *presence* the signal, which is a convention a reader
+has to have been taught rather than one they can read. What the rate must
+not do is imply anything about the model: it is a statement about how fast
+the interface is playing recorded steps, never about the patient, and it is
+not a second reading of the clock it sits beside.
+
 The Flet interface must not:
 
 - calculate uptake;
@@ -1973,6 +2033,8 @@ The Flet interface must not:
 - continue a run past a step the core could not complete;
 - take extra simulation steps to make up wall-clock time a slow tick lost,
   or otherwise let elapsed real time decide how many steps a run takes;
+- change the simulation step size in response to a playback control, or
+  advance a run at a rate other than the one it is displaying;
 - present a run halted by a failure as though it were paused;
 - discard a run holding recorded state without stating what will be lost and
   obtaining confirmation, as "Agent-change behavior" requires; or
@@ -1994,6 +2056,9 @@ recorded run, rather than mutable compartment objects.
 The interface must show:
 
 - simulated time;
+- the rate simulated time is advancing at, as a multiple of real time, drawn
+  wherever simulated time is drawn and at every rate including real time. See
+  "Interface boundary" for what the rate is and is not a statement about;
 - run state, with running, paused, and halted-by-failure distinguishable
   from one another;
 - why a run halted, whenever one has;

@@ -5,11 +5,18 @@ from math import isfinite
 import pytest
 
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
 )
+
+#: The step this suite drives the controller at, matching the shipped
+#: `app/simulation_view.SIMULATION_STEP_S`. Restated rather than imported:
+#: that module needs Flet, and `tests/unit/test_simulation_view.py` is what
+#: holds the interface to the core's supported step.
+SIMULATION_STEP_S = 0.1
 
 
 def _advance_for(
@@ -130,7 +137,9 @@ def test_identical_runs_produce_identical_snapshots_and_history() -> None:
     assert first.snapshot() == second.snapshot()
 
 
-def _scripted_run(bursts: Iterable[int], simulation_step_s: float = 0.1) -> SimulationController:
+def _scripted_run(
+    bursts: Iterable[int], simulation_step_s: float = SIMULATION_STEP_S
+) -> SimulationController:
     """One scripted run, its steps grouped into ticks of the given sizes.
 
     The script changes a setting at fixed *step counts*, never at a burst
@@ -207,6 +216,45 @@ def test_a_run_records_the_same_history_however_the_ticks_fell() -> None:
     assert whole_run.sample_count == steps + 1
     assert whole_run.samples == ragged.history_window(0.0).samples
     assert one_step_per_tick.snapshot() == ragged.snapshot()
+
+
+def test_the_recorded_history_is_identical_at_every_playback_rate() -> None:
+    """`PL-SN2C`: playing a run faster must not change the run.
+
+    The playback multiplier is how many steps a tick takes and nothing
+    else - the step stays 0.1 s at every rate - so a case played at 300x is
+    the same steps in the same order as one played at real time, grouped
+    differently. That makes it exactly the burst pattern the test above
+    generalises, driven here through the *shipped* rates rather than
+    invented burst sizes, so a rate added to the ladder is covered by this
+    test on the day it is added.
+
+    Element for element, and against the snapshot too: two learners
+    comparing the same case at different speeds have to be comparing the
+    same arithmetic, and a divergence anywhere in the recorded history is
+    one the chart drawn from it would show.
+    """
+
+    steps = 600
+    real_time = _scripted_run([1] * steps)
+    reference = real_time.history_window(0.0)
+
+    assert reference.sample_count == steps + 1
+
+    for rate in SUPPORTED_PLAYBACK_RATES:
+        steps_per_tick = rate.steps_per_tick(
+            tick_interval_s=SIMULATION_STEP_S, simulation_step_s=SIMULATION_STEP_S
+        )
+        whole_ticks, remainder = divmod(steps, steps_per_tick)
+        bursts = [steps_per_tick] * whole_ticks + ([remainder] if remainder else [])
+
+        played = _scripted_run(bursts)
+
+        assert sum(bursts) == steps
+        assert played.history_window(0.0).samples == reference.samples, (
+            f"playing at {rate.multiplier}x changed the recorded history"
+        )
+        assert played.snapshot() == real_time.snapshot()
 
 
 def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> None:
