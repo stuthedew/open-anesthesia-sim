@@ -1,14 +1,16 @@
 ---
 id: PL-KBJT
 title: PL-H46J's worked Code-column example cites AlveolarCompartment.partial_pressure_fraction, which does not resolve until PL-9SH6 lands
-status: done
-added: 2026-09-05
-closed: 2026-09-05
 priority: P3
 effort: S
+status: done
 classes: defect, docs
-touches: docs/items/PL-H46J-give-model-md-s-symbols-table-a-code-column.md
 feature: core-domain-language
+milestone: v0.4.1
+touches: docs/items/PL-H46J-give-model-md-s-symbols-table-a-code-column.md
+added: 2026-09-05
+closed: 2026-09-05
+pr: 356
 verify: python3 tools/doc_check.py check && grep -qF 'Write the cells against the names in the tree today' docs/items/PL-H46J-give-model-md-s-symbols-table-a-code-column.md
 ---
 

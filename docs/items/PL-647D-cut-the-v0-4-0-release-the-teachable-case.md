@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: planning, docs
+milestone: v0.4.1
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases/, docs/items/
 added: 2026-09-05
 closed: 2026-09-05

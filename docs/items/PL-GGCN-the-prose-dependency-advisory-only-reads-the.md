@@ -1,14 +1,16 @@
 ---
 id: PL-GGCN
 title: The prose-dependency advisory only reads the first id in a compound prerequisite, so 'blocked on A and on B' leaves B undeclared and unreported
-status: done
-added: 2026-09-05
-closed: 2026-09-05
 priority: P2
 effort: S
+status: done
 classes: defect, infra
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 feature: dev-tooling
+milestone: v0.4.1
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+added: 2026-09-05
+closed: 2026-09-05
+pr: 356
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_second_prerequisite_in_a_compound_sentence_is_reported' subprojects/docket/tests/test_checks.py
 ---
 

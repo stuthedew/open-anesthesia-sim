@@ -1,14 +1,16 @@
 ---
 id: PL-R95V
 title: PL-3TLK's verify greps for an accessor name PL-9SH6 introduces, and its ahead-of-PL-GS5X sequencing contradicts PL-9SH6's land-in-one-commit
-status: done
-added: 2026-09-05
-closed: 2026-09-05
 priority: P2
 effort: S
+status: done
 classes: defect, docs
-touches: docs/items/PL-3TLK-core-and-model-md-call-the-middle-gas-phase.md
 feature: core-domain-language
+milestone: v0.4.1
+touches: docs/items/PL-3TLK-core-and-model-md-call-the-middle-gas-phase.md
+added: 2026-09-05
+closed: 2026-09-05
+pr: 356
 verify: python3 tools/doc_check.py check && grep -qF 'The `core/` rename is *not* this item' docs/items/PL-3TLK-core-and-model-md-call-the-middle-gas-phase.md
 ---
 
