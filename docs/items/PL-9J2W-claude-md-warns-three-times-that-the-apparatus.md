@@ -1,15 +1,16 @@
 ---
 id: PL-9J2W
 title: CLAUDE.md warns three times that the apparatus may become the work and never states when investing in it is correct, so every session re-derives a too-much-tooling critique the owner then answers by hand
-status: done
 priority: P2
 effort: S
+status: done
 classes: docs, session-cost
 feature: planning-cadence
 touches: CLAUDE.md, docs/resident-instructions.md
-verify: python3 tools/doc_check.py check && grep -q 'not judged by its share of the queue' CLAUDE.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 354
+verify: python3 tools/doc_check.py check && grep -q 'not judged by its share of the queue' CLAUDE.md
 ---
 
 **Problem.** `apparatus` appeared in `CLAUDE.md` three times and every one was a

@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: .github/workflows/quality.yml, .github/workflows/pr-title.yml
 added: 2026-09-01
 closed: 2026-09-05
+pr: 357
 verify: grep -q '^concurrency:' .github/workflows/quality.yml && grep -q 'cancel-in-progress' .github/workflows/quality.yml
 ---
 
