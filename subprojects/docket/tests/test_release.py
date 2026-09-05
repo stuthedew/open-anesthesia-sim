@@ -503,6 +503,46 @@ def test_the_digest_withholds_the_offer_and_says_which_step_owns_the_version() -
     assert "Beat: clear the gate - 2 entries of 2 still open" in digest
 
 
+def test_the_digest_names_the_branch_already_cutting_instead_of_offering_a_release() -> None:
+    """PL-66FP: the offer is where a duplicate release starts, so it stops here.
+
+    Refusing at `docket release` alone leaves the second session having
+    already raised it and been approved; the owner is then asked twice for one
+    release.
+    """
+    from docket.checks import Report
+    from docket.render import format_digest
+    from docket.vcs import BranchCut, CutsInFlight
+
+    digest = format_digest(
+        Report(items=[_item("PL-4444")]),
+        None,
+        _ready("0.2.8", "0.2.9"),
+        _plan("0.2.8", KNOWN_IDS),
+        cuts=CutsInFlight(branches=(BranchCut(ref="origin/claude/a", versions=("0.2.9",)),)),
+    )
+
+    assert "A release is already being cut on origin/claude/a (v0.2.9)" in digest
+    assert "Offer" not in digest
+
+
+def test_this_checkouts_own_cut_does_not_withhold_the_digest_offer() -> None:
+    from docket.checks import Report
+    from docket.render import format_digest
+    from docket.vcs import BranchCut, CutsInFlight
+
+    digest = format_digest(
+        Report(items=[_item("PL-4444")]),
+        None,
+        _ready("0.2.8", "0.2.9"),
+        _plan("0.2.8", KNOWN_IDS),
+        cuts=CutsInFlight(branches=(BranchCut(ref="claude/mine", versions=("0.2.9",), mine=True),)),
+    )
+
+    assert "already being cut" not in digest
+    assert "Offer 0.3.0" in digest
+
+
 def test_the_digest_offers_the_planned_version_over_the_bumps_guess() -> None:
     from docket.checks import Report
     from docket.render import format_digest
