@@ -45,5 +45,32 @@ so `PL-N092` (rewrite README as a human-readable introduction) now waits on
 timing rather than on anything undecided.
 
 The hold therefore still stands, and an answered decision is not permission to
-start. Delete this file in the same commit as the first README change — a rule
-stating a hold that is over is worse than no rule.
+start.
+
+## The one exception granted so far (2026-09-05)
+
+The project owner lifted the freeze for **one sentence**: the solver-error
+bound in § "Current status", corrected under `PL-X9HM` from `1.2e-2` to
+`2.3e-2` percentage points because the figure quoted was the wrong row of
+`docs/MODEL.md`'s § "Displayed precision" table and understated the model's
+disagreement with the reference by a factor of about 1.9.
+
+**That exception is spent, and it does not generalize.** It was granted for a
+measured number that contradicted the specification, not for prose, structure,
+or completeness — `PL-T67Y` (README covers neither the playback rate nor the
+chart time base) was raised in the same breath and deliberately not included.
+Everything in "What to do instead" above still applies to every other line of
+the file.
+
+**Ask for a wrong *number* the same way**, rather than assuming this covers it:
+file the item, say in your reply that you did, and put the correction to the
+project owner as a decision. A figure that disagrees with `docs/MODEL.md` is
+the one class of README defect that has ever been worth interrupting them for,
+and it is still one sentence at a time.
+
+## When the hold ends
+
+Delete this file in the same commit as the change that ends the freeze
+outright — a rule stating a hold that is over is worse than no rule. A granted
+single-sentence exception is not that: it is recorded above and the file
+stays.
