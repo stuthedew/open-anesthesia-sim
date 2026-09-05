@@ -48,17 +48,21 @@ pre-correction phrasings and for the semantic form (short-horizon reasoning
 carrying no "year"), across every remote branch as well as this checkout.
 Two other instances exist and both are correct as they stand:
 
-- `CLAUDE.md:24` — "internal quality that a one-year project could rationally
-  trade for speed is worth paying for here" is the correction's own contrast,
-  arguing this project is *not* one. It also has an unmerged narrowing in
-  flight on `origin/claude/guide-reference-gnfet5` (`PL-6SBB`), so editing it
-  here would conflict.
+- `CLAUDE.md:24` — "internal quality in the simulator that a one-year project
+  could rationally trade for speed is worth paying for here" is the
+  correction's own contrast, arguing this project is *not* one. `PL-6SBB`
+  narrowed it to the simulator and kept the contrast, and landed on
+  `origin/main` while this item was open. So the phrase is current text that
+  survived a deliberate edit, not a leftover a sweep should remove: whether to
+  drop the one-year foil is a live decision, put to the owner 2026-09-05.
 - `PL-QSWS:35,87` — a closed item, where line 87 records the correction event
   itself. Rewriting it would destroy the audit trail for why the horizon
   changed.
 
 `docs/worker.md`, `docs/maintainer.md`, `docs/ARCHITECTURE.md`, all of
 `.claude/rules/` and the `docket` skill contain no horizon language at all.
+Re-run after merging `origin/main` at `513d029..`, which brought in `PL-6SBB`
+and eleven other item files: still clean.
 
 **Done when.** No open item's brief quotes the pre-correction wording, and the
 quotation in `PL-MGF9` matches `CLAUDE.md`'s current text.
