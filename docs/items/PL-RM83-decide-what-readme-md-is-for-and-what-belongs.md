@@ -9,6 +9,7 @@ feature: project-introduction
 touches: README.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 338
 verify: grep -c '^### [123]\. ' docs/items/PL-RM83-decide-what-readme-md-is-for-and-what-belongs.md | grep -qx 3 && grep -q '^blocked-by: PL-XYRN$' docs/items/PL-N092-rewrite-readme-as-a-human-readable-introduction.md
 not-delegable: the command below proves only that `PL-N092` is unblocked. Whether the three answers recorded here are the right ones is the project owner's judgment, which is what the item was for
 ---
