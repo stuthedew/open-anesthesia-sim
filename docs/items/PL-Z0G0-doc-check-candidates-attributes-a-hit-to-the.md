@@ -1,8 +1,14 @@
 ---
 id: PL-Z0G0
 title: doc_check candidates attributes a hit to the alphabetically first matching term, so a line matched through render.py prints as (render)
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_candidate_line_is_labelled_with_the_most_specific_term' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `format_candidates` records one entry per documentation line -

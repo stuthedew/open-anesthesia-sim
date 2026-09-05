@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: .claude/settings.json, .claude/hooks/stop_hook_patch.py, .claude/hooks/ruff.toml, pyproject.toml, tools/ignore_check.py, tests/unit/test_tools_portability.py, docs/ARCHITECTURE.md, CLAUDE.md
 added: 2026-09-04
 closed: 2026-09-05
+pr: 340
 verify: uv run pytest tests/unit/test_stop_hook_patch.py && python3 -c 'import json,sys; h=json.load(open(".claude/settings.json"))["hooks"]; c=[k["command"] for v in h.values() for e in v for k in e["hooks"]]; sys.exit(1 if not c or [x for x in c if "$CLAUDE_PROJECT_DIR/.claude/" not in x] else 0)'
 ---
 

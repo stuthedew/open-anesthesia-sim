@@ -1,15 +1,16 @@
 ---
 id: PL-ZK9R
 title: The core/ import boundary confines time, datetime and random but not secrets or uuid, which break the reproducibility guarantee by the same route
-status: done
-added: 2026-09-05
 priority: P2
 effort: S
+status: done
 classes: infra, docs
 feature: core-guard-coverage
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, docs/ARCHITECTURE.md, docs/MODEL.md, README.md
-verify: uv run pytest tests/unit/test_import_boundary_check.py && grep -q 'secrets' tools/import_boundary_check.py
+added: 2026-09-05
 closed: 2026-09-05
+pr: 336
+verify: uv run pytest tests/unit/test_import_boundary_check.py && grep -q 'secrets' tools/import_boundary_check.py
 ---
 
 **Problem.** The core/ import boundary confines time, datetime and random but not secrets or uuid, which break the reproducibility guarantee by the same route
