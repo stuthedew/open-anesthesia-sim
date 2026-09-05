@@ -154,6 +154,16 @@ therefore produces a run that reaches a given step *later in real time* and
 is identical in every recorded sample. It runs slower; it does not run
 differently.
 
+**The clock half of that is measured, not asserted.**
+`tools/import_boundary_check.py` runs in `make check` and CI and fails the
+build on a `time`, `datetime` or `random` import in any module under
+`src/anesthesia_sim/core/`, with the reason recorded beside each entry in its
+`BOUNDARIES` table. The confinement stops at `core/` because this paragraph
+permits the interface its wall clock; what the check closes is the route by
+which a compartment could acquire one — including an unseeded generator, which
+breaks the guarantee the same way — and leave this section reading as verified
+while being false (`PL-J833`).
+
 So, given the same initial state, parameters, step size, setting changes and
 event ordering, two runs taken to the same step count produce **element-wise
 identical** recorded histories and snapshots — identical, not agreeing
