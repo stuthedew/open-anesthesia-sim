@@ -27,9 +27,11 @@ Four checks. Three approximate the bare-interpreter run cheaply enough to sit
 in `make check` before a push: the formatter target agrees with the declared
 floor, every file here parses at it, and nothing here imports a package that
 exists only inside the project virtualenv. The fourth holds
-`.github/workflows/quality.yml`'s `floor` job to that same declared floor -
-that job *performs* the run the other three approximate, so it, and not they,
-is what proves the promise.
+`.github/workflows/quality.yml`'s floor section to that same declared floor -
+that section *performs* the run the other three approximate, so it, and not
+they, is what proves the promise. It was a separate `floor` job until
+`PL-D551` folded it into `checks`, ahead of the uv install so that no
+virtualenv exists yet to leak from.
 
 The approximations stay because they are not redundant: they name the offending
 file, import or construct where a traceback from CI would not, they run before
@@ -118,9 +120,9 @@ def test_every_tool_parses_under_the_interpreter_that_actually_runs_it() -> None
     `feature_version` is not a full older-interpreter parser - it gates the
     syntax CPython's own parser version-checks, PEP 758 among them - so this
     catches the rewrite that has actually happened here rather than proving
-    compatibility in general. Proof for the files the `floor` job runs is that
-    job parsing them for real; this covers every file under `tools/` and
-    `.claude/hooks/`, including the ones that job never invokes.
+    compatibility in general. Proof for the files the CI floor section runs is
+    that section parsing them for real; this covers every file under `tools/`
+    and `.claude/hooks/`, including the ones it never invokes.
     """
     floor = _bare_python_floor()
 
@@ -160,10 +162,10 @@ def test_no_tool_imports_outside_the_standard_library() -> None:
     standard library grows. It answers for the interpreter running this test
     and not for the floor, so a module added to the standard library between
     the two passes here - `annotationlib` and `compression`, at 3.14 against a
-    3.11 floor. That is a bound rather than a hole: the `floor` job imports the
-    tools at the floor for real and decides outright what this frozenset can
+    3.11 floor. That is a bound rather than a hole: the CI floor section imports
+    the tools at the floor for real and decides outright what this frozenset can
     only approximate. What is left to this test is naming the file and the
-    import, and covering what that job's two commands never reach.
+    import, and covering what that section's commands never reach.
     """
     allowed = sys.stdlib_module_names | VENDORED
 
@@ -202,7 +204,13 @@ def _workflows() -> list[Path]:
 
 
 def _ci_floor_pin() -> str:
-    """The Python version `.github/workflows/quality.yml` installs for its `floor` job."""
+    """The Python version `.github/workflows/quality.yml` installs for its floor section.
+
+    Asserting there is exactly one such pin is load-bearing rather than
+    defensive: since `PL-D551` merged the floor steps into `checks`, the floor
+    interpreter and the project interpreter share a job, and a second concrete
+    pin added here would split the floor in two without anything else noticing.
+    """
     pins = _concrete_pins(REPO_ROOT / ".github" / "workflows" / "quality.yml")
     assert len(pins) == 1, f"expected exactly one python-version pin in the workflow, found {pins}"
     return pins[0]
