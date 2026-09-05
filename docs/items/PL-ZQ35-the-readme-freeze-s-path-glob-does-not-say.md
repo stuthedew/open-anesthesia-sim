@@ -1,8 +1,14 @@
 ---
 id: PL-ZQ35
 title: The README freeze's path glob does not say whether it reaches subprojects/docket/README.md
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
+feature: project-introduction
+touches: .claude/rules/readme-hold.md
 added: 2026-09-05
+verify: python3 tools/doc_check.py check && grep -qF 'subprojects/docket/README.md' .claude/rules/readme-hold.md
 ---
 
 **Problem.** `.claude/rules/readme-hold.md` (`PL-QTN6`) declares
