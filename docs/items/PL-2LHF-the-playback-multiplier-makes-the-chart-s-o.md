@@ -3,11 +3,13 @@ id: PL-2LHF
 title: The playback multiplier makes the chart's O(window) decimation cost reachable in minutes of wall clock, which PL-SSBP's frame-budget table was measured before
 priority: P2
 effort: M
-status: needs-decision
+status: dropped
 classes: perf
 feature: teachable-case
 touches: src/anesthesia_sim/app/chart_downsampling.py, tests/unit/test_chart_downsampling.py, docs/items/PL-SSBP-add-the-chart-time-base-selector-with-15-30-and.md
 added: 2026-09-05
+closed: 2026-09-05
+reason: Superseded by PL-T691 and PL-2FM6. There is no O(window) decimation left for the playback multiplier to make reachable: a frame evaluates the closed form at its own columns, measured 2026-09-05 at 3.3 ms over a 1 h window and 3.6 ms over 30 days, so frame cost becomes O(columns + events in view) and stops depending on window width altogether. PL-SSBP's frame-budget table describes an architecture being removed rather than one to re-measure.
 ---
 
 **Problem.** `PL-SSBP` measured the chart's per-frame decimation cost on

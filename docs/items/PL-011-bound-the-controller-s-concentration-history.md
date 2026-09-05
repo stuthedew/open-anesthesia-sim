@@ -3,11 +3,13 @@ id: PL-011
 title: Bound the controller's concentration history
 priority: P2
 effort: S
-status: needs-decision
+status: dropped
 classes: perf
 feature: teachable-case
 touches: src/anesthesia_sim/app/controller.py
 added: 2026-08-23
+closed: 2026-09-05
+reason: Superseded by PL-T691 and PL-2FM6. This item asks how to bound a store the score architecture removes rather than shrinks: once state is a closed-form function of the run's control-input timeline (PL-T691), the controller holds a score plus one keyframe per control event - measured 2026-09-05 at about 140 KiB for a 30-day ICU case against the 3.16 GB this item was opened to bound - and PL-2FM6 deletes RunHistory outright. The open single-precision question is moot for the same reason: halving a store that is deleted spends a decision for nothing. Its measurements are preserved in PL-T691's brief. Work exists on origin/claude/next-item-75htc6 and is deliberately not carried forward.
 ---
 
 **Problem.** `SimulationController._concentration_history` appends one
