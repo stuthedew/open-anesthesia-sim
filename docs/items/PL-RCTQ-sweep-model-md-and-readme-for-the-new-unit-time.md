@@ -67,3 +67,9 @@ An item added to this milestone that changes what `docs/MODEL.md` or
 `README.md` assert belongs in this list. `docket check` raises "every blocker
 has closed; it is ready to promote" when the last one lands, which is exactly
 when this sweep becomes writable.
+
+**The README half is frozen.** `PL-QTN6` (freeze README edits) holds
+`README.md` until the project owner answers `PL-RM83` (decide what README.md
+is for). Sweep `docs/MODEL.md` when this unblocks, record the README lines
+that went stale as a finding, and leave the file alone; see
+`.claude/rules/readme-hold.md`.

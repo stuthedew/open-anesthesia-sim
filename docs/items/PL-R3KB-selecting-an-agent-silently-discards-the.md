@@ -3,11 +3,13 @@ id: PL-R3KB
 title: Selecting an agent silently discards the running case
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_simulation_view.py, tests/unit/test_formatting.py, tests/integration/test_controller.py, docs/MODEL.md, README.md, tools/contrast_check.py
 added: 2026-08-25
+closed: 2026-09-05
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched' tests/unit/test_simulation_view.py
 ---
 **Problem.** Picking a different agent from the header dropdown destroys the
 current run and its whole recorded history, with no confirmation and no
