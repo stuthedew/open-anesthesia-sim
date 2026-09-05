@@ -1187,8 +1187,18 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
 - **MAC multiples as a display unit** across every readout and both chart
   axes, alongside percent, with the agent's `mac_percent` provenance
   traceable from the display (queue item PL-DHV7).
-- **A case-length time base**: minutes rather than seconds, selectable 15,
-  30 and 60 minute scales plus a fit-the-run scale (queue item PL-SSBP).
+- **A case-length time base**: minutes rather than seconds, a selectable
+  scale plus a fit-the-run scale (queue item PL-SSBP). Scoped as "15, 30 and
+  60 minute scales" and settled wider (project owner, 2026-09-04): 15 minutes
+  to 12 hours, geometrically spaced, because the three-scale list was written
+  while anything past an hour cost more per frame than the budget allowed and
+  `PL-D9WD`'s bucket cache lifted that. The gridline interval derives from
+  the selected scale rather than being fixed, and the axis is labelled in
+  units it carries itself - `3m`, `1h30m`, `12h` - because a bare number
+  means minutes on one scale and hours on another and looks the same on
+  both. "Fit run" is the default and always contains the run: past the
+  widest listed scale the ladder doubles rather than showing part of a case
+  under a name that claims the whole of it.
 - **A vertical scale denominated in MAC** (queue item PL-CC23) rather than in
   the vaporizer's dial maximum, which is what makes a cross-agent comparison
   honest. Scoped as "fits the run" and decided otherwise (project owner,

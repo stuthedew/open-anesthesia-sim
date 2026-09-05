@@ -24,6 +24,12 @@ import flet_charts as fch
 import pytest
 
 from anesthesia_sim.app.chart_series import CHART_COLUMN_BUDGET_PER_SERIES
+from anesthesia_sim.app.chart_time_base import (
+    FIT_RUN_KEY,
+    SELECTABLE_TIME_BASES,
+    TIME_BASE_LADDER,
+    time_base_for_span,
+)
 from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import (
     CONTROL_INPUT_UNITS,
@@ -43,11 +49,13 @@ from anesthesia_sim.app.formatting import (
     FLOW_DISPLAY_DECIMALS,
     chart_axis_top_percent,
     format_case_discard_warning,
+    format_chart_time_label,
     format_elapsed,
     format_mac_awake_reference,
     format_mac_multiple,
     format_mac_reference,
     format_percent,
+    format_time_base,
     format_wash_in_ratio,
     mac_axis_ticks,
 )
@@ -1390,6 +1398,13 @@ def _run_history(sample_count: int) -> tuple[SimulationHistorySample, ...]:
     )
 
 
+def _select_time_base(view: SimulationView, span_s: float) -> None:
+    """Choose a chart time base through its own control, as a reader would."""
+
+    view._time_base_dropdown.value = str(span_s)
+    view._handle_time_base_change(ft.Event(name="select", control=view._time_base_dropdown))
+
+
 def _all_series(view: SimulationView) -> tuple[fch.LineChartData, ...]:
     return (
         view._circuit_series,
@@ -1451,10 +1466,16 @@ def test_chart_payload_is_bounded_however_long_the_run(sample_count: int) -> Non
 
 
 def test_chart_sends_only_samples_inside_the_visible_window() -> None:
-    """Sending samples the axis clips is payload the client cannot show."""
+    """Sending samples the axis clips is payload the client cannot show.
 
-    history = _run_history(6_000)
+    On a selected time base the run has outgrown, which is the only way the
+    axis clips anything: the default "Fit run" widens the window to the run
+    rather than cutting it.
+    """
+
+    history = _run_history(12_000)
     view, _ = _build_view(history=history)
+    _select_time_base(view, 900.0)
 
     window_start_s = view._concentration_chart.min_x
     assert window_start_s > 0.0
@@ -1898,6 +1919,317 @@ def test_chart_keeps_every_sample_of_a_short_run() -> None:
         assert len(series.points) == len(history)
 
 
+def test_the_chart_defaults_to_fitting_the_whole_run() -> None:
+    """ "Fit run" is the default, so a learner sees the complete curve first.
+
+    `PL-012`'s requirement, and the reason it is a default rather than an
+    option: the wash-in curve is the lesson, and it is unreachable if the
+    reader has to discover a control before the run scrolls past it.
+    """
+
+    view, _ = _build_view(history=_run_history(12_000))
+
+    assert view._time_base_dropdown.value == FIT_RUN_KEY
+    assert view._concentration_chart.min_x == 0.0
+    assert view._concentration_chart.max_x >= 1_199.9
+
+
+def test_the_time_base_selector_offers_fit_run_and_the_settled_widths() -> None:
+    """The options are the ladder, which is what lets a bad key be a defect.
+
+    `_handle_time_base_change` raises on a width `TIME_BASE_LADDER` does not
+    carry rather than falling back to a nearby one, and that is only safe
+    while the control cannot offer one.
+    """
+
+    view, _ = _build_view()
+    options = view._time_base_dropdown.options
+
+    assert [option.key for option in options] == [
+        FIT_RUN_KEY,
+        *(str(time_base.span_s) for time_base in SELECTABLE_TIME_BASES),
+    ]
+    assert [option.text for option in options] == [
+        "Fit run",
+        *(format_time_base(time_base.span_s) for time_base in SELECTABLE_TIME_BASES),
+    ]
+
+
+def test_selecting_a_time_base_makes_the_window_exactly_that_wide() -> None:
+    """The selected duration is the width of the visible window.
+
+    Held exactly, at every width the selector offers, so seconds-per-pixel
+    is a property of the choice rather than of how far the run has got.
+    """
+
+    view, _ = _build_view(history=_run_history(12_000))
+
+    for time_base in SELECTABLE_TIME_BASES:
+        _select_time_base(view, time_base.span_s)
+
+        assert view._concentration_chart.max_x - view._concentration_chart.min_x == pytest.approx(
+            time_base.span_s
+        )
+
+
+def test_a_run_shorter_than_the_selected_time_base_shows_whole() -> None:
+    """`PL-SSBP`'s "Done when", and the axis does not shrink to fit it either.
+
+    A window that shrank to the samples recorded so far would rescale
+    continuously, which changes every trace's apparent slope while no
+    modelled rate moves - the encoding `PL-012` rejected. So the run is
+    drawn whole *and* against the full width that was chosen.
+    """
+
+    view, _ = _build_view(history=_run_history(3_000))
+    _select_time_base(view, 900.0)
+
+    assert view._concentration_chart.min_x == 0.0
+    assert view._concentration_chart.max_x == 900.0
+
+    for series in _all_series(view):
+        assert series.points[0].x == pytest.approx(0.0)
+
+
+def test_the_gridline_interval_is_derived_from_the_time_base() -> None:
+    """`PL-012`: derived, never fixed.
+
+    The 60 s interval this replaced would rule a twelve-hour axis into 720
+    lines and a solid block. Both plots are checked because they share one
+    window, so a fixed interval left on either would rule the same span two
+    different ways.
+    """
+
+    view, _ = _build_view(history=_run_history(12_000))
+
+    for time_base in SELECTABLE_TIME_BASES:
+        _select_time_base(view, time_base.span_s)
+
+        assert view._concentration_chart.vertical_grid_lines.interval == time_base.tick_interval_s
+        assert view._wash_in_chart.vertical_grid_lines.interval == time_base.tick_interval_s
+
+
+def test_the_time_axis_is_labelled_in_units_rather_than_in_bare_seconds() -> None:
+    """A bare number would mean seconds on one time base and hours on another.
+
+    The two look identical, so a reader who misses the caption has nothing
+    in the label to correct them. `format_chart_time_label` puts the unit on
+    every tick, and this is what holds the axis to it.
+    """
+
+    view, _ = _build_view(history=_run_history(12_000))
+    _select_time_base(view, 3_600.0)
+
+    labels = view._time_axis.labels
+
+    assert labels, "the time axis is drawing no labels"
+    assert [label.label.value for label in labels] == [
+        format_chart_time_label(label.value) for label in labels
+    ]
+    # Every tick stands at a multiple of the interval the chart is ruled at,
+    # so a label never falls between two gridlines.
+    assert all(
+        label.value % view._concentration_chart.vertical_grid_lines.interval == 0
+        for label in labels
+    )
+
+
+def test_both_plots_are_labelled_from_the_same_ticks() -> None:
+    """One window, so one set of times - drawn twice because a control has one chart.
+
+    The wash-in plot's caption says "the same window as above", and a
+    reader comparing the two curves is reading one against the other. Axes
+    that disagreed about where a time falls would break that silently.
+    """
+
+    view, _ = _build_view(history=_run_history(12_000))
+    _select_time_base(view, 1_800.0)
+
+    assert [label.value for label in view._wash_in_time_axis.labels] == [
+        label.value for label in view._time_axis.labels
+    ]
+    # Distinct controls, not the same objects on two charts: a Flet control
+    # belongs to one chart, so sharing them would drop one axis's labels.
+    assert all(
+        wash_in is not concentration
+        for wash_in, concentration in zip(
+            view._wash_in_time_axis.labels, view._time_axis.labels, strict=True
+        )
+    )
+
+
+def test_the_axis_caption_states_the_span_the_chart_is_showing() -> None:
+    """`PL-012` required the caption to name the span actually drawn.
+
+    The width is a mode: the same plot showing fifteen minutes and twelve
+    hours is two very different claims about what a flat trace means, and a
+    reader who does not know which cannot tell a compartment at equilibrium
+    from one that has not started moving.
+    """
+
+    view, _ = _build_view(history=_run_history(12_000))
+    _select_time_base(view, 7_200.0)
+
+    assert "2 hours shown" in view._time_axis_caption.value
+    assert "simulated seconds" not in view._time_axis_caption.value
+
+
+def test_the_caption_says_when_the_span_was_chosen_by_the_run_rather_than_the_reader() -> None:
+    """Under "Fit run" the width is derived, and nothing else on screen says so.
+
+    The selector reads "Fit run", which names the rule; the caption is the
+    only place the plot says what the rule came out as.
+    """
+
+    view, _ = _build_view(history=_run_history(12_000))
+
+    assert "whole run so far" in view._time_axis_caption.value
+    assert (
+        f"{format_time_base(view._drawn_time_base.span_s)} shown" in view._time_axis_caption.value
+    )
+
+    _select_time_base(view, 43_200.0)
+
+    assert "whole run so far" not in view._time_axis_caption.value
+
+
+def test_the_wash_in_plot_spans_the_same_window_as_the_chart_above_it() -> None:
+    """Its caption claims exactly this, and the two are read against each other."""
+
+    view, _ = _build_view(history=_run_history(12_000))
+
+    for span_s in (None, 900.0, 43_200.0):
+        if span_s is not None:
+            _select_time_base(view, span_s)
+
+        assert view._wash_in_chart.min_x == view._concentration_chart.min_x
+        assert view._wash_in_chart.max_x == view._concentration_chart.max_x
+
+
+def test_choosing_a_time_base_changes_nothing_the_run_recorded() -> None:
+    """It is a view control: it decides what is drawn, never what is modelled.
+
+    The same guarantee the compartment checkboxes carry, and the reason
+    `CLAUDE.md`'s determinism requirement is untouched by this control. A
+    case watched at fifteen minutes and the same case watched at twelve
+    hours are the same run, sample for sample.
+    """
+
+    controller = SimulationController()
+    view = SimulationView(page=_FakePage(), controller=controller)
+    controller.start()
+
+    for _ in range(200):
+        controller.advance(SIMULATION_STEP_S)
+
+    def recorded() -> tuple[SimulationHistorySample, ...]:
+        return controller.history_window(0.0).samples
+
+    before = recorded()
+
+    for time_base in SELECTABLE_TIME_BASES:
+        _select_time_base(view, time_base.span_s)
+
+    assert recorded() == before
+
+
+def test_the_time_base_is_never_disabled() -> None:
+    """Widening the window on a run already going is the usual reason to reach for it.
+
+    Unlike the agent dropdown, which is disabled while running because
+    choosing an agent discards the case, this reaches no model state and so
+    has nothing to protect.
+    """
+
+    view, _ = _build_view(is_running=True)
+
+    assert view._agent_dropdown.disabled
+    assert not view._time_base_dropdown.disabled
+
+
+def test_reset_leaves_the_selected_time_base_alone() -> None:
+    """A reader setting, like every other: Reset clears the run, not the view.
+
+    A width silently snapping back to "Fit run" would be a mode change
+    nobody asked for, in the middle of the comparison the reader reset the
+    run to make.
+    """
+
+    controller = SimulationController()
+    view = SimulationView(page=_FakePage(), controller=controller)
+    _select_time_base(view, 1_800.0)
+
+    view._handle_reset(ft.Event(name="click", control=view._reset_button))
+
+    assert view._time_base == time_base_for_span(1_800.0)
+    assert view._time_base_dropdown.value == "1800.0"
+
+
+def test_the_axis_labels_are_rebuilt_only_when_the_ticks_move() -> None:
+    """The same guard the MAC axis carries, and for the same cost.
+
+    Ticks stand at absolute multiples of the interval, so a following window
+    crosses one every `tick_interval_s` of simulated time rather than every
+    frame. Rebuilding them unguarded would allocate a control per tick per
+    frame and send the client an add-and-remove of both axes each time -
+    the per-frame churn `tests/integration/test_chart_patching.py` measures.
+    """
+
+    controller = _fake_controller(history=_run_history(12_000))
+    view = SimulationView(page=_FakePage(), controller=controller)
+    _select_time_base(view, 900.0)
+
+    held = list(view._time_axis.labels)
+
+    # Ten further steps: one second of simulated time, far inside the three
+    # minutes between ticks at this width.
+    controller.advance_to(_run_history(12_010))
+    view._refresh_view()
+
+    assert view._time_axis.labels is held or list(view._time_axis.labels) == held
+    assert all(new is old for new, old in zip(view._time_axis.labels, held, strict=True)), (
+        "the axis was relabelled on a frame that crossed no tick"
+    )
+
+
+def test_crossing_a_tick_relabels_the_axis() -> None:
+    """The other half of the guard: a stale label is a wrong displayed time."""
+
+    controller = _fake_controller(history=_run_history(12_000))
+    view = SimulationView(page=_FakePage(), controller=controller)
+    _select_time_base(view, 900.0)
+
+    before = [label.value for label in view._time_axis.labels]
+
+    # Past the next tick: at a 15 minute width the axis is ruled every three
+    # minutes, so 200 s of further run moves the window across one.
+    controller.advance_to(_run_history(14_000))
+    view._refresh_view()
+
+    assert [label.value for label in view._time_axis.labels] != before
+
+
+def test_fitting_widens_the_axis_in_steps_rather_than_continuously() -> None:
+    """`PL-012`: rescale in discrete labelled steps, not with every sample.
+
+    A continuously growing axis is the same misleading encoding as a
+    continuously shrinking one - the trace's slope changes while nothing
+    the model computes does.
+    """
+
+    controller = _fake_controller(history=_run_history(400))
+    view = SimulationView(page=_FakePage(), controller=controller)
+    widths = []
+
+    for sample_count in range(400, 1_400, 100):
+        controller.advance_to(_run_history(sample_count))
+        view._refresh_view()
+        widths.append(view._concentration_chart.max_x)
+
+    assert set(widths) <= {time_base.span_s for time_base in TIME_BASE_LADDER}
+    assert widths == sorted(widths), "a fitted axis narrowed as the run grew"
+
+
 def test_chart_points_are_recorded_samples_not_interpolations() -> None:
     history = _run_history(6_000)
     recorded_times = {sample.elapsed_s for sample in history}
@@ -1917,14 +2249,18 @@ def test_chart_points_are_moved_rather_than_rebuilt_each_frame() -> None:
     `tests/integration/test_chart_patching.py`'s to prove.
     """
 
-    controller = _fake_controller(history=_run_history(6_000))
+    controller = _fake_controller(history=_run_history(12_000))
     view = SimulationView(page=_FakePage(), controller=controller)
+    # A selected time base, so the window slides rather than widening: under
+    # "Fit run" a run this length is drawn whole and the older points do not
+    # move at all, which would leave the assertion below passing vacuously.
+    _select_time_base(view, 900.0)
 
     held = [list(series.points) for series in _all_series(view)]
     drawn_before = [[(point.x, point.y) for point in points] for points in held]
 
     # 50 further steps: the window slides, so every drawn time changes.
-    controller.advance_to(_run_history(6_050))
+    controller.advance_to(_run_history(12_050))
     view._refresh_view()
 
     for series, points_held, before in zip(_all_series(view), held, drawn_before, strict=True):
