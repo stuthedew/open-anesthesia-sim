@@ -19,16 +19,16 @@ audited one at a time against the tree, and only the gaps were routed.
 
 | Rule | State here | Disposition |
 | --- | --- | --- |
-| 1. Comment as you code | Exceeded. `Makefile` and `pyproject.toml` carry measurement and reasoning inline; the 548-line resident total and `PL-H7XN`, which `CLAUDE.md` cites for the routing rule, are the standing pressure in the other direction | Declined as written — see below |
+| 1. Comment as you code | Exceeded. `Makefile` and `pyproject.toml` carry measurement and reasoning inline; `PL-JK0M` (route or justify the 548 resident instruction lines) is the standing pressure in the other direction | Declined as written — see below |
 | 2. Examples, doubling as tests | `tests/reference/test_published_wash_in.py` is the paper's own recommendation, against Yasuda et al. rather than against the code | Already practice |
 | 3. Quickstart | README carries Requirements, Setup, Running and Development | Owned by `PL-N092`, behind the README freeze |
-| 4. README basics | Install, test, license, docs map and per-target `make` descriptions all present; how to cite is not | Citation half → `PL-BFV8` |
+| 4. README basics | Install, test, license, docs map and per-target `make` descriptions all present | Already practice |
 | 5. CLI help | `bin/docket --help` lists 20 subcommands with a one-line description each, and every subcommand has its own | Already practice |
 | 6. Version-controlled documentation | Documentation is in-repo; `docs/MODEL.md` § Status is deliberately version-generic and says why, and `check_baseline` enforces that no second copy of the current version exists | Already practice, and better reasoned than the paper's advice |
 | 7. Document the API: inputs, outputs, errors | Strict mypy settles inputs and outputs. Errors are prose and missing in 8 of 23 public raising functions | → `.claude/rules/expert-review.md`, `PL-HXKC`, `PL-GZPX` |
 | 8. Generated documentation site | None, and no external API consumer to serve one to | Declined |
 | 9. Error messages that carry state and a fix | Split: `core/supported_ranges.py` is exemplary, `core/validation.py` names the parameter and nothing else | → `.claude/rules/expert-review.md`, `PL-T137` |
-| 10. Say how to cite the software | Absent entirely — no `CITATION.cff`, no DOI | → `PL-BFV8` |
+| 10. Say how to cite the software | Absent when this audit ran against `af1804b`; `PL-8DDG` landed `CITATION.cff` as #338 while this branch was open | Already practice, concurrently |
 
 **Why rules 1 and 8 are declined rather than deferred.** Rule 1's advice is to
 err toward more comments. That advice is calibrated for the paper's stated
@@ -46,5 +46,7 @@ message owe a reader", added 2026-09-05. Path-scoped to `src/**`, `docs/**` and
 resident — `doc_check.py` confirms the resident total unchanged at 548 lines.
 
 **Done when.** Done: the audit is this item, the two adopted rules are in
-`expert-review.md`, and the four gaps are filed as `PL-HXKC`, `PL-T137`,
-`PL-GZPX` and `PL-BFV8`. Close on triage.
+`expert-review.md`, and the gaps are filed as `PL-HXKC`, `PL-T137` and
+`PL-GZPX`. `PL-BFV8` was the fourth and is dropped as a duplicate of `PL-8DDG`,
+which landed the citation file from a concurrent session reading the same
+paper. Close on triage.
