@@ -1,4 +1,4 @@
-"""Refuse a `.claude/rules/` path glob that is not anchored to the repository root.
+"""Refuse a `.claude/rules/` path glob that is not anchored, or that points at nothing.
 
 A `paths:` entry decides which files load a rule. Measured against this harness
 on 2026-09-05, with throwaway rules and target files at the root and under
@@ -27,11 +27,24 @@ a second tree can live here, so every unanchored glob is a collision waiting
 for a directory nobody has created yet - `subprojects/docket/src/` and
 `tests/` are the two that already arrived.
 
+A second rule, added by `PL-DNYL`, closes the same failure from the other side:
+**an anchored entry whose literal prefix resolves to nothing.**
+`/scr/anesthesia_sim/core/**` is anchored, passes the first rule, and delivers
+its rule to no session ever. That is worse than `./` on the test the paragraph
+above uses - `./` is at least visibly unusual, while a transposed directory
+name reads as correct at every glance - and the tree answers it outright.
+
+A rule may not declare scope ahead of the code it governs (project owner,
+2026-09-05): the rule is written when the path exists, so this is an error
+rather than an advisory. There is no reading of the tree under which a dead
+path is the intended state.
+
 **Deliberately not decided here: whether a glob describes the *right* set of
 files.** That differs per rule, it is judgment rather than fact, and a tool
 guessing at it would be the "worse than no tool" case `CLAUDE.md` names - its
-output would look authoritative and would not be. This asks only whether an
-entry is anchored, which the text answers by itself.
+output would look authoritative and would not be. Both rules here ask only
+whether an entry is anchored and whether it points at anything, which the text
+and the tree answer by themselves.
 
 Standard library only, like every tool here, so it runs in a bare checkout.
 """
@@ -40,7 +53,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -49,6 +62,10 @@ RULES_DIR = Path(".claude") / "rules"
 #: The spelling that matches nothing, called out separately in the failure
 #: because "add a leading slash" reads as cosmetic against it.
 DEAD_PREFIX = "./"
+
+#: Where a glob stops being a real path. Everything before the first of these
+#: is literal, and so is answerable against the tree.
+GLOB_CHARS = "*?["
 
 
 def _unquote(value: str) -> str:
@@ -114,8 +131,42 @@ def anchored(entry: str) -> str:
     return "/" + entry.lstrip("/")
 
 
+def literal_prefix(entry: str) -> str:
+    """The part of an anchored entry that is a real path rather than a pattern.
+
+    A pattern beginning mid-segment leaves only the completed segments real:
+    `/src/foo*.md` says nothing about `foo`, but it does say `src/` exists.
+    Returned relative to the root, so the repository root itself comes back as
+    the empty string - which every tree has, and which therefore never fails.
+    """
+    cut = len(entry)
+    for index, char in enumerate(entry):
+        if char in GLOB_CHARS:
+            cut = index
+            break
+    head = entry[:cut]
+    if cut < len(entry):
+        head = head[: head.rfind("/") + 1]
+    return head.strip("/")
+
+
+def nearest_existing(root: Path, prefix: str) -> str:
+    """The deepest ancestor of `prefix` that is really there, for the message.
+
+    Naming it turns "this path is wrong" into "it stopped being real here",
+    which is the difference between a reader re-reading the entry and a reader
+    seeing the typo.
+    """
+    parts = PurePosixPath(prefix).parts
+    for stop in range(len(parts) - 1, 0, -1):
+        candidate = PurePosixPath(*parts[:stop])
+        if (root / candidate).exists():
+            return candidate.as_posix()
+    return "the repository root"
+
+
 def problems(root: Path) -> list[str]:
-    """Every unanchored entry, and every rule whose scope cannot be read."""
+    """Every entry that is unanchored or dead, and every rule whose scope cannot be read."""
     found: list[str] = []
     for path in sorted((root / RULES_DIR).glob("*.md")):
         name = path.relative_to(root).as_posix()
@@ -134,6 +185,19 @@ def problems(root: Path) -> list[str]:
             continue
         for entry in entries(block):
             if entry.startswith("/"):
+                prefix = literal_prefix(entry)
+                target = root / prefix
+                if prefix and not target.exists():
+                    found.append(
+                        f'{name}: "{entry}" points at nothing - "{prefix}" does not '
+                        f"exist, so this rule is never delivered. Nearest existing "
+                        f'path: "{nearest_existing(root, prefix)}"'
+                    )
+                elif prefix and entry != f"/{prefix}" and not target.is_dir():
+                    found.append(
+                        f'{name}: "{entry}" matches below "{prefix}", which is a file '
+                        f"rather than a directory, so nothing can match it"
+                    )
                 continue
             if entry.startswith(DEAD_PREFIX):
                 found.append(
@@ -162,18 +226,17 @@ def main() -> int:
         ]
         print(
             f"rules-paths: {len(declared)} declared path glob(s) across "
-            f"{RULES_DIR.as_posix()}, all anchored to the repository root"
+            f"{RULES_DIR.as_posix()}, all anchored to the repository root and resolving"
         )
         return 0
 
     print(
-        f"rules-paths: {len(found)} unanchored `paths:` entr"
-        f"{'y' if len(found) == 1 else 'ies'} in {RULES_DIR.as_posix()}.\n"
+        f"rules-paths: {len(found)} problem(s) in {RULES_DIR.as_posix()}.\n"
         + "".join(f"  {problem}\n" for problem in found)
-        + "  A leading `/` anchors an entry to the repository root. Without one it "
-        "matches the same name at any depth, so a rule written about one file governs "
-        "every file that happens to share its name - measured, not assumed "
-        "(`PL-ZQ35`, `PL-LLWN`).",
+        + "  A `paths:` entry decides which files load a rule, and it fails silently "
+        "in both directions: without a leading `/` it also matches the same name at "
+        "any depth, and pointing at a path that is not there it is never delivered at "
+        "all. Measured, not assumed (`PL-ZQ35`, `PL-LLWN`, `PL-DNYL`).",
         file=sys.stderr,
     )
     return 1
