@@ -462,7 +462,8 @@ gate rather than an older parser, and the wrong interpreter's
 `.github/workflows/quality.yml`'s `checks` job performs the run they stand in
 for: `actions/setup-python` at the declared floor, then
 `python3 tools/doc_check.py check`, `python3 tools/branch_id_check.py`,
-`python3 tools/rules_paths_check.py`, `bin/docket check` and
+`python3 tools/rules_paths_check.py`, `python3 tools/readme_hold_check.py`,
+`bin/docket check` and
 `python3 tools/contrast_check.py` under it. It runs ahead of the uv install
 rather than in a job of its own (`PL-D551`), which is what keeps the
 no-virtualenv claim true: at that point none exists.
