@@ -3,11 +3,12 @@ id: PL-39B7
 title: Make docket stranded distinguish a merged-and-deleted branch from an abandoned one, and say when its main is stale
 priority: P2
 effort: S
-status: untriaged
-added: 2026-09-05
+status: ready
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py
+added: 2026-09-05
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_merged_and_deleted_branch_is_not_reported_as_stranded' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** `bin/docket stranded` answers "which items exist only on a branch"
@@ -27,7 +28,7 @@ wrong at once, and they were on 2026-09-05:
   branch too. The two histories are indistinguishable from the ref's absence
   alone, and only one is a hole.
 
-**What it cost.** The recovery command `stranded` prints was run and restored
+**Why it matters, and what it cost.** The recovery command `stranded` prints was run and restored
 the **pre-triage** copy of `PL-XLQ5` — `status: untriaged`, no `priority`,
 `effort`, `classes`, `feature`, `touches` or `verify` — over the triaged one
 #325 had just landed. Committed, it would have reverted that item's triage

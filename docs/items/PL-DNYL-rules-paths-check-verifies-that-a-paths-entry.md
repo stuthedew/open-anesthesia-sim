@@ -1,14 +1,15 @@
 ---
 id: PL-DNYL
 title: rules_paths_check verifies that a paths: entry is anchored but not that it points anywhere, so a typo'd prefix is a rule that silently never fires
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: worker-instructions
 touches: tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py
 added: 2026-09-05
 closed: 2026-09-05
+pr: 363
 verify: python3 tools/rules_paths_check.py && grep -q 'def test_a_prefix_that_resolves_to_nothing_is_refused' tests/unit/test_rules_paths_check.py
 ---
 
