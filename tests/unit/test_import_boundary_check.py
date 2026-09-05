@@ -28,8 +28,8 @@ def _tree(root: Path, **modules: str) -> None:
         (package / f"{name}.py").write_text(source, encoding="utf-8")
 
 
-def _boundary(*allowed: str) -> Boundary:
-    return Boundary(package="pydantic", tree="src/pkg", allowed=allowed, why="a test fixture")
+def _boundary(*allowed: str, package: str = "pydantic") -> Boundary:
+    return Boundary(package=package, tree="src/pkg", allowed=allowed, why="a test fixture")
 
 
 class TestModuleImports:
@@ -108,11 +108,55 @@ class TestAnalyze:
         assert not report.errors, format_report(report)
         assert report.scanned > 0
 
-    def test_the_pydantic_boundary_is_the_one_declared(self) -> None:
-        """The rule this file is about, stated where a reader will look for it."""
-        (boundary,) = BOUNDARIES
-        assert boundary.package == "pydantic"
-        assert boundary.allowed == ("src/anesthesia_sim/core/parameters.py",)
+    def test_the_declared_boundaries_are_the_ones_this_file_is_about(self) -> None:
+        """The rules, stated where a reader will look for them.
+
+        A boundary added or dropped without a reason written beside it fails
+        here, which is the point: `BOUNDARIES` is a specification, and a
+        specification that can be edited without anybody noticing is prose.
+        """
+        assert tuple(boundary.package for boundary in BOUNDARIES) == (
+            "pydantic",
+            "time",
+            "datetime",
+            "random",
+        )
+        by_package = {boundary.package: boundary for boundary in BOUNDARIES}
+        assert by_package["pydantic"].allowed == ("src/anesthesia_sim/core/parameters.py",)
+        assert all(boundary.why.strip() for boundary in BOUNDARIES)
+
+    @pytest.mark.parametrize("package", ["time", "datetime", "random"])
+    def test_the_clock_and_generator_boundaries_permit_no_module_under_core(
+        self, package: str
+    ) -> None:
+        """`CLAUDE.md`'s never-wall-clock rule, and MODEL.md's guarantee, measured.
+
+        The tree is `core/` and not the whole package deliberately: the
+        interface schedules its ticks with the wall clock, which the guarantee
+        permits. Widening this to `src/anesthesia_sim` would fail on a real
+        import the design allows; narrowing the packages would leave a route in.
+        """
+        (boundary,) = [entry for entry in BOUNDARIES if entry.package == package]
+        assert boundary.tree == "src/anesthesia_sim/core"
+        assert boundary.allowed == ()
+
+    def test_a_boundary_permitting_no_module_admits_nothing(self, tmp_path: Path) -> None:
+        """An empty `allowed` is a confinement out of the tree, not a disabled rule."""
+        _tree(tmp_path, compartment="import time\n", other="import json\n")
+        report = analyze(tmp_path, [_boundary(package="time")])
+        (violation,) = report.violations
+        assert violation.path == "src/pkg/compartment.py"
+        assert violation.imported.line == 1
+        assert report.errors
+
+    def test_a_boundary_permitting_no_module_has_no_allowance_to_go_stale(
+        self, tmp_path: Path
+    ) -> None:
+        """The unused- and missing-allowance branches have nothing to iterate."""
+        _tree(tmp_path, other="import json\n")
+        report = analyze(tmp_path, [_boundary(package="time")])
+        assert not report.errors
+        assert report.unused == () and report.unenforced == ()
 
     def test_an_import_outside_the_allowed_module_is_a_violation(self, tmp_path: Path) -> None:
         _tree(
@@ -163,6 +207,18 @@ class TestAnalyze:
         assert report.scanned == 0
         assert report.errors
 
+    def test_nesting_trees_do_not_inflate_the_module_count(self, tmp_path: Path) -> None:
+        """`scanned` is evidence of how much source is guarded, so it counts files.
+
+        Two boundaries over nesting trees read the same module. A count of
+        module-*reads* would grow when a boundary was added rather than when
+        the source did, which is the one thing the number is for.
+        """
+        _tree(tmp_path, one="import json\n", two="import json\n")
+        outer = _boundary(package="time")
+        inner = Boundary(package="random", tree="src", allowed=(), why="a nesting fixture")
+        assert analyze(tmp_path, [outer, inner]).scanned == 2
+
     def test_a_module_importing_something_else_is_not_a_violation(self, tmp_path: Path) -> None:
         _tree(
             tmp_path, allowed="import pydantic\n", other="import pydantic_settings\nimport json\n"
@@ -183,7 +239,7 @@ class TestFormatReport:
     def test_a_clean_run_leads_with_its_verdict(self) -> None:
         report = analyze(REPO_ROOT)
         first = format_report(report).splitlines()[0]
-        assert first.startswith("import boundaries: 1 declared,")
+        assert first.startswith(f"import boundaries: {len(BOUNDARIES)} declared,")
         assert first.endswith("0 errors")
 
     def test_a_violation_names_the_file_the_line_and_the_reason(self, tmp_path: Path) -> None:
@@ -193,6 +249,17 @@ class TestFormatReport:
         assert "src/pkg/other.py:1" in rendered
         assert "a test fixture" in rendered
         assert "src/pkg/allowed.py" in rendered
+
+    def test_a_boundary_permitting_nothing_says_so_rather_than_naming_an_empty_list(
+        self, tmp_path: Path
+    ) -> None:
+        """`", ".join(())` would render "allowed only in , because" - a defect."""
+        _tree(tmp_path, compartment="import time\n")
+        boundary = _boundary(package="time")
+        rendered = format_report(analyze(tmp_path, [boundary]), [boundary])
+        assert "permitted in no module under src/pkg/, because" in rendered
+        assert "allowed only in ," not in rendered
+        assert "a test fixture" in rendered
 
     def test_each_error_kind_says_what_to_do_about_it(self, tmp_path: Path) -> None:
         _tree(tmp_path, allowed="import json\n")
@@ -211,8 +278,35 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Against the real `BOUNDARIES`, which `main` does not let a caller replace."""
-        package = tmp_path / "src" / "anesthesia_sim"
-        package.mkdir(parents=True)
-        (package / "core.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
+        core = tmp_path / "src" / "anesthesia_sim" / "core"
+        core.mkdir(parents=True)
+        (core / "parameters.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
+        (core / "tissue.py").write_text("import time\n", encoding="utf-8")
+        app = tmp_path / "src" / "anesthesia_sim" / "app"
+        app.mkdir()
+        (app / "main.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
         assert main(["--root", str(tmp_path)]) == 1
-        assert "src/anesthesia_sim/core.py:1" in capsys.readouterr().out
+        out = capsys.readouterr().out
+        assert "src/anesthesia_sim/core/tissue.py:1" in out
+        assert "src/anesthesia_sim/app/main.py:1" in out
+
+    def test_the_interface_may_read_the_clock_the_compartments_may_not(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The asymmetry, pinned end-to-end so widening the tree cannot pass quietly.
+
+        `docs/MODEL.md` "The reproducibility guarantee" permits the interface
+        its wall clock - what it forbids is a tick's real duration reaching the
+        run - so a boundary that failed here would be enforcing a rule the
+        design does not hold.
+        """
+        core = tmp_path / "src" / "anesthesia_sim" / "core"
+        core.mkdir(parents=True)
+        (core / "parameters.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
+        app = tmp_path / "src" / "anesthesia_sim" / "app"
+        app.mkdir()
+        (app / "playback.py").write_text(
+            "import time\nfrom datetime import datetime\nimport random\n", encoding="utf-8"
+        )
+        assert main(["--root", str(tmp_path)]) == 0
+        assert "0 errors" in capsys.readouterr().out
