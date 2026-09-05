@@ -3,8 +3,7 @@ id: PL-N092
 title: Rewrite README as a human-readable introduction to the project
 priority: P2
 effort: M
-status: blocked
-blocked-by: PL-RM83
+status: ready
 classes: docs, ux
 feature: project-introduction
 touches: README.md, docs/MODEL.md
@@ -91,6 +90,49 @@ access level did not allow it — so the guidance above was read from the same
 article's source in the public `github/docs` repository, through
 `raw.githubusercontent.com`, which the default Trusted allowlist covers. The
 project owner added `docs.github.com` to the environment's **Allowed domains**
-the same day; that takes effect for sessions started afterwards, so a session
-working this item can fetch the canonical page and should confirm the summary
-above against it rather than assuming it is still current.
+after that capture, but it was **still blocked** when retried on 2026-09-05
+(`EGRESS_BLOCKED` from the egress proxy). Do not budget a session on fetching
+it. What worked instead was `WebSearch`, which returns the page's text in its
+result summary; `raw.githubusercontent.com/github/docs` remains the other
+route. The guidance quoted above was re-confirmed that way on 2026-09-05 and
+is current.
+
+## Restated against `PL-RM83`, 2026-09-05
+
+`PL-RM83` (decide what `README.md` is for) is closed and this item is
+unblocked. Its decision section carries the full reasoning and the standards it
+was taken against - read it before writing. In short:
+
+- **Two audiences**, both trained in science, medicine and/or code: **A**, a
+  potential contributor interested in anesthesiology and code; **B**, a
+  clinician-user with no interest in the code who wants to run the simulator.
+  Neither needs anesthesia or programming explained from first principles.
+- **Audience B cannot be served yet.** There is no packaged build and
+  `ROADMAP.md` item 23 puts packaging out of scope for now, so the README tells
+  audience B what the simulator is, what it is not for, and that it is not yet
+  distributed as an application - and does not offer them a setup path they
+  cannot complete. The `uv` quickstart is written for audience A.
+- **The boundary rule:** if changing the model, a constant, or a parameter set
+  would make the sentence wrong, it belongs in `docs/MODEL.md`. Everything
+  needed to decide and to start stays in the README.
+- **Status is capability, not version:** what the simulator models today and
+  what it does not, with a relative link to `ROADMAP.md`. No version string, no
+  restatement of the milestone table.
+- **Links to files in this repository are relative**, per GitHub's own
+  guidance - absolute links break in clones.
+
+Two additions from the standards research that the original brief predates:
+
+- **A statement of need opens the document.** JOSS requires a README to "clearly
+  state what problems the software is designed to solve and who the target
+  audience is." With the audiences now decided this is writable, and it is the
+  natural first section - it answers the question the current README defers.
+- **Citation and contribution files are a separate item**, `PL-8DDG` (add
+  `CITATION.cff`, and decide whether `CONTRIBUTING.md` is warranted yet). Do not
+  fold them into this rewrite; link to them if they exist by then.
+
+**Verify note.** `PL-QTN6` (freeze README edits, closed) carries a `verify:`
+asserting `blocked-by: PL-RM83` in this file's frontmatter. That line is now
+correctly gone, so that command no longer passes - a live instance of what
+`PL-JZ1D` (a closed item's verify can be silently invalidated by later work)
+describes, left in place as evidence rather than edited away.
