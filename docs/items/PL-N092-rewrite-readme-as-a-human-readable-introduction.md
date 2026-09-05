@@ -3,7 +3,8 @@ id: PL-N092
 title: Rewrite README as a human-readable introduction to the project
 priority: P2
 effort: M
-status: ready
+status: blocked
+blocked-by: PL-RM83
 classes: docs, ux
 feature: project-introduction
 touches: README.md, docs/MODEL.md
