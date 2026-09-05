@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: numerical-domain
+milestone: v0.4.1
 touches: docs/items/PL-GS5X-replace-the-operator-split-with-the-exact.md
 added: 2026-09-05
 closed: 2026-09-05

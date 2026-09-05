@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.4.1
 touches: .github/workflows/quality.yml, .github/workflows/pr-title.yml
 added: 2026-09-01
 closed: 2026-09-05

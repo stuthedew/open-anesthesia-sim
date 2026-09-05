@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: ci-cost
+milestone: v0.4.1
 touches: .github/workflows/quality.yml, .github/workflows/pr-title.yml, .github/workflows/drift.yml
 added: 2026-09-05
 closed: 2026-09-05

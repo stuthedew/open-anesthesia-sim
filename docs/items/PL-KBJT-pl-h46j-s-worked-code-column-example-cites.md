@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: core-domain-language
+milestone: v0.4.1
 touches: docs/items/PL-H46J-give-model-md-s-symbols-table-a-code-column.md
 added: 2026-09-05
 closed: 2026-09-05

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: core-domain-language
+milestone: v0.4.1
 touches: docs/items/PL-3TLK-core-and-model-md-call-the-middle-gas-phase.md
 added: 2026-09-05
 closed: 2026-09-05
