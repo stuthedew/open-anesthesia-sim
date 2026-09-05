@@ -45,8 +45,21 @@ has ever held rather than commits. This is that comparison working exactly as
 written and still answering wrongly, because the branch - not the merge - is
 what the base never held the blob from.
 
-**Where.** `subprojects/docket/src/docket/vcs.py` - `orphaned` and the
-`_landing_split`/`_base_blobs` reading beneath it; `render.py` for the wording.
+**A second surface, observed but not fully diagnosed.** In the same checkout
+and minute, `bin/docket flight` reported `PL-66FP` in flight on
+`origin/claude/pl-66fp-duplicate-sessions-g4zi8d`, whose pull request had
+merged as #323 - while `bin/docket stranded`, which reads the same
+`_landing_split`, said that branch carried nothing left behind. Both answers
+cannot be right. `_work_already_on_base` is what excludes a landed branch from
+`flight`, and that branch had merged the default branch into itself before its
+own squash, so its commits introduced intermediate blobs the base never held -
+the same shape as above. Worth confirming as part of this rather than filed
+separately: one reading produced both, and a fix to it should be checked
+against both commands.
+
+**Where.** `subprojects/docket/src/docket/vcs.py` - `orphaned`,
+`_work_already_on_base` and the `_landing_split`/`_base_blobs` reading beneath
+them; `render.py` for the wording.
 
 **Possible readings, none decided.** Compare against the branch's *own tip*
 rather than every blob its history introduced - a path whose final content
