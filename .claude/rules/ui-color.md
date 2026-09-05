@@ -1,6 +1,6 @@
 ---
 paths:
-  - "src/anesthesia_sim/app/**"
+  - "/src/anesthesia_sim/app/**"
 ---
 
 # Picking a color in this interface
