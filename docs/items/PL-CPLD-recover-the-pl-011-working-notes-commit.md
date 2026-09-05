@@ -1,8 +1,13 @@
 ---
 id: PL-CPLD
 title: Recover the PL-011 WORKING_NOTES commit stranded on origin/claude/next-item-75htc6 after that branch's pull request merged
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: infra
+touches: docs/WORKING_NOTES.md
 added: 2026-09-05
+verify: python3 tools/doc_check.py check && grep -q 'no numpy' docs/WORKING_NOTES.md
 ---
 **Problem.** `bin/docket stranded` reports `origin/claude/next-item-75htc6` as
 a branch whose pull request already took the rest of its work, leaving commit

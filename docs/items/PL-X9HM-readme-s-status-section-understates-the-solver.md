@@ -1,10 +1,14 @@
 ---
 id: PL-X9HM
 title: README's status section understates the solver disagreement as 1.2e-2 percentage points where MODEL.md gives 2.3e-2 for the same domain
-status: untriaged
+priority: P1
+effort: S
+status: needs-decision
+blocked-by: PL-XYRN
+classes: science, docs
+touches: README.md
 added: 2026-09-05
 ---
-
 **Problem.** `README.md`'s status section justifies the two-decimal readout with
 a measured bound, and quotes the wrong row of the table it is drawn from:
 
@@ -39,6 +43,20 @@ carry both figures.
 `README.md` until the project owner lifts it, and that rule says explicitly that
 a doc sweep does not override it. Found and left alone while sweeping
 `docs/MODEL.md` for `PL-RCTQ`.
+
+**Decision needed.** The freeze holds this correction, and the freeze now
+waits on `PL-XYRN` (decide when the repository goes public) rather than on
+anything undecided about the README itself. `PL-XYRN` is `L` and P2, so on the
+current plan a wrong error bound — wrong in the direction that claims more
+accuracy than was measured — stands in the document most readers open until a
+public-readiness pass that has no date. So: does the project owner lift the
+freeze for this one sentence, or accept the stated bound until `PL-N092`
+(rewrite README as a human-readable introduction) runs?
+
+Recorded as a question rather than as `blocked-by: PL-XYRN` deliberately.
+`docket check` refuses a P1 item waiting on a P2 one, and the honest resolution
+is not to promote `PL-XYRN` into a band whose every other member is
+safety- or science-classed work that can be started today.
 
 **Not the same item as `PL-N092`** (rewrite README as a human-readable
 introduction), though they touch the same paragraph. `PL-N092` cites this very

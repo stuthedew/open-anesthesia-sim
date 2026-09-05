@@ -1,10 +1,14 @@
 ---
 id: PL-T67Y
 title: README's status section describes neither the playback rate nor the chart time base, the two v0.4.0 capabilities it never gained a paragraph for
-status: untriaged
+priority: P2
+effort: S
+status: blocked
+blocked-by: PL-XYRN
+classes: docs
+touches: README.md
 added: 2026-09-05
 ---
-
 **Problem.** `README.md`'s status section has kept pace with most of v0.4.0 —
 the MAC display unit, the fixed 0 to 3 ×MAC vertical range, per-compartment
 trace selection, the $`F_A/F_I`$ plot, the agent-change confirmation — and

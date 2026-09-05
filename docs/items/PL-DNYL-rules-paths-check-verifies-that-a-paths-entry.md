@@ -1,10 +1,14 @@
 ---
 id: PL-DNYL
 title: rules_paths_check verifies that a paths: entry is anchored but not that it points anywhere, so a typo'd prefix is a rule that silently never fires
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+touches: tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_rules_paths_check.py && grep -q 'def test_prefix_that_resolves_to_nothing' tests/unit/test_rules_paths_check.py
 ---
-
 **Problem.** `tools/rules_paths_check.py` (`PL-LLWN`) holds every
 `.claude/rules/*.md` `paths:` entry to a leading `/`, which closes the two
 failure modes that were live: an unanchored glob matching its name at any

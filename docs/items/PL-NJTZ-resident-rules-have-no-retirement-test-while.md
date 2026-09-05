@@ -1,18 +1,13 @@
 ---
 id: PL-NJTZ
 title: Resident rules have no retirement test while checks do, so the resident set can only grow
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: session-cost, planning
+touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-09-05
 ---
-
-**Problem.** Resident rules have no retirement test while checks do, so the resident set can only grow
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
-
 **Problem, stated against the asymmetry.** `CLAUDE.md:205` gives checks a
 retirement test: "**A check earns its place every run, or it is retired.** ... A
 check that fires every run without changing a decision is a defect in the
