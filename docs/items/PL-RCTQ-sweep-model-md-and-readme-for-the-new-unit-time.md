@@ -73,3 +73,15 @@ when this sweep becomes writable.
 is for). Sweep `docs/MODEL.md` when this unblocks, record the README lines
 that went stale as a finding, and leave the file alone; see
 `.claude/rules/readme-hold.md`.
+
+**One line outside `docs/MODEL.md` that this sweep should also settle
+(2026-09-05, landing `PL-SSBP`).** `ROADMAP.md`'s v0.4.0 "Goal" gives three
+measurable reasons the model is unteachable, and its second reads "the chart
+shows a rolling five-minute window on an axis labelled in seconds and scaled
+to the vaporizer's dial maximum". All three clauses are now false: `PL-CC23`
+fixed the vertical scale and `PL-SSBP` the window and the axis units. The
+section is a snapshot of the state at scoping rather than a description of
+what ships - `PL-CC23` landed without amending it, which is the convention -
+so it was left alone rather than edited unilaterally. Decide as part of this
+sweep whether a scoping-time Goal should say so in its own words, and apply
+the same answer to all three clauses at once.
