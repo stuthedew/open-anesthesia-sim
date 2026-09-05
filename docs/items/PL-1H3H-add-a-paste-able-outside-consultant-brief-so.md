@@ -81,7 +81,7 @@ cannot discharge itself into the queue and stop there.
 **Done when.** `docs/consultant-brief.md` exists, names
 `.claude/rules/apparatus-standard.md` as a rule to disregard for the pass,
 orders the read so `ROADMAP.md`, `docs/items/` and `docs/WORKING_NOTES.md` come
-last, and `make check` reports the resident total unchanged.
+last, and adds no resident characters of its own.
 
 **Worked.** Brief written. Read order puts the code and the running application
 first and the three framing documents last, on the ground that a reviewer who
@@ -92,3 +92,16 @@ them whether or not they exist. Executable output is permitted but may not be
 left unwired - two physics checks from the retired `PL-STNV` harness are
 release gates in `tests/reference/test_coupled_dynamics.py` and still run,
 which is the half of that experiment that worked.
+
+**Re-pitched before merge, on the owner's correction.** The first draft made
+project direction the subject. What the owner actually valued was a deep
+simulation-architecture review - the model, the numerics, the chart and the
+interaction - so the spine is now the simulator, the audience and the
+plausible-wrong-number asymmetry are stated up front, and the two
+project-direction questions moved to an optional tail marked deletable. A
+§ "Objections already answered" was added ahead of the countermands, carrying
+the too-much-tooling objection and the test it must now meet; `PL-9J2W` puts
+the same test in `CLAUDE.md`, where it reaches ordinary working sessions that
+no pasted document can. The apparatus-ratio question was **removed** from the
+brief's question list: it was the line that manufactured the objection this
+pass exists to stop re-litigating.

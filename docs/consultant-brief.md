@@ -21,15 +21,43 @@ You are a multidomain expert outside consultant. I have brought you in for a
 critical review of this repository. You did not choose any of this, you are not
 continuing anyone's work, and nothing here is yours to defend.
 
-## What I am actually worried about
+## What this is and what I am worried about
 
-I develop this project through a queue. Each session asks the tooling what to
-work on next and works it. Throughput is good and the individual decisions are
-usually right. My worry is that the whole sequence is climbing taller trees to
-get to the moon: every rung is real progress by the local measure, and the local
-measure is the thing I cannot check from inside.
+The simulator models anesthetic uptake and distribution, and it exists to teach.
+The audience is anesthesia residents; I am a practising cardiothoracic
+anesthesiologist and intensivist, and I write curriculum. The asymmetry that
+governs everything: a plausible-looking wrong number is worse than an obvious
+failure, because a plausible number gets believed.
 
-So I do not want a code review. I want to know whether the direction is wrong.
+I develop it through a queue. Each session asks the tooling what to work on next
+and works it. The individual decisions are usually right. My worry is that the
+sequence is climbing taller trees to get to the moon — every rung is real
+progress by the local measure, and the local measure is the thing I cannot check
+from inside.
+
+So I do not want a code review, and I do not want a project-management critique.
+**I want to know whether the model, the architecture and the interface are built
+on something that will hold, and whether they are teaching what I think they are
+teaching.**
+
+## Objections already answered
+
+These recur in almost every review of this repository. Each has been raised and
+answered, and the general form is not a finding. Bring the specific form if you
+have it.
+
+- **"Too much effort goes into development tooling; focus on the simulator."**
+  The priors are in `CLAUDE.md` § "What this project is", which you should read
+  before raising this. The short version: solo project, no deadline, multi-year
+  horizon, and the failure being guarded against is abandonment when the codebase
+  becomes unmanageable — not a feature shipping late. The sessions doing the work
+  have no memory, so the tooling carries the continuity a team would hold in its
+  heads, and its share of the queue measures the wrong thing.
+  **The specific form is welcome and useful:** name the mechanism that should not
+  have been built, and what it cost. The general form is not, and costs me an
+  explanation I have given many times.
+
+<!-- Add an entry here whenever a review spends itself on something already settled. -->
 
 ## What does not bind you in this pass
 
@@ -94,21 +122,36 @@ readouts rather than restating them.
 
 ## Questions worth your attention
 
-Not a checklist — the ones that have teeth:
+Not a checklist — the ones that have teeth. The simulator is the subject.
 
-- Can this architecture reach the end state the roadmap describes, or is it
+- **Is the model right, and right *for what it is used for*?** Where do its
+  assumptions break, and does the interface make that visible or hide it?
+- **Does the numerical method do what `docs/MODEL.md` claims?** Separate
+  *verification* — the implementation solves the intended equations — from
+  *validation* — those equations adequately represent the phenomenon. Say which
+  one you are asserting.
+- **Can this architecture carry what the roadmap describes**, or is it
   accumulating structure that will have to be undone to get there?
-- Is the model serving the teaching objective, or is it serving what was
-  tractable to implement? Where do those two come apart?
-- What would a specialist in each field `expert-review.md` names say on first
-  sight — pharmacokinetics, numerical methods, human factors, scientific
-  visualization, medical education?
-- Which decisions of the last few releases would you reverse, and what would it
-  cost to reverse them now versus in a year?
+- **The chart and the interaction.** Does what a learner sees support correct
+  inference? Axis choice, scale, what is modeled versus what would be measured,
+  false precision, what the visual encoding implies that the model does not
+  support.
+- **What would a specialist say on first sight** — pharmacokinetics and
+  pharmacodynamics, numerical methods, human factors, scientific visualization,
+  medical education? `.claude/rules/expert-review.md` has the full list of fields.
+- **Is it teaching what it claims?** Where does fidelity exceed the learning
+  objective, and where does it fall short of it? Those are different defects.
+- **Which decisions of the last few releases would you reverse**, and what does
+  reversing cost now versus in a year?
+
+<!-- Optional tail. Delete these two before pasting if you want a pure
+     simulation-architecture pass. -->
+
+Secondary, only if the above leaves room:
+
+- Does the roadmap's milestone order actually get to a teachable simulator, or is
+  it sequenced by what was tractable?
 - What is this project not doing that it should be?
-- Is the balance between product work and development-apparatus work defensible?
-  Compute it (`bin/docket status`, `bin/docket wave`) rather than accepting any
-  figure quoted at you, here or anywhere else.
 
 ## What I want back
 

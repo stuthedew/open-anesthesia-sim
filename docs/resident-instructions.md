@@ -71,6 +71,22 @@ arriving and the session deciding how to answer it; nothing but resident text
 reaches that moment. The same argument covers `What this project is`, which
 sets the horizon every one of those judgments is made against.
 
+That section's closing paragraph — the apparatus is not judged by its share of
+the queue — was added on the same argument and for a measured reason
+(`PL-9J2W`). `apparatus` appeared in `CLAUDE.md` three times and every one was a
+warning: "at permanent risk of becoming the work instead", "a lower and
+different bar", "where the two compete for a session, the simulator wins"; and
+`.claude/rules/apparatus-standard.md` adds that polishing it "is the most common
+way this project wastes a session". The one sentence arguing for investment is
+scoped to the simulator by its own words. So a session that reached the ratio
+had three warnings and no counterweight, reliably concluded the project was
+overinvesting in tooling, and the project owner supplied the missing half by
+hand — every time, and never in writing. It is resident rather than routed
+because the judgment happens while a reply is being composed, with no read
+before it, which is this group's argument exactly. What was written is the
+*test* rather than a defence: the specific objection still lands, and only the
+general one is foreclosed.
+
 **Fires on writing a reply.** `.claude/rules/instruction-writing.md`, all of
 it, and this is the file the item asked hardest about. Rule 14's closing block
 alone is 88 of its 140 lines and applies to every reply of any kind; rules 1–9
