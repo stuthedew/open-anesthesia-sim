@@ -13,7 +13,14 @@ from docket.checks import analyze
 from docket.config import Config
 from docket.model import Item
 from docket.plan import OfferedReport
-from docket.vcs import ClosureReport, LostItem, LostReport, PullRequestHistory
+from docket.vcs import (
+    BaseRecord,
+    ClosureReport,
+    LostItem,
+    LostReport,
+    PullRequestHistory,
+    RecordReport,
+)
 from docket.verify import LandedReport, SlowCommand
 
 TODAY = date(2026, 8, 24)
@@ -1571,3 +1578,97 @@ def test_the_closing_gate_is_off_when_a_project_declares_no_cutover() -> None:
     item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 24), pr="48")
 
     assert not _has(analyze([item], TODAY, off).errors, "is done but names no")
+
+
+# --- a closed item's `verify:` is a record, not a live command ---------------
+#
+# The decision `PL-JZ1D` settled. A closed command stops resolving as a matter
+# of course - 14 of the 179 carrying one in this store already do, and every
+# one of the 14 is later work correctly consuming what its predecessor
+# established. So the rot is not the defect; the helpful repair is, because
+# re-pointing the command replaces the one that proved the work with one that
+# never ran it. `analyze` is pure here too - it is handed a `RecordReport` -
+# so what these assert is the judgment, not the git reading behind it.
+
+
+def _records(
+    *pairs: tuple[str, str], base: str = "origin/main", declined: str = ""
+) -> RecordReport:
+    return RecordReport(
+        base=base,
+        records=tuple(BaseRecord(identifier=i, verify=v) for i, v in pairs),
+        declined=declined,
+    )
+
+
+def test_rewriting_a_closed_item_s_verify_is_an_error() -> None:
+    # The whole finding. `PL-MJ7B` closed carrying a command that named a test
+    # `PL-D9WD` deleted hours later; the next session to meet it will want to
+    # re-point it, and doing so turns a true record into a false one.
+    item = _item(status="done", closed=TODAY, pr="148", verify="pytest new_thing")
+    report = analyze([item], TODAY, records=_records(("PL-K7QX", "pytest old_thing")))
+
+    assert _has(report.errors, "record of what was run, not a live command")
+    assert _has(report.errors, "pytest old_thing")
+
+
+def test_the_error_names_reopening_as_the_way_out() -> None:
+    # The one legitimate reason to rewrite the field is that the item is not
+    # actually done, and saying so in the status is what makes that visible.
+    item = _item(status="done", closed=TODAY, pr="148", verify="pytest new_thing")
+    report = analyze([item], TODAY, records=_records(("PL-K7QX", "pytest old_thing")))
+
+    assert _has(report.errors, "reopen it")
+
+
+def test_a_closed_item_keeping_its_recorded_command_passes() -> None:
+    item = _item(status="done", closed=TODAY, pr="148", verify="pytest a")
+    report = analyze([item], TODAY, records=_records(("PL-K7QX", "pytest a")))
+
+    assert report.errors == []
+
+
+def test_backfilling_a_command_onto_an_item_closed_without_one_is_an_error() -> None:
+    # Items closed before `verify_required_at_close_from` carry no command and
+    # are meant to keep carrying none: writing one after the merge means
+    # writing a command with nothing left to run it against.
+    item = _item(status="done", closed=TODAY, pr="148", verify="pytest a")
+    report = analyze([item], TODAY, records=_records(("PL-K7QX", "")))
+
+    assert _has(report.errors, "nothing left to run the command against")
+
+
+def test_a_reopened_item_may_have_its_command_rewritten() -> None:
+    # The escape hatch, and it needs no flag. An item whose status admits the
+    # work is unfinished is no longer claiming the old command proved it.
+    item = _item(status="ready", verify="pytest new_thing")
+    report = analyze([item], TODAY, records=_records(("PL-K7QX", "pytest old_thing")))
+
+    assert report.errors == []
+
+
+def test_an_item_the_base_records_nothing_for_is_left_alone() -> None:
+    # A closure travelling in the same commit as its work is the expected
+    # shape, and its command is still the session's to write.
+    item = _item(status="done", closed=TODAY, pr="148", verify="pytest a")
+    report = analyze([item], TODAY, records=_records())
+
+    assert report.errors == []
+
+
+def test_a_record_read_that_declined_says_so_rather_than_reporting_clean() -> None:
+    item = _item(status="done", closed=TODAY, pr="148", verify="pytest new_thing")
+    report = analyze([item], TODAY, records=_records(declined="no default branch to read"))
+
+    assert report.errors == []
+    assert _has(report.declined, "recorded `verify:` was rewritten")
+
+
+def test_a_caller_that_did_not_ask_gets_no_answer() -> None:
+    # Every command but `check` passes `None`, and a line saying the read did
+    # not run would be an advisory nobody acts on.
+    item = _item(status="done", closed=TODAY, pr="148", verify="pytest a")
+    report = analyze([item], TODAY)
+
+    assert report.errors == []
+    assert not _has(report.declined, "recorded `verify:` was rewritten")

@@ -346,7 +346,7 @@ correction rather than handing the question back.
 finishing it. `make check` runs `tools/doc_check.py`, which decides the
 package-map, provenance-table, marked-prose-value, dangling-citation,
 math-rendering and release-train questions outright, and `python3 tools/doc_check.py candidates --base <ref>` prints the
-documentation lines mentioning anything the diff touched. Spend the judgment on
+documentation lines naming anything the diff touched as code. Spend the judgment on
 what neither can decide: whether each statement is still *true*. Stale
 documentation is a safety issue here, not tidiness — a reader who trusts a
 wrong statement about which agent is running, what a value means, or what the

@@ -34,6 +34,7 @@ from docket.vcs import (
     merged_pull_requests,
     orphaned,
     precedence,
+    records_on_base,
     released_on_base,
     stranded,
     tags,
@@ -2481,3 +2482,136 @@ def test_a_cut_whose_date_cannot_be_read_is_reported_without_one() -> None:
     )
 
     assert report.branches[0].cut is None
+
+
+# --- a closed item's recorded `verify:` --------------------------------------
+#
+# The other half of a closure: not "has it landed" but "does it still record
+# the command that proved it". Git is injected here like everywhere else, so
+# these assert the narrowing and the id resolution rather than the plumbing.
+
+RECORDED = "---\nid: {id}\ntitle: T\nstatus: done\nverify: {verify}\n---\n"
+
+
+def _record_runner(
+    on_base: dict[str, str],
+    committed: tuple[str, ...] = (),
+    uncommitted: tuple[str, ...] = (),
+    base_paths: tuple[str, ...] = (),
+):
+    """A git whose base holds `on_base`, keyed by the path the base stores it under.
+
+    `committed` and `uncommitted` are the paths the two diffs report, so a case
+    can put an edit in either place; `base_paths` is what `ls-tree` lists, which
+    defaults to the keys of `on_base` and is given explicitly only where a test
+    needs the base to hold a path the tree does not.
+    """
+    listing = base_paths or tuple(on_base)
+
+    def run(args: list[str], _root: Path) -> str:
+        if args[0] == "rev-parse":
+            return "aaa111\n"
+        if args[0] == "diff":
+            paths = committed if args[2].endswith("...HEAD") else uncommitted
+            return "\n".join(paths)
+        if args[0] == "ls-tree":
+            return "\n".join(listing)
+        if args[0] == "show":
+            _, _, path = args[-1].partition(":")
+            return on_base.get(path, "")
+        return ""
+
+    return run
+
+
+def test_only_the_closed_items_this_checkout_changed_are_read() -> None:
+    # Every closed item is offered - two hundred of them here - and a `git
+    # show` each on every `make check` is what the diff exists to avoid.
+    reads: list[list[str]] = []
+    inner = _record_runner(
+        {"docs/items/PL-K7QX-a.md": RECORDED.format(id="PL-K7QX", verify="pytest a")},
+        committed=("docs/items/PL-K7QX-a.md",),
+    )
+
+    def run(args: list[str], root: Path) -> str:
+        reads.append(args)
+        return inner(args, root)
+
+    report = records_on_base(
+        ROOT, {"PL-K7QX": "PL-K7QX-a.md", "PL-B2B2": "PL-B2B2-b.md"}, runner=run
+    )
+
+    assert report.commands == {"PL-K7QX": "pytest a"}
+    assert [a for a in reads if a[0] == "show"] == [["show", "origin/main:docs/items/PL-K7QX-a.md"]]
+
+
+def test_an_uncommitted_edit_is_read_as_well_as_a_committed_one() -> None:
+    # `make check` runs before the commit as often as after it, and the moment
+    # before is when restoring the recorded command is free.
+    run = _record_runner(
+        {"docs/items/PL-K7QX-a.md": RECORDED.format(id="PL-K7QX", verify="pytest a")},
+        uncommitted=("docs/items/PL-K7QX-a.md",),
+    )
+
+    assert records_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).commands == {
+        "PL-K7QX": "pytest a"
+    }
+
+
+def test_nothing_changed_here_reads_no_trees_at_all() -> None:
+    # The ordinary branch touches no closed item, and pays a diff for the
+    # answer rather than a listing and a read.
+    reads: list[list[str]] = []
+    inner = _record_runner({"docs/items/PL-K7QX-a.md": RECORDED.format(id="PL-K7QX", verify="x")})
+
+    def run(args: list[str], root: Path) -> str:
+        reads.append(args)
+        return inner(args, root)
+
+    report = records_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
+
+    assert report.records == ()
+    assert report.base == "origin/main"
+    assert not [a for a in reads if a[0] in {"ls-tree", "show"}]
+
+
+def test_a_retitled_item_is_found_by_id_rather_than_by_path() -> None:
+    # Retitling renames the file, so the working tree's path need not exist on
+    # the base. By path that reads as an item the base does not hold, which
+    # would let a rewrite through on exactly the branch that renamed it.
+    run = _record_runner(
+        {"docs/items/PL-K7QX-old-title.md": RECORDED.format(id="PL-K7QX", verify="pytest a")},
+        committed=("docs/items/PL-K7QX-new-title.md",),
+    )
+
+    assert records_on_base(ROOT, {"PL-K7QX": "PL-K7QX-new-title.md"}, runner=run).commands == {
+        "PL-K7QX": "pytest a"
+    }
+
+
+def test_an_item_the_base_has_never_held_is_not_reported() -> None:
+    # An item captured and closed on this branch has no recorded command to
+    # contradict, which is what lets a closure travel with its own work.
+    run = _record_runner({}, committed=("docs/items/PL-K7QX-a.md",), base_paths=())
+
+    assert records_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).records == ()
+
+
+def test_an_item_still_open_on_the_base_is_not_reported() -> None:
+    # A closure in flight is not yet a record, so its command is still the
+    # session's to write.
+    run = _record_runner(
+        {"docs/items/PL-K7QX-a.md": OPEN_ITEM.format(id="PL-K7QX")},
+        committed=("docs/items/PL-K7QX-a.md",),
+    )
+
+    assert records_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).records == ()
+
+
+def test_a_checkout_with_no_default_branch_declines_rather_than_passing() -> None:
+    # An empty result meaning "could not look" must never render as "looked,
+    # found nothing" - the standing rule for every reader in this module.
+    report = records_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=lambda args, root: "")
+
+    assert not report.known
+    assert "no default branch" in report.declined

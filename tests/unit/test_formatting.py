@@ -26,6 +26,7 @@ from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
     chart_grid_interval_percent,
     format_case_discard_warning,
+    format_chart_time_label,
     format_delivered_label,
     format_elapsed,
     format_mac_awake_reference,
@@ -34,6 +35,7 @@ from anesthesia_sim.app.formatting import (
     format_percent,
     format_playback_rate,
     format_subtitle,
+    format_time_base,
     mac_awake_band_percent,
     mac_axis_ticks,
     mac_multiple,
@@ -705,3 +707,93 @@ def test_the_playback_rate_is_not_a_second_reading_of_the_clock() -> None:
 
     assert not rate.endswith(" s")
     assert rate != format_elapsed(60.0)
+
+
+@pytest.mark.parametrize(
+    ("elapsed_s", "expected"),
+    [
+        (0.0, "0"),
+        (15.0, "15s"),
+        (45.0, "45s"),
+        (60.0, "1m"),
+        (90.0, "1m30s"),
+        (180.0, "3m"),
+        (900.0, "15m"),
+        (3_600.0, "1h"),
+        (5_400.0, "1h30m"),
+        (43_200.0, "12h"),
+        (86_400.0, "24h"),
+    ],
+)
+def test_a_time_axis_tick_carries_its_own_unit(elapsed_s: float, expected: str) -> None:
+    """The one property this label cannot be allowed to lose.
+
+    The chart's horizontal axis spans anything from a minute to half a day,
+    so a bare number would mean seconds on one time base and hours on
+    another while looking identical on both. A reader who missed the caption
+    would have nothing in the label to correct them, and reading a
+    twelve-hour axis as twelve minutes inverts every rate on the plot.
+    """
+
+    assert format_chart_time_label(elapsed_s) == expected
+
+
+def test_the_run_s_start_is_labelled_without_a_unit() -> None:
+    """`0s` would invite reading the whole axis as seconds."""
+
+    assert format_chart_time_label(0.0) == "0"
+
+
+def test_a_time_axis_tick_shows_a_fraction_of_a_second_only_when_there_is_one() -> None:
+    """A trailing `.0` on every label is noise; a dropped tenth is a wrong time.
+
+    Every tick `app/chart_time_base.py` places falls on a whole second, so
+    the fraction is unreachable from the ladder - but rounding it away
+    silently is how a label comes to name a time the chart is not drawing.
+    """
+
+    assert format_chart_time_label(90.5) == "1m30.5s"
+    assert format_chart_time_label(30.0) == "30s"
+
+
+@pytest.mark.parametrize("elapsed_s", [-1.0, float("nan"), float("inf")])
+def test_a_time_axis_tick_refuses_a_time_that_is_not_one(elapsed_s: float) -> None:
+    """An axis label is a displayed value, so an impossible one fails loudly."""
+
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        format_chart_time_label(elapsed_s)
+
+
+@pytest.mark.parametrize(
+    ("span_s", "expected"),
+    [
+        (60.0, "1 minute"),
+        (900.0, "15 minutes"),
+        (1_800.0, "30 minutes"),
+        (3_600.0, "1 hour"),
+        (7_200.0, "2 hours"),
+        (43_200.0, "12 hours"),
+        (86_400.0, "24 hours"),
+        (5_400.0, "1 hour 30 minutes"),
+    ],
+)
+def test_a_time_base_is_named_in_words_the_reader_chooses_from(
+    span_s: float, expected: str
+) -> None:
+    """The selector's entries and the axis caption, in the same words.
+
+    Spelled out rather than in `format_chart_time_label`'s compact form,
+    because this is a sentence a reader picks from and reads back rather
+    than a tick competing for width. The two stay consistent about the
+    quantity: `15 minutes` in the caption over an axis whose last tick reads
+    `15m`.
+    """
+
+    assert format_time_base(span_s) == expected
+
+
+def test_a_time_base_name_agrees_with_its_own_count() -> None:
+    """ "1 hours" is the kind of seam that costs a reader a second pass."""
+
+    assert format_time_base(3_600.0) == "1 hour"
+    assert format_time_base(60.0) == "1 minute"

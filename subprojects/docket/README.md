@@ -818,6 +818,47 @@ the project this grew in was wrong and none had been executed — a check nobody
 ran is a specification nobody tested, and it fails after a worker has done the
 work rather than before.
 
+### A closed item's command is a record, and it is not rewritten
+
+Once the item is `done`, `verify` stops being a command and becomes the record
+of an experiment that was performed: this command ran, it failed before the
+work and passed after. That is a fact about a tree which no longer exists, not
+a claim about the default branch today, and reading it as the second is what
+makes the field look broken when it is working.
+
+It stops resolving as a matter of course. Measured over the store this grew
+in, 14 of the 179 closed items carrying a command no longer resolve against
+the tree, and not one of the 14 is a defect — each is later work correctly
+consuming the state its predecessor established. Four are
+`grep '^blocked-by: PL-…'` against an item file, which pass exactly while the
+blocker is unresolved and were written in the expectation of stopping. A field
+whose commands are designed to become false cannot be read as a standing
+claim, so nothing here runs a closed item's command and nothing warns that one
+has gone stale: a check firing on all 14 would change no decision on any of
+them, which is the shape of check this project retires rather than adds.
+
+The hazard is the repair. A session meeting a dead command re-points it at
+whatever covers the ground now, and the item then names a command that never
+ran against the work it claims to prove — a false provenance where there was a
+true one, which is worse than an absent one because it looks authoritative.
+
+So `check` errors where a branch changes the `verify` of an item that already
+reads `done` on the default base, and where it adds one to an item closed
+without a command, which after the merge has nothing left to run against it.
+An error rather than an advisory because the rule is exact: the field either
+differs from the base's or it does not. The reading is one-sided — the two
+diffs behind it return nothing where no merge base resolves, so a truncated
+checkout under-reports and no branch is ever accused of an edit it did not
+make. Reopening the item is the way out and needs no flag, because an item
+whose status admits the work is unfinished is no longer claiming the recorded
+command proved it.
+
+Which tree the command was true of is already recorded, and by `pr` rather
+than by a second field. The pull request outlives the squash-merge that
+discards the branch commit, which is why `commit` was retired; 246 of the 248
+closed items in the store carry one, and the merge behind it is what a reader
+follows back to the tree the command last passed on.
+
 `status` runs `untriaged` → `ready` / `needs-decision` / `blocked` → `done` /
 `dropped`. Requirements scale with it: an untriaged capture needs only a
 title and a body, while anything past that is a commitment to do work and is
