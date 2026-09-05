@@ -897,7 +897,9 @@ reconstruct three commands at the moment they are trying to do something else.
    provenance-table, marked-prose-value, dangling-citation, math-rendering and
    release-train questions outright, and
    `python3 tools/doc_check.py candidates --base <ref>` prints the
-   documentation lines mentioning anything the diff touched.
+   documentation lines naming anything the diff touched *as code* - a term
+   that is also an ordinary word is reported only where a line marks it as
+   code, and the output names which terms those were.
 
    Spend the judgment on what neither can decide: whether each statement is
    still *true*. Stale documentation is a safety issue here — a reader who
