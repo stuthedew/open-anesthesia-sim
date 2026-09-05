@@ -1,9 +1,17 @@
 ---
 id: PL-BWTB
 title: PL-GS5X's Done when requires the tolerance PL-X9KD sets, but PL-X9KD is blocked-by PL-GS5X, so as written neither can finish
-status: untriaged
+status: done
 added: 2026-09-05
+closed: 2026-09-05
+priority: P2
+effort: S
+classes: defect, docs
+touches: docs/items/PL-GS5X-replace-the-operator-split-with-the-exact.md
+feature: numerical-domain
+verify: python3 tools/doc_check.py check && grep -qF 'Corrected 2026-09-05 (`PL-BWTB`)' docs/items/PL-GS5X-replace-the-operator-split-with-the-exact.md
 ---
+
 **Problem.** `PL-GS5X` (replace the operator split with the exact matrix
 exponential) closes, per its own Done when at line 114, when "the independent
 oracle agrees to the tolerance `PL-X9KD` sets". `PL-X9KD` declares

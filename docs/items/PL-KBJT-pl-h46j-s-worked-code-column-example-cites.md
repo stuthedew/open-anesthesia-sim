@@ -1,9 +1,17 @@
 ---
 id: PL-KBJT
 title: PL-H46J's worked Code-column example cites AlveolarCompartment.partial_pressure_fraction, which does not resolve until PL-9SH6 lands
-status: untriaged
+status: done
 added: 2026-09-05
+closed: 2026-09-05
+priority: P3
+effort: S
+classes: defect, docs
+touches: docs/items/PL-H46J-give-model-md-s-symbols-table-a-code-column.md
+feature: core-domain-language
+verify: python3 tools/doc_check.py check && grep -qF 'Write the cells against the names in the tree today' docs/items/PL-H46J-give-model-md-s-symbols-table-a-code-column.md
 ---
+
 **Problem.** `PL-H46J` adds a Code column to `docs/MODEL.md` § "Symbols" whose
 cells name a resolvable expression, and offers
 `AlveolarCompartment.partial_pressure_fraction` as its worked example.
