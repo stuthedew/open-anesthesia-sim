@@ -3,13 +3,33 @@ id: PL-3V4N
 title: The README freeze is a path-scoped rule, so it fires on reading README.md and cannot fire before a write that no read precedes
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, infra
 feature: dev-tooling
 touches: .claude/rules/readme-hold.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_readme_edit_fails_while_the_hold_file_exists' tests/unit/test_doc_check.py
+closed: 2026-09-05
+reason: Overtaken by PL-WB5K, which deleted the root README and the freeze rule together, so there is no longer a write to gate. The enforcement this item wanted exists as tools/readme_hold_check.py, guarding the file's absence rather than its contents; the general finding - a path-scoped rule fires on a read and so cannot gate a first write - is already stated in CLAUDE.md's routing list.
 ---
+
+**Dropped 2026-09-05, under `PL-WB5K` (delete README.md until a deliberate
+rewrite replaces it).** There is nothing left to enforce. The project owner
+deleted the root README and the hold file with it, so the freeze this item
+protects no longer exists and neither does the file it protected. The item's
+own self-lifting design anticipated exactly this ending — "the check disappears
+with the hold file" — it simply arrived before the check was ever built, which
+is the cheaper of the two orders.
+
+The finding underneath it is not lost, because it was never about the README:
+a path-scoped rule fires on a **read**, so any rule that must fire before a
+first write is routed to a disposition that cannot deliver it.
+`.claude/rules/` carries other `paths:`-scoped rules and the next one written
+to gate a write will hit the same wall. That general form belongs in the
+routing guidance in `CLAUDE.md`, which already states it; this item is dropped
+rather than generalized in place, so a reader is not left with a defect report
+naming two deleted files.
+
+The record below is the original text, kept for the reasoning.
 
 **Problem.** `.claude/rules/readme-hold.md` carries `paths: ["/README.md"]`.
 Claude Code loads a path-scoped rule when a session **reads** a matching file —

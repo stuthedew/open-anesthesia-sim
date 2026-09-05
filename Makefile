@@ -83,6 +83,12 @@ check: sync
 # declared scope is the one it will actually get. Reads only the frontmatter of
 # `.claude/rules/*.md`, so it costs nothing. `PL-LLWN`.
 	python3 tools/rules_paths_check.py
+# The third of the same kind, and the shortest-lived: the root README was
+# deleted (`PL-WB5K`) and this is what keeps it deleted, because the freeze it
+# replaces was a path-scoped rule that could be missed by a session that never
+# read the file. One `exists()` call. `PL-N092` deletes this line with the
+# script when it writes the deliberate README.
+	python3 tools/readme_hold_check.py
 	python3 tools/doc_check.py check
 # Bare `python3` for the reason `doc_check.py` above uses it: standard library
 # only, so it runs in a checkout with no virtualenv. It reads the color

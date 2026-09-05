@@ -2,7 +2,8 @@
 name = "anesthesia-sim"
 version = "0.4.1"
 description = "Open-source anesthesia simulation project"
-readme = "README.md"
+# No `readme` key: the root README was deleted under `PL-WB5K` and stays gone
+# until `PL-N092` writes a deliberate one. Restore the key in the same change.
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [

@@ -7,7 +7,7 @@ status: blocked
 blocked-by: PL-XYRN
 classes: docs, ux
 feature: project-introduction
-touches: README.md, docs/MODEL.md
+touches: README.md, docs/MODEL.md, pyproject.toml, Makefile, .github/workflows/quality.yml, tools/readme_hold_check.py, tests/unit/test_readme_hold_check.py, docs/ARCHITECTURE.md
 added: 2026-09-01
 verify: python3 tools/doc_check.py check && ! grep -q 'resolution the numerical method supports' README.md
 not-delegable: docs/MODEL.md is a protected path, and the command below bounds only the mechanical half - whether the rewritten README actually introduces the project to a first-time reader is the judgment a check cannot make, which is the whole of this item
@@ -153,6 +153,29 @@ same documents written singly over months do not.
 
 Nothing above is provisional because of that. `PL-RM83` settled the audience,
 the `docs/MODEL.md` boundary and the status treatment, and this brief is
-restated against them; only the timing moved. `README.md` therefore stays
-frozen, and `.claude/rules/readme-hold.md` is still the live rule — it is
-deleted in the commit carrying this rewrite, whenever that comes.
+restated against them; only the timing moved.
+
+## The README no longer exists, 2026-09-05 — PL-WB5K
+
+The project owner deleted `README.md` the same day, rather than leaving it
+frozen in place: a frozen document is still read, and sessions were reading it
+as instruction while a human reader could not use it. `PL-WB5K` carries the
+reasoning; `docs/WORKING_NOTES.md` carries the thread.
+
+**Three things change for this item, and the brief above is otherwise intact.**
+
+1. This is now a **first draft, not a rewrite**. Nothing has to be preserved,
+   reorganized or argued out of the document, and the "what gets cut moves to
+   `docs/MODEL.md`" half of the brief is already settled — the old text is in
+   git history at the commit that removed it, available if a paragraph is
+   worth recovering, and required to be read for none of them.
+2. The freeze rule under `.claude/rules/` is gone, replaced by
+   `tools/readme_hold_check.py`, which fails `make check` and CI's `floor` job
+   while a root `README.md` exists. **Delete that script and its two
+   invocations — in `Makefile` and `.github/workflows/quality.yml` — in the
+   commit that writes the README**, or this item cannot land. Remove its line
+   from `docs/ARCHITECTURE.md`'s `tools/` map in the same commit.
+3. **Restore `readme = "README.md"` to `pyproject.toml`**, which the deletion
+   removed because the `uv_build` backend fails on a missing file. `PL-4MHK`
+   (package metadata) wants the `description` field to agree with the README's
+   opening paragraph, so the two are worth landing together or in that order.
