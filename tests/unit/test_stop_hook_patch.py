@@ -1,4 +1,4 @@
-"""Tests for `tools/stop_hook_patch.py`, the SessionStart correction to the
+"""Tests for `.claude/hooks/stop_hook_patch.py`, the SessionStart correction to the
 harness stop hook.
 
 The tool edits a file it does not own, which every `Stop` in the session then
