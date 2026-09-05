@@ -1,22 +1,29 @@
 ---
 id: PL-GGCN
 title: The prose-dependency advisory only reads the first id in a compound prerequisite, so 'blocked on A and on B' leaves B undeclared and unreported
-status: untriaged
+status: done
 added: 2026-09-05
+closed: 2026-09-05
+priority: P2
+effort: S
+classes: defect, infra
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+feature: dev-tooling
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_second_prerequisite_in_a_compound_sentence_is_reported' subprojects/docket/tests/test_checks.py
 ---
+
 **Problem.** `PROSE_DEPENDENCY` (`subprojects/docket/src/docket/checks.py:824`)
 requires a cue word from `PREREQUISITE_CUES` within 40 characters of the id,
 and its character class excludes `(`, `)`, `.`, `;`, `:` and `—`. So in a
 sentence naming two prerequisites off one cue, only the first is ever checked.
 
 **The live instance.** `PL-VZL0` (cite MODEL.md from every `core/` function
-implementing a governing equation) line 69 reads:
-
-that line names two prerequisites off a single cue word — first `PL-GS5X`,
-then, past a parenthetical, `PL-X2XX`. Read it in the file rather than here:
-quoting it verbatim makes *this* item trip the same advisory on the same first
-id, which is a neat confirmation and a warning that then fires forever, so the
-wording is described instead of reproduced.
+implementing a governing equation) line 69 names two prerequisites off a single
+cue word — first `PL-GS5X`, then, past a parenthetical that wraps the line,
+`PL-X2XX`. Read it in the file rather than here: quoting it verbatim made
+*this* item trip the same advisory on the same first id, which is a neat
+confirmation and a warning that would then fire forever, so the wording is
+described instead of reproduced.
 
 `blocked-by` declares `PL-GS5X` alone. `PL-X2XX` is open (`ready`), is a real
 prerequisite - without it the citations `PL-VZL0` adds are unenforced prose and

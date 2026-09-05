@@ -826,6 +826,22 @@ PROSE_DEPENDENCY = re.compile(
     re.IGNORECASE,
 )
 
+# A *second* blocker written as a continuation of the first - "blocked on A and
+# on B" - which the cue-then-id form above reads only the first half of. It is a
+# separate pattern rather than another entry in the cue list because "and on" is
+# ordinary English: unanchored it fires on "reports on `PL-A` and on `PL-B`",
+# which states no prerequisite at all. So a continuation counts only inside a
+# paragraph that already carries a real cue, which `_cued_paragraphs` supplies.
+#
+# `PL-GGCN` is what this cost. `PL-VZL0` names `PL-GS5X` and `PL-X2XX` off one
+# cue, declares only the first, and nothing fired - the first id was skipped as
+# declared and the second matched no cue - so an open prerequisite of a v0.4.1
+# item stayed invisible to `docket next` while the check reported clean.
+PROSE_DEPENDENCY_CONTINUATION = re.compile(
+    rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?[^.\n;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
+    re.IGNORECASE,
+)
+
 
 def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> None:
     """An item that states a prerequisite in prose and never declares it.
@@ -869,13 +885,20 @@ def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> N
       which depends on `PL-VM40`" is a true sentence in a brief that owns
       neither edge; the subject of the verb is not something a regex settles.
 
+    A fourth used to belong here and no longer does: a second blocker written
+    as "and on B" after the cue that introduced A. `PROSE_DEPENDENCY` stops at
+    the first id, so the compound form - the natural way to state two
+    prerequisites - was the one shape the check could not see, and it reported
+    clean over a real open edge (`PL-GGCN`). `PROSE_DEPENDENCY_CONTINUATION`
+    covers it, anchored to a paragraph that already carries a cue.
+
     So this reports what it matched and claims nothing about what it did not.
     """
     for item in report.items:
         if not item.is_open:
             continue
         seen: set[str] = set()
-        for match in PROSE_DEPENDENCY.finditer(item.body):
+        for match in _prerequisite_matches(item.body):
             other = match.group(1)
             blocker = known_items.get(other)
             if blocker is None or other == item.identifier or not blocker.is_open:
@@ -889,6 +912,47 @@ def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> N
                 "set `status: blocked`, which is the half `docket next` reads, or reword the "
                 "sentence if it is not a prerequisite"
             )
+
+
+def _prerequisite_matches(body: str) -> list[re.Match[str]]:
+    """Every id the body states a prerequisite on, in the order they appear.
+
+    Two patterns, because a brief states the second blocker differently from
+    the first: `PROSE_DEPENDENCY` reads "blocked on A", and
+    `PROSE_DEPENDENCY_CONTINUATION` reads the "and on B" that follows it. The
+    continuation is admitted only where a cue already fired in the same
+    paragraph, which is what keeps "and on" from matching ordinary prose.
+
+    Ordered by position so the advisories for one item read in the order a
+    person meets them in the file.
+    """
+    cued = _cued_paragraphs(body)
+    matches = list(PROSE_DEPENDENCY.finditer(body))
+    matches += [
+        match
+        for match in PROSE_DEPENDENCY_CONTINUATION.finditer(body)
+        if any(start <= match.start() < end for start, end in cued)
+    ]
+    return sorted(matches, key=lambda match: match.start())
+
+
+def _cued_paragraphs(body: str) -> list[tuple[int, int]]:
+    """The blank-line-delimited blocks in which a prerequisite cue fired.
+
+    The paragraph rather than the line, because the item format wraps at 80
+    columns: `PL-VZL0` puts "Blocked on `PL-GS5X`" on one line and "and on
+    `PL-X2XX`" on the next, so a line-scoped anchor would miss exactly the case
+    this exists for. The paragraph rather than the whole body, because a brief
+    that states one real dependency should not thereby license every "and on"
+    in the rest of the file.
+    """
+    bounds: list[tuple[int, int]] = []
+    for match in PROSE_DEPENDENCY.finditer(body):
+        opened = body.rfind("\n\n", 0, match.start())
+        start = 0 if opened < 0 else opened + 2
+        closed = body.find("\n\n", match.start())
+        bounds.append((start, len(body) if closed < 0 else closed))
+    return bounds
 
 
 def _sentence(body: str, match: re.Match[str]) -> str:
