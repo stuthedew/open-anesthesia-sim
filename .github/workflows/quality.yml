@@ -32,6 +32,14 @@ permissions:
   contents: read
 
 jobs:
+  # **This job's name is load-bearing outside the tree.** Branch protection
+  # matches a required status check by name, so renaming or removing a job here
+  # orphans the requirement: nothing reports it, and every pull request then
+  # waits forever on a check that cannot arrive - pending rather than failing,
+  # so it does not look like a break. `PL-D551` deleting the `floor` job did
+  # exactly that (`PL-KPP1`). The required list lives in repository settings,
+  # which no script here can read, so nothing in `make check` or CI will catch
+  # the next one. Change a job name only together with that setting.
   checks:
     runs-on: ubuntu-latest
     # The default is 360 minutes. `bin/docket check --verify` shells out to
