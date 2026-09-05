@@ -10,6 +10,7 @@ import pytest
 
 from docket.cli import build_parser, main, merge_shared
 from docket.vcs import lost
+from docket.verify import LANDED_GUARD
 
 READY = """---
 id: PL-B1B1
@@ -40,6 +41,21 @@ def _run(*args: str) -> int:
     return main([*args, "--no-git", "--today", "2026-08-24"])
 
 
+@pytest.fixture(autouse=True)
+def _no_inherited_guard(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear the re-entry guard this suite may have inherited.
+
+    The same fixture `test_verify.py` carries, and needed here for the same
+    reason once `check --verify` became a thing CI runs: that run sets
+    `DOCKET_SKIP_LANDED` for every command it executes, and one of those
+    commands is `PL-P3B6`'s own `verify:`, which runs this file. Without this,
+    `test_check_replays_verify_commands_when_asked` reads the declined report
+    meant for a nested run and fails in CI while passing by hand - which is the
+    environment-dependent result the guard's own check exists to make visible.
+    """
+    monkeypatch.delenv(LANDED_GUARD, raising=False)
+
+
 def test_new_captures_several_ideas_in_one_call(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -67,6 +83,55 @@ def test_check_exits_nonzero_on_a_broken_store(tmp_path: Path) -> None:
 
 def test_check_exits_zero_on_a_clean_store(tmp_path: Path) -> None:
     assert _run("check", "--items", str(_store(tmp_path, READY))) == 0
+
+
+#: A `ready` item - one of `LANDED_STATUSES` - whose `verify:` command leaves a
+#: file behind. Whether that file exists after a run is the only direct evidence
+#: that the command was executed, which is what the two tests below turn on.
+#:
+#: It fails after marking, deliberately. A command exiting 0 would be reported
+#: as already passing, which is an error, so the run's exit status would then
+#: answer "did the replay find something" rather than "did the replay happen" -
+#: and the marker is the thing under test. Failing is also the shape a `ready`
+#: item's command is supposed to have before its work exists.
+MARKING = """---
+id: PL-M4RK
+title: An item whose command leaves a trace
+priority: P1
+effort: S
+status: ready
+classes: perf
+touches: a.py
+verify: touch ran.marker && false
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def test_check_does_not_replay_verify_commands_unless_asked(tmp_path: Path) -> None:
+    """The store validation is the gate; the replay is not (`PL-P3B6`).
+
+    Running every open item's command was 31 s of `make check`'s 67 s, for a
+    finding about work that had already *merged* - which a pre-commit gate on a
+    feature branch cannot have changed. The command still runs in CI, which
+    passes `--verify`.
+    """
+    store = _store(tmp_path, MARKING)
+
+    assert _run("check", "--items", str(store)) == 0
+    assert not (tmp_path / "ran.marker").exists()
+
+
+def test_check_replays_verify_commands_when_asked(tmp_path: Path) -> None:
+    """The other half: `--verify` is what CI runs, so it has to still do it."""
+    store = _store(tmp_path, MARKING)
+
+    assert _run("check", "--verify", "--items", str(store)) == 0
+    assert (tmp_path / "ran.marker").exists()
 
 
 def test_digest_is_silent_on_an_empty_store(

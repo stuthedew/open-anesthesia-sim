@@ -62,7 +62,13 @@ jobs:
       # failure there would report as a dependency break, which is the opposite
       # of what that workflow is for. `PL-22Z3`.
       - run: uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
-      - run: bin/docket check
+      # `--verify` replays every open item's own `verify:` command. It used to
+      # be unconditional, which meant `make check` paid about 31 s per run for a
+      # finding about work that had already *merged* - see the Makefile's note
+      # on the same command. The flag moves the bill here without moving the
+      # coverage: this is the job and these are the events it ran on before
+      # (`PL-P3B6`). CI wall clock is not what that item was optimizing.
+      - run: bin/docket check --verify
       # Repeated in the `floor` job below, unlike the line after it: this
       # one reads `git log` and the branch name, never project source, so
       # the 3.11 parser has nothing it cannot read. `PL-CP74`.
@@ -138,5 +144,9 @@ jobs:
 
       - run: python3 tools/doc_check.py check
       - run: python3 tools/branch_id_check.py
+      # Bare, unlike the `checks` job above: this job installs no `uv`, so
+      # every `verify:` command would be "not found" and the replay would
+      # decline rather than answer. What is being proved here is that the
+      # command runs at all under the 3.11 floor with no virtualenv.
       - run: bin/docket check
       - run: python3 tools/contrast_check.py
