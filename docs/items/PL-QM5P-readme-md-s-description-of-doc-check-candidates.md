@@ -1,7 +1,13 @@
 ---
 id: PL-QM5P
 title: README.md's description of doc_check candidates still says it prints lines mentioning anything the diff touched, which PL-B2NS narrowed to code mentions
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+blocked-by: PL-N092
+classes: docs, defect
+feature: project-introduction
+touches: README.md
 added: 2026-09-05
 ---
 
