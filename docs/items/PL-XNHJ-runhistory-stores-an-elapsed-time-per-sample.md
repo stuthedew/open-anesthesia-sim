@@ -3,12 +3,14 @@ id: PL-XNHJ
 title: RunHistory stores an elapsed time per sample that is an affine function of the sample index for every live run
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: perf
 feature: teachable-case
 touches: src/anesthesia_sim/app/controller.py, tests/unit/test_run_history.py
 added: 2026-09-05
 verify: uv run pytest tests/unit/test_run_history.py && grep -q 'def test_elapsed_times_of_a_uniform_run_are_not_stored' tests/unit/test_run_history.py
+closed: 2026-09-05
+reason: Superseded by PL-2FM6, which deletes RunHistory. There is no per-sample elapsed-time array left to be affine in the sample index: the run holds one keyframe per control event, and a displayed instant is computed from the score rather than recorded alongside a sample. The observation was correct and is what the replacement generalizes.
 ---
 
 **Problem.** `RunHistory._elapsed_s` is an `array("d")` holding one
