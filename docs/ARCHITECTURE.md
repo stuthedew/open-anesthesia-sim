@@ -250,7 +250,7 @@ tools/
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them
 ├── contrast_check.py     # computes every declared color pair's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
-├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime` or `random` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
+├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
@@ -325,8 +325,9 @@ no longer used, and a declared tree matching no source files at all.
 
 The two boundaries cover different trees, and the asymmetry is deliberate. The
 Pydantic boundary covers `app/` as well as `core/`, so the rule reads *exactly
-one module in this package imports Pydantic*. The `time`, `datetime` and
-`random` boundaries stop at `core/` and permit no module at all, because the
+one module in this package imports Pydantic*. The `time`, `datetime`,
+`random`, `secrets` and `uuid` boundaries stop at `core/` and permit no module
+at all, because the
 guarantee they defend explicitly allows the interface its wall clock — what it
 forbids is a tick's real duration reaching the run. A test pins that asymmetry
 end-to-end, so widening the tree to the whole package would fail on an import
