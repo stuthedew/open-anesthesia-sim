@@ -1,7 +1,12 @@
 ---
 id: PL-2LHF
 title: The playback multiplier makes the chart's O(window) decimation cost reachable in minutes of wall clock, which PL-SSBP's frame-budget table was measured before
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: perf
+feature: teachable-case
+touches: src/anesthesia_sim/app/chart_downsampling.py, tests/unit/test_chart_downsampling.py, docs/items/PL-SSBP-add-the-chart-time-base-selector-with-15-30-and.md
 added: 2026-09-05
 ---
 
@@ -38,6 +43,15 @@ what `M4` grouping on a fixed index grid should already permit.
 **Where.** `src/anesthesia_sim/app/chart_downsampling.py`, and `PL-SSBP`'s
 own frame-budget table, which should say what wall-clock time each row now
 corresponds to.
+
+**Decision needed.** Whether to fix the cost or to state the bound. Making
+decimation O(points drawn) - the M4 grouping on a fixed index grid the module
+already cites - takes the window's sample count out of the frame budget for
+good, and is a change to the chart's hot path in the middle of the milestone
+that draws on it. Annotating `PL-SSBP`'s table with the wall-clock time each
+row now takes at 300x costs a paragraph and leaves a 200 ms budget reachable in
+2.4 minutes of sitting. The second is honest about the measurement and does
+nothing about the staleness; the first is the real fix and is not free.
 
 **Done when.** Either the per-frame decimation cost is independent of the
 window's sample count, or `PL-SSBP`'s table carries the playback rate

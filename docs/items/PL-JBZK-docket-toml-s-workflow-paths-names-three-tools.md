@@ -1,8 +1,14 @@
 ---
 id: PL-JBZK
 title: docket.toml's workflow_paths names three tools tests by path, so the other seven and every new one fall on the product side of the lane boundary
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: docket.toml, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
 added: 2026-09-05
+verify: uv run pytest subprojects/docket/tests/test_model.py subprojects/docket/tests/test_config.py && grep -rq 'def test_a_tools_script_and_its_own_test_land_in_the_same_lane' subprojects/docket/tests tests
 ---
 
 **Problem.** `docket.toml`'s `workflow_paths` names three test files

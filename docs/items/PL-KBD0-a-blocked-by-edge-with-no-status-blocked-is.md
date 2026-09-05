@@ -1,7 +1,12 @@
 ---
 id: PL-KBD0
 title: A blocked-by edge with no status blocked is invisible to the ranking, which is the same silent wrong answer one step along
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: planning-cadence
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-05
 ---
 
@@ -42,6 +47,23 @@ they are not equally safe:
 Prefer (1) restricted to `status: ready` — a `ready` item with an open declared
 blocker is a plain contradiction, since `ready` asserts it can be started now —
 and leave `needs-decision` alone. Confirm against `gate` before building it.
+
+**State on 2026-09-05, at triage.** `PL-SN2C` closed that day, so the live
+proof above is gone; `PL-LKRP` remains, at `needs-decision` with `PL-GS5X`
+still open. Under the reading this brief prefers - the pairing enforced at
+`status: ready` only - neither of today's two instances would fire, so the
+check would land with no current instance to catch. That is a point for
+whoever decides it, not against: the defect is that nothing notices, and the
+store happens to be clean this week.
+
+**Decision needed.** Which reading the check takes, and how far it reaches.
+Refusing a `status: ready` item that declares an open blocker is decidable and
+strict; an advisory naming the pair cannot go wrong and can be ignored. The
+brief prefers the first, restricted to `ready`. What is left to settle is
+whether `needs-decision` is reached too: `docket gate` counts that status, so
+forcing it to `blocked` would hide a pending decision from the gate, and
+leaving it alone accepts that `PL-LKRP`'s declared edge stays invisible to the
+ranking.
 
 **Done when.** An item that declares an open blocker cannot sit at `ready`
 without something saying so, `PL-SN2C` and `PL-LKRP` are resolved either way,
