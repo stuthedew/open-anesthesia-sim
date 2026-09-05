@@ -4,7 +4,7 @@ from math import isfinite
 
 import pytest
 
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import RecordedQuantity, SimulationController
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -60,7 +60,7 @@ def test_running_controller_advances_patient_and_named_history() -> None:
     assert snapshot.agent_accounting_passes_validation is True
 
     assert latest_sample.elapsed_s == pytest.approx(snapshot.elapsed_s)
-    assert latest_sample.alveolar_concentration_fraction == pytest.approx(
+    assert latest_sample.substances[snapshot.agent_id][RecordedQuantity.ALVEOLAR] == pytest.approx(
         snapshot.alveolar_concentration_fraction
     )
 

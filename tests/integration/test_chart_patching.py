@@ -61,6 +61,11 @@ from anesthesia_sim.app.simulation_view import (
 )
 from anesthesia_sim.core.parameters import load_agent_parameters
 
+#: The agent whose run this suite replays, and so the substance its recorded
+#: samples are keyed by. The snapshot and the run must name the same one: the
+#: view reads the run under the agent its snapshot names.
+AGENT_ID = "sevoflurane"
+
 # One render tick covers this many recorded simulation samples.
 SAMPLES_PER_RENDER_TICK = round(RENDER_INTERVAL_S / SIMULATION_STEP_S)
 # Long enough that the visible window is saturated, so decimation is active
@@ -131,26 +136,27 @@ class _ReplayController:
         history = self._samples[: self._cursor]
         self._cursor += SAMPLES_PER_RENDER_TICK
         latest = history[-1]
+        recorded = latest.substances[AGENT_ID]
 
         return SimulationSnapshot(
             is_running=True,
             elapsed_s=latest.elapsed_s,
-            agent_id="sevoflurane",
+            agent_id=AGENT_ID,
             agent_display_name="Sevoflurane",
             max_delivered_concentration_percent=8.0,
             agent_mac_percent=2.0,
-            agent_mac_awake=load_agent_parameters("sevoflurane").mac_awake,
+            agent_mac_awake=load_agent_parameters(AGENT_ID).mac_awake,
             circuit_volume_l=6.0,
             fresh_gas_flow_l_min=4.0,
             delivered_concentration_fraction=0.08,
             alveolar_ventilation_l_min=4.0,
             cardiac_output_l_min=5.0,
-            circuit_concentration_fraction=latest.circuit_concentration_fraction,
-            alveolar_concentration_fraction=latest.alveolar_concentration_fraction,
-            mixed_venous_concentration_fraction=latest.mixed_venous_concentration_fraction,
-            vessel_rich_partial_pressure_fraction=latest.vessel_rich_partial_pressure_fraction,
-            muscle_partial_pressure_fraction=latest.muscle_partial_pressure_fraction,
-            fat_partial_pressure_fraction=latest.fat_partial_pressure_fraction,
+            circuit_concentration_fraction=recorded[RecordedQuantity.CIRCUIT],
+            alveolar_concentration_fraction=recorded[RecordedQuantity.ALVEOLAR],
+            mixed_venous_concentration_fraction=recorded[RecordedQuantity.MIXED_VENOUS],
+            vessel_rich_partial_pressure_fraction=recorded[RecordedQuantity.VESSEL_RICH],
+            muscle_partial_pressure_fraction=recorded[RecordedQuantity.MUSCLE],
+            fat_partial_pressure_fraction=recorded[RecordedQuantity.FAT],
             delivered_agent_l=0.012345,
             exhausted_agent_l=0.002345,
             stored_agent_l=0.01,
@@ -179,12 +185,16 @@ def _recorded_run(sample_count: int) -> tuple[SimulationHistorySample, ...]:
     return tuple(
         SimulationHistorySample(
             elapsed_s=index * SIMULATION_STEP_S,
-            circuit_concentration_fraction=0.080 * (1.0 - 0.999**index),
-            alveolar_concentration_fraction=0.070 * (1.0 - 0.9993**index),
-            mixed_venous_concentration_fraction=0.050 * (1.0 - 0.997**index),
-            vessel_rich_partial_pressure_fraction=0.060 * (1.0 - 0.996**index),
-            muscle_partial_pressure_fraction=0.030 * (1.0 - 0.995**index),
-            fat_partial_pressure_fraction=0.010 * (1.0 - 0.994**index),
+            substances={
+                AGENT_ID: {
+                    RecordedQuantity.CIRCUIT: 0.080 * (1.0 - 0.999**index),
+                    RecordedQuantity.ALVEOLAR: 0.070 * (1.0 - 0.9993**index),
+                    RecordedQuantity.MIXED_VENOUS: 0.050 * (1.0 - 0.997**index),
+                    RecordedQuantity.VESSEL_RICH: 0.060 * (1.0 - 0.996**index),
+                    RecordedQuantity.MUSCLE: 0.030 * (1.0 - 0.995**index),
+                    RecordedQuantity.FAT: 0.010 * (1.0 - 0.994**index),
+                }
+            },
         )
         for index in range(sample_count)
     )
