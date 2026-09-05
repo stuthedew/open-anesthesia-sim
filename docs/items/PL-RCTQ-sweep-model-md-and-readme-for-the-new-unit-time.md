@@ -3,9 +3,10 @@ id: PL-RCTQ
 title: Sweep MODEL.md and README for the new unit, time base and run rate
 priority: P2
 effort: S
-status: blocked
+status: ready
 blocked-by: PL-VM40, PL-SN2C, PL-SSBP, PL-CC23, PL-DR1Z, PL-ZRSP, PL-R3KB, PL-W3DD
 classes: docs
+verify: python3 tools/doc_check.py check && grep -qF 'A time base is a view control and reaches no model state.' docs/MODEL.md
 feature: teachable-case
 touches: docs/MODEL.md, README.md
 added: 2026-08-25
