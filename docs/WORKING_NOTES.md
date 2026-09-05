@@ -779,11 +779,19 @@ a hard error, and the message names the replacement spelling rather than only
 the offence. The `./` row above is called out separately in it, since "add a
 leading slash" reads as cosmetic against an entry that matches nothing.
 
-What the check deliberately does not do is decide whether a glob describes the
-*right* set of files; that is judgment and differs per rule. `PL-DNYL` is the
-one decidable piece left beside it: an anchored entry whose literal prefix
-resolves to nothing is a rule that silently never fires, and the tree can
-answer that.
+`PL-DNYL` closed the same day, adding the second rule: an anchored entry whose
+literal prefix resolves to nothing is a rule that silently never fires, and the
+tree answers that outright. The project owner settled the question it hung on -
+a rule may not declare scope ahead of the code it governs, so it is an error
+rather than an advisory. The message names the nearest existing ancestor, which
+is what turns a transposed segment from "this path is wrong" into "it stopped
+being real here".
+
+What the check deliberately does not do, and this is now settled rather than
+pending, is decide whether a glob describes the *right* set of files. That is
+judgment, it differs per rule, and a tool guessing at it is the "worse than no
+tool" case. Both rules it does carry ask only whether an entry is anchored and
+whether it points at anything - one answered by the text, one by the tree.
 
 **Excluded deliberately.** Whether a rule's glob describes the *right* set of
 files is judgment, differs per rule, and is the "worse than no tool" case if
