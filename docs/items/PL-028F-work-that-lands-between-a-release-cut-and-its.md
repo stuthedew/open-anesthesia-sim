@@ -1,7 +1,12 @@
 ---
 id: PL-028F
 title: Work that lands between a release cut and its merge is inside the tag's span but absent from the release notes, and nothing reconciles the two
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect, infra
+feature: release-roadmap-seam
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/checks.py, ROADMAP.md
 added: 2026-09-04
 ---
 
@@ -64,3 +69,14 @@ construction, or a session cutting a release is told what landed in the window
 and decides — and `ROADMAP.md` § "Tags" says which, since it is the document
 that currently states the tag goes on the merge commit without saying what
 that includes.
+
+**Decision needed.** Which of the two live shapes above. *Re-stamp at merge* -
+the release branch absorbs whatever landed while it was open - keeps the notes
+and the tag span identical by construction and is the only one that closes the
+divergence without a person, at the cost of a narrative paragraph nobody has
+written. *Report, do not act* - an advisory on a branch carrying an unmerged
+release commit when a closed, unstamped item is already on the base - is the
+cheaper and puts the judgment where the context is. The third shape, moving the
+tag off the merge commit, this item rejects on sight. Whichever is taken,
+`ROADMAP.md` § "Tags" is where it is written down, since that is the section
+saying the tag goes on the merge commit without saying what that includes.

@@ -1,17 +1,15 @@
 ---
 id: PL-8XPQ
 title: Nothing checks that an interface string uses glyphs the Flutter client can actually draw
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+feature: presentation-safety
+touches: tools/glyph_check.py, tests/unit/test_glyph_check.py, Makefile
 added: 2026-09-04
+verify: uv run pytest tests/unit/test_tools_portability.py && python3 tools/glyph_check.py
 ---
-
-**Problem.** Nothing checks that an interface string uses glyphs the Flutter client can actually draw
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `→` (U+2192) has no glyph in the Flutter client this interface
 renders in, and drew as a replacement box in the control-change list on

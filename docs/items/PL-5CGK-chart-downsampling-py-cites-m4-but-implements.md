@@ -1,8 +1,14 @@
 ---
 id: PL-5CGK
 title: chart_downsampling.py cites M4 but implements AM4, and the difference is a determinism guarantee
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: provenance
+touches: src/anesthesia_sim/app/chart_downsampling.py, docs/references/README.md
 added: 2026-09-04
+verify: python3 tools/doc_check.py check && grep -q 'AM4' src/anesthesia_sim/app/chart_downsampling.py
 ---
 
 **Problem.** `app/chart_downsampling.py` states that it "implements **M4** as
