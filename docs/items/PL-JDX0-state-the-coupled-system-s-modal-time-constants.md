@@ -1,11 +1,14 @@
 ---
 id: PL-JDX0
 title: State the coupled system's modal time constants in docs/MODEL.md, so the timescales the model resolves are readable
-status: untriaged
-added: 2026-09-05
+priority: P2
+effort: M
+status: ready
 classes: docs
 feature: numerical-domain
 touches: docs/MODEL.md
+added: 2026-09-05
+verify: python3 tools/doc_check.py check && grep -qF 'Modal time constants' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md` states two single-mechanism time constants under
