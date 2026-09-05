@@ -284,8 +284,8 @@ correction rather than handing the question back.
 
   A rule that lands in none of the four has been lost, which is worse than this
   file staying long: never delete a rule for being wordy. `make check` reports
-  the resident line total, so growth raises this question instead of passing
-  silently; `PL-H7XN` carries the reasoning.
+  the resident character total, so growth raises this question instead of
+  passing silently; `PL-H7XN` carries the reasoning.
 - **Name the work after the item.** On starting one, rename the session to lead
   with its id, and put that id **at the front of every commit subject** and pull
   request title. This is load-bearing rather than cosmetic: `bin/docket flight`
