@@ -928,11 +928,13 @@ reconstruct three commands at the moment they are trying to do something else.
    that is also an ordinary word is reported only where a line marks it as
    code, and the output names which terms those were.
 
-   Spend the judgment on what neither can decide: whether each statement is
-   still *true*. Stale documentation is a safety issue here — a reader who
-   trusts a wrong statement about which agent is running or what a value
-   means can reach a wrong clinical conclusion from a correct number. Say in
-   the reply which files were checked.
+   Landing a change is not finishing it. Spend the judgment on what neither
+   can decide: whether each statement is still *true*. Stale documentation is
+   a safety issue here rather than tidiness — a reader who trusts a wrong
+   statement about which agent is running, what a value means, or what the
+   interface displays can reach a wrong clinical conclusion from a correct
+   number. Say in the reply which files were checked, not merely that the docs
+   were updated.
 3. Capture anything found but not fixed as its own item.
 4. **Report gate progress if the item is one the gate contains.** Membership is
    decidable rather than a judgment: `bin/docket wave` prints the gate's open

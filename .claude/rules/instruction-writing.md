@@ -6,6 +6,10 @@ more specific document does not carry the format question: a rule that holds
 only until something else has an opinion has to be re-stated in every prompt,
 which is what these exist to stop.
 
+RESIDENT BY NECESSITY, and settled. No `paths:` scope can carry these: a reply
+is not preceded by a read. `docs/resident-instructions.md` has the test and the
+answer for every rule below; do not re-open it without a new carrier to name.
+
 SCOPE. Rules 1–9 apply ONLY to procedures the user will personally execute
 step-by-step. For status reports, analyses, and decision requests, apply
 rules 10–13 instead. Rule 7's gloss requirement and rule 14's closing block

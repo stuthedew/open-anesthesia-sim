@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: CLAUDE.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 346
 verify: grep -q 'rather than traded for speed' CLAUDE.md && ! grep -q 'one-year' CLAUDE.md
 ---
 

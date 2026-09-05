@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: docs/items/PL-MGF9-the-process-work-grooming-advisory-only.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 346
 verify: grep -q 'still being worked on and enjoyed years from now' docs/items/PL-MGF9-the-process-work-grooming-advisory-only.md && ! grep -q 'enjoyed in a year' docs/items/PL-MGF9-the-process-work-grooming-advisory-only.md
 ---
 

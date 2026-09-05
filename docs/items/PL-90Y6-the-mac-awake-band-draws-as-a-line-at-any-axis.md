@@ -9,6 +9,7 @@ feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md, tests/unit/test_simulation_view.py
 added: 2026-09-04
 closed: 2026-09-05
+pr: 345
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_mac_awake_band_reads_as_an_interval_not_a_line' tests/unit/test_simulation_view.py
 ---
 

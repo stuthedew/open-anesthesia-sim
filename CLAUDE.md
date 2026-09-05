@@ -10,7 +10,9 @@ the queue workflows, `.claude/rules/instruction-writing.md` for the shape of a
 reply, `.claude/rules/core-domain.md` and `.claude/rules/expert-review.md` for
 the standards that apply to particular parts of the tree, and
 `docs/maintainer.md` for what only the project owner can act on. Nothing was
-dropped in that routing; adding to it follows the same test, below.
+dropped in that routing; adding to it follows the same test, below, and
+`docs/resident-instructions.md` records what each block that stayed was tested
+against.
 
 ## What this project is
 
@@ -332,16 +334,13 @@ correction rather than handing the question back.
   merely valuable, cleaner or more interesting makes no remaining item cheaper
   and waits for the roadmap.
 
-**Sweep the docs before calling an item done.** Landing a change is not
-finishing it. `make check` runs `tools/doc_check.py`, which decides the
-package-map, provenance-table, marked-prose-value, dangling-citation,
-math-rendering and release-train questions outright, and `python3 tools/doc_check.py candidates --base <ref>` prints the
-documentation lines naming anything the diff touched as code. Spend the judgment on
-what neither can decide: whether each statement is still *true*. Stale
-documentation is a safety issue here, not tidiness — a reader who trusts a
-wrong statement about which agent is running, what a value means, or what the
-interface displays can reach a wrong clinical conclusion from a correct number.
-Say in your reply which files you checked, not merely that you updated the docs.
+**Sweep the docs before calling an item done, and say in your reply which files
+you checked.** Landing a change is not finishing it, and stale documentation is
+a safety issue here rather than tidiness: a reader who trusts a wrong statement
+about which agent is running, what a value means, or what the interface
+displays can reach a wrong clinical conclusion from a correct number. The
+`docket` skill's close-out carries what `make check` decides for you and what
+it cannot.
 
 ## Safety-critical clinical-output standard
 
