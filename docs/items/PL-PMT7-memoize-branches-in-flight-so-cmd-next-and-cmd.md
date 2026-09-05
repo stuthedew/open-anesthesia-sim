@@ -41,11 +41,16 @@ the git subprocess count for `next` drops to `flight`'s, and a test asserts the
 single computation rather than only the timing. The `FlightReport` a caller
 receives is unchanged, unread refs included.
 
-**On this item's own `verify:` cost, answering the advisory that names it.**
-`docket check --verify` reports the command below among its five costliest, at
-22 s against a 0.7 s median, measured 2026-09-05. It is not narrowable without
-losing what the paired shape is for: `subprojects/docket/tests/test_cli.py` is
-already the one suite covering `cmd_next`, and its runtime is git subprocesses
-rather than test count - which is the same cost this item exists to remove, so
-the command gets cheaper when the work lands. Accepted knowingly; do not
-re-litigate it by scoping the run with `-k`.
+**On this item's own `verify:` cost.** Measured 2026-09-05, before `#328`
+(`PL-VZ8P`, size the pytest pool for a suite that waits on subprocesses),
+`docket check --verify` named this item's `verify:` command among its five costliest at
+22 s against a 0.7 s median, and asked for a judgment. After `#328` it is off
+that list; the command itself still takes about 15 s standalone, so what moved
+is the ranking rather than the cost.
+
+The judgment either way is to keep it. `subprojects/docket/tests/test_cli.py`
+is already the only suite covering `cmd_next`, and its runtime is git
+subprocesses rather than test count - which is the same cost this item exists
+to remove, so the command gets cheaper when the work lands. Do not re-litigate
+it by scoping the run with `-k`: that would cost the paired shape's first half,
+which is there to prove the file's suite healthy.
