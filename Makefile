@@ -32,6 +32,14 @@ check: sync
 # clock, which is why the threshold stays on this line and is not relaxed to
 # pay for the parallelism. `PL-WCZV`.
 	uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
+# Bare, deliberately: no `--verify`. That flag replays every open item's own
+# `verify:` command, which was half this target's wall clock and is the wrong
+# question to ask here - it finds work that *merged* without its item being
+# closed, and a pre-commit gate on a feature branch cannot have changed that.
+# `.github/workflows/quality.yml` passes it, on the same two events it ran on
+# before, so nothing stopped being checked (`PL-P3B6`). What is left on this
+# line is the store validation, measured at 0.28 s. Measured 2026-09-05,
+# four cores: this target 60.0 s with the replay against 29.5 s without.
 	bin/docket check
 # Bare `python3` for the reason the next line uses it, and placed with the
 # provenance checks rather than earlier because that is what it is: `docket

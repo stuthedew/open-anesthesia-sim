@@ -3,11 +3,12 @@ id: PL-P3B6
 title: The verify replay costs every make check 31s to answer a question about the queue rather than the commit
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, Makefile, .github/workflows/quality.yml, subprojects/docket/README.md
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_check_does_not_replay_verify_commands_unless_asked' subprojects/docket/tests/test_cli.py
+closed: 2026-09-05
 added: 2026-09-04
 ---
 
@@ -15,8 +16,9 @@ added: 2026-09-04
 on every `bin/docket check`, and `bin/docket check` is in `make check`.
 Measured 2026-09-04 on a four-core box: `bin/docket check` is 31.5 s, of which
 `DOCKET_SKIP_LANDED=1 bin/docket check` shows 0.28 s is the store validation.
-The other 31.2 s is 83 subprocesses. `make check` in full is about 67 s, so the
-replay is a little under half the local gate.
+The other 31.2 s is 83 subprocesses. Measured end to end on the same box,
+`make check` is 60.0 s with the replay and 29.5 s without, so it was 51% of the
+local gate.
 
 **Why it matters.** It is the wrong question at that moment. The finding is
 "work merged without its item's `status` being set" - the docstring names four

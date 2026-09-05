@@ -168,11 +168,31 @@ def cmd_check(args: argparse.Namespace) -> int:
         history=merged_pull_requests(root),
         offered=_offered(root, items, config, args),
         # Runs every open item's own `verify:` command, which is the only
-        # check here that executes the project rather than reading it. Kept
-        # to `check` for that reason: `next` and the digest are asked on
-        # every session start, and this is the one question worth paying a
-        # subprocess each to answer.
-        landed=already_passing(root, items),
+        # check here that executes the project rather than reading it - 83
+        # subprocesses and 31 s of the 32 s this command took, measured
+        # 2026-09-04, against 0.28 s for everything else here.
+        #
+        # Behind a flag rather than always, because it is the wrong question
+        # for the caller that was paying it. `already_passing` finds work that
+        # *merged* without its item's `status` being set - all four known
+        # instances are that - so a pre-commit `make check` on a feature branch
+        # spends half its runtime asking, once per commit, about a merged state
+        # the commit under it cannot have changed. CI passes `--verify` and
+        # keeps the answer on both the events it had it on before; `make check`
+        # and `make docket` get the store validation alone (`PL-P3B6`).
+        #
+        # The cost also grew in the wrong direction. Every item triaged to
+        # `ready` adds its command's runtime to every future run, so the
+        # healthier the store got the more the gate cost - and the advisory in
+        # `_check_slow_commands` puts the floor at about 19 s even with the
+        # slow commands narrowed, because it is set by the size of the queue.
+        #
+        # `None` rather than an empty report, which is the same path `list`,
+        # `digest` and `next` take: `checks.py` reads it as "a caller that did
+        # not ask" and says nothing, which is what a caller that was never the
+        # right one to ask should produce. A line on every `make check` saying
+        # the replay did not run would be an advisory nobody reads.
+        landed=already_passing(root, items) if args.verify else None,
         # Only the closures in question are asked about, because each costs a
         # `git show`: an item is judged for a missing `pr` once its closure
         # stands on the default base, and until then it is still in flight.
@@ -1187,7 +1207,14 @@ def build_parser() -> argparse.ArgumentParser:
     def add(name: str, help_text: str) -> argparse.ArgumentParser:
         return sub.add_parser(name, help=help_text, parents=[common])
 
-    add("check", "validate the store").set_defaults(func=cmd_check)
+    check_cmd = add("check", "validate the store")
+    check_cmd.add_argument(
+        "--verify",
+        action="store_true",
+        default=False,
+        help="also run every open item's `verify:` command; slow, and for CI rather than a gate",
+    )
+    check_cmd.set_defaults(func=cmd_check)
     add("list", "one line per open item").set_defaults(func=cmd_list)
     add("digest", "the session-start summary").set_defaults(func=cmd_digest)
     add("flight", "branches carrying item work").set_defaults(func=cmd_flight)

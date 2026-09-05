@@ -589,9 +589,10 @@ and the owner's attention.
 **Run it and watch it fail, not merely run it.** A command that passes on a
 tree without the work proves nothing: `docket verify` accepts a delegated
 branch that did none of it, and nothing distinguishes a finished item from an
-unstarted one. `docket check` now runs every open item's command and raises an
-advisory for the ones that pass, so this is caught — but it is caught after the
-item is written, and the fix is still to see it fail first.
+unstarted one. `docket check --verify` runs every open item's command and
+raises an advisory for the ones that pass, so this is caught — but CI is what
+passes that flag, so it is caught after the item is written *and* after it is
+pushed. The fix is still to see the command fail first.
 
 **Watch it fail for the right reason, and never a bare `-k`.** `pytest -k
 <name>` where no test yet carries that name does not fail; it *selects
