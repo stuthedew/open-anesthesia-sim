@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: worker-instructions
+milestone: v0.4.2
 touches: tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py
 added: 2026-09-05
 closed: 2026-09-05

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: docket-store
+milestone: v0.4.2
 touches: docs/items, docs/WORKING_NOTES.md
 added: 2026-09-05
 closed: 2026-09-05
