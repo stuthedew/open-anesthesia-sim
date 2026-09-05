@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: CLAUDE.md, .claude/rules/apparatus-standard.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 339
 verify: grep -q 'apparatus-standard.md' CLAUDE.md && grep -q 'paths:' .claude/rules/apparatus-standard.md && grep -q 'Polishing it past sufficient' .claude/rules/apparatus-standard.md
 ---
 
