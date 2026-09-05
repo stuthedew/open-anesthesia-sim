@@ -183,10 +183,23 @@ reply which branch it came off.
 **The same command's second half is not about items at all, and it is not a
 judgment call in the same way.** It names a branch whose pull request already
 took part of its work and left the rest - a commit pushed after the merge,
-which nothing merges and nothing else reports (`PL-3D2M`). Recover it the way
-`CLAUDE.md`'s merged-branch rule says: restart the branch on the merged `main`
-and carry the commit forward as a new pull request, never by pushing to the
-merged branch again, which is what lost it.
+which nothing merges and nothing else reports (`PL-3D2M`). Restart the branch
+on the merged `main` and carry the commit forward as a new pull request, never
+by pushing to the merged branch again, which is what lost it:
+
+```bash
+git branch -dr origin/<branch>
+git fetch origin main
+git checkout -B <branch> origin/main
+```
+
+**Delete that one ref by name; never `git fetch --prune`.** A stale
+`origin/<branch>` can be the only surviving copy of an item captured on a
+branch nobody merged, which is why `fetch_remote` does not prune and what
+`stranded` recovers - `PL-HKF4` came within one prune of exactly that.
+`.claude/hooks/no-prune-guard.sh` refuses the call and prints these three
+commands, which is why the prohibition is no longer resident in `CLAUDE.md`
+(`PL-JK0M`); `PL-1Q3S` and `PL-PF8H` are the two ways such a ref arises.
 
 ## Mode: housekeeping nobody filed
 
