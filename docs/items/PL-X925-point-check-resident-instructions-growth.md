@@ -1,18 +1,14 @@
 ---
 id: PL-X925
 title: Point check_resident_instructions' growth advisory at docs/resident-instructions.md, once PL-QV1F's character metric has landed
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs, infra
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'resident-instructions' tools/doc_check.py
 ---
-
-**Problem.** Point check_resident_instructions' growth advisory at docs/resident-instructions.md, once PL-QV1F's character metric has landed
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
-
 **Problem.** `PL-JK0M` wrote `docs/resident-instructions.md`, the ledger of what
 loads at launch and why - which block was routed where, which stayed, and which
 reductions were considered and refused. Nothing points a session at it at the
@@ -33,6 +29,13 @@ sentence waits for that merge rather than racing it.
 **Unblocked 2026-09-05:** #348 merged as `215fd85`, so the conflict this item
 was waiting out no longer exists. The advisory strings are now the
 character-based ones.
+
+**Why it matters.** The advisory is the moment a session is deciding
+whether a new rule stays resident, and it is the only moment that question ever
+arises. Sending it to the ledger turns a re-derivation into a read: the
+routing, and the four reductions already considered and refused, are written
+down. Without the pointer each session that meets the advisory re-argues them,
+and the cheapest way out of a re-argument is to leave the rule resident.
 
 **Where.** `tools/doc_check.py`, `check_resident_instructions`; the advisory
 strings only.

@@ -51,7 +51,7 @@ a step abandoned partway through. A halted run is cleared by Reset.
 Concentrations are displayed to 0.01 percentage points, which is the
 resolution the numerical method supports rather than the resolution the
 floating-point values carry: the shipped operator split disagrees with an
-independent solution by up to 1.2e-2 percentage points across the settings
+independent solution by up to 2.3e-2 percentage points across the settings
 the interface exposes, so a finer readout would present solver noise as model
 output. A positive value too small to show reads `<0.01%`, so an empty
 compartment stays distinguishable from an unresolved one.
