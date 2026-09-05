@@ -22,7 +22,13 @@ and then the freeze never enters that session's context at all.
 rule is "wrong for one that must fire before a first write, which no read
 precedes." The freeze is precisely such a rule, and it was routed to the one
 disposition that cannot guarantee delivery. `PL-BTSW` records the first
-instance, one day after the freeze was written.
+instance, one day after the freeze was written. A second landed in #361 on
+2026-09-05: the floor-job paragraph was rewritten by a session working on CI
+billing, which had no reason to open `README.md` for reading and so never
+loaded the hold. That edit also left the paragraph's command list at four
+where CI now runs five, which is `PL-5N7T`. Twice breached, both times by a
+session that edited without reading: the delivery gap is the whole defect,
+not the discipline of the sessions.
 
 **Why it matters.** The freeze is not a style preference. `PL-QTN6` recorded
 that successive isolated edits made the document worse, and `PL-RM83` has since
