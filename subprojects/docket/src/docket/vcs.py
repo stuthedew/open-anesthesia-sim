@@ -329,7 +329,7 @@ def _unmerged_commits(
     pending: tuple[str, Stake | None, str] | None = None
     paths: list[str] = []
 
-    def settle() -> None:
+    def credit_claims() -> None:
         """Credit the held commit's leading ids, unless its diff only annotates."""
         if pending is None:
             return
@@ -353,7 +353,7 @@ def _unmerged_commits(
             if line.strip():
                 paths.append(line.strip())
             continue
-        settle()
+        credit_claims()
         pending, paths = None, []
         ref, committed, parents, commit, subject = parts
         if not parents.strip():
@@ -374,7 +374,7 @@ def _unmerged_commits(
             if first is None or stake < first:
                 opened[ref] = stake
         pending = (ref, stake, subject)
-    settle()
+    credit_claims()
     return _Walk(last=last, ids=ids, staked=staked, opened=opened, unbounded=unbounded)
 
 
