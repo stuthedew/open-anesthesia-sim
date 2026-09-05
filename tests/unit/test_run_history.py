@@ -1,11 +1,12 @@
 """Unit tests for the run's recorded history and what the chart reads from it.
 
-`RunHistory` stores a run by quantity rather than by instant, which is what
-lets a frame read a few hundred aggregates instead of walking the visible
-window once per trace. The properties here are the ones that storage shape
-puts at risk: that each quantity still holds *its own* values, that a sample
-read back is the sample recorded, and that the wash-in domain's stretches
-are the ones `app/wash_in.py` specifies.
+`RunHistory` stores a run by series - one substance's values for one
+quantity - rather than by instant, which is what lets a frame read a few
+hundred aggregates instead of walking the visible window once per trace.
+The properties here are the ones that storage shape puts at risk: that each
+series still holds *its own* values, that a sample read back is the sample
+recorded, that a run refuses samples of substances it is not recording, and
+that the wash-in domain's stretches are the ones `app/wash_in.py` specifies.
 
 A swapped pairing between a quantity and the field it reads would be a
 presentation-correctness failure of the kind
@@ -19,8 +20,16 @@ import math
 
 import pytest
 
-from anesthesia_sim.app.controller import RecordedQuantity, RunHistory, SimulationHistorySample
+from anesthesia_sim.app.controller import (
+    COMPARTMENT_QUANTITIES,
+    RecordedQuantity,
+    RecordedSeries,
+    RunHistory,
+    SimulationHistorySample,
+)
 from anesthesia_sim.app.wash_in import WASH_IN_DENOMINATOR_FLOOR_FRACTION, WASH_IN_EQUILIBRIUM_RATIO
+
+_AGENT = "sevoflurane"
 
 # One distinct value per compartment, so a pairing that reads the wrong
 # field shows up as a wrong number rather than as a coincidence.
@@ -34,39 +43,136 @@ _DISTINCT = {
 }
 
 
-def _sample(elapsed_s: float, scale: float = 1.0) -> SimulationHistorySample:
+def _sample(
+    elapsed_s: float, scale: float = 1.0, substance_id: str = _AGENT
+) -> SimulationHistorySample:
     return SimulationHistorySample(
         elapsed_s=elapsed_s,
-        circuit_concentration_fraction=_DISTINCT[RecordedQuantity.CIRCUIT] * scale,
-        alveolar_concentration_fraction=_DISTINCT[RecordedQuantity.ALVEOLAR] * scale,
-        mixed_venous_concentration_fraction=_DISTINCT[RecordedQuantity.MIXED_VENOUS] * scale,
-        vessel_rich_partial_pressure_fraction=_DISTINCT[RecordedQuantity.VESSEL_RICH] * scale,
-        muscle_partial_pressure_fraction=_DISTINCT[RecordedQuantity.MUSCLE] * scale,
-        fat_partial_pressure_fraction=_DISTINCT[RecordedQuantity.FAT] * scale,
+        substances={
+            substance_id: {quantity: value * scale for quantity, value in _DISTINCT.items()}
+        },
     )
 
 
-def _pair(alveolar: float, circuit: float) -> SimulationHistorySample:
+def _pair(alveolar: float, circuit: float, substance_id: str = _AGENT) -> SimulationHistorySample:
     """A sample carrying only the two fractions the wash-in ratio is formed from."""
 
     return SimulationHistorySample(
         elapsed_s=0.0,
-        circuit_concentration_fraction=circuit,
-        alveolar_concentration_fraction=alveolar,
-        mixed_venous_concentration_fraction=0.0,
-        vessel_rich_partial_pressure_fraction=0.0,
-        muscle_partial_pressure_fraction=0.0,
-        fat_partial_pressure_fraction=0.0,
+        substances={
+            substance_id: {
+                RecordedQuantity.CIRCUIT: circuit,
+                RecordedQuantity.ALVEOLAR: alveolar,
+                RecordedQuantity.MIXED_VENOUS: 0.0,
+                RecordedQuantity.VESSEL_RICH: 0.0,
+                RecordedQuantity.MUSCLE: 0.0,
+                RecordedQuantity.FAT: 0.0,
+            }
+        },
     )
 
 
-def test_each_quantity_holds_its_own_field() -> None:
+def test_each_series_holds_its_own_value() -> None:
     """The recorder's pairing, audited value by value."""
 
     history = RunHistory.of([_sample(0.0)])
 
     for quantity, expected in _DISTINCT.items():
-        assert history.value(quantity, 0) == pytest.approx(expected), quantity
+        series = RecordedSeries(_AGENT, quantity)
+        assert history.value(series, 0) == pytest.approx(expected), quantity
+
+
+def test_a_run_records_the_substances_it_was_built_for() -> None:
+    history = RunHistory.of([_sample(0.0)])
+
+    assert history.substances == (_AGENT,)
+
+
+def test_two_substances_recorded_together_keep_their_own_values() -> None:
+    """The shape the record exists for, exercised before a second agent needs it.
+
+    One substance is recorded today, so nothing else here can tell a store
+    that keys by substance from one that keys by compartment alone and
+    happens to be asked for one substance. Two entries, each with distinct
+    values, is what separates them: a store that dropped the substance key
+    would return the second's values under the first's name.
+    """
+
+    history = RunHistory.of(
+        [
+            SimulationHistorySample(
+                elapsed_s=0.0,
+                substances={
+                    _AGENT: dict(_DISTINCT),
+                    "nitrous-oxide": {
+                        quantity: value * 3.0 for quantity, value in _DISTINCT.items()
+                    },
+                },
+            )
+        ]
+    )
+
+    assert history.substances == (_AGENT, "nitrous-oxide")
+
+    for quantity, expected in _DISTINCT.items():
+        assert history.value(RecordedSeries(_AGENT, quantity), 0) == pytest.approx(expected)
+        assert history.value(RecordedSeries("nitrous-oxide", quantity), 0) == pytest.approx(
+            expected * 3.0
+        )
+
+
+def test_a_sample_of_another_substance_is_refused_rather_than_recorded() -> None:
+    """A series shorter than the ones beside it draws every value at the wrong instant."""
+
+    history = RunHistory.of([_sample(0.0)])
+
+    with pytest.raises(ValueError, match="sevoflurane"):
+        history.record(_sample(0.1, substance_id="desflurane"))
+
+    assert len(history) == 1
+
+
+def test_a_sample_must_carry_every_compartment() -> None:
+    """A missing compartment is refused where it is written, not where it is read."""
+
+    with pytest.raises(ValueError, match="must record exactly"):
+        SimulationHistorySample(
+            elapsed_s=0.0,
+            substances={_AGENT: {quantity: 0.0 for quantity in COMPARTMENT_QUANTITIES[:-1]}},
+        )
+
+
+def test_a_sample_may_not_carry_a_derived_quantity() -> None:
+    """`WASH_IN_RATIO` is formed by the recorder; supplying one asserts it was measured."""
+
+    with pytest.raises(ValueError, match="must record exactly"):
+        SimulationHistorySample(
+            elapsed_s=0.0, substances={_AGENT: {quantity: 0.0 for quantity in RecordedQuantity}}
+        )
+
+
+def test_a_recorded_sample_cannot_be_changed_underneath_its_holder() -> None:
+    """Two levels of mapping, both read-only, so a kept sample stays the sample recorded."""
+
+    values = {quantity: 0.01 for quantity in COMPARTMENT_QUANTITIES}
+    sample = SimulationHistorySample(elapsed_s=0.0, substances={_AGENT: values})
+
+    values[RecordedQuantity.CIRCUIT] = 0.99
+
+    assert sample.substances[_AGENT][RecordedQuantity.CIRCUIT] == pytest.approx(0.01)
+
+    with pytest.raises(TypeError):
+        sample.substances[_AGENT][RecordedQuantity.CIRCUIT] = 0.99  # type: ignore[index]
+
+
+def test_a_run_of_no_samples_cannot_name_its_own_substances() -> None:
+    with pytest.raises(ValueError, match="no samples"):
+        RunHistory.of([])
+
+
+def test_a_substance_may_be_recorded_once_only() -> None:
+    with pytest.raises(ValueError, match="once only"):
+        RunHistory([_AGENT, _AGENT])
 
 
 def test_a_sample_reads_back_as_it_was_recorded() -> None:
@@ -126,7 +232,7 @@ def test_the_wash_in_ratio_is_recorded_alongside_the_states_it_is_formed_from() 
     history = RunHistory.of(
         [_pair(alveolar=0.0, circuit=below_floor), _pair(alveolar=0.01, circuit=0.02)]
     )
-    ratios = history.aggregates(RecordedQuantity.WASH_IN_RATIO)
+    ratios = history.aggregates(RecordedSeries(_AGENT, RecordedQuantity.WASH_IN_RATIO))
 
     # Rule 1 of `app/wash_in.py`: no agent in the circuit, so no quotient.
     assert math.isnan(ratios.value(0))
@@ -147,15 +253,15 @@ def test_the_wash_in_stretches_are_the_domains_own() -> None:
         ]
     )
 
-    assert history.wash_in_stretches(0, 5) == [(1, 3), (4, 5)]
+    assert history.wash_in_stretches(_AGENT, 0, 5) == [(1, 3), (4, 5)]
 
 
 def test_a_wash_in_stretch_is_clipped_to_the_window_asked_for() -> None:
     history = RunHistory.of([_pair(alveolar=0.004, circuit=0.02) for _ in range(20)])
 
-    assert history.wash_in_stretches(0, 20) == [(0, 20)]
-    assert history.wash_in_stretches(5, 12) == [(5, 12)]
-    assert history.wash_in_stretches(20, 20) == []
+    assert history.wash_in_stretches(_AGENT, 0, 20) == [(0, 20)]
+    assert history.wash_in_stretches(_AGENT, 5, 12) == [(5, 12)]
+    assert history.wash_in_stretches(_AGENT, 20, 20) == []
 
 
 def test_a_sample_exactly_at_equilibrium_is_inside_the_domain() -> None:
@@ -163,7 +269,7 @@ def test_a_sample_exactly_at_equilibrium_is_inside_the_domain() -> None:
 
     history = RunHistory.of([_pair(alveolar=0.02, circuit=0.02)])
 
-    assert history.aggregates(RecordedQuantity.WASH_IN_RATIO).value(0) == pytest.approx(
-        WASH_IN_EQUILIBRIUM_RATIO
-    )
-    assert history.wash_in_stretches(0, 1) == [(0, 1)]
+    assert history.aggregates(RecordedSeries(_AGENT, RecordedQuantity.WASH_IN_RATIO)).value(
+        0
+    ) == pytest.approx(WASH_IN_EQUILIBRIUM_RATIO)
+    assert history.wash_in_stretches(_AGENT, 0, 1) == [(0, 1)]

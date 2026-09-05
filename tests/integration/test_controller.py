@@ -5,6 +5,7 @@ import pytest
 from anesthesia_sim.app.controller import (
     CONTROL_INPUT_UNITS,
     ControlInput,
+    RecordedQuantity,
     SimulationController,
     SimulationHistorySample,
 )
@@ -335,10 +336,71 @@ def test_the_window_ends_on_the_sample_the_readouts_were_built_from() -> None:
     snapshot = controller.snapshot()
     latest = controller.history_window(snapshot.elapsed_s - 5.0).samples[-1]
 
+    recorded = latest.substances[snapshot.agent_id]
+
     assert latest.elapsed_s == pytest.approx(snapshot.elapsed_s)
-    assert latest.circuit_concentration_fraction == snapshot.circuit_concentration_fraction
-    assert latest.alveolar_concentration_fraction == snapshot.alveolar_concentration_fraction
-    assert latest.fat_partial_pressure_fraction == snapshot.fat_partial_pressure_fraction
+    assert recorded[RecordedQuantity.CIRCUIT] == snapshot.circuit_concentration_fraction
+    assert recorded[RecordedQuantity.ALVEOLAR] == snapshot.alveolar_concentration_fraction
+    assert recorded[RecordedQuantity.FAT] == snapshot.fat_partial_pressure_fraction
+
+
+def test_each_recorded_quantity_carries_the_compartment_it_names() -> None:
+    """The run's whole pairing, audited against the core's own state.
+
+    `_build_history_sample` is the one place a compartment's value is put
+    under a `RecordedQuantity`, since `RunHistory.record` stores each value
+    under the key the sample already gives it and the chart draws each
+    trace from the key it is bound to. So a swap here would carry all the
+    way to a labelled curve and a labelled readout, both drawn from another
+    compartment's numbers - a presentation-correctness failure that no
+    later check could catch, because every individual value would be one
+    the model really produced.
+
+    Sixty seconds in, the six compartments differ by orders of magnitude -
+    circuit is filling, fat has barely started - so a swapped pair shows up
+    as a wrong number rather than as a coincidence.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=60.0)
+
+    system = controller._state.uptake_system
+    recorded = controller.history_window(0.0).samples[-1].substances[controller.snapshot().agent_id]
+
+    assert recorded == {
+        RecordedQuantity.CIRCUIT: system.circuit.circuit_concentration_fraction,
+        RecordedQuantity.ALVEOLAR: system.alveoli.concentration_fraction,
+        RecordedQuantity.MIXED_VENOUS: system.patient.mixed_venous_fraction,
+        RecordedQuantity.VESSEL_RICH: system.patient.vessel_rich.partial_pressure_fraction,
+        RecordedQuantity.MUSCLE: system.patient.muscle.partial_pressure_fraction,
+        RecordedQuantity.FAT: system.patient.fat.partial_pressure_fraction,
+    }
+
+    # ...and they really are far enough apart for that to mean something.
+    assert len(set(recorded.values())) == len(recorded)
+    assert recorded[RecordedQuantity.CIRCUIT] > 100.0 * recorded[RecordedQuantity.FAT]
+
+
+def test_a_run_records_the_agent_it_is_a_run_of() -> None:
+    """The substance a sample is keyed by is the agent the snapshot names.
+
+    They are read together on every frame - the view addresses the run
+    under `snapshot.agent_id` - so a run recorded under any other
+    identifier would raise rather than draw, and `set_agent` has to leave
+    the two agreeing.
+    """
+
+    controller = SimulationController(agent_id="isoflurane")
+    controller.start()
+    _advance_for(controller, duration_s=1.0)
+
+    assert controller.history_window(0.0).samples[-1].substances.keys() == {"isoflurane"}
+
+    controller.set_agent("desflurane")
+
+    assert controller.snapshot().agent_id == "desflurane"
+    assert controller.history_window(0.0).samples[-1].substances.keys() == {"desflurane"}
 
 
 def test_the_window_starts_at_the_time_asked_for_and_never_after_it() -> None:
