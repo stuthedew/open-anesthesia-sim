@@ -1,10 +1,17 @@
 ---
 id: PL-PVHD
 title: Move CI to the self-hosted runner while the repository is private
-status: untriaged
+status: dropped
 feature: ci-cost
 touches: .github/workflows/quality.yml, .github/workflows/pr-title.yml
 added: 2026-09-05
+closed: 2026-09-05
+reason: Reverted at the project owner's direction, 2026-09-05, the same day it was
+  built: the runner could not run this CI as provisioned, and the diagnosis
+  below is kept for whoever revisits it. Reopen only while the repository is
+  private - a self-hosted runner on a public repository lets any fork's pull
+  request execute code on the runner's machine, and standard runners are free
+  there anyway, so going public retires this idea rather than deferring it.
 ---
 
 **Problem.** Move CI to the self-hosted runner while the repository is private
