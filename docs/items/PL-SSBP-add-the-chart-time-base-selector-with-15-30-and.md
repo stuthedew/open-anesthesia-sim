@@ -3,11 +3,12 @@ id: PL-SSBP
 title: Add the chart time-base selector with 15, 30 and 60 minute scales plus Fit run
 priority: P2
 effort: M
-status: ready
+status: done
 classes: ux, feature
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/formatting.py
 added: 2026-08-25
+closed: 2026-09-05
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_a_run_shorter_than_the_selected_time_base_shows_whole' tests/unit/test_simulation_view.py
 ---
 

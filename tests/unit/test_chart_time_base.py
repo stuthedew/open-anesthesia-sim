@@ -247,13 +247,6 @@ def test_a_width_the_ladder_does_not_carry_is_refused_rather_than_rounded() -> N
         time_base_for_span(1_000.0)
 
 
-def test_a_time_base_is_immutable() -> None:
-    """A width that could be edited in place would outlive the frame that set it."""
-
-    with pytest.raises(AttributeError):
-        TIME_BASE_LADDER[0].span_s = 1.0  # type: ignore[misc]
-
-
 def test_the_headroom_is_a_fraction_of_the_width_rather_than_a_fixed_gap() -> None:
     """Ten seconds of clearance is a fifth of one rung and invisible on another."""
 

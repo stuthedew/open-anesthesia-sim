@@ -2034,6 +2034,35 @@ def test_the_time_axis_is_labelled_in_units_rather_than_in_bare_seconds() -> Non
     )
 
 
+def test_the_window_s_own_ends_are_labelled_only_when_they_are_ticks() -> None:
+    """The origin is worth a label; an arbitrary edge would read as a gridline.
+
+    Under "Fit run" the window is pinned to zero and to a whole number of
+    intervals, so both ends are ruled and both are labelled - and the `0` is
+    the only label that says where the run starts. Once a chosen width is
+    following the run its ends fall wherever the newest sample puts them,
+    and a label at `1h58m2s` beside one reading `2h` would be read as a tick
+    the chart is not ruled at.
+    """
+
+    controller = _fake_controller(history=_run_history(12_000))
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    assert view._concentration_chart.min_x == 0.0
+    assert view._time_axis.show_min
+    assert view._time_axis.show_max
+    assert view._wash_in_time_axis.show_min
+    assert view._wash_in_time_axis.show_max
+
+    _select_time_base(view, 900.0)
+
+    assert view._concentration_chart.min_x > 0.0
+    assert not view._time_axis.show_min
+    assert not view._time_axis.show_max
+    assert not view._wash_in_time_axis.show_min
+    assert not view._wash_in_time_axis.show_max
+
+
 def test_both_plots_are_labelled_from_the_same_ticks() -> None:
     """One window, so one set of times - drawn twice because a control has one chart.
 

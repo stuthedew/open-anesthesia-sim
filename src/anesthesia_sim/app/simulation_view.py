@@ -2877,21 +2877,18 @@ class SimulationView:
     def _build_time_axis() -> fch.ChartAxis:
         """Build one chart's simulated-time axis.
 
-        Labels are filled in per frame by `_apply_time_base`; what is fixed
-        here is the axis's own shape. `show_min` and `show_max` are off for
-        the reason the MAC axis turns them off: the ends of the plotted
-        range are not ticks. On this axis they move continuously while the
-        window follows the run, so a label at either end would read as a
-        gridline standing at a time nothing is ruled at.
+        Labels, and whether the window's own ends are labelled, are filled
+        in per frame by `_apply_time_base` - unlike the MAC axis, which can
+        settle `show_min` and `show_max` once because the ends of its range
+        are never ticks. Here it depends on the mode, so it is decided per
+        frame rather than here.
 
         Returns:
             An axis with no labels yet.
         """
 
         return fch.ChartAxis(
-            title=ft.Text("simulated time", color=MUTED, size=METRIC_QUALIFIER_SIZE),
-            show_min=False,
-            show_max=False,
+            title=ft.Text("simulated time", color=MUTED, size=METRIC_QUALIFIER_SIZE)
         )
 
     def _time_axis_caption_text(self) -> str:
@@ -2977,6 +2974,21 @@ class SimulationView:
         self._wash_in_chart.vertical_grid_lines.interval = time_base.tick_interval_s
 
         ticks = tick_times(chart_min_x, chart_max_x, time_base.tick_interval_s)
+
+        # Whether the window's own ends carry a label, which depends on the
+        # mode. "Fit run" pins the window to zero and to a whole number of
+        # intervals, so both ends are ruled and both deserve one - the
+        # origin most of all, since it is where the run starts and the only
+        # label that says so. A following window's ends fall wherever the
+        # newest sample puts them, and a label there would read as a
+        # gridline standing at a time nothing is ruled at. Set every frame,
+        # because one selection changes it.
+        starts_on_a_tick = bool(ticks) and ticks[0] == chart_min_x
+        ends_on_a_tick = bool(ticks) and ticks[-1] == chart_max_x
+
+        for axis in (self._time_axis, self._wash_in_time_axis):
+            axis.show_min = starts_on_a_tick
+            axis.show_max = ends_on_a_tick
 
         if ticks != self._drawn_tick_times:
             self._drawn_tick_times = ticks
