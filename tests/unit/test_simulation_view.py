@@ -70,6 +70,9 @@ from anesthesia_sim.app.simulation_view import (
     AGENT_RENDER_STYLES,
     AVAILABLE_AGENTS,
     KEEP_CURRENT_CASE_TEMPLATE,
+    MAC_AWAKE_BAND_COLOR,
+    MAC_AWAKE_BAND_EDGE_STROKE_WIDTH,
+    MAC_AWAKE_BAND_FILL_OPACITY,
     MAX_CHART_CONTROL_MARKS,
     MAX_LISTED_ADJUSTMENTS,
     METRIC_GRID_COLUMNS,
@@ -1816,7 +1819,8 @@ def test_a_hidden_trace_is_not_drawn_rather_than_drawn_empty() -> None:
             assert trace.series in view._concentration_chart.data_series
 
     for furniture in (
-        view._mac_awake_band_series,
+        view._mac_awake_band_upper_edge,
+        view._mac_awake_band_lower_edge,
         view._one_mac_line_series,
         *view._control_mark_series,
     ):
@@ -1840,10 +1844,16 @@ def test_the_drawing_order_survives_a_trace_being_hidden() -> None:
 
     assert len(drawn) == 5
 
-    for mark in view._control_mark_series:
-        assert order.index(mark) < order.index(view._mac_awake_band_series)
+    references = (
+        view._mac_awake_band_upper_edge,
+        view._mac_awake_band_lower_edge,
+        view._one_mac_line_series,
+    )
 
-    for reference in (view._mac_awake_band_series, view._one_mac_line_series):
+    for mark in view._control_mark_series:
+        assert order.index(mark) < min(order.index(each) for each in references)
+
+    for reference in references:
         assert order.index(reference) < min(order.index(each) for each in drawn)
 
 
@@ -3438,12 +3448,103 @@ def test_the_clinical_references_are_drawn_at_the_running_agents_own_values() ->
         deviation = agent.mac_awake.standard_deviation_fraction_of_mac * agent.mac_percent
         centre = agent.mac_awake.fraction_of_mac * agent.mac_percent
 
-        band = view._mac_awake_band_series
-        assert all(point.y == pytest.approx(centre + deviation) for point in band.points)
-        assert band.below_line_cutoff_y == pytest.approx(centre - deviation)
+        upper = view._mac_awake_band_upper_edge
+        lower = view._mac_awake_band_lower_edge
+        assert all(point.y == pytest.approx(centre + deviation) for point in upper.points)
+        assert all(point.y == pytest.approx(centre - deviation) for point in lower.points)
+        assert upper.below_line_cutoff_y == pytest.approx(centre - deviation)
 
         for point in view._one_mac_line_series.points:
             assert point.y == pytest.approx(agent.mac_percent)
+
+
+def test_the_mac_awake_band_reads_as_an_interval_not_a_line() -> None:
+    """Two strokes on the published boundaries, and no inflation between them.
+
+    `PL-90Y6`: one standard deviation either side of the mean is 3.3% of the
+    plot height for sevoflurane and 4.2% for desflurane on the fixed
+    `CHART_AXIS_TOP_MAC` axis, and no axis range the overpressure constraint
+    allows makes that fill read as a band on its own. A stroked upper edge
+    over an unstroked fill is the geometry of a line with a shadow under it,
+    whatever the fill's extent, so the mark was drawn as a line - which
+    erases the distinction `docs/MODEL.md` chose the mark type to carry: a
+    band for a measured population value with real spread, a line for the
+    definitional 1 MAC anchor.
+
+    Two things are asserted together because either alone permits the wrong
+    fix. The band has two stroked edges, so it reads as an interval; and both
+    strokes sit on the published boundaries, so the drawn extent is the data
+    extent. A minimum drawn height would satisfy the first and violate the
+    second, asserting a wider population spread than the literature supports
+    - an interpretability defect traded for a correctness one.
+
+    Checked across every shipped agent, because the spread is the agent's own
+    and sevoflurane's is the narrowest of the three.
+    """
+
+    for agent_id in AGENT_DATA_FILENAMES:
+        agent = load_agent_parameters(agent_id)
+        view, _ = _build_view(agent_id=agent_id)
+
+        centre = agent.mac_awake.fraction_of_mac * agent.mac_percent
+        deviation = agent.mac_awake.standard_deviation_fraction_of_mac * agent.mac_percent
+
+        upper = view._mac_awake_band_upper_edge
+        lower = view._mac_awake_band_lower_edge
+
+        # Two edges, both stroked, both undashed: a pair of solid rules is
+        # what separates this mark from the dashed 1 MAC line beside it.
+        assert upper is not lower
+        for edge in (upper, lower):
+            assert edge.stroke_width == MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
+            assert edge.stroke_width > 0.0
+            assert edge.color == MAC_AWAKE_BAND_COLOR
+            assert edge.dash_pattern is None
+
+        # The drawn extent is the data extent: nothing is padded outward to
+        # make the band easier to see.
+        assert all(point.y == pytest.approx(centre + deviation) for point in upper.points)
+        assert all(point.y == pytest.approx(centre - deviation) for point in lower.points)
+        assert upper.below_line_cutoff_y == pytest.approx(centre - deviation)
+
+        # The fill spans exactly the two strokes rather than extending past
+        # either of them, so no part of the mark claims more than +/-1 SD.
+        drawn_extent = upper.points[0].y - lower.points[0].y
+        assert drawn_extent == pytest.approx(2.0 * deviation)
+
+        # And the 1 MAC anchor stays a single line, so the two references
+        # remain distinguishable in kind rather than by colour alone.
+        assert view._one_mac_line_series is not upper
+        assert view._one_mac_line_series is not lower
+
+
+def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark() -> None:
+    """A legend teaching one mark for a chart drawing another misreads it.
+
+    The swatch is how a reader learns which mark means what, so a swatch
+    ruled on its upper edge only would carry the same line-not-band reading
+    `PL-90Y6` removed from the chart, and would carry it into every glance at
+    the plot afterwards.
+    """
+
+    swatch = cast(
+        ft.Container,
+        SimulationView._build_band_legend_item(
+            "MAC-awake (population, ±1 SD)", MAC_AWAKE_BAND_COLOR
+        ).controls[0],
+    )
+
+    border = swatch.border
+    assert border is not None
+    assert border.top is not None
+    assert border.bottom is not None
+    for side in (border.top, border.bottom):
+        assert side.width == MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
+        assert side.color == MAC_AWAKE_BAND_COLOR
+
+    assert swatch.bgcolor == ft.Colors.with_opacity(
+        MAC_AWAKE_BAND_FILL_OPACITY, MAC_AWAKE_BAND_COLOR
+    )
 
 
 def test_the_clinical_references_follow_the_agent_when_it_changes() -> None:
@@ -3470,8 +3571,9 @@ def test_the_clinical_references_follow_the_agent_when_it_changes() -> None:
 
     centre = desflurane.mac_awake.fraction_of_mac * desflurane.mac_percent
     deviation = desflurane.mac_awake.standard_deviation_fraction_of_mac * desflurane.mac_percent
-    assert view._mac_awake_band_series.points[0].y == pytest.approx(centre + deviation)
-    assert view._mac_awake_band_series.below_line_cutoff_y == pytest.approx(centre - deviation)
+    assert view._mac_awake_band_upper_edge.points[0].y == pytest.approx(centre + deviation)
+    assert view._mac_awake_band_lower_edge.points[0].y == pytest.approx(centre - deviation)
+    assert view._mac_awake_band_upper_edge.below_line_cutoff_y == pytest.approx(centre - deviation)
 
 
 def test_the_clinical_references_span_the_visible_window() -> None:
@@ -3485,7 +3587,11 @@ def test_the_clinical_references_span_the_visible_window() -> None:
     view, _ = _build_view(history=_run_history(6_000))
     chart = view._concentration_chart
 
-    for series in (view._mac_awake_band_series, view._one_mac_line_series):
+    for series in (
+        view._mac_awake_band_upper_edge,
+        view._mac_awake_band_lower_edge,
+        view._one_mac_line_series,
+    ):
         assert [point.x for point in series.points] == [chart.min_x, chart.max_x]
 
 
@@ -3502,12 +3608,17 @@ def test_the_clinical_references_are_not_compartment_traces() -> None:
     view, _ = _build_view()
 
     plotted = [series for series, _ in view._plotted_series(_DEFAULT_AGENT)]
-    assert view._mac_awake_band_series not in plotted
-    assert view._one_mac_line_series not in plotted
+    references = (
+        view._mac_awake_band_upper_edge,
+        view._mac_awake_band_lower_edge,
+        view._one_mac_line_series,
+    )
+    for reference in references:
+        assert reference not in plotted
 
     order = view._concentration_chart.data_series
-    assert order.index(view._mac_awake_band_series) < min(order.index(each) for each in plotted)
-    assert order.index(view._one_mac_line_series) < min(order.index(each) for each in plotted)
+    for reference in references:
+        assert order.index(reference) < min(order.index(each) for each in plotted)
 
 
 def test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from() -> None:
@@ -3709,7 +3820,8 @@ def test_control_marks_are_not_compartment_traces() -> None:
     for mark in view._control_mark_series:
         assert mark not in plotted
         assert order.index(mark) < min(order.index(each) for each in plotted)
-        assert order.index(mark) < order.index(view._mac_awake_band_series)
+        assert order.index(mark) < order.index(view._mac_awake_band_upper_edge)
+        assert order.index(mark) < order.index(view._mac_awake_band_lower_edge)
 
 
 def test_the_list_states_what_was_changed_and_to_what() -> None:
