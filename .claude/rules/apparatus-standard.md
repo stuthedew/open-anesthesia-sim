@@ -1,9 +1,9 @@
 ---
 paths:
-  - "subprojects/docket/**"
-  - "tools/**"
-  - ".claude/**"
-  - "docs/worker.md"
+  - "/subprojects/docket/**"
+  - "/tools/**"
+  - "/.claude/**"
+  - "/docs/worker.md"
 ---
 
 # The bar for the workflow apparatus

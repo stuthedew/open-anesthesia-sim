@@ -1,13 +1,14 @@
 ---
 id: PL-LLWN
 title: No check holds a .claude/rules/ paths: entry to the repository root, so every glob silently matches the same name at any depth
-status: ready
+status: done
 priority: P2
 effort: S
 classes: defect, infra
 feature: worker-instructions
 touches: tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py, Makefile, .github/workflows/quality.yml, .claude/rules/apparatus-standard.md, .claude/rules/citing-sources.md, .claude/rules/core-domain.md, .claude/rules/ui-color.md
 added: 2026-09-05
+closed: 2026-09-05
 verify: python3 tools/rules_paths_check.py && grep -q 'def test_an_unanchored_entry_is_refused' tests/unit/test_rules_paths_check.py
 ---
 

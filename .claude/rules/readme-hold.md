@@ -14,9 +14,9 @@ Only that one file is frozen. This repository holds two more of that name —
 `subprojects/docket/README.md`, the queue tool's format and command reference,
 and `docs/references/README.md` — and neither is covered: both are apparatus,
 with a different purpose and no owner decision behind them. The leading `/` in
-`paths:` above is load-bearing rather than decorative. Without it the glob
-matches the name at any depth, and this freeze loads on all three — measured,
-not assumed; `PL-LLWN` carries the table. Leave the slash in place.
+`paths:` above is what confines it to the root; `tools/rules_paths_check.py`
+holds every rule to that, so it cannot be lost here without `make check`
+saying so.
 
 This is not a bar on *reading* it. Read it for context freely. What is
 withheld is the edit.

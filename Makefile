@@ -78,6 +78,11 @@ check: sync
 # is visible to the guards that read the store. It answers from `git log`
 # alone, so it costs milliseconds wherever it lands. `PL-CP74`.
 	python3 tools/branch_id_check.py
+# Beside the guard above because it is the same category one level down: that
+# one asks whether this branch's work is visible, this asks whether a rule's
+# declared scope is the one it will actually get. Reads only the frontmatter of
+# `.claude/rules/*.md`, so it costs nothing. `PL-LLWN`.
+	python3 tools/rules_paths_check.py
 	python3 tools/doc_check.py check
 # Bare `python3` for the reason `doc_check.py` above uses it: standard library
 # only, so it runs in a checkout with no virtualenv. It reads the color

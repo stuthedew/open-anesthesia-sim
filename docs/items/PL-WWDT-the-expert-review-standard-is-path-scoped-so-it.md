@@ -1,14 +1,15 @@
 ---
 id: PL-WWDT
 title: The expert-review standard is path-scoped, so it does not load when the approach is being decided - the design round it matters most in
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, docs
 feature: worker-instructions
 touches: CLAUDE.md, .claude/rules/expert-review.md, .claude/rules/sources-and-docstrings.md, docs/resident-instructions.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 350
 verify: python3 tools/doc_check.py check && ! grep -q '^paths:' .claude/rules/expert-review.md && grep -qF 'sources-and-docstrings.md' CLAUDE.md
 ---
 
