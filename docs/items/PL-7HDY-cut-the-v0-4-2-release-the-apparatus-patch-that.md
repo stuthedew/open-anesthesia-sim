@@ -3,11 +3,12 @@ id: PL-7HDY
 title: 'Cut the v0.4.2 release: the apparatus patch that completes docket-store'
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: planning-cadence
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases/, docs/items/
 added: 2026-09-05
+closed: 2026-09-05
 not-delegable: proving a release cut means cutting the release. No command
 ---
 
