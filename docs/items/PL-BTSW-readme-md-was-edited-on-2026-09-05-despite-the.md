@@ -39,5 +39,18 @@ introduction) to absorb, and that rewrite is parked behind `PL-XYRN` (decide
 when the repository goes public). Recorded so the rewrite does not have to
 rediscover it.
 
+**A second finding in the same paragraph.** `PL-0SHZ` (README's
+bare-interpreter paragraph names two `ruff.toml` pins and there are now three)
+was captured by `#340` against the neighbouring sentences. Not a duplicate -
+that one is a stale fact, this one is a wrapping defect and a record of the
+breach - but they are the same few lines, so whoever absorbs one absorbs both.
+
+Worth noting against `PL-3V4N` (the freeze fires on reading `README.md`, so it
+cannot fire before a write no read precedes): `PL-0SHZ` is the freeze working.
+That session found a wrong statement and filed it instead of fixing it, which
+is exactly what the rule asks. The gap `PL-3V4N` describes is one that *can* be
+missed, not one that always is - which is why the fix there is a check that
+cannot be missed rather than stronger wording.
+
 **Done when.** The paragraph reads correctly and wraps like the rest of the
 file, as part of the README rewrite rather than as a separate edit.
