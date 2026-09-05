@@ -28,10 +28,32 @@ confident and cites the right file; nothing in a diff or a check can show that
 the scope was dropped. Applied to `src/` it argues for less than the specialist
 standard, which is the direction that costs the simulator.
 
-The paragraph's other sentences have the same shape and are not yet known to
-have misfired: "nobody evaluating this project will read it" and "Where the two
-compete for a session, the simulator wins" both depend on an antecedent a
-reader has to carry.
+**The inventory, and a better diagnosis.** Two more claims in this file have the
+same defect, and one points the other way — so this is not a one-sentence slip:
+
+- **Line 23.** "internal quality that a one-year project could rationally trade
+  for speed is worth paying for here" — no scope, in the opening section, *374
+  lines before* the paragraph that scopes it. This is the mirror image: a
+  session in `tools/` or `subprojects/docket/` can quote it to justify
+  polishing the apparatus, which is the failure the two-standards paragraph
+  exists to name. It is the likelier of the two to fire, because it sits in the
+  section a session reads first.
+- **Line 399.** "Recommendations should reflect the standard expected from a
+  top-tier specialist in the relevant field" — the specialist bar stated with
+  no scope; the scope arrives in the *next* paragraph. Quoted alone it applies
+  the specialist standard to the apparatus.
+
+The pattern is not the distance from a pronoun to its antecedent, which is how
+this item first described it. In all three cases **the standard is stated first
+and the scope arrives later** — one sentence later, two sentences later, 374
+lines later. A reader who stops at the claim has a complete-sounding rule and no
+scope, and stopping at the claim is the normal case.
+
+That sharpens the fix. Reordering so scope precedes claim would work but has to
+be got right in three places and in every sentence added afterwards. Routing
+fixes all three at once and needs no ongoing discipline: a session that never
+opens an apparatus file never loads the apparatus standard, whatever order its
+sentences are in.
 
 **A minimal disambiguation landed with this capture** — the two sentences now
 name the apparatus instead of saying "it", and the second says what it does not
