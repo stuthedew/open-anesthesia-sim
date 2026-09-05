@@ -5,6 +5,7 @@ import pytest
 from anesthesia_sim.app.controller import (
     CONTROL_INPUT_UNITS,
     ControlInput,
+    RecordedQuantity,
     SimulationController,
     SimulationHistorySample,
 )
@@ -335,10 +336,12 @@ def test_the_window_ends_on_the_sample_the_readouts_were_built_from() -> None:
     snapshot = controller.snapshot()
     latest = controller.history_window(snapshot.elapsed_s - 5.0).samples[-1]
 
+    recorded = latest.substances[snapshot.agent_id]
+
     assert latest.elapsed_s == pytest.approx(snapshot.elapsed_s)
-    assert latest.circuit_concentration_fraction == snapshot.circuit_concentration_fraction
-    assert latest.alveolar_concentration_fraction == snapshot.alveolar_concentration_fraction
-    assert latest.fat_partial_pressure_fraction == snapshot.fat_partial_pressure_fraction
+    assert recorded[RecordedQuantity.CIRCUIT] == snapshot.circuit_concentration_fraction
+    assert recorded[RecordedQuantity.ALVEOLAR] == snapshot.alveolar_concentration_fraction
+    assert recorded[RecordedQuantity.FAT] == snapshot.fat_partial_pressure_fraction
 
 
 def test_the_window_starts_at_the_time_asked_for_and_never_after_it() -> None:
