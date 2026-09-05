@@ -1,10 +1,14 @@
 ---
 id: PL-2QMK
 title: No session in the web container can visually confirm a chart change, because Flet's web renderer fetches its Flutter assets from a host the egress proxy denies
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: infra, session-cost, ux
+touches: docs/worker.md
 added: 2026-09-05
+verify: python3 tools/doc_check.py check && grep -q 'gstatic' docs/worker.md
 ---
-
 **Problem.** `docs/worker.md` and the `run` skill both assume a session can
 start the application and look at it. In the Claude-Code-on-the-web container
 it cannot. Measured 2026-09-05 while closing `PL-90Y6` (the MAC-awake band

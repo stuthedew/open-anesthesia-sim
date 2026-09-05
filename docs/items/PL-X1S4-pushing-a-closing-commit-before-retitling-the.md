@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra, session-cost
 feature: dev-tooling
+milestone: v0.4.2
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-04
 closed: 2026-09-05
