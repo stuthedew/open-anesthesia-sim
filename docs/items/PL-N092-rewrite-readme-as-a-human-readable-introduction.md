@@ -3,7 +3,8 @@ id: PL-N092
 title: Rewrite README as a human-readable introduction to the project
 priority: P2
 effort: M
-status: ready
+status: blocked
+blocked-by: PL-XYRN
 classes: docs, ux
 feature: project-introduction
 touches: README.md, docs/MODEL.md
@@ -136,3 +137,17 @@ asserting `blocked-by: PL-RM83` in this file's frontmatter. That line is now
 correctly gone, so that command no longer passes - a live instance of what
 `PL-JZ1D` (a closed item's verify can be silently invalidated by later work)
 describes, left in place as evidence rather than edited away.
+
+## Deferred, 2026-09-05
+
+The project owner deferred this rewrite to `PL-XYRN` (decide when the
+repository goes public, and run the human-facing pass immediately before it)
+rather than running it now: several documents need the same human-facing
+attention, and written to one reader over one week they cohere in a way the
+same documents written singly over months do not.
+
+Nothing above is provisional because of that. `PL-RM83` settled the audience,
+the `docs/MODEL.md` boundary and the status treatment, and this brief is
+restated against them; only the timing moved. `README.md` therefore stays
+frozen, and `.claude/rules/readme-hold.md` is still the live rule — it is
+deleted in the commit carrying this rewrite, whenever that comes.

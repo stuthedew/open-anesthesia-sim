@@ -9,7 +9,7 @@ feature: project-introduction
 touches: README.md
 added: 2026-09-05
 closed: 2026-09-05
-verify: grep -q '^status: ready$' docs/items/PL-N092-rewrite-readme-as-a-human-readable-introduction.md && ! grep -q '^blocked-by:' docs/items/PL-N092-rewrite-readme-as-a-human-readable-introduction.md
+verify: grep -c '^### [123]\. ' docs/items/PL-RM83-decide-what-readme-md-is-for-and-what-belongs.md | grep -qx 3 && grep -q '^blocked-by: PL-XYRN$' docs/items/PL-N092-rewrite-readme-as-a-human-readable-introduction.md
 not-delegable: the command below proves only that `PL-N092` is unblocked. Whether the three answers recorded here are the right ones is the project owner's judgment, which is what the item was for
 ---
 
@@ -121,7 +121,9 @@ question are recorded in this item's body, `PL-N092` is unblocked and its brief
 restated against them, and `.claude/rules/readme-hold.md` is deleted in the
 commit carrying the first README change.
 
-**Closing note.** The first two are done here. The freeze file is deliberately
+**Closing note.** The first two are done here. `PL-N092` was unblocked by this item and then deferred by the project owner to `PL-XYRN` (decide when the repository goes public) the same day - a timing decision, not a reopening of anything settled here.
+
+The first two are done here. The freeze file is deliberately
 **not** deleted by this item: `.claude/rules/readme-hold.md` says it goes in the
 commit carrying the first README change, which is `PL-N092`'s, so `README.md`
 stays frozen until that rewrite actually runs.
