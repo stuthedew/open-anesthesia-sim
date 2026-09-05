@@ -1,18 +1,18 @@
 ---
 id: PL-J7Y7
 title: Cut the v0.4.1 release: the apparatus patch
-status: done
-added: 2026-09-05
-closed: 2026-09-05
 priority: P2
 effort: S
+status: done
 classes: planning, docs
-touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases/, docs/items/
 feature: planning-cadence
+touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases/, docs/items/
+added: 2026-09-05
+closed: 2026-09-05
+pr: 359
 not-delegable: proving a release cut means cutting the release. No command
-  fails before the work and passes after it without doing the work, so
-  `make check` on the cut tree is the whole of the evidence.
 ---
+
 **Problem.** Eleven items have closed since v0.4.0 and nothing has stamped them
 into a release. Filed before the work per CLAUDE.md's housekeeping rule: a
 release cut carries no `PL-` id until somebody files one, so every in-flight
