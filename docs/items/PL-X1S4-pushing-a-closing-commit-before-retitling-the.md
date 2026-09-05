@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-04
 closed: 2026-09-05
+pr: 358
 verify: python3 tools/doc_check.py check && grep -qF 'before pushing the closure' .claude/skills/docket/SKILL.md
 ---
 
