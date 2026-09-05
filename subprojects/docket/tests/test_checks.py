@@ -330,6 +330,54 @@ def test_a_blocker_named_repeatedly_is_reported_once() -> None:
     assert len(advisories) == 1
 
 
+def _compound(text: str, *, blocked_by: tuple[str, ...] = ()) -> list[str]:
+    """Advisories for one item whose brief says `text` about two open blockers."""
+    subject = _item(
+        "PL-0001",
+        blocked_by=blocked_by,
+        body=f"**Problem.** {text}\n\n**Why it matters.** y\n\n**Done when.** z\n",
+    )
+    return analyze([subject, _item("PL-0002"), _item("PL-0003")], TODAY).advisories
+
+
+def test_a_second_prerequisite_in_a_compound_sentence_is_reported() -> None:
+    """`PL-GGCN`: the cue introduces the first blocker and "and on" carries the
+    second, so reading only the first left a real open edge invisible while the
+    check reported clean. `PL-VZL0` is the instance, and it wraps mid-sentence
+    across a parenthetical - which is why the anchor is the paragraph and not
+    the line."""
+    advisories = _compound(
+        "**Blocked on `PL-0002`** (the exact step, which changes what is left\n"
+        "here) **and on `PL-0003`** (the citation check reads no docstrings).",
+        blocked_by=("PL-0002",),
+    )
+    assert _has(advisories, "names PL-0003 as a prerequisite in prose")
+
+
+def test_both_halves_of_a_compound_sentence_are_reported_when_neither_is_declared() -> None:
+    advisories = _compound("Blocked on `PL-0002` and on `PL-0003`.")
+    assert _has(advisories, "names PL-0002 as a prerequisite in prose")
+    assert _has(advisories, "names PL-0003 as a prerequisite in prose")
+
+
+def test_an_and_on_with_no_cue_in_its_paragraph_is_ordinary_prose() -> None:
+    """The reason "and on" is not simply another cue. Unanchored it reads a
+    sentence that reports on two items as declaring a prerequisite on the
+    second, which is a wrong answer in the tool's own voice."""
+    assert _compound("The advisory reports on `PL-0002` and on `PL-0003` alike.") == []
+
+
+def test_a_cue_does_not_license_an_and_on_in_a_later_paragraph() -> None:
+    """One real dependency must not admit every continuation in the rest of the
+    brief - the anchor is the paragraph the cue fired in, nothing wider."""
+    advisories = _compound(
+        "Depends on `PL-0002` for the unit.\n\nSeparately it reports on the "
+        "circuit and on `PL-0003` at once.",
+        blocked_by=("PL-0002",),
+    )
+    assert advisories == []
+
+
 def test_a_closed_item_is_not_asked_to_declare_its_prerequisites() -> None:
     subject = _item("PL-0001", status="done", closed=date(2026, 8, 2), pr="7", body=DEPENDS_BRIEF)
     assert analyze([subject, _item("PL-0002")], TODAY).advisories == []

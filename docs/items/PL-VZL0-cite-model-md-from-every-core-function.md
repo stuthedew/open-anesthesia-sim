@@ -4,7 +4,7 @@ title: Cite MODEL.md from every core/ function implementing a governing equation
 priority: P2
 effort: S
 status: blocked
-blocked-by: PL-GS5X
+blocked-by: PL-GS5X, PL-X2XX
 classes: docs, refactor
 feature: core-domain-language
 touches: src/anesthesia_sim/core

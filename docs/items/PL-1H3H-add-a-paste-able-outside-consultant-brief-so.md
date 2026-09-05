@@ -1,15 +1,16 @@
 ---
 id: PL-1H3H
 title: Add a paste-able outside-consultant brief so big-picture review has a licensed seat outside the queue workflow
-status: done
 priority: P2
 effort: S
+status: done
 classes: docs, infra
 feature: planning-cadence
 touches: docs/consultant-brief.md
-verify: python3 tools/doc_check.py check && grep -q 'apparatus-standard.md' docs/consultant-brief.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 354
+verify: python3 tools/doc_check.py check && grep -q 'apparatus-standard.md' docs/consultant-brief.md
 ---
 
 **Problem.** Every session in the queue workflow is inside the frame it would
