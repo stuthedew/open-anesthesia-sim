@@ -3,9 +3,11 @@ id: PL-RCTQ
 title: Sweep MODEL.md and README for the new unit, time base and run rate
 priority: P2
 effort: S
-status: blocked
+status: done
+closed: 2026-09-05
 blocked-by: PL-VM40, PL-SN2C, PL-SSBP, PL-CC23, PL-DR1Z, PL-ZRSP, PL-R3KB, PL-W3DD
 classes: docs
+verify: python3 tools/doc_check.py check && grep -qF 'A time base is a view control and reaches no model state.' docs/MODEL.md
 feature: teachable-case
 touches: docs/MODEL.md, README.md
 added: 2026-08-25
@@ -85,3 +87,50 @@ what ships - `PL-CC23` landed without amending it, which is the convention -
 so it was left alone rather than edited unilaterally. Decide as part of this
 sweep whether a scoping-time Goal should say so in its own words, and apply
 the same answer to all three clauses at once.
+
+**Swept 2026-09-05, and what the sweep actually found.** The premise in
+"Problem" above had largely expired by the time this became writable: each
+milestone item swept its own `docs/MODEL.md` sections as it landed, so the MAC
+unit, the run rate, the recorded timeline and the reference band were all
+already specified, and so were the fixed-step and no-catch-up guarantees this
+item's "Done when" asks for (they are in § "Interface boundary"'s must-not
+list, from `PL-VM40`). The "Why it matters" claim about `README.md` had also
+expired - it no longer says MAC only picks a starting dial position, and it
+describes the `×MAC` readouts at length.
+
+**The real gap was the time base, which nothing had documented at all.**
+`PL-SSBP` shipped a ten-rung width ladder, a derived gridline interval, a
+fit-the-run default that continues past the widest rung by doubling, and
+self-describing axis labels - and `docs/MODEL.md` mentioned none of it. The
+vertical axis had a home under § "MAC multiples as a display unit"; the
+horizontal axis had none. Added as § "The chart's time base", with the
+constraint stated once in § "Interface boundary" and the reasoning here, so
+neither restates the other.
+
+Four smaller edits went with it: § "Conventions" now says seconds are the
+stored unit and names the two forms the interface renders it in; § "Runtime
+controls" says its list of four is exhaustive of the *model's* inputs and that
+three interface controls also change live without reaching model state;
+§ "Minimum displayed outputs" requires the width in force to be stated; and
+§ "Displayed precision" distinguishes the clock's tenth-of-a-second stamp from
+the chart axis's compound label. Per the v0.4.1 note above, none of these
+restates a derivation - the resolution question is cited to § "Displayed
+precision" rather than re-derived.
+
+**The `ROADMAP.md` Goal question, answered: label the snapshot, do not rewrite
+the clauses.** All three clauses are now false, which is the argument for
+editing them, and each was true when written, which is the argument against.
+Rewriting them into the past one clause at a time would leave the section
+describing neither the problem the milestone was taken on to solve nor the
+product that shipped - and it would have to be redone at every milestone. So
+the lead-in now states that the three reasons are given as they stood on
+2026-08-25 and are not amended as the milestone closes them, pointing at
+Required scope for the outcomes. One sentence, applied to all three at once,
+and the convention `PL-CC23` set is preserved rather than broken.
+
+**Two README findings filed, and the file left alone** per
+`.claude/rules/readme-hold.md`: `PL-X9HM` (the status section quotes 1.2e-2
+percentage points as the solver disagreement "across the settings the
+interface exposes", where § "Displayed precision" gives 2.3e-2 for exactly
+that domain - understated by about 1.9x) and `PL-T67Y` (the status section
+describes neither the playback rate nor the time base).
