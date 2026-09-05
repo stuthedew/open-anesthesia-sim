@@ -167,11 +167,14 @@ a `type: ignore` that suppresses nothing — the guarantee `RUF100` gives for
 live directives look inert. It shells out to mypy, so unlike the two scripts
 below it needs the project virtualenv.
 
-`tools/import_boundary_check.py` is the same shape for a different invariant:
-`core/parameters.py` is the one module allowed to import Pydantic, so that the
-compartments, the controller and the interface hold plain frozen dataclasses
-rather than validation models. That was prose in a docstring and nothing
-measured it. Like `ignore_check.py` it needs the project interpreter, though
+`tools/import_boundary_check.py` is the same shape for a set of invariants
+declared in one table. `core/parameters.py` is the one module allowed to import
+Pydantic, so that the compartments, the controller and the interface hold plain
+frozen dataclasses rather than validation models; and no module under `core/`
+may import `time`, `datetime` or `random`, so that a run stays a function of its
+inputs and of its step count rather than of what the machine was doing. Both
+were prose — a docstring and a guarantee in `docs/MODEL.md` — and nothing
+measured either. Like `ignore_check.py` it needs the project interpreter, though
 for an unrelated reason — it parses `src/`, and `src/` targets 3.14.
 
 `tools/doc_check.py`, `tools/contrast_check.py` and `tools/branch_id_check.py`
