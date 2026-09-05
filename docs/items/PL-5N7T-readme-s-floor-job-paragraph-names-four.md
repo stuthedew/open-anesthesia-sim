@@ -1,14 +1,14 @@
 ---
 id: PL-5N7T
-title: README's floor-job paragraph names four commands and quality.yml now runs five, and nothing checks that enumeration against the workflow
-status: blocked
+title: Nothing checks a prose enumeration of quality.yml's bare-interpreter commands against the workflow, so it has drifted silently twice in one day
+status: ready
 priority: P3
 effort: S
 classes: docs
 feature: project-introduction
-touches: README.md, tools/doc_check.py, tests/unit/test_doc_check.py
-blocked-by: PL-N092
+touches: docs/ARCHITECTURE.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_marked_enumeration_missing_a_run_step_fails' tests/unit/test_doc_check.py
 ---
 
 **Problem.** Two documents hand-enumerate what `.github/workflows/quality.yml`'s
@@ -29,9 +29,9 @@ freeze lifts.
 **Why it matters.** Two halves, and the second is the one worth building for.
 
 The stale sentence itself is minor: a reader learns of four checks where there
-are five, and nothing they do on that basis is unsafe. It waits for `PL-N092`
-(rewrite README as a human-readable introduction), which rewrites the paragraph
-anyway.
+are five, and nothing they do on that basis is unsafe. The README copy is moot
+in any case - see the restatement below, which is the current scope of this
+item.
 
 The drift is not minor. `tools/doc_check.py` already resolves the *paths* these
 lines cite, which is why the addition did not fail `make check` — a path that
@@ -52,24 +52,53 @@ marker naming the block to check, the way the package-map trees are already
 delimited rather than discovered, so the tool is told where to look and the
 question stays decidable.
 
-Do this once the freeze lifts, not before: a check that fails on a file nobody
-is allowed to edit is a gate with no move behind it.
+## Restated 2026-09-05, under `PL-WB5K` — unblocked, and stronger
 
-**Done when.** `make check` fails when a marked prose enumeration of the
-`floor` job's commands disagrees with the workflow, and both copies agree with
-it.
+`PL-WB5K` deleted `README.md`, which removes the *stale sentence* half of this
+item outright: there is no frozen copy to correct and nothing waiting on
+`PL-N092`. This item is `ready` rather than `blocked`, and its scope is now
+`docs/ARCHITECTURE.md` alone.
 
-**The discrepancy changed shape on 2026-09-05, and the item is unaffected.**
-`PL-L17Q` moved `python3 tools/contrast_check.py` out of the floor section (it
-parses `app/` source that targets 3.14, so it cannot run under the 3.11 floor),
-leaving four commands there: `doc_check.py check`, `branch_id_check.py`,
-`rules_paths_check.py` and `bin/docket check`. So the README paragraph now
-names four commands where the workflow runs four - and is still wrong, because
-they are not the same four: it lists `contrast_check.py`, which no longer runs
-there, and still omits `rules_paths_check.py`, which does.
-`docs/ARCHITECTURE.md`'s copy was corrected in that branch, as it was for
-`PL-LLWN`; `README.md` was not touched, per the freeze.
+**The drift half survived and immediately recurred, which is the argument for
+building the check rather than the argument for dropping it.** `PL-WB5K` added
+a sixth command, `python3 tools/readme_hold_check.py`, to the same section.
+`docs/ARCHITECTURE.md`'s enumeration went stale the moment that landed and
+`make check` stayed green, exactly as this item predicted — the path it cites
+still resolves, and the count is what changed. It was caught by a session
+reading this item's own text during the same change, which is luck rather than
+a mechanism, and is precisely the "silent wrong answer" test in `CLAUDE.md`.
+Two additions, two silent drifts, in one day.
 
-That is the second independent drift of this enumeration in as many days, which
-strengthens rather than changes the case above: the count matching is not the
-property worth checking, the *set* is.
+Note the sixth command is the shortest-lived: `PL-N092` deletes
+`readme_hold_check.py` when it writes the deliberate README, so the
+enumeration will change again in the other direction. A check would catch that
+removal too; a reader would not.
+
+**Where, now.** `docs/ARCHITECTURE.md` (the paragraph beginning "The floor
+section of `.github/workflows/quality.yml`'s `checks` job performs the run they
+stand in for"), corrected under `PL-WB5K` but still unheld by anything;
+`tools/doc_check.py` for the check; `tests/unit/test_doc_check.py`.
+
+One naming correction the deletion forces: `PL-D551` folded the `floor` job
+into `checks`, so what is being enumerated is the **bare-interpreter section
+of `checks`**, not a job. The marker and the failure message should say so, or
+the check ships describing a job that does not exist.
+
+**Done when.** `make check` fails when the marked prose enumeration in
+`docs/ARCHITECTURE.md` disagrees with the run steps of `quality.yml`'s
+bare-interpreter section, and the two agree.
+
+**A third drift, in the other direction, the same day.** `PL-L17Q` *removed*
+`python3 tools/contrast_check.py` from that section - it parses `app/` source
+targeting 3.14 and cannot run under the 3.11 floor - so the section runs five
+commands, not the six the paragraph above counts: `doc_check.py check`,
+`branch_id_check.py`, `rules_paths_check.py`, `readme_hold_check.py` and
+`bin/docket check`. `docs/ARCHITECTURE.md` was corrected in that branch, by
+hand again, and `make check` stayed green again.
+
+So the enumeration has now drifted three times in one day - two additions and
+one removal - and been repaired three times by a session that happened to be
+reading it. The removal case is the one that argues hardest for the check: an
+addition at least leaves the prose *incomplete*, while a removal leaves it
+naming a command that is no longer run, which reads as authoritative and is
+false.

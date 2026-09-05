@@ -7,7 +7,7 @@ status: blocked
 blocked-by: PL-XYRN
 classes: docs, ux
 feature: project-introduction
-touches: README.md, docs/MODEL.md
+touches: README.md, docs/MODEL.md, pyproject.toml, Makefile, .github/workflows/quality.yml, tools/readme_hold_check.py, tests/unit/test_readme_hold_check.py, docs/ARCHITECTURE.md
 added: 2026-09-01
 verify: python3 tools/doc_check.py check && ! grep -q 'resolution the numerical method supports' README.md
 not-delegable: docs/MODEL.md is a protected path, and the command below bounds only the mechanical half - whether the rewritten README actually introduces the project to a first-time reader is the judgment a check cannot make, which is the whole of this item
@@ -153,6 +153,50 @@ same documents written singly over months do not.
 
 Nothing above is provisional because of that. `PL-RM83` settled the audience,
 the `docs/MODEL.md` boundary and the status treatment, and this brief is
-restated against them; only the timing moved. `README.md` therefore stays
-frozen, and `.claude/rules/readme-hold.md` is still the live rule — it is
-deleted in the commit carrying this rewrite, whenever that comes.
+restated against them; only the timing moved.
+
+## The README no longer exists, 2026-09-05 — PL-WB5K
+
+The project owner deleted `README.md` the same day, rather than leaving it
+frozen in place: a frozen document is still read, and sessions were reading it
+as instruction while a human reader could not use it. `PL-WB5K` carries the
+reasoning; `docs/WORKING_NOTES.md` carries the thread.
+
+**Three things change for this item, and the brief above is otherwise intact.**
+
+1. This is now a **first draft, not a rewrite**. Nothing has to be preserved,
+   reorganized or argued out of the document, and the "what gets cut moves to
+   `docs/MODEL.md`" half of the brief is already settled — the old text is in
+   git history at the commit that removed it, available if a paragraph is
+   worth recovering, and required to be read for none of them.
+2. The freeze rule under `.claude/rules/` is gone, replaced by
+   `tools/readme_hold_check.py`, which fails `make check` and CI while a root
+   `README.md` exists. **Delete that script and its two invocations — in
+   `Makefile` and `.github/workflows/quality.yml` — in the commit that writes
+   the README**, or this item cannot land. Remove its line from
+   `docs/ARCHITECTURE.md`'s `tools/` map and delete
+   `tests/unit/test_readme_hold_check.py` in the same commit.
+3. **Restore `readme = "README.md"` to `pyproject.toml`**, which the deletion
+   removed because the `uv_build` backend fails on a missing file. `PL-4MHK`
+   (package metadata) wants the `description` field to agree with the README's
+   opening paragraph, so the two are worth landing together or in that order.
+
+**Coverage the first draft must not lose.** Two items that existed to correct
+the deleted document are dropped into this list rather than left pointing at a
+file that is gone. They are floors on the status section, not an outline of it:
+
+- **The playback rate and the chart's case-length time base** (`PL-T67Y`,
+  dropped). Two of v0.4.0's three headline changes, and the milestone's stated
+  end state - "a learner runs one case from induction to emergence, in
+  compressed time they can sit through, on a time base that spans a case" -
+  is not describable without them. The playback rate is additionally a **mode**,
+  which `docs/MODEL.md` § "Interface boundary" requires on screen at every rate;
+  a document that never mentions it leaves a reader to meet a 60× clock
+  unprepared. `PL-T67Y`'s brief carries the full case and is worth reading when
+  the rewrite reaches this material.
+- **The solver-disagreement bound is 2.3e-2 percentage points, not 1.2e-2**
+  (`PL-X9HM`, done). The deleted README quoted the wrong row of
+  `docs/MODEL.md`'s table when justifying the two-decimal readout. If the new
+  document justifies the readout at all, it takes the number from `docs/MODEL.md`
+  rather than from the old text in git history, which was wrong for most of its
+  life and is a `science`-class error rather than a wording one.
