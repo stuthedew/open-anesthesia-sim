@@ -1,16 +1,15 @@
 ---
 id: PL-647D
 title: Cut the v0.4.0 release: the teachable case
-status: done
-added: 2026-09-05
-closed: 2026-09-05
 priority: P2
 effort: S
+status: done
 classes: planning, docs
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases/, docs/items/
+added: 2026-09-05
+closed: 2026-09-05
+pr: 355
 not-delegable: proving a release cut means cutting the release. There is no
-  command that fails before the work and passes after it without doing the
-  work, so `make check` on the cut tree is the whole of the evidence.
 ---
 
 **Problem.** Thirty-six items have closed since v0.3.9 and twelve of v0.4.0's

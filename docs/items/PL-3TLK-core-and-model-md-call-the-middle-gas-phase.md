@@ -8,7 +8,7 @@ effort: M
 status: ready
 classes: refactor, docs
 feature: core-domain-language
-verify: uv run pytest -q tests/unit/test_circuit.py tests/reference/test_circuit_wash_in.py && grep -q 'inspired_partial_pressure_fraction' src/anesthesia_sim/core/circuit.py
+verify: python3 tools/doc_check.py check && grep -qF 'the middle gas-phase state is $`F_I`$ (inspired)' docs/MODEL.md
 ---
 
 **Problem.** The model's gas-phase cascade is delivered -> circuit -> alveolar,
@@ -89,7 +89,27 @@ middle gas-phase state from its first line rather than be renamed afterwards.
 The decision here is what that item needs; the full rename across the existing
 call sites can follow with `PL-9SH6`.
 
-**Done when.** The middle gas-phase state carries the domain's name throughout
-`core/` and `docs/MODEL.md`, the assumption making $`F_C \equiv F_I`$ is stated
-where the model boundary is stated, `make check` passes, and no modelled value
-changed.
+**Done when.** `docs/MODEL.md` names the middle gas-phase state $`F_I`$
+(inspired) throughout — §§ "Symbols", "Conventions", "Breathing circuit" and
+every equation carrying $`F_C`$ — and the assumption making $`F_C \equiv F_I`$
+true (one ideal perfectly mixed circuit, no dead space, no separate limbs) is
+stated where the model boundary is stated. `make check` passes and no modelled
+value changed.
+
+**The `core/` rename is *not* this item; it lands with `PL-9SH6`.** Corrected
+2026-09-05 (`PL-R95V`), which found three statements that could not all hold.
+This item's own Sequencing already said the decision goes ahead of `PL-GS5X`
+while "the full rename across the existing call sites can follow with
+`PL-9SH6`"; `PL-9SH6` says the two "land in one commit" and is itself *behind*
+`PL-GS5X`. One commit cannot sit on both sides of the exact step. And the
+`verify:` command greped `core/circuit.py` for `inspired_partial_pressure_fraction`
+— a name this item never derives, since it is `PL-9SH6`'s target form — so the
+command could not pass without doing `PL-9SH6`'s work.
+
+The split follows the sequencing rather than the Done when: **the naming
+decision and its specification land here, ahead of `PL-GS5X`**, so the new
+matrix assembly carries the domain's name for the middle gas-phase state from
+its first line. The ~24 uses of `circuit_concentration_fraction` across `core/`
+and the interface layer are renamed by `PL-9SH6`, behind the exact step, with
+the $`F_C \rightarrow F_I`$ row of its table supplied from here. The `verify:`
+command now proves the half that actually lands here.
