@@ -55,7 +55,7 @@ testpaths = ["tests", "subprojects/docket/tests"]
 addopts = "-ra"
 # `tools/` holds repo tooling that is not part of the shipped package, and
 # `subprojects/docket/` is a standalone package this repository also uses.
-pythonpath = ["tools", "subprojects/docket/src"]
+pythonpath = ["tools", ".claude/hooks", "subprojects/docket/src"]
 # The application's target, not the whole repository's. `tools/ruff.toml` and
 # `subprojects/docket/ruff.toml` extend this file and override
 # `target-version` to the bare-`python3` floor, because both trees are run by
@@ -126,7 +126,7 @@ split-on-trailing-comma = false
 # appear there that are neither a UI double nor a deliberately wrong argument.
 [tool.mypy]
 python_version = "3.14"
-files = ["src", "tools", "subprojects/docket/src"]
+files = ["src", "tools", ".claude/hooks", "subprojects/docket/src"]
 strict = true
 
 [[tool.mypy.overrides]]

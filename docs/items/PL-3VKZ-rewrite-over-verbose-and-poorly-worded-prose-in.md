@@ -18,9 +18,11 @@ trust it, so verbosity costs comprehension, not merely space. Same standard as
 the resident instruction lines) — see that item for why the agent-facing files
 are measured differently.
 
-**Where.** Candidates by size: `docs/MODEL.md` (3089 lines), `ROADMAP.md`
-(2183), `docs/WORKING_NOTES.md` (705), `docs/ARCHITECTURE.md` (513),
-`docs/maintainer.md` (49).
+**Where.** Candidates by size, measured 2026-09-05 and rounded because they
+move every release: `docs/MODEL.md` (~3100 lines), `ROADMAP.md` (~2200),
+`docs/WORKING_NOTES.md` (~700), `docs/ARCHITECTURE.md` (~520),
+`docs/maintainer.md` (~50). Re-measure before starting rather than trusting
+these; they are here for ordering, not as a claim.
 
 Two exclusions, both deliberate:
 

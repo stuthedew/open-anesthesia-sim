@@ -1,4 +1,12 @@
-"""`tools/` must stay runnable by the interpreter that actually runs it.
+"""The bare-interpreter scripts must stay runnable by the interpreter that runs them.
+
+Two directories qualify, for one reason. `tools/` is invoked by `make check`
+and CI; `.claude/hooks/` is invoked by Claude Code, which runs
+`python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/stop_hook_patch.py"` at session
+start. Neither goes through the project virtualenv, so both carry a `ruff.toml`
+pinning the formatter to the floor and both are covered here. `PL-W4H9` moved
+the hook out of `tools/`, and covering it by directory rather than by name is
+what keeps the next one from arriving unguarded.
 
 `make check` invokes `python3 tools/doc_check.py check` with whatever bare
 `python3` is on PATH - no virtualenv, no install step - and CI does the same.
@@ -39,8 +47,10 @@ from collections.abc import Iterator
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TOOLS_ROOT = REPO_ROOT / "tools"
-SOURCES = sorted(TOOLS_ROOT.rglob("*.py"))
+#: The directories whose `*.py` runs under bare `python3`. Each declares its
+#: own `ruff.toml`, and both are held to the floor below.
+BARE_ROOTS = (REPO_ROOT / "tools", REPO_ROOT / ".claude" / "hooks")
+SOURCES = sorted(path for root in BARE_ROOTS for path in root.rglob("*.py"))
 
 #: Importable here despite not being in the standard library, because a bare
 #: checkout carries it too. `tools/doc_check.py` reads the release-train
@@ -68,33 +78,49 @@ def _bare_python_floor() -> tuple[int, int]:
     return int(match.group(1)), int(match.group(2))
 
 
-def _ruff_target() -> tuple[int, int]:
-    """The Python version the formatter may emit syntax for under `tools/`."""
-    with (TOOLS_ROOT / "ruff.toml").open("rb") as handle:
-        target = tomllib.load(handle)["target-version"]
-    match = re.fullmatch(r"py(\d)(\d+)", target)
-    assert match is not None, target
+def _ruff_target(root: Path) -> tuple[int, int]:
+    """The Python version the formatter may emit syntax for under `root`.
+
+    Resolved through `extend`, because `.claude/hooks/ruff.toml` inherits the
+    pin from `tools/ruff.toml` rather than restating it: reading only the local
+    key would report the inheriting config as declaring no target at all.
+    """
+    while True:
+        with (root / "ruff.toml").open("rb") as handle:
+            config = tomllib.load(handle)
+        if "target-version" in config:
+            break
+        root = (root / config["extend"]).resolve().parent
+    match = re.fullmatch(r"py(\d)(\d+)", config["target-version"])
+    assert match is not None, config["target-version"]
     return int(match.group(1)), int(match.group(2))
 
 
 def test_the_formatter_target_matches_the_declared_floor() -> None:
-    """A formatter aimed past the floor rewrites the source into syntax it cannot run."""
-    assert _ruff_target() == _bare_python_floor()
+    """A formatter aimed past the floor rewrites the source into syntax it cannot run.
+
+    Asked of every bare-interpreter directory, so a second one cannot be added
+    with the repository's own 3.14 target left in force.
+    """
+    for root in BARE_ROOTS:
+        assert _ruff_target(root) == _bare_python_floor(), root
 
 
 def test_there_are_sources_to_check() -> None:
-    assert SOURCES, "no tools found; the glob is wrong"
+    assert SOURCES, "no bare-interpreter scripts found; the glob is wrong"
+    for root in BARE_ROOTS:
+        assert any(path.is_relative_to(root) for path in SOURCES), root
 
 
 def test_every_tool_parses_under_the_interpreter_that_actually_runs_it() -> None:
-    """Every file under `tools/`, not the one that broke.
+    """Every file under every bare-interpreter directory, not the one that broke.
 
     `feature_version` is not a full older-interpreter parser - it gates the
     syntax CPython's own parser version-checks, PEP 758 among them - so this
     catches the rewrite that has actually happened here rather than proving
     compatibility in general. Proof for the files the `floor` job runs is that
-    job parsing them for real; this covers every file under `tools/`, including
-    one nothing there invokes yet.
+    job parsing them for real; this covers every file under `tools/` and
+    `.claude/hooks/`, including the ones that job never invokes.
     """
     floor = _bare_python_floor()
 
