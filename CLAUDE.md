@@ -30,6 +30,15 @@ for here rather than traded for speed, and slow accumulations that a single
 year would not surface — dependency drift, a file nobody wants to open — have
 time to become the thing that ends it.
 
+The apparatus is not judged by its share of the queue, though. Sessions have no
+memory, so on a solo project it carries the continuity a team would hold in its
+heads, and counting its items against the simulator's measures the wrong thing.
+An objection to the balance is a finding when it names the mechanism that should
+not have been built and what it cost; the general form — that there is too much
+of it, that the effort belongs on the product instead — is answered here, and
+raising it again spends a reply re-deriving what this section already settles
+(`PL-9J2W`).
+
 ## Working with the project owner
 
 **The outcome is the requirement. An implementation sketched alongside it is
