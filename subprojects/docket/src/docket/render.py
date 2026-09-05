@@ -27,6 +27,7 @@ from .vcs import (
     RESTART,
     BranchState,
     Carrier,
+    CutsInFlight,
     FlightReport,
     OrphanedReport,
     Precedence,
@@ -215,6 +216,7 @@ def format_digest(
     stranded: StrandedReport | None = None,
     workflow_paths: tuple[str, ...] = (),
     orphaned: OrphanedReport | None = None,
+    cuts: CutsInFlight | None = None,
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -342,9 +344,22 @@ def format_digest(
             if ready.completed_features
             else ""
         )
+        # The offer is where a duplicate release *starts*, so this is where
+        # saying so is worth most: the second session never raises it, rather
+        # than being refused after the owner has already approved one
+        # (`PL-66FP`). The advice is replaced rather than appended - "offer
+        # 0.3.9" and "0.3.9 is already being cut" in one line is two answers.
+        held = [branch for branch in (cuts.branches if cuts else ()) if not branch.mine]
+        advice = (
+            "A release is already being cut on "
+            + ", ".join(f"{branch.ref} (v{', v'.join(branch.versions)})" for branch in held)
+            + "; do not offer another until it merges."
+            if held
+            else _release_advice(ready, plan)
+        )
         lines.append(
             f"  Releasable: {len(ready.shippable)} finished item(s) since "
-            f"{ready.current_version}{completes}. {_release_advice(ready, plan)}"
+            f"{ready.current_version}{completes}. {advice}"
         )
     if plan is not None and plan.step is not None:
         position = (

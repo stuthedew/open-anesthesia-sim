@@ -9,8 +9,10 @@ feature: teachable-case
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, docs/MODEL.md
 added: 2026-09-04
 closed: 2026-09-04
+pr: 321
 verify: python3 tools/doc_check.py check && grep -qF 'is a common inhalational-induction setting' docs/MODEL.md
 ---
+
 **Problem.** `PL-CC23` justified the off-scale notice - the line naming a
 compartment trace drawn above the top of the chart - by observing that
 sevoflurane's 8 % dial is 4.00 MAC and so exceeds the fixed 3 MAC ceiling.

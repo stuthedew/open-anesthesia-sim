@@ -619,6 +619,56 @@ writes the notes from the items themselves, and stops short of tagging.
 Generated notes cannot claim something the items do not, and nothing shipped
 goes unmentioned because whoever wrote them forgot it.
 
+**A release is the one change no in-flight guard can see.** Every guard here
+matches a `PL-` id — `flight`, `show`, `next`, `concurrent`, the digest,
+`branch_id_check` — and a release cut carries none by design. So the change
+that rewrites the version file, the lock file, the roadmap and a new notes
+file, which is the most collision-prone in the repository, is the only one
+nothing watches. Two sessions cut v0.3.7 within an hour that way, and the
+second one's whole release was discarded at the merge (`PL-66FP`).
+
+`release.already_released` closes the half of that which is *certain*.
+`vcs.released_on_base` reads the default branch's own version file and its
+`docs/releases/` listing — the ref, never the working tree, which is this
+session's cut in progress and would answer about itself — and a version
+either of them already names is refused rather than reported. That refusal is
+what separates it from every other parallel-session read here: a notes file
+on the base is a fact about a merge that has happened, not an inference from
+a ref that may have moved since it was fetched.
+
+**The base is not enough on its own, and this is the part that had to be
+measured rather than assumed.** Both collisions this closes were between two
+*unmerged* cuts: the session that lost the v0.3.7 race cut from a checkout
+that did not yet hold an item merged eight minutes before the winning release
+landed, so its `origin/main` read the old version whenever it looked. A
+base-only check would have passed it, and would have passed the second race
+the same day.
+
+So `vcs.cuts_in_flight` reads the other half from the refs. It reuses
+`_unlanded_refs`, which is what makes it survive a squash merge, and
+subtracts the notes the base already holds - without that subtraction the
+branch whose v0.3.9 release had merged twenty minutes earlier was still
+listed, and a guard that fires on every release after the first is one nobody
+reads. A ref `HEAD` contains is marked `mine` rather than reported, for the
+reason `Carrier.mine` gives.
+
+`cmd_release` refuses on *any* unmerged cut, not only one of the version being
+written: two concurrent releases under different numbers is the worse case,
+since both stamp `milestone:` onto an overlapping set of items and whichever
+merges second claims work the first already shipped. It reports the date the
+notes were written, because that is the only thing separating a live session
+from a branch nobody will merge, and leaves that judgment to the reader the
+way `flight` and `stranded` do.
+
+**And it fetches first**, which is the step without which neither question is
+worth asking. This is the rarest command here and the most expensive to get
+wrong, which is what makes one network read proportionate where the digest's
+would not be; `--no-fetch` is there for a caller that has already refreshed or
+cannot. The digest carries the same answer on its `Releasable:` line, computed
+only where a release is actually being offered, because the offer is where a
+duplicate release starts - refusing at `release` alone leaves the second
+session having already raised it and been approved.
+
 **A release writes all of itself or none of it.** Two things reach disk — the
 `milestone:` stamp on every item going out, and the version — and neither
 order is safe while the bump can still fail on the file it is about to

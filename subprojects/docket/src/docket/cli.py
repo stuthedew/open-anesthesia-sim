@@ -21,8 +21,11 @@ from .config import load as load_config
 from .model import LANE_CROSSING, SELECTABLE_LANES, Item
 from .plan import OfferedReport, features, gate, recommend, set_aside
 from .release import (
+    NOTES_DIR,
+    already_released,
     is_untagged,
     milestones,
+    notes_name,
     outstanding_roadmap_edits,
     prepare_bump,
     read_version,
@@ -34,6 +37,8 @@ from .roadmap import Wave, wave
 from .store import find_item, new_id, read_items, write_item
 from .vcs import (
     CURRENT,
+    BranchCut,
+    CutsInFlight,
     FlightReport,
     OrphanedReport,
     StrandedReport,
@@ -41,6 +46,7 @@ from .vcs import (
     branches_in_flight,
     closed_by,
     closures_on_base,
+    cuts_in_flight,
     default_base,
     fetch_remote,
     files_in_flight,
@@ -48,6 +54,7 @@ from .vcs import (
     merged_pull_requests,
     orphaned,
     precedence,
+    released_on_base,
     stranded,
     tags,
 )
@@ -289,10 +296,26 @@ def cmd_digest(args: argparse.Namespace) -> int:
         _stranded(root, directory, items, args),
         config.workflow_paths,
         _orphaned(root, args),
+        _cuts(root, config, args) if ready.is_worth_cutting else None,
     )
     if rendered:
         print(rendered)
     return 0
+
+
+def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight | None:
+    """Which refs are mid-release, read only where a release is being offered.
+
+    Gated on the offer rather than run for every digest: it costs a walk of the
+    unlanded refs (measured 103 ms on this repository), and a session not being
+    offered a release has nothing to be warned off. It does not fetch - the
+    digest's hook already did, and this must stay answerable in a checkout with
+    no network.
+    """
+    if getattr(args, "no_git", False):
+        return None
+    base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR)
+    return cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes)
 
 
 def cmd_triage(args: argparse.Namespace) -> int:
@@ -770,6 +793,45 @@ def cmd_release(args: argparse.Namespace) -> int:
 
     version = (args.version or ready.suggested_version).lstrip("v")
     name = f"v{version}"
+
+    # The one change no in-flight guard can see, because it carries no item id
+    # by design (`PL-66FP`). Two questions, in the order their answers are
+    # certain in: what the default branch already holds is a merge that has
+    # happened, and what a ref is carrying is a claim that may yet be
+    # abandoned. A dry run is allowed through either with the warning, on the
+    # same reasoning as the untagged one above: it writes nothing, and
+    # withholding the notes would not un-ship what already shipped.
+    #
+    # **The fetch is the part without which neither question is worth asking.**
+    # The session that lost the v0.3.7 race cut from a checkout that did not
+    # yet hold an item merged eight minutes before the winning release landed,
+    # so every ref it could read was older than the collision it was in. This
+    # is the rarest command here and the most expensive to get wrong, which is
+    # what makes one network read proportionate where the digest's would not be.
+    if not getattr(args, "no_git", False):
+        if not args.no_fetch:
+            fetch_remote(root)
+        base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR)
+        landed = (
+            already_released(version, base.notes, base.version, config.version_file)
+            if base.known
+            else []
+        )
+        if landed:
+            print(_duplicate_warning(name, base.base, landed))
+            if not args.dry_run:
+                return 1
+            print()
+        elif holders := [
+            branch
+            for branch in cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes).branches
+            if not branch.mine
+        ]:
+            print(_parallel_cut_warning(holders))
+            if not args.dry_run:
+                return 1
+            print()
+
     milestone = milestones(stamp(ready.shippable, name))[name]
     notes = release_notes(milestone, args.today or date.today())
 
@@ -800,7 +862,7 @@ def cmd_release(args: argparse.Namespace) -> int:
         original = next(i for i in items if i.identifier == item.identifier)
         write_item(directory, item, replace=directory / original.path)
     previous = bump.write()
-    notes_path = root / "docs" / "releases" / f"{name}.md"
+    notes_path = root / NOTES_DIR / notes_name(version)
     notes_path.parent.mkdir(parents=True, exist_ok=True)
     notes_path.write_text(notes, encoding="utf-8")
     print(f"Bumped {previous} -> {version} in {config.version_file}")
@@ -841,6 +903,74 @@ def _hand_off(root: Path, config: Config, name: str) -> str:
     lines.append(f'  git tag -a {name} <merge commit> -m "{name}"')
     lines.append(f"  git push origin {name}")
     return "\n".join(lines)
+
+
+def _duplicate_warning(name: str, base: str, evidence: list[str]) -> str:
+    """Say which release is already out, on what evidence, and how to move onto it.
+
+    The evidence rather than the verdict alone, because the reader's next
+    question is "says who" and the answer is two files they can go and look
+    at. And the commands rather than "rebase first", for the reason
+    `_untagged_warning` gives: a session told what to intend has to
+    reconstruct how, at the moment it is trying to do something else.
+
+    `git merge` rather than a rebase: the branch is pushed by the time another
+    session could have merged past it, and rewriting a pushed branch is what
+    `CLAUDE.md` refuses.
+    """
+    return "\n".join(
+        [
+            f"{name} is already released on {base}, so cutting it here would write a",
+            "second copy of a release that has shipped:",
+            "",
+            *(f"  {statement}" for statement in evidence),
+            "",
+            "Another session cut it. Take what shipped, then ask what is left:",
+            "",
+            "  git fetch origin",
+            f"  git merge {base}   # take {base}'s side on the version, lock and roadmap files",
+            "  bin/docket release --dry-run",
+        ]
+    )
+
+
+def _parallel_cut_warning(holders: list[BranchCut]) -> str:
+    """Say which ref is cutting what, when it did, and both ways out of it.
+
+    Every unmerged cut rather than only one of the version being cut. Two
+    concurrent releases under *different* numbers is the worse case, not the
+    safer one: both stamp `milestone:` onto an overlapping set of items, so
+    whichever merges second claims work the first already shipped.
+
+    The date because it is the only thing separating a live session from a
+    branch nobody will merge, and this reports rather than decides, the way
+    `flight` and `stranded` do. Both remedies for the same reason - waiting is
+    right for the first case and useless for the second, and the reader is the
+    one who can tell them apart.
+    """
+    lines = []
+    for branch in holders:
+        versions = ", ".join(f"v{version}" for version in branch.versions)
+        when = f", cut {branch.cut.isoformat()}" if branch.cut else ""
+        lines.append(f"  {branch.ref} is cutting {versions}{when}")
+    return "\n".join(
+        [
+            "A release is already being cut on a branch nothing has merged:",
+            "",
+            *lines,
+            "",
+            "Two cuts cannot both land - the second is resolved by discarding it, which",
+            "is what happened to v0.3.7. Wait for it to merge, then:",
+            "",
+            "  git fetch origin",
+            "  git merge origin/main",
+            "  bin/docket release --dry-run",
+            "",
+            "If that branch is abandoned, recover what only it holds before dropping it:",
+            "",
+            "  bin/docket stranded",
+        ]
+    )
 
 
 def _untagged_warning(version: str) -> str:
@@ -1308,6 +1438,12 @@ def build_parser() -> argparse.ArgumentParser:
     release = add("release", "cut a release from everything finished and unshipped")
     release.add_argument("version", nargs="?", help="override the inferred version")
     release.add_argument("--dry-run", action="store_true")
+    release.add_argument(
+        "--no-fetch",
+        action="store_true",
+        default=False,
+        help="read the refs as they are; the caller refreshed them, or cannot",
+    )
     release.set_defaults(func=cmd_release)
 
     add("delegable", "what a cheaper model may work, and what proves it").set_defaults(

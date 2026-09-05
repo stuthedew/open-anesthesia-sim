@@ -510,6 +510,176 @@ def test_a_project_that_has_never_tagged_is_not_refused(tmp_path: Path) -> None:
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
 
 
+def test_a_release_the_default_branch_already_holds_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-66FP: two sessions cut v0.3.7, and no guard could see the second one.
+
+    A release carries no item id, so `branches_in_flight` and everything
+    reading it are blind to it. What the default branch already holds is the
+    part of that which is certain, and this is the command proving it is read
+    from git as git actually spells it.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    notes = root / "docs" / "releases"
+    notes.mkdir(parents=True)
+    (notes / "v0.2.6.md").write_text("## v0.2.6\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "Release v0.2.6"], cwd=root, check=True, capture_output=True
+    )
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
+    output = capsys.readouterr().out
+    assert "v0.2.6 is already released on" in output
+    assert "docs/releases/v0.2.6.md is on it" in output
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
+
+
+def test_a_base_already_bumped_to_the_version_refuses_it_too(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The version field catches a release landed without notes this can read."""
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.5", "--items", str(root / "items")]) == 1
+    assert "its pyproject.toml already reads 0.2.5" in capsys.readouterr().out
+
+
+def test_a_dry_run_says_the_release_is_already_out_and_still_shows_the_notes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Withholding the preview would not un-ship what already shipped."""
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.5", "--dry-run", "--items", str(root / "items")]) == 0
+    output = capsys.readouterr().out
+    assert "is already released on" in output
+    assert "PL-D1D1" in output
+
+
+def test_a_version_the_default_branch_has_not_seen_is_cut_as_before(tmp_path: Path) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    assert (root / "docs" / "releases" / "v0.2.6.md").is_file()
+
+
+def _side_cut(root: Path, version: str) -> None:
+    """A second branch carrying a release nobody has merged, left off the base."""
+    base = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    subprocess.run(["git", "checkout", "-qb", "sidecut"], cwd=root, check=True, capture_output=True)
+    notes = root / "docs" / "releases"
+    notes.mkdir(parents=True, exist_ok=True)
+    (notes / f"v{version}.md").write_text(f"## v{version}\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", f"Release v{version}"], cwd=root, check=True, capture_output=True
+    )
+    subprocess.run(["git", "checkout", "-q", base], cwd=root, check=True, capture_output=True)
+
+
+def test_a_release_another_branch_is_already_cutting_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-66FP: the half the default branch cannot see, which is the half that raced.
+
+    The v0.3.7 collision was between two *unmerged* cuts, so a check reading
+    only the base would have passed both.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    _side_cut(root, "0.2.6")
+
+    assert main(["release", "0.2.6", "--no-fetch", "--items", str(root / "items")]) == 1
+    output = capsys.readouterr().out
+    assert "A release is already being cut on a branch nothing has merged" in output
+    assert "sidecut is cutting v0.2.6" in output
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
+
+
+def test_a_cut_of_a_different_version_is_refused_too(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Two concurrent releases under different numbers is the worse case, not the safer one.
+
+    Both stamp `milestone:` onto an overlapping set of items, so whichever
+    merges second claims work the first already shipped.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    _side_cut(root, "0.2.6")
+
+    assert main(["release", "0.3.0", "--no-fetch", "--items", str(root / "items")]) == 1
+    assert "sidecut is cutting v0.2.6" in capsys.readouterr().out
+
+
+def test_a_dry_run_names_the_parallel_cut_and_still_shows_the_notes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+    _side_cut(root, "0.2.6")
+
+    assert (
+        main(["release", "0.2.6", "--no-fetch", "--dry-run", "--items", str(root / "items")]) == 0
+    )
+    output = capsys.readouterr().out
+    assert "already being cut" in output
+    assert "PL-D1D1" in output
+
+
+def test_a_cut_this_checkout_is_carrying_does_not_refuse_it_to_itself(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A session told to yield to itself would stop for nobody."""
+    root = _release_repo(tmp_path, "v0.2.5")
+    _side_cut(root, "0.2.6")
+    subprocess.run(["git", "merge", "-q", "sidecut"], cwd=root, check=True, capture_output=True)
+
+    assert main(["release", "0.3.0", "--no-fetch", "--items", str(root / "items")]) == 0
+    assert "already being cut" not in capsys.readouterr().out
+
+
+def test_a_release_refreshes_the_refs_before_deciding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PL-66FP: without this, neither release guard is worth asking.
+
+    The session that lost the v0.3.7 race cut from a checkout that did not yet
+    hold an item merged eight minutes before the winning release landed, so
+    every ref it could read was older than the collision it was in. The item
+    assumed the session-start fetch was enough; it was not.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    fetched: list[Path] = []
+    monkeypatch.setattr("docket.cli.fetch_remote", lambda where: fetched.append(where))
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    assert fetched == [root]
+
+
+def test_no_fetch_is_honored_for_a_caller_that_refreshed_or_cannot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+    fetched: list[Path] = []
+    monkeypatch.setattr("docket.cli.fetch_remote", lambda where: fetched.append(where))
+
+    assert main(["release", "0.2.6", "--no-fetch", "--items", str(root / "items")]) == 0
+    assert fetched == []
+
+
+def test_no_git_skips_the_release_guards_entirely(tmp_path: Path) -> None:
+    root = _release_repo(tmp_path, "v0.2.5")
+    _side_cut(root, "0.2.6")
+
+    assert main(["release", "0.2.6", "--no-git", "--items", str(root / "items")]) == 0
+
+
 def test_a_version_file_the_bump_rejects_leaves_the_items_unstamped(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

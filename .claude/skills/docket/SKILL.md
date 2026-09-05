@@ -805,6 +805,27 @@ one is untagged**, because a release cut without a tag leaves a permanent gap
 — `git describe --contains` resolves nothing across its span — and the gap
 cannot be repaired with confidence once the history has moved on.
 
+It **also refuses to cut a release another session already has** (`PL-66FP`,
+two sessions cut v0.3.7 independently), on either of two facts, and it
+fetches first so both are current:
+
+- **The default branch already holds the version** — its `docs/releases/`
+  notes file or its version field. Another session's release has merged, so
+  the work is `git merge origin/main` and then asking again what is left.
+- **An unmerged ref is carrying a cut** — of any version, not only this one,
+  because two releases under different numbers stamp `milestone:` onto an
+  overlapping set of items and the second to merge claims work the first
+  shipped. The message names the ref and the date the notes were written; that
+  date is what separates a live session from a branch nobody will merge, and
+  it is yours to read. Wait for a live one; for an abandoned one run
+  `bin/docket stranded` before dropping the ref.
+
+The digest says the same thing on its `Releasable:` line instead of offering
+a release, so the second session never raises one. **Neither read sees a
+session that has pushed nothing**, so a clean answer still means "nothing
+visible", never "nothing" — which is why the session check under **Mode:
+start an item** is worth running before offering a release too.
+
 **Never ask the owner to "tag vX.Y.Z". Paste the commands, filled in:**
 
 ```bash
