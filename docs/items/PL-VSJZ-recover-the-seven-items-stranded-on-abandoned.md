@@ -4,11 +4,12 @@ title: Recover the seven items stranded on abandoned branches, including two the
 priority: P2
 effort: S
 status: done
-closed: 2026-09-05
 classes: defect
 feature: docket-store
 touches: docs/items, docs/WORKING_NOTES.md
 added: 2026-09-05
+closed: 2026-09-05
+pr: 360
 verify: bin/docket check && ! bin/docket stranded | grep -qE "^PL-(39B7|4RBD|6580|C4PH|JDX0|KBFN|Y5WR) "
 ---
 
