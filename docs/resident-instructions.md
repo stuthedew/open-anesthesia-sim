@@ -82,6 +82,26 @@ require, with a load failure added. **It is resident by necessity, and the file
 now says so at the top.** Do not re-open this without a new mechanism to point
 at.
 
+**Fires when the approach is being decided.** `.claude/rules/expert-review.md`
+— the domains this project's review reaches across and the design principles
+that follow from them. The constraint above names three moments: receiving a
+request, *deciding an approach*, and writing a reply. This section had a group
+for the first and the third and none for the second, which is the moment this
+file governs, so the routing pass had nowhere to put it and left it
+path-scoped. A design round is a reply — the owner describes a feature, the
+session proposes an approach — and no read need precede it; scoped to `src/**`,
+`docs/**` and `tests/**` it arrived only when a session happened to open an
+item file, which `docs/**` matches by accident. The project owner asked for it
+directly (2026-09-05): the expert standard applies in a design round, "equally
+if not more critical", because that is where the approach is still free to
+change. Refused as the cheaper alternative: leaving it scoped and adding a
+resident directive to go and read it, which fails the same way a skill does for
+`instruction-writing.md` above — it is the same recognition act, with a load
+failure added. Its code-and-provenance half stayed path-scoped in
+`.claude/rules/sources-and-docstrings.md`, because the Gas Man rule and the
+docstring obligations both fire with a file already open. Cost: +4721
+characters, the largest single addition this file records (`PL-WWDT`).
+
 **Fires before a first write, which no read precedes.** The seven architecture
 invariants — simulation code independent of Flet, no calculation in a UI
 callback, simulation time as explicit state, deterministic results, tests with

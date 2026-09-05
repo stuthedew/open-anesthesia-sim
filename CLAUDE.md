@@ -7,8 +7,10 @@ anything has been read. It is therefore limited to what a session could get
 wrong *before* it would think to look anything up. The rest of the working
 agreement is routed to where it fires — `.claude/skills/docket/SKILL.md` for
 the queue workflows, `.claude/rules/instruction-writing.md` for the shape of a
-reply, `.claude/rules/core-domain.md` and `.claude/rules/expert-review.md` for
-the standards that apply to particular parts of the tree, and
+reply, `.claude/rules/expert-review.md` for the standard every approach is
+judged against (resident too, since an approach is chosen in a reply),
+`.claude/rules/core-domain.md` and `.claude/rules/apparatus-standard.md` for
+the bars that apply to particular parts of the tree, and
 `docs/maintainer.md` for what only the project owner can act on. Nothing was
 dropped in that routing; adding to it follows the same test, below, and
 `docs/resident-instructions.md` records what each block that stayed was tested
@@ -394,4 +396,4 @@ Do not limit review or recommendations to conventional software-engineering conc
 - Challenge assumptions when warranted. Do not preserve a weak design solely because it was proposed earlier.
 - The goal is not to maximize the number of suggestions. Surface the few recommendations that would materially improve the quality of the product, and explain them at the level needed to make a sound engineering or design decision.
 
-The fields this review reaches across, and the design principles that follow from them, are in `.claude/rules/expert-review.md`, which loads when a session reads `src/`, `tests/` or `docs/`. The concrete bar for `core/` — that it should read like the domain — is in `.claude/rules/core-domain.md`.
+The fields this review reaches across, and the design principles that follow from them, are in `.claude/rules/expert-review.md`. It carries no `paths:` and is resident, because the moment it governs is a design round — an approach chosen in a reply, which no read precedes — and path-scoping deferred it past its own moment (`PL-WWDT`). The provenance and docstring rules that do fire with a file already open are in `.claude/rules/sources-and-docstrings.md`. The concrete bar for `core/` — that it should read like the domain — is in `.claude/rules/core-domain.md`.

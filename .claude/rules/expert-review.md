@@ -1,17 +1,24 @@
----
-paths:
-  - "src/**"
-  - "docs/**"
-  - "tests/**"
----
-
 # Domains to review against, and the design principles they carry
+
+**Resident by necessity; no `paths:`, deliberately.** It governs the moment an
+approach is chosen — a design round, or any reply recommending one route over
+another — and a reply is not preceded by a read. Path-scoped, it reached that
+moment only when a session happened to open an item file (`PL-WWDT`);
+`docs/resident-instructions.md` carries the argument.
+
+**Scope, on sight rather than three sentences away.** This is the standard for
+the **simulator** — `src/`, `tests/`, `docs/MODEL.md`, `README.md` — and for
+any conversation deciding what goes into them. It is not the bar for the
+apparatus (`subprojects/docket/`, `tools/`, `.claude/`, `docs/worker.md`,
+`CLAUDE.md`), which is held to the deliberately lower
+`.claude/rules/apparatus-standard.md`. `PL-6SBB` is what the mirror error cost:
+a session applied the apparatus bar to `src/`, quoting it correctly from a
+sentence whose scope sat too far away to travel.
 
 `CLAUDE.md` requires review to reach past conventional software-engineering
 concerns and to reflect the standard expected from a top-tier specialist in
 the relevant field. This file is the list of fields that means here, and the
-principles that follow from them. It loads when a session reads the
-simulator, its tests, or its documentation, which is where they apply.
+principles that follow from them.
 
 Relevant domains include, but are not limited to:
 
@@ -44,7 +51,8 @@ Relevant domains include, but are not limited to:
   inappropriate defaults, overconfident presentation, and features that could
   encourage unintended clinical use.
 
-Apply these principles when working in or recommending changes to that code:
+Apply these principles when working in, or choosing an approach for, that
+code:
 
 - Proactively surface important domain-specific concerns even if the project
   owner did not explicitly ask about that discipline.
@@ -62,62 +70,16 @@ Apply these principles when working in or recommending changes to that code:
   exactly why a model, equation, constant, UI convention, or design decision
   exists.
 
-## A reference implementation is not a source
-
-`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
-value" is the full statement — the three tiers, why republication does not
-promote a value between them, and what a `sources` note owes a reader. Read it
-before writing or reviewing a provenance note; this is only what a session
-needs at the moment it names where a number came from.
-
-Gas Man is this project's **reference implementation**: the working example
-its starting values were taken from, and a behavior to compare against. It is
-never the authority for a constant, and neither is a paper whose table simply
-reprints its parameter set — De Wolf et al. 2012 and Meybohm et al. 2021 are
-both Gas Man simulation studies, and neither measured a coefficient. Where a
-stored value is one of theirs, say so, name what the primary literature
-reports instead, and give the difference.
-
-This binds replies as well as files. "It comes from Gas Man" is a statement
-about a program's parameter set, not about a measurement, and offering it as
-the provenance of a constant is the same error made out loud.
-
 The principles governing what a **displayed clinical value** may imply —
 false precision, modeled versus measured, misleading plots, visible model
 limitations — are not here. They are in `CLAUDE.md`'s safety-critical
-clinical-output standard, which loads in every session, because a session
-that opens no file matching this rule must still see them.
+clinical-output standard, so that the safety floor is stated in exactly one
+place.
 
-## What a docstring and an error message owe a reader
-
-Two of the ten rules Lee gives for documenting scientific software are not yet
-practice here, and are adopted as written (Lee BD. Ten simple rules for
-documenting scientific software. PLoS Comput Biol. 2018;14(12):e1006561.
-doi:10.1371/journal.pcbi.1006561). The rest of that paper this repository
-already meets or exceeds; `PL-MPZ0` carries the audit, rule by rule.
-
-**A function that refuses says so.** Strict mypy settles a function's input and
-output types, so what its docstring still owes a reader is the third thing Lee
-asks for: which conditions it rejects, and which exception it raises.
-`src/anesthesia_sim/core/exceptions.py` documents what each branch of the
-hierarchy means to a caller; the docstring is where a caller learns which call
-sites can produce one. `AlveolarCompartment.set_alveolar_ventilation` is the
-shape — it names what it rejects and points at
-`src/anesthesia_sim/core/supported_ranges.py` rather than restating the range.
-
-**A refusal names what was refused.** An error message states the condition,
-the value that failed it, and where to read why the limit sits where it does.
-`src/anesthesia_sim/core/supported_ranges.py` is the worked example, and
-`src/anesthesia_sim/core/validation.py` is what it is being contrasted with: a
-message naming only the parameter leaves a rejected setting untraceable to the
-input that produced it, which `CLAUDE.md`'s safety-critical standard treats as
-part of the value rather than as presentation.
-
-**Both are facts, not a license for commentary.** Each obligation above puts
-something in the docstring or the message that a reader cannot get anywhere
-else — which condition is refused, which value failed it. Neither is served by
-words around it, and `PL-XXBD` is the standing pass on comments that pad rather
-than communicate. Lee's eighth rule — a generated documentation site — is
-declined outright: there is no external API consumer to serve it to, and
-`tests/reference/` already does what its verification half asks for, against
-published data rather than against the code's own claims.
+A **reference implementation is never the authority for a constant**, and
+saying so in a reply is the same error as writing it into a file: "it comes
+from Gas Man" describes a program's parameter set, not a measurement. That
+rule in full, and what a docstring and an error message owe a reader, are in
+`.claude/rules/sources-and-docstrings.md`. Both fire with a file already open,
+so both load on a path rather than at launch. The concrete bar for `core/` —
+that it should read like the domain — is in `.claude/rules/core-domain.md`.
