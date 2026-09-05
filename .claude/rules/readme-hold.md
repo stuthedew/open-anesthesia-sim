@@ -1,14 +1,22 @@
 ---
 paths:
-  - "README.md"
+  - "/README.md"
 ---
 
-# `README.md` is frozen
+# The root `README.md` is frozen
 
-**Do not edit `README.md`.** The project owner stopped README work on
-2026-09-05: successive sessions had each improved a paragraph in isolation and
-the document as a whole got worse for it. The freeze is deliberate and it holds
-until they lift it.
+**Do not edit `README.md` at the repository root.** The project owner stopped
+README work on 2026-09-05: successive sessions had each improved a paragraph in
+isolation and the document as a whole got worse for it. The freeze is
+deliberate and it holds until they lift it.
+
+Only that one file is frozen. This repository holds two more of that name —
+`subprojects/docket/README.md`, the queue tool's format and command reference,
+and `docs/references/README.md` — and neither is covered: both are apparatus,
+with a different purpose and no owner decision behind them. The leading `/` in
+`paths:` above is load-bearing rather than decorative. Without it the glob
+matches the name at any depth, and this freeze loads on all three — measured,
+not assumed; `PL-LLWN` carries the table. Leave the slash in place.
 
 This is not a bar on *reading* it. Read it for context freely. What is
 withheld is the edit.

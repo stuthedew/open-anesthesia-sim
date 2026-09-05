@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, CLAUDE.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 348
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_cut_inside_an_unwrapped_paragraph_is_visible' tests/unit/test_doc_check.py
 ---
 

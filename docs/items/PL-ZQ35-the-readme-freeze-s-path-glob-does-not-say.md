@@ -3,16 +3,17 @@ id: PL-ZQ35
 title: The README freeze's path glob does not say whether it reaches subprojects/docket/README.md
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: project-introduction
 touches: .claude/rules/readme-hold.md
 added: 2026-09-05
-verify: python3 tools/doc_check.py check && grep -qF 'subprojects/docket/README.md' .claude/rules/readme-hold.md
+closed: 2026-09-05
+verify: python3 tools/doc_check.py check && grep -qF 'subprojects/docket/README.md' .claude/rules/readme-hold.md && grep -qF '"/README.md"' .claude/rules/readme-hold.md
 ---
 
 **Problem.** `.claude/rules/readme-hold.md` (`PL-QTN6`) declares
-`paths: ["README.md"]`. The repository holds two files by that name:
+`paths: ["README.md"]`. The repository holds three files by that name:
 
 - `README.md`, the project's front door, which is what the freeze is about —
   its prose names `PL-RM83` (decide what `README.md` is for) and `PL-N092`
@@ -20,6 +21,8 @@ verify: python3 tools/doc_check.py check && grep -qF 'subprojects/docket/README.
   lists only the root path.
 - `subprojects/docket/README.md`, the queue tool's format and command
   reference, which `CLAUDE.md` routes every session to for the item format.
+- `docs/references/README.md`, the reference-library index. Found while
+  fixing this item; the brief above was written naming only the first two.
 
 A bare `README.md` glob is ambiguous about whether it matches at depth, so it
 is unclear whether opening the docket reference loads a freeze written about a
@@ -51,7 +54,7 @@ halves matter: the glob decides what loads, the sentence decides what a reader
 does when it loads on the wrong file.
 
 Worth checking the same question against the other rules in `.claude/rules/`
-while there — `expert-review.md`, `core-domain.md` and `instruction-writing.md`
+while there — `expert-review.md`, `core-domain.md` and `apparatus-standard.md`
 all carry `paths:` and none has been tested against a name that repeats in the
 tree.
 

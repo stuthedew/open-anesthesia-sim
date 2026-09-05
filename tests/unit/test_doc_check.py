@@ -1626,15 +1626,21 @@ def test_a_one_character_file_is_reported_in_the_singular(tmp_path: Path) -> Non
 
 
 def test_this_repository_reports_its_own_resident_total() -> None:
-    """The real tree, not only a fixture: the number has to be about this file."""
+    """The real tree, not only a fixture: the number has to be about this file.
+
+    `apparatus-standard.md` is the path-scoped exemplar rather than any other:
+    `CLAUDE.md` requires it to stay out of the resident set (`PL-6SBB`), so it
+    cannot drift into it the way `expert-review.md` did (`PL-WWDT`).
+    """
     root = Path(doc_check.__file__).resolve().parent.parent
     resident = doc_check.analyze(root).resident
 
     assert resident is not None
     measured = {row.name: row for row in resident.files}
     assert measured["CLAUDE.md"].characters > measured["CLAUDE.md"].lines > 0
-    assert ".claude/rules/expert-review.md" not in measured
+    assert ".claude/rules/apparatus-standard.md" not in measured
     assert ".claude/rules/instruction-writing.md" in measured
+    assert ".claude/rules/expert-review.md" in measured
 
 
 # --- math delimiters --------------------------------------------------------
