@@ -12,11 +12,17 @@ on:
   pull_request:
 
 # A second push to the same pull request makes the first run's answer
-# irrelevant before it finishes. What cancelling buys is no longer the minute
-# - the repository is public and standard runners are free - but the runner
-# slot: a superseded run holds one, and the push that matters queues behind
-# it. Measured over an 18-hour window before this was added, 5 of 51 quality
-# runs were superseded while still running.
+# irrelevant before it finishes. Cancelling buys both of the things that run is
+# spending: the runner slot it holds, which the push that matters then queues
+# behind, and the minutes it bills. This repository is **private** (the API
+# reports `"visibility": "private"`, read 2026-09-05), so GitHub-hosted
+# standard-runner time is charged against the account's monthly allowance with
+# every job rounded up to the whole minute. Until `PL-SSQX` this comment said
+# the repository was public and standard runners free, which was never true
+# here and left one file carrying two premises - the floor section below
+# reasons from a folded job having "billed a whole minute for eight seconds".
+# Measured over an 18-hour window before this was added, 5 of 51 quality runs
+# were superseded while still running.
 #
 # `cancel-in-progress` is conditional rather than a flat `true` on purpose.
 # `github.ref` is `refs/pull/N/merge` under `pull_request`, so each pull
@@ -103,12 +109,14 @@ jobs:
       - run: python3 tools/doc_check.py check
       - run: python3 tools/branch_id_check.py
       - run: python3 tools/rules_paths_check.py
-      # Bare, unlike the `checks` job above: this job installs no `uv`, so
-      # every `verify:` command would be "not found" and the replay would
-      # decline rather than answer. What is being proved here is that the
-      # command runs at all under the 3.11 floor with no virtualenv.
+      # Bare, unlike the `--verify` line further down: nothing has installed
+      # `uv` at this point in the job, so every `verify:` command would be "not
+      # found" and the replay would decline rather than answer. What is being
+      # proved here is that the command runs at all under the 3.11 floor with
+      # no virtualenv. (This said "unlike the `checks` job above" until
+      # `PL-L17Q`, which was true of the separate `floor` job `PL-D551` folded
+      # in and false of the section that replaced it.)
       - run: bin/docket check
-      - run: python3 tools/contrast_check.py
 
       # No `python-version:` input on purpose. It sets UV_PYTHON, which
       # overrides `.python-version`, so CI would resolve its own interpreter
@@ -138,9 +146,14 @@ jobs:
       # `check_coverage_gate` compares the two lines and now collapses that
       # escape before it does, so the difference is not read as a drift while
       # every other difference still is (`PL-D3M2`, `PL-VZ8P`).
-      # `drift.yml` deliberately keeps its bare `uv run pytest`: a coverage
-      # failure there would report as a dependency break, which is the opposite
-      # of what that workflow is for. `PL-22Z3`.
+      # `drift.yml` runs the suite without `--cov`, and that is one decision
+      # rather than two. `--cov-fail-under=100` measures the project against
+      # its own policy, so a coverage failure in a dependency workflow would
+      # report as a dependency break, which is the opposite of what that
+      # workflow is for (`PL-22Z3`). Parallelism goes the other way and was
+      # only ever off there by association with it: `pytest-xdist` is a
+      # declared dependency that job upgrades and was never running, so
+      # `PL-55JM` put `-n auto --dist worksteal` on both of its pytest lines.
       - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
       # `--verify` replays every open item's own `verify:` command. It used to
       # be unconditional, which meant `make check` paid about 31 s per run for a
@@ -149,20 +162,30 @@ jobs:
       # coverage: this is the job and these are the events it ran on before
       # (`PL-P3B6`). CI wall clock is not what that item was optimizing.
       - run: bin/docket check --verify
-      # Repeated from the floor section above, unlike the line after it: this
-      # one reads `git log` and the branch name, never project source, so
-      # the 3.11 parser has nothing it cannot read. `PL-CP74`.
+      # Repeated from the floor section above, unlike the two lines after them:
+      # these read `git log`, the branch name and the documentation, never
+      # project source, so the 3.11 parser has nothing it cannot read.
+      # `PL-CP74`.
       - run: uv run python tools/branch_id_check.py
       - run: uv run python tools/doc_check.py check
+      # Deliberately absent from the floor section above, both of them, for a
+      # reason about the *input* rather than about the tool. That section runs
+      # the tools under the 3.11 floor to prove they need no virtualenv; these
+      # two read `app/` and `src/anesthesia_sim/` with `ast`, and that source
+      # targets 3.14, so the 3.11 parser cannot read what they are given - a
+      # `SyntaxError` on `app/chart_downsampling.py`'s PEP 695 generics rather
+      # than anything about the tool. `ast.parse`'s `feature_version` cannot
+      # help: it only ever narrows the syntax accepted, so it cannot teach an
+      # older parser a newer language.
+      #
+      # `contrast_check.py` ran at the floor until `PL-L17Q`, and was green only
+      # because `app/theme.py` and `app/simulation_view.py` happened to contain
+      # no 3.12+ syntax. One PEP 695 generic added to either would have turned
+      # this whole job red before uv was even installed, naming a tool whose
+      # author had touched nothing. The rule that generalizes it is in
+      # `tests/unit/test_tools_portability.py`'s docstring, and the Makefile
+      # carries the same note on the same two lines. `PL-Y0RZ`, `PL-L17Q`.
       - run: uv run python tools/contrast_check.py
-      # Deliberately absent from the floor section above, unlike the three
-      # lines before it. That section runs the tools under the 3.11 floor to
-      # prove they need no virtualenv; this one reads `src/anesthesia_sim/`
-      # with `ast`,
-      # and that source targets 3.14, so the 3.11 parser cannot read its input
-      # - a `SyntaxError` on `app/chart_downsampling.py`'s PEP 695 generics
-      # rather than anything about the tool. The Makefile comment on the same
-      # line carries the reasoning. `PL-Y0RZ`.
       - run: uv run python tools/import_boundary_check.py
 
       # The pull-request title check lived here and moved to its own workflow,

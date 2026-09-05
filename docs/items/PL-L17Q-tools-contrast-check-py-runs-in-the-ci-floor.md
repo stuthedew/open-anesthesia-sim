@@ -3,9 +3,10 @@ id: PL-L17Q
 title: tools/contrast_check.py runs in the CI floor job but reads 3.14 source, so one PEP 695 generic in app/ turns it red
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
+closed: 2026-09-05
 touches: .github/workflows/quality.yml, Makefile, tools/contrast_check.py
 verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'uv run python tools/contrast_check.py' .github/workflows/quality.yml && ! grep -q 'python3 tools/contrast_check.py' .github/workflows/quality.yml
 added: 2026-09-04
@@ -72,3 +73,27 @@ Both `grep` halves are the specification rather than one of them - the work is
 a *move*, so asserting the new `uv run python` line without also asserting the
 bare `python3` line is gone would accept a change that runs the tool twice and
 leaves `floor` exactly as red as before.
+
+**Closed 2026-09-05.** `PL-Y0RZ`'s answer applied unchanged, and the exposure
+was larger by the time it was taken than when it was written: `PL-D551` had
+folded the separate `floor` job into `checks`, so the failure this describes
+would have turned the *whole* quality job red - before `uv` was installed and
+therefore before ruff, mypy, the suite or any other check ran - rather than one
+short job beside a green one.
+
+Three edits. `.github/workflows/quality.yml` drops the bare `python3
+tools/contrast_check.py` from the floor section, leaving the `uv run python`
+invocation that was already there; `Makefile` moves its own line to `uv run
+python` and merges the reasoning with `import_boundary_check.py`'s, which is
+now a pair rather than a special case. The general rule this item asked for is
+in `tests/unit/test_tools_portability.py`'s module docstring, which is the file
+that states the bare-interpreter promise and so the place a tool author meets
+it: *the promise is about what a tool depends on, not about what it can read.*
+Both tools stay standard-library-only and floor-parseable, so nothing in that
+suite's scope changed.
+
+Two stale statements were corrected in the same hunks rather than left for a
+later sweep. The floor section's `bin/docket check` comment still read "unlike
+the `checks` job above", which described the job `PL-D551` deleted; and that
+suite's docstring still counted "that job's two commands" where the section now
+runs four.

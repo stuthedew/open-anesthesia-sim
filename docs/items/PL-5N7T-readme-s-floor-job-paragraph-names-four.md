@@ -58,3 +58,18 @@ is allowed to edit is a gate with no move behind it.
 **Done when.** `make check` fails when a marked prose enumeration of the
 `floor` job's commands disagrees with the workflow, and both copies agree with
 it.
+
+**The discrepancy changed shape on 2026-09-05, and the item is unaffected.**
+`PL-L17Q` moved `python3 tools/contrast_check.py` out of the floor section (it
+parses `app/` source that targets 3.14, so it cannot run under the 3.11 floor),
+leaving four commands there: `doc_check.py check`, `branch_id_check.py`,
+`rules_paths_check.py` and `bin/docket check`. So the README paragraph now
+names four commands where the workflow runs four - and is still wrong, because
+they are not the same four: it lists `contrast_check.py`, which no longer runs
+there, and still omits `rules_paths_check.py`, which does.
+`docs/ARCHITECTURE.md`'s copy was corrected in that branch, as it was for
+`PL-LLWN`; `README.md` was not touched, per the freeze.
+
+That is the second independent drift of this enumeration in as many days, which
+strengthens rather than changes the case above: the count matching is not the
+property worth checking, the *set* is.
