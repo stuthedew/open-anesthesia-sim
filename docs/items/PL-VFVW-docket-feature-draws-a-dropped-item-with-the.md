@@ -1,8 +1,13 @@
 ---
 id: PL-VFVW
 title: docket feature draws a dropped item with the same empty checkbox as an open one, so counting the boxes disagrees with the 'N left' figure printed beside them
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, ux
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-05
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_feature_marks_dropped_distinctly' subprojects/docket/tests/test_cli.py
 ---
 **Problem.** `bin/docket feature teachable-case` printed `18/28 done (9 left)`
 above a list in which **ten** entries carried an empty `[ ]`. The tenth is

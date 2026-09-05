@@ -1,8 +1,13 @@
 ---
 id: PL-KD98
 title: bin/docket wave reports 'implement' for a milestone whose Required scope is complete, because the beat reads only the frozen gate list and never the scope's item ids
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py
 added: 2026-09-05
+verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_no_release_offer_declines_rather_than_asserts' subprojects/docket/tests/test_release.py
 ---
 **Problem.** `bin/docket wave` chose `IMPLEMENT` for v0.4.0 while twelve of the
 milestone's thirteen `Required scope` entries were `done`, and the digest
