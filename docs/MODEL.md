@@ -1584,7 +1584,9 @@ different published $`F_I`$ values because the governing equations are linear
 in it, which the test asserts across the published range rather than assumes.
 
 **Two caveats bound how strongly a pass may be stated.** Both belong beside
-any statement of this result, including in `README.md`.
+any statement of this result, wherever it is restated - the root README used to
+carry one and no longer exists (`PL-WB5K`), so the obligation transfers to
+whatever `PL-N092` writes in its place.
 
 1. *The published subjects were breathing nitrous oxide.* Both protocols ran
    65–70% N₂O concurrently, so the measured curves carry a second-gas effect
