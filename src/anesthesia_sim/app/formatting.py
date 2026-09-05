@@ -34,6 +34,7 @@ depth of anesthesia, and the divisor is a tier-3 parameter whose provenance
 the interface displays.
 """
 
+from math import isfinite
 from typing import Final
 
 from anesthesia_sim.app_metadata import APP_VERSION
@@ -53,6 +54,7 @@ __all__ = [
     "chart_axis_top_percent",
     "chart_grid_interval_percent",
     "format_case_discard_warning",
+    "format_chart_time_label",
     "format_delivered_label",
     "format_elapsed",
     "format_flow",
@@ -62,6 +64,7 @@ __all__ = [
     "format_percent",
     "format_playback_rate",
     "format_subtitle",
+    "format_time_base",
     "format_wash_in_ratio",
     "mac_awake_band_percent",
     "mac_axis_ticks",
@@ -614,6 +617,16 @@ def format_elapsed(elapsed_s: float) -> str:
     states simulated time rather than to one panel, so it belongs here, at
     the one place that decides it, and not in whichever display happens to
     be built first.
+
+    The time base landed as `format_chart_time_label` below, and this
+    function deliberately did *not* become it. The two render the same
+    quantity for different readings and cannot be one function: a stamp
+    beside a recorded control change has to resolve the simulation step it
+    was taken at, which is a tenth of a second, while an axis tick on a
+    twelve-hour span has to be legible at seven characters. A compound
+    duration form would round the stamp away; a one-decimal second count
+    would label that axis `43200.0 s`. See `format_chart_time_label` for
+    which is used where.
     """
 
     return f"{elapsed_s:.1f} s"
@@ -655,6 +668,128 @@ def format_playback_rate(multiplier: int) -> str:
     """
 
     return f"{multiplier}\u00d7 real time"
+
+
+def _duration_components(duration_s: float) -> tuple[int, int, float]:
+    """Split a duration into whole hours, whole minutes and the rest.
+
+    Args:
+        duration_s: A duration in seconds.
+
+    Returns:
+        `(hours, minutes, seconds)`, the last carrying any fraction.
+
+    Raises:
+        ValueError: If the duration is negative or not finite.
+    """
+
+    if not isfinite(duration_s) or duration_s < 0.0:
+        raise ValueError(f"duration must be finite and non-negative, got {duration_s!r}")
+
+    hours = int(duration_s // 3600.0)
+    minutes = int((duration_s - hours * 3600.0) // 60.0)
+
+    return hours, minutes, duration_s - hours * 3600.0 - minutes * 60.0
+
+
+def format_chart_time_label(elapsed_s: float) -> str:
+    """Render one tick on the chart's simulated-time axis.
+
+    Compact and self-describing: `0`, `45s`, `3m`, `1m30s`, `2h`, `1h30m`.
+    Every component carries its own unit, which is the point. The axis under
+    a time base spans anything from a minute to half a day, so a bare number
+    would mean seconds on one scale and hours on another while looking
+    identical on both — the worst available failure, since a reader who
+    misses the caption has nothing in the label to correct them. The unit
+    letters make the tick readable without the caption and without knowing
+    which time base is selected.
+
+    Bare `0` for the run's start, deliberately. `0s` invites reading the
+    whole axis as seconds, and the origin needs no unit to be understood.
+
+    Not `format_elapsed`, which stamps a recorded time to the tenth of a
+    second the simulation steps at. This rounds to whole seconds for whole
+    values and shows a tenth only where one is present, because the ladder
+    in `app/chart_time_base.py` places every tick on a whole number of
+    seconds and a trailing `.0` on every label is noise.
+
+    Args:
+        elapsed_s: Simulated time of the tick, in seconds since the run
+            began.
+
+    Returns:
+        The label text.
+
+    Raises:
+        ValueError: If `elapsed_s` is negative or not finite. An axis label
+            is a clinically meaningful displayed value; a plausible-looking
+            one produced from an impossible time is what `CLAUDE.md`'s
+            standard prefers a failure to.
+    """
+
+    hours, minutes, seconds = _duration_components(elapsed_s)
+
+    if hours == 0 and minutes == 0 and seconds == 0.0:
+        return "0"
+
+    parts = []
+
+    if hours:
+        parts.append(f"{hours}h")
+
+    if minutes:
+        parts.append(f"{minutes}m")
+
+    if seconds:
+        parts.append(f"{seconds:g}s")
+
+    return "".join(parts)
+
+
+def format_time_base(span_s: float) -> str:
+    """Name a chart time base's width, as prose.
+
+    What the selector's entries read and what the axis caption states the
+    chart is showing. Spelled out — `15 minutes`, `1 hour`, `12 hours` —
+    rather than in `format_chart_time_label`'s compact form, because this is
+    a sentence a reader chooses from and reads back, not a tick competing
+    for width. The two are consistent about the quantity and differ only in
+    register; the caption naming `15 minutes` sits above an axis whose last
+    tick reads `15m`.
+
+    Args:
+        span_s: The width of the visible window, in seconds.
+
+    Returns:
+        The width in words.
+
+    Raises:
+        ValueError: If `span_s` is negative or not finite.
+    """
+
+    hours, minutes, seconds = _duration_components(span_s)
+    parts = []
+
+    if hours:
+        parts.append(f"{hours} {_plural('hour', hours)}")
+
+    if minutes:
+        parts.append(f"{minutes} {_plural('minute', minutes)}")
+
+    # Every rung of `TIME_BASE_LADDER` is a whole number of minutes, so the
+    # seconds term is unreachable from the selector. It is spelled out rather
+    # than rounded away because the alternative — folding a remainder into
+    # the minutes above it — would name a width the chart is not drawing.
+    if seconds or not parts:
+        parts.append(f"{seconds:g} {_plural('second', seconds)}")
+
+    return " ".join(parts)
+
+
+def _plural(noun: str, count: float) -> str:
+    """The noun, pluralized for the count that precedes it."""
+
+    return noun if count == 1 else f"{noun}s"
 
 
 def format_case_discard_warning(
