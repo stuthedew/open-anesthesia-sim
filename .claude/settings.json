@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/stop_hook_patch.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_hook_patch.py\""
           },
           {
             "type": "command",

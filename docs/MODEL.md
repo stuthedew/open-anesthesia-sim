@@ -154,15 +154,21 @@ therefore produces a run that reaches a given step *later in real time* and
 is identical in every recorded sample. It runs slower; it does not run
 differently.
 
-**The clock half of that is measured, not asserted.**
-`tools/import_boundary_check.py` runs in `make check` and CI and fails the
-build on a `time`, `datetime` or `random` import in any module under
-`src/anesthesia_sim/core/`, with the reason recorded beside each entry in its
-`BOUNDARIES` table. The confinement stops at `core/` because this paragraph
-permits the interface its wall clock; what the check closes is the route by
-which a compartment could acquire one — including an unseeded generator, which
-breaks the guarantee the same way — and leave this section reading as verified
-while being false (`PL-J833`).
+**This is measured, not asserted.** `tools/import_boundary_check.py` runs in
+`make check` and CI and fails the build on a `time`, `datetime`, `random`,
+`secrets` or `uuid` import in any module under `src/anesthesia_sim/core/`,
+with the reason recorded beside each entry in its `BOUNDARIES` table. The
+confinement stops at `core/` because this paragraph permits the interface its
+wall clock; what the check closes is every route by which a compartment could
+acquire one for itself — the clock directly, an unseeded generator, or an
+identifier minted from either — and so leave this section reading as verified
+while being false (`PL-J833`, `PL-ZK9R`).
+
+Two of those are worth naming, because they cannot be recovered from by
+seeding. `secrets` draws from `random.SystemRandom`, whose `seed()` is a
+documented stub and whose `getstate()` raises; and `uuid.uuid1()` mixes the
+current time with the host's hardware address, which makes a run differ
+between *machines* as well as between runs.
 
 So, given the same initial state, parameters, step size, setting changes and
 event ordering, two runs taken to the same step count produce **element-wise

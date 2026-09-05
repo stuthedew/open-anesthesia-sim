@@ -1,0 +1,14 @@
+# `stop_hook_patch.py` here is wired as a SessionStart hook and invoked as
+# `python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/stop_hook_patch.py"` - bare
+# `python3`, no virtualenv, no install step. That is exactly the property
+# `tools/ruff.toml` exists for, and the reasoning is there rather than repeated
+# here: a formatter aimed at the repository's 3.14 target rewrites the source
+# into syntax an older interpreter cannot parse, which has happened once
+# already in this tree.
+#
+# So this file extends that one rather than restating the pin, and the floor is
+# declared in a single place. `tests/unit/test_tools_portability.py` holds both
+# configs to the floor and parses every file under both directories at it, so a
+# hook added here inherits the guard by being put where hooks go - which is the
+# same reason `PL-W4H9` moved this file under `.claude/` in the first place.
+extend = "../../tools/ruff.toml"

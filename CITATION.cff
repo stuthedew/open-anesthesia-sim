@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Open Anesthesia Simulator"
+abstract: >-
+  An open-source, deterministic anesthesia simulator for education. It models
+  volatile-agent delivery, uptake and distribution through an explicit
+  breathing circuit, alveolar gas, blood and tissue compartments. It is an
+  educational tool, not a clinical prediction, dosing or monitoring device.
+type: software
+authors:
+  - family-names: Feichtinger
+    given-names: Stuart
+    email: stuthedew@users.noreply.github.com
+repository-code: "https://github.com/stuthedew/open-anesthesia-sim"
+license: Apache-2.0
+keywords:
+  - anesthesiology
+  - pharmacokinetics
+  - inhaled anesthetics
+  - uptake and distribution
+  - simulation
+  - medical education

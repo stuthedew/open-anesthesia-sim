@@ -31,6 +31,17 @@ import flet as ft
 import flet_charts as fch
 
 from anesthesia_sim.app import chart_series
+from anesthesia_sim.app.chart_time_base import (
+    FIT_RUN_KEY,
+    SELECTABLE_TIME_BASES,
+    TIME_BASE_LADDER,
+    ChartTimeBase,
+    fit_to_run,
+    fitted_window,
+    following_window,
+    tick_times,
+    time_base_for_span,
+)
 from anesthesia_sim.app.control_timeline import (
     ControlAdjustment,
     format_adjustment,
@@ -50,6 +61,7 @@ from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
     chart_grid_interval_percent,
     format_case_discard_warning,
+    format_chart_time_label,
     format_delivered_label,
     format_elapsed,
     format_flow,
@@ -59,6 +71,7 @@ from anesthesia_sim.app.formatting import (
     format_percent,
     format_playback_rate,
     format_subtitle,
+    format_time_base,
     format_wash_in_ratio,
     mac_awake_band_percent,
     mac_axis_ticks,
@@ -120,8 +133,11 @@ SIMULATION_TICK_INTERVAL_S = SIMULATION_STEP_S
 # were previously the same 10 Hz tick, which made every redraw a gate on the
 # next simulation step and on servicing the next button press.
 RENDER_INTERVAL_S = 0.2
-INITIAL_CHART_WINDOW_S = 60.0
-MAX_CHART_WINDOW_S = 300.0
+# How wide the chart is before the first frame runs. Every frame after it
+# derives the width from the selected time base, so this is only what the
+# control is constructed holding - the narrowest rung, which is what "Fit
+# run" answers with on a run that has recorded nothing yet.
+INITIAL_CHART_TIME_BASE = TIME_BASE_LADDER[0]
 CHART_HEIGHT = 360
 
 COMPACT_PAGE_PADDING = 16
@@ -795,10 +811,73 @@ class SimulationView:
         self._control_timeline_overflow_text = ft.Text(
             "", color=MUTED, size=METRIC_QUALIFIER_SIZE, italic=True, visible=False
         )
+        # The chart's time base: how wide the visible window is. `None` is
+        # "Fit run", the default, which is a rule for choosing the width each
+        # frame rather than one of the widths - the whole run, on the
+        # narrowest rung of `TIME_BASE_LADDER` that contains it. A rung here
+        # instead means the reader has chosen a width and the window follows
+        # the run at it.
+        #
+        # Like the compartment checkboxes and unlike the agent dropdown, this
+        # is a *view* control and reaches no model state: it changes which
+        # part of the recorded run is drawn and never what was recorded, so
+        # identical inputs still produce an identical run. It is therefore
+        # never disabled - the reason to reach for it is usually to widen the
+        # window on a run already going - and Reset leaves it alone, like
+        # every other reader setting.
+        self._time_base: ChartTimeBase | None = None
+        # What the last frame actually drew, which is not the line above:
+        # under "Fit run" the width is derived from the run's length, so it
+        # moves without anybody touching the control. Held so the axis labels
+        # and the caption can be rebuilt when it moves and left alone when it
+        # does not - the same guard, and for the same reason, as
+        # `_mac_axis_basis`.
+        self._drawn_time_base = INITIAL_CHART_TIME_BASE
+        self._drawn_tick_times: tuple[float, ...] = ()
+        self._time_base_dropdown = ft.Dropdown(
+            value=FIT_RUN_KEY,
+            options=[
+                ft.dropdown.Option(key=FIT_RUN_KEY, text="Fit run"),
+                *(
+                    ft.dropdown.Option(
+                        key=str(time_base.span_s), text=format_time_base(time_base.span_s)
+                    )
+                    for time_base in SELECTABLE_TIME_BASES
+                ),
+            ],
+            width=170,
+            filled=True,
+            fill_color=PANEL,
+            bgcolor=PANEL,
+            color=INK,
+            border_color=MUTED,
+            focused_border_color=INK,
+            label="Time base",
+            on_select=self._handle_time_base_change,
+        )
+        # One axis object per chart rather than one shared between them: a
+        # Flet control belongs to a single chart, the same constraint the two
+        # pools of control marks are built around. `show_min` and `show_max`
+        # are off because the window's own edges are not ticks - while the
+        # window follows the run they fall wherever the newest sample puts
+        # them, and a label there would read as a gridline that is not ruled.
+        self._time_axis = self._build_time_axis()
+        self._wash_in_time_axis = self._build_time_axis()
+        # The two axis captions, held rather than built inline because both
+        # state the span the chart is currently showing, which moves. Saying
+        # it is not decoration: under "Fit run" the width is chosen by the
+        # run's length rather than by the reader, so the caption is the only
+        # place the plot says how much time it is showing.
+        self._time_axis_caption = ft.Text(self._time_axis_caption_text(), color=MUTED)
+        self._wash_in_time_axis_caption = ft.Text(
+            "Vertical axis: dimensionless ratio, 0 to 1 | "
+            "Horizontal axis: simulated time, the same window as above",
+            color=MUTED,
+        )
         self._concentration_chart = fch.LineChart(
             data_series=self._chart_data_series(),
             min_x=0,
-            max_x=INITIAL_CHART_WINDOW_S,
+            max_x=INITIAL_CHART_TIME_BASE.span_s,
             min_y=0,
             # Denominated in MAC rather than in the agent's dial maximum, so
             # every agent is drawn against one ruler; `CHART_AXIS_TOP_MAC`
@@ -808,11 +887,14 @@ class SimulationView:
                 title=ft.Text("percent", color=MUTED, size=METRIC_QUALIFIER_SIZE)
             ),
             right_axis=self._mac_axis,
+            bottom_axis=self._time_axis,
             horizontal_grid_lines=fch.ChartGridLines(
                 interval=chart_grid_interval_percent(initial_snapshot.agent_mac_percent),
                 color="#D9E2EC",
             ),
-            vertical_grid_lines=fch.ChartGridLines(interval=60, color="#D9E2EC"),
+            vertical_grid_lines=fch.ChartGridLines(
+                interval=INITIAL_CHART_TIME_BASE.tick_interval_s, color="#D9E2EC"
+            ),
             expand=True,
         )
         self._wash_in_chart = fch.LineChart(
@@ -822,7 +904,7 @@ class SimulationView:
                 *self._wash_in_segment_series,
             ],
             min_x=0,
-            max_x=INITIAL_CHART_WINDOW_S,
+            max_x=INITIAL_CHART_TIME_BASE.span_s,
             min_y=0,
             # Fixed, and fixed just above the equilibrium value rather than
             # at whatever the run reaches. 0 to 1 is the scale every
@@ -851,10 +933,13 @@ class SimulationView:
                 # being read as the range the ratio can reach.
                 show_max=False,
             ),
+            bottom_axis=self._wash_in_time_axis,
             horizontal_grid_lines=fch.ChartGridLines(
                 interval=WASH_IN_GRID_INTERVAL, color="#D9E2EC"
             ),
-            vertical_grid_lines=fch.ChartGridLines(interval=60, color="#D9E2EC"),
+            vertical_grid_lines=fch.ChartGridLines(
+                interval=INITIAL_CHART_TIME_BASE.tick_interval_s, color="#D9E2EC"
+            ),
             expand=True,
         )
         # Names the divisor every MAC number on this page was produced with,
@@ -1479,19 +1564,28 @@ class SimulationView:
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text(
-                        ("Agent concentration and relative partial pressure over time"),
-                        weight=ft.FontWeight.BOLD,
-                        color=INK,
+                    # The panel's own heading row, with the time base beside
+                    # it. The control sits at the top of the panel rather
+                    # than under the four legend rows because it governs the
+                    # axis the caption directly below it describes, and a
+                    # reader looking for "how much of the run am I seeing"
+                    # reads the caption first.
+                    ft.Row(
+                        controls=[
+                            ft.Text(
+                                ("Agent concentration and relative partial pressure over time"),
+                                weight=ft.FontWeight.BOLD,
+                                color=INK,
+                            ),
+                            self._time_base_dropdown,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        wrap=True,
+                        spacing=8,
+                        run_spacing=6,
                     ),
-                    ft.Text(
-                        (
-                            "Left axis: percent of one atmosphere | "
-                            "Right axis: multiples of 1 MAC | "
-                            "Horizontal axis: simulated seconds"
-                        ),
-                        color=MUTED,
-                    ),
+                    self._time_axis_caption,
                     # The convention, stated where the numbers that depend on
                     # it are read. A MAC multiple on the alveolar trace is the
                     # conventional reading; on the other five it is a
@@ -1673,13 +1767,7 @@ class SimulationView:
                 weight=ft.FontWeight.BOLD,
                 color=INK,
             ),
-            ft.Text(
-                (
-                    "Vertical axis: dimensionless ratio, 0 to 1 | "
-                    "Horizontal axis: simulated seconds, the same window as above"
-                ),
-                color=MUTED,
-            ),
+            self._wash_in_time_axis_caption,
             ft.Text(
                 (
                     "F_I is the modelled inspired concentration, not the vaporizer "
@@ -2107,10 +2195,22 @@ class SimulationView:
             f"{snapshot.agent_accounting_absolute_error_l:.3e} L"
         )
 
-        chart_max_x = max(INITIAL_CHART_WINDOW_S, snapshot.elapsed_s + 10.0)
-        chart_min_x = max(0.0, chart_max_x - MAX_CHART_WINDOW_S)
+        # The visible window, and the two modes it can be in. "Fit run"
+        # derives the width from the run so the whole of it is drawn, pinned
+        # at zero; a chosen width is held exactly and follows the newest
+        # sample, so a trace's slope on the plot means the same thing at
+        # every moment of the run. `app/chart_time_base.py` carries both
+        # rules and why they are not one.
+        if self._time_base is None:
+            time_base = fit_to_run(snapshot.elapsed_s)
+            chart_min_x, chart_max_x = fitted_window(time_base)
+        else:
+            time_base = self._time_base
+            chart_min_x, chart_max_x = following_window(time_base, snapshot.elapsed_s)
+
         self._concentration_chart.max_x = chart_max_x
         self._concentration_chart.min_x = chart_min_x
+        self._apply_time_base(time_base, chart_min_x, chart_max_x)
 
         # The references span the same window as the traces and are moved in
         # the same frame, so a scroll can never leave one ruled across part of
@@ -2926,6 +3026,173 @@ class SimulationView:
         """
 
         return ft.Text(initial_value, size=METRIC_SECONDARY_VALUE_SIZE, color=MUTED)
+
+    @staticmethod
+    def _build_time_axis() -> fch.ChartAxis:
+        """Build one chart's simulated-time axis.
+
+        Labels, and whether the window's own ends are labelled, are filled
+        in per frame by `_apply_time_base` - unlike the MAC axis, which can
+        settle `show_min` and `show_max` once because the ends of its range
+        are never ticks. Here it depends on the mode, so it is decided per
+        frame rather than here.
+
+        Returns:
+            An axis with no labels yet.
+        """
+
+        return fch.ChartAxis(
+            title=ft.Text("simulated time", color=MUTED, size=METRIC_QUALIFIER_SIZE)
+        )
+
+    def _time_axis_caption_text(self) -> str:
+        """State what the compartment chart's horizontal axis is showing.
+
+        The span, not only the unit. `PL-012` required the caption to name
+        the span actually drawn because the width is a mode: the same plot
+        showing fifteen minutes and twelve hours is two very different
+        claims about what a flat trace means, and a reader who does not know
+        which cannot tell a compartment at equilibrium from one that has not
+        started moving yet.
+
+        Under "Fit run" it says both - that the whole run is drawn, and how
+        wide the plot had to be to draw it - because the width is then
+        derived from the run rather than chosen, and the reader has nothing
+        else on the display that says what it came out as.
+
+        Returns:
+            The caption line.
+        """
+
+        span = format_time_base(self._drawn_time_base.span_s)
+        showing = f"whole run so far, {span} shown" if self._time_base is None else f"{span} shown"
+
+        return (
+            "Left axis: percent of one atmosphere | "
+            "Right axis: multiples of 1 MAC | "
+            f"Horizontal axis: simulated time, {showing}"
+        )
+
+    @staticmethod
+    def _build_time_axis_labels(ticks: tuple[float, ...]) -> list[fch.ChartAxisLabel]:
+        """Build the simulated-time axis labels for one window.
+
+        The placement is `chart_time_base.tick_times` and the wording is
+        `formatting.format_chart_time_label`, both Flet-free and tested on
+        their own; this only wraps each tick in the control the chart draws
+        it with.
+
+        Args:
+            ticks: Tick positions, in simulated seconds.
+
+        Returns:
+            One axis label per tick.
+        """
+
+        return [
+            fch.ChartAxisLabel(
+                value=tick,
+                label=ft.Text(
+                    format_chart_time_label(tick), color=MUTED, size=METRIC_QUALIFIER_SIZE
+                ),
+            )
+            for tick in ticks
+        ]
+
+    def _apply_time_base(
+        self, time_base: ChartTimeBase, chart_min_x: float, chart_max_x: float
+    ) -> None:
+        """Rule and label both charts for the window this frame draws.
+
+        The gridline interval is derived from the width and never fixed
+        (`PL-012`): the 60 s interval this replaced would rule a twelve-hour
+        axis into 720 lines and a solid block. Set every frame like the
+        other cheap scalars.
+
+        The labels are not cheap, and are guarded the way the MAC axis's
+        are. Ticks stand at absolute multiples of the interval, so while the
+        window follows the run the set only changes as an edge crosses one -
+        every `tick_interval_s` of simulated time rather than every frame.
+        Rebuilding them unguarded would allocate a control per tick per
+        frame and send the client an add-and-remove of both axes each time,
+        which is the per-frame churn `tests/integration/test_chart_patching.py`
+        measures.
+
+        Args:
+            time_base: The width this frame is drawing at.
+            chart_min_x: Left edge of the window, in simulated seconds.
+            chart_max_x: Right edge of the window, in simulated seconds.
+        """
+
+        self._concentration_chart.vertical_grid_lines.interval = time_base.tick_interval_s
+        self._wash_in_chart.vertical_grid_lines.interval = time_base.tick_interval_s
+
+        ticks = tick_times(chart_min_x, chart_max_x, time_base.tick_interval_s)
+
+        # Whether the window's own ends carry a label, which depends on the
+        # mode. "Fit run" pins the window to zero and to a whole number of
+        # intervals, so both ends are ruled and both deserve one - the
+        # origin most of all, since it is where the run starts and the only
+        # label that says so. A following window's ends fall wherever the
+        # newest sample puts them, and a label there would read as a
+        # gridline standing at a time nothing is ruled at. Set every frame,
+        # because one selection changes it.
+        starts_on_a_tick = bool(ticks) and ticks[0] == chart_min_x
+        ends_on_a_tick = bool(ticks) and ticks[-1] == chart_max_x
+
+        for axis in (self._time_axis, self._wash_in_time_axis):
+            axis.show_min = starts_on_a_tick
+            axis.show_max = ends_on_a_tick
+
+        if ticks != self._drawn_tick_times:
+            self._drawn_tick_times = ticks
+            # Two label lists, not one shared between the axes: a Flet
+            # control belongs to one chart, so the wash-in axis needs its
+            # own copies of the same ticks.
+            self._time_axis.labels = self._build_time_axis_labels(ticks)
+            self._time_axis.label_spacing = time_base.tick_interval_s
+            self._wash_in_time_axis.labels = self._build_time_axis_labels(ticks)
+            self._wash_in_time_axis.label_spacing = time_base.tick_interval_s
+
+        if time_base != self._drawn_time_base:
+            self._drawn_time_base = time_base
+            self._time_axis_caption.value = self._time_axis_caption_text()
+
+    def _handle_time_base_change(self, event: ft.Event[ft.Dropdown]) -> None:
+        """Draw the run against the width the reader selected.
+
+        Nothing here touches the simulation. The time base decides which
+        part of the recorded history the next frame draws and how wide the
+        axis is; no sample is discarded, no step is resized, and the run
+        continues from exactly the step it had reached. A case watched at
+        fifteen minutes and the same case watched at twelve hours are the
+        same run, sample for sample.
+
+        Args:
+            event: The dropdown selection, keyed by span in seconds or by
+                `FIT_RUN_KEY`.
+        """
+
+        if event.control.value is None:
+            return
+
+        # `time_base_for_span` raises on a width the ladder does not carry
+        # rather than falling back to a nearby one, and the raise is
+        # deliberately not caught: a value arriving from this dropdown that
+        # is not on `TIME_BASE_LADDER` means the control and that ladder have
+        # diverged, which is a defect to surface. It cannot be a user error -
+        # the options are the ladder.
+        self._time_base = (
+            None
+            if event.control.value == FIT_RUN_KEY
+            else time_base_for_span(float(event.control.value))
+        )
+        # The caption states the mode as well as the span, so it is rewritten
+        # here as well as in `_apply_time_base`: switching between "Fit run"
+        # and a width of the same span changes what the caption claims
+        # without changing the width it names.
+        self._time_axis_caption.value = self._time_axis_caption_text()
+        self._refresh_and_render()
 
     @staticmethod
     def _build_mac_axis_labels(mac_percent: float) -> list[fch.ChartAxisLabel]:
