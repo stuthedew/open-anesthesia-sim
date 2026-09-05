@@ -1,4 +1,4 @@
-.PHONY: sync check fix test run prebuild docket doc-check release
+.PHONY: sync check fix test run prebuild docket doc-check pr-title release
 
 sync:
 	uv sync --locked --dev
@@ -78,6 +78,16 @@ check: sync
 # is visible to the guards that read the store. It answers from `git log`
 # alone, so it costs milliseconds wherever it lands. `PL-CP74`.
 	python3 tools/branch_id_check.py
+# Beside the guard above, and the same category one level out: that one asks
+# whether this branch's work is visible in the store, this asks whether it is
+# visible in the subject a squash merge will land on `main`. It was the only
+# gate a session could not run before pushing, because CI reads the title from
+# `PR_TITLE` and nothing sets that locally, so every failure was found by CI
+# and cost a cycle. `--discover` reads the title from this branch's own open
+# pull request instead, and skips silently on every way that can fail - no
+# token, no network, no pull request open yet - so this target stays green
+# offline. `make pr-title` runs it alone. `PL-J3BB`.
+	python3 tools/pr_title_check.py --discover
 # Beside the guard above because it is the same category one level down: that
 # one asks whether this branch's work is visible, this asks whether a rule's
 # declared scope is the one it will actually get. Reads only the frontmatter of
@@ -158,6 +168,12 @@ docket:
 
 doc-check:
 	python3 tools/doc_check.py check
+
+# The title half of `make check`, on its own, for the moment a session has just
+# closed a rider and wants to know what the pull request has to be renamed to
+# before it pushes. Prints nothing when there is no open pull request to read.
+pr-title:
+	python3 tools/pr_title_check.py --discover
 
 # The documented way to cut a release: everything about one that a command can
 # do, and nothing that it cannot. `bin/docket release` writes the new version
