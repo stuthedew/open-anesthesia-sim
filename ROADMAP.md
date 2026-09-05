@@ -1230,6 +1230,18 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   already-validated safety property instead of a plain refactor. Nitrous
   oxide (planned item 6) needs a second substance in the same record, and
   the MAC readout becomes a fold over it rather than a rewrite.
+
+  *Landed 2026-09-05, reaching the store and the chart's binding as well as
+  the record.* The bullet names the record, but a row keyed by substance
+  above a store keyed by compartment alone would have had to refuse or pool
+  a second substance, which is the half-migration it exists to avoid. So
+  `RunHistory` is keyed by `RecordedSeries` — substance and quantity — with
+  its substances fixed when it is built and a sample of any other set
+  refused; the wash-in stretches are per substance for the same reason the
+  quotient is; and a chart trace is bound to a `RecordedSeries` rather than
+  to a bare quantity, paired with the agent the drawing frame's own snapshot
+  names. Nothing displayed changed. See `docs/MODEL.md` § "Interface
+  boundary".
 - **Changing agent becomes an explicit new case** rather than a selector
   that silently discards the run and its history (queue item PL-R3KB).
 - **A MAC-awake reference band** on the chart (queue item PL-F52R): a cited

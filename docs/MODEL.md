@@ -1907,6 +1907,26 @@ The Flet interface may:
   subject to the constraint below; and
 - display mass-balance status.
 
+**What a recorded sample is.** The recorded history is one sample per
+simulation step, and each sample is a simulated time together with one entry
+*per substance* — each entry carrying that substance's six compartment
+values, as fractions of one atmosphere, under the stable identifiers
+`app/controller.py`'s `RecordedQuantity` names. A run records one substance
+today, the agent it is a run of; changing agent starts a new run rather than
+adding to this one, so the mapping is one entry wide.
+
+It is keyed by substance rather than by six named fields because a
+compartment fraction asserts nothing without the substance it is a fraction
+of. A record naming the six flatly can hold exactly one substance, so a
+second would have to arrive either as six more names or as values pooled
+with the first's, and pooled values are the correct-number-wrong-label
+failure this document forbids elsewhere. The chart addresses the store the
+same way — one trace is bound to one substance-and-quantity pair — so a
+trace can draw only what it names, and a frame asking for a substance the
+run does not record fails rather than drawing whichever substance it does
+hold. The wash-in quotient below is formed from one substance's own two
+fractions and is recorded per substance for the same reason.
+
 A plotted trace need not draw every recorded sample — the recorded history
 grows by one sample per simulation step, well beyond what a chart can
 resolve — but every point it does draw must be a recorded sample. The

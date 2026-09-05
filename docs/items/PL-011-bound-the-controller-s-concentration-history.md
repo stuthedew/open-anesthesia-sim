@@ -3,8 +3,7 @@ id: PL-011
 title: Bound the controller's concentration history
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-W3DD
+status: needs-decision
 classes: perf
 feature: teachable-case
 touches: src/anesthesia_sim/app/controller.py
@@ -134,3 +133,20 @@ measure the cap against the shape that ships.
 before this edit: `bin/docket next` offered this item 3rd and `PL-W3DD` 9th,
 both `P2`, because the ranking reads front matter and the dependency was
 stated only in a third item's prose.
+
+**Decision needed.** What is the recorded run *for*, now that the chart reads
+aggregates rather than samples? If it is the record of a run - the thing a
+future export, replay or fork reproduces - it stays complete and the answer is
+a documented ceiling with an explicit failure at it, never silent truncation.
+If it exists only to be drawn, raw samples become evictable once an aggregate
+tier fine enough for the narrowest time base has consolidated them, and the
+answer is that eviction policy. The two give different code and different
+guarantees, and `PL-SSBP`'s upper time bases wait on whichever it is.
+
+**Unblocked 2026-09-05 by `PL-W3DD` closing**, and moved to `needs-decision`
+rather than to `ready`: its "First step" above is a question - what the
+history is *for* now that the chart no longer consumes all of it - and
+answering that is the work, not a field to fill in. `PL-8GLL` is the
+measurement it needs first: the per-sample figure the table below is read off
+describes a per-step history `PL-D9WD` replaced, so the arithmetic that
+decides whether a ceiling is needed at all rests on a superseded number.

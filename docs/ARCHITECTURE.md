@@ -497,8 +497,10 @@ and import, run before a push, and reach what those two commands never do.
 - A new agent or patient profile → a new validated, cited file under
   `data/`, not hardcoded values in `core/`.
 - A new display panel or control → `app/simulation_view.py`, reading only
-  fields already on `SimulationSnapshot`/`SimulationHistorySample`; if the UI
-  needs a value that doesn't exist yet, add it to those dataclasses in
+  what `SimulationSnapshot` already carries and what a recorded sample
+  already records — a `SimulationHistorySample` holds its values per
+  substance, under `RecordedQuantity`'s identifiers, rather than as named
+  fields; if the UI needs a value that doesn't exist yet, add it in
   `app/controller.py`, computed in `core/`, never computed in the view. A
   panel wanting the run rather than the instant asks `history_window()` for
   the span it draws, and never for the whole run: what crosses that boundary
@@ -511,9 +513,10 @@ and import, run before a push, and reach what those two commands never do.
   with a new *compartment* trace declared in `SimulationView`'s
   `_compartment_traces` table, which is where the series, the quantity it
   draws, the legend entry that names it and whether it is currently shown are
-  written as one record. `_plotted_series` is that table's trace-to-quantity
-  pairing and `_visible_plotted_series` the subset a frame draws; neither is
-  edited directly. A series that draws no recorded sample — a
+  written as one record. `_plotted_series` pairs that table with the
+  substance the frame is drawing — the agent its own snapshot names, since
+  the run is recorded under that identifier — and `_visible_plotted_series`
+  is the subset a frame draws; neither is edited directly. A series that draws no recorded sample — a
   clinical reference, a control mark — stays out of that table by
   construction, and owes the labelling requirement `docs/MODEL.md`
   § "Interface boundary" puts in place of the sample rule instead. So does a
