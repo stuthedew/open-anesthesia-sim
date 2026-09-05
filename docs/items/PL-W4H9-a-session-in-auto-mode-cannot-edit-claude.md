@@ -3,11 +3,13 @@ id: PL-W4H9
 title: A session in auto mode cannot edit .claude/settings.json, and the cheap way past that guard is to append to an already-wired hook script, which is exactly what it must not do
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: infra, session-cost
 feature: worker-instructions
-touches: .claude/settings.json, tools/stop_hook_patch.py, pyproject.toml, docs/ARCHITECTURE.md
+touches: .claude/settings.json, .claude/hooks/stop_hook_patch.py, .claude/hooks/ruff.toml, pyproject.toml, tools/ignore_check.py, tests/unit/test_tools_portability.py, docs/ARCHITECTURE.md, CLAUDE.md
 added: 2026-09-04
+closed: 2026-09-05
+verify: uv run pytest tests/unit/test_stop_hook_patch.py && python3 -c 'import json,sys; h=json.load(open(".claude/settings.json"))["hooks"]; c=[k["command"] for v in h.values() for e in v for k in e["hooks"]]; sys.exit(1 if not c or [x for x in c if "$CLAUDE_PROJECT_DIR/.claude/" not in x] else 0)'
 ---
 
 **Problem.** One of the three scripts wired as a hook in `.claude/settings.json`
@@ -75,29 +77,59 @@ Claude Code recognizes in Bash, such as `cat`, `head`, `tail`, and `sed`", and
 that opens the file itself is not covered, and that is a determined bypass
 rather than the cheap one this item is about.
 
-**Decision needed.** Which of two, both of which close the same one-file gap.
+**Decided (project owner, 2026-09-05): move the hook under the guard.**
+`tools/stop_hook_patch.py` is now `.claude/hooks/stop_hook_patch.py`, alongside
+the two hooks already there, so all three wired scripts sit behind the same
+review as the settings file that names them. The harness enforces it, the
+boundary needs no maintenance and no prose, and a hook added later is protected
+by being put where hooks go. `docs/ARCHITECTURE.md` already called this file
+"the one file here that is not a check", so the move removed an exception from
+`tools/` rather than adding one; that section now explains the guard where the
+next reader meets the directory.
 
-*Move the hook under the guard.* `tools/stop_hook_patch.py` becomes
-`.claude/hooks/stop_hook_patch.py`, alongside the two hooks already there. The
-harness enforces it, the boundary needs no maintenance and no prose, and any
-hook added later is protected by being put where hooks go.
-`docs/ARCHITECTURE.md` already calls this file "the one file here that is not a
-check", so the move removes an exception rather than adding one. Costs: the
-`command` path in `.claude/settings.json`, `.claude/hooks` added to
-`pythonpath` and to mypy's `files` in `pyproject.toml` so the existing
-`import stop_hook_patch` and the type gate keep reaching it, and two mentions
-in `docs/ARCHITECTURE.md`.
+Carried with it: the `command` path in `.claude/settings.json`; `.claude/hooks`
+added to `pythonpath` and to mypy's `files` in `pyproject.toml` and to
+`MYPY_PATH` in `tools/ignore_check.py`, so the test's bare
+`import stop_hook_patch` and both type gates keep reaching it; the `tools/`
+package map and prose in `docs/ARCHITECTURE.md`, where the hooks now have a
+section of their own; the path in `CLAUDE.md`'s stale-ref rule; the test's own
+docstring; and `PL-90CJ`'s brief.
 
-*Name it in an `ask` rule.* `"ask": ["Edit(tools/stop_hook_patch.py)"]` in
-`.claude/settings.json`. Three lines, the file stays where ruff, mypy and
-pytest already reach it with no config change. Costs: it is a per-file
-exception list rather than a boundary, so a hook wired outside `.claude/` later
-is unguarded again and nothing says so.
+**The move had to carry the bare-interpreter guard with it, and that is the
+part worth recording.** `tools/ruff.toml` pins the formatter to Python 3.11
+because everything under `tools/` runs as bare `python3` with no virtualenv,
+and `tests/unit/test_tools_portability.py` globbed `tools/` to hold every file
+there to that floor. A hook is invoked as bare `python3` too, so moving this
+one out of `tools/` would have left it formatted at the repository's 3.14
+target - which has already produced an unparseable file in this tree once, on
+2026-08-31. The move therefore added `.claude/hooks/ruff.toml`, inheriting the
+pin through `extend` so the floor stays declared in one place, and widened the
+portability suite from one directory to a `BARE_ROOTS` tuple so the guard
+follows the next hook without being extended by hand. Verified by removing the
+pin and watching `test_the_formatter_target_matches_the_declared_floor` fail.
 
-Not a third option: writing the prohibition down. Points 1 and 2 above leave
-nothing for prose to prohibit that the harness does not already stop, and
-`CLAUDE.md` prefers deleting prose that something deterministic now enforces.
+That near-miss is the item's own defect in miniature: a guard that stays
+attached to a path rather than to the property it protects stops applying the
+moment the file moves, and goes on looking present.
 
-**Done when.** Every script wired as a hook in `.claude/settings.json` sits
+The rejected alternative was `"ask": ["Edit(tools/stop_hook_patch.py)"]` - three
+lines and no config change, but a per-file exception list rather than a
+boundary, leaving the next hook wired outside `.claude/` unguarded with nothing
+to say so.
+
+Not built: a prohibition in prose. Points 1 and 2 above leave nothing for prose
+to forbid that the harness does not already stop.
+
+Captured, not fixed: `PL-0SHZ` - `README.md`'s bare-interpreter paragraph names
+two `ruff.toml` pins and there are now three. `.claude/rules/readme-hold.md`
+freezes that file and says explicitly that a doc sweep does not override the
+freeze, so it is recorded rather than edited.
+
+`PL-WW08`'s `verify:` greps `.claude/settings.json` for the old path and no
+longer resolves. That is left alone deliberately: a closed item's command is the
+record of what was run on a tree that no longer exists, and `docket check`
+errors on re-pointing one.
+
+**Done when (met).** Every script wired as a hook in `.claude/settings.json` sits
 behind the same review as the settings file itself, verified by resolving each
 hook `command` path against the protected-path list rather than by assertion.
