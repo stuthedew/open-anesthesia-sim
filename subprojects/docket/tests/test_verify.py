@@ -615,11 +615,16 @@ def test_two_heavy_commands_are_both_named(tmp_path: Path) -> None:
 
 
 def test_the_named_commands_come_worst_first(tmp_path: Path) -> None:
+    # The gap carries the ordering and nothing else, so it is 1 s rather than
+    # the 2 s it was: both members still clear `SLOW_COMMAND_FLOOR` with the
+    # same margin every other test here uses, and `sleep` cannot return early,
+    # so the measured order can only be wrong if startup jitter exceeds a
+    # second. This was the slowest test in the repository at 4.1 s (`PL-VJ7W`).
     root = _repo(tmp_path)
     items = [_item(identifier=f"PL-000{n}") for n in range(4)]
     items += [
         _item(identifier="PL-SLW1", verify="sleep 2"),
-        _item(identifier="PL-SLW2", verify="sleep 4"),
+        _item(identifier="PL-SLW2", verify="sleep 3"),
     ]
     report = already_passing(root, items, workers=8)
 
@@ -654,10 +659,14 @@ def test_the_run_carries_what_it_would_have_cost_serially(tmp_path: Path) -> Non
     # is what the store actually asks for, and it climbs with every item
     # triaged to `ready` (`PL-9NKK`).
     root = _repo(tmp_path)
-    items = [_item(identifier=f"PL-000{n}", verify="sleep 1") for n in range(4)]
+    # Four commands of 0.5 s rather than 1 s. What is under test is that the
+    # total is summed while the wall clock is not, and the ratio carrying it is
+    # four-to-one either way: eight workers run these at once, so `elapsed`
+    # stays near one command's duration whatever that duration is (`PL-VJ7W`).
+    items = [_item(identifier=f"PL-000{n}", verify="sleep 0.5") for n in range(4)]
     report = already_passing(root, items, workers=8)
 
-    assert report.serial >= 4
+    assert report.serial >= 2
     assert report.elapsed < report.serial
 
 
@@ -676,7 +685,10 @@ def test_the_costliest_command_is_carried_whether_or_not_it_is_an_outlier(tmp_pa
 def test_the_costliest_command_is_the_one_that_actually_cost_the_most(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     items = [_item(identifier=f"PL-000{n}") for n in range(4)]
-    items.append(_item(identifier="PL-SLOW", verify="sleep 1"))
+    # 0.3 s, not 1: `slowest` is a maximum and is held to no threshold, unlike
+    # `slow` above, so this only has to beat four commands that take
+    # milliseconds - which it does by about sixty times (`PL-VJ7W`).
+    items.append(_item(identifier="PL-SLOW", verify="sleep 0.3"))
     report = already_passing(root, items, workers=8)
 
     assert report.slowest is not None
