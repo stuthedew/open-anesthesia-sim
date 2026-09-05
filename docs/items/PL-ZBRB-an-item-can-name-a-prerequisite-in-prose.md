@@ -3,12 +3,13 @@ id: PL-ZBRB
 title: An item can name a prerequisite in prose without declaring it in blocked-by, and nothing notices
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 verify: bin/docket check && grep -q 'def test_prose_dependency_without_an_edge_raises_an_advisory' subprojects/docket/tests/test_checks.py
 added: 2026-09-04
+closed: 2026-09-05
 ---
 
 **Problem.** `PL-5WFS` decided that a stated prerequisite is declared with
@@ -59,3 +60,32 @@ imply the store is clean; the advisory says what it looked at.
 open item in a dependency-shaped sentence that its `blocked-by` does not carry;
 the advisory names the item, the blocker and the sentence; closed blockers do
 not fire; and the check's own docstring states what it cannot see.
+
+**What shipped, and where it is narrower than the approach above (2026-09-05).**
+The cue list is explicit declarations only — `depends on`, `blocked on`,
+`blocked by`, `waits on`, `requires`. The "land this after it" example named
+above was measured and left out, and so was its mirror:
+
+- `before X` and `follows X` mean *this* item goes first, so all four of their
+  hits in the store named the edge backwards. An advisory telling an item to
+  declare a blocker it actually blocks is a wrong answer in the tool's own
+  voice, which is the failure this module exists to avoid.
+- `after X` points the right way and still cannot be used: "Do this after
+  `PL-GS5X`" and "Amended 2026-09-03, after `PL-WB0X` merged" are one shape.
+  The store held roughly eight narrations against three prerequisites, and a
+  narration clears only by rewriting prose that is already correct — the
+  advisory that cannot reach zero this item forbade.
+
+Measured over all 451 items: 4 firing pairs, and 26 matches store-wide
+counting closed blockers, of which 3 are false positives (all currently
+silent). It catches `PL-88GQ` -> `PL-X9KD` and `PL-W8DQ` -> `PL-GVXP` of the
+three live instances named above; `PL-SN2C` -> `PL-VM40` was declared on
+2026-09-04 and correctly stays quiet. Cost: dropping `after` loses
+`PL-79YX` -> `PL-GS5X`, `PL-9SH6` -> `PL-H46J` and `PL-FZ6T` -> `PL-9SH6`,
+which are real and now unseen. The docstring says so.
+
+**Two findings captured rather than fixed.** `PL-KBD0`: `docket next` filters
+on `status` and never reads `blocked_by`, so declaring an edge alone changes no
+ranking — the advisory's message names `status: blocked` as well, which is a
+message doing a checker's job. `PL-GBBZ`: the four pairs firing today, whose
+resolution reshapes the v0.4.0 ranking and is the owner's call.

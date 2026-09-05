@@ -267,7 +267,14 @@ def test_prose_dependency_without_an_edge_raises_an_advisory() -> None:
     # opening the file - and the fix, which is either of two answers.
     assert _has(advisories, "PL-0001")
     assert _has(advisories, "This depends on `PL-0002` for the unit.")
-    assert _has(advisories, "reword the sentence if it is not one")
+    assert _has(advisories, "reword the sentence if it is not a prerequisite")
+
+
+def test_the_advisory_names_the_field_that_actually_changes_the_ranking() -> None:
+    """`next` filters on `status`, never on `blocked-by`, so an advisory that
+    asked only for the edge would name a fix that does not fix the thing it
+    says it fixes - which is the failure mode this whole check is against."""
+    assert _has(_prose("This depends on `PL-0002`."), "set `status: blocked`")
 
 
 def test_a_prose_dependency_that_is_declared_is_silent() -> None:

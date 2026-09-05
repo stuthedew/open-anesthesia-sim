@@ -849,6 +849,14 @@ def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> N
     and is left where judgment belongs. Either answer clears it: declare the
     edge, or reword a sentence that was not claiming one.
 
+    The message names `status: blocked` alongside the edge because `blocked-by`
+    on its own changes nothing here: `plan` filters on `status`, so an item can
+    carry the edge, satisfy this check, and still be offered ahead of the work
+    it waits on. Naming only the field this check reads would be a fix that
+    does not fix what it claims to - the same silent wrong answer, moved one
+    step along. Three items are in that state today; `PL-KBD0` is whether the
+    checker should hold the two fields together.
+
     What it cannot see, which is most of the problem:
 
     - **A dependency neither brief mentions.** `PL-011` -> `PL-W3DD` was
@@ -877,8 +885,9 @@ def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> N
             seen.add(other)
             report.advisories.append(
                 f"{_where(item)}: names {other} as a prerequisite in prose and does not list "
-                f'it in `blocked-by` - "{_sentence(item.body, match)}". Declare the edge so '
-                "`docket next` can see it, or reword the sentence if it is not one"
+                f'it in `blocked-by` - "{_sentence(item.body, match)}". Declare the edge and '
+                "set `status: blocked`, which is the half `docket next` reads, or reword the "
+                "sentence if it is not a prerequisite"
             )
 
 
