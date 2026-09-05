@@ -25,7 +25,9 @@ from anesthesia_sim.app.formatting import (
     MAX_MAC_AXIS_INTERVALS,
     chart_axis_top_percent,
     chart_grid_interval_percent,
+    format_case_discard_warning,
     format_delivered_label,
+    format_elapsed,
     format_mac_awake_reference,
     format_mac_multiple,
     format_mac_reference,
@@ -601,3 +603,66 @@ def test_the_chart_axis_refuses_a_non_positive_mac(bad_mac_percent: float) -> No
 
     with pytest.raises(ValueError, match="strictly positive"):
         chart_grid_interval_percent(bad_mac_percent)
+
+
+def test_the_discard_warning_states_the_time_at_the_clock_s_own_resolution() -> None:
+    """One rendering of simulated time, not a second one written here.
+
+    A warning quoting "1 min" beside a clock reading "60.0 s" would leave a
+    reader converting between two displayed forms of the same quantity at
+    the moment they are deciding whether to destroy it, which is the failure
+    `format_elapsed` exists to prevent.
+    """
+
+    warning = format_case_discard_warning("Sevoflurane", 1234.5, 3)
+
+    assert format_elapsed(1234.5) in warning
+    assert "1234.5 s" in warning
+
+
+def test_the_discard_warning_names_the_agent_being_left() -> None:
+    """Named, and in sentence case, because it reads as prose and not as a label.
+
+    The agent is what makes the warning about *this* case rather than about
+    cases in general, and it is the cue a reader checks the header badge
+    against before answering.
+    """
+
+    assert "The current sevoflurane case" in format_case_discard_warning("Sevoflurane", 60.0, 1)
+    assert "The current desflurane case" in format_case_discard_warning("Desflurane", 60.0, 1)
+
+
+@pytest.mark.parametrize(
+    ("control_change_count", "expected"),
+    [
+        (0, "0 recorded control changes"),
+        (1, "1 recorded control change"),
+        (2, "2 recorded control changes"),
+        (47, "47 recorded control changes"),
+    ],
+)
+def test_the_discard_warning_counts_control_changes_in_agreeing_grammar(
+    control_change_count: int, expected: str
+) -> None:
+    """A count and its noun have to agree, including at one.
+
+    Not decoration: this sentence is read once, under time pressure, by
+    someone about to lose the run it describes, and "1 recorded control
+    changes" is the kind of seam that costs a reader a second pass over the
+    one clause that matters.
+    """
+
+    assert expected in format_case_discard_warning("Sevoflurane", 60.0, control_change_count)
+
+
+def test_the_discard_warning_says_the_loss_is_final() -> None:
+    """The one thing a reader cannot recover from getting wrong.
+
+    There is no undo and no saved state behind this dialog, so the sentence
+    has to say so rather than leaving "discarded" to be read as reversible.
+    """
+
+    warning = format_case_discard_warning("Sevoflurane", 60.0, 1)
+
+    assert "discarded" in warning
+    assert "cannot be undone" in warning

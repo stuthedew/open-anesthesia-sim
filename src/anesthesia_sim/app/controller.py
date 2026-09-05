@@ -499,6 +499,29 @@ class SimulationSnapshot:
     rather than one abandoned partway through.
     """
 
+    @property
+    def has_recorded_run(self) -> bool:
+        """Whether this run holds anything that starting over would destroy.
+
+        True once the run has advanced past its first sample or has recorded
+        a setting change; false for a run that has been built and not yet
+        touched, which is the state both a fresh session and `reset()` leave.
+
+        It exists so the interface can tell a destructive act from a harmless
+        one. `set_agent` always begins a new run, which is unrecoverable where
+        there is a run to lose and is nothing at all where there is not, and a
+        confirmation that fires in both cases states something untrue in the
+        second and has been answered without reading by the time it matters in
+        the first.
+
+        Elapsed time and the timeline are read together because either alone
+        misses a case: a run paused at its first sample with the vaporizer
+        already turned has a recorded input and no elapsed time, and a run
+        advanced with nothing touched has the reverse.
+        """
+
+        return self.elapsed_s > 0.0 or bool(self.control_timeline)
+
 
 class SimulationController:
     """Own run controls and read-only history for one app session."""
@@ -641,6 +664,15 @@ class SimulationController:
         milestone); this always begins a new run rather than attempting it.
         Because it begins a new run it also clears a failed session, the
         same way `reset()` does.
+
+        And because it begins a new run it *destroys* one, irrecoverably:
+        the recorded history, the control-input timeline and the simulated
+        time the run reached all go, and nothing here or anywhere else keeps
+        a copy. Calling this is therefore not something a caller may do on a
+        gesture that reads as choosing a view. `docs/MODEL.md`
+        § "Agent-change behavior" states what the interface owes a user
+        first, and `SimulationSnapshot.has_recorded_run` is what tells it
+        whether this call would cost anything.
         """
 
         self.pause()
