@@ -8,6 +8,7 @@ classes: defect, docs
 touches: docs/WORKING_NOTES.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 344
 verify: python3 tools/doc_check.py check && grep -qF '127.9 B per sample' docs/WORKING_NOTES.md
 ---
 

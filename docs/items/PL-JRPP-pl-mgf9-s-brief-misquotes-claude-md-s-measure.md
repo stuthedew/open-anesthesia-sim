@@ -49,12 +49,12 @@ carrying no "year"), across every remote branch as well as this checkout.
 Two other instances exist and both are correct as they stand:
 
 - `CLAUDE.md:24` — "internal quality in the simulator that a one-year project
-  could rationally trade for speed is worth paying for here" is the
-  correction's own contrast, arguing this project is *not* one. `PL-6SBB`
-  narrowed it to the simulator and kept the contrast, and landed on
-  `origin/main` while this item was open. So the phrase is current text that
-  survived a deliberate edit, not a leftover a sweep should remove: whether to
-  drop the one-year foil is a live decision, put to the owner 2026-09-05.
+  could rationally trade for speed is worth paying for here" was the
+  correction's own contrast, arguing this project is *not* one, so it was not
+  a leftover for this sweep to remove. Raised with the owner instead as a
+  separate question, since a foil is read as an assertion once the negation is
+  dropped; approved the same day and carried out under `PL-MHFK`, which is why
+  the phrase no longer appears in `CLAUDE.md`.
 - `PL-QSWS:35,87` — a closed item, where line 87 records the correction event
   itself. Rewriting it would destroy the audit trail for why the horizon
   changed.
