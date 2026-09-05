@@ -122,6 +122,14 @@ $$
 
 Wall-clock time may schedule interface updates, but it must never be used as simulation time.
 
+Seconds are the unit everywhere this document, the core, and the recorded
+history state a time. The interface renders that one stored quantity in more
+than one form and introduces no second unit doing so: the clock and every
+recorded control stamp read in seconds, while the chart states both its axis
+ticks and the width it is drawing as compound durations whose every component
+carries its own unit. "The chart's time base" is why the chart differs and
+"Displayed precision" is what each form is resolved to.
+
 #### Simulated time is a count of steps, not a running total
 
 A run takes one step size and keeps it for its whole length. Simulated time
@@ -1688,6 +1696,19 @@ Changing ventilation does not alter existing circuit or alveolar stores.
 
 Changing delivered concentration does not alter existing circuit concentration.
 
+**These four are the model's inputs, and the list is exhaustive of those
+alone.** The interface carries settings of its own that also change during a
+run without resetting state — the playback rate, the chart's time base, and
+which compartment traces are drawn — and none of them appears here, because
+none of them reaches model state: no step is resized, no recorded sample is
+added, discarded or altered, and identical inputs still produce identical
+results. "Interface boundary" is where they are bounded. The distinction is
+worth stating rather than leaving to be inferred from which document a control
+is described in: a reader who took the playback rate for a model input would
+read a case played at sixty times real time as a different run rather than as
+the same run watched faster, which is the reading "The reproducibility
+guarantee" exists to rule out.
+
 ### The control-input record
 
 Every change to a runtime control that the model actually runs under is
@@ -1900,6 +1921,8 @@ The Flet interface may:
 - halt a run and record why when the core raises, and report a value the
   core refused;
 - render the run's recorded history;
+- choose how wide a window of the run the chart draws, and how that window is
+  ruled, subject to the constraint below;
 - select which recorded samples a plotted trace draws, subject to the
   constraint below;
 - draw a subset of the compartment traces, at the reader's request, subject
@@ -2028,6 +2051,21 @@ exists because a slider reports continuously while dragged, so the
 interface is the only party that can distinguish one turn of a control from
 two.
 
+**How wide a window the chart draws is the reader's to choose, and the choice
+may not change the run.** A case runs for hours and the moment a learner is
+most likely to be watching is minutes long, so no single window serves both.
+Three things bound the choice. It is a view control: it reaches no model
+state, alters no recorded sample, and leaves identical inputs producing
+identical results, so it sits outside "Runtime controls" with the other
+interface settings. The width in force must be a fixed property of the
+selection rather than of how long the run has been going, since a window that
+grew with the run would rescale every trace's slope while the underlying
+rates did not. And a mode that claims to show the whole run must show the
+whole of it at every length — a window narrower than the case, labelled as
+the whole of it, is a false statement about what the reader is looking at.
+See "The chart's time base", which carries the widths, the ruling and the
+labelling this paragraph requires.
+
 **A playback rate is a number of steps, never a step size, and it has to be
 on screen.** The two compartments that make uptake and distribution worth
 teaching cannot be watched in real time — sevoflurane's muscle group has a
@@ -2071,6 +2109,8 @@ The Flet interface must not:
   or otherwise let elapsed real time decide how many steps a run takes;
 - change the simulation step size in response to a playback control, or
   advance a run at a rate other than the one it is displaying;
+- let a view control change what a run recorded, or present a chart window
+  narrower than the run as though it showed the whole of it;
 - present a run halted by a failure as though it were paused;
 - discard a run holding recorded state without stating what will be lost and
   obtaining confirmation, as "Agent-change behavior" requires; or
@@ -2095,6 +2135,8 @@ The interface must show:
 - the rate simulated time is advancing at, as a multiple of real time, drawn
   wherever simulated time is drawn and at every rate including real time. See
   "Interface boundary" for what the rate is and is not a statement about;
+- how much simulated time the chart is showing, and whether that width was
+  chosen or fits the whole run so far. See "The chart's time base";
 - run state, with running, paused, and halted-by-failure distinguishable
   from one another;
 - why a run halted, whenever one has;
@@ -2134,7 +2176,10 @@ readouts**, not on the chart. The chart's compartment traces are the reader's
 to show and hide (see "Interface boundary"), and a required value must not
 leave the display with the curve that draws it. The chart entries in this list
 — the MAC-awake band, the 1 MAC line, the control marks, and $`F_A/F_I`$ — are
-requirements on the chart itself and are not selectable.
+requirements on the chart itself and are not selectable. The time base is the
+one chart entry above that the reader does choose, and what this list requires
+of it is that the width in force is stated, never that any particular width is
+in force.
 
 Arterial concentration is deliberately **not** in this list. Arterial blood is
 flow-limited in this model and holds no independent state: $`F_a \equiv F_A`$
@@ -2325,6 +2370,82 @@ on the display rather than only the vaporizer's starting position. "Delivery-
 limit and MAC parameters" carries the provenance and the size of the gap
 against the primary literature, including the consequence for the
 cross-agent comparison this unit exists to support.
+
+### The chart's time base
+
+**What it is.** How much simulated time the chart shows at once. The reader
+either picks a width from a fixed ladder or leaves the default, which fits the
+whole run so far. The horizontal axis is simulated time under both, and the
+time base decides only how much of it is on the plot and how finely that span
+is ruled. `app/chart_time_base.py` is where this section terminates: it is
+arithmetic over durations that reads no simulation state and imports no Flet,
+so the widths and the rule this section reasons about can be read, cited and
+tested without loading the interface. The section above governs the vertical
+axis; this one governs the horizontal.
+
+**Why a case needs one.** The compartments this model exists to teach are
+slow, and the moment a learner is most likely to be watching is not. Muscle's
+time constant is about 135 min for sevoflurane at the reference settings and
+fat's about 42 h, while induction is minutes long. A five-minute window hides
+everything slower than the vessel-rich group; a twelve-hour one puts a
+five-minute induction in the leftmost 0.7% of the plot. The playback rate
+is what makes a long case watchable in a sitting, and this is what makes it
+readable — the two are separate controls because they answer separate
+questions, how fast the run advances and how much of it is in view.
+
+**A time base is a view control and reaches no model state.** Choosing one
+changes which part of the recorded run is drawn and nothing else: no step is
+resized, no sample is added, discarded or altered, and no calculation is
+re-run. "The reproducibility guarantee" is therefore untouched by it, and the
+same case watched at fifteen minutes and at twelve hours is the same run,
+sample for sample. Every point drawn at any width is still a recorded sample,
+selected under the constraint "Interface boundary" places on a plotted trace,
+so a wider window is a coarser *selection* of real samples and never a
+resampling, an interpolation or a stored image zoomed into.
+
+**Why a fixed ladder rather than a free zoom.** The selected width is the
+width of the window at every point of every run, so seconds per pixel is a
+property of the reader's choice rather than of how long the run has been
+going. A trace's slope on the plot is then a fixed multiple of its rate, and
+stays comparable between two moments of one run and between two runs. A window
+that grew continuously with the run would rescale every slope while the
+underlying rates did not — a misleading visual encoding of rate of rise, which
+is the one quantity uptake and distribution are taught by, and the same
+argument the fixed vertical range rests on. Discrete steps also make one step a
+meaningful change rather than a nudge: each rung is at least half again as wide
+as the one below it.
+
+**The ruling derives from the width.** Each rung carries the interval its
+gridlines and labels fall at, and every rung is ruled into four to six
+intervals — the range that reads as a grid rather than as either a bare axis
+or a hatch. A single fixed interval cannot do that across the ladder: the 60 s
+interval this replaced would rule a twelve-hour axis into 720 lines and a solid
+block. Ticks stand at multiples of the interval measured from the run's own
+start rather than from the window's left edge, so a gridline holds the same
+simulated time as the window slides underneath it.
+
+**Fitting always fits.** It is the default mode, and past the widest declared
+rung the ladder continues by doubling rather than holding at the widest and
+showing part of the case. A mode named for showing the whole run that silently
+showed the most recent twelve hours of a fourteen-hour one would assert
+something false about what the reader is looking at, which is why the honesty
+of the name is a requirement on the mode rather than a property of the ladder's
+reach. The ladder also carries rungs below the narrowest width the selector
+offers, reachable by fitting and not by choosing: fitting has to answer at ten
+seconds as well as at ten hours, and choosing a span with nothing in it is not
+a reading anyone wants.
+
+**Every axis label carries its own unit, and the width in force is stated.** A
+tick reads `0`, `45s`, `3m`, `1m30s` or `1h30m` rather than a bare number under
+a captioned unit. The axis spans anything from a minute to half a day, so a
+bare `12` would mean twelve minutes on one time base and twelve hours on
+another while looking identical on both, and a reader who missed the caption
+would have nothing in the label to correct them. Beside the plot the chart
+names the width in words and says whether it is a width the reader chose or the
+whole run so far, because those are different claims about what is on screen.
+The time base is a mode in exactly the sense the playback rate is, and it is
+displayed for the same reason: a span nobody can see is one a reader supplies
+their own assumption for.
 
 ### MAC-awake as a chart reference
 
@@ -3017,7 +3138,15 @@ about this model with these parameters.
 
 **Precision elsewhere in the interface, and why it differs.** Simulated
 time is displayed to 0.1 s, which is exactly `SIMULATION_STEP_S`: the
-display resolves one step and no finer. Fresh gas flow, alveolar
+display resolves one step and no finer, and every recorded control change is
+stamped at that same resolution so the timeline and the clock cannot be read
+against each other in two forms. The chart's own time axis is labelled
+differently and deliberately: a compound duration carrying its own units, and
+no finer than the whole second every tick on the ladder falls on. It labels a
+span a reader is scanning rather than stamping an instant they are reading
+off, so a tenth on every label would be width spent on a digit that is always
+zero at every width the ladder offers. "The chart's time base" carries the
+form and why it is not the clock's. Fresh gas flow, alveolar
 ventilation, and cardiac output are displayed to 0.1 L/min, matching the
 resolution of the flow controls that set them. A slider's drag label must
 carry the same number of decimals as the readout beside it: the two show one
@@ -3038,7 +3167,9 @@ axis is labelled on round MAC values rather than on round percentages — half-M
 steps, which the fixed 3 ×MAC range gives for every agent, so the gridline a
 reader learns under one agent means the same thing under the next. "The chart's
 vertical range is denominated in MAC, and fixed" above carries why the range
-is what it is.
+is what it is. Its horizontal extent is the selected time base rather than a
+fixed span, so seconds per pixel is the reader's choice; "The chart's time
+base" carries how a width is chosen and how it is ruled.
 
 `app/formatting.py` is where this section terminates: it holds the
 resolution as a single constant, derives the formatter, the below-resolution

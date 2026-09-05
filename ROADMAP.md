@@ -913,8 +913,14 @@ It is a minor rather than a patch by deliberate exception, recorded under
 
 ### Goal
 
-Make the model teachable. The science is sound and its lessons are currently
-unreachable, for three measurable reasons:
+Make the model teachable. The science is sound and its lessons were
+unreachable when this milestone was scoped, for three measurable reasons.
+They are stated below as they stood on 2026-08-25 and are not amended as the
+milestone closes them: a Goal records the problem a release was taken on to
+solve, and rewriting it into the past one clause at a time would leave the
+section describing neither the problem nor the product. All three are answered
+by the Required scope below, which is where this milestone's outcomes are
+recorded.
 
 - the run advances at 1x real time (`app/simulation_view.py`, one 0.1 s step
   per 0.1 s sleep), while the compartments that make uptake and distribution
