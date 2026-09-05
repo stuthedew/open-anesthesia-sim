@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, science
 feature: teachable-case
+milestone: v0.3.9
 touches: src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, ROADMAP.md, tests/unit/test_simulation.py, tests/unit/test_simulation_view.py, tests/integration/test_sevo_controller.py
 added: 2026-08-25
 closed: 2026-09-04

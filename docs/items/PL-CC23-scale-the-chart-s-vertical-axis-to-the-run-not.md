@@ -137,7 +137,7 @@ room for overpressure.
 
 **One failure mode this change introduced, and its guard.** A dial-maximum
 ceiling could not be exceeded; a fixed one can, and sevoflurane at 8 % is
-4.00 MAC and is the standard inhalational-induction setting. A clipped trace
+4.00 MAC and is a common inhalational-induction setting. A clipped trace
 draws as a horizontal line, which is what a plateau looks like, so the chart
 names the compartments above the ceiling and says the readouts are unclipped.
 The comparison is against the displayed resolution rather than against zero,

@@ -58,7 +58,8 @@ capability-boundary rule above governs.
 | v0.3.5 | Completed | Gate-measurement patch changing no shipped code at all: `src/` and `src/anesthesia_sim/data/` are byte-identical to v0.3.4 and `docs/MODEL.md` is unchanged, so no equation, parameter, numerical method, unit or displayed value moved. The release is the project's own quality gate learning what it costs, saying so truthfully, and getting roughly twice as fast. `pytest-xdist` at `-n auto` took the suite from 78 s to 27 s with coverage byte-identical at 100%, `make check` from 115.0 s to 59.2 s and the CI step 28%, and `make test` — the whole-suite target a session reaches for while iterating — followed at 88.5 s to 31.8 s; no test was skipped, disabled or relaxed to pay for it. Two advisories that quoted figures measured once and left to go stale now print what the run actually cost. The two questions those measurements raised — the docket suite's share of the wall clock, and `bin/docket check` becoming the gate's largest item — were decided as accept-with-evidence rather than left open, each carrying the numbers that would have to change to reopen it. And two silent-divergence holes closed: the local and merge coverage gates are held to one command by a check rather than by two comments asking to be kept the same, and the guard that keeps two sessions off one item now reads what files it touches, not only who is on it. |
 | v0.3.6 | Completed | The first two teachable-case items, and the first release since v0.2.3 to change what a learner sees: every compartment is displayed in MAC multiples alongside percent, on a chart that gained a percent axis left and a MAC axis right, and two horizontal clinical references - a band at the running agent's population MAC-awake, one standard deviation either side of the published mean, and a line at its nominal 1 MAC - so the gap between them shows the decrement required for arousal rather than only the endpoint. Display and provenance work rather than model work: no equation, parameter, numerical method or solver step moved, `core/` computes neither reference, and what the agent files gained is three measured constants with primary citations checked against source, stored as fractions of MAC so they survive a change to `mac_percent`. `docs/MODEL.md` records what a MAC multiple on a non-alveolar compartment does and does not assert, that the band is read against the vessel-rich trace and not the alveolar one, and that the interface displays no time-to-wake-up figure of any kind. Alongside them, `core-boundaries` closes: one module may import Pydantic and a check enforces it. The queue itself learned to answer per lane, so two simultaneous sessions no longer rank onto the same item. |
 | v0.3.7 | Completed | The run records its own inputs, and the interface stopped degrading under one: every setting change the model was stepped under is now recorded with the simulated time it took effect, marked on the chart as a third kind of series - vertical, labelled as a record of a user input rather than of anything measured - and listed beside it as the acts that produced it. The record is faithful rather than tidy: a slider reports continuously while dragged, so one turn of a dial is several settings the run really was computed under, and the display groups them on a boundary the interface declares rather than on a time threshold the coming playback multiplier would invalidate. Changes superseded within one simulation step collapse into the one the step integrated, because the rest describe a run that did not happen, and the recorded value is read back off the compartment rather than taken from the caller. Alongside it the render stall closed: what saturated the Flutter client was 2 700 discrete control mutations a frame, not data volume, and anchoring the chart's decimation to the run rather than to the moving window leaves a steady frame moving the newest bucket and the final sample. Two features close - `delegation` at 13 of 13 with the stop hook's comparison point corrected, and `provenance` with three review-article PDFs filed as cited references - and three defects in how the queue answers. Display and interface work: no equation, parameter, numerical method or solver step moved, and `core/` neither records the timeline nor knows it exists. |
-| v0.3.8 | Completed / current baseline | The wash-in curve the literature teaches from, and the render path that can carry it. F_A/F_I is plotted on its own bounded axis beneath the compartment chart, broken into segments wherever the ratio leaves its domain rather than joined by a line across the gap, labelled as a ratio against modelled inspired rather than against the vaporizer dial, and carrying the constant-F_I caveat in `docs/MODEL.md`: it is the textbook wash-in curve only while the dial is held, and a learner who misses that reads a dial change as uptake. Underneath it, what one frame reads stopped growing with the run. The snapshot carried a copy of every sample ever recorded - 4.08 ms at half a million samples, five times a second - and the chart discarded all but the visible few hundred; the controller now answers for a window cut at the axis the caller is about to draw, so a frame reads at most `MAX_CHART_WINDOW_S / SIMULATION_STEP_S` samples whether the run is a minute or a week old, and the decimation scan reads each sample once where it read about 2.8 times. Display and interface work: no equation, parameter, numerical method or solver step moved, and the ratio is a quotient of two modelled states `core/` already held. Alongside them, the literature route this environment actually has - direct HTTP to publishers is refused, the PubMed server answers - is recorded where a session about to write provenance will read it rather than only where a delegated worker would, and two sessions that discover they are on one item gained a rule for which of them yields. |
+| v0.3.8 | Completed | The wash-in curve the literature teaches from, and the render path that can carry it. F_A/F_I is plotted on its own bounded axis beneath the compartment chart, broken into segments wherever the ratio leaves its domain rather than joined by a line across the gap, labelled as a ratio against modelled inspired rather than against the vaporizer dial, and carrying the constant-F_I caveat in `docs/MODEL.md`: it is the textbook wash-in curve only while the dial is held, and a learner who misses that reads a dial change as uptake. Underneath it, what one frame reads stopped growing with the run. The snapshot carried a copy of every sample ever recorded - 4.08 ms at half a million samples, five times a second - and the chart discarded all but the visible few hundred; the controller now answers for a window cut at the axis the caller is about to draw, so a frame reads at most `MAX_CHART_WINDOW_S / SIMULATION_STEP_S` samples whether the run is a minute or a week old, and the decimation scan reads each sample once where it read about 2.8 times. Display and interface work: no equation, parameter, numerical method or solver step moved, and the ratio is a quotient of two modelled states `core/` already held. Alongside them, the literature route this environment actually has - direct HTTP to publishers is refused, the PubMed server answers - is recorded where a session about to write provenance will read it rather than only where a delegated worker would, and two sessions that discover they are on one item gained a rule for which of them yields. |
+| v0.3.9 | Completed / current baseline | What a frame costs, what a learner is allowed to look at, and what a run *is*. Decimation had rescanned every sample in the visible window on every frame — 62.6 ms at a four-hour window and 207.7 ms at twelve, against a 200 ms frame budget — and now reads precomputed M4 aggregates held on a dyadic grid anchored to absolute sample index, merged tier to tier without revisiting a raw sample, so a frame costs what it draws rather than what the window holds. Beside it, a checkbox per compartment: the reference implementation's own affordance, the two-trace comparison a question like *why does fat lag muscle* actually needs, and the one lever on render cost that trades no fidelity, since a trace nobody is looking at is not a resolution loss. Underneath both, simulated time became the number of steps taken times the run's step rather than a sum accumulated a step at a time, and `docs/MODEL.md` states as a guarantee what had been an implementation detail: a run is a function of its inputs and its step count and of nothing else, so a machine that wakes the loop late runs slower and never differently — with the four things that guarantee does not cover named beside it. Interface and determinism work: no equation, parameter, numerical method or solver step moved, `src/anesthesia_sim/data/` is byte-identical to v0.3.8, and no displayed number changes — the recorded sample times differ in their last bits, about 35 ns after four hours, which no readout, axis or trace resolves. Three apparatus defects close alongside: a commit pushed after its own pull request merged is reported rather than silently dropped, the check that reports it stopped calling merged work lost, and `docket next` reserves what it recommends, so two sessions handed the same answer do not both start it. |
 | v0.4.0 | Planned / scoped | The teachable case: compressed playback at a fixed simulation step, MAC multiples as a displayed unit, a case-length time base, and a recorded control-input timeline. No equation, parameter, or numerical-method change. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
@@ -96,139 +97,138 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.3.8
+## Current baseline: v0.3.9
 
-v0.3.8 puts the curve the uptake literature is taught from on the screen, and
-makes the render path underneath it cost the same on the tenth hour as on the
-first. F_A/F_I now has a plot of its own beneath the compartment chart, so a
-learner can line up what they are watching with the figure in the lecture they
-saw it in — the ratio that makes three agents comparable and that the
-solubility argument is usually made from. Under it, the boundary between the
-controller and the interface stopped handing over the whole recorded run on
-every frame.
+v0.3.9 is about what a frame costs, what a learner is allowed to look at, and
+what a run *is*. v0.3.8 made the interface's read of the run independent of how
+long the run is; this release makes the work behind that read independent of
+how wide the window is, gives the reader a checkbox per compartment, and makes
+the run itself reproducible to the last bit rather than to a tolerance.
 
-**Display and interface work, not model work.** No equation, parameter,
-numerical method or solver step moved. F_A/F_I is a quotient of two modelled
-states `core/` already held, computed outside it; the window change alters
-which recorded samples cross into the interface and never what any of them is.
+The three belong together. The twelve-hour case-length scale v0.4.0 wants was
+unreachable while every frame rescanned its window, and hiding four of six
+traces cuts what reaches the client by roughly a factor of three — neither
+trading a sample away to do it, because what is drawn is still recorded
+samples. And a run that can be compared against another run is what the
+milestone after this one is built on.
 
-**The ratio is the wash-in curve only while the dial is held**, and the
-release treats that as a safety property rather than a footnote. Move the
-vaporizer mid-run and F_A/F_I remains a well-defined ratio of two modelled
-states, but it is no longer the curve the textbook plots, and a learner who
-does not notice reads a dial change as uptake. Three things carry that: the
-control-input timeline from v0.3.7 marks where the dial moved, on this plot as
-well as on the chart above it; the axis says the ratio is against modelled
-*inspired* rather than against the vaporizer setting, which are not the same
-quantity while the circuit is still filling; and `docs/MODEL.md` states the
-constant-F_I caveat where the quantity is specified.
+**Interface and determinism work, not model work.** No equation, parameter,
+numerical method or solver step moved, and `src/anesthesia_sim/data/` is
+byte-identical to v0.3.8. No displayed number changes either: the recorded
+sample times differ from the previous release's in their last bits — about
+35 ns after four hours — which is orders of magnitude below what any readout,
+axis or trace resolves. What changed is which samples a frame reads, which
+traces the reader has asked for, and what the project is willing to promise
+about repeating a run.
 
-**Why this is a patch rather than v0.4.0.** Seven of the teachable-case
-feature's nineteen items is not the milestone, and the reasoning that kept
-v0.3.6 and v0.3.7 patches holds unchanged: compressed playback, the
-case-length time base and the run-fitted vertical scale are all still open,
-and cutting the milestone's number now would ship it under its own name with
-most of it missing. The capability-boundary rule under "Versioning decision"
-governs. What *has* changed is that the milestone's debt gate is now clear at
-21 of 21, so the next release may be it.
+**A promise is only worth what its exclusions are.** `docs/MODEL.md` now
+states that identical inputs taken to the same step count produce
+element-wise identical recorded histories — identical, not agreeing within a
+tolerance — and in the same breath names the four things that does not cover:
+a different step size, which is a different numerical solution and is what
+"Step-refinement test" bounds; a different model version; a different
+platform, because each compartment's analytic solution calls an exponential
+whose last bit belongs to a math library rather than to IEEE-754; and elapsed
+real time, which is a property of the machine and deliberately not of the
+model. A guarantee stated without them would be the more impressive sentence
+and the less true one.
+
+**Why this is a patch rather than v0.4.0.** Eleven of the teachable-case
+feature's twenty items is not the milestone, and the reasoning that kept
+v0.3.6, v0.3.7 and v0.3.8 patches holds unchanged: the playback multiplier
+and the case-length time base are both still open, and cutting the
+milestone's number now would ship it under its own name with most of it
+missing. The capability-boundary rule under "Versioning decision" governs.
+
+**The eleventh is the one item in that count this release does not
+describe.** `PL-CC23`, the MAC-scaled vertical axis, landed on `main` after
+v0.3.9 was cut and before the cut merged, so its code sits inside the span
+this version's tag reports while the item itself is recorded under the next
+one; `docs/releases/v0.3.9.md` lists the six the version bump drew a line
+around. v0.3.8 disclosed the same mismatch about the aggregate cache, in the
+same direction and for the same reason: the bump in `pyproject.toml` is the
+boundary the notes are generated from and the tag is the boundary `git
+describe` answers from, and a release cut on one day and merged on another
+cannot make those one boundary. Said here rather than left for a reader to
+reconstruct from two dates.
 
 ### Release narrative
 
-**The wash-in ratio, plotted where it is defined and broken where it is not
-(PL-ZRSP).** F_A/F_I is the cheapest single thing connecting this simulator to
-the literature — both quantities were already modelled and the arithmetic is a
-division — and the work is almost entirely in what the plot refuses to draw.
-The ratio has a domain: it means nothing before agent reaches the circuit, and
-above equilibrium it is the patient returning agent rather than taking it up.
-So the trace is not one polyline through the samples that have a ratio. It is
-one series per *contiguous* stretch inside that domain, because a single line
-would draw a straight segment across the stretch it skipped and assert a
-transition the model never produced. A stretch that stops by crossing
-equilibrium ends on a terminal dot, since a line that simply stops is
-indistinguishable from one the frame clipped. What the fixed pool of segments
-cannot draw is counted and said in words beside the plot rather than dropped
-in silence.
+**A frame costs what it draws, not what the window holds (PL-D9WD).**
+Decimation had rescanned the whole visible window every frame: 8.9 ms at
+fifteen minutes, 15.9 ms at an hour, 62.6 ms at four and 207.7 ms at twelve,
+measured 2026-09-04 — the last of those more than the entire 200 ms frame
+budget, for a chart that draws a few hundred points either way. The fix is to
+compute each bucket's M4 aggregates once and keep them, on a grid **anchored
+to absolute sample index** rather than to the viewport: tier *t* holds buckets
+of 2^t samples, and the viewport *selects* a tier instead of defining one. That
+anchoring is the whole design. M4 as published groups by the viewport, so a
+cache built the same way would rederive everything the moment the window
+moved — which is the defect being fixed, one level up. Anchored to the run,
+a completed bucket's aggregates are final, and the four of them merge: the
+minimum of two adjacent buckets is the smaller minimum, the last of the pair
+is the last of the second, and so on. Tier *t+1* is therefore built by merging
+pairs of tier-*t* buckets without revisiting a raw sample, which is O(1)
+amortized per simulation step and makes every tier above the finest
+effectively free. The paper reaches the same conclusion for the streaming
+case.
 
-**A frame stopped reading the whole run (PL-0VM7).** `snapshot()` built a copy
-of every sample the run had ever recorded and handed it to the view on every
-render frame; the chart then sliced it to the visible window and decimated
-that to at most a few hundred points per trace, discarding the rest. The copy
-was proportional to the length of the run — 0.03 ms at ten thousand samples,
-4.08 ms at five hundred thousand — at five frames a second, allocating and
-discarding tens of megabytes purely to be thrown away, and growing without
-bound for as long as the simulation ran.
+**A checkbox per compartment (PL-CG7J).** Gas Man's graph pane carries one per
+trace, and the point is not that a learner will hide things — it is that
+"why does fat lag muscle" is a two-trace question that four other lines
+crossing the answer make unreadable. It is also the largest lever on render
+cost that trades no fidelity: what reaches the client each frame is about two
+patch operations per drawn point whose sample moved, so cost is linear in
+traces drawn, and every other lever — fewer points, a coarser bucket — costs
+resolution instead. A hidden trace is *absent* from the chart's series list
+rather than present with no points, so the client stops holding it at all; the
+trace-to-compartment pairing that keeps one compartment's values off another's
+line is preserved through the filter and tested there. Unchecking every
+compartment says so in words beneath the chart, because an empty plot is
+otherwise indistinguishable from a run that stopped.
 
-The read is now inverted. The controller answers `history_window(start_s)`
-with the samples at or after a time the caller names, paired with the absolute
-index within the run of the first of them so decimation stays anchored where
-it must be. The view sets its axis and then asks for exactly that left edge,
-which is the part that matters for correctness rather than cost: one cut, at
-the boundary the chart actually draws, instead of two that could disagree. A
-cut the controller chose for itself could fall inside the drawn window and
-truncate the trace — a plot beginning later than the run did, with nothing on
-it to say so.
+**Simulated time is a count of steps (PL-VM40).** `SimulationState` had added
+the step to a running total, so elapsed time was a function of the order and
+number of the additions that reached it rather than of how far the run had
+gone: ten steps of 0.1 s summed to 0.9999999999999999. It is now the step
+count times the run's step — one multiplication, rounded once — and those ten
+steps are 1.0 s exactly. The gap this closes is not accuracy; it is about
+35 ns over a four-hour run, and a running sum of tenths is sometimes the
+closer decimal approximation of the two. It is that two runs given identical
+inputs now record identical instants, which is what an element-wise
+comparison needs and what accumulated drift quietly denies. A run also keeps
+the step it started at, refusing a different one rather than deriving a time
+from a mixture of cadences — a history recorded at two cadences has a sample
+spacing that is not a constant of the run, which every reader mapping a sample
+index to a time assumes it is. The run loop is unchanged and now says why it
+must stay so: it takes a fixed number of steps per tick and never extra ones
+to make up lost wall-clock time, and it reads no clock at all.
 
-Splitting one read into two moved a presentation guarantee off structure and
-onto ordering, and the release does not leave that implicit. The right-hand
-end of every trace being the same sample the readouts were formatted from held
-before because one snapshot carried both. It now holds because `_refresh_view`
-is synchronous — the simulation loop advances only at an `await`, and none can
-fall between the two calls without changing that method's signature — and a
-test asserts it directly rather than trusting the reasoning. Both plots are
-drawn from a single window read for the same reason: identical axis numbers in
-one frame is a weaker claim than identical samples.
+**Work pushed after its own pull request merged is no longer lost quietly
+(PL-3D2M), and the check that says so stopped crying wolf (PL-JHJ3).** The
+first is a real loss, observed on 2026-09-04: a merge takes the head it was
+opened against, so a commit pushed a minute after the merge lands nowhere, and
+nothing outside the item store noticed — the commit that went missing carried
+a behavior change the project owner had asked for in that session. The second
+is the opposite failure in the same detector. It compared blob identity, so
+a squash that *merged* a branch's text with edits made to the same prose
+elsewhere read as work never landed, on a line reprinted every turn of every
+session. A signal that says work is lost when it is not is worse than no
+signal, because it trains a session to skim past the one that means it. The
+split now asks a sharper question: a commit partly landed is one the merge
+took and merged, and only a commit none of whose paths reached the base at all
+is one nothing took.
 
-**The envelope scan reads each sample once (PL-MJ7B).** The bucket loop
-re-read its two running extremes out of the value sequence on every
-comparison, so a scan that must visit every sample of every bucket read each
-one about 2.8 times. Carrying the extremes as values alongside their indices
-makes it exactly one — 5 625 reads over a 2 000-sample window before, 2 000
-after.
-
-The other half of what PL-0VM7 proposed was deliberately not done, and the
-item records why: removing the per-trace value list as well would have meant
-making a clean pure function generic over samples-plus-accessor and rewriting
-eighteen test call sites, for 0.14% of a frame. Its stated motivation — a
-window a week wide — does not survive measurement either way, because min/max
-envelope decimation reads every sample of every bucket whether a list is
-materialized or not. That case needs the bucket extremes maintained as samples
-are appended rather than rescanned, which PL-D9WD then built as an M4
-aggregate cache on a dyadic grid anchored to absolute sample index, merging
-tier to tier without revisiting a raw sample. It landed on `main` after this
-release was cut, so it ships in v0.3.9 rather than here; `history_window()` is
-the interface it reads through.
-
-**The literature is reachable, by a door nobody had written down (PL-0XMD,
-PL-5DN3).** Measured while chasing citations: this environment's egress policy
-refuses direct HTTP to publishers and indexes — ScienceDirect, Springer,
-`doi.org`, Crossref, OpenAlex, Semantic Scholar, arXiv — while search engines
-answer. A session that tries the front door, is refused, and concludes the
-literature is unreachable falls back to memory or to a search snippet, and
-neither is distinguishable from a reading once it has been written into a data
-file. The PubMed server is the working route, verified end to end, and a
-citation now says which route it came from.
-
-The rule first landed in `docs/worker.md`, which only a delegated worker
-reads — and the work it exists to protect is precisely the work a worker may
-not touch, since `core/`, the data files and `docs/MODEL.md` are where a cited
-constant and its provenance live. It is now a path-scoped rule that loads when
-a session opens those files, which is the moment it is about to record where a
-number came from.
-
-**Two sessions on one item now know which yields (PL-YHD3).** Everything the
-project had built for parallel sessions was detection; nothing said what the
-second session should do, or which of the two was second. Symmetry was the
-failure mode: reasoning identically from identical evidence, both sessions
-either continue — and the collision proceeds — or both stand down, which is
-worse, because the work is then unstarted and each believes the other has it.
-So the verdict is computed rather than reasoned out: `bin/docket show <id>`
-prints the carrying branches in order, the commit that named the item first
-holding it and a tie breaking on that commit's hash, and both sessions read
-the same order off the same commits. The yielding session hands its work over
-rather than discarding it. One consequence is worth acting on before the
-verdict is ever needed — a branch nobody can fetch is not in the other
-session's copy of the order at all, which is the second reason to push the
-first commit as soon as there is one.
+**A recommendation now reserves what it recommends (PL-D4MZ).** Every guard
+this project has against two sessions on one item reads a ref, a branch, a
+field or a session title — and a recommendation is prose in a chat reply,
+which is in none of them. So at the moment the collision is created there is
+nothing for any of them to see, and they are not failing: they answer "is
+anybody on this item?" correctly, and nobody is, yet. Determinism is what
+makes this systematic rather than unlucky. `docket next` ranks one store the
+same way for every caller, so two sessions asking the same question get the
+same answer by design, and the property that makes the queue trustworthy
+everywhere else is the one generating the duplicates here.
 
 ### The model as it stands
 
