@@ -1,17 +1,14 @@
 ---
 id: PL-Q4M4
 title: The simulated-time clock reads in seconds while the chart's own time axis reads in hours and minutes
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: ux
+feature: presentation-safety
+touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/control_timeline.py
 added: 2026-09-05
 ---
-
-**Problem.** The simulated-time clock reads in seconds while the chart's own time axis reads in hours and minutes
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `PL-SSBP` gave the chart a time base that spans a case, and its
 axis reads in units that carry themselves - `3m`, `1h30m`, `12h`. The
@@ -45,3 +42,13 @@ away. The question is which of three the interface should do:
 **Not urgent, and not a wrong number.** Both readings are correct and
 unambiguous; this is a conversion the reader is doing that the display could
 do for them.
+
+**Decision needed.** Which of the three the interface should do. It is the
+project owner's call rather than a session's: it changes what is on screen on
+every frame, and options 2 and 3 differ over whether a displayed time keeps the
+tenth of a second the simulation steps at - a resolution question about what
+the reader is being shown, not an implementation detail.
+
+**Done when.** The queue records which option was chosen and why. If it is 2 or
+3, the "Simulated time" panel reads in the same format as the chart's axis, and
+a test asserts the string the panel renders at a simulated time past an hour.

@@ -1,17 +1,15 @@
 ---
 id: PL-JSRH
 title: A closed item's closed: and milestone: are records too, and nothing stops a branch rewriting either
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-05
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_rewriting_a_landed_closed_date_is_reported' subprojects/docket/tests/test_checks.py
 ---
-
-**Problem.** A closed item's closed: and milestone: are records too, and nothing stops a branch rewriting either
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `PL-JZ1D` established that a closed item's `verify:` is the record
 of what proved it, and `checks._check_records` now errors where a branch

@@ -3,20 +3,21 @@ id: PL-W3DD
 title: Key SimulationHistorySample by substance rather than six flat compartment floats
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: teachable-case
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/chart_downsampling.py, docs/MODEL.md, tests/unit/test_simulation_view.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md, tests/unit/test_run_history.py, tests/unit/test_simulation_view.py, tests/integration/test_controller.py, tests/integration/test_chart_patching.py, tests/integration/test_sevo_controller.py
 added: 2026-09-02
-verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_history_sample_is_keyed_by_substance' tests/unit/test_simulation_view.py
+closed: 2026-09-05
+pr: 343
+verify: uv run pytest tests/unit/test_run_history.py tests/unit/test_simulation_view.py && grep -q 'def test_two_substances_recorded_together_keep_their_own_values' tests/unit/test_run_history.py
 ---
 
 **Problem.** `SimulationHistorySample` (`app/controller.py:17-26`) is a frozen
 dataclass of `elapsed_s` plus six flat named floats, one per compartment. Six
 module-level accessors in `app/simulation_view.py:209-235` unpack them, one
-function per compartment, and `chart_downsampling.py` consumes them through
-those accessors. There is exactly one substance today, so nothing about that
-shape is wrong yet.
+function per compartment. There is exactly one substance today, so nothing
+about that shape is wrong yet.
 
 **Why it matters.** `ROADMAP.md`'s v0.4.0 Required scope names this change and
 states why (`:1386`): planned-milestone item 12 (forking) writes its
@@ -35,7 +36,13 @@ changes, which is what the existing view tests are for.
 `app/simulation_view.py` (`:209-235`, the six accessors, and the
 trace-to-quantity pairing in `SimulationView._plotted_series`, whose
 readers are `app/chart_series.py`'s since PL-WB0X),
-`app/chart_downsampling.py`, `docs/MODEL.md` § "Interface boundary".
+`docs/MODEL.md` § "Interface boundary".
+
+`app/chart_downsampling.py` is *not* affected and is named here so a later
+reader does not go looking: it is generic over a `SampleT` type variable,
+returns indices into a caller-supplied sequence, and imports nothing from
+`app/controller.py`. Its decoupling from what a sample *holds* is a design
+property rather than an accident (`PL-1M5B`, which this closes).
 
 **Approach.** Key the recorded concentrations by substance id, keeping
 `elapsed_s` flat: the sample carries one entry per substance, each holding the
@@ -62,6 +69,48 @@ accessors are one accessor parameterized by compartment, `docs/MODEL.md` states
 the record's shape at the interface boundary, and every existing view and
 downsampling test passes unaltered.
 
+The `verify:` command was repaired as this item was started: it named a test
+in `tests/unit/test_simulation_view.py`, which is the file the record's *shape*
+is least visible from - the view's tests hold what is displayed, and nothing
+displayed changes here. It now names the property directly, in the file that
+holds the store: two substances recorded together keeping their own values,
+which is the one assertion that separates a store keyed by substance from one
+keyed by compartment alone and asked for a single substance.
+
+**Landed 2026-09-05, against a tree that had moved.** Two halves of the brief
+above were already true when the work started, and one was bigger than it
+looks. The six module-level accessors were gone: `PL-D9WD`'s `RecordedQuantity`
+and `RunHistory` had already collapsed them into one key, and `chart_series.py`
+had already stopped reading named fields. What remained was the substance
+dimension, and it could not stop at the record. A row keyed by substance above
+a store keyed by compartment alone would have had to refuse or pool a second
+substance, so:
+
+- `SimulationHistorySample` carries `substances`, one entry per substance
+  holding exactly `COMPARTMENT_QUANTITIES`, validated and wrapped read-only at
+  construction. Its compartment keys are `RecordedQuantity`'s existing stable
+  identifiers, so no new name was invented and the note below needed no
+  vocabulary decision after all.
+- `RunHistory` is keyed by a new `RecordedSeries` (substance and quantity),
+  fixes its substances when built, and refuses a sample carrying any other
+  set - a series starting part-way through a run would draw every one of its
+  values at another sample's instant. Wash-in stretches are per substance for
+  the same reason the quotient is.
+- `chart_series.PlottedSeries` binds a trace to a `RecordedSeries`, and
+  `SimulationView` pairs its compartment traces with the agent the frame's own
+  snapshot names, so a run and the traces of it cannot come from different
+  agents. A snapshot naming an agent the run does not record raises rather
+  than drawing whichever one it holds.
+
+Nothing displayed changed: same values, units, labels and precision. The one
+new guard is `test_each_recorded_quantity_carries_the_compartment_it_names`
+(`tests/integration/test_controller.py`), which the change made necessary:
+`_build_history_sample` is now the *only* place the compartment-to-core-state
+pairing is written, since `RunHistory.record` stores each value under the key
+the sample already gives it, so that pairing is audited against the core's own
+attributes rather than being restated a second time where a reader could
+compare the two.
+
 **What v0.4.1 does to this (added 2026-09-03).** Head-on, and worth knowing
 before the record's new shape is designed. The six fields this item re-keys -
 `circuit_concentration_fraction`, `alveolar_concentration_fraction`,
@@ -81,6 +130,13 @@ and `PL-9SH6` has nothing to do here. And this item shrinks `PL-9SH6`: six flat
 accessors it plans to rename stop existing as separate names. `PL-9SH6`'s own
 warning - "re-measure rather than trusting them" - was written about `PL-GS5X`
 and applies at least as strongly to this item.
+
+*Settled 2026-09-05.* No key name was invented: the mapping is keyed by
+`RecordedQuantity`, whose members already carry stable identifiers chosen so
+that the v0.4.1 rename cannot reach them, and whose docstring says so. The six
+flat fields are gone, so `PL-9SH6` and `PL-3TLK` have nothing left to rename in
+`app/controller.py`'s recorded row - re-measure their remaining surface rather
+than trusting this sentence.
 
 Nothing here is invalidated: the substance-keying decision is independent of the
 numerical method, and v0.4.1 changes no equation or parameter.

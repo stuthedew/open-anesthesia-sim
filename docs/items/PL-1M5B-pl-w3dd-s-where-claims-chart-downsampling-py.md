@@ -1,13 +1,15 @@
 ---
 id: PL-1M5B
 title: PL-W3DD's Where claims chart_downsampling.py consumes the sample accessors, but that module is generic over SampleT and imports nothing from controller.py
-status: ready
 priority: P3
 effort: S
+status: done
 classes: docs
 touches: docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
-verify: python3 tools/doc_check.py check && ! grep -q 'chart_downsampling' docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
 added: 2026-09-03
+closed: 2026-09-05
+pr: 343
+verify: python3 tools/doc_check.py check && grep -q 'is \*not\* affected' docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
 ---
 
 **Problem.** `PL-W3DD`'s "Where" section names
@@ -41,6 +43,19 @@ rather than a deletion.
 
 **Done when.** `PL-W3DD`'s "Where" no longer names `chart_downsampling.py`, or
 names it explicitly as unaffected and says why.
+
+**Closed 2026-09-05 on the second branch, alongside `PL-W3DD` itself.** The
+"Where" now says the module is not affected and gives the reason - generic
+over `SampleT`, returns indices into a caller-supplied sequence, imports
+nothing from `app/controller.py` - which is worth more than the deletion: a
+reader who wonders why a downsampling module is absent from a re-keying item
+finds the answer instead of re-deriving it.
+
+The `verify:` command was rewritten as this item was started, because it had
+been written for the *deletion* branch only and would have failed the branch
+this item's own "Done when" allows. It now greps for the sentence that states
+the exemption, which is absent from `origin/main` and present after the work -
+the same specification, pointed at the outcome that was actually taken.
 
 **Found.** Session auditing which open items the v0.4.1 `core/` pass would
 invalidate, 2026-09-03.

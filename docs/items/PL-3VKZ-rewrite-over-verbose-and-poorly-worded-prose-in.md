@@ -1,10 +1,10 @@
 ---
 id: PL-3VKZ
 title: Rewrite over-verbose and poorly worded prose in the human-facing markdown documents
-status: untriaged
-feature: prose-quality
-touches: docs, ROADMAP.md
+status: dropped
 added: 2026-09-05
+closed: 2026-09-05
+reason: split into three per-document items, with the project owner's agreement (2026-09-05), because at `L` this could not be started from a queue entry - the whole of `PL-72V3`'s triage of it was undone by that. Nothing is lost and nothing is added: PL-BZR4 takes `docs/MODEL.md` and carries the specialist-standard qualifier, PL-K7N7 takes `ROADMAP.md`, and PL-TPS7 takes `docs/ARCHITECTURE.md` and `docs/maintainer.md` together. The two exclusions this item settled hold in all three - `README.md` stays frozen by `.claude/rules/readme-hold.md`, and `docs/WORKING_NOTES.md` is out because `docket.toml`'s `workflow_paths` counts it apparatus, so the specialist prose standard does not reach it. The body below is the reasoning; it was not rewritten into any child
 ---
 
 **Problem.** The human-facing markdown documents are, in the project owner's
@@ -18,9 +18,11 @@ trust it, so verbosity costs comprehension, not merely space. Same standard as
 the resident instruction lines) — see that item for why the agent-facing files
 are measured differently.
 
-**Where.** Candidates by size: `docs/MODEL.md` (3089 lines), `ROADMAP.md`
-(2183), `docs/WORKING_NOTES.md` (705), `docs/ARCHITECTURE.md` (513),
-`docs/maintainer.md` (49).
+**Where.** Candidates by size, measured 2026-09-05 and rounded because they
+move every release: `docs/MODEL.md` (~3100 lines), `ROADMAP.md` (~2200),
+`docs/WORKING_NOTES.md` (~700), `docs/ARCHITECTURE.md` (~520),
+`docs/maintainer.md` (~50). Re-measure before starting rather than trusting
+these; they are here for ordering, not as a claim.
 
 Two exclusions, both deliberate:
 
@@ -36,8 +38,18 @@ Two exclusions, both deliberate:
   a limitation or a provenance note. Where a passage is long because the
   science is, it stays long.
 
-`docs/WORKING_NOTES.md` needs a scope decision of its own at triage: it is a
-working log of open threads rather than a document with a reader, so "too
-verbose" may not be a defect in it at all.
+**`docs/WORKING_NOTES.md` is out of scope, decided at triage (2026-09-05).**
+Its reader is the next session rather than a person deciding what the simulator
+is, and `docket.toml`'s `workflow_paths` already counts it as apparatus rather
+than product - so `CLAUDE.md`'s "working reliably and staying streamlined"
+governs it, not the specialist prose standard this item applies. Length there
+is a symptom of a thread still being open, and it is paid off by closing the
+thread rather than by rewriting the note.
 
-**Done when.**
+**Done when.** `docs/MODEL.md`, `ROADMAP.md`, `docs/ARCHITECTURE.md` and
+`docs/maintainer.md` have each been read end to end and cut for a human
+reader: no paragraph restating the one above it, no clause that adds nothing,
+no section that could be a sentence. Every equation, unit, assumption,
+limitation and provenance note in `docs/MODEL.md` still says what it said, and
+`make check` passes, so no citation, package-map entry or math block was broken
+by the edit.

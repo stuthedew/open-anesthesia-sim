@@ -50,6 +50,7 @@ from anesthesia_sim.app.control_timeline import (
 from anesthesia_sim.app.controller import (
     HistoryWindow,
     RecordedQuantity,
+    RecordedSeries,
     SimulationController,
     SimulationSnapshot,
 )
@@ -560,11 +561,25 @@ class _CompartmentTrace:
     checkbox: ft.Checkbox
     visible: bool = True
 
-    @property
-    def plotted(self) -> chart_series.PlottedSeries:
-        """This trace paired with the one quantity it draws."""
+    def plotted(self, substance_id: str) -> chart_series.PlottedSeries:
+        """This trace paired with the one recorded series it draws.
 
-        return (self.series, self.quantity)
+        The substance is the caller's because it is a property of the run
+        rather than of the trace: the six traces draw whichever agent the
+        controller is running, and `set_agent` starts a new run under a new
+        identifier. Holding a copy of it on the trace would be a second
+        place for the running agent to be recorded, free to disagree with
+        the snapshot the same frame formats its readouts from.
+
+        Args:
+            substance_id: The substance whose run is being drawn, from the
+                snapshot of the frame drawing it.
+
+        Returns:
+            This trace bound to that substance's values for its compartment.
+        """
+
+        return (self.series, RecordedSeries(substance_id, self.quantity))
 
 
 class SimulationView:
@@ -1203,36 +1218,43 @@ class SimulationView:
 
         raise KeyError(f"no compartment trace draws {quantity}")
 
-    @property
-    def _plotted_series(self) -> tuple[chart_series.PlottedSeries, ...]:
-        """Every trace paired with the compartment it draws, hidden ones included.
+    def _plotted_series(self, substance_id: str) -> tuple[chart_series.PlottedSeries, ...]:
+        """Every trace paired with the series it draws, hidden ones included.
 
-        The whole trace-to-quantity pairing: an entry naming the wrong
-        quantity would plot one compartment's values on another
-        compartment's line, which misstates the run as surely as a wrong
-        number would. Nothing in the type system can catch that -
-        `flet_charts` ships no stubs, so a chart series is `Any` to the
-        checker - so `test_chart_traces_stay_bound_to_their_own_compartment`
-        is what holds it, by giving each compartment a distinct multiple and
+        The whole trace-to-series pairing: an entry naming the wrong
+        compartment - or, once a run records more than one substance, the
+        wrong substance - would plot one set of values on another's line,
+        which misstates the run as surely as a wrong number would. Nothing
+        in the type system can catch that - `flet_charts` ships no stubs,
+        so a chart series is `Any` to the checker - so
+        `test_chart_traces_stay_bound_to_their_own_compartment` is what
+        holds it, by giving each compartment a distinct multiple and
         reading the drawn points back.
 
         Hidden traces are included because what a trace *draws* does not
-        change with whether it is currently on the chart. `_visible_plotted_series`
-        is the frame's subset.
+        change with whether it is currently on the chart.
+        `_visible_plotted_series` is the frame's subset.
+
+        Args:
+            substance_id: The substance whose run this frame is drawing.
         """
 
-        return tuple(trace.plotted for trace in self._compartment_traces)
+        return tuple(trace.plotted(substance_id) for trace in self._compartment_traces)
 
-    @property
-    def _visible_plotted_series(self) -> tuple[chart_series.PlottedSeries, ...]:
+    def _visible_plotted_series(self, substance_id: str) -> tuple[chart_series.PlottedSeries, ...]:
         """The pairing above, filtered to the traces the reader is looking at.
 
         The filter is over whole records, each carrying its own series and
         its own quantity, so it cannot misalign the pairing - see
         `_CompartmentTrace`.
+
+        Args:
+            substance_id: The substance whose run this frame is drawing.
         """
 
-        return tuple(trace.plotted for trace in self._compartment_traces if trace.visible)
+        return tuple(
+            trace.plotted(substance_id) for trace in self._compartment_traces if trace.visible
+        )
 
     def _chart_data_series(self) -> list[fch.LineChartData]:
         """Every series the compartment chart holds, in drawing order.
@@ -2256,7 +2278,12 @@ class SimulationView:
         # go together, and `chart_series.redraw_visible_window` says why
         # doing one without the other would leave a stale curve drawn.
         window = self._controller.history_window(chart_min_x)
-        chart_series.redraw_visible_window(self._visible_plotted_series, window)
+        # Drawn under the agent this frame's readouts were formatted from,
+        # so a run and the traces of it cannot come from different agents.
+        # A snapshot naming an agent the run does not record raises in
+        # `RunHistory.aggregates` rather than drawing whatever the run does
+        # hold - see `RecordedSeries`.
+        chart_series.redraw_visible_window(self._visible_plotted_series(snapshot.agent_id), window)
 
         # After the traces are drawn and before anything else reads them:
         # the notice is about the points this frame actually put on the
@@ -2400,7 +2427,7 @@ class SimulationView:
             self._equilibrium_line_series, chart_min_x, chart_max_x, WASH_IN_EQUILIBRIUM_RATIO
         )
         self._undrawn_wash_in_segments = chart_series.redraw_wash_in_segments(
-            self._wash_in_segment_series, window, WASH_IN_TERMINUS_CEILING
+            self._wash_in_segment_series, window, snapshot.agent_id, WASH_IN_TERMINUS_CEILING
         )
         self._wash_in_state_text.value = self._format_wash_in_state(snapshot)
 

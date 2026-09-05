@@ -1,10 +1,14 @@
 ---
 id: PL-JK0M
 title: Route or justify the 548 resident instruction lines every session loads before reading anything
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: session-cost, docs
 feature: worker-instructions
 touches: CLAUDE.md, .claude/rules
 added: 2026-09-05
+not-delegable: the judgment is whether each rule still fires at the moment a session needs it, which no command decides. `check_resident_instructions` reports the resident total and refuses a threshold on purpose, because a limit is met by deleting a rule to reach a number - the one outcome this item must not produce. Editing the files every session loads is also the last diff that should land unread
 ---
 
 **Problem.** Two files load at launch in every session before anything has been

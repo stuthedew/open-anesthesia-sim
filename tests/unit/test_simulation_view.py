@@ -178,7 +178,11 @@ class _FakeController:
         self.history_value = (
             history
             if history is not None
-            else (_sample(snapshot.elapsed_s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),)
+            else (
+                _sample(
+                    snapshot.elapsed_s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id=snapshot.agent_id
+                ),
+            )
         )
         self._run = RunHistory.of(self.history_value)
         self.is_running = snapshot.is_running
@@ -201,6 +205,32 @@ class _FakeController:
         self.history_value = history
         self._run = RunHistory.of(history)
 
+    def switch_agent(
+        self,
+        agent_id: str,
+        history: tuple[SimulationHistorySample, ...] | None = None,
+        **snapshot_fields: Any,
+    ) -> None:
+        """Move the fake to another agent, its run started over as the real one does.
+
+        `SimulationController.set_agent` builds a new `RunHistory` under the
+        new agent's identifier, so a fake that changed only the snapshot
+        would hand the view a state the controller cannot produce: a run
+        recorded under one substance, read under another's name.
+
+        Args:
+            agent_id: The agent now running, and so the substance its run
+                is recorded under.
+            history: The new run, already recorded under `agent_id`. A run
+                of one blank sample by default, as `set_agent` leaves it.
+            snapshot_fields: Everything else `_snapshot` takes.
+        """
+
+        if history is None:
+            history = (_sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id=agent_id),)
+
+        self.advance_to(history, agent_id=agent_id, **snapshot_fields)
+
     def history_window(self, start_s: float) -> HistoryWindow:
         """Cut the window the real controller would, by the same search.
 
@@ -214,6 +244,13 @@ class _FakeController:
         return self._run.window_from(start_s)
 
 
+#: The agent every fixture here runs unless it says otherwise.
+#:
+#: Named once because the snapshot and the recorded run have to agree on it:
+#: the view reads the run under the agent its snapshot names.
+_DEFAULT_AGENT = "sevoflurane"
+
+
 def _sample(
     elapsed_s: float,
     circuit: float,
@@ -222,16 +259,38 @@ def _sample(
     vessel_rich: float,
     muscle: float,
     fat: float,
+    substance_id: str = _DEFAULT_AGENT,
 ) -> SimulationHistorySample:
+    """One recorded sample of one substance's six compartments.
+
+    `substance_id` defaults to the agent `_snapshot` does, so the two
+    halves of a fixture describe one run. A test naming another agent has
+    to name it here too: the view reads the run under the agent its
+    snapshot names, and a history recorded under a different one raises
+    rather than drawing whichever substance the run happens to hold.
+    """
+
     return SimulationHistorySample(
         elapsed_s=elapsed_s,
-        circuit_concentration_fraction=circuit,
-        alveolar_concentration_fraction=alveolar,
-        mixed_venous_concentration_fraction=venous,
-        vessel_rich_partial_pressure_fraction=vessel_rich,
-        muscle_partial_pressure_fraction=muscle,
-        fat_partial_pressure_fraction=fat,
+        substances={
+            substance_id: {
+                RecordedQuantity.CIRCUIT: circuit,
+                RecordedQuantity.ALVEOLAR: alveolar,
+                RecordedQuantity.MIXED_VENOUS: venous,
+                RecordedQuantity.VESSEL_RICH: vessel_rich,
+                RecordedQuantity.MUSCLE: muscle,
+                RecordedQuantity.FAT: fat,
+            }
+        },
     )
+
+
+def _recorded(
+    sample: SimulationHistorySample, quantity: RecordedQuantity, substance_id: str = _DEFAULT_AGENT
+) -> float:
+    """One compartment's recorded value, addressed the way the chart addresses it."""
+
+    return sample.substances[substance_id][quantity]
 
 
 def _snapshot(
@@ -259,7 +318,7 @@ def _snapshot(
     """
 
     if history is None:
-        history = (_sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),)
+        history = (_sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id=agent_id),)
 
     if agent_mac_percent is None:
         agent_mac_percent = load_agent_parameters(agent_id).mac_percent
@@ -268,6 +327,12 @@ def _snapshot(
         agent_mac_awake = load_agent_parameters(agent_id).mac_awake
 
     latest = history[-1]
+    # Read under the agent this snapshot names, so a fixture cannot pair one
+    # agent's readouts with another agent's recorded run - which is the
+    # pairing failure the readouts and the chart both have to be proof
+    # against, and would be a fixture proving the opposite of what it looks
+    # like.
+    compartments = latest.substances[agent_id]
 
     return SimulationSnapshot(
         is_running=is_running,
@@ -282,12 +347,12 @@ def _snapshot(
         delivered_concentration_fraction=0.08,
         alveolar_ventilation_l_min=4.0,
         cardiac_output_l_min=5.0,
-        circuit_concentration_fraction=latest.circuit_concentration_fraction,
-        alveolar_concentration_fraction=latest.alveolar_concentration_fraction,
-        mixed_venous_concentration_fraction=latest.mixed_venous_concentration_fraction,
-        vessel_rich_partial_pressure_fraction=latest.vessel_rich_partial_pressure_fraction,
-        muscle_partial_pressure_fraction=latest.muscle_partial_pressure_fraction,
-        fat_partial_pressure_fraction=latest.fat_partial_pressure_fraction,
+        circuit_concentration_fraction=compartments[RecordedQuantity.CIRCUIT],
+        alveolar_concentration_fraction=compartments[RecordedQuantity.ALVEOLAR],
+        mixed_venous_concentration_fraction=compartments[RecordedQuantity.MIXED_VENOUS],
+        vessel_rich_partial_pressure_fraction=compartments[RecordedQuantity.VESSEL_RICH],
+        muscle_partial_pressure_fraction=compartments[RecordedQuantity.MUSCLE],
+        fat_partial_pressure_fraction=compartments[RecordedQuantity.FAT],
         delivered_agent_l=0.012345,
         exhausted_agent_l=0.002345,
         stored_agent_l=0.01,
@@ -758,19 +823,19 @@ def test_refresh_view_populates_chart_series_from_history() -> None:
     )
     view, _ = _build_view(history=history)
 
-    for series, attribute in (
-        (view._circuit_series, "circuit_concentration_fraction"),
-        (view._alveolar_series, "alveolar_concentration_fraction"),
-        (view._mixed_venous_series, "mixed_venous_concentration_fraction"),
-        (view._vessel_rich_series, "vessel_rich_partial_pressure_fraction"),
-        (view._muscle_series, "muscle_partial_pressure_fraction"),
-        (view._fat_series, "fat_partial_pressure_fraction"),
+    for series, quantity in (
+        (view._circuit_series, RecordedQuantity.CIRCUIT),
+        (view._alveolar_series, RecordedQuantity.ALVEOLAR),
+        (view._mixed_venous_series, RecordedQuantity.MIXED_VENOUS),
+        (view._vessel_rich_series, RecordedQuantity.VESSEL_RICH),
+        (view._muscle_series, RecordedQuantity.MUSCLE),
+        (view._fat_series, RecordedQuantity.FAT),
     ):
         assert len(series.points) == len(history)
 
         for point, sample in zip(series.points, history, strict=True):
             assert point.x == pytest.approx(sample.elapsed_s)
-            assert point.y == pytest.approx(getattr(sample, attribute) * 100.0)
+            assert point.y == pytest.approx(_recorded(sample, quantity) * 100.0)
 
 
 def test_refresh_view_reports_valid_agent_accounting() -> None:
@@ -905,10 +970,8 @@ def test_switching_agent_repaints_the_header_badge_and_the_dropdown() -> None:
     controller = _fake_controller(agent_id="sevoflurane", agent_display_name="Sevoflurane")
     view = SimulationView(page=_FakePage(), controller=controller)
 
-    controller.snapshot_value = _snapshot(
-        agent_id="desflurane",
-        agent_display_name="Desflurane",
-        max_delivered_concentration_percent=18.0,
+    controller.switch_agent(
+        "desflurane", agent_display_name="Desflurane", max_delivered_concentration_percent=18.0
     )
     view._refresh_view()
 
@@ -1392,7 +1455,9 @@ def test_change_handlers_ignore_a_none_value(handler_name: str) -> None:
     assert page.update_calls == 0
 
 
-def _run_history(sample_count: int) -> tuple[SimulationHistorySample, ...]:
+def _run_history(
+    sample_count: int, substance_id: str = _DEFAULT_AGENT
+) -> tuple[SimulationHistorySample, ...]:
     """A run of `sample_count` samples at the real 0.1 s simulation step."""
 
     return tuple(
@@ -1404,6 +1469,7 @@ def _run_history(sample_count: int) -> tuple[SimulationHistorySample, ...]:
             0.05 * (1.0 - 0.5**index),
             0.04 * (1.0 - 0.5**index),
             0.03 * (1.0 - 0.5**index),
+            substance_id=substance_id,
         )
         for index in range(sample_count)
     )
@@ -1529,19 +1595,19 @@ def test_chart_right_edge_matches_the_numeric_readout() -> None:
     latest = history[-1]
     view, _ = _build_view(history=history)
 
-    for series, value in (
-        (view._circuit_series, latest.circuit_concentration_fraction),
-        (view._alveolar_series, latest.alveolar_concentration_fraction),
-        (view._mixed_venous_series, latest.mixed_venous_concentration_fraction),
-        (view._vessel_rich_series, latest.vessel_rich_partial_pressure_fraction),
-        (view._muscle_series, latest.muscle_partial_pressure_fraction),
-        (view._fat_series, latest.fat_partial_pressure_fraction),
+    for series, quantity in (
+        (view._circuit_series, RecordedQuantity.CIRCUIT),
+        (view._alveolar_series, RecordedQuantity.ALVEOLAR),
+        (view._mixed_venous_series, RecordedQuantity.MIXED_VENOUS),
+        (view._vessel_rich_series, RecordedQuantity.VESSEL_RICH),
+        (view._muscle_series, RecordedQuantity.MUSCLE),
+        (view._fat_series, RecordedQuantity.FAT),
     ):
         assert series.points[-1].x == pytest.approx(latest.elapsed_s)
-        assert series.points[-1].y == pytest.approx(value * 100.0)
+        assert series.points[-1].y == pytest.approx(_recorded(latest, quantity) * 100.0)
 
     assert view._circuit_concentration_text.value == format_percent(
-        latest.circuit_concentration_fraction
+        _recorded(latest, RecordedQuantity.CIRCUIT)
     )
 
 
@@ -1553,15 +1619,15 @@ def test_chart_traces_stay_bound_to_their_own_compartment() -> None:
 
     # Distinct constant multiples in _run_history make a swapped pairing show
     # up as a trace whose values belong to another compartment.
-    for series, attribute in (
-        (view._circuit_series, "circuit_concentration_fraction"),
-        (view._alveolar_series, "alveolar_concentration_fraction"),
-        (view._mixed_venous_series, "mixed_venous_concentration_fraction"),
-        (view._vessel_rich_series, "vessel_rich_partial_pressure_fraction"),
-        (view._muscle_series, "muscle_partial_pressure_fraction"),
-        (view._fat_series, "fat_partial_pressure_fraction"),
+    for series, quantity in (
+        (view._circuit_series, RecordedQuantity.CIRCUIT),
+        (view._alveolar_series, RecordedQuantity.ALVEOLAR),
+        (view._mixed_venous_series, RecordedQuantity.MIXED_VENOUS),
+        (view._vessel_rich_series, RecordedQuantity.VESSEL_RICH),
+        (view._muscle_series, RecordedQuantity.MUSCLE),
+        (view._fat_series, RecordedQuantity.FAT),
     ):
-        by_time = {sample.elapsed_s: getattr(sample, attribute) for sample in history}
+        by_time = {sample.elapsed_s: _recorded(sample, quantity) for sample in history}
 
         for point in series.points:
             assert point.y == pytest.approx(by_time[point.x] * 100.0)
@@ -1628,8 +1694,8 @@ def test_a_trace_exactly_at_the_ceiling_is_not_reported_off_scale() -> None:
     """
 
     at_ceiling = (
-        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-        _sample(1.0, 0.036, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="isoflurane"),
+        _sample(1.0, 0.036, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="isoflurane"),
     )
     view, _ = _build_view(
         agent_id="isoflurane", agent_display_name="Isoflurane", history=at_ceiling
@@ -1640,8 +1706,8 @@ def test_a_trace_exactly_at_the_ceiling_is_not_reported_off_scale() -> None:
     # ...and the tolerance is not so wide that it swallows a real excursion:
     # 3.62% clears the ceiling by more than the readouts can resolve.
     above_ceiling = (
-        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-        _sample(1.0, 0.0362, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="isoflurane"),
+        _sample(1.0, 0.0362, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="isoflurane"),
     )
     view, _ = _build_view(
         agent_id="isoflurane", agent_display_name="Isoflurane", history=above_ceiling
@@ -1706,14 +1772,14 @@ def test_chart_traces_stay_bound_to_their_own_compartment_when_some_are_hidden()
     for hidden in (RecordedQuantity.CIRCUIT, RecordedQuantity.MUSCLE):
         _set_trace_shown(view, hidden, False)
 
-    for quantity, attribute in (
-        (RecordedQuantity.ALVEOLAR, "alveolar_concentration_fraction"),
-        (RecordedQuantity.MIXED_VENOUS, "mixed_venous_concentration_fraction"),
-        (RecordedQuantity.VESSEL_RICH, "vessel_rich_partial_pressure_fraction"),
-        (RecordedQuantity.FAT, "fat_partial_pressure_fraction"),
+    for quantity in (
+        RecordedQuantity.ALVEOLAR,
+        RecordedQuantity.MIXED_VENOUS,
+        RecordedQuantity.VESSEL_RICH,
+        RecordedQuantity.FAT,
     ):
         series = view._trace(quantity).series
-        by_time = {sample.elapsed_s: getattr(sample, attribute) for sample in history}
+        by_time = {sample.elapsed_s: _recorded(sample, quantity) for sample in history}
 
         assert series.points
 
@@ -1722,8 +1788,8 @@ def test_chart_traces_stay_bound_to_their_own_compartment_when_some_are_hidden()
 
     # The pairing itself is unchanged: what a trace draws does not depend on
     # whether the reader is currently looking at it.
-    assert len(view._plotted_series) == len(view._compartment_traces)
-    assert len(view._visible_plotted_series) == 4
+    assert len(view._plotted_series(_DEFAULT_AGENT)) == len(view._compartment_traces)
+    assert len(view._visible_plotted_series(_DEFAULT_AGENT)) == 4
 
 
 def test_a_hidden_trace_is_not_drawn_rather_than_drawn_empty() -> None:
@@ -1744,7 +1810,7 @@ def test_a_hidden_trace_is_not_drawn_rather_than_drawn_empty() -> None:
     _set_trace_shown(view, RecordedQuantity.FAT, False)
 
     assert fat.series not in view._concentration_chart.data_series
-    assert fat.plotted not in view._visible_plotted_series
+    assert fat.plotted(_DEFAULT_AGENT) not in view._visible_plotted_series(_DEFAULT_AGENT)
 
     # Nothing else moved: the other five traces, both references and every
     # control mark are still on the chart.
@@ -1774,7 +1840,7 @@ def test_the_drawing_order_survives_a_trace_being_hidden() -> None:
     _set_trace_shown(view, RecordedQuantity.CIRCUIT, False)
 
     order = view._concentration_chart.data_series
-    drawn = [series for series, _ in view._visible_plotted_series]
+    drawn = [series for series, _ in view._visible_plotted_series(_DEFAULT_AGENT)]
 
     assert len(drawn) == 5
 
@@ -1822,7 +1888,9 @@ def test_a_hidden_trace_stops_being_redrawn_and_is_current_again_when_shown() ->
 
     assert fat.series in view._concentration_chart.data_series
     assert fat.series.points[-1].x == pytest.approx(later[-1].elapsed_s)
-    assert fat.series.points[-1].y == pytest.approx(later[-1].fat_partial_pressure_fraction * 100.0)
+    assert fat.series.points[-1].y == pytest.approx(
+        _recorded(later[-1], RecordedQuantity.FAT) * 100.0
+    )
 
 
 def test_the_legend_says_exactly_which_traces_are_drawn() -> None:
@@ -1867,7 +1935,7 @@ def test_the_chart_says_so_when_no_compartment_is_drawn() -> None:
     for trace in view._compartment_traces:
         _set_trace_shown(view, trace.quantity, False)
 
-    assert view._visible_plotted_series == ()
+    assert view._visible_plotted_series(_DEFAULT_AGENT) == ()
     assert view._hidden_traces_text.visible is True
 
     _set_trace_shown(view, RecordedQuantity.ALVEOLAR, True)
@@ -1901,12 +1969,12 @@ def test_hiding_a_trace_changes_only_what_is_drawn() -> None:
 
     latest = history[-1]
 
-    for text, value in (
-        (view._circuit_concentration_text, latest.circuit_concentration_fraction),
-        (view._muscle_concentration_text, latest.muscle_partial_pressure_fraction),
-        (view._fat_concentration_text, latest.fat_partial_pressure_fraction),
+    for text, quantity in (
+        (view._circuit_concentration_text, RecordedQuantity.CIRCUIT),
+        (view._muscle_concentration_text, RecordedQuantity.MUSCLE),
+        (view._fat_concentration_text, RecordedQuantity.FAT),
     ):
-        assert text.value == format_percent(value)
+        assert text.value == format_percent(_recorded(latest, quantity))
 
 
 def test_every_compartment_has_exactly_one_trace() -> None:
@@ -3194,11 +3262,11 @@ def test_each_mac_readout_uses_its_own_agent_divisor() -> None:
 
     assert view._alveolar_mac_text.value == "3.00 ×MAC"
 
-    controller.snapshot_value = _snapshot(
-        agent_id="desflurane",
+    controller.switch_agent(
+        "desflurane",
         agent_display_name="Desflurane",
         max_delivered_concentration_percent=18.0,
-        history=(_sample(60.0, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06),),
+        history=(_sample(60.0, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, substance_id="desflurane"),),
     )
     view._refresh_view()
 
@@ -3221,10 +3289,8 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
 
     assert view._mac_reference_text.value == format_mac_reference("Sevoflurane", 2.0)
 
-    controller.snapshot_value = _snapshot(
-        agent_id="desflurane",
-        agent_display_name="Desflurane",
-        max_delivered_concentration_percent=18.0,
+    controller.switch_agent(
+        "desflurane", agent_display_name="Desflurane", max_delivered_concentration_percent=18.0
     )
     view._refresh_view()
 
@@ -3306,10 +3372,8 @@ def test_the_mac_axis_is_rebuilt_only_when_the_agent_or_the_range_moves() -> Non
 
     assert view._mac_axis.labels is before, "the axis was rebuilt for an unchanged frame"
 
-    controller.snapshot_value = _snapshot(
-        agent_id="desflurane",
-        agent_display_name="Desflurane",
-        max_delivered_concentration_percent=18.0,
+    controller.switch_agent(
+        "desflurane", agent_display_name="Desflurane", max_delivered_concentration_percent=18.0
     )
     view._refresh_view()
 
@@ -3500,7 +3564,7 @@ def test_the_clinical_references_follow_the_agent_when_it_changes() -> None:
     assert view._one_mac_line_series.points[0].y == pytest.approx(sevoflurane.mac_percent)
 
     desflurane = load_agent_parameters("desflurane")
-    controller.snapshot_value = _snapshot(agent_id="desflurane")
+    controller.switch_agent("desflurane", agent_display_name="Desflurane")
     view._refresh_view()
 
     assert view._one_mac_line_series.points[0].y == pytest.approx(desflurane.mac_percent)
@@ -3543,7 +3607,7 @@ def test_the_clinical_references_are_not_compartment_traces() -> None:
 
     view, _ = _build_view()
 
-    plotted = [series for series, _ in view._plotted_series]
+    plotted = [series for series, _ in view._plotted_series(_DEFAULT_AGENT)]
     references = (
         view._mac_awake_band_upper_edge,
         view._mac_awake_band_lower_edge,
@@ -3693,7 +3757,7 @@ def test_a_control_mark_spans_the_running_agents_plotted_range() -> None:
 
     view, _ = _build_view(
         agent_id="desflurane",
-        history=_run_history(600),
+        history=_run_history(600, substance_id="desflurane"),
         control_timeline=(
             _control_change(12.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=1),
         ),
@@ -3750,7 +3814,7 @@ def test_control_marks_are_not_compartment_traces() -> None:
 
     view, _ = _build_view()
 
-    plotted = [series for series, _ in view._plotted_series]
+    plotted = [series for series, _ in view._plotted_series(_DEFAULT_AGENT)]
     order = view._concentration_chart.data_series
 
     for mark in view._control_mark_series:
@@ -3943,7 +4007,7 @@ def test_the_wash_in_trace_draws_the_ratio_and_not_a_percent() -> None:
 
     latest = history[-1]
     expected = wash_in_ratio(
-        latest.alveolar_concentration_fraction, latest.circuit_concentration_fraction
+        _recorded(latest, RecordedQuantity.ALVEOLAR), _recorded(latest, RecordedQuantity.CIRCUIT)
     )
 
     assert expected is not None

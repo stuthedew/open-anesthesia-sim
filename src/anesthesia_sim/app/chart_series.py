@@ -31,7 +31,7 @@ from typing import Final
 
 import flet_charts as fch
 
-from anesthesia_sim.app.controller import HistoryWindow, RecordedQuantity
+from anesthesia_sim.app.controller import HistoryWindow, RecordedQuantity, RecordedSeries
 from anesthesia_sim.app.wash_in import is_wash_in
 
 __all__ = [
@@ -74,8 +74,13 @@ __all__ = [
 # down, and `tests/integration/test_chart_patching.py` is what keeps it there.
 CHART_COLUMN_BUDGET_PER_SERIES: Final = 150
 
-#: One chart trace bound to the quantity it draws.
-type PlottedSeries = tuple[fch.LineChartData, RecordedQuantity]
+#: One chart trace bound to the recorded series it draws.
+#:
+#: The series names a substance as well as a compartment (`RecordedSeries`),
+#: so the pairing this table exists to make auditable covers both: a line
+#: carrying another substance's values is the same class of misstatement as
+#: one carrying another compartment's.
+type PlottedSeries = tuple[fch.LineChartData, RecordedSeries]
 
 
 def build_series(
@@ -112,7 +117,7 @@ def build_reference_line(
     separate constructor rather than `build_series` with two points. A trace
     draws recorded samples; a reference draws a published constant at a
     height the chart's own axis gives meaning to, and it names no
-    `RecordedQuantity` because there is no sample to read. Keeping the two apart
+    `RecordedSeries` because there is no sample to read. Keeping the two apart
     is what stops a reference being added to the `PlottedSeries` table, where
     every entry is checked against the compartment it draws.
 
@@ -220,7 +225,7 @@ def build_control_mark(
     recorded samples; a reference draws a published constant; a control
     mark draws neither - it says only that the run's inputs changed here,
     which is an event on the time axis rather than a value on the
-    concentration one. It names no `RecordedQuantity`, so it can never join
+    concentration one. It names no `RecordedSeries`, so it can never join
     the `PlottedSeries` table, and its two points are moved rather than
     rebuilt for the reason `redraw_series` gives.
 
@@ -331,17 +336,17 @@ def redraw_visible_window(plotted: Sequence[PlottedSeries], window: HistoryWindo
 
     Args:
         plotted: Every trace to draw this frame, each paired with the
-            quantity it draws. A trace omitted is left holding its
+            recorded series it draws. A trace omitted is left holding its
             previous points.
         window: The part of the run inside the plotted time range.
     """
 
-    for series, quantity in plotted:
-        redraw_series(series, window, quantity)
+    for series, recorded in plotted:
+        redraw_series(series, window, recorded)
 
 
 def redraw_series(
-    series: fch.LineChartData, window: HistoryWindow, quantity: RecordedQuantity
+    series: fch.LineChartData, window: HistoryWindow, recorded: RecordedSeries
 ) -> None:
     """Set one trace to its visible samples, bounded and in percent.
 
@@ -357,11 +362,13 @@ def redraw_series(
     Args:
         series: Trace to redraw. Its existing points are mutated.
         window: The part of the run inside the plotted time range.
-        quantity: Which recorded quantity this trace draws.
+        recorded: Which substance's quantity this trace draws. Raises
+            through `RunHistory.aggregates` if the run does not record it,
+            rather than drawing whichever substance the run does hold.
     """
 
     run = window.run
-    aggregates = run.aggregates(quantity)
+    aggregates = run.aggregates(recorded)
     # Raises before anything is written, so a trace is never left holding
     # half of one frame and half of the next.
     indices = aggregates.select_indices(
@@ -445,7 +452,10 @@ def park_series(series: fch.LineChartData) -> None:
 
 
 def redraw_wash_in_segments(
-    segment_series: Sequence[fch.LineChartData], window: HistoryWindow, extension_ceiling: float
+    segment_series: Sequence[fch.LineChartData],
+    window: HistoryWindow,
+    substance_id: str,
+    extension_ceiling: float,
 ) -> int:
     """Draw F_A/F_I over the visible window, broken where it is not defined.
 
@@ -504,6 +514,9 @@ def redraw_wash_in_segments(
             Already cut to the axis by the controller (`PL-0VM7`), so
             nothing outside the plotted range reaches here to be sliced
             off.
+        substance_id: Whose F_A/F_I. The quotient is formed from one
+            substance's own two fractions, so it is that substance's
+            trace and its own stretches that are drawn here.
         extension_ceiling: Highest ratio a crossing sample may carry and
             still be drawn, in the chart's own dimensionless unit. The
             caller owns it because it is a property of the axis rather
@@ -517,8 +530,8 @@ def redraw_wash_in_segments(
     """
 
     run = window.run
-    ratios = run.aggregates(RecordedQuantity.WASH_IN_RATIO)
-    segments = _wash_in_segments(window, extension_ceiling)
+    ratios = run.aggregates(RecordedSeries(substance_id, RecordedQuantity.WASH_IN_RATIO))
+    segments = _wash_in_segments(window, substance_id, extension_ceiling)
     drawn = segments[-len(segment_series) :] if segment_series else []
 
     for series, (start, stop) in zip(segment_series, drawn, strict=False):
@@ -572,7 +585,9 @@ def _mark_wash_in_terminus(series: fch.LineChartData, ends_above_equilibrium: bo
         series.points[-1].point = WASH_IN_TERMINUS_MARKER
 
 
-def _wash_in_segments(window: HistoryWindow, extension_ceiling: float) -> list[tuple[int, int]]:
+def _wash_in_segments(
+    window: HistoryWindow, substance_id: str, extension_ceiling: float
+) -> list[tuple[int, int]]:
     """The stretches the chart draws, as absolute ranges within the run.
 
     A sample *anchors* a stretch when its ratio is inside the wash-in
@@ -590,6 +605,7 @@ def _wash_in_segments(window: HistoryWindow, extension_ceiling: float) -> list[t
 
     Args:
         window: The part of the run inside the plotted time range.
+        substance_id: Whose quotient, and so whose stretches.
         extension_ceiling: Highest ratio a crossing sample may carry and
             still extend a stretch.
 
@@ -598,10 +614,12 @@ def _wash_in_segments(window: HistoryWindow, extension_ceiling: float) -> list[t
         the window and extended within it.
     """
 
-    ratios = window.run.aggregates(RecordedQuantity.WASH_IN_RATIO)
+    ratios = window.run.aggregates(RecordedSeries(substance_id, RecordedQuantity.WASH_IN_RATIO))
     segments: list[tuple[int, int]] = []
 
-    for start, stop in window.run.wash_in_stretches(window.index_offset, window.stop_index):
+    for start, stop in window.run.wash_in_stretches(
+        substance_id, window.index_offset, window.stop_index
+    ):
         if start > window.index_offset and _extends_a_stretch(
             ratios.value(start - 1), extension_ceiling
         ):
