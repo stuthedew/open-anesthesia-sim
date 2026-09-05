@@ -3,11 +3,12 @@ id: PL-JK0M
 title: Route or justify the 548 resident instruction lines every session loads before reading anything
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost, docs
 feature: worker-instructions
-touches: CLAUDE.md, .claude/rules
+touches: CLAUDE.md, .claude/rules, .claude/hooks, .claude/skills/docket, .claude/settings.json, docs/resident-instructions.md, tests/unit/test_no_prune_guard.py
 added: 2026-09-05
+closed: 2026-09-05
 not-delegable: the judgment is whether each rule still fires at the moment a session needs it, which no command decides. `check_resident_instructions` reports the resident total and refuses a threshold on purpose, because a limit is met by deleting a rule to reach a number - the one outcome this item must not produce. Editing the files every session loads is also the last diff that should land unread
 ---
 
@@ -76,3 +77,55 @@ refusal is a considered decision recorded in the code, not an oversight.
 **Done when.** Every resident rule has been routed to the cheapest carrier that
 still fires it, or carries a recorded reason it must stay; no rule has been
 lost; and `/context` confirms what loads.
+
+**Worked.** 548 lines to 541. Two rules routed out and every other resident
+block tested and kept, with the argument written into
+`docs/resident-instructions.md` rather than into the files it is about - a
+ledger costs nothing at launch, and putting the reasoning in the resident text
+would have spent most of what the routing recovered.
+
+The routing:
+
+- The `git fetch --prune` prohibition became `.claude/hooks/no-prune-guard.sh`,
+  a `PreToolUse` deny on `Bash`. It refuses the four shapes that delete
+  remote-tracking refs, including `git config remote.*.prune`, which is the
+  same deletion deferred. Two false-positive classes shaped it: the flag quoted
+  inside an argument, and a heredoc body, because this repository writes prose
+  about pruning through heredocs constantly and a guard that blocks its own
+  documentation is worse than the prose was. It fails open on every error path.
+  24 tests in `tests/unit/test_no_prune_guard.py`, one of which asserts the
+  hook is actually wired into `.claude/settings.json` - an unwired hook is
+  prose with extra steps and nothing else would say so.
+- The doc-sweep *procedure* went to the `docket` skill's close-out, which
+  already carried it; the *trigger* stayed resident in one sentence with its
+  safety reason attached. Dropping the reason would have saved three more lines
+  and turned the sweep back into tidiness.
+
+The judgment calls a reviewer would want to see:
+
+- **`.claude/rules/instruction-writing.md` stays resident in full**, and now
+  says so at the top. Verified against the current documentation rather than
+  from memory: a path-scoped rule "triggers when Claude reads files matching
+  the pattern", and no read precedes writing a reply. A skill would substitute
+  a load failure for the same recognition act.
+- **The architecture invariants were not path-scoped to `src/**`**, although
+  they would fire in practice. "In practice" is the objection: they are
+  safety-architecture invariants and the saving was eight lines.
+- **The precedence paragraph duplicating the rules file's own PRECEDENCE block
+  was kept.** About ten recoverable lines, and the largest single reduction
+  still available. Refused because a precedence rule stated only in the
+  subordinate document is the weaker arrangement; recorded in the ledger as a
+  one-edit reversal if the project owner wants the lines.
+- **No ledger-consistency check was built**, though the row-per-block question
+  is decidable. It would key on bold-lead prose, which gets reworded often
+  enough that it would fire without changing a decision.
+
+`tools/doc_check.py` was left alone deliberately: `PL-QV1F` is rewriting
+`check_resident_instructions` on `claude/resident-instruction-metric-0m5vrg`
+(#348) to count characters, and a one-sentence edit to the same advisory would
+have conflicted with a 123-line rewrite for no gain. `PL-X925` carries the
+pointer to add once that lands.
+
+`/context` was not available to this session; `python3 tools/doc_check.py
+check` is the same measurement and reports 541 lines over the two files, which
+is the whole resident set.
