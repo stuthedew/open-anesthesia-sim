@@ -3,37 +3,35 @@ id: PL-D551
 title: The floor job bills a whole minute for eight seconds; its steps could run in the checks job ahead of the uv install and keep the bare-interpreter contract
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: infra
 feature: ci-cost
 touches: .github/workflows/quality.yml
 added: 2026-09-05
+closed: 2026-09-05
+pr: 361
+verify: ! grep -q '^  floor:' .github/workflows/quality.yml && test "$(grep -n 'setup-python@' .github/workflows/quality.yml | cut -d: -f1)" -lt "$(grep -n 'setup-uv@' .github/workflows/quality.yml | cut -d: -f1)"
 ---
-**Problem.** `quality.yml`'s `floor` job is billed a whole Actions minute
-for eight seconds of work: a checkout, a `setup-python`, and five
-standard-library commands.
 
-**Why it matters.** The same recurring per-run cost as `PL-9HDH`, and the two
-have to be answered together — each proposes moving work into a job the other
-proposes moving.
+**Problem.** The floor job bills a whole minute for eight seconds; its steps could run in the checks job ahead of the uv install and keep the bare-interpreter contract
 
-**Where.** `.github/workflows/quality.yml`, the `floor` and `checks` jobs.
+**Why it matters.**
 
-**Decision needed.** What the stated approach costs: running `floor`'s steps
-inside `checks` ahead of the `uv` install keeps the *bare-interpreter* half of
-the contract — no virtualenv in front of them — and loses the other half.
-`floor` pins `python-version: '3.11'` deliberately, and its own comment says
-why: left unset the action reads `.python-version`, "the project interpreter,
-the one version this job exists not to test". `checks` inherits exactly that.
-So the merged job would prove the tools run under the project interpreter,
-which needed no proving, and stop proving they run under the declared floor,
-which is the guarantee `tests/unit/test_tools_portability.py` is built around.
+**Where.**
 
-Keeping both means two `setup-python` steps in one job — 3.11 first, the five
-commands, then the project version — which works and is less legible than two
-jobs. That legibility-against-a-minute trade is the decision, and it is the
-same decision `PL-9HDH` poses from the other end.
+**Done when.**
 
-**Done when.** The project owner has chosen between keeping `floor` separate
-and merging it behind a two-interpreter step sequence, and the choice with its
-reasoning is recorded here.
+**Done.** The `floor` job's steps now run inside `checks`, immediately after the
+checkout and **before** `astral-sh/setup-uv`. Order is the whole design: the
+separate job only *assumed* isolation from a parallel one, while here no
+virtualenv and no `UV_*` variable exists yet to leak from, so the no-virtualenv
+claim is stronger than it was rather than weaker. It also fails fast - a broken
+doc reference costs one billable minute instead of five, because the suite never
+starts.
+
+Three jobs per pull-request push become two, which is a slot back against the
+account-wide 20-concurrent-job cap. That cap, not minutes, is what throttles
+several sessions running at once.
+
+`PL-9HDH` proposed folding the pull-request title check in here too. It is
+dropped rather than done; the reason is on that item.
