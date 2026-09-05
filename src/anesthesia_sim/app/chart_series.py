@@ -168,26 +168,46 @@ def redraw_reference_line(
 
 
 def redraw_reference_band(
-    series: fch.LineChartData, start_x: float, end_x: float, lower_y: float, upper_y: float
+    upper_edge: fch.LineChartData,
+    lower_edge: fch.LineChartData,
+    start_x: float,
+    end_x: float,
+    lower_y: float,
+    upper_y: float,
 ) -> None:
     """Span one reference *band* across the visible window between two heights.
 
-    The band is one series drawn at its upper edge with the area beneath it
-    filled down to `lower_y`: `below_line_cutoff_y` is what makes the fill a
-    bounded band rather than everything under a line. The stroke stays on the
-    upper edge, so the fill's own boundary is what marks the lower one.
+    The band is drawn as **two stroked edges** with a light fill between
+    them: the upper series carries the fill, cut off at `lower_y` by
+    `below_line_cutoff_y` so it is a bounded band rather than everything
+    under a line, and the lower series strokes the boundary that cut-off
+    makes. Both strokes sit on the published boundaries, so the drawn extent
+    is the data extent exactly - a band drawn thicker than its two edges
+    would assert a wider population spread than the literature supports,
+    which is why the fix for a band too thin to read is a second stroke and
+    never a minimum height (`PL-90Y6`).
+
+    Stroking only the upper edge is what made the mark read as a line. A
+    stroked top over an unstroked fill is the geometry of a line with a
+    shadow under it, whatever the fill's extent; two strokes with a gap
+    between them is the geometry of an interval, and stays one at any
+    thickness the axis leaves.
 
     Args:
-        series: Band to move. Its two points are mutated, and its fill
-            cutoff is set to the lower edge.
+        upper_edge: Series drawn at the band's upper boundary, carrying the
+            fill. Its two points are mutated, and its fill cutoff is set to
+            the lower boundary.
+        lower_edge: Series drawn at the band's lower boundary. Its two
+            points are mutated.
         start_x: Left edge of the visible window, in simulated seconds.
         end_x: Right edge of the visible window, in simulated seconds.
         lower_y: Lower edge of the band, in the chart's percent unit.
         upper_y: Upper edge of the band, in the chart's percent unit.
     """
 
-    redraw_reference_line(series, start_x, end_x, upper_y)
-    series.below_line_cutoff_y = lower_y
+    redraw_reference_line(upper_edge, start_x, end_x, upper_y)
+    upper_edge.below_line_cutoff_y = lower_y
+    redraw_reference_line(lower_edge, start_x, end_x, lower_y)
 
 
 def build_control_mark(
