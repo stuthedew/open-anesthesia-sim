@@ -28,8 +28,14 @@ sequence that produced it was small.
 
 ## Lifting it
 
-`PL-RM83` (decide what `README.md` is for and what belongs in it) is the
-owner's decision that unblocks this. `PL-N092` (rewrite README as a
-human-readable introduction) is the rewrite itself and is blocked on it. When
-the owner lifts the freeze, delete this file in the same commit as the first
-README change — a rule stating a hold that is over is worse than no rule.
+`PL-RM83` (decide what `README.md` is for and what belongs in it) is
+**answered** — the audience, the `docs/MODEL.md` boundary and the status
+treatment were settled on 2026-09-05. **That did not lift the freeze.** The
+project owner deferred the rewrite the same day to `PL-XYRN` (decide when the
+repository goes public, and run the human-facing pass immediately before it),
+so `PL-N092` (rewrite README as a human-readable introduction) now waits on
+timing rather than on anything undecided.
+
+The hold therefore still stands, and an answered decision is not permission to
+start. Delete this file in the same commit as the first README change — a rule
+stating a hold that is over is worse than no rule.

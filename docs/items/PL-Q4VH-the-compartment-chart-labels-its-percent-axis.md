@@ -33,3 +33,14 @@ concentration off the nearest rule is taking it off a scale nobody stated.
 
 **Done when.** The compartment chart's percent axis is labelled at exactly the
 values it rules, and a test holds the two together so they cannot drift.
+
+**Rendered evidence, 2026-09-05 (while landing `PL-SSBP`).** Driving the real
+app in a browser shows a second symptom of the same root cause: leaving the
+axis to label itself also leaves `label_size` at its 22 px default, which is
+narrower than the labels the axis chooses. Every half-percent label wraps onto
+two lines, so the axis reads `6`, `5.`, `5`, `5`, `4.`, `5` down its length
+rather than `6`, `5.5`, `5`, `4.5`. It is not a regression - the same wrapping
+is on `origin/main` - and the fix is the one this item already names: explicit
+`labels`, `label_spacing` equal to the gridline interval, and a `label_size`
+wide enough for what those labels say. Screenshots are not kept; re-run the
+app to see it.
