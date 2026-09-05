@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, session-cost
 feature: dev-tooling
+milestone: v0.4.0
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
 closed: 2026-09-05

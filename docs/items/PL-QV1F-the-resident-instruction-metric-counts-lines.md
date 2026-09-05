@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: worker-instructions
+milestone: v0.4.0
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, CLAUDE.md
 added: 2026-09-05
 closed: 2026-09-05

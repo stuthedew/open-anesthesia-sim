@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, docs
 feature: core-guard-coverage
+milestone: v0.4.0
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, docs/ARCHITECTURE.md, docs/MODEL.md, README.md
 added: 2026-09-04
 closed: 2026-09-05

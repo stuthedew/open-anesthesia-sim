@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.4.0
 touches: docs/items/PL-W3DD-key-simulationhistorysample-by-substance-rather.md
 added: 2026-09-03
 closed: 2026-09-05

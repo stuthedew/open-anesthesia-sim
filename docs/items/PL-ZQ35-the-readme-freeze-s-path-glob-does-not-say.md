@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: project-introduction
+milestone: v0.4.0
 touches: .claude/rules/readme-hold.md
 added: 2026-09-05
 closed: 2026-09-05

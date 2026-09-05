@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: worker-instructions
+milestone: v0.4.0
 touches: tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py, Makefile, .github/workflows/quality.yml, .claude/rules/apparatus-standard.md, .claude/rules/citing-sources.md, .claude/rules/core-domain.md, .claude/rules/ui-color.md
 added: 2026-09-05
 closed: 2026-09-05

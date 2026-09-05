@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: teachable-case
+milestone: v0.4.0
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_simulation_view.py, tests/unit/test_formatting.py, tests/integration/test_controller.py, docs/MODEL.md, README.md, tools/contrast_check.py
 added: 2026-08-25
 closed: 2026-09-05

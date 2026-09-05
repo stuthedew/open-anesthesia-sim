@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: teachable-case
+milestone: v0.4.0
 touches: docs/MODEL.md, README.md
 blocked-by: PL-VM40, PL-SN2C, PL-SSBP, PL-CC23, PL-DR1Z, PL-ZRSP, PL-R3KB, PL-W3DD
 added: 2026-08-25
