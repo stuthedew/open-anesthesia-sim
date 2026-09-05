@@ -1,8 +1,14 @@
 ---
 id: PL-KJ63
 title: doc_check reads any double-quoted phrase in a doc as a section citation, so quoting a measured figure hard-fails the check
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_quoted_measurement_before_above_is_not_a_citation' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `tools/doc_check.py`'s dangling-citation check treats a
@@ -29,6 +35,16 @@ is a prose change made to satisfy a checker.
 an item's `verify:` command as LaTeX and hard-fails), which is the same shape -
 a syntactic heuristic applied to text that is not making the claim the checker
 assumes. Worth deciding together.
+
+**Narrower than the title says, measured at triage 2026-09-05.**
+`CITATION_RE` (`tools/doc_check.py:246`) already restricts the reading to the
+two forms this repository writes - a phrase after `see` or `under`, and a phrase
+immediately before `above` or `below` - and its own comment says a bare quoted
+phrase is left alone. The observed failure was the second form:
+`docs/WORKING_NOTES.md:504` read the figure in quotes followed by `above`, and
+now reads it in backticks. So the defect is real and smaller than the title
+claims - a quoted *value* followed by a direction word, which is ordinary prose,
+is read as a citation - and the fix is that case, not every quoted phrase.
 
 **Where.** `tools/doc_check.py`, the citation check.
 

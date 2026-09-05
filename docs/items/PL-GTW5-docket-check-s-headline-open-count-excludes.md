@@ -1,17 +1,17 @@
 ---
 id: PL-GTW5
 title: docket check's headline open count excludes untriaged items, so 'N open, M untriaged' reads as M of N when it is actually N plus M
-status: untriaged
+priority: P3
+effort: S
+status: dropped
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-05
+closed: 2026-09-05
+reason: Duplicate of PL-4WQS (the docket summary and session digest label a count 'open' that excludes untriaged items), captured 2026-09-02 with the same diagnosis, the same two candidate wordings, and a verify command already written. Found again at triage 2026-09-05 by a session reading `bin/docket check`'s first line cold and reaching the same conclusion independently, which is evidence the line invites the wrong reading rather than being one reader's quibble. The only thing this item adds is the second measurement, and it is here rather than moved into PL-4WQS because that item's own 2026-09-02 figures already make the point: 466 item files, 297 closed, 169 triaged open beside 6 untriaged, and closing one untriaged item left the headline unchanged at 169. PL-4WQS carries the work
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_headline_separates_triaged_open_from_untriaged' subprojects/docket/tests/test_cli.py
 ---
-
-**Problem.** docket check's headline open count excludes untriaged items, so 'N open, M untriaged' reads as M of N when it is actually N plus M
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `bin/docket check`'s first line reads
 

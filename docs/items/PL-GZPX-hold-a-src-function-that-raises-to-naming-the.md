@@ -1,10 +1,13 @@
 ---
 id: PL-GZPX
 title: Hold a src/ function that raises to naming the failure in its docstring, as a doc_check rule, once the backlog it would fire on is clear
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+classes: infra, docs
 feature: documentation-standard
-blocked-by: PL-HXKC
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
+blocked-by: PL-HXKC
 added: 2026-09-05
 ---
 

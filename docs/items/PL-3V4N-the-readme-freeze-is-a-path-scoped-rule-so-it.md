@@ -1,10 +1,14 @@
 ---
 id: PL-3V4N
 title: The README freeze is a path-scoped rule, so it fires on reading README.md and cannot fire before a write that no read precedes
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: dev-tooling
-touches: .claude/rules/readme-hold.md, tools/doc_check.py
+touches: .claude/rules/readme-hold.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_readme_edit_fails_while_the_hold_file_exists' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `.claude/rules/readme-hold.md` carries `paths: ["README.md"]`.

@@ -1,10 +1,14 @@
 ---
 id: PL-QV1F
 title: The resident-instruction metric counts lines, but 21% of CLAUDE.md's text sits on 6% of its lines, so a 433-character cut inside one paragraph reported as unchanged
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: worker-instructions
-touches: tools/doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_cut_inside_an_unwrapped_paragraph_is_visible' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `measure_resident` in `tools/doc_check.py` reports
