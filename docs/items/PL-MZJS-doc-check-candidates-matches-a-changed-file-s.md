@@ -1,8 +1,10 @@
 ---
 id: PL-MZJS
 title: doc_check candidates matches a changed file's stem as a bare word, so render.py returns thirty lines of ordinary English
-status: untriaged
+status: dropped
 added: 2026-09-04
+closed: 2026-09-05
+reason: Duplicate of PL-B2NS (doc_check candidates matches ordinary prose): a changed file's stem is one of the terms PL-B2NS's fix has to decide about. Its render.py measurement - 37 lines reported, none about the module - is folded into PL-B2NS.
 ---
 
 **Problem.** `python3 tools/doc_check.py candidates --base <ref>` searches the

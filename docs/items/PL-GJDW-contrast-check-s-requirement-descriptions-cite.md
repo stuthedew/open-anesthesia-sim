@@ -1,17 +1,15 @@
 ---
 id: PL-GJDW
 title: contrast_check's requirement descriptions cite simulation_view line numbers, and all eight are wrong
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
+feature: dev-tooling
+touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-04
+verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_every_requirement_names_a_symbol_that_exists' tests/unit/test_contrast_check.py
 ---
-
-**Problem.** contrast_check's requirement descriptions cite simulation_view line numbers, and all eight are wrong
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** Each `Requirement` in `tools/contrast_check.py` carries a prose
 description naming where the colour pair is used, and several cite line
@@ -55,3 +53,21 @@ the named symbol is really where that colour matters - stays with the reviewer.
 
 **Done when.** No requirement description cites a line number; each names a
 symbol that exists; and `make check` fails when one does not.
+
+**Rechecked a day later, folded in from `PL-84XD` at triage 2026-09-05.**
+The same tuple was read line by line on 2026-09-05 and the count had grown
+rather than settled: nine entries cite `simulation_view.py:NNN` - `:208`,
+`:242-244`, `:320`, `:336`, `:346`, `:356`, `:406`, `:417`, `:619`, `:622`,
+`:653`, `:678`, `:682`, `:731` - and not one lands on what its entry claims.
+`:682` is cited as "the run-status word while running" and is the
+control-mark series list; `:406` is cited as the educational-use disclaimer
+and is a comment about agent render styles; `:731` is cited as an accounting
+status word and is a chart gridline colour.
+
+Three entries already cite by symbol - `_build_agent_accounting_panel`,
+`_off_scale_text`, `_build_new_case_dialog` - which is the form to convert
+the rest to, and the evidence that the form works. `PL-84XD` also proposed
+that `contrast_check.py` refuse a criterion matching `simulation_view.py:` followed
+by a digit outright, so the rotting form cannot come back; prefer that to a
+convention if it is a few lines, per `CLAUDE.md`'s rule on moving the
+decidable half out of a session's head.

@@ -1,8 +1,14 @@
 ---
 id: PL-RD3B
 title: app/controller.py now holds the run's storage as well as the UI-to-core boundary, and they are separable
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: refactor
+feature: teachable-case
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_history.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_run_history.py, docs/MODEL.md
 added: 2026-09-04
+verify: uv run pytest tests/unit/test_run_history.py && grep -q 'from anesthesia_sim.app.run_history import' tests/unit/test_run_history.py
 ---
 
 **Problem.** `PL-D9WD` added `RecordedQuantity`, `RunHistory` and a rewritten

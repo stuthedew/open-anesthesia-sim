@@ -1,8 +1,10 @@
 ---
 id: PL-84XD
 title: tools/contrast_check.py cites simulation_view.py line numbers that no longer point at what they claim
-status: untriaged
+status: dropped
 added: 2026-09-05
+closed: 2026-09-05
+reason: Duplicate of PL-GJDW (contrast_check's requirement descriptions cite simulation_view line numbers, and all eight are wrong): same REQUIREMENTS tuple, same rot, same fix. Its 2026-09-05 line-by-line recheck, the three entries already citing by symbol, and its proposal that contrast_check refuse a simulation_view.py:NNN criterion are folded into PL-GJDW.
 ---
 
 **Problem.** tools/contrast_check.py cites simulation_view.py line numbers that no longer point at what they claim
