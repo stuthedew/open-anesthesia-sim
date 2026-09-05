@@ -128,7 +128,11 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "statement of the new-case confirmation (`_build_new_case_dialog`), "
         "whose surface is set to PANEL explicitly rather than left to the "
         "Flet theme, so that these three text colours stand on a background "
-        "this table measures them against (PL-R3KB)",
+        "this table measures them against (PL-R3KB). Also the playback-rate "
+        "dropdown beside the transport controls, whose fill is set to PANEL "
+        "explicitly for the same reason - it names the rate the clock is "
+        "advancing at, which docs/MODEL.md requires displayed, so it is read "
+        "rather than merely operated (PL-SN2C)",
     ),
     Requirement(
         "MUTED",
@@ -136,7 +140,10 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the run-status word while paused, beside the transport controls "
-        "(simulation_view.py:187, :394, :684)",
+        "(simulation_view.py:187, :394, :684). Also the border of the "
+        "playback-rate dropdown drawn beside them, which is a user-interface "
+        "component and so needs only SC 1.4.11's 3:1 - met with room to "
+        "spare by the text minimum this pair already carries (PL-SN2C)",
     ),
     Requirement(
         "MUTED",
@@ -151,7 +158,9 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "large-text exception starts at, and it is the same MUTED colour on "
         "the same PANEL surface, so it adds no pair to this table (PL-8M05). "
         "Also the line of the new-case confirmation saying what carries over "
-        "into the new case (`_build_new_case_dialog`, PL-R3KB).",
+        "into the new case (`_build_new_case_dialog`, PL-R3KB), and the "
+        "playback rate drawn under the simulated-time readout, which shares "
+        "the surface and the size of the MAC multiples beside it (PL-SN2C).",
     ),
     Requirement(
         "ACCENT_TEXT",

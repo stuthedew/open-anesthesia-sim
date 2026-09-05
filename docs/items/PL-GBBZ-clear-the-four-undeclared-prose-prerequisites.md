@@ -1,7 +1,12 @@
 ---
 id: PL-GBBZ
 title: Clear the four undeclared prose prerequisites the new advisory names
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: planning
+feature: planning-cadence
+touches: docs/items/PL-88GQ-state-every-displayed-decimal-count-as-a.md, docs/items/PL-SSBP-add-the-chart-time-base-selector-with-15-30-and.md, docs/items/PL-W8DQ-the-four-slider-active-tracks-use-accent-and.md, docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
 added: 2026-09-05
 ---
 
@@ -43,6 +48,15 @@ not a workflow session's.
 above its own blocker, so setting `status: blocked` on one of these can
 surface a second, real problem rather than closing cleanly. Raise the blocker
 to meet what it holds up, as that check says; do not lower the blocked item.
+
+**Decision needed.** Which of the four sentences state a real prerequisite,
+and therefore which items gain `blocked-by` plus `status: blocked`. Declaring
+an edge takes the item out of `docket next` entirely, and three of the four are
+product work - `PL-SSBP` (add the chart time-base selector) is scoped to
+v0.4.0 - so the answer reshapes what the current milestone is worked from.
+Rewording the sentence is the alternative where it reads as a prerequisite but
+is not. The advisory cannot reach zero until each pair is answered one way or
+the other.
 
 **Done when.** Each of the four either declares the edge — `blocked-by` and
 `status: blocked` together — or has the sentence reworded because it was not

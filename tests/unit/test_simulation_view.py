@@ -55,9 +55,16 @@ from anesthesia_sim.app.formatting import (
     format_mac_multiple,
     format_mac_reference,
     format_percent,
+    format_playback_rate,
     format_time_base,
     format_wash_in_ratio,
     mac_axis_ticks,
+)
+from anesthesia_sim.app.playback import (
+    DEFAULT_PLAYBACK_RATE,
+    SUPPORTED_PLAYBACK_RATES,
+    PlaybackRate,
+    playback_rate_for,
 )
 from anesthesia_sim.app.simulation_view import (
     AGENT_RENDER_STYLES,
@@ -72,6 +79,7 @@ from anesthesia_sim.app.simulation_view import (
     NO_TRACES_SHOWN_TEXT,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
+    SIMULATION_TICK_INTERVAL_S,
     START_NEW_CASE_TEMPLATE,
     WASH_IN_AXIS_MAXIMUM,
     WASH_IN_TERMINUS_CEILING,
@@ -2396,38 +2404,23 @@ def test_simulation_time_does_not_depend_on_render_cadence() -> None:
     )
 
 
-def test_the_run_loop_takes_one_step_per_tick_and_never_catches_up(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A late tick must cost the run real time, never change its trajectory.
+def _drive_exact_ticks(view: SimulationView, ticks: int, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run the simulation loop for exactly `ticks` wakeups, with no real time.
 
-    How many steps a tick takes is a constant of the loop rather than a
-    function of how long the tick took, so a host that wakes it late leaves
-    the run behind the wall clock and it stays behind. The alternative -
-    stepping until simulated time catches up with elapsed real time - would
-    make the number of steps a run takes a property of the machine, which is
-    what docs/MODEL.md's reproducibility guarantee forbids.
-
-    Driven through a tick that returns at once, so what is asserted is
-    exactly "one step per wakeup", with no real time in it: the tests above
-    deliberately claim less, because how many ticks land in a slice of real
-    time is up to the host.
+    The loop's own `asyncio.sleep` is replaced by a tick that returns at
+    once for the first `ticks` wakeups and then parks, so the number of
+    steps taken is exact rather than a race between the driver's cancel and
+    one more tick. That is what lets a caller assert a step *count*; the
+    tests that let real time elapse deliberately claim less, because how
+    many ticks land in a slice of real time is up to the host.
     """
 
-    page = _FakePage()
-    controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
-    controller.start()
-
-    ticks = 7
     real_sleep = asyncio.sleep
     wakeups = 0
 
     async def tick(interval_s: float) -> None:
         nonlocal wakeups
         wakeups += 1
-        # Past the budget the tick parks, so the step count is exact rather
-        # than a race between the driver's cancel and one more step.
         await real_sleep(0.0 if wakeups <= ticks else 3600.0)
 
     async def drive() -> None:
@@ -2447,9 +2440,288 @@ def test_the_run_loop_takes_one_step_per_tick_and_never_catches_up(
     monkeypatch.setattr(asyncio, "sleep", tick)
     asyncio.run(drive())
 
-    assert wakeups == ticks + 1
+    assert wakeups == ticks + 1, "the loop did not wake the expected number of times"
+
+
+def test_the_run_loop_takes_one_step_per_tick_at_real_time_and_never_catches_up(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A late tick must cost the run real time, never change its trajectory.
+
+    How many steps a tick takes is the reader's playback setting rather than
+    a function of how long the tick took, so a host that wakes it late
+    leaves the run behind the wall clock and it stays behind. The
+    alternative - stepping until simulated time catches up with elapsed real
+    time - would make the number of steps a run takes a property of the
+    machine, which is what docs/MODEL.md's reproducibility guarantee
+    forbids. At the default rate that setting is one step, which is what
+    this asserts; the rate test below asserts the same property across the
+    whole ladder.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+
+    ticks = 7
+    _drive_exact_ticks(view, ticks, monkeypatch)
+
     assert controller.snapshot().elapsed_s == ticks * SIMULATION_STEP_S
     assert len(controller.history_window(0.0).samples) == ticks + 1
+
+
+def test_a_tick_is_one_simulation_step_of_real_time() -> None:
+    """The equality every displayed playback rate is derived through.
+
+    A tick advances `steps_per_tick` steps, and calling that "N times real
+    time" is true only because one tick is one step long. The two constants
+    are separate decisions - one about the model's numerics, one about this
+    host's event loop - so re-tuning the wakeup without the step would
+    silently falsify every rate on screen rather than failing anywhere.
+    """
+
+    assert SIMULATION_TICK_INTERVAL_S == SIMULATION_STEP_S
+
+
+@pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES, ids=lambda rate: f"{rate.multiplier}x")
+def test_the_run_loop_takes_the_playback_rates_steps_per_tick(
+    rate: PlaybackRate, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The multiplier is steps per tick, and the step never moves.
+
+    `PL-SN2C`'s safety argument, asserted at every rate the interface
+    offers. A multiplier that resized the step would make the same case read
+    differently depending on how fast it was watched - the same number
+    meaning something different according to a *view* control - so what is
+    checked here is both halves at once: how many times `advance` was
+    called, and that every one of those calls was handed
+    `SIMULATION_STEP_S`.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    view._playback_rate = rate
+    controller.start()
+
+    steps_requested: list[float] = []
+    advance = controller.advance
+
+    def recording_advance(simulation_step_s: float) -> None:
+        steps_requested.append(simulation_step_s)
+        advance(simulation_step_s)
+
+    monkeypatch.setattr(controller, "advance", recording_advance)
+
+    ticks = 3
+    _drive_exact_ticks(view, ticks, monkeypatch)
+
+    steps_per_tick = rate.steps_per_tick(
+        tick_interval_s=SIMULATION_TICK_INTERVAL_S, simulation_step_s=SIMULATION_STEP_S
+    )
+    expected_steps = ticks * steps_per_tick
+
+    assert steps_per_tick == rate.multiplier
+    assert len(steps_requested) == expected_steps
+    assert set(steps_requested) == {SIMULATION_STEP_S}
+    assert controller.snapshot().elapsed_s == expected_steps * SIMULATION_STEP_S
+    assert len(controller.history_window(0.0).samples) == expected_steps + 1
+
+
+def _panel_under(view: SimulationView, value_text: ft.Text) -> ft.Text:
+    """Return the fourth line of the metric panel drawing `value_text`.
+
+    The slot the six compartment panels give to a MAC multiple. Read out of
+    the assembled grid rather than off the view, so what is asserted is what
+    a reader would see under that particular reading.
+    """
+
+    for panel in view._build_concentration_metrics().controls:
+        _name, _qualifier, panel_value_text, secondary_text = panel.content.controls
+        if panel_value_text is value_text:
+            return secondary_text
+
+    raise AssertionError("no metric panel in the grid displays that value control")
+
+
+def _select_playback_rate(view: SimulationView, multiplier: int) -> None:
+    """Drive the dropdown as a user selection would."""
+
+    view._playback_rate_dropdown.value = str(multiplier)
+    view._handle_playback_rate_change(
+        cast(Any, ft.Event(name="select", control=view._playback_rate_dropdown, data=None))
+    )
+
+
+def test_the_playback_rate_is_drawn_under_the_clock_it_governs() -> None:
+    """A rate is a mode, and the clock is where it would be misread.
+
+    A clock advancing at 60x beside numbers that look like a live case is
+    misreadable at a glance, so `PL-SN2C` requires the multiplier beside the
+    elapsed-time readout - not merely somewhere on the page, and not only
+    when it is not 1x. Asserted against the assembled grid so that the
+    pairing of the rate with *that* reading is what is held, which an
+    assertion on the string alone would not be.
+    """
+
+    view, _page = _build_view()
+
+    assert _panel_under(view, view._elapsed_time_text).value == format_playback_rate(
+        DEFAULT_PLAYBACK_RATE.multiplier
+    )
+
+
+def test_the_mounted_interface_states_the_playback_rate() -> None:
+    """Assembled, not merely constructed: the rate has to reach the page.
+
+    `_panel_under` above reads the metric grid, which a view builds whether
+    or not `mount()` puts it on the page. This walks what `mount()` actually
+    handed over, so a rate that lives only on a control nothing draws fails
+    here.
+    """
+
+    view, page = _build_view()
+
+    assert format_playback_rate(DEFAULT_PLAYBACK_RATE.multiplier) in (
+        _mounted_interface_strings(view, page)
+    )
+
+
+def test_the_default_playback_rate_is_real_time() -> None:
+    """A reader who never touches the control is never in a mode they did not choose."""
+
+    view, _page = _build_view()
+
+    assert view._playback_rate == DEFAULT_PLAYBACK_RATE
+    assert view._playback_rate.multiplier == 1
+
+
+def test_every_supported_playback_rate_is_offered_by_the_control() -> None:
+    """The control and the list must not diverge.
+
+    `playback_rate_for` raises rather than defaulting when a multiplier it
+    does not know reaches the loop, so an option the list has lost would be
+    an exception in a dropdown handler rather than a wrong rate - but an
+    option the list has *gained* and the control has not would simply be
+    unreachable, which nothing else would show.
+    """
+
+    view, _page = _build_view()
+    options = view._playback_rate_dropdown.options
+
+    assert [option.key for option in options] == [
+        str(rate.multiplier) for rate in SUPPORTED_PLAYBACK_RATES
+    ]
+    assert [option.text for option in options] == [
+        format_playback_rate(rate.multiplier) for rate in SUPPORTED_PLAYBACK_RATES
+    ]
+
+
+def test_the_control_and_the_clock_state_the_rate_identically() -> None:
+    """One mode, named once. Two spellings of it would be two modes to a reader."""
+
+    view, _page = _build_view()
+
+    _select_playback_rate(view, 60)
+    offered = {option.key: option.text for option in view._playback_rate_dropdown.options}
+
+    assert view._playback_rate_text.value == offered["60"]
+
+
+def test_selecting_a_rate_changes_the_loop_and_the_readout_together() -> None:
+    """The displayed rate is the rate the loop is about to run at.
+
+    The correct number under the wrong label is still a presentation
+    failure, and a rate is exactly a label over a behavior: what the panel
+    says and what the next tick does have to move in one act.
+    """
+
+    view, _page = _build_view()
+
+    _select_playback_rate(view, 60)
+
+    assert view._playback_rate.multiplier == 60
+    assert view._playback_rate_text.value == format_playback_rate(60)
+
+    _select_playback_rate(view, 1)
+
+    assert view._playback_rate.multiplier == 1
+    assert view._playback_rate_text.value == format_playback_rate(1)
+
+
+def test_the_playback_control_is_never_disabled() -> None:
+    """Unlike the agent dropdown, which is, and for a reason that is not this one.
+
+    Choosing an agent discards the case, so it is locked while a run holds
+    state. A playback rate reaches no model state at all, and the usual
+    reason to reach for it is to slow a *running* case down and watch
+    something - so locking it would remove the control at the only moment it
+    is wanted.
+    """
+
+    view, _page = _build_view(is_running=True)
+    view._refresh_and_render()
+
+    assert view._agent_dropdown.disabled is True
+    assert view._playback_rate_dropdown.disabled in (False, None)
+
+
+def test_reset_leaves_the_playback_rate_alone() -> None:
+    """Reset clears dynamic state and preserves user settings; this is one.
+
+    A rate snapping back to real time on Reset would be a mode change nobody
+    made, announced only by a line the reader has no reason to re-read.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+
+    _select_playback_rate(view, 20)
+    view._handle_reset(cast(Any, ft.Event(name="click", control=view._reset_button, data=None)))
+
+    assert view._playback_rate == playback_rate_for(20)
+    assert view._playback_rate_text.value == format_playback_rate(20)
+
+
+def test_a_failed_step_abandons_the_rest_of_its_tick(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A burst is not a licence to step past a step the core could not take.
+
+    docs/MODEL.md forbids the interface continuing a run past a step the
+    core could not complete, and a fast playback is where that could
+    silently stop holding: the steps after the failure are already queued
+    inside one tick. The run must stop on the last completed step, exactly
+    as it does at real time.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    view._playback_rate = playback_rate_for(60)
+    controller.start()
+
+    calls = 0
+    advance = controller.advance
+
+    def failing_advance(simulation_step_s: float) -> None:
+        nonlocal calls
+        calls += 1
+
+        if calls == 5:
+            raise _real_step_failure()
+
+        advance(simulation_step_s)
+
+    monkeypatch.setattr(controller, "advance", failing_advance)
+
+    _drive_exact_ticks(view, 2, monkeypatch)
+
+    # Five calls: four that stepped and the one that raised. Nothing after
+    # it, in this tick or the next - halting clears `is_running`.
+    assert calls == 5
+    assert controller.snapshot().elapsed_s == 4 * SIMULATION_STEP_S
+    assert controller.is_running is False
 
 
 # --- PL-018: a core failure must never leave a stale "Running" display ----

@@ -53,6 +53,7 @@ src/anesthesia_sim/
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic
 │   ├── formatting.py               # modeled value -> displayed string; Flet-independent
+│   ├── playback.py                 # playback rate -> whole simulation steps per tick; Flet-independent
 │   ├── chart_series.py             # builds and redraws the chart's traces, references and control marks
 │   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; Flet-independent
@@ -142,16 +143,22 @@ reader sees — a percent and a multiple of the running agent's 1 MAC — at the
 resolutions `docs/MODEL.md` § "Displayed precision" derives,
 `app/chart_series.py` builds the traces and redraws them from the recorded
 run, `app/control_timeline.py` turns the recorded control changes into
-the adjustments a reader sees, and `app/wash_in.py` divides the alveolar
-fraction by the inspired one. The last two are correctness questions for
-reasons worth stating. The control record is faithful to the run and a drag
+the adjustments a reader sees, `app/playback.py` turns the playback rate a
+reader selects into the number of whole simulation steps a tick takes, and
+`app/wash_in.py` divides the alveolar fraction by the inspired one. The last
+three are correctness questions for reasons worth stating. The control record is faithful to the run and a drag
 of one slider is several settings in it, so the collapse into one displayed
 act is a claim about what the user did rather than a tidier rendering of
 what the model saw. And the wash-in quotient has a domain: it is undefined
 before any agent reaches the circuit and stops being a wash-in fraction
 above 1, so the module returns the value and the reason together and the
 chart draws the trace in segments that break where the domain does —
-`docs/MODEL.md` § "F_A/F_I as a displayed ratio" is the specification. The MAC divisor reaches the formatter as an argument, from
+`docs/MODEL.md` § "F_A/F_I as a displayed ratio" is the specification. And a
+playback rate is realised only as a step *count*, never as a larger step, so
+the module derives the count from the rate and refuses a rate that does not
+land on a whole number of steps: the alternative is a run advancing at a rate
+other than the one it displays, which is a presentation failure that looks
+like a working feature. The MAC divisor reaches the formatter as an argument, from
 `SimulationSnapshot.agent_mac_percent`, rather than being looked up: it is
 what makes a displayed multiple agent-specific, so it travels with the value
 it divides. The agent's MAC-awake travels the same way and for the same
@@ -243,7 +250,7 @@ tools/
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them
 ├── contrast_check.py     # computes every declared color pair's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
-├── import_boundary_check.py  # fails the build on a `pydantic` import anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, so the payload/dataclass boundary is measured rather than asserted
+├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime` or `random` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
 ├── stop_hook_patch.py    # SessionStart hook: corrects the container stop hook's unpushed-commit test, which picks its comparison point from a ref that merely resolves locally and so demands a push that would recreate a merged branch
@@ -320,18 +327,28 @@ judgments, and `.claude/rules/ui-color.md` carries them. Pairs that fall short
 today are listed against the item that closes each, and a listed shortfall that
 starts passing is an error, so a fix cannot leave its excuse behind.
 
-`tools/import_boundary_check.py` measures the claim `core/parameters.py` makes
-about itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
-dataclass pairs exist so the rest of `core/` never imports Pydantic; nothing
-checked it, so a leak into a compartment would have left that paragraph reading
-as verified while being false — worse than the coupling itself. Its `BOUNDARIES`
-table is the specification, and the tool decides nothing beyond it: which
-packages ought to be confined, and where the exception belongs, are judgments
-written there with the reason beside them. Three further states are errors, each
-closing a way the check could pass while meaning nothing — an allowance naming a
-file that no longer exists, an allowance no longer used, and a declared tree
-matching no source files at all. The boundary covers `app/` as well as `core/`,
-so the rule reads *exactly one module in this package imports Pydantic*.
+`tools/import_boundary_check.py` measures two claims the source makes about
+itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
+dataclass pairs exist so the rest of `core/` never imports Pydantic, and
+`docs/MODEL.md` "The reproducibility guarantee" says that a run is a function of
+its inputs and of the number of steps taken and of nothing else — so the run
+loop reads no clock. Nothing checked either, so a leak into a compartment would
+have left both paragraphs reading as verified while being false — worse than the
+coupling itself. Its `BOUNDARIES` table is the specification, and the tool
+decides nothing beyond it: which packages ought to be confined, and where the
+exception belongs, are judgments written there with the reason beside them.
+Three further states are errors, each closing a way the check could pass while
+meaning nothing — an allowance naming a file that no longer exists, an allowance
+no longer used, and a declared tree matching no source files at all.
+
+The two boundaries cover different trees, and the asymmetry is deliberate. The
+Pydantic boundary covers `app/` as well as `core/`, so the rule reads *exactly
+one module in this package imports Pydantic*. The `time`, `datetime` and
+`random` boundaries stop at `core/` and permit no module at all, because the
+guarantee they defend explicitly allows the interface its wall clock — what it
+forbids is a tick's real duration reaching the run. A test pins that asymmetry
+end-to-end, so widening the tree to the whole package would fail on an import
+the design permits rather than passing quietly (`PL-J833`).
 
 `tools/ignore_check.py` covers what the type-check gate cannot. `[tool.mypy]
 files` names `src`, `tools` and `subprojects/docket/src`, and every
