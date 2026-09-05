@@ -27,6 +27,7 @@ from statistics import median
 from typing import Any
 
 import flet as ft
+import flet_charts as fch
 import msgpack
 import pytest
 from flet.controls.base_control import BaseControl
@@ -216,7 +217,10 @@ def _control_timeline(
 
 
 def _mounted_view(
-    start: int = SATURATED_SAMPLE_COUNT // 2, control_timeline: tuple[ControlChange, ...] = ()
+    start: int = SATURATED_SAMPLE_COUNT // 2,
+    control_timeline: tuple[ControlChange, ...] = (),
+    sample_count: int = SATURATED_SAMPLE_COUNT,
+    time_base_span_s: float | None = None,
 ) -> tuple[SimulationView, Session, _RecordingConnection]:
     """Mount the dashboard on a real session with a client already registered.
 
@@ -227,14 +231,23 @@ def _mounted_view(
         control_timeline: Recorded control changes the run carries, which
             the chart draws marks for. Empty by default, since most of
             these tests are about the traces.
+        sample_count: How long the recorded run is in total.
+        time_base_span_s: A chart time base to select, in seconds, as a
+            reader would. `None` leaves the default "Fit run", under which
+            the window is as wide as the run and never scrolls.
     """
 
     connection = _RecordingConnection()
     session = Session(connection)
     controller = _ReplayController(
-        _recorded_run(SATURATED_SAMPLE_COUNT), start=start, control_timeline=control_timeline
+        _recorded_run(sample_count), start=start, control_timeline=control_timeline
     )
     view = SimulationView(page=session.page, controller=controller)
+
+    if time_base_span_s is not None:
+        view._time_base_dropdown.value = str(time_base_span_s)
+        view._handle_time_base_change(ft.Event(name="select", control=view._time_base_dropdown))
+
     view.mount()
 
     # What the client is sent when it first registers. Encoding it is what
@@ -255,6 +268,23 @@ def _wash_in_drawn(view: SimulationView) -> int:
     """
 
     return sum(len(series.points) for series in view._wash_in_segment_series)
+
+
+def _point_additions(connection: _RecordingConnection) -> list[list[Any]]:
+    """Only the additions that put a *trace point* on the client.
+
+    A frame can add other controls - an axis label, when the time base
+    changes the set of ticks the window spans - and those are not points
+    gained by a trace. Counting them as such would make a test about how
+    much of the run reaches the client fail on a rescale that sent exactly
+    the right number of points.
+    """
+
+    return [
+        operation
+        for operation in _patch_operations(connection)
+        if operation[0] is Operation.Add and isinstance(operation[-1], fch.LineChartDataPoint)
+    ]
 
 
 def _patch_operations(connection: _RecordingConnection) -> list[list[Any]]:
@@ -370,9 +400,7 @@ def test_a_longer_trace_adds_the_points_it_has_gained() -> None:
     drawn_now = len(view._circuit_series.points)
     assert CHART_COLUMN_BUDGET_PER_SERIES <= drawn_now <= 4 * CHART_COLUMN_BUDGET_PER_SERIES
 
-    additions = [
-        operation for operation in _patch_operations(connection) if operation[0] is Operation.Add
-    ]
+    additions = _point_additions(connection)
     # One addition per trace per point gained: six compartment traces, plus
     # the wash-in ratio, which is drawn from the same recorded run and grows
     # with it but is decimated on its own and so gains its own count.
@@ -421,7 +449,12 @@ def test_a_growing_run_does_not_grow_the_traffic_it_sends() -> None:
 
 
 def test_a_scrolling_window_rebuilds_only_at_a_bucket_boundary() -> None:
-    """Past `MAX_CHART_WINDOW_S` the window slides, and that costs differently.
+    """Once a run outgrows its time base the window slides, and that costs more.
+
+    A selected time base rather than the default "Fit run", because fitting
+    widens the window to the run instead of sliding it: the scrolling case
+    this measures is reachable only once a reader has chosen a width the run
+    has passed.
 
     A window of fixed length sliding along a fixed bucket grid spans
     alternately `k` and `k + 1` buckets, so the number of chosen samples has
@@ -436,7 +469,10 @@ def test_a_scrolling_window_rebuilds_only_at_a_bucket_boundary() -> None:
     ~3 500 operations as the peak.
     """
 
-    view, session, connection = _mounted_view(start=3100)
+    view, session, connection = _mounted_view(
+        sample_count=9_500, start=9_200, time_base_span_s=900.0
+    )
+    assert view._concentration_chart.min_x > 0.0, "the window is not scrolling"
 
     counts = _ops_per_frame(view, session, connection, frames=40)
 

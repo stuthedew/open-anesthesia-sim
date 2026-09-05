@@ -56,6 +56,7 @@ src/anesthesia_sim/
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; Flet-independent
 │   ├── chart_series.py             # builds and redraws the chart's traces, references and control marks
 │   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
+│   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; Flet-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; Flet-independent
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; Flet-independent
 │   ├── theme.py                    # UI palette, cited ISO 5360 agent colors, layout constants
