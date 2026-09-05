@@ -52,6 +52,7 @@ __all__ = [
     "WASH_IN_DISPLAY_DECIMALS",
     "chart_axis_top_percent",
     "chart_grid_interval_percent",
+    "format_case_discard_warning",
     "format_delivered_label",
     "format_elapsed",
     "format_flow",
@@ -615,6 +616,47 @@ def format_elapsed(elapsed_s: float) -> str:
     """
 
     return f"{elapsed_s:.1f} s"
+
+
+def format_case_discard_warning(
+    agent_display_name: str, elapsed_s: float, control_change_count: int
+) -> str:
+    """State what starting a new case is about to throw away.
+
+    Names the two recorded things a reader can see on screen and that a new
+    case destroys with nothing able to restore them: the simulated time the
+    run reached, and the control changes it recorded. Both are quoted in the
+    terms of the display they will disappear from — `format_elapsed` for the
+    clock, and the grouped adjustments the "Control changes" panel lists
+    rather than the raw `ControlChange` entries behind them, so a reader
+    comparing the warning against the panel finds the same number.
+
+    Here rather than in the view for the reason every other display string
+    in this module is: what a reader is told is a presentation-correctness
+    question, and this one can be read and tested without loading Flet.
+
+    Args:
+        agent_display_name: The agent the current run is using.
+        elapsed_s: Simulated time the current run has reached, in seconds.
+        control_change_count: How many recorded control changes the run
+            holds, counted as `control_timeline.group_adjustments` groups
+            them and as the panel beside the chart lists them.
+
+    Returns:
+        One sentence naming the run and what discarding it costs.
+    """
+
+    changes = (
+        "1 recorded control change"
+        if control_change_count == 1
+        else f"{control_change_count} recorded control changes"
+    )
+
+    return (
+        f"The current {agent_display_name.lower()} case — "
+        f"{format_elapsed(elapsed_s)} of simulated time, {changes} — will be "
+        "discarded along with its chart history. This cannot be undone."
+    )
 
 
 def format_subtitle(agent_display_name: str) -> str:

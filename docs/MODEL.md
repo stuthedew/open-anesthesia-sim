@@ -1809,6 +1809,38 @@ Reset must:
   becomes startable again from a clean state; and
 - preserve the user’s selected settings.
 
+## Agent-change behavior
+
+Changing the running agent must begin a new run. Switching between volatile
+agents is not modeled (see "Known limitations"), so there is no residual
+washout to carry across and no state from the old agent that the new one's
+partition coefficients would make meaningful. A change of agent must
+therefore do everything Reset does, and in addition rebuild every compartment
+against the new agent's parameters and take the delivered concentration from
+that agent's own 1 MAC rather than carrying the old agent's percentage — the
+same number is a different clinical depth for each agent.
+
+Because it begins a new run it **destroys one**, and that is a requirement on
+the interface rather than only on the controller. The recorded history, the
+control-input timeline and the simulated time a run reached are the whole of
+what a learner has to look back at, nothing in this application stores them,
+and there is no undo. So:
+
+- the interface must not discard a run holding recorded state — any elapsed
+  simulated time, or any recorded control change — without first stating that
+  it will be discarded and obtaining the user's confirmation;
+- the statement must name what is lost in the terms the display already uses
+  for it, so that it can be checked against the readouts it describes;
+- declining must leave the run, its history, its timeline and the control
+  that offered the change exactly as they were; and
+- a selection that resolves to the agent already running must change nothing,
+  since it proposes no new case.
+
+A run that holds no recorded state is exempt: there is nothing to discard, and
+a confirmation that fires where nothing is at stake is answered without being
+read by the time one is. Reset is therefore also the way to make a change of
+agent free.
+
 ## Interface boundary
 
 The Flet interface may:
@@ -1941,7 +1973,9 @@ The Flet interface must not:
 - continue a run past a step the core could not complete;
 - take extra simulation steps to make up wall-clock time a slow tick lost,
   or otherwise let elapsed real time decide how many steps a run takes;
-- present a run halted by a failure as though it were paused; or
+- present a run halted by a failure as though it were paused;
+- discard a run holding recorded state without stating what will be lost and
+  obtaining confirmation, as "Agent-change behavior" requires; or
 - display a concentration at a finer resolution than "Displayed precision"
   justifies, or render a value the model does not resolve as though it were
   a value the model asserts; or

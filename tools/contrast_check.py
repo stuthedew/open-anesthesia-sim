@@ -124,7 +124,11 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "ACCENT: the legend row has already spent its colour budget on six "
         "compartments (.claude/rules/ui-color.md, judgment 3), so the "
         "control is drawn as furniture rather than competing with the "
-        "swatch beside it (PL-CG7J)",
+        "swatch beside it (PL-CG7J). Also the title and the opening "
+        "statement of the new-case confirmation (`_build_new_case_dialog`), "
+        "whose surface is set to PANEL explicitly rather than left to the "
+        "Flet theme, so that these three text colours stand on a background "
+        "this table measures them against (PL-R3KB)",
     ),
     Requirement(
         "MUTED",
@@ -145,7 +149,9 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "gloss is judged at the same 4.5:1 as the name above it: at 12px it "
         "is normal text by WCAG's definition, nowhere near the 18.66px the "
         "large-text exception starts at, and it is the same MUTED colour on "
-        "the same PANEL surface, so it adds no pair to this table (PL-8M05).",
+        "the same PANEL surface, so it adds no pair to this table (PL-8M05). "
+        "Also the line of the new-case confirmation saying what carries over "
+        "into the new case (`_build_new_case_dialog`, PL-R3KB).",
     ),
     Requirement(
         "ACCENT_TEXT",
@@ -185,8 +191,10 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the agent-accounting status word when validation fails "
-        "(`_build_agent_accounting_panel`), and the notice naming a compartment "
-        "trace that is above the top of the chart (`_off_scale_text`)",
+        "(`_build_agent_accounting_panel`), the notice naming a compartment "
+        "trace that is above the top of the chart (`_off_scale_text`), and the "
+        "line of the new-case confirmation stating what a switch would discard "
+        "(`_build_new_case_dialog`, PL-R3KB)",
     ),
     Requirement(
         "sevoflurane.foreground",
