@@ -47,11 +47,17 @@ preceded by a read.
 | "A push demand after a merged branch may be false" | inside that bullet | `.claude/hooks/stop_hook_patch.py`'s `UNPATCHED` message | Already routed by `PL-WW08`; the resident sentence was a second copy. The message prints at the one moment a session meets a false demand. |
 | The doc-sweep procedure | 11 resident lines | the `docket` skill, Mode: close out | Fires at close-out, which `CLAUDE.md` already requires the skill for. The *trigger* stays resident in one sentence, with its safety reason, because without the reason a session reads the sweep as tidiness and skips it under pressure. |
 
-Net: 548 resident lines to 541. Thirteen lines left `CLAUDE.md`; six came back
-as the two conclusions this pass had to record where the question gets asked —
-the pointer to this file in `CLAUDE.md`'s preamble, and the settled answer at
-the top of `.claude/rules/instruction-writing.md`. Both are conclusions rather
-than arguments; the arguments are here, where nothing loads them at launch.
+Net: 548 resident lines to 541, and 39613 characters to 38845. Both units are
+here because they answer different questions and `PL-QV1F` made characters the
+one the tool reports: lines are what the documented 200-line target is written
+in, and characters are what actually moved — `CLAUDE.md` −1006 against
+`.claude/rules/instruction-writing.md` +238.
+
+The 238 that came back are the two conclusions this pass had to record where
+the question gets asked: the pointer to this file in `CLAUDE.md`'s preamble,
+and the settled answer at the top of `.claude/rules/instruction-writing.md`.
+Both are conclusions rather than arguments. The arguments are here, where
+nothing loads them at launch.
 
 ## What stays resident, and on what argument
 
@@ -116,11 +122,14 @@ correctly, from a sentence whose scope was three sentences away.
 
 ## Reductions considered and refused
 
-- **A line threshold on `check_resident_instructions`.** Refused in the code
-  itself, and the refusal is right: a limit is met by deleting a rule to reach
-  a number, which is the one outcome this pass must not produce, and no number
+- **A ceiling on `check_resident_instructions`.** Refused in the code itself,
+  and the refusal is right: a limit is met by deleting a rule to reach a
+  number, which is the one outcome this pass must not produce, and no number
   the tool could hold would know which rules a session must see before it reads
-  anything.
+  anything. `MATERIAL_RESIDENT_DELTA` is not that and does not reopen it: it is
+  a *floor* below which the advisories stay silent, so a typo fix is not asked
+  to justify itself (`PL-QV1F`). A floor withholds a demand; a ceiling would
+  create one.
 - **Compressing the precedence paragraph in `CLAUDE.md` § "Working with the
   project owner", which restates `.claude/rules/instruction-writing.md`'s own
   PRECEDENCE block.** About 10 lines are recoverable and both files are always
@@ -143,9 +152,11 @@ correctly, from a sentence whose scope was three sentences away.
 
 ## Re-running the measurement
 
-`make check` prints the total, the per-file breakdown and the change against
-the default branch on every run; `python3 tools/doc_check.py check` alone is
-the same line. Growth raises the routing question at the moment text is added,
+`make check` prints the total in characters over lines, the per-file breakdown
+in both, and the change in characters against the default branch on every run;
+`python3 tools/doc_check.py check` alone is the same line. Characters are the
+unit that decides, because a line count resolves nothing inside an unwrapped
+paragraph and the two resident files are not wrapped alike (`PL-QV1F`). Growth raises the routing question at the moment text is added,
 which is what `PL-H7XN` built and what this file is the first application of.
 `PL-BKQW`'s second advisory catches the shape the total cannot see: text added
 and other text trimmed to pay for it, which sums to nothing.

@@ -30,6 +30,10 @@ rather than lines - a 123-line diff over `tools/doc_check.py`. A one-sentence
 edit to the advisory string would have conflicted with it for no gain, so the
 sentence waits for that merge rather than racing it.
 
+**Unblocked 2026-09-05:** #348 merged as `215fd85`, so the conflict this item
+was waiting out no longer exists. The advisory strings are now the
+character-based ones.
+
 **Where.** `tools/doc_check.py`, `check_resident_instructions`; the advisory
 strings only.
 
