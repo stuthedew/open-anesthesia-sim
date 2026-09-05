@@ -1,8 +1,8 @@
 ---
 paths:
-  - "src/anesthesia_sim/data/**"
-  - "docs/MODEL.md"
-  - "docs/references/**"
+  - "/src/anesthesia_sim/data/**"
+  - "/docs/MODEL.md"
+  - "/docs/references/**"
 ---
 
 # Reaching a source, and recording which route you took
