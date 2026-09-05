@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: teachable-case
+milestone: v0.4.0
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, docs/MODEL.md
 added: 2026-09-04
 closed: 2026-09-04

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, session-cost
 feature: worker-instructions
+milestone: v0.4.0
 touches: .claude/settings.json, .claude/hooks/stop_hook_patch.py, .claude/hooks/ruff.toml, pyproject.toml, tools/ignore_check.py, tests/unit/test_tools_portability.py, docs/ARCHITECTURE.md, CLAUDE.md
 added: 2026-09-04
 closed: 2026-09-05

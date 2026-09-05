@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost, infra
 feature: dev-tooling
+milestone: v0.4.0
 touches: subprojects/docket/src/docket/cli.py, Makefile, .github/workflows/quality.yml, subprojects/docket/README.md
 added: 2026-09-04
 closed: 2026-09-05
