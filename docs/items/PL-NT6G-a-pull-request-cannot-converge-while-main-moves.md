@@ -69,3 +69,39 @@ of these; they are recorded so the question is not reconstructed next time.
 
 **Done when.** The queue records which of the four was chosen and why, and if
 it is 3 or 4, the repository setting matches.
+
+**Option 3 is not available to this repository, checked 2026-09-05.** GitHub's
+merge queue runs in public repositories owned by an organization, and in
+private repositories only for organizations on GitHub Enterprise Cloud. This
+repository is owned by a **user account** (`"type": "User"` on the repository's
+owner, read from the API) and is **private** (`"visibility": "private"`), so
+neither route applies. The recommendation this brief carried - "3, the merge
+queue: it is the mechanism GitHub built for this shape" - cannot be acted on
+without moving the repository to an organization on that plan, which is a
+larger decision than the stall it would fix.
+
+Source: GitHub Docs, *Managing a merge queue*
+(https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue).
+Read via search results rather than fetched directly - `docs.github.com` is
+blocked by this container's egress proxy - so confirm the plan wording before
+acting if the answer turns on it.
+
+**So the live field is 1, 2 and 4**, and 4 has an argument the brief did not
+give it. "Require branches to be up to date before merging" buys the guarantee
+that `main` was green *with the change applied*. That guarantee is already
+weaker here than it looks: `quality.yml` runs on `pull_request`, which tests
+the **merge result** rather than the branch head, so every pull request is
+already checked against the base it would land on at the moment it was pushed.
+What the setting adds is that the base has not moved *since*. Against that,
+`PL-NT6G` records #342 losing three rounds and eight hours to it, at a full CI
+run each.
+
+Still `needs-decision`, and still the project owner's alone: dropping it trades
+a real guarantee for throughput, and the 100%-coverage gate on the scientific
+core is what makes that trade worth thinking about rather than obvious.
+
+**Two cheaper mitigations exist either way**, neither of which needs a setting
+changed. GitHub's *Update branch* button on a stalled pull request is one
+click and one CI run, which is option 2 without waiting for a human to be
+looking; and this container's `git merge origin/main` is what sessions already
+do. Both were used on this branch today.
