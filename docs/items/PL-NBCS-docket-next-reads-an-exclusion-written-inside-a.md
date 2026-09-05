@@ -1,10 +1,13 @@
 ---
 id: PL-NBCS
 title: docket next reads an exclusion written inside a Required scope bullet as membership, so PL-B9PY is ranked in scope for v0.4.0 when ROADMAP.md sends it to Gate 1
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-05
 ---
-
 **Problem.** `bin/docket next product` ranks `PL-B9PY` (decompose
 `SimulationView` so two runs can be rendered at once) second in the product
 lane and marks it *"In scope for v0.4.0 - the teachable case, the step the
@@ -47,7 +50,8 @@ makes an id named inside a scope bullet *to exclude it* read as membership.
 `PL-6P9Y` covers the `### Explicitly out of scope for vX.Y.Z` heading, which is
 a different structure and does not reach this case.
 
-**The design question this poses**, and why it is not a one-line fix: the
+**Decision needed.** The design question this poses, and why it is not a
+one-line fix: the
 comment's reasoning for reading `Required scope` in full is sound - a milestone
 names its scope in whatever grammar the sentence wanted, so a head-only read
 would lose `"(queue item PL-DHV7)"` mid-bullet. Candidate answers, none yet

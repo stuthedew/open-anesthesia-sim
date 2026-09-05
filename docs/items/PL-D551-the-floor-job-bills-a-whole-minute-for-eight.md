@@ -10,6 +10,7 @@ milestone: v0.4.2
 touches: .github/workflows/quality.yml
 added: 2026-09-05
 closed: 2026-09-05
+pr: 361
 verify: ! grep -q '^  floor:' .github/workflows/quality.yml && test "$(grep -n 'setup-python@' .github/workflows/quality.yml | cut -d: -f1)" -lt "$(grep -n 'setup-uv@' .github/workflows/quality.yml | cut -d: -f1)"
 ---
 
