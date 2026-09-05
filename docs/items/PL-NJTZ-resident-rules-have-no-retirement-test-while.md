@@ -1,15 +1,16 @@
 ---
 id: PL-NJTZ
 title: Resident rules have no retirement test while checks do, so the resident set can only grow
-status: done
 priority: P2
 effort: S
+status: done
 classes: docs, session-cost
 feature: dev-tooling
 touches: CLAUDE.md, docs/resident-instructions.md
-verify: python3 tools/doc_check.py check && grep -q 'When a resident rule is retired' docs/resident-instructions.md && grep -q 'retired rather than kept' CLAUDE.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 362
+verify: python3 tools/doc_check.py check && grep -q 'When a resident rule is retired' docs/resident-instructions.md && grep -q 'retired rather than kept' CLAUDE.md
 ---
 
 **Problem, stated against the asymmetry.** `CLAUDE.md` § "Prefer deterministic

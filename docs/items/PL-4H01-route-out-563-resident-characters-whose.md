@@ -1,15 +1,16 @@
 ---
 id: PL-4H01
 title: Route out 563 resident characters whose carriers already exist: the lane sentence, the finish-a-feature bullet, and the duplicated quality-suite line
-status: done
 priority: P2
 effort: S
+status: done
 classes: docs, session-cost
 feature: dev-tooling
 touches: CLAUDE.md, docs/resident-instructions.md
-verify: python3 tools/doc_check.py check && ! grep -q 'A prompt naming a lane' CLAUDE.md && ! grep -q 'Prefer finishing a feature' CLAUDE.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 362
+verify: python3 tools/doc_check.py check && ! grep -q 'A prompt naming a lane' CLAUDE.md && ! grep -q 'Prefer finishing a feature' CLAUDE.md
 ---
 
 **Problem.** Three resident rules state something a deterministic carrier now
