@@ -9,6 +9,7 @@ feature: project-introduction
 touches: README.md, .claude/rules/readme-hold.md, docs/items/PL-N092-rewrite-readme-as-a-human-readable-introduction.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 327
 verify: test -f .claude/rules/readme-hold.md && grep -q '^blocked-by: PL-RM83$' docs/items/PL-N092-rewrite-readme-as-a-human-readable-introduction.md
 ---
 
