@@ -1,11 +1,14 @@
 ---
 id: PL-C4PH
 title: Record the history sampling cadence as a decision of its own, separate from the integration step
-status: untriaged
-added: 2026-09-05
+priority: P2
+effort: S
+status: ready
 classes: docs, refactor
 feature: teachable-case
 touches: docs/MODEL.md, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py
+added: 2026-09-05
+verify: python3 tools/doc_check.py check && grep -qF 'recorded-sample cadence' docs/MODEL.md
 ---
 
 **Problem.** One number, `app.simulation_view.SIMULATION_STEP_S = 0.1`, answers
@@ -123,7 +126,29 @@ coincides with the integration step today rather than being determined by it;
 use; and `PL-011` can be decided against a written requirement rather than
 against an implementation accident.
 
+**The third clause is void, and half of this item has a shelf life (triage,
+2026-09-05).** `PL-011` is `dropped` — superseded by `PL-T691` and `PL-2FM6`,
+which remove the store rather than bound it — so nothing is waiting on the
+requirement in order to pick a retention horizon. Read the **Done when** as its
+first two clauses only. Further out, `PL-2FM6` (delete `RunHistory` and draw the
+chart from the closed-form sampler) deletes the recorded sample series outright,
+at which point there is no recorded-sample cadence left to document and
+`SIMULATION_STEP_S` is playing one role again rather than two. So the
+cadence-as-a-separate-decision half is worth writing only while the sample store
+exists, which is until `PL-GS5X` -> `PL-T691` -> `PL-2FM6` land.
+
+**What is durable here is the requirement, not the cadence.** The owner's
+decision recorded above — the **drawn chart** must reproduce a control change to
+the last displayed digit, the **stored record** need not — survives both
+architectures, and today it is written down nowhere but in this item's brief.
+`PL-2FM6`'s own **Done when** already restates it as "a control event inside the
+visible window always gets its own column", and `PL-4RBD` is the live defect
+against it. Put that requirement into `docs/MODEL.md` as a statement about the
+chart, so it outlives the mechanism this item was opened to describe; that
+sentence is what makes the rest of the item safe to let expire.
+
 **Sequencing.** After `PL-JDX0` (state the coupled system's modal time
-constants), which supplies the timescale this cites. Before `PL-011` (bound the
-controller's concentration history), which needs the requirement this states in
-order to choose a retention horizon.
+constants), which supplies the timescale this cites — recorded as prose rather
+than as a `blocked-by` edge, deliberately: both are `P2`, and a hard block on a
+`P2` docs item would let a time-limited item expire unworked. The former
+"before `PL-011`" edge is gone with that item's drop.

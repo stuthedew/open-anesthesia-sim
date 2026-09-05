@@ -1,9 +1,14 @@
 ---
 id: PL-6580
 title: Strip the concentration chart's explanatory prose down to legend and labels
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: ux
+feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_simulation_view.py && ! grep -q 'Left axis:' src/anesthesia_sim/app/simulation_view.py
 ---
 
 **Problem.** Everything above the plot is prose. Between the section title and

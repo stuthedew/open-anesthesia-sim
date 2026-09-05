@@ -3,11 +3,12 @@ id: PL-4RBD
 title: The drawn chart smooths through a control change that leaves the trace monotone, because M4 selects extremes and such a change is not one
 priority: P2
 effort: S
-status: untriaged
-added: 2026-09-05
+status: ready
 classes: defect, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
+added: 2026-09-05
+verify: uv run pytest tests/unit/test_chart_downsampling.py tests/unit/test_simulation_view.py && grep -q 'def test_a_control_change_inside_a_monotone_bucket_is_still_drawn' tests/unit/test_chart_downsampling.py
 ---
 
 **Problem.** `chart_downsampling` selects each bucket's minimum, maximum,
@@ -46,12 +47,33 @@ buckets widen — the kink is drawn exactly and the residual is ordinary
 curvature elsewhere. In the turned-up column the worst error stays pinned to
 the change and grows with the bucket.
 
-**What it costs today, and what it will cost.** At the widest current chart
-window (`MAX_CHART_WINDOW_S` 300 s, `CHART_COLUMN_BUDGET_PER_SERIES` 150) the
-bucket is 32 samples, so this sits at roughly 0.04 pp — four counts of the last
-displayed digit. `PL-SSBP` (add the chart time-base selector with 15, 30 and 60
-minute scales) widens the bucket to 64 samples and beyond, taking it to 0.08 pp
-and up.
+**Why it matters: what it costs today, and what it will cost.** At the chart
+window this item was written against (`MAX_CHART_WINDOW_S` 300 s,
+`CHART_COLUMN_BUDGET_PER_SERIES` 150) the bucket is 32 samples, so this sits at
+roughly 0.04 pp — four counts of the last displayed digit. `PL-SSBP` (add the
+chart time-base selector) was named here as what would widen the bucket to 64
+samples and beyond, taking it to 0.08 pp and up.
+
+**That premise is already stale (triage, 2026-09-05).** `PL-SSBP` is `done`, and
+`MAX_CHART_WINDOW_S` is no longer in the tree at all — no `.py` or `.md` outside
+this item mentions it. `chart_time_base.TIME_BASE_LADDER` tops out at
+`span_s=43200.0`, so a reader can select a **12-hour** base, and "Fit run" is
+explicitly not capped there. At `CHART_COLUMN_BUDGET_PER_SERIES` 150 and the
+shipped 10 Hz recording, a 12-hour base is a **2 880-sample bucket** — forty-five
+times the widest row the table above measures, and "Fit run" on a long case is
+wider still. So the "what it will cost" column is what ships today, and the
+0.04 pp this item is banded on was taken at a window the interface no longer
+has.
+
+**Re-measure before sizing, and re-band if the measurement says so.** Extend the
+measured table to the shipped bases (900 s through 43 200 s, and a fitted
+multi-hour run) as the first step of the work. The `P2`/`defect, ux` triage below
+rests on the 0.04 pp figure: an error of four counts of the last displayed digit,
+in one bucket, is a fidelity defect and not a clinician being misled, which is
+what this store's top band means. If the error at a 12-hour base or at "Fit run"
+is instead a readable fraction of a MAC, that reasoning does not survive and the
+item wants `safety` and `P1`. That is a measurement rather than a judgement, so
+it belongs to whoever starts this and not to a triage pass.
 
 **Fix.** Force the drawn set to include every recorded control-change index.
 `ControlChange.sample_index` already stores exactly those indices, and stores
@@ -80,7 +102,21 @@ window; a test asserts that a dial change which leaves the trace monotone is
 still a drawn point at every bucket width the time-base selector can produce;
 and `docs/MODEL.md` states the drawn set as M4 plus those indices.
 
-**Sequencing.** Before `PL-011` (bound the controller's concentration history),
-whose retention horizon may only coarsen what the chart is guaranteed to draw
-correctly. Independent of `PL-SSBP` (the chart time-base selector), which makes
-it worse but does not cause it.
+**Sequencing.** As captured this read "before `PL-011` (bound the controller's
+concentration history)"; `PL-011` is now `dropped`, superseded by the score
+architecture, so that edge is gone. `PL-SSBP` (the chart time-base selector) is
+`done` and made this worse without causing it.
+
+**This has a shelf life, and it is not short (triage, 2026-09-05).** The chain
+that removes the defect structurally is `PL-GS5X` (replace the operator split
+with the exact matrix exponential, `L`) -> `PL-T691` (the run is its
+control-input timeline, `L`) -> `PL-2FM6` (delete `RunHistory` and draw the chart
+from the closed-form sampler, `M`), whose own **Done when** already requires that
+"a control event inside the visible window always gets its own column" — this
+item's guarantee, delivered by evaluating columns instead of by unioning indices
+into an M4 selection. `PL-8LXM` then deletes `chart_downsampling.py` outright.
+Two `L` items and an `M` stand between here and there, and the drawn line is the
+whole fidelity guarantee in the meantime (see `PL-C4PH`), so the `S` fix is worth
+taking now. The **test** is the part that survives: write it against the drawn
+set rather than against `chart_downsampling`'s internals, so `PL-2FM6` inherits
+it as a behavioural requirement instead of deleting it with the module.

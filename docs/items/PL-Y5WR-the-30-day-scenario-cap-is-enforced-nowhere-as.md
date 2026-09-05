@@ -1,7 +1,12 @@
 ---
 id: PL-Y5WR
 title: The 30-day scenario cap is enforced nowhere as an explicit halt, and dropping PL-011 removes the only item that required it
-status: untriaged
+priority: P1
+effort: M
+status: needs-decision
+classes: safety
+feature: numerical-domain
+touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation.py, tests/unit/test_supported_ranges.py, docs/MODEL.md
 added: 2026-09-05
 ---
 
@@ -54,6 +59,37 @@ may need nothing.
 given as "the working figure, revisable upward later", and it was given before
 the playback multiplier existed. Triage should put that to the owner rather
 than encoding 30 days as though it were settled.
+
+**Decision needed.** What the cap on elapsed simulated time is now that it is a
+validity limit rather than a memory one, and what a run reaching it does.
+Triaged to `needs-decision` on 2026-09-05; the two parts, the first of which
+blocks the other:
+
+1. **What is the number, and what is it a limit *on*?** 30 days was set as a
+   memory-sizing figure for a store that no longer exists — `PL-011` is
+   `dropped`, and under `PL-T691` a 30-day case is about 140 KiB. So whatever
+   number is chosen now is a **validity** limit and has to be justified as one:
+   the longest elapsed simulated time over which the shipped parameter set is
+   claimed to hold. The slowest mode is the fat compartment at roughly 42 h
+   (`PL-JDX0`), so a cap has to be many multiples of that to be worth having;
+   30 days is about 17 of them.
+2. **What does reaching it do?** `core/supported_ranges.py` refuses an
+   out-of-range flow at the boundary, before computing. A run-time cap cannot
+   refuse at entry — it is reached mid-run — so the two candidates are a halt
+   that freezes the run with a stated reason, or a continue-with-a-declared
+   caveat on the display. `CLAUDE.md` prefers an obvious failure to a
+   plausible-looking value, which argues for the halt; the item is written that
+   way and the recommendation is to keep it, but it is the owner's call because
+   it is the one that a learner meets.
+
+**`P1`/`safety` is the band, not a claim that it is urgent.** It sits with
+`PL-GYH2` (bound or document the two gas volumes, which no supported range
+covers) — same shape, same band: a declared domain with no boundary behind it,
+where the interface will show a plausible number outside the range the model is
+verified over. `docket check` pins `safety` to `P0` or `P1` and there is no `P0`
+case here, so `P1` is where it lands. No `verify:` is recorded, deliberately:
+the command depends on which answer part 2 gets, and a command written before
+its work is how every wrong one in this store came to exist.
 
 **Done when.** A run reaching the declared cap halts with a stated reason
 rather than continuing, the cap and its provenance are declared in one place
