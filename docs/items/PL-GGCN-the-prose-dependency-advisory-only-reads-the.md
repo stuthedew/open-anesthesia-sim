@@ -12,8 +12,11 @@ sentence naming two prerequisites off one cue, only the first is ever checked.
 **The live instance.** `PL-VZL0` (cite MODEL.md from every `core/` function
 implementing a governing equation) line 69 reads:
 
-> **Blocked on `PL-GS5X`** (...) **and on `PL-X2XX`** (doc_check's citation
-> check reads neither `docs/items/*.md` nor source docstrings)
+that line names two prerequisites off a single cue word — first `PL-GS5X`,
+then, past a parenthetical, `PL-X2XX`. Read it in the file rather than here:
+quoting it verbatim makes *this* item trip the same advisory on the same first
+id, which is a neat confirmation and a warning that then fires forever, so the
+wording is described instead of reproduced.
 
 `blocked-by` declares `PL-GS5X` alone. `PL-X2XX` is open (`ready`), is a real
 prerequisite - without it the citations `PL-VZL0` adds are unenforced prose and
