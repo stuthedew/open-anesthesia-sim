@@ -779,11 +779,19 @@ a hard error, and the message names the replacement spelling rather than only
 the offence. The `./` row above is called out separately in it, since "add a
 leading slash" reads as cosmetic against an entry that matches nothing.
 
-What the check deliberately does not do is decide whether a glob describes the
-*right* set of files; that is judgment and differs per rule. `PL-DNYL` is the
-one decidable piece left beside it: an anchored entry whose literal prefix
-resolves to nothing is a rule that silently never fires, and the tree can
-answer that.
+`PL-DNYL` closed the same day, adding the second rule: an anchored entry whose
+literal prefix resolves to nothing is a rule that silently never fires, and the
+tree answers that outright. The project owner settled the question it hung on -
+a rule may not declare scope ahead of the code it governs, so it is an error
+rather than an advisory. The message names the nearest existing ancestor, which
+is what turns a transposed segment from "this path is wrong" into "it stopped
+being real here".
+
+What the check deliberately does not do, and this is now settled rather than
+pending, is decide whether a glob describes the *right* set of files. That is
+judgment, it differs per rule, and a tool guessing at it is the "worse than no
+tool" case. Both rules it does carry ask only whether an entry is anchored and
+whether it points at anything - one answered by the text, one by the tree.
 
 **Excluded deliberately.** Whether a rule's glob describes the *right* set of
 files is judgment, differs per rule, and is the "worse than no tool" case if
@@ -835,3 +843,55 @@ rather than smaller: the standard now loads on every session, including one
 working only in `subprojects/docket/`. Nothing but practice will say, and the
 symptom to watch for is a session over-investing in the apparatus while citing
 the right file - which is `PL-6SBB` exactly, in the other direction.
+
+## Decided: no numpy, and the reason is fit rather than dependency avoidance (2026-09-05)
+
+Raised by the project owner while deciding `PL-011`'s compaction - explicitly
+not for its own sake, but to check that avoiding it is not making the work
+unreasonably hard. Recorded because the question spans more than one item and
+will be asked again.
+
+**The answer is no, and the measurements say why.** numpy is not currently a
+dependency, transitively or otherwise: `flet[all]`, `flet-charts` and `pydantic`
+are the three declared, and none pulls it in.
+
+- **The read path is already 0.8% of the frame budget, and flat.**
+  `select_indices` with the shipped 150-column budget costs 0.22-0.24 ms per
+  series - about **1.5 ms per frame for all seven** - and it does not change
+  between a 15-minute and a 12-hour window, because `PL-D9WD`'s cache made it
+  O(columns) rather than O(window). Against the 200 ms budget there is nothing
+  for vectorization to win.
+- **The write path is append-dominated, which is numpy's weakest operation.**
+  `record()` including ladder maintenance costs 0.46 us per sample per series,
+  so **3.2 us per run tick for all seven, against `advance()` at 18.4 us**.
+  numpy has no append: the ladder would need hand-rolled capacity doubling, or
+  `np.append`, which reallocates and is quadratic. `array` gives amortized
+  append for free, so **numpy would make the compaction harder, not easier**.
+
+**The strongest candidate for it is already solved in the standard library.**
+`PL-GS5X` (replace the operator split with the exact matrix exponential) is the
+one piece of real numerical work in the queue, and its plan is the ~30-line
+`math`-only implementation that already exists in this repository's history at
+`git show 475fb92^:tools/review-verification/verify_physics.py` - scaling and
+squaring with a 24-term Taylor series.
+
+**The one argument left, recorded rather than settled.** `scipy.linalg.expm`
+carries published backward-error analysis (Al-Mohy and Higham 2009) where a
+hand-rolled Taylor series carries whatever this project proves about it, and
+`CLAUDE.md`'s safety standard prefers validated methods to hand-rolled ones on
+a safety-critical path. That is `PL-GS5X`'s call when it is worked - the owner
+already chose the exact step with the stdlib implementation named - and it is
+not a reason to take the dependency for chart storage.
+
+**Two of its three measurements describe code being deleted, and the
+conclusion survives anyway (added 2026-09-05, `PL-VSJZ`).** The read-path and
+write-path figures above are `select_indices` and `RunHistory.record`, which
+`PL-2FM6` and `PL-8LXM` remove: under `PL-T691` the chart evaluates a closed
+form rather than reading back recorded samples, so neither call site exists to
+be vectorized. The answer is still no, on ground the note did not have: a
+standard-library matrix exponential (scaling-and-squaring, Pade-13, Higham
+2005) renders a 600-column frame in 3.3 ms over a 1 h window and 3.6 ms over
+30 days, because chart columns are uniformly spaced and one exponential serves
+a whole inter-event segment. numpy would win nothing there either. Kept rather
+than rewritten: the question is what recurs, and the note records that it was
+asked and answered before.

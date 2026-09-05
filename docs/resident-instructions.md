@@ -46,6 +46,9 @@ preceded by a read.
 | How to restart a merged branch | inside that bullet | the `docket` skill's `stranded` section, and the hook's deny message | Needed at branch recovery, which is where the skill already is, and at the refusal, which is where the question is being asked. |
 | "A push demand after a merged branch may be false" | inside that bullet | `.claude/hooks/stop_hook_patch.py`'s `UNPATCHED` message | Already routed by `PL-WW08`; the resident sentence was a second copy. The message prints at the one moment a session meets a false demand. |
 | The doc-sweep procedure | 11 resident lines | the `docket` skill, Mode: close out | Fires at close-out, which `CLAUDE.md` already requires the skill for. The *trigger* stays resident in one sentence, with its safety reason, because without the reason a session reads the sweep as tidiness and skips it under pressure. |
+| A prompt naming a lane is `docket next workflow`, run first | 334 characters, § "Session and tool-use efficiency" | `subprojects/docket/src/docket/cli.py`'s lane line, covered by `subprojects/docket/tests/test_cli.py` | The command now prints the fact the rule existed to supply — which lane its own answer is in, and the other lane's pick with the literal command beside it. It is silent only when the caller already named a lane, or when no `workflow_paths` boundary is declared; this project declares one, so it always fires here. What it costs: the print corrects a session *after* a bare run rather than before it, which is one extra command instead of a wrong item started, and that was the whole of `PL-0D4X`'s harm. The rule and that history stay in the `docket` skill (`PL-4H01`). |
+| Prefer finishing a feature to advancing several | 159 characters, § "The queue" | `subprojects/docket/src/docket/plan.py`'s `rank()`, which prints the rule beside every ranked item | The ranking implements it and states it verbatim — "A shipped feature beats progress on several, so the feature nearest done ranks first." The clause it does not carry is "do not override it toward novelty", a prohibition on the session that no ranking can enforce; but the printed rationale puts the counter-argument at the moment of the override, which the resident sentence did not. This was the one bullet in that section this file had never tested (`PL-4H01`). |
+| "Run pytest, Ruff, and the configured type checker before finishing" | 70 characters, § "Architecture and development discipline" | nothing — it stays resident, once | A de-duplication rather than a routing. Twenty-seven lines below, equally resident, § "Session and tool-use efficiency" states the same rule more precisely: it names `mypy` rather than "the configured type checker", and adds when to run it in full and what to use while iterating. Nothing was in the deleted line that is not in the surviving one (`PL-4H01`). |
 
 Net: 548 resident lines to 541, and 39613 characters to 38845. Both units are
 here because they answer different questions and `PL-QV1F` made characters the
@@ -185,6 +188,45 @@ correctly, from a sentence whose scope was three sentences away.
   fire without changing a decision — the defect `CLAUDE.md` § "A check earns its
   place every run" names. The pointer in the growth advisory does the same job
   at the same moment for no upkeep.
+
+## When a resident rule is retired
+
+`CLAUDE.md` § "Prefer deterministic tooling over repeated model work" gives
+*checks* a retirement test — "A check earns its place every run, or it is
+retired" — on the ground that one firing every run without changing a decision
+costs attention forever. Resident *rules* had no equivalent. What they had was
+the protection in § "The queue" ("never delete a rule for being wordy") and the
+ceiling refused below, so the set could only grow: 35721 characters to 44697 in
+the five days to 2026-09-05, against a routing pass that found 563 characters to
+move. `PL-NJTZ` is the counterweight, and this is the test it points at.
+
+**A resident rule is retired when its failure mode is now caught
+deterministically** — by a check, a hook, or a command that prints the rule at
+the moment it fires. Not when it is long, not when it is old, and not to reach a
+number. Wordiness is still never a reason; obsolescence is.
+
+Three things this deliberately does not become:
+
+- **Not a ceiling.** The refusal below stands unchanged and is not reopened by
+  this section: "a limit is met by deleting a rule to reach a number, which is
+  the one outcome this pass must not produce." A qualitative test names the
+  carrier that replaced the rule; a numeric one names only the shortfall.
+- **Not a licence to rewrite.** A rule whose *evidence* has gone stale while its
+  other triggers have no carrier stays put. The `list_sessions` bullet in
+  `.claude/rules/instruction-writing.md` is the worked example: `PL-66FP`'s
+  release case is now hard-refused in `release.py`, but a tag, a merge and a
+  branch deletion still meet no check, and cutting only the dead clause would be
+  rewriting rather than routing. It was measured at 1287 characters, the largest
+  single candidate anywhere, and left resident (`PL-4H01`).
+- **Not silent.** A retirement is recorded in "What was routed out" above with
+  what now enforces the rule, exactly as an addition is recorded in "What stays
+  resident". The ledger is the audit trail in both directions or it is not an
+  audit trail: a later session must be able to find where a rule went instead of
+  concluding it was dropped.
+
+The carrier has to be observed firing, not assumed. Each of the three routings
+recorded above names a file and a test, and each was run against the tree before
+the rule was removed.
 
 ## Re-running the measurement
 
