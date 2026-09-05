@@ -1,12 +1,13 @@
 ---
 id: PL-D551
 title: The floor job bills a whole minute for eight seconds; its steps could run in the checks job ahead of the uv install and keep the bare-interpreter contract
-status: done
-feature: ci-cost
-touches: .github/workflows/quality.yml
 priority: P3
 effort: S
+status: done
 classes: infra
+feature: ci-cost
+milestone: v0.4.2
+touches: .github/workflows/quality.yml
 added: 2026-09-05
 closed: 2026-09-05
 verify: ! grep -q '^  floor:' .github/workflows/quality.yml && test "$(grep -n 'setup-python@' .github/workflows/quality.yml | cut -d: -f1)" -lt "$(grep -n 'setup-uv@' .github/workflows/quality.yml | cut -d: -f1)"
