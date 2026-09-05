@@ -134,9 +134,14 @@ Two additions from the standards research that the original brief predates:
 
 **Verify note.** `PL-QTN6` (freeze README edits, closed) carries a `verify:`
 asserting `blocked-by: PL-RM83` in this file's frontmatter. That line is now
-correctly gone, so that command no longer passes - a live instance of what
-`PL-JZ1D` (a closed item's verify can be silently invalidated by later work)
-describes, left in place as evidence rather than edited away.
+correctly gone, so the command no longer resolves. `PL-JZ1D` (make a closed
+item's `verify:` the record it is, and stop it being rewritten) settled that as
+normal rather than as a defect: once an item is `done` its command "stops being
+a command and becomes the record of an experiment that was performed", and a
+`grep '^blocked-by: ...'` against an item file is named there as one of the
+shapes written in the expectation of stopping. Nothing runs a closed item's
+command and nothing warns that one has gone stale. So it is left exactly as it
+is - the hazard that rule identifies is the repair, not the dead command.
 
 ## Deferred, 2026-09-05
 
