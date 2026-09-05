@@ -1,14 +1,10 @@
 ---
 id: PL-3VKZ
 title: Rewrite over-verbose and poorly worded prose in the human-facing markdown documents
-priority: P2
-effort: L
-status: ready
-classes: docs
-feature: prose-quality
-touches: docs/MODEL.md, docs/ARCHITECTURE.md, docs/maintainer.md, ROADMAP.md
+status: dropped
 added: 2026-09-05
-not-delegable: prose quality is judged by a reader, and no command separates trimmed prose from padded prose. The two that could run are worse than none - a line-count ceiling is met by deleting a paragraph to reach a number, which is why `check_resident_instructions` refuses one, and `doc_check.py check` passes today. `docs/MODEL.md` is a protected path besides
+closed: 2026-09-05
+reason: split into three per-document items, with the project owner's agreement (2026-09-05), because at `L` this could not be started from a queue entry - the whole of `PL-72V3`'s triage of it was undone by that. Nothing is lost and nothing is added: PL-BZR4 takes `docs/MODEL.md` and carries the specialist-standard qualifier, PL-K7N7 takes `ROADMAP.md`, and PL-TPS7 takes `docs/ARCHITECTURE.md` and `docs/maintainer.md` together. The two exclusions this item settled hold in all three - `README.md` stays frozen by `.claude/rules/readme-hold.md`, and `docs/WORKING_NOTES.md` is out because `docket.toml`'s `workflow_paths` counts it apparatus, so the specialist prose standard does not reach it. The body below is the reasoning; it was not rewritten into any child
 ---
 
 **Problem.** The human-facing markdown documents are, in the project owner's

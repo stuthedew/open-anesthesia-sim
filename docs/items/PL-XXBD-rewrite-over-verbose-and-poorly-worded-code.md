@@ -1,14 +1,10 @@
 ---
 id: PL-XXBD
 title: Rewrite over-verbose and poorly worded code comments across src/ and tests/
-priority: P2
-effort: L
-status: ready
-classes: docs
-feature: prose-quality
-touches: src/anesthesia_sim/core, src/anesthesia_sim/data, src/anesthesia_sim/app, tests
+status: dropped
 added: 2026-09-05
-not-delegable: readability is judged by a person, and no command separates a trimmed comment from a padded one. A length ceiling would be satisfied by deleting the provenance note this item exists to keep, which is the one outcome it forbids. `touches` reaches `src/anesthesia_sim/core` and `src/anesthesia_sim/data` besides, which delegation may never modify
+closed: 2026-09-05
+reason: split into two items, with the project owner's agreement (2026-09-05), because at `L` this could not be started from a queue entry. PL-1K5X takes `src/` and PL-FDMJ takes `tests/`. The halves are even by the measure that matters: 4,644 lines of comment and docstring prose in `src/` against 4,530 in `tests/`, measured 2026-09-05. The safety-critical qualifier this item stated - shorten the prose, keep the *why* - is carried into both, and PL-1K5X records that it lands almost entirely in `core/`. The body below is the reasoning; it was not rewritten into either child
 ---
 
 **Problem.** The comments in `src/` and `tests/` are, in the project owner's
