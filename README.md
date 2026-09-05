@@ -190,8 +190,10 @@ it cannot parse; `tests/unit/test_tools_portability.py` and
 `subprojects/docket/tests/test_portability.py` hold them to it, and hold both
 trees to importing nothing a bare checkout does not already carry.
 
-Those tests approximate the older interpreter; `.github/workflows/quality.yml`'s
-`floor` job is the run itself. It installs the declared floor and executes
+Those tests approximate the older interpreter; the floor section of
+`.github/workflows/quality.yml`'s `checks` job is the run itself. It runs
+before the uv install, so no virtualenv exists yet to fall back on. It installs
+the declared floor and executes
 `python3 tools/doc_check.py check`, `python3 tools/branch_id_check.py`,
 `bin/docket check` and `python3 tools/contrast_check.py` under it, which settles
 syntax, imports and runtime behavior together rather than one at a time.
@@ -199,10 +201,10 @@ syntax, imports and runtime behavior together rather than one at a time.
 `make check` mirrors the checks run in CI (`.github/workflows/quality.yml`)
 and must pass before a change is considered complete. It runs those
 stdlib-only commands under whatever `python3` is on your PATH rather than under
-a pinned interpreter, so on a machine already at 3.14 the `floor` job is the
+a pinned interpreter, so on a machine already at 3.14 CI's floor section is the
 only place they meet the older one.
 
-Both CI jobs check out the full history (`fetch-depth: 0`), which a local
+CI checks out the full history (`fetch-depth: 0`), which a local
 clone usually does not have. Three checks need it and say so rather than
 guessing when they lack it — the release-tag read in `tools/doc_check.py`,
 and the recorded- and missing-pull-request reads in `bin/docket check`. So a
