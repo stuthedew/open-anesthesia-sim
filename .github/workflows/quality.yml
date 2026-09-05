@@ -33,7 +33,22 @@ permissions:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    # `self-hosted` while the repository is private (`PL-PVHD`). The plan is to
+    # make it public later, and **that is the moment this reverts to
+    # `ubuntu-latest`** - the two settings have to move together. Standard
+    # runners are free on a public repository, so the runner stops buying
+    # anything; and a self-hosted runner on a public repository lets anyone
+    # open a pull request that executes code on the runner's machine, which
+    # GitHub's own guidance is explicit about. Free and dangerous is a bad
+    # trade against free and safe.
+    #
+    # `linux` alongside `self-hosted` rather than `self-hosted` alone: every
+    # step below assumes a POSIX shell and a `python3`, so a job that landed on
+    # a macOS or Windows runner should fail to schedule - "no runner matching
+    # the labels" - rather than start and fail somewhere less legible. The
+    # runner applies both labels itself at registration. The architecture is
+    # deliberately not pinned, so an arm64 machine matches too.
+    runs-on: [self-hosted, linux]
     # The default is 360 minutes. `bin/docket check --verify` shells out to
     # every open item's own `verify:` command - 321 of them at present, and
     # the Makefile notes that some are literal `sleep`s - so a single item can
@@ -142,7 +157,10 @@ jobs:
   # import where a traceback here would not, and they reach a file or a
   # lazily-imported branch these two commands never touch.
   floor:
-    runs-on: ubuntu-latest
+    # Self-hosted while the repository is private, and reverting to
+    # `ubuntu-latest` when it is made public - see the `checks` job above for
+    # why the two move together. `PL-PVHD`.
+    runs-on: [self-hosted, linux]
     # Observed at 8 seconds. 5 minutes is far past any honest run and still
     # 355 minutes short of the default, which is the point. `PL-FSH9`.
     timeout-minutes: 5

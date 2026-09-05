@@ -35,7 +35,10 @@ permissions:
 
 jobs:
   pr-title:
-    runs-on: ubuntu-latest
+    # Self-hosted while the repository is private, and reverting to
+    # `ubuntu-latest` when it is made public - `.github/workflows/quality.yml`
+    # carries the reasoning on its `checks` job. `PL-PVHD`.
+    runs-on: [self-hosted, linux]
     # Observed at 12 seconds; one checkout and one standard-library script.
     # `PL-FSH9`.
     timeout-minutes: 5
