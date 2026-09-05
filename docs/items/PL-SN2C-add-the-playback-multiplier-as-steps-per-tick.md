@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, ux
 feature: teachable-case
+milestone: v0.4.0
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/unit/test_playback.py, tests/unit/test_simulation_view.py, tests/integration/test_sevo_controller.py
 blocked-by: PL-VM40
 added: 2026-08-25

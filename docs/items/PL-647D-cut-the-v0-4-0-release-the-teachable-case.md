@@ -1,8 +1,9 @@
 ---
 id: PL-647D
 title: Cut the v0.4.0 release: the teachable case
-status: ready
+status: done
 added: 2026-09-05
+closed: 2026-09-05
 priority: P2
 effort: S
 classes: planning, docs

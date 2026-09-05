@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost, docs
 feature: worker-instructions
+milestone: v0.4.0
 touches: CLAUDE.md, .claude/rules, .claude/hooks, .claude/skills/docket, .claude/settings.json, docs/resident-instructions.md, tests/unit/test_no_prune_guard.py
 added: 2026-09-05
 closed: 2026-09-05
