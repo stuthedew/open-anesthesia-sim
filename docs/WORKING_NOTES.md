@@ -724,9 +724,11 @@ attempt starts past these rather than at them.
 draft was rejected, so they are floors rather than the unsolved part:
 
 - The educational-only limit belongs in the description itself, not one click
-  away in `README.md`. That field is often the only sentence read before an
-  impression forms, which puts it inside `CLAUDE.md`'s presentation-
-  correctness standard.
+  away in a longer document. That field is often the only sentence read before
+  an impression forms, which puts it inside `CLAUDE.md`'s presentation-
+  correctness standard. `PL-WB5K` deleted the README, so the click it used to
+  be one away from now lands on nothing; `CITATION.cff`'s abstract is the only
+  root-level statement of the limit until `PL-N092` writes the new one.
 - Anything claimed as planned must match `ROADMAP.md`. Intravenous agents are
   planned-milestone item 13, sequenced after simulation forking and therefore
   after the MVP, so "planned" is accurate and "soon" is not.
@@ -741,6 +743,52 @@ half - `pyproject.toml`'s vague `description` and its absent `classifiers` -
 and says the same thing about sequencing. Repository topics were proposed in
 the same discussion and not applied; they are independent of the wording and
 can be set whenever.
+
+## Open: the repository has no README - PL-WB5K, PL-N092, PL-XYRN, PL-4MHK
+
+The root `README.md` was deleted on 2026-09-05 by the project owner's
+direction, under `PL-WB5K`. It is not a gap to be patched; it is the state the
+repository holds until `PL-N092` (rewrite README as a human-readable
+introduction) writes a deliberate one, sequenced behind `PL-XYRN` (decide when
+the repository goes public).
+
+**Why deletion rather than a further freeze.** `PL-QTN6` froze the file in
+place on the same day, after successive sessions each improved a paragraph in
+isolation and made the whole worse. The freeze stopped the edits and did
+nothing about the two harms that remained: the document was still the first
+thing a session found, and its "Development" section was an unenforced second
+copy of the Makefile, `make check`'s composition and the CI job layout - so a
+session read it as instruction and could be wrong without any check
+disagreeing. For a human reader it was 241 lines of accreted paragraphs with
+no shape. A frozen document is still a read document. Deleting it removes both
+harms at once and loses nothing recoverable, since git history holds the text.
+
+**What now stands in for it, and what does not.** `CITATION.cff` carries the
+project abstract and the educational-only limit at the repository root, which
+is why the deletion does not leave that limit unstated - and the repository is
+private, so no outside reader is meeting the project through its absence.
+`CLAUDE.md` and `docs/ARCHITECTURE.md` carry what a session needs; the Makefile
+is the authority on the commands the README used to restate, and always was.
+Nothing carries the newcomer's orientation, and nothing is meant to until
+`PL-N092`.
+
+**What the deletion touched.** `pyproject.toml`'s `readme` key had to go, or
+the `uv_build` backend fails on the missing file; `PL-4MHK` (package metadata)
+already owns restoring it alongside a real description. The freeze rule under
+`.claude/rules/` went in the same commit, per its own closing instruction, and
+`PL-3V4N` - which would have built a check enforcing that freeze - is dropped
+with it.
+
+**Standing rule while this holds, and it is enforced rather than written
+down.** Do not recreate the README, and do not add a placeholder. A stub is the
+same failure at smaller scale: it will be read as instruction, it will drift,
+and it will make `PL-N092` a revision rather than a first draft. That is what
+`tools/readme_hold_check.py` holds, in `make check` and in the bare-interpreter
+section of CI's `checks` job (where `PL-D551` folded the former `floor` job) -
+the freeze this replaces was routed to a path-scoped rule, which loads on a
+*read* and so was missed by the first session that edited the file without
+opening it. The check retires itself: `PL-N092` deletes the script and its two
+invocations in the commit that writes the README.
 
 ## Settled: `.claude/rules/` path globs are unanchored - PL-ZQ35, PL-H588, PL-LLWN
 
@@ -757,10 +805,13 @@ written as if it were relative to the repository root and none of them is, so
 they fail together and for one reason. They differ only in how visible the
 failure is today:
 
-- `PL-ZQ35` (closed) - `readme-hold.md`'s `README.md` against three files of
-  that name. The collision was already real: the freeze was loading on the
-  queue tool's reference manual, alongside `apparatus-standard.md`, whose own
-  text says every sentence of it is wrong when applied to a `README.md`.
+- `PL-ZQ35` (closed) - the README freeze rule's own unanchored `README.md`
+  entry against three files of that name. The collision was already real: the
+  freeze was loading on the queue tool's reference manual, alongside
+  `apparatus-standard.md`, whose own text says every sentence of it is wrong
+  when applied to a README. Both the freeze rule and the root README have
+  since been deleted under `PL-WB5K`; the measurement stands, its example
+  does not.
 - `PL-H588` (dropped) - `expert-review.md`'s `src/**` and `tests/**` reached
   `subprojects/docket/src/` and `tests/`, so the simulator's specialist
   standard loaded on the apparatus: `PL-6SBB`'s leak running the other way,
@@ -795,10 +846,12 @@ whether it points at anything - one answered by the text, one by the tree.
 
 **Excluded deliberately.** Whether a rule's glob describes the *right* set of
 files is judgment, differs per rule, and is the "worse than no tool" case if
-scripted; `PL-LLWN`'s check decides anchoring only. `PL-3V4N` is a separate
+scripted; `PL-LLWN`'s check decides anchoring only. `PL-3V4N` was a separate
 defect in the same file - a path-scoped rule fires on a *read*, so the freeze
-is missed entirely by a session that edits `README.md` without opening it -
-and anchoring neither helps nor hinders it.
+was missed entirely by a session that edited the README without opening it -
+and anchoring neither helped nor hindered it. It is dropped: `PL-WB5K` deleted
+the freeze rule and the README together, so there is no longer a write to gate.
+The general form survives it, and applies to any future rule scoped this way.
 
 ## Open thread: which moment a rule has to reach, not which tree it governs - PL-WWDT, PL-H588
 

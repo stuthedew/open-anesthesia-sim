@@ -103,6 +103,7 @@ jobs:
       - run: python3 tools/doc_check.py check
       - run: python3 tools/branch_id_check.py
       - run: python3 tools/rules_paths_check.py
+      - run: python3 tools/readme_hold_check.py
       # Bare, unlike the `checks` job above: this job installs no `uv`, so
       # every `verify:` command would be "not found" and the replay would
       # decline rather than answer. What is being proved here is that the
