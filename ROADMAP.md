@@ -60,7 +60,7 @@ capability-boundary rule above governs.
 | v0.3.7 | Completed | The run records its own inputs, and the interface stopped degrading under one: every setting change the model was stepped under is now recorded with the simulated time it took effect, marked on the chart as a third kind of series - vertical, labelled as a record of a user input rather than of anything measured - and listed beside it as the acts that produced it. The record is faithful rather than tidy: a slider reports continuously while dragged, so one turn of a dial is several settings the run really was computed under, and the display groups them on a boundary the interface declares rather than on a time threshold the coming playback multiplier would invalidate. Changes superseded within one simulation step collapse into the one the step integrated, because the rest describe a run that did not happen, and the recorded value is read back off the compartment rather than taken from the caller. Alongside it the render stall closed: what saturated the Flutter client was 2 700 discrete control mutations a frame, not data volume, and anchoring the chart's decimation to the run rather than to the moving window leaves a steady frame moving the newest bucket and the final sample. Two features close - `delegation` at 13 of 13 with the stop hook's comparison point corrected, and `provenance` with three review-article PDFs filed as cited references - and three defects in how the queue answers. Display and interface work: no equation, parameter, numerical method or solver step moved, and `core/` neither records the timeline nor knows it exists. |
 | v0.3.8 | Completed | The wash-in curve the literature teaches from, and the render path that can carry it. F_A/F_I is plotted on its own bounded axis beneath the compartment chart, broken into segments wherever the ratio leaves its domain rather than joined by a line across the gap, labelled as a ratio against modelled inspired rather than against the vaporizer dial, and carrying the constant-F_I caveat in `docs/MODEL.md`: it is the textbook wash-in curve only while the dial is held, and a learner who misses that reads a dial change as uptake. Underneath it, what one frame reads stopped growing with the run. The snapshot carried a copy of every sample ever recorded - 4.08 ms at half a million samples, five times a second - and the chart discarded all but the visible few hundred; the controller now answers for a window cut at the axis the caller is about to draw, so a frame reads at most the visible window's own width divided by `SIMULATION_STEP_S` samples whether the run is a minute or a week old, and the decimation scan reads each sample once where it read about 2.8 times. Display and interface work: no equation, parameter, numerical method or solver step moved, and the ratio is a quotient of two modelled states `core/` already held. Alongside them, the literature route this environment actually has - direct HTTP to publishers is refused, the PubMed server answers - is recorded where a session about to write provenance will read it rather than only where a delegated worker would, and two sessions that discover they are on one item gained a rule for which of them yields. |
 | v0.3.9 | Completed | What a frame costs, what a learner is allowed to look at, and what a run *is*. Decimation had rescanned every sample in the visible window on every frame — 62.6 ms at a four-hour window and 207.7 ms at twelve, against a 200 ms frame budget — and now reads precomputed M4 aggregates held on a dyadic grid anchored to absolute sample index, merged tier to tier without revisiting a raw sample, so a frame costs what it draws rather than what the window holds. Beside it, a checkbox per compartment: the reference implementation's own affordance, the two-trace comparison a question like *why does fat lag muscle* actually needs, and the one lever on render cost that trades no fidelity, since a trace nobody is looking at is not a resolution loss. Underneath both, simulated time became the number of steps taken times the run's step rather than a sum accumulated a step at a time, and `docs/MODEL.md` states as a guarantee what had been an implementation detail: a run is a function of its inputs and its step count and of nothing else, so a machine that wakes the loop late runs slower and never differently — with the four things that guarantee does not cover named beside it. Interface and determinism work: no equation, parameter, numerical method or solver step moved, `src/anesthesia_sim/data/` is byte-identical to v0.3.8, and no displayed number changes — the recorded sample times differ in their last bits, about 35 ns after four hours, which no readout, axis or trace resolves. Three apparatus defects close alongside: a commit pushed after its own pull request merged is reported rather than silently dropped, the check that reports it stopped calling merged work lost, and `docket next` reserves what it recommends, so two sessions handed the same answer do not both start it. |
-| v0.4.0 | Completed / current baseline | The teachable case: the release that makes the model's lessons observable at all. A case runs at 1, 5, 20, 60 or 300x in steps that never change size, on a time base spanning fifteen minutes to twelve hours that defaults to fitting the run, against a vertical axis fixed at 0-3 x MAC for every agent rather than at one agent's vaporizer dial maximum - so the three obstacles this milestone was scoped on are answered together: the reservoirs that cause context-sensitive emergence (muscle at 135 min, fat at 42 h for sevoflurane) become reachable in minutes of wall clock, a 1 MAC run fills the plot instead of its bottom quarter, and three agents whose MACs differ threefold are finally comparable. Changing agent is now an explicit new case that names what will be lost before discarding it. Underneath, the recorded run is keyed by substance and quantity rather than by six flat compartment floats, so nitrous oxide will add a substance rather than reshape the record v0.5.0's forking proof is written against. Interface work on an untouched model: `src/anesthesia_sim/core/` and `src/anesthesia_sim/data/` are byte-identical to v0.3.9 and every changed source file is under `app/`, so no equation, parameter, numerical method or solver step moved, and the v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference tests are unchanged and passing. Twelve of the milestone's thirteen Required-scope entries have landed; `PL-011`'s retention rule is the thirteenth and is carried to v0.4.1, recorded in place in that section. The remaining twenty-one items of the thirty-six are apparatus: the release script's own in-flight guard after two sessions cut v0.3.7 independently, the resident-instruction budget, and eleven live defects in the queue's ranking and its checks. |
+| v0.4.0 | Completed / current baseline | The teachable case: the release that makes the model's lessons observable at all. A case runs at 1, 5, 20, 60 or 300x in steps that never change size, on a time base spanning fifteen minutes to twelve hours that defaults to fitting the run, against a vertical axis fixed at 0-3 x MAC for every agent rather than at one agent's vaporizer dial maximum - so the three obstacles this milestone was scoped on are answered together: the reservoirs that cause context-sensitive emergence (muscle at 135 min, fat at 42 h for sevoflurane) become reachable in minutes of wall clock, a 1 MAC run fills the plot instead of its bottom quarter, and three agents whose MACs differ threefold are finally comparable. Changing agent is now an explicit new case that names what will be lost before discarding it. Underneath, the recorded run is keyed by substance and quantity rather than by six flat compartment floats, so nitrous oxide will add a substance rather than reshape the record v0.5.0's forking proof is written against. Interface work on an untouched model: `src/anesthesia_sim/core/` and `src/anesthesia_sim/data/` are byte-identical to v0.3.9 and every changed source file is under `app/`, so no equation, parameter, numerical method or solver step moved, and the v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference tests are unchanged and passing. Twelve of the milestone's thirteen Required-scope entries have landed; `PL-011`'s retention rule is the thirteenth and was dropped on 2026-09-05, superseded by the score architecture rather than deferred, with the outcome recorded in place in that section. The remaining twenty-one items of the thirty-six are apparatus: the release script's own in-flight guard after two sessions cut v0.3.7 independently, the resident-instruction budget, and eleven live defects in the queue's ranking and its checks. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -136,15 +136,23 @@ model is stepped, over what span it is drawn, in what unit it is read, and
 what the record it writes is keyed by. `docs/MODEL.md` gained 309 lines saying
 so.
 
-**Twelve of the thirteen Required-scope entries land, and the thirteenth is
-recorded rather than quietly dropped.** `PL-011` — bound the controller's
-concentration history — is at `needs-decision` and is carried to v0.4.1. Its
-own entry under "Required scope" below records the outcome and the reasoning,
-in the same place and the same form as the twelve that landed, because a scope
-list whose unmet entry is simply absent is a list that cannot be audited. It
-is named here as well as there: the Definition of done does not require it, but
-this release is what makes the underlying growth reachable in wall clock, and a
-reader is owed that in the release prose rather than only in a queue item.
+**Twelve of the thirteen Required-scope entries land, and the thirteenth was
+answered by being dropped.** `PL-011` — bound the controller's concentration
+history — went out of this release at `needs-decision`, and closed as `dropped`
+on 2026-09-05, the same day: the design round that followed the cut established
+that the score architecture *removes* the store rather than shrinking it. Once
+state is a closed-form function of the run's control-input timeline (`PL-T691`)
+the controller holds a score plus one keyframe per control event, measured at
+about 140 KiB for a 30-day ICU case against the 3.16 GB this item existed to
+bound, and `PL-2FM6` deletes `RunHistory` outright. So the retention rule was
+not deferred and not left open; the question stopped being worth answering.
+
+Its entry under "Required scope" below records that outcome in place, in the
+same form as the twelve that landed, because a scope list whose unmet entry is
+simply absent is a list that cannot be audited. It is named here as well as
+there because this release is what made the growth reachable in wall clock —
+at 300x a simulated week is 34 minutes and roughly 770 MB — and a reader owed
+that number is owed its disposition in the same prose.
 
 ### Release narrative
 
@@ -308,10 +316,10 @@ adds no capability and exists to clear the ground they are built on:
 | --- | --- | --- | --- |
 | 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 35 S |
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 4 M, 17 S |
-| 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed; `PL-011`'s retention rule is carried to v0.4.1 and its Required-scope entry records why. | 7 M, 6 S |
-| — | **v0.4.1 — the code is the model** | Planned-milestone item 29. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch, `v0.4.1` — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. Nine items: `PL-P0BB`, `PL-GS5X`, `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language`. `PL-3TLK` leads; the rest of the naming work follows the exact step. A tenth arrives from behind: `PL-011` (bound the controller's concentration history) was carried in from v0.4.0's Required scope at the 2026-09-05 cut, and is recorded here so the two sections agree rather than because its placement has been ruled on — that happens when this step is scoped, and it is worth deciding here rather than earlier because a live design thread proposes deleting `RunHistory` outright, which would moot the retention rule instead of answering it. | 1 L, 6 M, 2 S |
+| 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
+| — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch, `v0.4.1` — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan. **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged. `PL-3TLK` leads; the rest of the naming work follows the exact step. `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it. | 1 L, 6 M, 2 S |
 | 4 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
-| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). | — |
+| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — is nearly free once a run is a closed-form function of its control timeline, and expensive against a recorded sample store. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
 | 6 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
 | 7 | **v0.6.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
@@ -1165,7 +1173,9 @@ owner's:*
 PL-DHV7 (MAC as a displayed unit), PL-VM40 (simulated time from a step count),
 PL-F52R (the MAC-awake reference band), PL-ZRSP (the F_A/F_I trace), PL-R3KB
 (agent selection discarding a run), PL-011 (bounding the concentration
-history).
+history) — the last of these cleared by being `dropped` on 2026-09-05 with its
+reason recorded, which "What counts" admits as clearing and which the Required
+scope above sets out in full. Six of six.
 
 Findings made while clearing this gate go to Gate 1, except `P0` and
 `safety`/`science` findings, which re-enter here.
@@ -1284,30 +1294,31 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
 - **A bounded concentration history** (queue item PL-011), which stops being
   optional once a four-hour run at 10 Hz records 144,000 samples.
 
-  *Not landed. Carried to v0.4.1, 2026-09-05, at the v0.4.0 cut.* This is the
-  one Required-scope entry the milestone ships without, and it is recorded
-  here rather than removed: a scope list whose unmet entry is simply deleted
-  cannot be audited afterwards. Three facts decided it. The Definition of done
-  below does not name it, so the milestone is complete on its own stated
-  terms. The item is at `needs-decision` — the open question is the *eviction*
-  rule, which raw samples may be dropped once a tier fine enough to serve the
-  narrowest scale has consolidated them, and what the interface says when it
-  happens — and its answer is entangled with whether `RunHistory` survives at
-  all, which is v0.4.1's question and not this milestone's. And the half of it
-  that was decidable inside this milestone has landed: `PL-D9WD`'s M4
-  consolidation store took the run from 264 B to **127 B per sample including
-  the ladders**, measured over 200 000 samples, halving every figure in the
-  item's own sizing table.
+  *Not landed, and not deferred either: dropped 2026-09-05, the day of the
+  cut.* This is the one Required-scope entry the milestone shipped without, and
+  it is recorded here rather than removed, because a scope list whose unmet
+  entry is simply deleted cannot be audited afterwards.
 
-  What that leaves is a bound in name only rather than a bound, and this
-  release is what makes it reachable. Before the playback multiplier, twelve
-  simulated hours meant sitting in front of the application for twelve hours;
-  at 300x it is 2.4 minutes and about 55 MB, a simulated day is 8 minutes and
-  110 MB, and a simulated week is 34 minutes and roughly 770 MB. The owner's
-  30-day run cap (2026-09-04) bounds retention at about 3.3 GB. Nothing here
-  produces a wrong clinical value — the failure mode is memory growth and
-  eventually an exhausted process, not a misleading number — which is why it
-  is `P2` and why it did not hold the cut. It is the first entry v0.4.1 owes.
+  It went out of the release at `needs-decision`, carried nominally to v0.4.1,
+  and closed the same day. The design round that followed the cut settled it in
+  the one direction nobody had costed: the score architecture **removes** this
+  store rather than bounding it. Once state is a closed-form function of the
+  run's control-input timeline (`PL-T691`), the controller holds a score plus
+  one keyframe per control event - about 140 KiB for a 30-day ICU case, against
+  the 3.16 GB this entry existed to bound - and `PL-2FM6` deletes `RunHistory`
+  outright. Deciding an eviction rule for a store that is about to be deleted
+  spends a decision for nothing, so the question was retired rather than
+  answered. `PL-011`'s measurements survive in `PL-T691`'s brief.
+
+  What this release did to the numbers is still worth stating, because it is
+  what made the growth reachable at all and because the score work is not yet
+  scheduled: before the playback multiplier, twelve simulated hours meant
+  sitting in front of the application for twelve hours; at 300x it is 2.4
+  minutes and about 55 MB, a simulated day is 8 minutes and 110 MB, and a
+  simulated week is 34 minutes and roughly 770 MB. Until `PL-T691` and
+  `PL-2FM6` land, that growth is unbounded and nothing tracks it - which is the
+  cost of dropping rather than deferring, recorded here so it is visible.
+
 - **A documentation sweep** (queue item PL-RCTQ): `docs/MODEL.md`'s interface
   boundary, minimum
   displayed outputs and displayed-precision sections, and `README.md`.
@@ -2050,8 +2061,13 @@ specified.
     published statement that was justified by the splitting error: § "Displayed
     precision", the supported step bound, and the pinned reference states.
 
-    *Version: `v0.4.1`, a patch, and no exception is recorded for it (project
-    owner, 2026-09-03).* This was briefly recorded as a minor earlier the same
+    *Version: a patch in the `v0.4.x` track, and no exception is recorded for
+    it (project owner, 2026-09-03; the specific number released 2026-09-05).*
+    The class is the decision and it is unchanged; what was dropped is the
+    promise of `v0.4.1` in particular, which the release path cannot keep —
+    `docket release` gives the next free number to whatever is finished, so a
+    patch cut before this work lands takes it. The number this ships under is
+    whatever the cut assigns. This was briefly recorded as a minor earlier the same
     day, reasoning from the size of the change; "Versioning decision" above
     chooses by the **capability boundary crossed**, and this step crosses none.
     The simulator models the same system with the same parameters, the same
@@ -2070,8 +2086,14 @@ specified.
     over an exact matrix exponential, and this release's row records why it no
     longer is.
 
-    Nine items carry it: `PL-P0BB`, `PL-GS5X` and `PL-X9KD` under
-    `numerical-domain`, and six under `core-domain-language`.
+    Nine items carry it. `PL-GS5X` and `PL-X9KD` under `numerical-domain`, six
+    under `core-domain-language`, and `PL-X2XX`, which `PL-VZL0` requires and
+    which went unlisted here until `PL-GGCN` taught the checker to read the
+    second half of a compound prerequisite. `PL-P0BB` was a tenth and is not:
+    the state-vector decision it recorded shipped in v0.3.2, so counting it
+    made the step look as though it still had an open design question at its
+    head when the question is answered. Corrected 2026-09-05 (`PL-YYL2`); the
+    timeline row above carries the same list and the same correction.
 
     **What "reads like the domain" means concretely.** Not a symbol-to-
     identifier mapping, which was the shape guessed at here before the pass

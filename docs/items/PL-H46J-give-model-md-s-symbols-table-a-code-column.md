@@ -55,12 +55,27 @@ Three things follow from having it, and none is available without it:
 
 **Where.** `docs/MODEL.md` § "Symbols" — a fourth column. Each cell holds the
 expression a reader would evaluate, in the form `ClassName.accessor` (for
-example `AlveolarCompartment.partial_pressure_fraction`,
+example `AlveolarCompartment.concentration_fraction`,
 `TissueGroup.blood_flow_l_min`, `BreathingCircuit.circuit_volume_l`), or `—`
 where the model defines a symbol the code does not materialize. $`F_a`$ is the
 worked example of that last case: § "Arterial blood" states it is not an
 independent state ($`F_a \equiv F_A`$), so its cell should say so rather than
 inventing an attribute.
+
+**Write the cells against the names in the tree today, not the ones coming.**
+Corrected 2026-09-05 (`PL-KBJT`): the first example above read
+`AlveolarCompartment.partial_pressure_fraction`, which is `PL-9SH6`'s target
+form and does not exist — `core/alveolar.py:47` defines `concentration_fraction`
+and will until that rename lands. Since this item is the *first* of the pass and
+`PL-9SH6` runs behind `PL-GS5X`, a column written against the target vocabulary
+would be wrong on the day it landed, and `PL-FZ6T` rule 1 — every Code cell
+resolves to a real attribute — would fail against it. Two names move under
+`PL-9SH6` and are the ones to expect churn on: `AlveolarCompartment` and
+`VenousBloodCompartment`'s `concentration_fraction`, and
+`BreathingCircuit.circuit_concentration_fraction` (which `PL-3TLK` renames to
+the inspired form at the same time). This item's own Sequencing already
+anticipated that — "writing the column first and updating it with them is one
+pass over the table" — so what was wrong was the example, not the plan.
 
 `PL-212V` (the missing tissue:gas symbol row) adds rows to the same table and
 should land with this or immediately before it — a Code column written against

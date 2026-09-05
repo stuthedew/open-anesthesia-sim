@@ -111,8 +111,20 @@ seconds a run is the right price for that. Measured 2026-09-03.
 
 **Done when.** One exact step replaces the five composed sub-steps, the matrix
 assembly reads as the governing equations without a lookup, the independent
-oracle agrees to the tolerance `PL-X9KD` sets, `docs/MODEL.md` records the
-superseded decision, and no dependency was added.
+oracle agrees to a tolerance **this item derives and records beside it**,
+`docs/MODEL.md` records the superseded decision, and no dependency was added.
+
+*Corrected 2026-09-05 (`PL-BWTB`): the tolerance was written here as "the
+tolerance `PL-X9KD` sets", and `PL-X9KD` is `blocked-by: PL-GS5X`. As written
+neither could finish — the item setting the tolerance could not start until the
+item needing it had landed. Two different tolerances shared one name, and
+`PL-P0BB` had already assigned this one: "`PL-GS5X` must state the new
+tolerance's derivation beside it, and must not reuse the ~2e-15 figure, which
+describes the old mechanism." So the oracle tolerance for this item's own
+comparison is derived here, from the exact step's error rather than the split's.
+What `PL-X9KD` re-derives afterwards is the **published** material — MODEL.md's
+"Displayed precision", the supported step bound, and the three splitting-error
+constants in `tests/reference/test_coupled_dynamics.py`. The edge runs one way.*
 
 **What this item reaches outside its own release (added 2026-09-03).** Recorded
 here because nothing else records it: an audit of the open queue found no
