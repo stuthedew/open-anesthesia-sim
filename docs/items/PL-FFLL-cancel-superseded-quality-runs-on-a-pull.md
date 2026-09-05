@@ -3,11 +3,12 @@ id: PL-FFLL
 title: Cancel superseded quality runs on a pull request instead of running every push to completion
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
-touches: .github/workflows/quality.yml
+touches: .github/workflows/quality.yml, .github/workflows/pr-title.yml
 added: 2026-09-01
+closed: 2026-09-05
 verify: grep -q '^concurrency:' .github/workflows/quality.yml && grep -q 'cancel-in-progress' .github/workflows/quality.yml
 ---
 
@@ -59,3 +60,14 @@ the debt gate for a saving nothing measures.
 no `concurrency:` key in the workflow). Both halves are needed: the first
 proves the key exists, the second that it carries the cancellation, so neither
 passes on a `concurrency:` block that names a group and cancels nothing.
+
+**Closed.** Landed as prescribed above - the guarded form, so a run on `main`
+is never cancelled mid-verification. `pr-title.yml` took the unconditional
+form in the same change: it never runs on `push`, so it has no `main` lane to
+protect. `drift.yml` was left without a group deliberately - it runs monthly,
+so there is nothing to supersede and a group that never fires is what the
+retirement test removes.
+
+Measured before it landed: 5 of 51 `quality` runs in an 18-hour window were
+superseded while still running. The `PL-` id this work was captured under a
+second time, `PL-QD9K`, is dropped as a duplicate of this item.

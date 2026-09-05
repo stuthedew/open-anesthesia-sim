@@ -21,12 +21,24 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
 
+# `synchronize` and `edited` both fire here, and a description edit made while
+# a push is still being checked would otherwise run this twice concurrently on
+# the same head. Unconditional `cancel-in-progress` is safe in a way it is not
+# in `quality.yml`: this workflow never runs on `push`, so there is no `main`
+# lane to protect. `PL-QD9K`.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   pr-title:
     runs-on: ubuntu-latest
+    # Observed at 12 seconds; one checkout and one standard-library script.
+    # `PL-FSH9`.
+    timeout-minutes: 5
 
     steps:
       # `fetch-depth: 0` because the script computes what this branch closes
