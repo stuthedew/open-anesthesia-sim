@@ -10,6 +10,7 @@ import pytest
 from docket.model import Item
 from docket.release import (
     Readiness,
+    already_released,
     is_untagged,
     milestones,
     outstanding_roadmap_edits,
@@ -211,6 +212,45 @@ def test_a_tag_written_without_its_v_still_counts() -> None:
 def test_a_project_that_has_never_tagged_is_not_taught_to() -> None:
     """Emptiness says the project does not tag, not that every release is missing one."""
     assert not is_untagged("0.2.5", frozenset())
+
+
+def test_a_version_whose_notes_are_on_the_base_has_already_gone_out() -> None:
+    """PL-66FP: the notes file is the direct evidence a maintainer can go and look at."""
+    assert already_released(
+        "0.3.7", frozenset({"v0.3.6.md", "v0.3.7.md"}), "0.3.6", "pyproject.toml"
+    ) == ["docs/releases/v0.3.7.md is on it"]
+
+
+def test_a_base_already_bumped_to_the_version_has_too() -> None:
+    """A release landed by hand, or notes kept somewhere this does not read."""
+    assert already_released("0.3.7", frozenset(), "0.3.7", "pyproject.toml") == [
+        "its pyproject.toml already reads 0.3.7"
+    ]
+
+
+def test_both_facts_are_reported_when_both_hold() -> None:
+    """Two statements a reader can check, rather than one verdict they cannot."""
+    assert len(already_released("0.3.7", frozenset({"v0.3.7.md"}), "0.3.7", "pyproject.toml")) == 2
+
+
+def test_a_leading_v_is_the_same_version_however_it_is_written() -> None:
+    assert already_released("v0.3.7", frozenset({"v0.3.7.md"}), "v0.3.7", "pyproject.toml")
+
+
+def test_a_free_version_is_free_even_where_the_base_has_shipped_others() -> None:
+    assert not already_released(
+        "0.4.0", frozenset({"v0.3.7.md", "v0.3.8.md"}), "0.3.8", "pyproject.toml"
+    )
+
+
+def test_a_base_a_release_ahead_does_not_report_the_version_being_cut() -> None:
+    """Only the number about to be written is the question; ordering is not."""
+    assert not already_released("0.3.9", frozenset({"v0.4.0.md"}), "0.4.0", "pyproject.toml")
+
+
+def test_an_empty_version_reports_nothing_rather_than_matching_an_empty_base() -> None:
+    """A store with no version must not read as a duplicate of a base with none."""
+    assert not already_released("", frozenset(), "", "pyproject.toml")
 
 
 def test_notes_cite_the_pull_request_in_preference_to_the_commit() -> None:
@@ -461,6 +501,46 @@ def test_the_digest_withholds_the_offer_and_says_which_step_owns_the_version() -
     assert "Offer 0.2.8" not in digest
     assert 'No release to offer: the roadmap gives 0.2.8 to "the workflow works"' in digest
     assert "Beat: clear the gate - 2 entries of 2 still open" in digest
+
+
+def test_the_digest_names_the_branch_already_cutting_instead_of_offering_a_release() -> None:
+    """PL-66FP: the offer is where a duplicate release starts, so it stops here.
+
+    Refusing at `docket release` alone leaves the second session having
+    already raised it and been approved; the owner is then asked twice for one
+    release.
+    """
+    from docket.checks import Report
+    from docket.render import format_digest
+    from docket.vcs import BranchCut, CutsInFlight
+
+    digest = format_digest(
+        Report(items=[_item("PL-4444")]),
+        None,
+        _ready("0.2.8", "0.2.9"),
+        _plan("0.2.8", KNOWN_IDS),
+        cuts=CutsInFlight(branches=(BranchCut(ref="origin/claude/a", versions=("0.2.9",)),)),
+    )
+
+    assert "A release is already being cut on origin/claude/a (v0.2.9)" in digest
+    assert "Offer" not in digest
+
+
+def test_this_checkouts_own_cut_does_not_withhold_the_digest_offer() -> None:
+    from docket.checks import Report
+    from docket.render import format_digest
+    from docket.vcs import BranchCut, CutsInFlight
+
+    digest = format_digest(
+        Report(items=[_item("PL-4444")]),
+        None,
+        _ready("0.2.8", "0.2.9"),
+        _plan("0.2.8", KNOWN_IDS),
+        cuts=CutsInFlight(branches=(BranchCut(ref="claude/mine", versions=("0.2.9",), mine=True),)),
+    )
+
+    assert "already being cut" not in digest
+    assert "Offer 0.3.0" in digest
 
 
 def test_the_digest_offers_the_planned_version_over_the_bumps_guess() -> None:
