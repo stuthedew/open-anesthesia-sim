@@ -41,10 +41,11 @@ commit gives 41,183 apparatus insertions against 16,517 product; and
 `subprojects/docket/src` is 7,013 lines against `src/`'s 3,992.
 
 Whether that is the right balance for a solo project whose measure of success
-is that it is still enjoyed in a year is the owner's judgment and nobody
-else's - building the apparatus is legitimately part of the fun, and this item
-takes no position on the numbers. What it fixes is that a session reads `0
-errors` and a band-size advisory and has no way to raise the question at all.
+is that it is still being worked on and enjoyed years from now is the owner's
+judgment and nobody else's - building the apparatus is legitimately part of
+the fun, and this item takes no position on the numbers. What it fixes is that
+a session reads `0 errors` and a band-size advisory and has no way to raise
+the question at all.
 
 Structural health is measured and is not the concern here: `docket`'s modules
 form an acyclic layering (`model`/`config` -> `store`/`release`/`concurrency`
