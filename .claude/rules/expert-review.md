@@ -87,3 +87,37 @@ false precision, modeled versus measured, misleading plots, visible model
 limitations — are not here. They are in `CLAUDE.md`'s safety-critical
 clinical-output standard, which loads in every session, because a session
 that opens no file matching this rule must still see them.
+
+## What a docstring and an error message owe a reader
+
+Two of the ten rules Lee gives for documenting scientific software are not yet
+practice here, and are adopted as written (Lee BD. Ten simple rules for
+documenting scientific software. PLoS Comput Biol. 2018;14(12):e1006561.
+doi:10.1371/journal.pcbi.1006561). The rest of that paper this repository
+already meets or exceeds; `PL-MPZ0` carries the audit, rule by rule.
+
+**A function that refuses says so.** Strict mypy settles a function's input and
+output types, so what its docstring still owes a reader is the third thing Lee
+asks for: which conditions it rejects, and which exception it raises.
+`src/anesthesia_sim/core/exceptions.py` documents what each branch of the
+hierarchy means to a caller; the docstring is where a caller learns which call
+sites can produce one. `AlveolarCompartment.set_alveolar_ventilation` is the
+shape — it names what it rejects and points at
+`src/anesthesia_sim/core/supported_ranges.py` rather than restating the range.
+
+**A refusal names what was refused.** An error message states the condition,
+the value that failed it, and where to read why the limit sits where it does.
+`src/anesthesia_sim/core/supported_ranges.py` is the worked example, and
+`src/anesthesia_sim/core/validation.py` is what it is being contrasted with: a
+message naming only the parameter leaves a rejected setting untraceable to the
+input that produced it, which `CLAUDE.md`'s safety-critical standard treats as
+part of the value rather than as presentation.
+
+**Both are facts, not a license for commentary.** Each obligation above puts
+something in the docstring or the message that a reader cannot get anywhere
+else — which condition is refused, which value failed it. Neither is served by
+words around it, and `PL-XXBD` is the standing pass on comments that pad rather
+than communicate. Lee's eighth rule — a generated documentation site — is
+declined outright: there is no external API consumer to serve it to, and
+`tests/reference/` already does what its verification half asks for, against
+published data rather than against the code's own claims.
