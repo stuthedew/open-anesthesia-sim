@@ -9,6 +9,7 @@ feature: core-guard-coverage
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, docs/ARCHITECTURE.md, docs/MODEL.md, README.md
 added: 2026-09-04
 closed: 2026-09-05
+pr: 333
 verify: uv run pytest tests/unit/test_import_boundary_check.py && grep -q 'datetime' tools/import_boundary_check.py
 ---
 
