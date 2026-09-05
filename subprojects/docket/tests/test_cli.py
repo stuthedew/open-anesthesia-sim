@@ -891,13 +891,19 @@ def test_stranded_says_so_when_it_was_told_not_to_ask_git(
 BRANCH = "roadmap-release-write-failure-nhsjwo"
 
 
-def _flight_repo(tmp_path: Path, subject: str) -> Path:
+def _flight_repo(tmp_path: Path, subject: str, wrote: str = "src/scratch.txt") -> Path:
     """A repository whose one live branch is named the way the harness names one.
 
     Real git, for the reason `_branched_repo` uses it: the injected-runner
     tests in `test_vcs.py` assert the rules, and only a real checkout proves
-    that `--source`, `%cI` and the merge-base guard are spelled in a way git
-    accepts. The commit dates are fixed so the reported age is too.
+    that `--source`, `%cI`, `--name-only` and the merge-base guard are spelled
+    in a way git accepts. The commit dates are fixed so the reported age is too.
+
+    `wrote` is the file the branch's commit changes, which is what says whether
+    that commit was implementing the item its subject leads with or only
+    recording something into the queue. It defaults outside the store, because
+    a commit that reaches past the queue is what every test here but one means
+    by a branch mid-item.
     """
     root = tmp_path / "repo"
     (root / "items").mkdir(parents=True)
@@ -920,7 +926,9 @@ def _flight_repo(tmp_path: Path, subject: str) -> Path:
     git("add", "-A")
     git("commit", "-qm", "base", env=dated)
     git("checkout", "-qb", BRANCH)
-    (root / "items" / "scratch.txt").write_text("work in progress\n")
+    written = root / wrote
+    written.parent.mkdir(parents=True, exist_ok=True)
+    written.write_text("work in progress\n")
     git("add", "-A")
     git("commit", "-qm", subject, env=dated)
     git("checkout", "-q", "main")
@@ -938,6 +946,23 @@ def test_flight_finds_work_on_a_branch_whose_name_carries_no_id(
     out = capsys.readouterr().out
     assert "PL-K7QX  roadmap-release-write-failure-nhsjwo" in out
     assert "last commit 3 days ago" in out
+
+
+def test_flight_ignores_a_branch_that_only_wrote_to_the_queue(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Against real git: `--name-only` output, parsed, decides the claim.
+
+    `test_vcs.py` asserts the rule against an injected runner. What this adds
+    is that git actually prints the paths under the commit they belong to in
+    the shape the walk parses, on this checkout's git - the half a fake cannot
+    prove (queue item PL-X3WZ).
+    """
+    root = _flight_repo(tmp_path, "PL-K7QX Do the thing", wrote="items/PL-K7QX-a-note.md")
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "flight"]) == 0
+
+    assert "PL-K7QX" not in capsys.readouterr().out
 
 
 def test_show_marks_an_item_a_branch_has_in_flight(

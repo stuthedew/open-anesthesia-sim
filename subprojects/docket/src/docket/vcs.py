@@ -211,7 +211,49 @@ class _Walk:
     unbounded: set[str]
 
 
-def _unmerged_commits(refs: list[str], base: str, root: Path, run: Runner) -> _Walk:
+def _annotates_only(paths: list[str], prefix: str) -> bool:
+    """Whether a commit's whole diff sits inside the queue directory.
+
+    **The rule that separates recording an item from working on it**, and it
+    is deliberately about where the commit wrote rather than about what it
+    wrote there. `CLAUDE.md` requires a finding to be captured before a session
+    ends, requires the leading id on every commit subject, and requires a
+    behavior change to land in the session that asks for it - so a capture, a
+    triage pass, a `docket record` write and a note added to a brief all lead
+    with an id they are not implementing. Reading their subjects alone marked
+    the item as work somebody held, and `docket next` withheld it from every
+    session until the branch merged, which for a branch nobody merges is
+    forever (`PL-X3WZ`).
+
+    Measured over the eight false marks that item recorded: every one is a
+    commit whose entire diff is inside the queue directory, and the one branch
+    genuinely implementing an item is not. Nothing finer was needed - no
+    frontmatter-versus-body parse, which would in any case have failed on the
+    capture and triage commits, since both write frontmatter.
+
+    **It fails toward keeping the mark, and both of its silences do.** A commit
+    with no paths at all is a merge - `--name-only` prints none for one - or a
+    read that went wrong, and neither is evidence of annotation, so an empty
+    list is not annotation. A path git quoted, which it does for one carrying
+    non-ASCII bytes, fails the prefix test and lands the same way. That is the
+    cheaper error of the two available: an item wrongly left marked is one a
+    session picks around, while an item wrongly unmarked is two sessions on one
+    piece of work (`PL-PRHN`).
+
+    The residual case it cannot see is a session that *starts* an item by
+    pushing only a `touches` fill or a `verify:` command, which is annotation
+    by this rule and a claim in fact. A branch the session names for the item
+    still carries the claim in its own name, which is read whatever the diff
+    says; a branch the harness named does not, and goes unmarked until its
+    first commit outside the queue. `.claude/skills/docket/SKILL.md` says so
+    where it asks for that first push.
+    """
+    return bool(paths) and all(path.startswith(prefix) for path in paths)
+
+
+def _unmerged_commits(
+    refs: list[str], base: str, root: Path, run: Runner, *, items_dir: str = "docs/items"
+) -> _Walk:
     """The newest commit day per ref, the ref leading with each id, and what went unread.
 
     One `git log` covers every ref at once: `--source` reports which ref on the
@@ -250,22 +292,69 @@ def _unmerged_commits(refs: list[str], base: str, root: Path, run: Runner) -> _W
     the rider rather than from its own first commit; `opened` dates the branch
     itself, which is the claim a branch *name* makes from the moment there is
     anything on it.
+
+    **`ids` and `staked` read the commit's diff as well as its subject**, and
+    `opened` does not. A leading id says which item a commit concerns, never
+    that the commit implements it, so `_annotates_only` withholds the ones
+    whose whole diff sits in the queue directory - a capture, a triage pass, a
+    recovered item, a note written into a brief. `opened` is the claim a branch
+    *name* makes, which no diff qualifies.
     """
     if not refs:
         return _Walk({}, {}, {}, {}, set())
+    # `--name-only` rather than a `git show --stat` per commit, and that is the
+    # whole reason the diff can be read at all here. This walk is on the hot
+    # path of `next`, `list`, `triage`, `status` and the session-start digest,
+    # so a subprocess per commit would have put the read out of reach; asking
+    # the walk that is already running to also name the paths costs one pass
+    # over the same trees. Measured on this repository: 4.6 ms to 8.8 ms over
+    # 50 commits, 9.5 ms to 25.1 ms over 200 - against roughly 4 ms of process
+    # spawn *each* for the per-commit form.
+    #
     # The trailing `--` is what keeps a branch sharing a name with a file from
     # being read as a path, which git refuses to guess at and answers with an
     # error - and every error here collapses to "nothing known".
-    output = run(["log", "--source", COMMIT_FORMAT, f"^{base}", *refs, "--"], root)
+    output = run(["log", "--source", COMMIT_FORMAT, "--name-only", f"^{base}", *refs, "--"], root)
+    prefix = items_dir.strip("/") + "/"
     last: dict[str, date] = {}
     ids: dict[str, str] = {}
     staked: dict[tuple[str, str], Stake] = {}
     opened: dict[str, Stake] = {}
     unbounded: set[str] = set()
+
+    # A commit's paths follow its formatted line, so the claim it makes cannot
+    # be judged until the next commit begins or the output ends. Only the id
+    # half is held back: the dates and the parentless-commit guard are
+    # properties of the commit itself and are read where they are parsed.
+    pending: tuple[str, Stake | None, str] | None = None
+    paths: list[str] = []
+
+    def settle() -> None:
+        """Credit the held commit's leading ids, unless its diff only annotates."""
+        if pending is None:
+            return
+        ref, stake, subject = pending
+        if _annotates_only(paths, prefix):
+            return
+        for identifier in leading_ids(subject):
+            ids.setdefault(identifier, ref)
+            if stake is not None:
+                held = staked.get((ref, identifier))
+                if held is None or stake < held:
+                    staked[(ref, identifier)] = stake
+
     for line in output.splitlines():
         parts = line.split("\x1f", 4)
         if len(parts) != 5:
+            # Everything that is not a commit line is one of that commit's
+            # paths, or the blank line git writes between the two. A path can
+            # no more carry four unit separators than a subject can, so the
+            # field count keeps the two apart without a second delimiter.
+            if line.strip():
+                paths.append(line.strip())
             continue
+        settle()
+        pending, paths = None, []
         ref, committed, parents, commit, subject = parts
         if not parents.strip():
             unbounded.add(ref)
@@ -284,12 +373,8 @@ def _unmerged_commits(refs: list[str], base: str, root: Path, run: Runner) -> _W
             first = opened.get(ref)
             if first is None or stake < first:
                 opened[ref] = stake
-        for identifier in leading_ids(subject):
-            ids.setdefault(identifier, ref)
-            if stake is not None:
-                held = staked.get((ref, identifier))
-                if held is None or stake < held:
-                    staked[(ref, identifier)] = stake
+        pending = (ref, stake, subject)
+    settle()
     return _Walk(last=last, ids=ids, staked=staked, opened=opened, unbounded=unbounded)
 
 
@@ -475,7 +560,11 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
 
 
 def branches_in_flight(
-    root: Path, *, include_remote: bool = True, runner: Runner | None = None
+    root: Path,
+    *,
+    include_remote: bool = True,
+    items_dir: str = "docs/items",
+    runner: Runner | None = None,
 ) -> FlightReport:
     """Every item whose work sits on a branch the default branch has not taken.
 
@@ -514,6 +603,14 @@ def branches_in_flight(
     live session or work nobody will ever merge, and only the date of its last
     commit separates the two - so that is carried into the report and left to
     the reader, the way `stranded` reports rather than decides.
+
+    **A subject's leading id is a claim only where the commit did more than
+    write to the queue.** Capturing a finding, triaging an item, recovering a
+    stranded one and recording a merged pull request number all lead with ids
+    under rules `CLAUDE.md` makes mandatory, and none of them is work in
+    progress; read as claims they withheld startable items from every session
+    until the branch merged. `_annotates_only` carries that reading and the
+    error it prefers.
     """
     run = runner or _run_git
 
@@ -531,7 +628,7 @@ def branches_in_flight(
     # rather than contributing what it appeared to say. The direction matters:
     # an id wrongly reported here is removed from `docket next` under the words
     # "do not start these again", so an unread ref is the cheaper error.
-    walk = _unmerged_commits(unlanded, base, root, run)
+    walk = _unmerged_commits(unlanded, base, root, run, items_dir=items_dir)
     last_commit, subject_ids = walk.last, walk.ids
     if walk.unbounded:
         unreadable |= walk.unbounded
@@ -699,7 +796,12 @@ def _head_carries(stake: Stake | None, root: Path, run: Runner) -> bool:
 
 
 def precedence(
-    root: Path, item_id: str, *, include_remote: bool = True, runner: Runner | None = None
+    root: Path,
+    item_id: str,
+    *,
+    include_remote: bool = True,
+    items_dir: str = "docs/items",
+    runner: Runner | None = None,
 ) -> Precedence:
     """Every branch carrying one item, in the order that decides which continues.
 
@@ -722,7 +824,7 @@ def precedence(
     identifier = item_id.upper()
     base = default_base(root, runner=run)
     refs = _unlanded_refs(base, root, run, include_remote=include_remote)
-    walk = _unmerged_commits(refs.unlanded, base, root, run)
+    walk = _unmerged_commits(refs.unlanded, base, root, run, items_dir=items_dir)
     unreadable = refs.unreadable | walk.unbounded
     readable = {name for name in refs.unlanded if name not in walk.unbounded}
 
