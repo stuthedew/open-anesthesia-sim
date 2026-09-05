@@ -60,6 +60,7 @@ branch, which put those commits inside the span the v0.4.2 tag will cover while
 the tool had already assigned their items to 0.4.3 — `PL-028F` exactly. Rather
 than hand-edit `milestone:` (a provenance field nothing guards, `PL-JSRH`), the
 cut was reset and re-run against the merged base so the tool did the stamping:
-eight items now, and the notes describe what the tag will actually contain.
+nine items by the second re-cut, and the notes describe what the tag will
+actually contain.
 `PL-7HDY` itself was reopened before the re-cut so it lands in the next release,
 which is where `PL-J7Y7` went and is the convention.
