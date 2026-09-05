@@ -1,85 +1,85 @@
 ---
 id: PL-4H01
 title: Route out 563 resident characters whose carriers already exist: the lane sentence, the finish-a-feature bullet, and the duplicated quality-suite line
-priority: P3
+priority: P2
 effort: S
-status: ready
-classes: session-cost, docs
+status: done
+classes: docs, session-cost
+feature: dev-tooling
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-09-05
-verify: python3 tools/doc_check.py check && test "$(grep -c 'configured type checker' CLAUDE.md)" -eq 0
+closed: 2026-09-05
+pr: 362
+verify: python3 tools/doc_check.py check && ! grep -q 'A prompt naming a lane' CLAUDE.md && ! grep -q 'Prefer finishing a feature' CLAUDE.md
 ---
-**Problem.** Three blocks of `CLAUDE.md` are resident for rules whose
-carriers already exist and already fire at the right moment: the lane sentence,
-the finish-a-feature bullet, and a quality-suite line duplicated twenty-seven
-lines above its fuller statement. Together they are 563 characters.
 
-**Why it matters.** Resident text is paid by every session forever, and
-`CLAUDE.md`'s own routing test asks for the cheapest carrier that delivers a
-rule at the moment it is needed. These three have that carrier already, so the
-characters buy a second copy rather than coverage — and a rule stated twice is
-a rule that can drift, which is the concrete hazard in the third block, where
-one copy names "the configured type checker" and the other names `mypy`.
+**Problem.** Three resident rules state something a deterministic carrier now
+states better, at the moment it fires. `CLAUDE.md` § "Prefer deterministic
+tooling over repeated model work" calls deleting prose that something
+deterministic enforces "the strongest outcome here", and these are the cases
+that qualify.
 
-The size is itself the finding, and it is why this item is not the answer to
-resident growth: a block-by-block pass over the whole resident set found only
-1.3% of it defensibly routable. `PL-NJTZ` is where the growth question goes.
+**Measured, 2026-09-05.** The resident set was 44697 characters over 637 lines.
+A block-by-block pass against all six tools in `tools/`, all four hooks, and
+`.claude/skills/docket/SKILL.md` found five routing candidates totalling ~1980
+characters, of which three are defensible at **563 characters**. Every carrier
+already existed; nothing was built. Byte counts were measured on `origin/main`
+rather than estimated: 334 + 159 + 70.
 
-**Where.** `CLAUDE.md` § "Session and tool-use efficiency" (the lane sentence),
-§ "The queue, and how the project owner works" (the finish-a-feature bullet),
-and the architecture bullet list (the quality-suite line);
-`docs/resident-instructions.md`, which records what was routed and why.
+**What moved, and to what.** The three rows are recorded in
+`docs/resident-instructions.md` § "What was routed out" with the carrier named
+for each. In summary: the lane sentence to `cli.py`'s lane line, which prints
+which lane its own answer is in and the other lane's pick with the literal
+command; the finish-a-feature bullet to `plan.py`'s `rank()`, which prints the
+rule verbatim beside every ranked item; and the quality-suite line to nothing at
+all, because it was a strict duplicate of a more precise statement twenty-seven
+lines below it that names `mypy` and adds when to run it.
 
-**Measured, 2026-09-05.** Resident set is 44,545 characters over 637 lines. A
-block-by-block pass against all six tools in `tools/`, all four hooks, and
-`.claude/skills/docket/SKILL.md` found five routing candidates totalling ~1,980
-characters, of which three are defensible at **563 characters, or 1.3% of the
-resident set**. Every carrier already exists; nothing needs building.
+**Each carrier was observed firing before its rule was removed**, not assumed
+from reading the code. `bin/docket next` was run against this store and printed
+both lines.
 
-1. `CLAUDE.md` § "Session and tool-use efficiency", the lane sentence (334
-   chars). `bin/docket next` now prints the rule at the moment it fires, with
-   the literal command: "Lane of this answer: PL-4GN8 is product work. The
-   workflow lane's own pick is PL-JBZK (...) - `docket next workflow`."
-   `SKILL.md` carries the full rule and the `PL-0D4X` history. Cost of the
-   move: the printed line corrects a session *after* a bare run rather than
-   before it, which is one extra command rather than a wrong item started.
-2. `CLAUDE.md` § "The queue", "Prefer finishing a feature to advancing several"
-   (159 chars). `plan.py`'s `rank()` implements it and prints the rationale
-   verbatim beside every ranked item: "A shipped feature beats progress on
-   several, so the feature nearest done ranks first." This is the only bullet
-   in that section `docs/resident-instructions.md` never tested - grep returns
-   zero matches for it.
-3. `CLAUDE.md:143`, "Run pytest, Ruff, and the configured type checker before
-   finishing" (70 chars). Strictly subsumed by lines 170-173, twenty-seven
-   lines below and equally resident, which name `mypy` rather than "the
-   configured type checker" and add when to run it. A de-duplication, not a
-   routing: the rule stays resident, once. Caveat: it sits in the bullet list
-   whose path-scoping the ledger refused, so it is a rider on another edit
-   rather than a task of its own.
+**Alternative considered and refused.** The `list_sessions` bullet in
+`.claude/rules/instruction-writing.md` is 1287 characters, the largest single
+candidate anywhere, and its cited evidence (`PL-66FP`, two sessions cutting
+v0.3.7) is now hard-refused in `release.py` and suppressed in the digest by
+`render.py`. Left resident anyway: three of its four named triggers - a tag, a
+merge, a branch deletion - meet no check and are not a `docket` mode, so a reply
+recommending one would load nothing. Cutting only the dead clause is *rewriting*,
+which the routing policy forbids.
 
-**Considered and not recommended.** `.claude/rules/instruction-writing.md`'s
-`list_sessions` bullet is the largest single candidate anywhere at 1,287
-characters, and its own cited evidence (`PL-66FP`, two sessions cutting v0.3.7)
-is now deterministically refused by `release.py` and `cli.py`, with `render.py`
-suppressing the duplicate offer. But three of its four named triggers - a tag,
-a merge, a branch deletion - have no check and are not a `docket` mode, so a
-reply recommending one loads nothing and would meet no version of the rule.
-Cutting only the release clause is *rewriting*, which the policy forbids.
-Left resident deliberately.
+**One earlier judgment is superseded, and the dates are why.** `PL-H7XN`
+judgment 6 reached the finish-a-feature bullet already and stopped short of
+removing it: "describes what `docket next` already ranks, so the prose is
+enforced and one line survives." That judgment closed 2026-08-31. The carrier it
+was weighing was the *ranking*. `plan.py` did not begin printing the rule
+verbatim beside every ranked item until `PL-B0YN` landed on 2026-09-01, one day
+later. A rule the tool merely obeys is a weaker case for removal than one the
+tool states in the reader's own words at the moment of the decision, so this is a
+new argument rather than a reversal of a settled one - and it is recorded here
+because the difference is a single day and would otherwise read as ignoring
+`PL-H7XN`.
 
-**Not re-proposed.** The four entries in `docs/resident-instructions.md`
-§ "Reductions considered and refused" were read and none has a new argument
-against it. In particular `import_boundary_check.py` enforces two of the seven
-architecture invariants but cites `CLAUDE.md` as their source, so deleting the
-prose strands the citation - which is the refusal's own reasoning.
+**Not reopened.** The four entries in `docs/resident-instructions.md`
+§ "Reductions considered and refused" were re-read and none has a new argument.
+In particular `import_boundary_check.py` enforces two of the seven architecture
+invariants but cites `CLAUDE.md` as their source, so deleting the prose would
+strand the citation - which is the refusal's own reasoning.
 
-**Why this is a small number, and that is the finding.** `PL-JK0M`'s routing
-pass predicted it: "The honest expectation is that a large share of the 548
-lines is required-resident under the project's own test." It was right. The
-resident set is not bloated with routable material, so growth cannot be
-answered by routing alone - which is what `PL-NJTZ` is for.
+**Why the number is small, and why that is the finding.** `PL-JK0M` predicted
+it: "The honest expectation is that a large share of the 548 lines is
+required-resident under the project's own test." It was right. The resident set
+is not bloated with routable material, so growth cannot be answered by routing
+alone - which is what `PL-NJTZ` is for, and why the two shipped together.
 
-**Done when.** The three blocks named above are gone from `CLAUDE.md`,
-`docs/resident-instructions.md` records each one with the carrier that replaced
-it, and no rule has been removed without a carrier named — a de-duplication
-keeps the rule resident once rather than routing it anywhere.
+**Done when.** The three rules are gone from `CLAUDE.md`, each is recorded in
+`docs/resident-instructions.md` § "What was routed out" with its carrier, and
+`make check` reports the resident total down against `origin/main`.
+
+**Worked.** All three removed. Combined with `PL-NJTZ`'s +184-character pointer
+clause, the resident set went 44545 to 44166 characters and 637 to 631 lines -
+**379 fewer characters than `origin/main`**, the first net reduction recorded
+since `PL-JK0M`'s -770. `doc_check` caught a real defect in the first draft of
+the ledger row, which cited `tests/test_cli.py` instead of
+`subprojects/docket/tests/test_cli.py`; the citation check is the reason that
+did not reach `main`.

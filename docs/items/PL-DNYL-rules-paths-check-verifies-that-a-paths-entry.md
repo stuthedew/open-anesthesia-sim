@@ -3,12 +3,16 @@ id: PL-DNYL
 title: rules_paths_check verifies that a paths: entry is anchored but not that it points anywhere, so a typo'd prefix is a rule that silently never fires
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
+feature: worker-instructions
 touches: tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py
 added: 2026-09-05
-verify: uv run pytest tests/unit/test_rules_paths_check.py && grep -q 'def test_prefix_that_resolves_to_nothing' tests/unit/test_rules_paths_check.py
+closed: 2026-09-05
+pr: 363
+verify: python3 tools/rules_paths_check.py && grep -q 'def test_a_prefix_that_resolves_to_nothing_is_refused' tests/unit/test_rules_paths_check.py
 ---
+
 **Problem.** `tools/rules_paths_check.py` (`PL-LLWN`) holds every
 `.claude/rules/*.md` `paths:` entry to a leading `/`, which closes the two
 failure modes that were live: an unanchored glob matching its name at any
@@ -43,12 +47,15 @@ Deliberately still not attempted, and this does not reopen it: whether the glob
 describes the *right* set of files. That stays judgment. This asks only whether
 it describes any file at all, which the tree answers.
 
-One case to settle rather than assume: a rule may legitimately name a path that
-does not exist yet - scope written ahead of the code it will govern. If that is
-wanted, it is an advisory rather than an error; if it is not, the rule is
-written when the path is. Decide which before building, since it changes
-whether `make check` fails.
+**Decided** (project owner, 2026-09-05): a **hard error**, not an advisory. A
+rule may not name a path that does not exist yet - scope written ahead of the
+code it governs is written when that code lands, not before. The reasoning is
+the same one that made the anchoring rule an error rather than a warning: these
+files carry the standards a session is held to, so one silently not loading
+means work judged against a bar nobody applied, and there is no reading of the
+tree under which a dead path is the intended state.
 
-**Done when.** `make check` reports a `paths:` entry whose literal prefix
-resolves to nothing, the message names the nearest existing ancestor, and the
-not-yet-existing-path case has a recorded answer rather than an accidental one.
+**Done when.** `make check` **fails** on a `paths:` entry whose literal prefix
+resolves to nothing, and the message names both the prefix that is missing and
+the nearest existing ancestor, so the reader is shown where the path stopped
+being real rather than only that it was not.

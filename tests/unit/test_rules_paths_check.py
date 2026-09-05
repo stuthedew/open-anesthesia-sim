@@ -29,12 +29,24 @@ import rules_paths_check
 ROOT = Path(rules_paths_check.__file__).resolve().parent.parent
 
 
-def _rules(tmp_path: Path, **files: str) -> Path:
-    """A repository root holding `.claude/rules/<name>.md` for each keyword."""
+def _rules(tmp_path: Path, *, tree: tuple[str, ...] = (), **files: str) -> Path:
+    """A repository root holding `.claude/rules/<name>.md` for each keyword.
+
+    `tree` is what the rules point *at* - a trailing slash makes a directory,
+    anything else a file. An anchored entry is only correct if its target is
+    really there, so a fixture testing the anchoring rule has to build one.
+    """
     rules = tmp_path / rules_paths_check.RULES_DIR
     rules.mkdir(parents=True)
     for name, body in files.items():
         (rules / f"{name}.md").write_text(body, encoding="utf-8")
+    for entry in tree:
+        target = tmp_path / entry.rstrip("/")
+        if entry.endswith("/"):
+            target.mkdir(parents=True, exist_ok=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("", encoding="utf-8")
     return tmp_path
 
 
@@ -56,7 +68,9 @@ def test_an_unanchored_entry_is_refused(tmp_path: Path) -> None:
 
 def test_an_anchored_entry_is_accepted(tmp_path: Path) -> None:
     """A guard that fires on correct work gets worked around."""
-    root = _rules(tmp_path, freeze=_frontmatter("/README.md", "/src/**"))
+    root = _rules(
+        tmp_path, tree=("README.md", "src/"), freeze=_frontmatter("/README.md", "/src/**")
+    )
 
     assert rules_paths_check.problems(root) == []
 
@@ -92,7 +106,9 @@ def test_a_file_with_no_frontmatter_owes_nothing(tmp_path: Path) -> None:
 def test_a_later_key_is_not_read_as_a_path(tmp_path: Path) -> None:
     """The list ends at the first line that is not one of its items."""
     root = _rules(
-        tmp_path, freeze='---\npaths:\n  - "/README.md"\nname: not-a-glob\n---\n\n# A rule\n'
+        tmp_path,
+        tree=("README.md",),
+        freeze='---\npaths:\n  - "/README.md"\nname: not-a-glob\n---\n\n# A rule\n',
     )
 
     assert rules_paths_check.problems(root) == []
@@ -128,6 +144,52 @@ def test_the_failure_prints_to_stderr_and_exits_one(
     captured = capsys.readouterr()
     assert captured.out == ""
     assert "README.md" in captured.err
+
+
+def test_a_prefix_that_resolves_to_nothing_is_refused(tmp_path: Path) -> None:
+    """Anchored and dead: it passes the first rule and delivers to nobody."""
+    root = _rules(tmp_path, freeze=_frontmatter("/scr/anesthesia_sim/core/**"))
+
+    found = rules_paths_check.problems(root)
+
+    assert len(found) == 1
+    assert "points at nothing" in found[0]
+
+
+def test_the_message_names_where_the_path_stopped_being_real(tmp_path: Path) -> None:
+    """A transposed segment reads as correct; the nearest ancestor is what shows the typo."""
+    root = _rules(
+        tmp_path, tree=("src/anesthesia_sim/",), freeze=_frontmatter("/src/anesthesia_sim/nope/**")
+    )
+
+    found = rules_paths_check.problems(root)
+
+    assert len(found) == 1
+    assert 'Nearest existing path: "src/anesthesia_sim"' in found[0]
+
+
+def test_a_pattern_below_a_file_is_refused(tmp_path: Path) -> None:
+    """`/README.md/**` resolves, and still matches nothing."""
+    root = _rules(tmp_path, tree=("README.md",), freeze=_frontmatter("/README.md/**"))
+
+    found = rules_paths_check.problems(root)
+
+    assert len(found) == 1
+    assert "a file rather than a directory" in found[0]
+
+
+def test_a_pattern_rooted_at_the_repository_is_accepted(tmp_path: Path) -> None:
+    """`/**` has no literal prefix, and the root is always there."""
+    root = _rules(tmp_path, freeze=_frontmatter("/**"))
+
+    assert rules_paths_check.problems(root) == []
+
+
+def test_a_pattern_beginning_mid_segment_is_judged_on_its_directory(tmp_path: Path) -> None:
+    """`/src/foo*.md` asserts `src/` exists and says nothing about `foo`."""
+    root = _rules(tmp_path, tree=("src/",), freeze=_frontmatter("/src/foo*.md"))
+
+    assert rules_paths_check.problems(root) == []
 
 
 def test_this_repository_passes_its_own_check() -> None:

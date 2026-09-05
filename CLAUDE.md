@@ -140,7 +140,6 @@ is not optional.
   recommended and its value explained, never silently implemented; it is
   built when it fits the current milestone or when the owner approves the
   scope change.
-- Run pytest, Ruff, and the configured type checker before finishing.
 
 ## Session and tool-use efficiency
 
@@ -153,11 +152,7 @@ before finishing.
 - Keep a session short and scoped to one topic; start a fresh one for an
   unrelated topic rather than continuing or compacting a long one. Pick up cold
   from the session-start digest, `bin/docket next`, and the one item being
-  worked — not by reading the queue whole. **A prompt naming a lane ("next
-  workflow item") is `bin/docket next workflow`, run first.** The bare command
-  ranks the whole queue and hands back the other lane's work, correctly ranked
-  and wrong; it names the lane of its own answer, so read that line before the
-  item (`PL-0D4X`).
+  worked — not by reading the queue whole.
 - Batch related questions, and related edits, into one turn.
 - Prefer targeted reads over whole-file reads of large documents once you know
   roughly where the section is. Read the whole file when editing it.
@@ -296,9 +291,11 @@ correction rather than handing the question back.
      think to look anything up.
 
   A rule that lands in none of the four has been lost, which is worse than this
-  file staying long: never delete a rule for being wordy. `make check` reports
-  the resident character total, so growth raises this question instead of
-  passing silently; `PL-H7XN` carries the reasoning.
+  file staying long: never delete a rule for being wordy — but a rule whose
+  failure a check now catches is retired rather than kept, on the test in
+  `docs/resident-instructions.md` (`PL-NJTZ`). `make check` reports the resident
+  character total, so growth raises this question instead of passing silently;
+  `PL-H7XN` carries the reasoning.
 - **Name the work after the item.** On starting one, rename the session to lead
   with its id, and put that id **at the front of every commit subject** and pull
   request title. This is load-bearing rather than cosmetic: `bin/docket flight`
@@ -329,9 +326,6 @@ correction rather than handing the question back.
   where every session reads past it. A **feature being designed right now** gets
   the design round first and items only once the shape has settled, because an
   idea changes most in its first exchange.
-- **Prefer finishing a feature to advancing several.** `bin/docket next`
-  already ranks this way within a priority band; do not override it toward
-  novelty.
 - **Friction that compounds is recommended the moment it is found, not filed.**
   Some process findings are paid again by every remaining piece of work. Say so
   in the reply that finds it, with a recommendation to do it first — recording
