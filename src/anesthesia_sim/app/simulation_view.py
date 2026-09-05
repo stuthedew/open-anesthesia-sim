@@ -268,12 +268,30 @@ OFF_SCALE_NOTICE_TEMPLATE = (
 # is the failure PL-F52R names.
 MAC_AWAKE_BAND_COLOR = INK
 ONE_MAC_LINE_COLOR = MUTED
-# The band's fill is decoration: its boundaries are carried by a stroke on
-# the upper edge and by the fill's own cut-off on the lower, both in
+# The band's fill is decoration: both boundaries are carried by a stroke in
 # `MAC_AWAKE_BAND_COLOR`, which is what `tools/contrast_check.py` measures.
 # The fill is light enough for six traces to remain legible across it, which
 # a fill at its own 3:1 would not be.
 MAC_AWAKE_BAND_FILL_OPACITY = 0.14
+# Both edges, and this is the geometry the mark type depends on rather than
+# a styling choice. One standard deviation either side of the published mean
+# is 3.3% of the plot height for sevoflurane and 4.2% for desflurane on the
+# fixed `CHART_AXIS_TOP_MAC` axis, and `PL-90Y6` measured that no axis range
+# the overpressure constraint allows makes that fill read as a band on its
+# own: at a 2 MAC ceiling the band is unambiguous but the 1 MAC anchor sits
+# at mid-plot with no room to show an overpressure induction, and at 4 MAC
+# the band is back to the 2.50% it had on the old dial-maximum axis. So the
+# fix is at the mark. A stroked upper edge over an unstroked fill is the
+# geometry of a line with a shadow under it; two strokes with a gap between
+# them is the geometry of an interval, and reads as one at any thickness.
+#
+# What is deliberately *not* done is giving the band a minimum drawn height.
+# The band's extent is its claim - one standard deviation either side of a
+# published mean - so drawing it thicker than the data would assert a wider
+# population spread than the literature supports, trading this
+# interpretability defect for a correctness one. Both strokes therefore sit
+# on the true boundaries and the fill between them keeps its true extent.
+MAC_AWAKE_BAND_EDGE_STROKE_WIDTH = 1.5
 # Wider than any trace's dashes ([10, 4], [4, 3], [2, 3], [12, 4, 2, 4]), so
 # the 1 MAC line does not read as a seventh compartment at a glance.
 ONE_MAC_LINE_DASH_PATTERN = [16, 8]
@@ -733,11 +751,19 @@ class SimulationView:
         # `_plotted_series` below: nothing reads a sample to place them, and
         # the table they would join exists to bind a trace to the one
         # compartment it draws.
-        self._mac_awake_band_series = chart_series.build_reference_line(
-            color=MAC_AWAKE_BAND_COLOR, stroke_width=1.5
+        # Two series for one mark: the upper edge carries the fill, cut off
+        # at the lower edge by `redraw_reference_band`, and the lower edge
+        # strokes the boundary that cut-off makes. Neither is a reference of
+        # its own and the legend shows one entry, because they are the two
+        # ends of a single published interval.
+        self._mac_awake_band_upper_edge = chart_series.build_reference_line(
+            color=MAC_AWAKE_BAND_COLOR, stroke_width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
         )
-        self._mac_awake_band_series.below_line_bgcolor = ft.Colors.with_opacity(
+        self._mac_awake_band_upper_edge.below_line_bgcolor = ft.Colors.with_opacity(
             MAC_AWAKE_BAND_FILL_OPACITY, MAC_AWAKE_BAND_COLOR
+        )
+        self._mac_awake_band_lower_edge = chart_series.build_reference_line(
+            color=MAC_AWAKE_BAND_COLOR, stroke_width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
         )
         self._one_mac_line_series = chart_series.build_reference_line(
             color=ONE_MAC_LINE_COLOR, stroke_width=1.5, dash_pattern=ONE_MAC_LINE_DASH_PATTERN
@@ -1253,7 +1279,8 @@ class SimulationView:
 
         return [
             *self._control_mark_series,
-            self._mac_awake_band_series,
+            self._mac_awake_band_upper_edge,
+            self._mac_awake_band_lower_edge,
             self._one_mac_line_series,
             *(trace.series for trace in self._compartment_traces if trace.visible),
         ]
@@ -1972,11 +1999,13 @@ class SimulationView:
     def _build_band_legend_item(label: str, color: str) -> ft.Row:
         """Build the legend entry for a reference band, drawn as a band.
 
-        A filled swatch with a ruled upper edge rather than the 4px line
-        every other entry uses. The mark type is what distinguishes a
-        measured population value with real spread from a definitional
-        anchor, so a legend that drew both as lines would lose the one
-        channel carrying that distinction.
+        A filled swatch ruled on both edges rather than the 4px line every
+        other entry uses. The mark type is what distinguishes a measured
+        population value with real spread from a definitional anchor, so a
+        legend that drew both as lines would lose the one channel carrying
+        that distinction - and a swatch ruled on one edge only would teach
+        the reader the wrong mark for the one on the chart, which is the
+        same defect `PL-90Y6` fixed there.
 
         Args:
             label: Reference name, including what its extent means.
@@ -1993,7 +2022,10 @@ class SimulationView:
                     width=24,
                     height=12,
                     bgcolor=ft.Colors.with_opacity(MAC_AWAKE_BAND_FILL_OPACITY, color),
-                    border=ft.Border(top=ft.BorderSide(1.5, color)),
+                    border=ft.Border(
+                        top=ft.BorderSide(MAC_AWAKE_BAND_EDGE_STROKE_WIDTH, color),
+                        bottom=ft.BorderSide(MAC_AWAKE_BAND_EDGE_STROKE_WIDTH, color),
+                    ),
                 ),
                 ft.Text(label, color=INK),
             ],
@@ -2217,7 +2249,8 @@ class SimulationView:
         # the chart or drawn at the previous agent's height.
         mac_awake_lower_percent, mac_awake_upper_percent = self._mac_awake_band_percent(snapshot)
         chart_series.redraw_reference_band(
-            self._mac_awake_band_series,
+            self._mac_awake_band_upper_edge,
+            self._mac_awake_band_lower_edge,
             chart_min_x,
             chart_max_x,
             mac_awake_lower_percent,

@@ -2353,6 +2353,32 @@ stronger separation than any colour pair. Both are drawn in the interface's
 own ink and label colours rather than in a seventh and eighth hue, so neither
 reads as another compartment.
 
+**The band's geometry, and why it is two strokes rather than a thicker mark.**
+The band is drawn as a stroke on each of its two boundaries with a light fill
+between them, and both strokes sit on the published values, so the drawn
+extent is the data extent exactly. Nothing pads it outward. A band drawn
+thicker than one standard deviation would assert a wider population spread
+than the sources support — a claim about the evidence rather than a styling
+choice — so a minimum drawn height is specifically excluded, whatever it would
+do for legibility.
+
+The second stroke is load-bearing because no axis range can supply the
+separation. On the fixed `CHART_AXIS_TOP_MAC` range the band spans 3.33% of the
+plot height for sevoflurane and 4.20% for desflurane, and no ceiling this chart
+can take changes that: at 2 MAC the band is unambiguous but the 1 MAC anchor
+sits at mid-plot with no room above it for the overpressure induction the chart
+has to be able to show, and at 4 MAC the band is back to the 2.50% it had on
+the dial-maximum axis this one replaced. A mark stroked on its upper edge only,
+over an unstroked fill, is the geometry of a line with a shadow beneath it
+however wide the fill is, which is what made this band read as a line and would
+have flattened the band-versus-line distinction above into no distinction at
+all. Two strokes with a gap between them is the geometry of an interval and
+stays one at any thickness the axis leaves, so what a reader sees between the
+two rules is the population spread rather than a decoration around a threshold.
+
+<!-- derived: 3.33 percent from data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
+<!-- derived: 4.20 percent from data/agents/desflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.063 -->
+
 **What the band asserts.** MAC-awake is the concentration at which half of a
 population responds to verbal command. That is a *different endpoint* from
 MAC, which is immobility to a standardized surgical incision, and the label
