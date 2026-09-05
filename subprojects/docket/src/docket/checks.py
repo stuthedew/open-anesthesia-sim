@@ -28,7 +28,7 @@ from .config import Config
 from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .plan import OfferedReport
 from .release import SEMVER_RE, version_key
-from .store import ID_RE
+from .store import ID_PATTERN, ID_RE
 from .vcs import ClosureReport, LostReport, PullRequestHistory
 from .verify import LandedReport
 
@@ -740,7 +740,9 @@ def _check_references(report: Report) -> None:
             elif blocker not in known:
                 report.errors.append(f"{_where(item)}: blocked by {blocker}, which is not an item")
 
-    _outranks_its_blocker(report, known_items={i.identifier: i for i in report.items})
+    known_items = {i.identifier: i for i in report.items}
+    _outranks_its_blocker(report, known_items)
+    _check_prose_dependencies(report, known_items)
 
     duplicates = [
         identifier
@@ -785,6 +787,123 @@ def _outranks_its_blocker(report: Report, known_items: dict[str, Item]) -> None:
                     f"{blocker.priority}; raise {identifier} to {item.priority} or above, "
                     "because nothing here can start before it does"
                 )
+
+
+# The phrases by which a brief states that *this* item waits on another. Each
+# is a declaration rather than a narration, which is what makes the direction
+# readable: "depends on X" says this comes second, and no measured instance of
+# one of these says the reverse.
+#
+# `after` and `before` were both measured and both left out, for opposite
+# reasons. `before X` and `follows X` mean this one goes *first*, so every one
+# of the four hits they had in this store named the edge backwards - an
+# advisory telling an item to declare a blocker it actually blocks is a wrong
+# answer stated in the tool's own voice, which is the failure mode this module
+# exists to avoid. `after X` points the right way but does not distinguish a
+# prerequisite from a narration: "Do this after `PL-GS5X`" and "Amended
+# 2026-09-03, after `PL-WB0X` merged" are the same shape, and the store held
+# roughly eight of the second against three of the first. The second cannot be
+# cleared except by rewriting prose that is already correct, which is the
+# advisory-that-cannot-reach-zero this check was required not to become
+# (`PL-H7XN`, `PL-G049`).
+PREREQUISITE_CUES = (
+    r"depend(?:s|ent|ing)?\s+(?:up)?on",
+    r"block(?:ed|s|ing)?\s+on",
+    r"blocked\s+by",
+    r"wait(?:s|ing)?\s+(?:on|for)",
+    r"requires?",
+)
+
+# The cue, then the id within the same clause. `(?:\.?\*\*)?` lets the item
+# format's own `**Depends on.**` heading count as one cue rather than as a cue
+# followed by a sentence break - and the gap still refuses `.`, so
+# `**Depends on.** Nothing. \`PL-2SVR\`` stays silent, which is the answer that
+# item deserves. The other excluded characters are clause boundaries: without
+# them the window jumps a semicolon or a closing bracket into an unrelated
+# mention, which was where the false positives came from.
+PROSE_DEPENDENCY = re.compile(
+    rf"\b(?:{'|'.join(PREREQUISITE_CUES)})\b(?:\.?\*\*)?[^.\n;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
+    re.IGNORECASE,
+)
+
+
+def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> None:
+    """An item that states a prerequisite in prose and never declares it.
+
+    `blocked-by` is what the ranking reads; the body is what a person reads.
+    When they disagree the body is invisible, and the failure is silent in the
+    way `CLAUDE.md` singles out: `docket next` ranks on front matter and never
+    opens a brief, so it states a sound-looking reason for an order the brief
+    contradicts, and the session that trusts it either finds the dependency on
+    reading the item - the cheap outcome - or does not, and redoes the work.
+    Every instance so far cost a person to find it (`PL-9K7K`, `PL-THVN`,
+    `PL-5WFS`, `PL-SN2C`), which is the recurring cost this replaces.
+
+    Only *open* blockers fire. Most in-body mentions name work that has since
+    closed, which is history rather than a defect, and firing on those would
+    make the advisory unreadable inside a week.
+
+    An advisory and never an error, because only half of this is decidable.
+    Whether the id is declared is a fact; whether the sentence really states a
+    prerequisite - and whether `blocked` is the right word for it - is judgment,
+    and is left where judgment belongs. Either answer clears it: declare the
+    edge, or reword a sentence that was not claiming one.
+
+    The message names `status: blocked` alongside the edge because `blocked-by`
+    on its own changes nothing here: `plan` filters on `status`, so an item can
+    carry the edge, satisfy this check, and still be offered ahead of the work
+    it waits on. Naming only the field this check reads would be a fix that
+    does not fix what it claims to - the same silent wrong answer, moved one
+    step along. Three items are in that state today; `PL-KBD0` is whether the
+    checker should hold the two fields together.
+
+    What it cannot see, which is most of the problem:
+
+    - **A dependency neither brief mentions.** `PL-011` -> `PL-W3DD` was
+      visible only to someone who knew that re-keying the record invalidates a
+      memory measurement. No regex reaches that, and a clean run here is not
+      evidence the store's dependency graph is complete.
+    - **Sequencing written with `after`,** for the reason the cue list gives
+      above: the phrasing that states it is the phrasing that narrates it.
+    - **A sentence about some third item's dependency.** "then `PL-SN2C`,
+      which depends on `PL-VM40`" is a true sentence in a brief that owns
+      neither edge; the subject of the verb is not something a regex settles.
+
+    So this reports what it matched and claims nothing about what it did not.
+    """
+    for item in report.items:
+        if not item.is_open:
+            continue
+        seen: set[str] = set()
+        for match in PROSE_DEPENDENCY.finditer(item.body):
+            other = match.group(1)
+            blocker = known_items.get(other)
+            if blocker is None or other == item.identifier or not blocker.is_open:
+                continue
+            if other in item.blocked_by or other in seen:
+                continue
+            seen.add(other)
+            report.advisories.append(
+                f"{_where(item)}: names {other} as a prerequisite in prose and does not list "
+                f'it in `blocked-by` - "{_sentence(item.body, match)}". Declare the edge and '
+                "set `status: blocked`, which is the half `docket next` reads, or reword the "
+                "sentence if it is not a prerequisite"
+            )
+
+
+def _sentence(body: str, match: re.Match[str]) -> str:
+    """The line a match sits on, collapsed to one line and bounded for a message.
+
+    The line rather than a parsed sentence: the item format writes prose
+    wrapped at 80 columns with bold headings inside it, so `.` is not a
+    reliable sentence boundary here - `**Depends on.**` carries one - while the
+    line reliably carries enough of the claim for a reader to judge it without
+    opening the file.
+    """
+    start = body.rfind("\n", 0, match.start()) + 1
+    end = body.find("\n", match.end())
+    line = " ".join(body[start : end if end != -1 else len(body)].split())
+    return line if len(line) <= 110 else line[:109] + "…"
 
 
 def _check_closures(report: Report, closures: ClosureReport | None) -> None:

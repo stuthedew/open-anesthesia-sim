@@ -853,6 +853,27 @@ Say which it is in the body — `**Blocked on X (date, who decided).**
 Sequencing only`, and why — so a reader can tell an ordering constraint from a
 genuine impossibility without inferring it from the field alone.
 
+**`docket check` raises a grooming advisory for the half of that which is
+decidable.** Declaring an edge is a one-off edit; noticing an undeclared one
+was the recurring cost, and it fell entirely on whoever happened to read the
+brief. So where an open item's body names another *open* item in an explicit
+dependency sentence — `depends on`, `blocked on`, `blocked by`, `waits on`,
+`requires` — and `blocked-by` does not carry it, the advisory names the item,
+the blocker and the sentence. Either answer clears it: declare the edge, or
+reword a sentence that was not claiming one. Closed blockers never fire, since
+most in-body mentions name work that has since landed.
+
+It is an advisory rather than an error because only half of this is decidable:
+whether the id is declared is a fact, whether the sentence states a
+prerequisite is judgment. And it is deliberately narrow. `before X` and
+`follows X` name the edge *backwards*, so they are not cues; `after X` points
+the right way but reads the same in a prerequisite ("do this after `X`") and in
+a narration ("amended after `X` merged"), and the store held more of the second
+than the first. A clean run therefore means the explicit declarations agree
+with the front matter — never that the dependency graph is complete. The
+dependency that cost the most to find, `PL-011` → `PL-W3DD`, is named in
+neither brief, and nothing mechanical reaches it.
+
 ### `milestone:` records where work went out, never where it is planned
 
 `docket release` stamps `milestone:` onto the items it ships, and that is the
