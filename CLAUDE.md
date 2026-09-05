@@ -21,10 +21,10 @@ workflow apparatus exists to serve it and is at permanent risk of becoming the
 work instead — the failure this project is guarding against is years of effort
 abandoned when the codebase becomes unmanageable, not a feature shipping late.
 The horizon is load-bearing rather than colour: it puts the project well above
-the design-payoff line, so internal quality in the simulator that a one-year
-project could rationally trade for speed is worth paying for here, and slow
-accumulations that a year would not surface — dependency drift, a file nobody
-wants to open — have time to become the thing that ends it.
+the design-payoff line, so internal quality in the simulator is worth paying
+for here rather than traded for speed, and slow accumulations that a single
+year would not surface — dependency drift, a file nobody wants to open — have
+time to become the thing that ends it.
 
 ## Working with the project owner
 
