@@ -3,12 +3,14 @@ id: PL-5CGK
 title: chart_downsampling.py cites M4 but implements AM4, and the difference is a determinism guarantee
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: docs
 feature: provenance
 touches: src/anesthesia_sim/app/chart_downsampling.py, docs/references/README.md
 added: 2026-09-04
 verify: python3 tools/doc_check.py check && grep -q 'AM4' src/anesthesia_sim/app/chart_downsampling.py
+closed: 2026-09-05
+reason: Superseded by PL-8LXM, which deletes app/chart_downsampling.py, its tests and the M4 paper together with every citation of them. The gap this item records between what the module cites and what it computes is real, and it is preserved in PL-8LXM's brief as part of why that removal is of good work rather than of bad.
 ---
 
 **Problem.** `app/chart_downsampling.py` states that it "implements **M4** as
