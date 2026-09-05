@@ -38,6 +38,7 @@ docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch
 docket record                # write every pull request number the base is owed
 docket check                 # validate the store; exits non-zero on errors
+docket check --verify        # ...and replay every open item's `verify:` command
 ```
 
 ### Capture costs nothing
@@ -1035,11 +1036,16 @@ led such a subject, eleven were capture or triage commits ("PL-8HJ2 Capture
 that make release always ends in a red test") and two were implementations. An
 advisory wrong five times in six is one every session learns to skim past.
 
-So `check` runs each open item's own `verify:` command instead — the item's own
-statement of what would prove it done — and reports the ones that pass. Scoped
-to `ready` and `needs-decision`, and to `check` alone: it is the only check
-here that *executes* the project rather than reading it, and `next` and the
-digest are asked on every session start.
+So `check --verify` runs each open item's own `verify:` command instead — the
+item's own statement of what would prove it done — and reports the ones that
+pass. Scoped to `ready` and `needs-decision`, and behind a flag: it is the only
+check here that *executes* the project rather than reading it. `next` and the
+digest are asked on every session start, and a bare `check` is a pre-commit
+gate, which is the wrong moment for this — the finding is about work that has
+already *merged*, so a `make check` on a feature branch was spending about half
+its wall clock asking about a state its own commit could not have changed.
+Measured 2026-09-05 on four cores, `make check` went 60.0 s → 29.5 s. CI passes
+the flag and answers on the same events it always did (`PL-P3B6`).
 
 **It reports two findings rather than a verdict**, because a passing command is
 consistent with two states no exit status can separate:
@@ -1140,13 +1146,15 @@ The wall clock is set by the slowest single command as much as by the number of
 them, which is worth knowing before writing a `verify:` — a full-suite `pytest
 --cov` run is tens of seconds on its own, and once one is in the pool a second
 costs a fraction of that. Each command is capped at two minutes so one wedged
-run cannot hang `make check`.
+run cannot hang the check.
 
 **So a command far enough above the typical one is named, with what it cost.**
 The person who writes a heavy `verify:` is the only one placed to reconsider
 it, and was the one person told nothing — the cost arrived in one step and was
-then paid by every later session's `make check`. The advisory closes either
-way: narrow the command, or accept a cost you have now seen.
+then paid by every later run. The advisory closes either way: narrow the
+command, or accept a cost you have now seen. It is CI that pays it now rather
+than each session, which lowers the stakes without removing them: the pool is
+still bounded by the size of the queue, and that bound still only ever grows.
 
 **And it says what narrowing would leave, rather than that the command sets the
 floor.** Those are different statements and the second was wrong. A pool cannot
