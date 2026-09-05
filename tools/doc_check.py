@@ -138,6 +138,21 @@ RULES_DIR = ".claude/rules"
 # and because the question is only ever "is the key there".
 PATHS_KEY_RE = re.compile(r"paths\s*:")
 
+# Below this many characters, a change to a resident file is a wording fix
+# rather than a rule arriving or leaving, and the advisories below stay quiet
+# for it. The total itself is always printed exactly, so a smaller change is
+# still visible; what the floor suppresses is the demand for a justification.
+#
+# Measured rather than picked. Over the 79 commits that had moved this
+# measurement by 2026-09-05, every wording fix moved at most 30 characters and
+# every change that added or removed a rule moved at least 79, with nothing at
+# all in between - so any floor inside that gap separates the two, and this one
+# sits in it with margin on both sides. Without a floor, moving this metric from
+# lines to characters would newly demand a routing justification for a
+# four-character term swap, which is the same defect as the blindness it
+# fixes, arriving from the other side (`PL-QV1F`).
+MATERIAL_RESIDENT_DELTA = 40
+
 # Every way git can fail to answer, named rather than written as a tuple in the
 # `except` clause itself. This file must run under whatever bare `python3` is on
 # PATH, but the repository's formatter targets a newer one, and it rewrites a
@@ -375,8 +390,36 @@ class Report:
 
 
 @dataclass(frozen=True)
+class ResidentFile:
+    """One instruction file that loads at launch, measured both ways.
+
+    `characters` is what every comparison here reads; `lines` is carried only
+    to be printed beside it. Keeping both is what makes the choice of unit
+    legible: `CLAUDE.md` holds 21% of its text on 6% of its lines, so the two
+    numbers disagree about how large it is, and a reader shown one of them
+    alone cannot tell that they do (`PL-QV1F`).
+    """
+
+    name: str
+    characters: int
+    lines: int
+
+
+@dataclass(frozen=True)
 class ResidentInstructions:
     """The instruction files loaded at launch, measured, and against the base.
+
+    Measured in characters. Lines were the first unit and were the wrong one:
+    they put `.claude/rules/instruction-writing.md`, hard-wrapped so no line
+    reaches 80 characters, and `CLAUDE.md`, whose longest line runs 893, on
+    scales an order of magnitude apart - and inside an unwrapped paragraph
+    they resolve nothing at all, because editing one moves no line. Of the 79
+    commits that had moved this measurement by 2026-09-05, six reported exactly
+    zero line growth and one of those six added 409 characters of instruction;
+    eight moved 200 characters or more while moving at most two lines.
+    Characters are also what the reasoning behind this check is about
+    (`PL-H7XN`): how much a session loads before it has read anything is a
+    quantity of text, not a count of newlines. `PL-QV1F` carries both.
 
     `baseline_ref` is the default branch this was compared against, and is
     `None` when no checkout could be read - a bare tree, no git, no default
@@ -384,19 +427,25 @@ class ResidentInstructions:
     total is still known, so it is still reported.
     """
 
-    files: tuple[tuple[str, int], ...]
+    files: tuple[ResidentFile, ...]
     baseline_ref: str | None = None
-    baseline_files: tuple[tuple[str, int], ...] | None = None
+    baseline_files: tuple[ResidentFile, ...] | None = None
 
     @property
     def total(self) -> int:
-        return sum(count for _, count in self.files)
+        """Characters loaded at launch: the number every comparison reads."""
+        return sum(row.characters for row in self.files)
+
+    @property
+    def total_lines(self) -> int:
+        """Printed beside the total, never compared against it."""
+        return sum(row.lines for row in self.files)
 
     @property
     def baseline_total(self) -> int | None:
         if self.baseline_files is None:
             return None
-        return sum(count for _, count in self.baseline_files)
+        return sum(row.characters for row in self.baseline_files)
 
     @property
     def growth(self) -> int | None:
@@ -404,13 +453,21 @@ class ResidentInstructions:
         return None if baseline is None else self.total - baseline
 
     def deltas(self) -> list[tuple[str, int]]:
-        """Per-file change against the baseline, largest growth first."""
+        """Per-file character change against the baseline, largest growth first."""
         if self.baseline_files is None:
             return []
-        before = dict(self.baseline_files)
-        names = sorted({*before, *dict(self.files)})
-        changed = [(name, dict(self.files).get(name, 0) - before.get(name, 0)) for name in names]
+        before = {row.name: row.characters for row in self.baseline_files}
+        after = {row.name: row.characters for row in self.files}
+        names = sorted({*before, *after})
+        changed = [(name, after.get(name, 0) - before.get(name, 0)) for name in names]
         return sorted((row for row in changed if row[1]), key=lambda row: -row[1])
+
+    def material_deltas(self) -> list[tuple[str, int]]:
+        """The per-file changes large enough to be a rule, not a wording fix.
+
+        `MATERIAL_RESIDENT_DELTA` carries the measurement behind the floor.
+        """
+        return [row for row in self.deltas() if abs(row[1]) >= MATERIAL_RESIDENT_DELTA]
 
 
 @dataclass(frozen=True)
@@ -1759,16 +1816,16 @@ def is_path_scoped(text: str) -> bool:
     return block is not None and any(PATHS_KEY_RE.match(line) for line in block)
 
 
-def _measure(name: str, text: str) -> tuple[str, int] | None:
-    """One resident file as its path and its line count, or `None` if deferred."""
+def _measure(name: str, text: str) -> ResidentFile | None:
+    """One resident file measured, or `None` when it defers itself to a path."""
     if name.startswith(f"{RULES_DIR}/") and is_path_scoped(text):
         return None
-    return name, len(text.splitlines())
+    return ResidentFile(name, len(text), len(text.splitlines()))
 
 
-def measure_resident(root: Path) -> list[tuple[str, int]]:
+def measure_resident(root: Path) -> list[ResidentFile]:
     """Which instruction files load at launch in this working tree, and how big."""
-    measured: list[tuple[str, int]] = []
+    measured: list[ResidentFile] = []
     names = [name for name in RESIDENT_ROOTS if (root / name).is_file()]
     rules = root / RULES_DIR
     if rules.is_dir():
@@ -1797,13 +1854,17 @@ def _git_text(root: Path, *args: str) -> str | None:
     return None if result.returncode else result.stdout
 
 
-def _resident_baseline(root: Path) -> tuple[str, tuple[tuple[str, int], ...]] | None:
+def _resident_baseline(root: Path) -> tuple[str, tuple[ResidentFile, ...]] | None:
     """The same measurement at the tip of the default branch.
 
     The tip rather than the merge base, because the question this answers is
     "does merging this make every session's resident context larger than it is
     on the default branch" - which a merge base cannot see, since it reports
     nothing when the growth arrived on the branch being merged into.
+
+    Both sides are measured here by the same `_measure`, from file contents
+    read out of git rather than from any number written down, so changing what
+    is measured cannot make a stored baseline incomparable with a fresh one.
     """
     for ref in DEFAULT_BRANCHES:
         listing = _git_text(
@@ -1811,7 +1872,7 @@ def _resident_baseline(root: Path) -> tuple[str, tuple[tuple[str, int], ...]] | 
         )
         if listing is None:
             continue
-        measured: list[tuple[str, int]] = []
+        measured: list[ResidentFile] = []
         for name in sorted(listing.splitlines()):
             if not name.endswith(".md"):
                 continue
@@ -1847,6 +1908,15 @@ def check_resident_instructions(root: Path, report: Report) -> None:
     fact about the files; whether it is justified is not, so the judgment is
     left where `stranded` leaves its own.
 
+    Both advisories read characters, and both stay quiet below
+    `MATERIAL_RESIDENT_DELTA` - the growth one on the net total it is a claim
+    about, the trim one on each file it names. Only the advisories: the total
+    and the exact delta print either way, so a small change is still visible
+    and only the demand for a justification is withheld. A check that fires on
+    a term swap costs attention on every later run and teaches a session to
+    skim the line a real finding will appear on, which is the failure
+    `CLAUDE.md` names when it says a check earns its place every run.
+
     A net total cannot see the outcome a limit would have caused, though, which
     is why the second advisory exists. A change that adds resident text and
     trims other resident text to pay for it sums to nothing here, so the trim
@@ -1870,12 +1940,13 @@ def check_resident_instructions(root: Path, report: Report) -> None:
     if not deltas:
         return
     rendered = ", ".join(f"{name} {count:+d}" for name, count in deltas)
+    material = report.resident.material_deltas()
     ref = report.resident.baseline_ref
     growth = report.resident.growth
-    if growth is not None and growth > 0:
+    if growth is not None and growth >= MATERIAL_RESIDENT_DELTA:
         report.advisories.append(
-            f"resident instructions grew {_plural(growth, 'line', 'lines')} against {ref} "
-            f"({rendered}); every "
+            f"resident instructions grew {_plural(growth, 'character', 'characters')} "
+            f"against {ref} ({rendered}); every "
             "session loads this before it has read anything. Two answers, and there is no "
             "third: route it to the cheapest thing that delivers it when it is needed - a "
             "check, the `docket` skill, a path-scoped rule - or keep it and say why a "
@@ -1883,9 +1954,10 @@ def check_resident_instructions(root: Path, report: Report) -> None:
             "owner asked for is the second answer, already given. Never trim other "
             "resident text to offset the number. `PL-H7XN` carries the test."
         )
-    if any(count > 0 for _, count in deltas) and any(count < 0 for _, count in deltas):
+    if any(count > 0 for _, count in material) and any(count < 0 for _, count in material):
+        moved = ", ".join(f"{name} {count:+d}" for name, count in material)
         report.advisories.append(
-            f"resident instructions both grew and shrank against {ref} ({rendered}); the "
+            f"resident instructions both grew and shrank against {ref} ({moved} characters); the "
             "two net out in the total, so text cut to pay for an addition never shows up "
             "as growth at all. Check that the removed lines were routed somewhere a "
             "session still reads them, rather than cut to make room - making room is not "
@@ -1922,19 +1994,20 @@ def _plural(count: int, singular: str, plural: str) -> str:
 
 def _format_resident(resident: ResidentInstructions) -> str:
     """One line: what every session loads, and how that compares to the base."""
-    breakdown = ", ".join(f"{name} {count}" for name, count in resident.files)
+    breakdown = ", ".join(f"{row.name} {row.characters}/{row.lines}" for row in resident.files)
     growth = resident.growth
     if growth is None:
         against = "no default branch here to compare against"
     elif growth > 0:
-        against = f"{growth} more than {resident.baseline_ref}"
+        against = f"{growth} more characters than {resident.baseline_ref}"
     elif growth < 0:
-        against = f"{-growth} fewer than {resident.baseline_ref}"
+        against = f"{-growth} fewer characters than {resident.baseline_ref}"
     else:
         against = f"unchanged against {resident.baseline_ref}"
     return (
-        f"resident instructions: {_plural(resident.total, 'line', 'lines')} "
-        f"loaded at launch ({breakdown}) - {against}"
+        f"resident instructions: {_plural(resident.total, 'character', 'characters')} over "
+        f"{_plural(resident.total_lines, 'line', 'lines')} loaded at launch "
+        f"(chars/lines: {breakdown}) - {against}"
     )
 
 

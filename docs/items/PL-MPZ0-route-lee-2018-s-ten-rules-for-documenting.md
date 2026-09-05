@@ -9,6 +9,7 @@ feature: documentation-standard
 touches: .claude/rules/expert-review.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 347
 verify: python3 tools/doc_check.py check && grep -qF 'What a docstring and an error message owe a reader' .claude/rules/expert-review.md
 ---
 
