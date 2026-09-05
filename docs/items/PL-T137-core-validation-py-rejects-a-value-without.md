@@ -1,10 +1,14 @@
 ---
 id: PL-T137
 title: core/validation.py rejects a value without naming it, where core/supported_ranges.py names the value, the supported range and where the range comes from
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: ux, docs
 feature: documentation-standard
 touches: src/anesthesia_sim/core/validation.py, tests/unit/test_validation.py
 added: 2026-09-05
+verify: uv run pytest tests/unit/test_validation.py && grep -q 'def test_a_rejected_value_appears_in_the_message' tests/unit/test_validation.py
 ---
 
 **Problem.** The three shared guards raise on the parameter name alone:
