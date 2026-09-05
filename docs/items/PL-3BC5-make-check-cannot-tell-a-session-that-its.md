@@ -21,6 +21,13 @@ titled, and `make check` passed with `branch-id: visible in flight - a commit
 subject leads with PL-MPZ0` while the title was already wrong. Two CI runs of
 `pr-title` failed before the rename.
 
+**It recurred on the same branch, which is the point.** Later the same day
+`PL-6SBB` was closed on `#339` too, again after the title was set, and
+`pr-title` failed again — three failed runs across two occurrences on one pull
+request, each fixed by a rename rather than by a commit. A session that has
+just been caught by this check still walks into it, because nothing between
+the closure and the push mentions the title.
+
 **Why it matters.** The failure mode is the sequencing rather than
 forgetfulness: a title is written when the pull request opens, and the set of
 ids the branch closes can still grow afterwards — a duplicate found late, a
