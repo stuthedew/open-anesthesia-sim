@@ -87,6 +87,12 @@ def _runner(
     is what tells one piece of work from two. Left out, each ref's commits get
     hashes of their own.
 
+    **Fields after the hash are the paths that commit changed**, which is what
+    tells a commit implementing an item from one merely recording it. Left out,
+    a commit changes `src/changed.py` - work, which is what every test written
+    before that reading meant by a commit. A commit naming *no* paths is a
+    merge, which git writes exactly that way under `--name-only`.
+
     `head` is the branch this checkout has checked out, which is how
     `precedence` tells the reader's own claim from somebody else's.
 
@@ -141,11 +147,12 @@ def _runner(
                 for entry in (adds or {}).get(args[-2], [])
             )
         if args[0] == "log":
-            if "--name-only" in args:
+            if "--name-only" in args and "--source" not in args:
                 # `orphaned` decides on this walk - a commit *none* of whose
                 # paths reached the base - so the fake has to answer it. The
                 # record shape is git's: \x1e opens each, then the hash, \x1f,
-                # the subject, then one path per line.
+                # the subject, then one path per line. `--source` is what tells
+                # it from the flight walk below, which reads paths too.
                 walked = args[-2]
                 return "".join(
                     "\x1e{}\x1f{}\n{}\n".format(f"{walked}@{position}", subject, "\n".join(paths))
@@ -165,6 +172,17 @@ def _runner(
                     off_the_end = ref in ran_out and position == len(entries) - 1
                     parent = "" if off_the_end else "0f1e2d3"
                     lines.append(f"{ref}\x1f{_when(day)}\x1f{parent}\x1f{commit}\x1f{subject}")
+                    # git writes the paths under the commit they belong to, and
+                    # a blank line between the two, which is the shape the walk
+                    # has to survive parsing.
+                    # An entry that names its paths gets exactly those, so a
+                    # single empty one says "none" - a merge, which is what
+                    # git prints for one under `--name-only`.
+                    named = tuple(path for path in entry[3:] if path)
+                    paths = named if len(entry) > 3 else ("src/changed.py",)
+                    if paths:
+                        lines.append("")
+                        lines.extend(paths)
             return "\n".join(lines)
         return ""
 
@@ -174,7 +192,7 @@ def _runner(
 def _in_flight(
     refs: list[str],
     merged: list[str] | None = None,
-    commits: dict[str, list[tuple[str, str]]] | None = None,
+    commits: dict[str, list[tuple[str, ...]]] | None = None,
     unrelated: tuple[str, ...] = (),
     adds: dict[str, list[str] | list[tuple[str, str]]] | None = None,
     on_base: set[str] | None = None,
@@ -349,6 +367,120 @@ def test_a_subject_leading_with_two_ids_puts_both_in_flight() -> None:
     )
 
     assert [b.item_id for b in found] == ["PL-J295", "PL-N7R9"]
+
+
+QUEUE_ONLY = "docs/items/PL-K7QX-do-the-thing.md"
+HARNESS = "origin/claude/roadmap-release-write-failure-nhsjwo"
+
+
+def test_a_commit_that_only_writes_to_the_queue_is_not_work() -> None:
+    """The failure this reading exists for, in its commonest shape.
+
+    `CLAUDE.md` requires a finding to be captured before a session ends and
+    requires the leading id on every subject, so recording a note into an
+    item's brief produces a subject indistinguishable from one implementing
+    it. Read as work, the item left `docket next` for every session until the
+    branch merged - and the branches producing most of these were abandoned,
+    so they never merged (queue item PL-X3WZ).
+    """
+    found = _in_flight(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-03", "PL-K7QX: record a scope note", "c1", QUEUE_ONLY)]},
+    )
+
+    assert found == ()
+
+
+def test_a_commit_reaching_past_the_queue_is_work() -> None:
+    """A closure writes the item and the code in one commit, and is work."""
+    found = _in_flight(
+        [HARNESS],
+        commits={
+            HARNESS: [("2026-09-03", "PL-K7QX: do the thing", "c1", QUEUE_ONLY, "src/thing.py")]
+        },
+    )
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
+
+
+def test_one_recovery_commit_hides_none_of_the_items_it_names() -> None:
+    """A batch subject hid a batch of items: four ids, one push, all startable.
+
+    `bin/docket stranded`'s own workflow and the rule that a closure leads with
+    every id it closes both produce multi-id subjects, so one housekeeping
+    commit routinely took several items out of the queue together.
+    """
+    subject = "PL-HKF4, PL-PGZK, PL-5WFS, PL-22Z3: recover the stranded capture"
+    found = _in_flight(
+        [HARNESS],
+        commits={
+            HARNESS: [
+                ("2026-09-04", subject, "c1", "docs/items/PL-HKF4-a.md", "docs/items/PL-PGZK-b.md")
+            ]
+        },
+    )
+
+    assert found == ()
+
+
+def test_a_commit_naming_no_paths_keeps_its_claim() -> None:
+    """A merge prints no paths, and silence is not evidence of annotation.
+
+    Of the two errors available this is the cheaper one: an item wrongly left
+    marked is one a session picks around, while an item wrongly unmarked is two
+    sessions on one piece of work.
+    """
+    found = _in_flight(
+        [HARNESS], commits={HARNESS: [("2026-09-03", "PL-K7QX: merge main", "c1", "")]}
+    )
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
+
+
+def test_a_branch_named_for_the_item_carries_it_however_it_committed() -> None:
+    """What covers the session that starts an item by filling in its fields.
+
+    A `touches` fill or a `verify:` command is annotation by the diff and a
+    claim in fact. The branch name is read whatever the diff says, so a session
+    that names its own branch is still visible; a harness-named branch is not,
+    which is why the skill asks for the id in the branch name.
+    """
+    named = "claude/pl-k7qx-do-the-thing"
+    found = _in_flight(
+        [named], commits={named: [("2026-09-03", "PL-K7QX: fill in touches", "c1", QUEUE_ONLY)]}
+    )
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
+
+
+def test_a_branch_that_annotated_and_then_implemented_is_in_flight() -> None:
+    """One implementing commit is enough; the annotations beside it change nothing."""
+    found = _in_flight(
+        [HARNESS],
+        commits={
+            HARNESS: [
+                ("2026-09-04", "PL-K7QX: record what the fix will need", "c2", QUEUE_ONLY),
+                ("2026-09-03", "PL-K7QX: add the failing test", "c1", "tests/test_thing.py"),
+            ]
+        },
+    )
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
+
+
+def test_the_queue_directory_is_read_from_the_project_setting() -> None:
+    """A project keeping its queue elsewhere gets the same reading, not a default.
+
+    Hardcoding `docs/items` would read every commit in such a project as work,
+    which is the behavior this replaces.
+    """
+    runner = _runner(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-03", "PL-K7QX: capture it", "c1", "tracker/PL-K7QX-a.md")]},
+    )
+
+    assert branches_in_flight(ROOT, items_dir="tracker", runner=runner).ids == set()
+    assert branches_in_flight(ROOT, items_dir="docs/items", runner=runner).ids == {"PL-K7QX"}
 
 
 def test_the_last_commit_is_dated_so_a_stale_branch_can_be_told_apart() -> None:
@@ -1781,6 +1913,26 @@ def test_precedence_orders_by_the_earliest_commit_not_the_newest() -> None:
 
     assert order.holder is not None
     assert order.holder.ref == FIRST
+
+
+def test_precedence_does_not_make_a_carrier_of_a_branch_that_only_annotated() -> None:
+    """The two reads answer the same question and must not disagree about it.
+
+    `branches_in_flight` asks whether an item is startable and `precedence`
+    asks which of two sessions yields; a branch that merely recorded a note
+    is carrying nothing, so it is a rival in neither. Left in here it would
+    order a real session behind a commit nobody is working from.
+    """
+    annotating = "origin/claude/some-triage-pass-abcdef"
+    order = _precedence(
+        [annotating, FIRST],
+        {
+            annotating: [("2026-09-04T09:00:00+00:00", "PL-K7QX: triage", "cccc333", QUEUE_ONLY)],
+            FIRST: [EARLY],
+        },
+    )
+
+    assert [carrier.ref for carrier in order.carriers] == [FIRST]
 
 
 def test_precedence_breaks_a_tie_on_the_commit_hash() -> None:

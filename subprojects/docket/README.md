@@ -255,6 +255,24 @@ this project's history: 79 subjects contained an id, 64 led with one, and every
 one of the difference was bookkeeping rather than implementation. A subject may
 lead with two ids, because one branch may carry two items, and then both count.
 
+**A leading id is a claim only where the commit reached past the queue.**
+Bookkeeping leads with ids too, and has to: capturing a finding, triaging an
+item, recovering a stranded one and recording a merged pull request number all
+carry the id of the item they concern and none of them is work in progress.
+Measured on the parent project 2026-09-04: of nine items reported in flight,
+eight were marked by commits whose entire diff was inside the queue directory
+and one branch was actually implementing something — and three of the eight
+were open, startable, and hidden from every session for it. So the paths are
+read alongside the subject, from the same `git log` rather than a `git show`
+per commit, and a commit that only wrote to the queue stakes no claim.
+
+It fails toward keeping the mark. A merge prints no paths under `--name-only`,
+and a path git quoted does not match the prefix; neither is evidence of
+bookkeeping, so both keep their claim. What it cannot see is a session that
+*starts* an item by pushing only a `touches` fill — annotation by the diff and
+a claim in fact. A branch named for its item still carries the claim in its
+name, which is read whatever the diff says.
+
 **A branch is finished when its content has landed, not when its commits
 have.** The squash trap `stranded` describes above reaches this read from the
 other side: a squash keeps the branch's content and none of its commits, so

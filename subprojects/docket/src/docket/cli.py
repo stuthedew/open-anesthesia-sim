@@ -110,7 +110,31 @@ def _flight(args: argparse.Namespace) -> FlightReport:
     """
     if getattr(args, "no_git", False):
         return FlightReport()
-    return branches_in_flight(args.items.parent if args.items else find_root())
+    root, items_dir = _tracked(args)
+    return branches_in_flight(root, items_dir=items_dir)
+
+
+def _tracked(args: argparse.Namespace) -> tuple[Path, str]:
+    """The repository root, and the queue directory beneath it as git spells it.
+
+    Resolved from the store exactly as `_load` resolves it - `--items` wins
+    over the setting, because a command pointed at one queue must not be
+    answered about another. `branches_in_flight` decides whether a commit was
+    recording an item or working on it by whether its whole diff sits in this
+    directory, so the wrong directory here reads every commit as work.
+
+    A store outside the repository comes back as the empty prefix, which no
+    path git prints can match, so every commit keeps its claim. That is the
+    same direction `_stranded` takes on the same question and the same one the
+    reading itself prefers: an item wrongly left marked is picked around, an
+    item wrongly unmarked is two sessions on one piece of work.
+    """
+    root = args.items.parent if args.items else find_root()
+    directory = args.items or (root / load_config(root).items_dir)
+    try:
+        return root, directory.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return root, ""
 
 
 def _say_unread(flight: FlightReport) -> None:
@@ -421,10 +445,10 @@ def cmd_show(args: argparse.Namespace) -> int:
         # The whole precedence read only where something is actually carrying
         # the item, which is the rare case. A session starting ordinary work
         # pays exactly what it paid before.
+        root, items_dir = _tracked(args)
         print(
             render.format_precedence(
-                precedence(args.items.parent if args.items else find_root(), item.identifier),
-                args.today or date.today(),
+                precedence(root, item.identifier, items_dir=items_dir), args.today or date.today()
             )
         )
     print()
@@ -1133,8 +1157,8 @@ def cmd_flight(args: argparse.Namespace) -> int:
     an unmerged branch is a live session or abandoned work, the command cannot
     tell which, and reporting is the whole job.
     """
-    root = args.items.parent if args.items else find_root()
-    report = branches_in_flight(root)
+    root, items_dir = _tracked(args)
+    report = branches_in_flight(root, items_dir=items_dir)
     print(render.format_flight(report, args.today or date.today()))
     return 0
 
