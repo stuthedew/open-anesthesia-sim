@@ -253,7 +253,6 @@ tools/
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
-├── stop_hook_patch.py    # SessionStart hook: corrects the container stop hook's unpushed-commit test, which picks its comparison point from a ref that merely resolves locally and so demands a push that would recreate a merged branch
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
 ```
 
@@ -266,23 +265,6 @@ is not expanded — no tree draws one today — and `__init__.py` is excluded
 throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
-
-`tools/stop_hook_patch.py` is the one file here that is not a check and does
-not run under `make check`. It is wired as a SessionStart hook in
-`.claude/settings.json`, and it edits a file this repository does not own:
-`~/.claude/stop-hook-git-check.sh`, which a cloud container writes at start and
-runs at every `Stop`. That hook counts unpushed commits against
-`origin/<branch>` whenever that ref *resolves locally*, so a merged branch's
-surviving tracking ref makes it demand a push that would recreate a dead branch
-identical to `main`. The correction counts commits held by no remote ref
-instead. It is a hook rather than a patch the project owner applies because the
-file is not theirs to change: a container rewrites it at every start,
-user-level settings never reach a cloud session, and an environment setup
-script runs before Claude Code launches and is skipped once the environment
-cache exists. The tool matches one whole line and rewrites nothing if it is
-absent or doubled, so an upstream change is a clean miss that reports itself
-rather than a partial edit to a script every stop executes. `PL-WW08` carries
-the diagnosis and the measurements.
 
 `tools/pr_title_check.py` runs only on pull requests, and is the prevention
 half of `PL-2XTF`. A squash merge takes its subject from the pull request
@@ -352,7 +334,7 @@ end-to-end, so widening the tree to the whole package would fail on an import
 the design permits rather than passing quietly (`PL-J833`).
 
 `tools/ignore_check.py` covers what the type-check gate cannot. `[tool.mypy]
-files` names `src`, `tools` and `subprojects/docket/src`, and every
+files` names `src`, `tools`, `.claude/hooks` and `subprojects/docket/src`, and every
 `type: ignore` in the repository sits outside that set, so `strict = true`'s
 `warn_unused_ignores` never read one. It runs mypy over `tests/` and
 `subprojects/docket/tests/` separately and takes two things from the output: an
@@ -437,6 +419,14 @@ a checkout with no virtualenv. That is why the floor these tools are held to is
 number chosen here: `doc_check.py` imports `docket.roadmap`, so it is whatever
 `subprojects/docket/pyproject.toml` declares in `requires-python`.
 
+`.claude/hooks/` is held to the same floor for the same reason, and its
+`ruff.toml` inherits the pin from `tools/ruff.toml` rather than restating it.
+Claude Code invokes a hook as bare `python3` too, so a hook moved out of
+`tools/` would otherwise be formatted at the repository's 3.14 target and
+become unparseable by the interpreter that runs it.
+`tests/unit/test_tools_portability.py` covers both directories by path rather
+than by filename, so the guard follows the next hook without being extended.
+
 Two of them are nonetheless *invoked* under `uv run python`, and the
 distinction is worth keeping straight, because it is about what a tool reads
 rather than what it needs. `ignore_check.py` shells out to mypy, so it wants
@@ -475,6 +465,39 @@ current. A fourth test holds the job's pinned version to `requires-python`, so
 raising the floor cannot leave CI exercising an interpreter the project no
 longer supports. The approximations stay because they name the offending file
 and import, run before a push, and reach what those two commands never do.
+
+## Wired hooks (`.claude/hooks/`)
+
+The three scripts `.claude/settings.json` wires as hooks live in
+`.claude/hooks/`, not in `tools/`, and the reason is a guard rather than tidiness.
+`.claude` is a *protected directory* in Claude Code's own list, so a write to
+anything under it is never auto-approved: it prompts, or in auto mode routes to
+the classifier ([protected
+paths](https://code.claude.com/docs/en/permission-modes#protected-paths), read
+2026-09-05). A `permissions.allow` entry cannot lift that — the safety check
+runs before allow rules are evaluated — so the directory is the guard, and
+putting a hook anywhere else silently leaves it out. `stop_hook_patch.py` sat
+in `tools/` until `PL-W4H9`, which is exactly the gap that item names: a script
+that rewrites another hook, editable without review. `docket-digest.sh` and
+`docket-branch-guard.sh` are documented where their behavior is, in their own
+headers.
+
+`.claude/hooks/stop_hook_patch.py` is the one hook here that is not a check and
+does not run under `make check`. It is wired as a SessionStart hook, and it
+edits a file this repository does not own:
+`~/.claude/stop-hook-git-check.sh`, which a cloud container writes at start and
+runs at every `Stop`. That hook counts unpushed commits against
+`origin/<branch>` whenever that ref *resolves locally*, so a merged branch's
+surviving tracking ref makes it demand a push that would recreate a dead branch
+identical to `main`. The correction counts commits held by no remote ref
+instead. It is a hook rather than a patch the project owner applies because the
+file is not theirs to change: a container rewrites it at every start,
+user-level settings never reach a cloud session, and an environment setup
+script runs before Claude Code launches and is skipped once the environment
+cache exists. The script matches one whole line and rewrites nothing if it is
+absent or doubled, so an upstream change is a clean miss that reports itself
+rather than a partial edit to a script every stop executes. `PL-WW08` carries
+the diagnosis and the measurements.
 
 ## Tests (`tests/`)
 

@@ -316,7 +316,7 @@ correction rather than handing the question back.
   a *merged* branch with `git branch -dr origin/<branch> && git fetch origin
   main && git checkout -B <branch> origin/main`. The false demand to push that
   such a ref used to provoke is handled in code rather than here:
-  `tools/stop_hook_patch.py` corrects the container's stop hook at session
+  `.claude/hooks/stop_hook_patch.py` corrects the container's stop hook at session
   start, and prints the commands that disprove one only when it cannot.
   `PL-WW08` carries that; `PL-1Q3S` and `PL-PF8H` the two ways the ref arises.
 - **Capture intent, and route it by how ready it is.** A **specific change** is
