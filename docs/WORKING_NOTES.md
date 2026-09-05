@@ -741,3 +741,47 @@ half - `pyproject.toml`'s vague `description` and its absent `classifiers` -
 and says the same thing about sequencing. Repository topics were proposed in
 the same discussion and not applied; they are independent of the wording and
 can be set whenever.
+
+## Open thread: `.claude/rules/` path globs are unanchored - PL-ZQ35, PL-H588, PL-LLWN
+
+Measured on 2026-09-05 while closing `PL-ZQ35`: a `paths:` entry in a
+`.claude/rules/*.md` file matches its name at **any depth** unless it begins
+with `/`, and `./` matches nothing at all. `PL-LLWN` carries the table. The
+probe was throwaway rule files and target files at the repository root and
+under `subprojects/docket/`, run because no documentation states the
+behavior - the published description settles only *when* a path-scoped rule
+fires (on a read), not *what* its glob matches.
+
+**Why these are one pass rather than three findings.** Every rule's glob was
+written as if it were relative to the repository root and none of them is, so
+they fail together and for one reason. They differ only in how visible the
+failure is today:
+
+- `PL-ZQ35` (closed) - `readme-hold.md`'s `README.md` against three files of
+  that name. The collision was already real: the freeze was loading on the
+  queue tool's reference manual, alongside `apparatus-standard.md`, whose own
+  text says every sentence of it is wrong when applied to a `README.md`.
+- `PL-H588` - `expert-review.md`'s `src/**` and `tests/**` reach
+  `subprojects/docket/src/` and `tests/`. Live and unfixed: the simulator's
+  specialist standard loads on the apparatus, which is `PL-6SBB`'s leak
+  running the other way, and the tie-break in `CLAUDE.md` ("the simulator
+  wins") resolves it the wrong way there. Its `docs/**` half needs no depth
+  at all - it already reaches `docs/worker.md`, which `apparatus-standard.md`
+  claims by name, and `docs/items/`.
+- `PL-LLWN` - the class fix, and a check holding every entry to a leading
+  `/`. The remaining globs match one file today and widen silently the moment
+  a second file of that name appears, which `subprojects/` exists to make
+  likely.
+
+**Order.** `PL-H588` first: it is the only one wrong today, and it carries a
+judgment the check cannot make - what `docs/**` is meant to reach, which
+`CLAUDE.md` answers for neither `docs/items/` nor `docs/releases/`. `PL-LLWN`
+after it, so the check lands on globs that are already correct rather than
+failing the tree it is added to.
+
+**Excluded deliberately.** Whether a rule's glob describes the *right* set of
+files is judgment, differs per rule, and is the "worse than no tool" case if
+scripted; `PL-LLWN`'s check decides anchoring only. `PL-3V4N` is a separate
+defect in the same file - a path-scoped rule fires on a *read*, so the freeze
+is missed entirely by a session that edits `README.md` without opening it -
+and anchoring neither helps nor hinders it.

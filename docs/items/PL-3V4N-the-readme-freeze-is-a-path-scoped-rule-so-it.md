@@ -11,7 +11,7 @@ added: 2026-09-05
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_readme_edit_fails_while_the_hold_file_exists' tests/unit/test_doc_check.py
 ---
 
-**Problem.** `.claude/rules/readme-hold.md` carries `paths: ["README.md"]`.
+**Problem.** `.claude/rules/readme-hold.md` carries `paths: ["/README.md"]`.
 Claude Code loads a path-scoped rule when a session **reads** a matching file —
 "Path-scoped rules trigger when Claude reads files matching the pattern, not on
 every tool use". A session that edits `README.md` with a targeted replacement,

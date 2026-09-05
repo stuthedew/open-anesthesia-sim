@@ -46,8 +46,8 @@ message, since it is the spelling that matches nothing.
 
 Anchoring every entry is the other half, and it is mechanical: seven rule
 files, of which `instruction-writing.md` carries no `paths:` at all — it is
-resident by necessity, which `PL-ZQ35`'s brief listed as path-scoped and was
-wrong about.
+resident by necessity. `PL-ZQ35`'s brief listed it as path-scoped; that was
+corrected while closing `PL-ZQ35`.
 
 Deliberately not attempted: deciding whether a rule's glob describes the right
 set of files. That is the judgment half, it differs per rule, and a check that
