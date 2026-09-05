@@ -4,7 +4,7 @@ title: Rewrite over-verbose and poorly worded code comments across src/ and test
 status: dropped
 added: 2026-09-05
 closed: 2026-09-05
-reason: split into two items, with the project owner's agreement (2026-09-05), because at `L` this could not be started from a queue entry. PL-1K5X takes `src/` and PL-FDMJ takes `tests/`. The halves are even by the measure that matters: 4,644 lines of comment and docstring prose in `src/` against 4,530 in `tests/`, measured 2026-09-05. The safety-critical qualifier this item stated - shorten the prose, keep the *why* - is carried into both, and PL-1K5X records that it lands almost entirely in `core/`. The body below is the reasoning; it was not rewritten into either child
+reason: split into two items, with the project owner's agreement (2026-09-05), because at `L` this could not be started from a queue entry. PL-1K5X takes `src/` and PL-FDMJ takes `tests/`. The halves are even by the measure that matters: roughly 4,600 lines of comment and docstring prose in `src/` against ~4,500 in `tests/`, measured 2026-09-05 with the tokenizer and rounded, because the counts move every release. The safety-critical qualifier this item stated - shorten the prose, keep the *why* - is carried into both, and PL-1K5X records that it lands almost entirely in `core/`. The body below is the reasoning; it was not rewritten into either child
 ---
 
 **Problem.** The comments in `src/` and `tests/` are, in the project owner's
@@ -25,8 +25,9 @@ reasoning is what hides it, so trimming serves the reviewer. What a comment
 must never lose is the *why* — a provenance note, a unit, a cited equation, or
 the reason a value is what it is. Shorten the prose, keep the fact.
 
-**Where.** `src/`, `tests/` - 9,654 and 17,356 lines respectively, which is
-what makes this `L`.
+**Where.** `src/`, `tests/` - roughly 9,700 and 17,400 lines respectively,
+measured 2026-09-05 and rounded because they move every release, which is what
+made this `L`.
 
 **Done when.** Every comment and docstring in `src/` and `tests/` has been read
 and, where it was padded, cut: nothing restating the line below it, no

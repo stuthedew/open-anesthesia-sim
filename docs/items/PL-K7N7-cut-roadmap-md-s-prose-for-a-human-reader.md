@@ -11,8 +11,8 @@ added: 2026-09-05
 not-delegable: readability is judged by a person, and no command separates trimmed prose from padded prose. The two that could run are worse than none - a line-count ceiling is met by deleting a rule to reach a number, which is why `check_resident_instructions` refuses one, and `doc_check.py check` passes today
 ---
 
-**Problem.** `ROADMAP.md` is 2,202 lines and, in the project owner's reading
-(2026-09-05), far more verbose than it needs to be. One of five per-target
+**Problem.** `ROADMAP.md` runs to ~2,200 lines and is, in the project owner's
+reading (2026-09-05), far more verbose than it needs to be. One of five per-target
 items split out of `PL-3VKZ` (rewrite the human-facing markdown prose), which
 was `L` and therefore unstartable from the queue.
 
@@ -29,7 +29,7 @@ person. Cut the prose around them; do not restructure them, and do not shorten
 a milestone's scope statement into something that no longer places the items it
 places.
 
-**Where.** `ROADMAP.md`.
+**Where.** `ROADMAP.md`. Counts are measured 2026-09-05 and rounded because they move every release; re-measure before starting rather than trusting them - they are here for ordering, not as a claim.
 
 **Done when.** The document has been read end to end and cut: no paragraph
 restating the one above it, no clause that adds nothing. Every recorded

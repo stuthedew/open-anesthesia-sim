@@ -11,7 +11,7 @@ added: 2026-09-05
 not-delegable: readability is judged by a person, and no command separates trimmed prose from padded prose. A line-count ceiling would be met by deleting a statement to reach a number, and `doc_check.py check` passes today
 ---
 
-**Problem.** `docs/ARCHITECTURE.md` (524 lines) and `docs/maintainer.md` (49)
+**Problem.** `docs/ARCHITECTURE.md` (~550 lines) and `docs/maintainer.md` (~50)
 are, in the project owner's reading (2026-09-05), more verbose than they need
 to be. One of five per-target items split out of `PL-3VKZ` (rewrite the
 human-facing markdown prose), which was `L` and therefore unstartable from the
@@ -25,7 +25,7 @@ reference documents consulted under time pressure, which is the reading a long
 paragraph serves worst. The standard is **human readability**, deliberately not
 `PL-JK0M`'s routing standard for the agent-facing instruction files.
 
-**Where.** `docs/ARCHITECTURE.md`, `docs/maintainer.md`.
+**Where.** `docs/ARCHITECTURE.md`, `docs/maintainer.md`. Counts are measured 2026-09-05 and rounded because they move every release; re-measure before starting rather than trusting them - they are here for ordering, not as a claim.
 
 **Done when.** Both documents have been read end to end and cut: no paragraph
 restating the one above it, no clause that adds nothing, no section that could

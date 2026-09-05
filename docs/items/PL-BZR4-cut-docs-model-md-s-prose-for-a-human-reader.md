@@ -11,8 +11,8 @@ added: 2026-09-05
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it whatever a check proves. Readability is judged by a person besides - no command separates trimmed prose from padded prose, and a length ceiling would be met by deleting the provenance note this item exists to keep
 ---
 
-**Problem.** `docs/MODEL.md` is 3,099 lines and, in the project owner's reading
-(2026-09-05), far more verbose than it needs to be. One of five per-target
+**Problem.** `docs/MODEL.md` runs to ~3,100 lines and is, in the project
+owner's reading (2026-09-05), far more verbose than it needs to be. One of five per-target
 items split out of `PL-3VKZ` (rewrite the human-facing markdown prose), which
 was `L` and therefore unstartable from the queue.
 
@@ -30,7 +30,7 @@ provenance note. Where a passage is long because the science is, it stays long.
 The failure this item must not produce is a shorter document that says less
 about what the model cannot do.
 
-**Where.** `docs/MODEL.md`.
+**Where.** `docs/MODEL.md`. Counts are measured 2026-09-05 and rounded because they move every release; re-measure before starting rather than trusting them - they are here for ordering, not as a claim.
 
 **Done when.** The document has been read end to end and cut: no paragraph
 restating the one above it, no clause that adds nothing, no section that could

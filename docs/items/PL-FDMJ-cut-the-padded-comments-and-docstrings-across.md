@@ -16,11 +16,11 @@ owner's reading (2026-09-05), far too verbose and poorly written. One of two
 halves split out of `PL-XXBD` (rewrite the code comments across `src/` and
 `tests/`), which was `L` and therefore unstartable from the queue.
 
-**Measured 2026-09-05:** 4,530 of `tests/`'s 17,356 lines are comment or
-docstring prose - 26% of the tree, and almost exactly the same volume as
-`src/`'s 4,644, which is what makes the `src`/`tests` split an even one.
-`tests/unit` holds 3,271 of it, `tests/reference` 807 and `tests/integration`
-452.
+**Measured 2026-09-05, with the tokenizer:** roughly 4,500 of `tests/`'s
+~17,400 lines are comment or docstring prose - about a quarter of the tree, and
+almost exactly the same volume as `src/`'s ~4,600, which is what makes the
+`src`/`tests` split an even one. `tests/unit` holds ~3,300 of it,
+`tests/reference` ~800 and `tests/integration` ~450.
 
 **Why it matters.** The standard is **human readability**: a person opening the
 file should reach the point faster and understand more. Wordiness is the defect
@@ -42,11 +42,11 @@ rather than product - so `CLAUDE.md`'s "working reliably and staying
 streamlined" governs them, not the specialist standard this item applies. The
 same reasoning kept `docs/WORKING_NOTES.md` out of the prose split.
 
-**Where.** `tests/`, less the three files above.
+**Where.** `tests/`, less the three files above. Counts are measured 2026-09-05 and rounded because they move every release; re-measure before starting rather than trusting them - they are here for ordering, not as a claim.
 
 **Done when.** Every comment and docstring under `tests/` outside those three
 files has been read and, where it was padded, cut: nothing restating the line
 below it, no docstring paragraph repeating its own first sentence. Every
 statement of what a test defends, every reference citation and every tolerance
-rationale is still on the page. `make check` passes, and the suite still
-reports 1,759 tests at 100% core coverage.
+rationale is still on the page. `make check` passes, with the
+suite still green at 100% core coverage and no test lost.

@@ -16,10 +16,10 @@ reading (2026-09-05), far too verbose and poorly written. One of two halves
 split out of `PL-XXBD` (rewrite the code comments across `src/` and `tests/`),
 which was `L` and therefore unstartable from the queue.
 
-**Measured 2026-09-05:** 4,644 of `src/`'s 9,654 lines are comment or docstring
-prose - 48% of the tree. It is concentrated in
-`src/anesthesia_sim/app` (3,841 lines of prose in 7,321), with
-`src/anesthesia_sim/core` carrying 787 in 2,304 and `src/anesthesia_sim/data`
+**Measured 2026-09-05, with the tokenizer:** roughly 4,600 of `src/`'s ~9,700
+lines are comment or docstring prose - about half the tree. It is concentrated
+in `src/anesthesia_sim/app` (~3,800 lines of prose in ~7,300), with
+`src/anesthesia_sim/core` carrying ~790 in ~2,300 and `src/anesthesia_sim/data`
 effectively none. That is where the two standards below divide, and it is worth
 knowing before starting: most of the volume is UI prose, and most of the care
 is owed to a tenth of it.
@@ -37,7 +37,7 @@ serves the reviewer. What a comment must never lose is the *why* - a provenance
 note, a unit, a cited equation, or the reason a value is what it is. Shorten
 the prose, keep the fact.
 
-**Where.** `src/`.
+**Where.** `src/`. Counts are measured 2026-09-05 and rounded because they move every release; re-measure before starting rather than trusting them - they are here for ordering, not as a claim.
 
 **Done when.** Every comment and docstring under `src/` has been read and,
 where it was padded, cut: nothing restating the line below it, no docstring
