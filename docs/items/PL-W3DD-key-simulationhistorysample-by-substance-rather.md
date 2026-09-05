@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: teachable-case
+milestone: v0.4.0
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md, tests/unit/test_run_history.py, tests/unit/test_simulation_view.py, tests/integration/test_controller.py, tests/integration/test_chart_patching.py, tests/integration/test_sevo_controller.py
 added: 2026-09-02
 closed: 2026-09-05

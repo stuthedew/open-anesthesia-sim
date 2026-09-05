@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, docs
+milestone: v0.4.0
 touches: docs/WORKING_NOTES.md
 added: 2026-09-05
 closed: 2026-09-05

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, planning
 feature: documentation-standard
+milestone: v0.4.0
 touches: .claude/rules/expert-review.md
 added: 2026-09-05
 closed: 2026-09-05

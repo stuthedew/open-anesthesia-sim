@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.4.0
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-03
 closed: 2026-09-05
