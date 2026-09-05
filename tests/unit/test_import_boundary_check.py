@@ -120,12 +120,14 @@ class TestAnalyze:
             "time",
             "datetime",
             "random",
+            "secrets",
+            "uuid",
         )
         by_package = {boundary.package: boundary for boundary in BOUNDARIES}
         assert by_package["pydantic"].allowed == ("src/anesthesia_sim/core/parameters.py",)
         assert all(boundary.why.strip() for boundary in BOUNDARIES)
 
-    @pytest.mark.parametrize("package", ["time", "datetime", "random"])
+    @pytest.mark.parametrize("package", ["time", "datetime", "random", "secrets", "uuid"])
     def test_the_clock_and_generator_boundaries_permit_no_module_under_core(
         self, package: str
     ) -> None:
@@ -306,7 +308,12 @@ class TestMain:
         app = tmp_path / "src" / "anesthesia_sim" / "app"
         app.mkdir()
         (app / "playback.py").write_text(
-            "import time\nfrom datetime import datetime\nimport random\n", encoding="utf-8"
+            "import time\n"
+            "from datetime import datetime\n"
+            "import random\n"
+            "import secrets\n"
+            "import uuid\n",
+            encoding="utf-8",
         )
         assert main(["--root", str(tmp_path)]) == 0
         assert "0 errors" in capsys.readouterr().out
