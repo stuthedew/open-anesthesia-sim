@@ -1,10 +1,15 @@
 ---
 id: PL-MPZ0
 title: Route Lee 2018's ten rules for documenting scientific software into this repository's standards, adopting only the rules that are not already practice here
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: docs, planning
 feature: documentation-standard
 touches: .claude/rules/expert-review.md
 added: 2026-09-05
+closed: 2026-09-05
+verify: python3 tools/doc_check.py check && grep -qF 'What a docstring and an error message owe a reader' .claude/rules/expert-review.md
 ---
 
 **Problem.** The project owner supplied Lee BD, *Ten simple rules for
@@ -57,6 +62,13 @@ So there is nothing in rule 1 to adopt and nothing to decline.
 decline. Its verification half — doctest, examples that run — is the valuable
 part and is already covered by `tests/reference/` against published data; the
 site half is apparatus for an audience that does not exist.
+
+**Why it matters.** The paper is the project owner's standing guide, and a
+guide nobody has audited against the tree is either ignored or adopted whole.
+Adopting whole is the expensive failure: ten rules of resident prose, most of
+them describing what this repository already does, which is exactly the growth
+`CLAUDE.md`'s routing rule exists to stop. The audit is what lets the guide act
+on the two places it changes something and stay silent everywhere else.
 
 **Where.** `.claude/rules/expert-review.md` § "What a docstring and an error
 message owe a reader", added 2026-09-05. Path-scoped to `src/**`, `docs/**` and
