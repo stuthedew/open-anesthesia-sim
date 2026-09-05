@@ -243,6 +243,99 @@ def test_an_item_cannot_block_itself() -> None:
     )
 
 
+DEPENDS_BRIEF = "**Problem.** Depends on `PL-0002`.\n**Why it matters.** y\n**Done when.** z\n"
+
+
+def _prose(
+    text: str, *, blocked_by: tuple[str, ...] = (), blocker_status: str = "ready"
+) -> list[str]:
+    """Advisories raised for one item whose brief says `text` about `PL-0002`."""
+    subject = _item(
+        "PL-0001",
+        blocked_by=blocked_by,
+        body=f"**Problem.** {text}\n**Why it matters.** y\n**Done when.** z\n",
+    )
+    blocker = _item("PL-0002", status=blocker_status, closed=date(2026, 8, 2))
+    return analyze([subject, blocker], TODAY).advisories
+
+
+def test_prose_dependency_without_an_edge_raises_an_advisory() -> None:
+    """The rule itself: the body names a prerequisite the front matter does not."""
+    advisories = _prose("This depends on `PL-0002` for the unit.")
+    assert _has(advisories, "names PL-0002 as a prerequisite in prose")
+    # The item, the blocker and the sentence, so it can be judged without
+    # opening the file - and the fix, which is either of two answers.
+    assert _has(advisories, "PL-0001")
+    assert _has(advisories, "This depends on `PL-0002` for the unit.")
+    assert _has(advisories, "reword the sentence if it is not a prerequisite")
+
+
+def test_the_advisory_names_the_field_that_actually_changes_the_ranking() -> None:
+    """`next` filters on `status`, never on `blocked-by`, so an advisory that
+    asked only for the edge would name a fix that does not fix the thing it
+    says it fixes - which is the failure mode this whole check is against."""
+    assert _has(_prose("This depends on `PL-0002`."), "set `status: blocked`")
+
+
+def test_a_prose_dependency_that_is_declared_is_silent() -> None:
+    assert _prose("This depends on `PL-0002`.", blocked_by=("PL-0002",)) == []
+
+
+def test_a_prose_dependency_on_closed_work_is_history_rather_than_a_defect() -> None:
+    """Most in-body mentions name work that has since closed; firing on those
+    would make the advisory unreadable within a week."""
+    assert _prose("This depends on `PL-0002`.", blocker_status="done") == []
+
+
+def test_the_heading_form_fires_despite_the_period_inside_it() -> None:
+    """`**Depends on.**` is the item format's own heading, so the period that
+    closes it must not read as a sentence break."""
+    assert _has(_prose("**Depends on.** `PL-0002` for the ratios."), "names PL-0002")
+
+
+def test_an_item_that_says_it_depends_on_nothing_stays_silent() -> None:
+    """The reason the window refuses `.`: `PL-GNN1` says exactly this, and a
+    rule that read across the break would fire on the sentence denying it."""
+    assert _prose("**Depends on.** Nothing. `PL-0002` should be re-read after this.") == []
+
+
+def test_a_reversed_sequencing_sentence_is_not_reported_as_a_dependency() -> None:
+    """`before` and `follows` name the edge backwards, so they are not cues.
+    Telling an item to declare a blocker it actually blocks would be a wrong
+    answer in the tool's own voice."""
+    assert _prose("**Worth doing before `PL-0002`, not after.**") == []
+    assert _prose("The call sites can follow with `PL-0002`.") == []
+
+
+def test_a_narrated_after_is_not_read_as_a_prerequisite() -> None:
+    """`after` points the right way and still cannot be used: the phrasing that
+    states a prerequisite is the phrasing that narrates one."""
+    assert _prose("**Amended 2026-09-03, after `PL-0002` merged (#263).**") == []
+
+
+def test_a_cue_does_not_reach_across_a_clause_into_an_unrelated_mention() -> None:
+    assert _prose("which needs no history at all) and `PL-0002` (the other one)") == []
+    assert _prose("is the machinery this item needs; `PL-0002` decides how.") == []
+
+
+def test_a_blocker_named_repeatedly_is_reported_once() -> None:
+    advisories = _prose("Depends on `PL-0002`. It waits on `PL-0002` for the unit.")
+    assert len(advisories) == 1
+
+
+def test_a_closed_item_is_not_asked_to_declare_its_prerequisites() -> None:
+    subject = _item("PL-0001", status="done", closed=date(2026, 8, 2), pr="7", body=DEPENDS_BRIEF)
+    assert analyze([subject, _item("PL-0002")], TODAY).advisories == []
+
+
+def test_an_undeclared_prerequisite_never_fails_the_build() -> None:
+    """Whether the sentence states a prerequisite is judgment, so this reports
+    and never refuses."""
+    report = analyze([_item("PL-0001", body=DEPENDS_BRIEF), _item("PL-0002")], TODAY)
+    assert report.errors == []
+    assert _has(report.advisories, "names PL-0002 as a prerequisite in prose")
+
+
 def test_needs_decision_must_state_the_decision() -> None:
     assert _has(_errors(_item(status="needs-decision")), "states no decision to make")
 
