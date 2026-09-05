@@ -4,14 +4,16 @@ title: Add the playback multiplier as steps per tick, with the rate always visib
 priority: P2
 effort: M
 status: done
-blocked-by: PL-VM40
 classes: feature, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/unit/test_playback.py, tests/unit/test_simulation_view.py, tests/integration/test_sevo_controller.py
+blocked-by: PL-VM40
 added: 2026-08-25
 closed: 2026-09-05
+pr: 331
 verify: uv run pytest tests/unit/test_simulation_view.py tests/integration/test_sevo_controller.py && grep -q 'def test_the_run_loop_takes_the_playback_rates_steps_per_tick' tests/unit/test_simulation_view.py && grep -q 'def test_the_recorded_history_is_identical_at_every_playback_rate' tests/integration/test_sevo_controller.py
 ---
+
 **Problem.** The simulation advances at 1x real time. Sevoflurane's muscle group has
 a time constant of about 135 min at reference settings and fat about 42 h, so the
 two compartments that make uptake and distribution worth teaching cannot be watched

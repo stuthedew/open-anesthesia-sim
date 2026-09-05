@@ -207,6 +207,18 @@ class TestAnalyze:
         assert report.scanned == 0
         assert report.errors
 
+    def test_nesting_trees_do_not_inflate_the_module_count(self, tmp_path: Path) -> None:
+        """`scanned` is evidence of how much source is guarded, so it counts files.
+
+        Two boundaries over nesting trees read the same module. A count of
+        module-*reads* would grow when a boundary was added rather than when
+        the source did, which is the one thing the number is for.
+        """
+        _tree(tmp_path, one="import json\n", two="import json\n")
+        outer = _boundary(package="time")
+        inner = Boundary(package="random", tree="src", allowed=(), why="a nesting fixture")
+        assert analyze(tmp_path, [outer, inner]).scanned == 2
+
     def test_a_module_importing_something_else_is_not_a_violation(self, tmp_path: Path) -> None:
         _tree(
             tmp_path, allowed="import pydantic\n", other="import pydantic_settings\nimport json\n"

@@ -237,6 +237,7 @@ def module_imports(source: str, filename: str = "<unknown>") -> tuple[Imported, 
 class Report:
     """Everything one run decided."""
 
+    #: Distinct modules read, so nesting trees do not inflate it.
     scanned: int
     violations: tuple[Violation, ...]
     unenforced: tuple[tuple[Boundary, str], ...]
@@ -259,7 +260,11 @@ def analyze(root: Path, boundaries: Sequence[Boundary] = BOUNDARIES) -> Report:
     unenforced: list[tuple[Boundary, str]] = []
     unused: list[tuple[Boundary, str]] = []
     empty: list[Boundary] = []
-    scanned = 0
+    #: Distinct modules, not module-reads: two boundaries over nesting trees
+    #: read the same file, and a count that grew when a boundary was added
+    #: rather than when the source did would stop being evidence of how much
+    #: source is guarded, which is the only thing it is for.
+    read: set[str] = set()
 
     for boundary in boundaries:
         allowed = set(boundary.allowed)
@@ -268,8 +273,8 @@ def analyze(root: Path, boundaries: Sequence[Boundary] = BOUNDARIES) -> Report:
 
         for path in _sources(root, boundary.tree):
             found_any = True
-            scanned += 1
             relative = path.relative_to(root).as_posix()
+            read.add(relative)
             imports = module_imports(path.read_text(encoding="utf-8"), filename=str(path))
             hits = [entry for entry in imports if entry.root == boundary.package]
             if not hits:
@@ -289,7 +294,7 @@ def analyze(root: Path, boundaries: Sequence[Boundary] = BOUNDARIES) -> Report:
                 unused.append((boundary, candidate))
 
     return Report(
-        scanned=scanned,
+        scanned=len(read),
         violations=tuple(violations),
         unenforced=tuple(unenforced),
         unused=tuple(unused),
