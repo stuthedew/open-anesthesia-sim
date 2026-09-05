@@ -40,6 +40,29 @@ Two things the sampler must do that a recorded window did not:
    evaluated column instead. `PL-4RBD` (the drawn chart smooths through a
    control change) is closely related and may close with this.
 
+**A property the current design buys that this one must not lose (found
+2026-09-05, reviewing which decisions the change makes moot).** `PL-Q197`
+anchored decimation to the *run* rather than to the viewport, and the payoff it
+bought was that a steady frame moves only the newest bucket and the final
+sample — 2 700 discrete control mutations a frame was what saturated the
+Flutter client, and that anchoring is what fixed it.
+
+Evaluating the closed form at pixel columns throws that away by default: while
+the window follows the run, every column is a new instant every frame, so
+*every* point moves and the mutation count goes back up. The fix is the same
+trick applied one level over — anchor the **evaluation times** to an absolute
+grid measured from `t = 0`, at the column spacing the time base implies, so a
+following window reuses all but its newest column times. Event columns are
+added on top of that grid rather than replacing it.
+
+This is a requirement of this item, not a later optimisation: without it the
+architecture regresses a defect that was already measured and fixed, and it
+would regress it in the one place the reader is looking. `PL-YDKJ` (decide
+whether the chart should keep patching one control per plotted point) is the
+open decision this interacts with, and it should be decided after this lands
+rather than before — the point-movement rate is its main input, and this item
+changes it.
+
 **Why it matters.** This is where the memory actually comes back and where the
 frame cost actually drops — `PL-T691` makes it possible, this makes it real.
 It also removes the last consumer of `chart_downsampling`, which is `PL-8LXM`.
