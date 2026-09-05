@@ -9,6 +9,7 @@ feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/formatting.py
 added: 2026-08-25
 closed: 2026-09-05
+pr: 337
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_a_run_shorter_than_the_selected_time_base_shows_whole' tests/unit/test_simulation_view.py
 ---
 

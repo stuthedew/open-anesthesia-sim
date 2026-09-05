@@ -9,6 +9,7 @@ feature: project-introduction
 touches: CITATION.cff
 added: 2026-09-05
 closed: 2026-09-05
+pr: 338
 verify: test -f CITATION.cff && grep -q '^cff-version: 1.2.0$' CITATION.cff && grep -q '^license: Apache-2.0$' CITATION.cff
 ---
 
