@@ -1,10 +1,15 @@
 ---
 id: PL-6SBB
 title: CLAUDE.md's apparatus-only standard sits three sentences from its subject and reads as a whole-repo aphorism, so a session applied polishing it past sufficient to src/
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: docs
 feature: worker-instructions
-touches: CLAUDE.md, .claude/rules
+touches: CLAUDE.md, .claude/rules/apparatus-standard.md
 added: 2026-09-05
+closed: 2026-09-05
+verify: grep -q 'apparatus-standard.md' CLAUDE.md && grep -q 'paths:' .claude/rules/apparatus-standard.md && grep -q 'Polishing it past sufficient' .claude/rules/apparatus-standard.md
 ---
 
 **Problem.** `CLAUDE.md` § "Two standards, deliberately unequal" is one
@@ -81,3 +86,27 @@ judgment half is worse than no tool. The fix is where the sentence lives.
 **Done when.** A session working only in `src/` cannot load the apparatus
 standard, or — if the routing is rejected — every sentence in the paragraph
 names its own subject and the decision is recorded here.
+
+**What was done (2026-09-05, project owner approved the routing).**
+`.claude/rules/apparatus-standard.md`, scoped to `subprojects/docket/**`,
+`tools/**`, `.claude/**` and `docs/worker.md`, now carries the apparatus half:
+what "streamlined" means, what to cut and what never to cut, scaffolding not
+product, and the polishing sentence. Inside a file whose entire scope is the
+apparatus, "it" is unambiguous, which is the second half of the fix.
+
+`CLAUDE.md` keeps a four-sentence stub: both standards, the paths on each side,
+that **nothing in the apparatus rule reaches the simulator**, and that the
+simulator wins where they compete. The guard is stated resident, where a
+session that opens no apparatus file will see it.
+
+**Routing alone did not cover the other two, so both were scoped in place.**
+The reply that proposed this said routing fixed all three at once; that was
+wrong. Line 23 is a product-side claim and line 399 states the specialist bar —
+neither moves when the apparatus half leaves, so each gained its scope in the
+sentence: "internal quality **in the simulator**", and "Recommendations **for
+the simulator** should reflect the standard expected from a top-tier
+specialist".
+
+**What it cost.** The two-standards paragraph fell from 1334 characters to 901.
+`make check` reported the resident total unchanged at 548 lines, because the
+paragraph is one physical line either way — which is `PL-QV1F`.
