@@ -15,12 +15,13 @@ discarded; what every other module holds is a plain dataclass.
 `CLAUDE.md` requires simulation time to be explicit state and never the wall
 clock, and `docs/MODEL.md` "The reproducibility guarantee" states that a run is
 a function of its inputs and of the number of steps taken and of nothing else.
-A compartment reaching for `time`, `datetime` or `random` breaks that promise
-by an amount the machine chooses rather than the model.
+A compartment reaching for `time`, `datetime`, `random`, `secrets` or `uuid`
+breaks that promise by an amount the machine chooses rather than the model.
 
 Nothing measured either. Both held on 2026-09-04 - `pydantic` appeared in
 exactly two lines of that one file, and no module under `core/` imported a
-clock or a generator - but any later change could import one and every gate
+clock, a generator or an identifier minted from either - but any later change
+could import one and every gate
 would stay green. The failure that makes this worth a tool is not the coupling
 on its own: it is that the docstring and the guarantee asserting the property
 would go on asserting it, reading as verified when it is not. `CLAUDE.md` names
@@ -154,6 +155,32 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "first - reproducible neither across runs nor across machines. Stochastic "
             "behaviour, if the model ever wants it, arrives as a seed passed in with the "
             "other inputs, where a caller can hold it fixed"
+        ),
+    ),
+    Boundary(
+        package="secrets",
+        tree="src/anesthesia_sim/core",
+        allowed=(),
+        why=(
+            "the same guarantee as `random`, and strictly worse, because the escape `random` "
+            "leaves open is closed here. `secrets` draws from `random.SystemRandom`, whose "
+            "`seed()` is a documented stub - *Not used for a system random number generator* "
+            "- and whose `getstate()` raises `NotImplementedError`. A caller therefore cannot "
+            "make a run that reaches it reproducible by any means at all, where a seeded "
+            "`random.Random` at least could be"
+        ),
+    ),
+    Boundary(
+        package="uuid",
+        tree="src/anesthesia_sim/core",
+        allowed=(),
+        why=(
+            "both halves of the guarantee, in one import. `uuid4()` is `os.urandom(16)` in a "
+            "wrapper, so it is the unseedable generator above; `uuid1()` is a UUID from the "
+            "current time and the host's hardware address, so it is the wall clock and it "
+            "makes the result differ between machines as well as between runs. An identifier "
+            "a compartment mints for itself is not an input to the run; one the run needs "
+            "arrives with the other inputs, where a caller can hold it fixed"
         ),
     ),
 )
