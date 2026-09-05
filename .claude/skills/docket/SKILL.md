@@ -407,6 +407,18 @@ soon as there is. It costs nothing here - `.github/workflows/quality.yml`
 triggers on `pull_request` and on `push` to `main`, so a push to a branch with
 no pull request open runs no CI at all.
 
+**A first push confined to `docs/items/` does not claim the item, so name the
+branch after it.** The mark is read from what a commit *changed* as well as
+from what its subject says: a commit whose whole diff is in the queue is a
+capture, a triage pass or a note written into a brief, and reading those as
+work took startable items out of `docket next` for every session (`PL-X3WZ`).
+Two of the three first pushes above - the `verify:` command and the `touches`
+fill - are exactly that shape. A branch named `claude/pl-k7qx-short-slug`
+carries the claim in its own name whatever its diff, which is the cover; a
+harness-named branch has none until it commits outside the queue, so on one of
+those either push the failing test first or accept that the item reads as
+startable until you do.
+
 The cost is that an abandoned branch and a live session look alike in `flight`,
 which says so and separates them by age; `bin/docket stranded` recovers what
 one strands. That trade is worth taking - a session picking a different item
