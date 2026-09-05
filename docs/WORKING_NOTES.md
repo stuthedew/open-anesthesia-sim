@@ -481,6 +481,44 @@ trade-off somewhere other than where it was assumed to be:
 So the snapshot-interval design optimizes the cheap axis. It is not wrong,
 it is just not where the constraint is.
 
+**Re-measured 2026-09-05 (`PL-8GLL`), and two of the three numbers above have
+moved.** They are left standing as the dated record of what the 2026-08-25
+reasoning was done from; these are what the same quantities measure against
+the code as it now stands, after `PL-D9WD` replaced the per-step list of rows
+with per-series arrays and a dyadic aggregate ladder, and `PL-W3DD` re-keyed a
+row by substance.
+
+- *A snapshot is still nearly free, and it is now a built thing rather than a
+  size estimate.* `AgentUptakeSystem.capture_state()` returns an
+  `AgentUptakeSystemState`, which is the six concentrations *plus* the
+  validator's three accounting totals - so a restored state resumes the
+  mass-balance identity rather than restarting it. The bullet above was right
+  that snapshot density is not worth optimizing.
+- *Resimulation costs about twice what the bullet says.* `SimulationState.advance`
+  measures **18.4 us per 0.1 s step** (200 000 steps in 3.67 s), not 8.9 us.
+  A 3-hour run reconstructs from t=0 in **2.0 s** and 24 hours in **15.9 s**,
+  against the 1 s and 8 s above. The conclusion survives the correction: 2 s is
+  still imperceptible for the interactive case the owner described.
+- *The per-step history is still the expensive thing, and it is now measured
+  rather than estimated: **127.9 B per sample**, one substance.* Not the
+  `~88-256 B each` above, which sized a `SimulationHistorySample` object that
+  is no longer what a run retains. Measured by `tracemalloc` over a recorded
+  run, marginal between 100 000 and 200 000 samples so the fixed overhead is
+  out of it. **Half of it is the ladder, not the samples**: 64.0 B is the
+  elapsed array plus seven series' `array("d")` of values, and the remaining
+  63.9 B is the M4 aggregates over them. That split is what `PL-011` turns on -
+  evicting raw samples once consolidated removes 64 B of 128 B and leaves a
+  cost still linear in run length, so it is a factor of two rather than a
+  bound.
+
+At 127.9 B per sample and the fixed 0.1 s step, one substance: 4.6 MB per
+simulated hour, 0.11 GB per simulated day, 0.77 GB per simulated week, and
+**3.3 GB at the 30-day cap** - half the 6.6 GB the bullet above projected, and
+still a bound in name only. The rate that matters for a session left running is
+**1.38 GB per wall-clock hour at the 300x maximum playback rate**
+(`app/playback.py`'s `SUPPORTED_PLAYBACK_RATES`), which is what makes this
+reachable by accident rather than only by a 30-day run nobody would sit through.
+
 **What the mechanism was missing.** Resimulating from a snapshot to an
 arbitrary later point requires re-applying the control inputs over that
 interval - and nothing currently records them. `SimulationController` records
