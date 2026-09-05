@@ -7,9 +7,10 @@ status: done
 classes: session-cost, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, Makefile, .github/workflows/quality.yml, subprojects/docket/README.md
-verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_check_does_not_replay_verify_commands_unless_asked' subprojects/docket/tests/test_cli.py
-closed: 2026-09-05
 added: 2026-09-04
+closed: 2026-09-05
+pr: 322
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_check_does_not_replay_verify_commands_unless_asked' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `verify.already_passing` runs every open item's `verify:` command

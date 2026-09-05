@@ -1,14 +1,15 @@
 ---
 id: PL-X3WZ
 title: A commit that only annotates an item's brief marks it IN FLIGHT, so docket next hides an item nobody is working
-status: done
-added: 2026-09-03
-closed: 2026-09-05
 priority: P2
 effort: M
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
+added: 2026-09-03
+closed: 2026-09-05
+pr: 324
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_commit_that_only_writes_to_the_queue_is_not_work' subprojects/docket/tests/test_vcs.py
 ---
 

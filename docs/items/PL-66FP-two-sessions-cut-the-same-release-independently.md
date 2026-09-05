@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
 closed: 2026-09-05
+pr: 323
 verify: uv run pytest subprojects/docket/tests/test_release.py subprojects/docket/tests/test_vcs.py subprojects/docket/tests/test_cli.py -q && grep -q 'def test_a_release_another_branch_is_already_cutting_is_refused' subprojects/docket/tests/test_cli.py
 ---
 
