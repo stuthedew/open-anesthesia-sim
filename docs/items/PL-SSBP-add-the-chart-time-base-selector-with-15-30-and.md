@@ -3,11 +3,13 @@ id: PL-SSBP
 title: Add the chart time-base selector with 15, 30 and 60 minute scales plus Fit run
 priority: P2
 effort: M
-status: ready
+status: done
 classes: ux, feature
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/formatting.py
 added: 2026-08-25
+closed: 2026-09-05
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_a_run_shorter_than_the_selected_time_base_shows_whole' tests/unit/test_simulation_view.py
 ---
 
 **Problem.** PL-012 decided the chart gains a user-selected time base and
@@ -29,9 +31,12 @@ the list grows toward days and weeks later; nothing in the selector's design
 should assume 12 hours is the end of it. "Fit run" stays the default. The
 gridline interval must derive from the selected scale, never be fixed.
 
-**The upper scales are blocked on `PL-011`, and that is new.** Decimation
-currently rescans every sample in the visible window on every frame, so the
-per-frame cost is O(window) rather than O(points drawn). Measured 2026-09-04:
+**The upper scales once cost more per frame than the budget allowed.**
+Decimation rescanned every sample in the visible window on every frame, so
+the per-frame cost was O(window) rather than O(points drawn). Recorded here
+as history, and attributed to `PL-011` (bound the controller's history) when
+it was first written; the cost was decimation's rather than the history
+buffer's, and `PL-D9WD` is what removed it. Measured 2026-09-04:
 
 | Scale | Samples in window | ms/frame | Share of the 200 ms budget |
 | ---: | ---: | ---: | ---: |
@@ -61,3 +66,22 @@ five-minute one does not.
 
 **Done when.** The user can choose a time base from a list, the chart window
 takes that width, and a run shorter than the selected scale still shows whole.
+
+**Built 2026-09-05, and what was decided along the way.** The selector lists
+the settled 15 minutes to 12 hours plus "Fit run", per the owner's 2026-09-04
+note above rather than the title's older 15/30/60 - the perf constraint that
+split the upper scales out is lifted, and `ROADMAP.md`'s Required scope line
+was updated to match. Three decisions the brief did not settle:
+
+- **The ladder reaches below the selector's floor** - 1, 2 and 5 minutes,
+  reachable by fitting and not by choosing. "Fit run" is the default and has
+  to answer at ten seconds; a fifteen-minute axis would draw the whole of
+  induction into the leftmost 3% of the plot.
+- **"Fit run" always fits.** Past the widest rung the ladder doubles rather
+  than holding at 12 h, so the mode never quietly shows part of a run under a
+  name that claims the whole of it.
+- **The axis label carries its own unit** (`0`, `3m`, `1h30m`, `12h`) rather
+  than a bare number under a captioned unit. A bare `12` means twelve minutes
+  on one time base and twelve hours on another and looks identical on both,
+  and a reader who misses the caption has nothing in the label to correct
+  them.
