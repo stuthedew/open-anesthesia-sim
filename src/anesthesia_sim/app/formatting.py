@@ -60,6 +60,7 @@ __all__ = [
     "format_mac_multiple",
     "format_mac_reference",
     "format_percent",
+    "format_playback_rate",
     "format_subtitle",
     "format_wash_in_ratio",
     "mac_awake_band_percent",
@@ -616,6 +617,44 @@ def format_elapsed(elapsed_s: float) -> str:
     """
 
     return f"{elapsed_s:.1f} s"
+
+
+def format_playback_rate(multiplier: int) -> str:
+    """State how fast simulated time is being played against real time.
+
+    The rate is a mode, and a mode nobody can see is the failure this
+    project's interface rules exist to prevent: a clock advancing at 60x
+    beside numbers that look like a live case is misreadable at a glance.
+    So this renders at every rate including real time - "1x real time"
+    rather than nothing - because an absent label at 1x would make the
+    label's *presence* the signal, and a reader who has not learned that
+    convention reads a missing label as a missing mode rather than as the
+    default one.
+
+    One function for both places the rate appears - the control that sets
+    it and the line under the clock that reports it - so the two cannot
+    state the same mode differently. `docs/MODEL.md` § "Interface boundary"
+    requires the rate wherever simulated time is shown, and the interface
+    satisfies that by rendering this string, never by spelling one out.
+
+    "Real time" rather than "wall clock": the comparison a reader makes is
+    against the pace of a case they have stood through, and the multiple is
+    of that pace. Simulated time itself is `format_elapsed`, in simulated
+    seconds, and stays the only clock on the display - this names the pace
+    the clock is advancing at and is never a second reading of the time.
+
+    Args:
+        multiplier: Simulated seconds advanced per second of real time, as
+            `app/playback.py` defines it. A whole number by construction:
+            a rate that did not land on a whole number of simulation steps
+            per tick is refused there rather than displayed here.
+
+    Returns:
+        The rate as the interface states it, using the multiplication sign
+        the MAC readouts already use.
+    """
+
+    return f"{multiplier}\u00d7 real time"
 
 
 def format_case_discard_warning(

@@ -3,12 +3,14 @@ id: PL-SN2C
 title: Add the playback multiplier as steps per tick, with the rate always visible
 priority: P2
 effort: M
-status: ready
+status: done
 blocked-by: PL-VM40
 classes: feature, ux
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/unit/test_playback.py, tests/unit/test_simulation_view.py, tests/integration/test_sevo_controller.py
 added: 2026-08-25
+closed: 2026-09-05
+verify: uv run pytest tests/unit/test_simulation_view.py tests/integration/test_sevo_controller.py && grep -q 'def test_the_run_loop_takes_the_playback_rates_steps_per_tick' tests/unit/test_simulation_view.py && grep -q 'def test_the_recorded_history_is_identical_at_every_playback_rate' tests/integration/test_sevo_controller.py
 ---
 **Problem.** The simulation advances at 1x real time. Sevoflurane's muscle group has
 a time constant of about 135 min at reference settings and fat about 42 h, so the
@@ -65,3 +67,39 @@ cannot read it; this field is the same statement where `bin/docket next` can.
 The order was correct before this edit only by accident — `PL-VM40` is `P1`
 and this is `P2`, so the band happened to separate them. Nothing would have
 held if either had been re-banded.
+
+**Block cleared 2026-09-04.** `PL-VM40` shipped in v0.3.9, so simulated time
+is already an exact function of an integer step count and the run loop
+already refuses to catch up to the wall clock. The field above is kept as
+the record of why this waited.
+
+**Landed 2026-09-05.** `app/playback.py` holds the rate as a value and
+converts it into the number of *whole* steps a tick takes -
+`multiplier x tick interval / step` - refusing a rate that does not land on
+one rather than rounding it, because the only two ways to round it are a
+step of a different size or a run advancing at a rate other than the one it
+displays. `SIMULATION_TICK_INTERVAL_S` is named apart from
+`SIMULATION_STEP_S` for the same reason: they are equal, and the equality is
+what makes "60x real time" true, so it is stated where a test can check it
+rather than assumed by a loop that sleeps one and steps the other.
+
+The ladder is 1x, 5x, 20x, 60x and 300x, chosen by what each lets a reader
+*watch* in about three minutes: three minutes of case, fifteen minutes, an
+hour, a whole three-hour case, and fifteen hours - past three time constants
+of the muscle group (about 6.75 h), which is the compartment this item
+exists to make reachable. Nothing faster is offered: fat's time constant is
+about 42 h, so no rate that leaves the chart legible reaches three of them.
+
+The rate is drawn twice from one formatting function - on the control that
+sets it, and in the slot the six compartment panels give to a MAC multiple,
+directly under the clock - so the control and the readout cannot state the
+same mode differently. It is drawn at 1x too, because a label that appeared
+only above real time would make its own *absence* the signal.
+
+*Not covered here, and not a gap in this item.* The chart still draws a
+window of at most 300 simulated seconds, so at 60x and above it scrolls past
+in seconds. The readouts are correct at every rate and the axis says which
+simulated seconds it is showing, so nothing is misleading - it is unreadable
+rather than wrong. `PL-SSBP` (add the chart time-base selector with 15, 30
+and 60 minute scales plus Fit run) is the item that makes the fast rates
+legible on the chart, and it is the next one this feature offers.

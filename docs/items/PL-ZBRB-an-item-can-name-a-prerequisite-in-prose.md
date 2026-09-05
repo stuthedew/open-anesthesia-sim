@@ -7,9 +7,10 @@ status: done
 classes: infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
-verify: bin/docket check && grep -q 'def test_prose_dependency_without_an_edge_raises_an_advisory' subprojects/docket/tests/test_checks.py
 added: 2026-09-04
 closed: 2026-09-05
+pr: 329
+verify: bin/docket check && grep -q 'def test_prose_dependency_without_an_edge_raises_an_advisory' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `PL-5WFS` decided that a stated prerequisite is declared with
