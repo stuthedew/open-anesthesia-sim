@@ -53,15 +53,20 @@ jobs:
       # The same invocation as `make check`'s pytest line, and it has to stay
       # the same: `core/` is at 100% of statements and branches, and this is
       # what keeps it there. See the comment in the Makefile for why the
-      # threshold and `-n auto` are on the command line rather than in a config
-      # table. `-n auto` reads this runner rather than carrying a width pinned
-      # here, so the two lines stay identical across machines of different
-      # sizes - which is what lets "the same invocation" above stay checkable
-      # by eye.
+      # threshold and the worker count are on the command line rather than in a
+      # config table, and for the measurements behind the width.
+      #
+      # The width is computed here rather than pinned for the reason `-n auto`
+      # was: it has to read this runner rather than carry one box's core count.
+      # The expression differs from the Makefile's by one `$` only, because Make
+      # doubles it to pass one through to the shell. `tools/doc_check.py`'s
+      # `check_coverage_gate` compares the two lines and now collapses that
+      # escape before it does, so the difference is not read as a drift while
+      # every other difference still is (`PL-D3M2`, `PL-VZ8P`).
       # `drift.yml` deliberately keeps its bare `uv run pytest`: a coverage
       # failure there would report as a dependency break, which is the opposite
       # of what that workflow is for. `PL-22Z3`.
-      - run: uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
+      - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
       # `--verify` replays every open item's own `verify:` command. It used to
       # be unconditional, which meant `make check` paid about 31 s per run for a
       # finding about work that had already *merged* - see the Makefile's note

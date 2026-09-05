@@ -22,16 +22,47 @@ check: sync
 # the change under it. Measured 2026-09-03: 92.8 s with the flag against
 # 92.4 s without, so the gate is free. `PL-22Z3`.
 #
-# `-n auto` is off `addopts` for exactly the same reason, and it is the reason
-# that argument generalizes: a session iterating on one test file would pay
-# worker startup for a handful of tests and lose. Here it is the largest item
-# in this target and the suite otherwise runs on one core of however many the
-# box has - measured 2026-09-03, 1230 tests: 78 s serially against 27 s at
-# `-n auto`, with coverage identical at 691 statements / 78 branches / 100%.
-# Coverage holding is what makes the flag admissible rather than the wall
-# clock, which is why the threshold stays on this line and is not relaxed to
-# pay for the parallelism. `PL-WCZV`.
-	uv run pytest -n auto --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
+# The parallelism is off `addopts` for exactly the same reason, and it is the
+# reason that argument generalizes: a session iterating on one test file would
+# pay worker startup for a handful of tests and lose. Here it is the largest
+# item in this target, and the suite otherwise runs on one core of however many
+# the box has - measured 2026-09-03, 1230 tests: 78 s serially against 27 s at
+# `-n auto` (`PL-WCZV`).
+#
+# `-n auto` gives one worker per CPU, which is right for a CPU-bound suite, and
+# a large part of this one is not: `subprojects/docket/tests` shells out to git
+# and `test_verify.py` runs literal `sleep` commands, so a blocked worker holds
+# a core it is not using. Measured 2026-09-05, four cores, 1577 tests, `--cov`
+# on:
+#
+#     -n auto                  34.2 s  (34.5 / 34.0 / 34.1)
+#     -n auto --dist worksteal 25.6 s
+#     -n 8                     27.5 s
+#     -n 8 --dist worksteal    26.3 s  (26.0 / 27.0 / 26.0)
+#     -n 16 --dist worksteal   24.3 s
+#
+# Neither change helps alone; the pair does. Oversubscribing gives the scheduler
+# somewhere to go while a worker waits on a subprocess, and `worksteal` is what
+# stops the extra workers idling on an unlucky static split. Past about 2.5x
+# cores it degrades again.
+#
+# Coverage holding is what makes either flag admissible rather than the wall
+# clock - identical at 730 statements / 92 branches / 100% here, as it was at
+# 691 / 78 / 100% for `-n auto` before it - which is why the threshold stays on
+# this line and is not relaxed to pay for the parallelism (`PL-WCZV`,
+# `PL-VZ8P`).
+#
+# The width is computed rather than pinned, for the reason `-n auto` was chosen
+# in the first place: it has to read the runner rather than carry this box's
+# core count, so the same line is right on a machine of a different size.
+# Spelled through `python3` rather than `nproc`, which is GNU coreutils and
+# absent on macOS; `os.cpu_count()` is also precisely what xdist's own `auto`
+# falls back to here, so this is literally twice what `auto` would have picked.
+# `tools/doc_check.py`'s `check_coverage_gate` already held this line and the
+# one in `.github/workflows/quality.yml` to the same string; it now collapses
+# Make's `$$` first, so the escape below is not read as a drift (`PL-D3M2`,
+# `PL-VZ8P`).
+	uv run pytest -n $$(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
 # Bare, deliberately: no `--verify`. That flag replays every open item's own
 # `verify:` command, which was half this target's wall clock and is the wrong
 # question to ask here - it finds work that *merged* without its item being
@@ -93,11 +124,20 @@ fix:
 # both; under `-n` the in-flight workers finish first, so more tests run before
 # it stops.
 #
+# **That is why this line keeps `-n auto` where the `check` line above does
+# not.** The computed width up there resolves to an integer, and an integer is
+# what `--pdb` rejects - verified 2026-09-05, `-n auto --pdb` passes and
+# `-n 8 --pdb` errors with exactly that message. `check` is a gate, takes no
+# arguments and is never run under a debugger, so it can spend the property for
+# the wall clock; this target is the one a session copies from, so it cannot.
+# `--dist worksteal` is taken here regardless: it is the half of the pair that
+# `--pdb` tolerates, and it is worth having on its own (`PL-VZ8P`).
+#
 # This is not the coverage gate. `.github/workflows/quality.yml`'s pytest step
 # has to stay identical to the `check` line above, and deliberately not to this
-# one, which shares the flag and nothing else (`PL-D3M2`).
+# one, which now shares neither the width nor the threshold (`PL-D3M2`).
 test:
-	uv run pytest -n auto
+	uv run pytest -n auto --dist worksteal
 
 # Named for the store it validates. `make check` runs `bin/docket check` too;
 # this target exists so a session can validate the store on its own, after

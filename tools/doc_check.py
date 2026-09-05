@@ -1621,11 +1621,19 @@ def check_coverage_gate(root: Path, report: Report) -> None:
     kind of exact rule a hard failure is for rather than an advisory
     (`PL-D3M2`).
 
-    Exact string equality, not a parse. The two lines are deliberately
-    identical today and `-n auto` was chosen partly to keep them so on machines
-    of different widths - a looser comparison would need a judgment about which
-    differences are legitimate, and `CLAUDE.md` reserves scripted rules for the
-    half that is decidable.
+    Exact string equality, not a parse, after one normalization: Make doubles
+    `$` in a recipe to pass a single one through to the shell, so a command
+    containing a shell substitution is spelled `$$(...)` there and `$(...)` in
+    the workflow. That is a documented rule of Make rather than a judgment about
+    which differences are legitimate, which is what keeps this decidable - and
+    `CLAUDE.md` reserves scripted rules for exactly that half. Nothing else is
+    normalized; any other difference is still a drift.
+
+    The escape became load-bearing when the worker count stopped being `-n auto`
+    and became `$(python3 -c 'import os; print(os.cpu_count() * 2)')`, which
+    reads the runner the way `auto` did while asking for twice the width, for a
+    suite where much of the work waits on subprocesses rather than CPU
+    (`PL-VZ8P`).
 
     Silent where neither file names the mark, so a checkout that has not
     adopted a coverage gate is not failed for the absence of one.
@@ -1637,7 +1645,9 @@ def check_coverage_gate(root: Path, report: Report) -> None:
     local: list[tuple[str, str]] = []
     if makefile.is_file():
         local = [
-            (command, f"Makefile:{line}")
+            # `$$` -> `$` per the docstring: this is Make's escape for a literal
+            # `$`, so the shell sees what the workflow's line already says.
+            (command.replace("$$", "$"), f"Makefile:{line}")
             for command, line in _recipe_commands(makefile.read_text(encoding="utf-8"))
             if COVERAGE_GATE_MARK in command
         ]
