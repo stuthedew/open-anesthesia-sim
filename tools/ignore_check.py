@@ -59,7 +59,7 @@ TREES = ("tests", "subprojects/docket/tests")
 
 #: Not optional, and not a convenience: without these, six live directives
 #: report as unused. See the module docstring.
-MYPY_PATH = ("subprojects/docket/src", "tools")
+MYPY_PATH = ("subprojects/docket/src", "tools", ".claude/hooks")
 
 #: The one finding this check exists to raise.
 INERT = "[unused-ignore]"
