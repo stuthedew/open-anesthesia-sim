@@ -3,12 +3,20 @@ id: PL-T67Y
 title: README's status section describes neither the playback rate nor the chart time base, the two v0.4.0 capabilities it never gained a paragraph for
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-XYRN
+status: dropped
 classes: docs
 touches: README.md
 added: 2026-09-05
+closed: 2026-09-05
+reason: Overtaken by PL-WB5K, which deleted README.md. There is no status section to correct and no interim edit to make, which was this item's one reason to exist separately from PL-N092. Its own text already called it "probably an input to PL-N092 rather than an edit of its own"; the playback rate and the chart time base are now recorded there as coverage the first draft must not lose, so nothing is lost by dropping the container.
 ---
+
+**Dropped 2026-09-05, under `PL-WB5K`.** The file is gone. What this item was
+protecting - that a reader must learn a run can be played faster than real time
+and that the chart's window is a selectable span - is carried into `PL-N092`'s
+coverage list, together with `PL-X9HM`'s corrected solver bound. The original
+brief below states the case better than a one-line note in that item could, and
+is the thing to read when the rewrite reaches this material.
 **Problem.** `README.md`'s status section has kept pace with most of v0.4.0 —
 the MAC display unit, the fixed 0 to 3 ×MAC vertical range, per-compartment
 trace selection, the $`F_A/F_I`$ plot, the agent-change confirmation — and

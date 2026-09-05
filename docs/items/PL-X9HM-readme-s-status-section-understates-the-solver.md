@@ -9,6 +9,7 @@ milestone: v0.4.2
 touches: README.md
 added: 2026-09-05
 closed: 2026-09-05
+pr: 364
 verify: python3 tools/doc_check.py check && grep -q '2.3e-2 percentage points across the settings' README.md
 ---
 
