@@ -19,7 +19,7 @@ audited one at a time against the tree, and only the gaps were routed.
 
 | Rule | State here | Disposition |
 | --- | --- | --- |
-| 1. Comment as you code | Exceeded. `Makefile` and `pyproject.toml` carry measurement and reasoning inline; `PL-3VKZ` and the 548-line resident total are the standing pressure in the other direction | Declined as written — see below |
+| 1. Comment as you code | Exceeded. `Makefile` and `pyproject.toml` carry measurement and reasoning inline; the 548-line resident total and `PL-H7XN`, which `CLAUDE.md` cites for the routing rule, are the standing pressure in the other direction | Declined as written — see below |
 | 2. Examples, doubling as tests | `tests/reference/test_published_wash_in.py` is the paper's own recommendation, against Yasuda et al. rather than against the code | Already practice |
 | 3. Quickstart | README carries Requirements, Setup, Running and Development | Owned by `PL-N092`, behind the README freeze |
 | 4. README basics | Install, test, license, docs map and per-target `make` descriptions all present; how to cite is not | Citation half → `PL-BFV8` |
