@@ -3,11 +3,12 @@ id: PL-90Y6
 title: The MAC-awake band draws as a line at any axis range the overpressure constraint allows
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, ux
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md, tests/unit/test_simulation_view.py
 added: 2026-09-04
+closed: 2026-09-05
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_mac_awake_band_reads_as_an_interval_not_a_line' tests/unit/test_simulation_view.py
 ---
 
@@ -75,3 +76,37 @@ colour-vision deficiency, because it is an encoding that carries meaning.
 line at the shipped axis range, for all three agents, without the drawn
 extent overstating the published +/-1 SD; and `docs/MODEL.md`'s "MAC-awake as
 a chart reference" states what the mark's geometry asserts.
+
+**Worked.** The third candidate, and the first two were not close. The mark
+was already a band in the data and a line in the geometry: one
+`LineChartData` stroked at the upper edge, with `below_line_bgcolor` filling
+down to a `below_line_cutoff_y` that nothing stroked. A stroked top over an
+unstroked fill is a line with a shadow under it whatever the fill's extent,
+which is why no axis range fixed it and why the measurement table above
+holds. So the lower boundary is now stroked too - a second two-point series
+built and moved exactly like the first - and the fill sits between them.
+
+Both strokes stay on the published values, so the drawn extent is the data
+extent and nothing is padded outward; a minimum drawn height would have made
+the mark easier to read by asserting a wider population spread than the
+sources support, which is this item's own constraint and the reason the
+hatching and whisker candidates were not taken either. Hatching has no Flet
+primitive and would have cost per-frame controls; a whisker at the plot edge
+moves the spread away from the height traces cross, which is the relationship
+`docs/MODEL.md` builds the whole reference on.
+
+The legend swatch carried the same asymmetry - `border=Border(top=...)` over
+the same fill - and is now ruled on both edges, because a swatch teaching one
+mark for a chart drawing another is the defect arriving by the other door.
+
+`docs/MODEL.md` § "MAC-awake as a chart reference" gains "The band's
+geometry, and why it is two strokes rather than a thicker mark", carrying the
+measured percentages with `derived:` markers against each agent's stored
+spread.
+
+*Not confirmed by screenshot, and that is an environment limit rather than a
+skipped step:* the container cannot render the Flutter web app at all
+(`PL-2QMK`). The geometry was photographed instead, from the shipped
+constants - before and after, all three agents, and the narrowest band at 4x.
+Before is one rule with a pale slab beneath it; after is two rules with a
+tinted channel between them.
