@@ -1,17 +1,15 @@
 ---
 id: PL-1PSX
 title: The control-input timeline is unbounded and regrouped in full on every frame
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: perf
+feature: teachable-case
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/control_timeline.py, tests/unit/test_simulation_view.py
 added: 2026-09-04
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown' tests/unit/test_simulation_view.py
 ---
-
-**Problem.** The control-input timeline is unbounded and regrouped in full on every frame
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `SimulationController._control_timeline` grows without limit,
 and `SimulationView._refresh_view` calls `group_adjustments` over the whole

@@ -1,8 +1,14 @@
 ---
 id: PL-P5NB
 title: docs/references/README.md records doi.org as blocked without naming the PubMed route that works
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: provenance
+touches: docs/references/README.md
 added: 2026-09-04
+verify: python3 tools/doc_check.py check && grep -q 'PubMed MCP' docs/references/README.md
 ---
 
 **Problem.** `docs/references/README.md`'s Jugel et al. entry explains why it

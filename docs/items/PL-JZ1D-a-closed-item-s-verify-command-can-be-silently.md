@@ -1,7 +1,12 @@
 ---
 id: PL-JZ1D
 title: A closed item's verify: command can be silently invalidated by later work, and nothing notices
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect, infra
+feature: delegation
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py
 added: 2026-09-04
 ---
 
@@ -64,3 +69,12 @@ Candidates, cheapest first:
 to stay runnable or merely to record what was run, and the answer is enforced
 or written down rather than assumed. If the answer is the second, `PL-MJ7B`'s
 own record is the first thing to correct.
+
+**Decision needed.** Whether a closed item's `verify:` is meant to stay runnable
+or only to record what was run. Candidate 1 (stamp the closing commit's SHA
+beside the command) makes the claim true forever at zero runtime and tells
+nobody when the command stops working; candidate 2 (check only the closed
+commands a diff touches, the `doc_check candidates` shape) fires exactly when a
+person should decide; candidate 3 is a rule rather than a check and fires only
+if the session notices. Running every closed command on every `make check` is
+ruled out by `CLAUDE.md`'s "a check earns its place every run".

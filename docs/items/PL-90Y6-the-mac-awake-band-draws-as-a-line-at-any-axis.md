@@ -1,18 +1,15 @@
 ---
 id: PL-90Y6
 title: The MAC-awake band draws as a line at any axis range the overpressure constraint allows
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, ux
 feature: teachable-case
+touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-04
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_mac_awake_band_reads_as_an_interval_not_a_line' tests/unit/test_simulation_view.py
 ---
-
-**Problem.** The MAC-awake band draws as a line at any axis range the overpressure constraint allows
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** The MAC-awake band (`PL-F52R`) is drawn at the running agent's
 population MAC-awake, one standard deviation either side of the published

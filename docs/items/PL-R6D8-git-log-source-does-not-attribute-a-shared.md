@@ -1,9 +1,14 @@
 ---
 id: PL-R6D8
 title: git log --source does not attribute a shared commit to the ref named first, and _unmerged_commits' docstring says it does
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, docs
 feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-04
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_flight_names_the_local_branch_where_the_checkout_holds_both' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** `_unmerged_commits` passes refs to `git log --source` in candidate

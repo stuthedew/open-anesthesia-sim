@@ -1,18 +1,14 @@
 ---
 id: PL-VV4D
 title: Decide whether the left-behind check should compare against refs/pull/<n>/head, which is exact but makes the check GitHub-specific
-status: untriaged
+priority: P3
+effort: M
+status: needs-decision
+classes: infra
 feature: parallel-sessions
+touches: tools, subprojects/docket/src/docket/vcs.py
 added: 2026-09-04
 ---
-
-**Problem.** Decide whether the left-behind check should compare against refs/pull/<n>/head, which is exact but makes the check GitHub-specific
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `vcs.orphaned` detects a commit left behind by comparing *content*:
 which of a branch's introduced paths the base has held, narrowed to commits none
@@ -20,6 +16,13 @@ of whose paths reached it. Every content comparison is a heuristic, because a
 squash merge rewrites content on its way in - which is what made the check fire
 falsely on its first live run (`PL-JHJ3`), and what the current rule works
 around rather than removes.
+
+**Why it matters.** `vcs.orphaned` is what stands between a post-merge commit
+and being lost, and it answers by heuristic: `PL-JHJ3` and `PL-XLQ5` are both
+false positives from the content comparison, in a report whose other half is
+load-bearing. A detector that fires on branches carrying nothing is the shape
+`CLAUDE.md` calls the worst kind of check, and the exact test below has no
+content question in it at all.
 
 **The exact test.** A pull request merges the head it was opened against, and
 GitHub freezes `refs/pull/<n>/head` at that head when the pull request closes.
@@ -52,3 +55,8 @@ one commit between them is the loss, exactly.
 **Decision needed.** Whether to add the exact `refs/pull/<n>/head` comparison at
 all, and if so whether it replaces `vcs.orphaned` or sits beside it in `tools/`
 as the precise half while `orphaned` stays the portable one.
+
+**Done when.** The project has decided whether the exact `refs/pull/<n>/head`
+comparison is built, and where it lives if it is - beside `vcs.orphaned` as the
+precise half while `orphaned` stays the portable one, or in place of it - or has
+recorded here why the portable heuristic is worth keeping alone.

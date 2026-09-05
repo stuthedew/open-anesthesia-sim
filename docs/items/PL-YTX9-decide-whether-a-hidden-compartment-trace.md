@@ -1,17 +1,17 @@
 ---
 id: PL-YTX9
 title: Decide whether a hidden compartment trace should keep its legend entry or vanish from the legend entirely
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: ux
+feature: teachable-case
+touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-04
 ---
 
-**Problem.** Decide whether a hidden compartment trace should keep its legend entry or vanish from the legend entirely
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
+**Problem.** Decide whether a hidden compartment trace should keep its legend
+entry or vanish from the legend entirely
 
 **Decision needed.** When a reader unchecks a compartment, should its legend
 entry stay on screen showing an off state, or disappear from the legend
@@ -52,3 +52,13 @@ literally and keeps the layout stable, and is the one shape nobody has costed.
 `_apply_trace_visibility`, and `_CompartmentTrace`'s `checkbox`/`swatch`.
 `test_the_legend_says_exactly_which_traces_are_drawn` is what would change
 with it.
+
+**Why it matters.** `PL-CG7J`'s brief asked for something the shipped legend
+does not do, so the queue currently holds a written requirement the code
+contradicts. That is small as a display question and not small as a record: the
+next session reading that brief has no way to tell whether the difference was
+decided or missed.
+
+**Done when.** The legend's behaviour for a hidden trace is decided and the
+decision is written where `PL-CG7J`'s sentence was, so the two agree; if what
+ships today stands, this item is what records that it was chosen.

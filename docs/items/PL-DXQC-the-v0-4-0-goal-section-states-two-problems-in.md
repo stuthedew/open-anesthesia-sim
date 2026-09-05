@@ -1,17 +1,14 @@
 ---
 id: PL-DXQC
 title: The v0.4.0 Goal section states two problems in the present tense that are now fixed
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: docs
+feature: planning-cadence
+touches: ROADMAP.md
 added: 2026-09-04
 ---
-
-**Problem.** The v0.4.0 Goal section states two problems in the present tense that are now fixed
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `ROADMAP.md`'s "Next milestone: v0.4.0 - the teachable case"
 opens with a Goal section listing "three measurable reasons" the model's
@@ -34,7 +31,7 @@ record and which are current state, and the section reads as current state.
 tidiness, and this is the milestone section a session reads to find out what
 the interface currently does wrong.
 
-**The decision this needs.** Whether a milestone's Goal is a *historical
+**Decision needed.** Whether a milestone's Goal is a *historical
 record* frozen at scoping - in which case it needs a dated marker saying so,
 once, and nothing else changes - or a *live description* that each closing
 item updates. Both are defensible and the project has not chosen. The
