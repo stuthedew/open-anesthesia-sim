@@ -55,6 +55,17 @@ conclusion survives on independent ground. Net effect on that file is 52
 additions and 0 deletions. No recovered item's content was edited, and none of
 their work was started.
 
+**`PL-KBFN` arrives already closed, and that is why this branch's pull
+request title names it.** Its record was `status: dropped, closed: 2026-09-05`
+on the branch it was stranded on — another session did that work and its
+closure never reached `main`. Carrying the file therefore closes it from
+`main`'s point of view, so `tools/pr_title_check.py` requires the title to
+lead with `PL-KBFN, PL-VSJZ`; `docket check` recovers a closed item's pull
+request from that subject, and an id that never leads one is attributed to
+its own capture commit instead (`PL-GW37`). Its `verify:` was re-run here and
+passes: `PL-XLQ5` is on `main`, so the recovery item it stood for is
+legitimately dropped. No work of its was done by this item.
+
 **Done when.** All seven items are in the checkout, `bin/docket stranded`
 no longer names them, `docs/WORKING_NOTES.md` retains every section `main`
 held, and `make check` is green.
