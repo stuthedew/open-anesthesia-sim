@@ -54,6 +54,7 @@ from .vcs import (
     merged_pull_requests,
     orphaned,
     precedence,
+    records_on_base,
     released_on_base,
     stranded,
     tags,
@@ -230,6 +231,16 @@ def cmd_check(args: argparse.Namespace) -> int:
         closures=closures_on_base(
             root,
             {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path},
+            items_dir=config.items_dir,
+        ),
+        # The same `git show`, asked of the other half of a closure: not "has
+        # this landed" but "does it still record the command that proved it".
+        # Every closed item is offered and the reader narrows to the ones this
+        # checkout changed, which is usually none - a diff rather than a read
+        # per item, so it costs what the line above already costs.
+        records=records_on_base(
+            root,
+            {i.identifier: i.path for i in items if i.status == "done" and i.path},
             items_dir=config.items_dir,
         ),
         # Asked of the branch rather than of the default branch, and that is

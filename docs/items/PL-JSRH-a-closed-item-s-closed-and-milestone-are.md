@@ -1,0 +1,40 @@
+---
+id: PL-JSRH
+title: A closed item's closed: and milestone: are records too, and nothing stops a branch rewriting either
+status: untriaged
+added: 2026-09-05
+---
+
+**Problem.** A closed item's closed: and milestone: are records too, and nothing stops a branch rewriting either
+
+**Why it matters.**
+
+**Where.**
+
+**Done when.**
+
+**Problem.** `PL-JZ1D` established that a closed item's `verify:` is the record
+of what proved it, and `checks._check_records` now errors where a branch
+rewrites one. The same argument covers two fields beside it and neither is
+guarded. `closed:` is when the work landed and `milestone:` is which release
+shipped it; both are read by `docket release`, `wave` and `gate`, and both are
+silently rewritable by any branch long after the merge. `pr:` is the third and
+is already covered from the other side - `docket record` refuses to overwrite a
+different number - which is what makes the gap in the other two visible.
+
+**Why it matters.** A rewritten `milestone:` moves an item between releases, so
+the notes for two of them are wrong and nothing says so. A rewritten `closed:`
+moves it across a debt-gate freeze. Both are the failure `CLAUDE.md` names for
+tooling: a record that looks authoritative and is not, reached from a true one
+rather than an absent one.
+
+**Approach.** `records_on_base` already reads the whole base item and returns
+only its `verify:`; widening `BaseRecord` to carry `closed` and `milestone` is
+the read. The judgment half is not identical to `verify:`'s and is the work
+here: correcting a mistyped `closed:` date is a legitimate repair in a way
+re-pointing a command is not, so this may want an advisory where `verify:`
+takes an error. Decide that before writing the check.
+
+**Done when.** A branch that rewrites a landed item's `closed:` or `milestone:`
+is told so by `docket check`, at whichever severity the question above settles
+on, with a test for each field.
