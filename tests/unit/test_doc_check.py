@@ -1371,8 +1371,16 @@ UNSCOPED_RULE = """# Unscoped
 One line.
 """
 
+CLAUDE_BODY = "# Rules\n\nOne.\n"
 
-def _instructed(root: Path, *, claude: str = "# Rules\n\nOne.\n", **rules: str) -> Path:
+# One line of body text long enough that adding or removing it is a rule
+# arriving or leaving rather than a wording fix. Derived from the floor rather
+# than written out, so these tests cannot drift away from the constant they are
+# about.
+RULE_LINE = "R" * doc_check.MATERIAL_RESIDENT_DELTA + "\n"
+
+
+def _instructed(root: Path, *, claude: str = CLAUDE_BODY, **rules: str) -> Path:
     """Add the instruction files a session loads at launch."""
     (root / "CLAUDE.md").write_text(claude, encoding="utf-8")
     if rules:
@@ -1382,26 +1390,34 @@ def _instructed(root: Path, *, claude: str = "# Rules\n\nOne.\n", **rules: str) 
     return root
 
 
+def _resident_names(root: Path) -> set[str]:
+    return {row.name for row in doc_check.measure_resident(root)}
+
+
+def _on_main(root: Path) -> None:
+    """Commit the current tree as the default branch this check compares against."""
+    _git_init(root)
+    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
+
+
 def test_a_path_scoped_rule_is_not_resident(tmp_path: Path) -> None:
     """`paths:` frontmatter defers a rule to the sessions that match it."""
     root = _instructed(_repo(tmp_path), scoped=SCOPED_RULE, always=UNSCOPED_RULE)
 
-    measured = dict(doc_check.measure_resident(root))
-
-    assert measured == {"CLAUDE.md": 3, ".claude/rules/always.md": 3}
+    assert _resident_names(root) == {"CLAUDE.md", ".claude/rules/always.md"}
 
 
 def test_frontmatter_without_a_paths_key_is_still_resident(tmp_path: Path) -> None:
     """Other frontmatter does not defer a rule; only `paths:` does."""
     root = _instructed(_repo(tmp_path), other="---\nname: x\n---\n\nBody.\n")
 
-    assert ".claude/rules/other.md" in dict(doc_check.measure_resident(root))
+    assert ".claude/rules/other.md" in _resident_names(root)
 
 
 def test_an_unterminated_frontmatter_block_is_not_read_as_scoped(tmp_path: Path) -> None:
     root = _instructed(_repo(tmp_path), broken="---\npaths:\n  - src\n\nBody with no close.\n")
 
-    assert ".claude/rules/broken.md" in dict(doc_check.measure_resident(root))
+    assert ".claude/rules/broken.md" in _resident_names(root)
 
 
 def test_nested_rule_directories_are_measured(tmp_path: Path) -> None:
@@ -1411,7 +1427,7 @@ def test_nested_rule_directories_are_measured(tmp_path: Path) -> None:
     nested.mkdir(parents=True)
     (nested / "api.md").write_text(UNSCOPED_RULE, encoding="utf-8")
 
-    assert ".claude/rules/backend/api.md" in dict(doc_check.measure_resident(root))
+    assert ".claude/rules/backend/api.md" in _resident_names(root)
 
 
 def test_a_repository_with_no_instruction_files_reports_nothing(tmp_path: Path) -> None:
@@ -1420,68 +1436,134 @@ def test_a_repository_with_no_instruction_files_reports_nothing(tmp_path: Path) 
 
 def test_growth_against_the_default_branch_is_an_advisory(tmp_path: Path) -> None:
     root = _instructed(_repo(tmp_path))
-    _git_init(root)
-    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
-    (root / "CLAUDE.md").write_text("# Rules\n\nOne.\nTwo.\nThree.\n", encoding="utf-8")
+    _on_main(root)
+    (root / "CLAUDE.md").write_text(CLAUDE_BODY + RULE_LINE * 2, encoding="utf-8")
 
     report = doc_check.analyze(root)
 
     assert report.resident is not None
-    assert report.resident.growth == 2
-    assert report.resident.deltas() == [("CLAUDE.md", 2)]
+    assert report.resident.growth == 2 * len(RULE_LINE)
+    assert report.resident.deltas() == [("CLAUDE.md", 2 * len(RULE_LINE))]
     assert report.errors == []
-    assert any("resident instructions grew 2 lines" in m for m in report.advisories)
+    assert any("resident instructions grew 82 characters" in m for m in report.advisories)
     assert any("PL-H7XN" in m for m in report.advisories)
     assert any("Never trim other resident text" in m for m in report.advisories)
 
 
-def test_one_line_of_growth_is_reported_in_the_singular(tmp_path: Path) -> None:
-    """`_plural` sits two lines from this advisory and it did not use it."""
-    root = _instructed(_repo(tmp_path))
-    _git_init(root)
-    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
-    (root / "CLAUDE.md").write_text("# Rules\n\nOne.\nTwo.\n", encoding="utf-8")
+def test_an_addition_inside_an_unwrapped_paragraph_cannot_report_as_unchanged(
+    tmp_path: Path,
+) -> None:
+    """The defect this metric was moved off lines to fix, in its adding form.
+
+    A resident file is not uniformly wrapped, so a paragraph on one physical
+    line can absorb a rule's worth of new instruction without moving a single
+    line. Measured on 2026-09-05, six commits in this repository's history had
+    moved the resident text without moving a line at all, the largest of them
+    by 409 characters (`PL-QV1F`).
+    """
+    paragraph = "# Rules\n\n" + "word " * 200 + "\n"
+    root = _instructed(_repo(tmp_path), claude=paragraph)
+    _on_main(root)
+    (root / "CLAUDE.md").write_text(paragraph[:-1] + "and " * 100 + "\n", encoding="utf-8")
 
     report = doc_check.analyze(root)
 
     assert report.resident is not None
-    assert report.resident.growth == 1
-    assert any("grew 1 line against" in m for m in report.advisories)
-    assert not any("grew 1 lines" in m for m in report.advisories)
+    assert report.resident.growth == 400
+    assert report.resident.total_lines == 3, "the line count is the one that did not move"
+    assert "unchanged against" not in doc_check.format_check(report)
+    assert any("resident instructions grew 400 characters" in m for m in report.advisories)
+
+
+def test_a_cut_inside_an_unwrapped_paragraph_is_visible(tmp_path: Path) -> None:
+    """The same defect in its cutting form: routing text out earns credit.
+
+    Landing `PL-6SBB` cut the largest paragraph in `CLAUDE.md` by 433
+    characters and the line-based metric printed "unchanged", so the routing
+    pass the growth advisory itself demands could not be seen to have worked.
+    """
+    paragraph = "# Rules\n\n" + "word " * 200 + "\n"
+    root = _instructed(_repo(tmp_path), claude=paragraph)
+    _on_main(root)
+    (root / "CLAUDE.md").write_text(paragraph[:-434] + "\n", encoding="utf-8")
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.growth == -433
+    assert report.resident.total_lines == 3
+    assert report.advisories == []
+    assert "433 fewer characters than main" in doc_check.format_check(report)
+
+
+def test_a_wording_fix_below_the_floor_raises_no_advisory(tmp_path: Path) -> None:
+    """Characters resolve a term swap, which is noise the advisory must not carry.
+
+    Firing on every typo would cost attention on every later run and teach a
+    session to skim the line a real finding appears on. The change is still
+    printed exactly; only the demand for a routing justification is withheld.
+    """
+    root = _instructed(_repo(tmp_path))
+    _on_main(root)
+    (root / "CLAUDE.md").write_text(CLAUDE_BODY.replace("One.", "One or two."), encoding="utf-8")
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.growth == 7
+    assert report.advisories == []
+    assert "7 more characters than main" in doc_check.format_check(report)
+
+
+def test_a_wording_fix_alongside_real_growth_is_not_read_as_a_trim(tmp_path: Path) -> None:
+    """The floor applies per file, or every two-file edit reads as paying for room."""
+    root = _instructed(_repo(tmp_path), always=UNSCOPED_RULE)
+    _on_main(root)
+    (root / "CLAUDE.md").write_text(CLAUDE_BODY + RULE_LINE * 2, encoding="utf-8")
+    (root / ".claude" / "rules" / "always.md").write_text(
+        UNSCOPED_RULE.replace("One line.", "One lin."), encoding="utf-8"
+    )
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.growth == 2 * len(RULE_LINE) - 1
+    assert report.resident.deltas() == [("CLAUDE.md", 82), (".claude/rules/always.md", -1)]
+    assert report.resident.material_deltas() == [("CLAUDE.md", 82)]
+    assert any("resident instructions grew 81 characters" in m for m in report.advisories)
+    assert not any("both grew and shrank" in m for m in report.advisories)
 
 
 def test_shrinking_is_reported_but_is_not_an_advisory(tmp_path: Path) -> None:
     """A routing pass that moves a rule out must not read as a finding."""
-    root = _instructed(_repo(tmp_path), always=UNSCOPED_RULE)
-    _git_init(root)
-    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
+    root = _instructed(_repo(tmp_path), always="# Unscoped\n\n" + RULE_LINE)
+    _on_main(root)
     (root / ".claude" / "rules" / "always.md").write_text(SCOPED_RULE, encoding="utf-8")
 
     report = doc_check.analyze(root)
 
     assert report.resident is not None
-    assert report.resident.growth == -3
+    assert report.resident.growth == -53
     assert report.advisories == []
-    assert "3 fewer than main" in doc_check.format_check(report)
+    assert "53 fewer characters than main" in doc_check.format_check(report)
 
 
 def test_a_trim_that_pays_for_an_addition_is_an_advisory_at_net_zero(tmp_path: Path) -> None:
-    """The outcome a line limit would have forced, arriving without a limit.
+    """The outcome a size limit would have forced, arriving without a limit.
 
     Growth and shrinkage sum into one total, so resident text cut to make room
     for an addition reports as no growth at all and the diff reads as free.
     """
-    root = _instructed(_repo(tmp_path), always=UNSCOPED_RULE)
-    _git_init(root)
-    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
-    (root / "CLAUDE.md").write_text("# Rules\n\nOne.\nTwo.\nThree.\n", encoding="utf-8")
+    root = _instructed(_repo(tmp_path), always="# Unscoped\n" + RULE_LINE * 2)
+    _on_main(root)
+    (root / "CLAUDE.md").write_text(CLAUDE_BODY + RULE_LINE * 2, encoding="utf-8")
     (root / ".claude" / "rules" / "always.md").write_text("# Unscoped\n", encoding="utf-8")
 
     report = doc_check.analyze(root)
 
     assert report.resident is not None
     assert report.resident.growth == 0
-    assert not any("grew 0 lines" in m for m in report.advisories)
+    assert not any("grew 0 characters" in m for m in report.advisories)
     assert any("both grew and shrank" in m for m in report.advisories)
     assert any("PL-BKQW" in m for m in report.advisories)
     assert report.errors == []
@@ -1489,24 +1571,22 @@ def test_a_trim_that_pays_for_an_addition_is_an_advisory_at_net_zero(tmp_path: P
 
 def test_growth_alongside_a_trim_raises_both_advisories(tmp_path: Path) -> None:
     """The trim is a finding on its own, not something the growth line covers."""
-    root = _instructed(_repo(tmp_path), always=UNSCOPED_RULE)
-    _git_init(root)
-    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
-    (root / "CLAUDE.md").write_text("# Rules\n\n" + "Line.\n" * 8, encoding="utf-8")
+    root = _instructed(_repo(tmp_path), always="# Unscoped\n" + RULE_LINE)
+    _on_main(root)
+    (root / "CLAUDE.md").write_text(CLAUDE_BODY + RULE_LINE * 3, encoding="utf-8")
     (root / ".claude" / "rules" / "always.md").write_text("# Unscoped\n", encoding="utf-8")
 
     report = doc_check.analyze(root)
 
     assert report.resident is not None
-    assert report.resident.growth == 5
-    assert any("resident instructions grew 5 lines" in m for m in report.advisories)
+    assert report.resident.growth == 2 * len(RULE_LINE)
+    assert any("resident instructions grew 82 characters" in m for m in report.advisories)
     assert any("both grew and shrank" in m for m in report.advisories)
 
 
 def test_an_unchanged_total_is_reported_as_unchanged(tmp_path: Path) -> None:
     root = _instructed(_repo(tmp_path))
-    _git_init(root)
-    subprocess.run(("git", "branch", "-M", "main"), cwd=root, check=True, capture_output=True)
+    _on_main(root)
 
     report = doc_check.analyze(root)
 
@@ -1521,7 +1601,7 @@ def test_a_checkout_with_no_default_branch_still_reports_the_total(tmp_path: Pat
     report = doc_check.analyze(root)
 
     assert report.resident is not None
-    assert report.resident.total == 3
+    assert report.resident.total == len(CLAUDE_BODY)
     assert report.resident.growth is None
     assert report.advisories == []
     assert "no default branch here to compare against" in doc_check.format_check(report)
@@ -1531,8 +1611,18 @@ def test_the_total_is_printed_even_when_nothing_else_fired(tmp_path: Path) -> No
     report = doc_check.analyze(_instructed(_repo(tmp_path)))
     printed = doc_check.format_check(report)
 
-    assert "resident instructions: 3 lines loaded at launch" in printed
+    assert "resident instructions: 14 characters over 3 lines loaded at launch" in printed
+    assert "chars/lines: CLAUDE.md 14/3" in printed
     assert "all resolve" in printed
+
+
+def test_a_one_character_file_is_reported_in_the_singular(tmp_path: Path) -> None:
+    """`_plural` sits two lines from this line and it did not always use it."""
+    report = doc_check.analyze(_instructed(_repo(tmp_path), claude="x"))
+
+    printed = doc_check.format_check(report)
+
+    assert "resident instructions: 1 character over 1 line loaded at launch" in printed
 
 
 def test_this_repository_reports_its_own_resident_total() -> None:
@@ -1541,9 +1631,10 @@ def test_this_repository_reports_its_own_resident_total() -> None:
     resident = doc_check.analyze(root).resident
 
     assert resident is not None
-    assert dict(resident.files)["CLAUDE.md"] > 0
-    assert ".claude/rules/expert-review.md" not in dict(resident.files)
-    assert ".claude/rules/instruction-writing.md" in dict(resident.files)
+    measured = {row.name: row for row in resident.files}
+    assert measured["CLAUDE.md"].characters > measured["CLAUDE.md"].lines > 0
+    assert ".claude/rules/expert-review.md" not in measured
+    assert ".claude/rules/instruction-writing.md" in measured
 
 
 # --- math delimiters --------------------------------------------------------

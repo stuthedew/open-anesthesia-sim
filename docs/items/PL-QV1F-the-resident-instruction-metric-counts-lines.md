@@ -3,11 +3,12 @@ id: PL-QV1F
 title: The resident-instruction metric counts lines, but 21% of CLAUDE.md's text sits on 6% of its lines, so a 433-character cut inside one paragraph reported as unchanged
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: worker-instructions
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, CLAUDE.md
 added: 2026-09-05
+closed: 2026-09-05
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_cut_inside_an_unwrapped_paragraph_is_visible' tests/unit/test_doc_check.py
 ---
 
@@ -57,3 +58,30 @@ defect arriving from the other side.
 
 **Done when.** A material reduction inside an unwrapped paragraph is visible to
 `make check`, and a material addition to one cannot report as unchanged.
+
+**Resolution.** The second option, with a floor the three options did not name.
+`measure_resident` now records characters and lines per file; every comparison
+reads characters and the printed line carries both, because their ratio is what
+made the defect invisible and a reader shown one number alone cannot tell that
+the two disagree.
+
+The baseline needed no migration: `_resident_baseline` re-measures the default
+branch's *file contents* out of git with the same `_measure`, so nothing stored
+was in the old unit and the first run compares like with like.
+
+The floor is the part worth recording. Characters resolve a typo, so switching
+unit without one would newly demand a routing justification for a
+four-character term swap - the same defect as the blindness it fixes, arriving
+from the other side, and the failure `CLAUDE.md` names when it says a check
+earns its place every run. `MATERIAL_RESIDENT_DELTA` is 40 characters, measured
+rather than picked: over the 79 commits that had moved this measurement by
+2026-09-05, every wording fix moved at most 30 characters and every change that
+added or removed a rule moved at least 79, with nothing at all in between. It
+gates the advisories only - the total and the exact delta print either way, so
+a smaller change stays visible and only the demand for a justification is
+withheld.
+
+The same scan restated the case in the metric's own terms: six commits had
+moved the resident text without moving a line at all, the largest by 409
+characters, and eight moved 200 characters or more while moving at most two
+lines.
