@@ -45,7 +45,8 @@ read, so delivery was best-effort by construction — `PL-BTSW` records it being
 missed one day after it was written, and `PL-3V4N` diagnosed why. The condition
 here needs no judgment at all (does `README.md` exist at the root?), which is
 exactly what `CLAUDE.md` says to put in code, so `tools/readme_hold_check.py`
-runs in `make check` and CI's `floor` job and fails while the file exists — a
+runs in `make check` and in the bare-interpreter section of CI's `checks` job,
+where `PL-D551` folded the former `floor` job, and fails while the file exists — a
 stub included, since a stub reproduces both harms at smaller scale. It is
 silent on every clean run, and it retires itself: `PL-N092` deletes the script
 and its invocations in the commit that writes the deliberate README.

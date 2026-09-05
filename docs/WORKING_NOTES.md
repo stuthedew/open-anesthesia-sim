@@ -783,7 +783,8 @@ with it.
 down.** Do not recreate the README, and do not add a placeholder. A stub is the
 same failure at smaller scale: it will be read as instruction, it will drift,
 and it will make `PL-N092` a revision rather than a first draft. That is what
-`tools/readme_hold_check.py` holds, in `make check` and in CI's `floor` job -
+`tools/readme_hold_check.py` holds, in `make check` and in the bare-interpreter
+section of CI's `checks` job (where `PL-D551` folded the former `floor` job) -
 the freeze this replaces was routed to a path-scoped rule, which loads on a
 *read* and so was missed by the first session that edited the file without
 opening it. The check retires itself: `PL-N092` deletes the script and its two

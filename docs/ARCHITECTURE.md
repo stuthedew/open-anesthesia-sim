@@ -458,13 +458,16 @@ under bare `python3`. A tool added later inherits all three.
 
 All of those are approximations run under the project virtualenv — a syntax
 gate rather than an older parser, and the wrong interpreter's
-`sys.stdlib_module_names`. `.github/workflows/quality.yml`'s `floor` job
-performs the run they stand in for: `actions/setup-python` at the declared
-floor, then `python3 tools/doc_check.py check`, `python3 tools/branch_id_check.py`,
+`sys.stdlib_module_names`. The floor section of
+`.github/workflows/quality.yml`'s `checks` job performs the run they stand in
+for: `actions/setup-python` at the declared floor, then
+`python3 tools/doc_check.py check`, `python3 tools/branch_id_check.py`,
 `python3 tools/rules_paths_check.py`, `bin/docket check` and
-`python3 tools/contrast_check.py` under it.
+`python3 tools/contrast_check.py` under it. It runs ahead of the uv install
+rather than in a job of its own (`PL-D551`), which is what keeps the
+no-virtualenv claim true: at that point none exists.
 That decides syntax, imports and runtime behavior at once, with no list to keep
-current. A fourth test holds the job's pinned version to `requires-python`, so
+current. A fourth test holds that section's pinned version to `requires-python`, so
 raising the floor cannot leave CI exercising an interpreter the project no
 longer supports. The approximations stay because they name the offending file
 and import, run before a push, and reach what those two commands never do.

@@ -1,8 +1,15 @@
 ---
 id: PL-X9HM
 title: README's status section understates the solver disagreement as 1.2e-2 percentage points where MODEL.md gives 2.3e-2 for the same domain
-status: untriaged
+priority: P1
+effort: S
+status: done
+classes: science, docs
+touches: README.md
 added: 2026-09-05
+closed: 2026-09-05
+pr: 364
+verify: python3 tools/doc_check.py check && grep -q '2.3e-2 percentage points across the settings' README.md
 ---
 
 **Problem.** `README.md`'s status section justifies the two-decimal readout with
@@ -39,6 +46,33 @@ carry both figures.
 `README.md` until the project owner lifts it, and that rule says explicitly that
 a doc sweep does not override it. Found and left alone while sweeping
 `docs/MODEL.md` for `PL-RCTQ`.
+
+**Decision needed.** The freeze holds this correction, and the freeze now
+waits on `PL-XYRN` (decide when the repository goes public) rather than on
+anything undecided about the README itself. `PL-XYRN` is `L` and P2, so on the
+current plan a wrong error bound — wrong in the direction that claims more
+accuracy than was measured — stands in the document most readers open until a
+public-readiness pass that has no date. So: does the project owner lift the
+freeze for this one sentence, or accept the stated bound until `PL-N092`
+(rewrite README as a human-readable introduction) runs?
+
+**Answered, 2026-09-05: the project owner lifted the freeze for this one
+sentence.** `blocked-by: PL-XYRN` was dropped with the answer.
+
+**Resolved by correction, not by narrowing or deletion.** The `Done when` below
+offered three routes; the figure was corrected to `2.3e-2`, leaving the
+sentence's own domain clause ("across the settings the interface exposes")
+intact, because that clause is accurate — `docs/MODEL.md` states of the
+2.3e-2 row that it "is the worst the four sliders can reach", and the sliders
+are what the interface exposes. Narrowing the sentence to the domain 1.2e-2
+covers would have been the larger edit and would have left the README quoting
+a bound for a corner of the envelope while implying it covered the whole of
+it.
+
+`.claude/rules/readme-hold.md` records the exception rather than being deleted:
+the hold still stands for every other line of the file, and `PL-T67Y` (README
+covers neither the playback rate nor the chart time base) was deliberately not
+included in it.
 
 **Not the same item as `PL-N092`** (rewrite README as a human-readable
 introduction), though they touch the same paragraph. `PL-N092` cites this very

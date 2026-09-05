@@ -170,12 +170,33 @@ reasoning; `docs/WORKING_NOTES.md` carries the thread.
    git history at the commit that removed it, available if a paragraph is
    worth recovering, and required to be read for none of them.
 2. The freeze rule under `.claude/rules/` is gone, replaced by
-   `tools/readme_hold_check.py`, which fails `make check` and CI's `floor` job
-   while a root `README.md` exists. **Delete that script and its two
-   invocations — in `Makefile` and `.github/workflows/quality.yml` — in the
-   commit that writes the README**, or this item cannot land. Remove its line
-   from `docs/ARCHITECTURE.md`'s `tools/` map in the same commit.
+   `tools/readme_hold_check.py`, which fails `make check` and CI while a root
+   `README.md` exists. **Delete that script and its two invocations — in
+   `Makefile` and `.github/workflows/quality.yml` — in the commit that writes
+   the README**, or this item cannot land. Remove its line from
+   `docs/ARCHITECTURE.md`'s `tools/` map and delete
+   `tests/unit/test_readme_hold_check.py` in the same commit.
 3. **Restore `readme = "README.md"` to `pyproject.toml`**, which the deletion
    removed because the `uv_build` backend fails on a missing file. `PL-4MHK`
    (package metadata) wants the `description` field to agree with the README's
    opening paragraph, so the two are worth landing together or in that order.
+
+**Coverage the first draft must not lose.** Two items that existed to correct
+the deleted document are dropped into this list rather than left pointing at a
+file that is gone. They are floors on the status section, not an outline of it:
+
+- **The playback rate and the chart's case-length time base** (`PL-T67Y`,
+  dropped). Two of v0.4.0's three headline changes, and the milestone's stated
+  end state - "a learner runs one case from induction to emergence, in
+  compressed time they can sit through, on a time base that spans a case" -
+  is not describable without them. The playback rate is additionally a **mode**,
+  which `docs/MODEL.md` § "Interface boundary" requires on screen at every rate;
+  a document that never mentions it leaves a reader to meet a 60× clock
+  unprepared. `PL-T67Y`'s brief carries the full case and is worth reading when
+  the rewrite reaches this material.
+- **The solver-disagreement bound is 2.3e-2 percentage points, not 1.2e-2**
+  (`PL-X9HM`, done). The deleted README quoted the wrong row of
+  `docs/MODEL.md`'s table when justifying the two-decimal readout. If the new
+  document justifies the readout at all, it takes the number from `docs/MODEL.md`
+  rather than from the old text in git history, which was wrong for most of its
+  life and is a `science`-class error rather than a wording one.

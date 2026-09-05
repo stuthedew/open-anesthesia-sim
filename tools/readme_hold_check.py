@@ -35,7 +35,9 @@ which is what "until" means here.
 `Makefile` and `.github/workflows/quality.yml`, in the commit that writes the
 deliberate README - so the hold ends with nothing left behind to remember to
 remove, which is what `CLAUDE.md` asks of a check that has stopped earning its
-place.
+place. In CI it sits in the bare-interpreter section of the `checks` job, which
+runs before `uv` is installed; `PL-D551` folded the former `floor` job in
+there, so that section is where a standard-library tool belongs.
 
 Standard library only, like every tool here, so it runs in a bare checkout.
 """

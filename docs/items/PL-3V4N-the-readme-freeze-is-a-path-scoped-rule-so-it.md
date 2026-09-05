@@ -52,7 +52,7 @@ A rule whose delivery is best-effort reads, to everyone who wrote it, as a rule
 that is in force. That gap is worse than no rule, because it is trusted.
 
 **Where.** `.claude/rules/readme-hold.md`; a check under `tools/`, wired into
-`make check` and so into CI's `floor` job.
+`make check` and so into CI's bare-interpreter section.
 
 **Approach.** This is the decidable half of an undecidable rule, which is where
 `CLAUDE.md` says to reach for code: *does this diff touch `README.md` while
