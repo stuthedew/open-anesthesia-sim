@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: presentation-safety
+milestone: v0.4.6
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-02
 closed: 2026-09-06

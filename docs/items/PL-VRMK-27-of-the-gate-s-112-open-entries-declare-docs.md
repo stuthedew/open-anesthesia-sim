@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: parallel-sessions
+milestone: v0.4.6
 touches: subprojects/docket/src/docket/concurrency.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_concurrency.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-06
 closed: 2026-09-06

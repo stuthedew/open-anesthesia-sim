@@ -2,6 +2,7 @@
 id: PL-GJYL
 title: docs/MODEL.md claimed the exact propagator solves the governing equations at any positive gas volumes, which measurement contradicts below 1e-9 L
 status: done
+milestone: v0.4.6
 closed: 2026-09-06
 priority: P1
 effort: S

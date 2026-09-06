@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.6
 touches: tools/contrast_check.py
 added: 2026-09-04
 closed: 2026-09-06

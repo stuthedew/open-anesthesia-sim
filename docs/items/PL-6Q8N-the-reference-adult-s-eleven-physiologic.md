@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: science, docs
 feature: model-spec-accuracy
+milestone: v0.4.6
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-03
 closed: 2026-09-06
