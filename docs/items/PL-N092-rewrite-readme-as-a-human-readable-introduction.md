@@ -3,11 +3,12 @@ id: PL-N092
 title: Rewrite README as a human-readable introduction to the project
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs, ux
 feature: project-introduction
 touches: README.md, docs/MODEL.md, pyproject.toml, Makefile, .github/workflows/quality.yml, tools/readme_hold_check.py, tests/unit/test_readme_hold_check.py, docs/ARCHITECTURE.md
 added: 2026-09-01
+closed: 2026-09-06
 verify: python3 tools/doc_check.py check && test -f README.md && ! grep -q 'resolution the numerical method supports' README.md
 not-delegable: docs/MODEL.md is a protected path, and the command below bounds only the mechanical half - whether the rewritten README actually introduces the project to a first-time reader is the judgment a check cannot make, which is the whole of this item
 ---

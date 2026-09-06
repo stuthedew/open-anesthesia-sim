@@ -2847,15 +2847,18 @@ once someone is ready to scope it.
     **The repository went public before this pass, not after** (project owner,
     2026-09-05: "public today. Will do human facing pass in the nearish
     future."). So this is no longer a gate and blocks nothing — `PL-XYRN` is
-    closed against that decision and `PL-N092` (rewrite README as a human-
-    readable introduction) is released and `ready`. The pass is owed to a reader
-    who can already arrive, which is a stronger reason to run it than the one it
-    was deferred under, and it is now the only thing that will surface it:
-    nothing is blocked on it and no check reports it, so it waits for a session
-    offering to scope this milestone or for the owner to ask. Until it runs, the
-    repository is public with no root `README.md` at all — deleted deliberately
-    under `PL-WB5K` and its absence now enforced by `tools/readme_hold_check.py`,
-    which `PL-N092` removes as part of the rewrite.
+    closed against that decision, and `PL-N092` (rewrite README as a human-
+    readable introduction) then ran on its own on 2026-09-06 rather than waiting
+    for the pass — the reason it was deferred was that these documents cohere
+    when written together, and the reason not to wait was that a stranger could
+    already arrive at a repository with no `README.md` at all. So the root
+    `README.md` exists again, written to the two audiences `PL-RM83` settled,
+    and the check that held its absence retired itself in the same commit.
+
+    **What is left here is the rest of what a first-time visitor meets**, this
+    item's original scope less the README. Nothing surfaces it: nothing is
+    blocked on it and no check reports it, so it waits for a session offering to
+    scope this milestone or for the owner to ask.
 
 None of items 1-32 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
