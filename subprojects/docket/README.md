@@ -431,6 +431,25 @@ that repair; the larger half is prose, in the `docket` skill, because a session
 handed an item is not obliged to run any command at all. `triage` carries the
 same mark now, for a collision it went on to hit itself — below.
 
+**A triage pass raises no mark at all, so a second and weaker one reads the
+paths.** The rule above is that a commit whose whole diff sits in `docs/items/`
+is a capture, a triage pass or a note rather than work — which is right, and
+which leaves a triage pass with no way to be seen at all: it never commits
+outside the queue, so no amount of fetching, `show` or `flight` could show one
+pass to another. Two sessions triaged one pair of items on 2026-09-06, each
+having checked, and the merge discarded one of the two answers (`PL-N1JK`).
+
+So `FlightReport.editing` names, per item, a ref that has changed that item's
+own file. It is a measurement of paths rather than a judgment about subjects,
+which is what makes it exact: the file is what conflicts, whatever either
+commit was for. It ranks nothing — `next`, `list` and `status` read `ids`
+alone, so an annotated item stays startable and `PL-X3WZ` is intact — and it
+prints only where it changes a decision: `triage`, which is about to write to
+that file, and `show`, which is about to start the item. It is deliberately
+absent from `flight`, where capture being mandatory would put a row under
+nearly every live branch and change no answer to the question that command
+asks.
+
 **Detection stops at "somebody is on it"; `precedence` says which one
 continues.** Everything above answers whether an item is being worked, and
 nothing said which of two sessions discovering each other was the one to stop.

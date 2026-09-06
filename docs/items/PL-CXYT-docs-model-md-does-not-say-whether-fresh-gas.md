@@ -1,10 +1,14 @@
 ---
 id: PL-CXYT
 title: docs/MODEL.md does not say whether fresh gas flow includes the vapor the vaporizer adds
-status: untriaged
+priority: P1
+effort: S
+status: ready
 classes: docs, science
-touches: docs/MODEL.md
+feature: model-spec-accuracy
+touches: docs/MODEL.md, src/anesthesia_sim/core/circuit.py
 added: 2026-09-06
+verify: python3 tools/doc_check.py check && grep -q 'common gas outlet' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md`'s symbol table defines `V̇_F` as "Fresh gas flow,

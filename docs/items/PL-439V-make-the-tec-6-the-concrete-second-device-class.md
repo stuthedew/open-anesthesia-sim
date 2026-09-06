@@ -1,7 +1,9 @@
 ---
 id: PL-439V
 title: Make the Tec 6 the concrete second device class the machine abstraction is designed against
-status: untriaged
+priority: P2
+effort: S
+status: blocked
 classes: docs, anticipated
 feature: anesthesia-machine
 blocked-by: PL-FG9D

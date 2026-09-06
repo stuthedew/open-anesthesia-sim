@@ -201,8 +201,28 @@ def _in_flight(
     on_base: set[str] | None = None,
     ran_out: tuple[str, ...] = (),
 ) -> tuple[Branch, ...]:
+    return _report(refs, merged, commits, unrelated, adds, on_base, ran_out=ran_out).branches
+
+
+def _report(
+    refs: list[str],
+    merged: list[str] | None = None,
+    commits: dict[str, list[tuple[str, ...]]] | None = None,
+    unrelated: tuple[str, ...] = (),
+    adds: dict[str, list[str] | list[tuple[str, str]]] | None = None,
+    on_base: set[str] | None = None,
+    ran_out: tuple[str, ...] = (),
+) -> FlightReport:
+    """The whole report, for the tests reading the file edits beside the work.
+
+    `_in_flight` returns the branches alone because that was the whole answer
+    when it was written. `editing` is a second and weaker mark on the same
+    report, and most of what is worth asserting about it is what it says
+    *together* with the first - that an item is edited and not in flight, or in
+    flight and not also listed as edited.
+    """
     runner = _runner(refs, merged, commits, unrelated, adds, on_base, ran_out=ran_out)
-    return branches_in_flight(ROOT, runner=runner).branches
+    return branches_in_flight(ROOT, runner=runner)
 
 
 def test_a_branch_naming_an_item_is_in_flight() -> None:
@@ -484,6 +504,126 @@ def test_the_queue_directory_is_read_from_the_project_setting() -> None:
 
     assert branches_in_flight(ROOT, items_dir="tracker", runner=runner).ids == set()
     assert branches_in_flight(ROOT, items_dir="docs/items", runner=runner).ids == {"PL-K7QX"}
+
+
+def test_a_queue_only_commit_is_reported_as_a_file_edit_though_not_as_work() -> None:
+    """The failure `PL-N1JK` records: a triage pass no guard could see.
+
+    A pass that only fills in fields writes nothing outside the queue, so
+    `_annotates_only` withholds the claim - correctly, since it is not work -
+    and until the file edits were read there was nothing else to report. Two
+    sessions triaged one pair of items on 2026-09-06, each fetched, each ran
+    `show`, and each was told truthfully that nothing was in flight; the merge
+    discarded one of the two answers.
+    """
+    report = _report(
+        [HARNESS], commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", QUEUE_ONLY)]}
+    )
+
+    assert report.branches == ()
+    assert report.ids == frozenset()
+    assert [(edit.item_id, edit.name) for edit in report.editing] == [("PL-K7QX", HARNESS)]
+
+
+def test_a_branch_working_an_item_is_not_also_reported_as_editing_its_file() -> None:
+    """One item, one mark. The stronger one is the one the reader needs.
+
+    A closure writes the item and the code in one commit, so both readings fire
+    on it; printing two lines about one item invites the reading that they name
+    two different branches.
+    """
+    report = _report(
+        [HARNESS],
+        commits={
+            HARNESS: [("2026-09-03", "PL-K7QX: do the thing", "c1", QUEUE_ONLY, "src/thing.py")]
+        },
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
+    assert report.editing == ()
+
+
+def test_a_file_edit_is_read_from_the_paths_rather_than_from_the_subject() -> None:
+    """The weaker reading infers nothing: it is a fact about the diff.
+
+    A session working one item and capturing a finding about another produces
+    exactly this commit. The subject claims the first, the diff touches the
+    second, and it is the second that a triage pass on that other item would
+    collide with.
+    """
+    report = _report(
+        [HARNESS],
+        commits={
+            HARNESS: [
+                (
+                    "2026-09-03",
+                    "PL-K7QX: do the thing",
+                    "c1",
+                    "src/thing.py",
+                    "docs/items/PL-J295-a-finding.md",
+                )
+            ]
+        },
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
+    assert [(edit.item_id, edit.name) for edit in report.editing] == [("PL-J295", HARNESS)]
+
+
+def test_a_file_edit_carries_the_date_the_branch_last_moved() -> None:
+    """A branch nobody will merge and a live session look alike here too.
+
+    The same reading `flight` and `stranded` make: the age is reported and the
+    reader decides, because no timeout separates the two.
+    """
+    report = _report(
+        [HARNESS], commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", QUEUE_ONLY)]}
+    )
+
+    assert report.editing[0].last_commit == date(2026, 9, 3)
+
+
+def test_a_ref_whose_walk_ran_off_the_end_contributes_no_file_edits() -> None:
+    """The paths are as unproven as the ids when the walk was unbounded.
+
+    A walk that ended at a parentless commit ran off the end of a truncated
+    history rather than stopping against the default branch, so the commits it
+    emitted may be the default branch's own - and their paths with them.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", QUEUE_ONLY)]},
+        ran_out=(HARNESS,),
+    )
+
+    assert report.editing == ()
+    assert report.unreadable == (HARNESS,)
+
+
+def test_a_file_edit_is_read_against_the_project_queue_directory() -> None:
+    """A project keeping its queue elsewhere gets the same reading, not a default."""
+    runner = _runner(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", "tracker/PL-K7QX-a.md")]},
+    )
+
+    assert branches_in_flight(ROOT, items_dir="docs/items", runner=runner).editing == ()
+    editing = branches_in_flight(ROOT, items_dir="tracker", runner=runner).editing
+    assert [edit.item_id for edit in editing] == ["PL-K7QX"]
+
+
+def test_a_queue_path_that_names_no_item_is_not_a_file_edit() -> None:
+    """The store holds a README beside the items, and it belongs to no id."""
+    report = _report(
+        [HARNESS],
+        commits={
+            HARNESS: [
+                ("2026-09-03", "PL-K7QX: rewrite the store's README", "c1", "docs/items/README.md")
+            ]
+        },
+    )
+
+    assert report.editing == ()
 
 
 def test_the_last_commit_is_dated_so_a_stale_branch_can_be_told_apart() -> None:

@@ -1,10 +1,16 @@
 ---
 id: PL-SHG5
 title: Two publisher-copyright full texts are being redistributed from the now-public repository, against docs/references/README.md's own stated prerequisite
-status: untriaged
+priority: P2
+effort: M
+status: done
 classes: docs
+feature: provenance
 touches: docs/references
 added: 2026-09-06
+closed: 2026-09-06
+pr: 390
+verify: python3 tools/doc_check.py check && ! git ls-files docs/references | grep -qE 'baker-farmery|schuttler-schwilden' && grep -q 'This repository is public' docs/references/README.md
 ---
 
 **Problem.** `docs/references/README.md` states, of the two physiology PDFs it
@@ -100,3 +106,20 @@ and the citations stay. That closes the first half of `PL-69K6` and leaves its
 check half open. Read this item as the record of why the purge happened rather
 than as outstanding work, and confirm against `git ls-tree origin/main` rather
 than against the text above.
+
+**Closed at triage, 2026-09-06.** All three "Done when" clauses were checked
+against `origin/main` rather than against the paragraphs above, and all three
+hold: `git ls-tree -r origin/main -- docs/references/` lists only the README
+and the CC BY-NC-ND Jugel 2014 PDF; `docs/references/README.md` opens its
+"Redistribution" section with "**This repository is public.**"; and the check
+half went to `PL-69K6` (the README documents two PDFs the purge removed, and
+`doc_check` does not verify a documented reference file exists), which is
+itself `done` — `_check_reference_files_exist` is wired into
+`tools/doc_check.py check`. The work landed under `#388`; the item was left
+`untriaged` rather than closed, which is the only thing this pass changed.
+
+The one live thread the closure would otherwise have dropped is `PL-0SCG`
+(GitHub Support ticket 4733783 is open: pre-rewrite blobs may still be
+reachable through `refs/pull/*/head`). It is not in this item's "Done when",
+and it is not actionable inside the repository — the pull refs are read-only to
+the repository owner — so it is filed rather than held open here.
