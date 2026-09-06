@@ -15,7 +15,15 @@ from pathlib import Path
 
 from . import render
 from .checks import analyze
-from .concurrency import conflicts_for, observed_conflicts, parallel_batch
+from .concurrency import (
+    ORDERING,
+    SAME_AREA,
+    SAME_FILE,
+    conflicts_for,
+    observed_conflicts,
+    parallel_batch,
+    sequenceable,
+)
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
 from .model import LANE_CROSSING, SELECTABLE_LANES, Item
@@ -556,8 +564,12 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         if item is None:
             print(f"no item matching '{args.item}'")
             return 1
-        blocked = conflicts_for(item, candidates)
-        blocked_ids = {c.other.identifier for c in blocked}
+        conflicts = conflicts_for(item, candidates)
+        by_strength = {
+            strength: [c for c in conflicts if c.strength == strength]
+            for strength in (ORDERING, SAME_FILE, SAME_AREA)
+        }
+        blocked_ids = {c.other.identifier for c in conflicts}
         free = [
             c
             for c in candidates
@@ -568,9 +580,21 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
             print("  declares no `touches`; nothing can be ruled out for it")
         print()
         print("  Cannot run alongside:")
-        for conflict in blocked or []:
+        for conflict in by_strength[ORDERING] or []:
             print(f"    {conflict.describe()}")
-        if not blocked:
+        if not by_strength[ORDERING]:
+            print("    nothing")
+        print()
+        print("  Shares a file - proceed, and land the smaller change first:")
+        for conflict in by_strength[SAME_FILE] or []:
+            print(f"    {conflict.describe()}")
+        if not by_strength[SAME_FILE]:
+            print("    nothing")
+        print()
+        print("  Same area only - one declaration is coarser than the other:")
+        for conflict in by_strength[SAME_AREA] or []:
+            print(f"    {conflict.describe()}")
+        if not by_strength[SAME_AREA]:
             print("    nothing")
         print()
         print("  No declared overlap (not a guarantee - verify before starting both):")
@@ -585,12 +609,32 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
 
     batch = parallel_batch(candidates, args.limit)
     print(f"A batch that can be worked at once ({len(batch)} items, best-first):")
-    for item in batch:
+    ordered = False
+    for position, item in enumerate(batch):
         flag = " [IN FLIGHT]" if item.identifier in flight.ids else ""
         print(f"  {item.priority} {item.identifier} {item.title}{flag}")
+        shared: dict[str, list[str]] = {}
+        for conflict in conflicts_for(item, batch[:position]):
+            for path in conflict.paths:
+                shared.setdefault(path, []).append(conflict.other.identifier)
+        ordered = ordered or bool(shared)
+        for path, others in shared.items():
+            print(f"      shares {path} with {', '.join(others)}")
     print()
-    print("No declared overlap between these. That is not a guarantee: `touches` is")
+    if ordered:
+        print("Indented lines mark a shared file: those two are still both startable,")
+        print("but decide which merges first rather than finding out at the merge.")
+        print("Everything else here has no declared overlap - which is not a guarantee:")
+    else:
+        print("No declared overlap between these. That is not a guarantee: `touches` is")
     print("a prediction made when each item was written, so verify before starting.")
+    waiting = sequenceable(candidates, batch)
+    if waiting and args.limit is None:
+        count = len(waiting)
+        print()
+        print(f"Outside the batch is not refused: {count} more items share a file with")
+        print("something above, which orders the work rather than forbidding it.")
+        print("`docket concurrent --limit <n>` fills the batch out with them.")
     _say_unread(flight)
     return 0
 

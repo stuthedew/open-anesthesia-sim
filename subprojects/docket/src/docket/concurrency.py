@@ -45,23 +45,61 @@ def _covers(one: str, other: str) -> bool:
     return first == second or first in second.parents or second in first.parents
 
 
+def _overlaps(one: Item, other: Item) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The declared overlap, split by how strong the evidence is.
+
+    Returns the paths both items name identically, then the paths where one
+    item's directory merely covers the other's. They are different claims and
+    were reported as one: 38 of this store's open items declare a directory,
+    so an item naming `tests/` read as contending with every test change, in
+    the same words as two items naming the same module.
+    """
+    identical: set[str] = set()
+    covering: set[str] = set()
+    for left in one.touches:
+        for right in other.touches:
+            if not _covers(left, right):
+                continue
+            if PurePosixPath(left.strip("/")) == PurePosixPath(right.strip("/")):
+                identical.add(left)
+            else:
+                covering.add(min(left, right, key=len))
+    return tuple(sorted(identical)), tuple(sorted(covering))
+
+
 def shared_paths(one: Item, other: Item) -> tuple[str, ...]:
     """Every declared path the two items could both reach."""
-    overlap = {
-        min(left, right, key=len)
-        for left in one.touches
-        for right in other.touches
-        if _covers(left, right)
-    }
-    return tuple(sorted(overlap))
+    identical, covering = _overlaps(one, other)
+    return tuple(sorted(set(identical) | set(covering)))
+
+
+ORDERING = "ordering"
+SAME_FILE = "same file"
+SAME_AREA = "same area"
 
 
 @dataclass(frozen=True)
 class Conflict:
-    """Why two items should not be worked at the same time."""
+    """What stands between two items being worked at the same time.
+
+    `strength` separates the one kind that is a refusal from the two that are
+    not, and the distinction is the whole point of the field. An ordering edge
+    - `blocked-by`, in either direction - means the work cannot be done yet. A
+    shared file means the second branch to merge resolves against the first,
+    which is ordinary: two unrelated items legitimately touch one file, and
+    the working practice this package documents is to land the smaller change
+    first rather than to pick something else.
+
+    Reporting all three as "cannot run alongside" cost a real answer on
+    2026-09-06 (`PL-VRMK`): 27 of Gate 1's 112 open entries declare
+    `docs/MODEL.md`, so the gate's science half - its most expensive work -
+    excluded itself from every batch, and a session asked for three concurrent
+    gate items withheld the strongest one it had.
+    """
 
     other: Item
     reason: str
+    strength: str = SAME_FILE
     paths: tuple[str, ...] = ()
 
     def describe(self) -> str:
@@ -71,21 +109,32 @@ class Conflict:
 
 
 def conflicts_for(item: Item, candidates: list[Item]) -> list[Conflict]:
-    """Everything that stands between this item and each of the others."""
+    """Everything that stands between this item and each of the others.
+
+    Tiered by `Conflict.strength`; use `refusals` for the subset that actually
+    forbids concurrent work.
+    """
     found: list[Conflict] = []
     for other in candidates:
         if other.identifier == item.identifier:
             continue
         if other.identifier in item.blocked_by:
-            found.append(Conflict(other, "blocks this item"))
+            found.append(Conflict(other, "blocks this item", ORDERING))
             continue
         if item.identifier in other.blocked_by:
-            found.append(Conflict(other, "waits on this item"))
+            found.append(Conflict(other, "waits on this item", ORDERING))
             continue
-        overlap = shared_paths(item, other)
-        if overlap:
-            found.append(Conflict(other, "shares files", overlap))
+        identical, covering = _overlaps(item, other)
+        if identical:
+            found.append(Conflict(other, "edits the same file", SAME_FILE, identical))
+        elif covering:
+            found.append(Conflict(other, "declares an area covering it", SAME_AREA, covering))
     return found
+
+
+def refusals(conflicts: list[Conflict]) -> list[Conflict]:
+    """The conflicts that forbid concurrent work rather than order it."""
+    return [conflict for conflict in conflicts if conflict.strength == ORDERING]
 
 
 @dataclass(frozen=True)
@@ -159,14 +208,54 @@ def parallel_batch(items: list[Item], limit: int | None = None) -> list[Item]:
     worth doing. Taking the most important item and then everything
     compatible with it beats taking four trivial items that happen not to
     overlap.
+
+    Two passes, because "at once" has two answers and only the first is
+    unqualified. The first takes items contending with nothing already
+    chosen. The second fills the remaining slots with items whose only
+    contention is a declared path - work that proceeds and resolves at merge
+    rather than work that waits - and runs only when a `limit` has asked for a
+    batch of a given size. Unlimited, the batch stays the independent set it
+    has always been: filling it would print most of the queue, and every item
+    added past the first pass costs the reader a judgment about order.
     """
     chosen: list[Item] = []
+    taken: set[str] = set()
     for item in items:
         if not item.touches:
             continue
         if any(conflicts_for(item, [picked]) for picked in chosen):
             continue
         chosen.append(item)
+        taken.add(item.identifier)
         if limit is not None and len(chosen) >= limit:
+            return chosen
+    if limit is None:
+        return chosen
+    for item in items:
+        if not item.touches or item.identifier in taken:
+            continue
+        if any(refusals(conflicts_for(item, [picked])) for picked in chosen):
+            continue
+        chosen.append(item)
+        taken.add(item.identifier)
+        if len(chosen) >= limit:
             break
     return chosen
+
+
+def sequenceable(items: list[Item], batch: list[Item]) -> list[Item]:
+    """What a shared file alone kept out of the batch.
+
+    Not in the batch, because a batch is offered as work that needs no
+    thought about order. Not refused either, which is the distinction the
+    batch's own line cannot carry: these are startable today against anything
+    above them, provided the smaller change lands first.
+    """
+    taken = {item.identifier for item in batch}
+    return [
+        item
+        for item in items
+        if item.touches
+        and item.identifier not in taken
+        and not any(refusals(conflicts_for(item, [picked])) for picked in batch)
+    ]

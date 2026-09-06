@@ -415,6 +415,13 @@ collision. Say that plainly rather than presenting a clean result as a
 guarantee, and treat an item with no `touches` as unanalysed rather than
 safe — fill its `touches` in instead.
 
+**Read the tier, not merely the presence of a conflict.** Only "Cannot run
+alongside" — a `blocked-by` edge — refuses the work. "Shares a file" and "Same
+area only" are sequencing notes: both items are startable, and the smaller
+change lands first. Treating a shared file as a refusal is what `PL-VRMK`
+fixed, and it had already cost a real answer — Gate 1's science half all
+declares `docs/MODEL.md`, so the whole of it read as unstartable at once.
+
 The `<id>` form adds what the branches in flight have **already changed**,
 read from the branches rather than from anybody's `touches`. That section is
 the stronger evidence of the two — it fires only where work is underway, and it
