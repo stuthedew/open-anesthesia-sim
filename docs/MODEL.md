@@ -1751,6 +1751,14 @@ expected values come from outside this repository
 reader of the two sections: "Independent-solution test" above and this one
 answer different questions, and conflating them over-reads both.
 
+**This section covers two comparisons, in opposite directions**, although its
+heading names only the first — the name is kept because five other passages
+in this document and in `src/` cite it, and a citation that no longer
+resolves is a worse defect than a heading that under-describes. The two are
+$`F_A/F_I`$ at 30 minutes of **wash-in**, which agrees with the published
+measurements, and $`F_A/F_{A0}`$ at 5 minutes of **elimination**, which does
+not. Both come from the same volunteers in the same sitting.
+
 $`F_A/F_I`$ at 30 minutes of wash-in is the classic measured quantity in the
 uptake literature, and Yasuda et al. published it for all three shipped
 agents in two volunteer studies:
@@ -1771,11 +1779,32 @@ agents in two volunteer studies:
   Anesthesiology 1991;74(3):489-98. PMID 2001028,
   doi:10.1097/00000542-199103000-00017.
 
-Isoflurane is compared against both cohorts rather than one. The model must
-land inside the published standard deviation for every row, and must also
-reproduce the ordering by solubility the two studies were run to test —
-$`F_A/F_I`$ higher for desflurane than sevoflurane than isoflurane — because
-three tolerances that happen to overlap are not a model.
+Both papers report a second measured quantity on the same subjects, in the
+opposite direction: $`F_A/F_{A0}`$ after five minutes of elimination,
+beginning where the 30-minute administration above ends. $`F_{A0}`$ is each
+paper's own definition — the last alveolar fraction recorded during that
+administration — so the two comparisons are one continuous protocol rather
+than two.
+
+| Agent | $`F_A/F_{A0}`$ at 5 min | Cohort | Source |
+| --- | --- | --- | --- |
+| Sevoflurane | 0.157 ± 0.020 | n=7 | Anesth Analg 1991;72:316-24 |
+| Isoflurane | 0.223 ± 0.024 | n=7 | Anesth Analg 1991;72:316-24 |
+| Desflurane | 0.14 ± 0.02 | n=8 | Anesthesiology 1991;74:489-98 |
+| Isoflurane | 0.22 ± 0.02 | n=8 | Anesthesiology 1991;74:489-98 |
+
+All eight figures in the two tables are mean ± SD, read from the two
+abstracts and checked against PubMed on 2026-09-06.
+
+Isoflurane is compared against both cohorts rather than one, in both
+directions.
+
+**For wash-in**, the model must land inside the published standard deviation
+for every row, and must also reproduce the ordering by solubility the two
+studies were run to test — $`F_A/F_I`$ higher for desflurane than sevoflurane
+than isoflurane — because three tolerances that happen to overlap are not a
+model. It does both. What is required of the elimination rows is different,
+because the model does not land inside their spread; that is below.
 
 **The tolerance is the published spread, and the operating point is not
 fitted.** Alveolar ventilation and cardiac output are read from
@@ -1793,15 +1822,77 @@ Fresh gas flow is the one setting the test chooses, at 10 L/min, so that
 $`F_I`$ — the modeled *circuit* fraction, not the vaporizer dial — is settled
 rather than still rising at 30 minutes, matching protocols that held an
 inspired concentration at the airway. The test shows that choice is not
-carrying the result: every agent stays inside its published spread at every
-fresh gas flow from 1 to 10 L/min. One delivered fraction serves four
-different published $`F_I`$ values because the governing equations are linear
-in it, which the test asserts across the published range rather than assumes.
+carrying the wash-in result: every agent stays inside its published spread at
+every fresh gas flow from 1 to 10 L/min. It carries the elimination result
+almost entirely, which is the subject of the next paragraphs and the reason
+the two comparisons are not equally strong. One delivered fraction serves
+four different published $`F_I`$ values because the governing equations are
+linear in it, which the test asserts across the published range — for both
+ratios separately — rather than assumes.
 
-**Two caveats bound how strongly a pass may be stated.** Both belong beside
-any statement of this result, wherever it is restated - the root README used to
-carry one and no longer exists (`PL-WB5K`), so the obligation transfers to
-whatever `PL-N092` writes in its place.
+**The elimination comparison does not agree, and the model states the
+disagreement rather than a tolerance around it.** At the shipped defaults and
+the same 10 L/min the wash-in comparison uses, the model holds more alveolar
+agent at five minutes than every cohort did (measured 2026-09-06):
+
+| Agent | Cohort | Model | Published | Distance |
+| --- | --- | --- | --- | --- |
+| Sevoflurane | n=7 | 0.2303 | 0.157 ± 0.020 | +3.67 SD |
+| Isoflurane | n=7 | 0.3195 | 0.223 ± 0.024 | +4.02 SD |
+| Desflurane | n=8 | 0.1603 | 0.14 ± 0.02 | +1.02 SD |
+| Isoflurane | n=8 | 0.3195 | 0.22 ± 0.02 | +4.98 SD |
+
+So the assertion on these values is a **regression** band — the published
+standard deviation applied around the model's own measured ratio — which
+claims nothing about agreement and exists so that a change moving washout by
+more than one published SD fails and has to be explained. The claims the test
+does make about elimination, and that hold, are the published ordering by
+solubility (desflurane leaves fastest, then sevoflurane, then isoflurane),
+independence from the delivered fraction, and the sign of the departure.
+
+**Most of that departure is the breathing system, not the tissue return**,
+and the difference is a property of the two ratios rather than of the model's
+physiology. $`F_A/F_I`$ carries the inspired fraction in its denominator, so
+whatever a breathing system does to $`F_I`$ divides out of it — which is why
+the wash-in comparison is inside the published spread at every supported
+flow. $`F_A/F_{A0}`$ has no such term: it is the alveolar fraction against its
+own value five minutes earlier, so agent returning to the alveoli *from the
+circuit* is counted exactly as though it had come back out of the patient.
+This model always rebreathes — "Model boundary" gives it one circuit that is
+a closed recirculating path except for fresh-gas inflow and exhaust, and
+inspired gas *is* circuit gas — so through an elimination $`F_I`$ settles near
+$`\dot V_A/(\dot V_A + \dot V_F)`$ of $`F_A`$, which is 0.29 at the highest
+supported flow and measured at 0.30 to 0.32 at five minutes. The published
+protocols did not, which is an inference and is recorded as one: neither
+abstract states the breathing system, but both report mixed expired
+concentrations and agent recovered against agent taken up, and neither
+quantity can be had without collecting the whole expirate rather than
+returning it to the subject. Their elimination therefore ran at an inspired
+fraction at or near zero, which this model cannot be set to at any supported
+flow; confirming it against the methods sections needs full texts that are
+not in PubMed Central and are not held in `docs/references/`. Holding $`F_I`$
+at zero through the elimination — a diagnostic, not a configuration — moves
+the three agents from +3.67, +4.02 and +1.02 SD to −0.25, +0.54 and −2.40 SD,
+so the two conditions bracket the published values and desflurane's residual
+disagreement changes sign.
+
+**Which question a band of one standard deviation answers**, since this
+section now makes the claim in two places. A deterministic model compared
+against a cohort *mean* would conventionally be judged against the standard
+error of that mean, $`\text{SD}/\sqrt{n}`$, a band 2.6 to 2.8 times narrower
+for these cohorts. The claim made here is the weaker one, deliberately: that
+the model is a **plausible individual** drawn from the published cohort, not
+that it reproduces the cohort's mean. The distinction is not academic —
+desflurane's wash-in sits at +0.79 SD, which is +2.2 SEM, so the same run
+that passes the claim this document makes would fail the claim it does not
+make. A reader restating a passing wash-in as "reproduces the published mean"
+has said something no test here has tested.
+
+**Four caveats bound how strongly a pass may be stated.** The first two apply
+to both directions; the last two are the elimination comparison's own. All
+belong beside any statement of this result, wherever it is restated - the root
+README used to carry one and no longer exists (`PL-WB5K`), so the obligation
+transfers to whatever `PL-N092` writes in its place.
 
 1. *The published subjects were breathing nitrous oxide.* Both protocols ran
    65–70% N₂O concurrently, so the measured curves carry a second-gas effect
@@ -1816,19 +1907,44 @@ whatever `PL-N092` writes in its place.
    shows that this implementation reproduces its parameter set's intent, not
    that the parameter set is independently right. It is weaker than
    "validated against a human measurement" and must not be described as more.
+3. *The breathing systems differ, and by more than the measurement's own
+   spread.* The paragraphs above measure it. Any statement that this model
+   eliminates more slowly than these volunteers did has to carry it, because
+   most of that difference is a rebreathing circuit rather than a patient.
+4. *This model has no metabolism, which is why five minutes is the limit.*
+   Over five minutes of elimination metabolism is negligible for all three
+   shipped agents, and the papers bound it themselves: recovery — agent
+   recovered during elimination over agent taken up — was 101 ± 7% for
+   sevoflurane and 101 ± 6% for isoflurane in the first study, and 105 ± 25%
+   for desflurane and 102 ± 13% for isoflurane in the second, against 64 ± 9%
+   for halothane, which is the same method detecting a metabolized agent.
+   Both papers also report multi-day elimination curves, and those must not
+   be added to this comparison: over days the missing metabolism is no longer
+   negligible, and neither is the fat group's flow, which "Known limitations"
+   records as about twice the reachable resting measurement and therefore
+   acting directly on the slow tail of washout.
 
-**How sharp a gate this is, measured rather than assumed.** Perturbing each
-agent's blood:gas partition coefficient until the comparison fails, with
-every other parameter shipped:
+**How sharp a gate this is, measured rather than assumed.** The discriminating
+power was re-measured on 2026-09-06 with the elimination point included, by
+perturbing each agent's blood:gas partition coefficient until some assertion
+in the module failed. The perturbation rebuilds the system from a modified
+parameter set so that every compartment sees the same coefficient, with
+tissue:gas coefficients held shipped — so tissue:blood moves inversely,
+exactly as it would if the blood:gas measurement alone were wrong:
 
-| Agent | $`\lambda_{b:g}`$ | Reference point alone | With the flow sweep |
-| --- | --- | --- | --- |
-| Sevoflurane | 0.65 | −14% / +21% | −14% / +6% |
-| Isoflurane | 1.3 | −12% / +24% | −12% / +13% |
-| Desflurane | 0.42 | −4% / +30% | −4% / +11% |
+| Agent | $`\lambda_{b:g}`$ | Reference point alone | With the flow sweep | With elimination |
+| --- | --- | --- | --- | --- |
+| Sevoflurane | 0.65 | −14% / +21% | −14% / +6% | −14% / +6% |
+| Isoflurane | 1.3 | −11% / +24% | −11% / +12% | −11% / +12% |
+| Desflurane | 0.42 | −3% / +30% | −3% / +10% | −3% / +10% |
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
 <!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
+
+The first two columns reproduce the 2026-09-02 measurement to within a
+percentage point everywhere — isoflurane's edges move by one and desflurane's
+lower edge by one — which is the resolution of the search rather than a change
+in the model.
 
 This is a coarse gate. At the reference point alone a solubility error of a
 fifth survives for two of the three agents — wider than the spread between
@@ -1839,6 +1955,44 @@ rather than decoration. Desflurane is the tightest row and is tight in one
 direction only, because it already sits at +0.79 SD with little room above
 the mean; a change that moves it out of the band is a disagreement to
 explain, not a tolerance to widen.
+
+**The elimination point adds nothing to that table**, and blood:gas is the
+wrong parameter to judge it on. The two ratios respond to almost disjoint
+parts of the parameter set, measured the same day as movement per +10% in one
+coefficient, in each ratio's own published standard deviation:
+
+| Perturbed coefficient | Wash-in | Elimination |
+| --- | --- | --- |
+| Blood:gas | −0.57 to −0.64 | +0.09 to +0.17 |
+| Vessel-rich tissue:gas | −0.02 to −0.06 | +0.45 to +0.55 |
+| Muscle tissue:gas | −0.08 to −0.15 | −0.09 to −0.12 |
+| Fat tissue:gas | −0.00 | −0.00 |
+
+Wash-in at 30 minutes is a blood:gas measurement that barely sees the
+vessel-rich group; elimination at five minutes is a vessel-rich measurement
+that barely sees blood:gas. That does not compete with the rebreathing
+explanation above: the circuit sets *where* the elimination ratio sits against
+the published mean, as an offset fixed by the operating point, while among the
+model's own parameters it is vessel-rich solubility the ratio moves with. Neither sees fat, which is what a 30-minute load
+followed by a 5-minute washout should look like, and is a further reason
+neither may be read as covering the slow tail. Repeating the perturbation
+search on the vessel-rich coefficient gives what the second direction is
+worth:
+
+| Agent | Wash-in and its flow sweep | With elimination |
+| --- | --- | --- |
+| Sevoflurane | at least −90% / +25% | −16% / +19% |
+| Isoflurane | at least −90% / +50% | −13% / +16% |
+| Desflurane | at least −90% / +57% | −20% / +24% |
+
+The lower edges in the middle column are the search bound rather than a
+measurement: the wash-in comparison and its flow sweep were still passing at
+a tenth of the shipped vessel-rich tissue:gas coefficient. Downward, that
+parameter was essentially unconstrained by anything in this repository until
+an elimination was compared; the elimination point closes it to about a fifth
+either way. That, rather than the blood:gas column, is what the second
+direction buys — together with being the only place the size and sign of this
+model's departure from a measured human washout is written down.
 
 ### Mass-balance test
 
@@ -3621,7 +3775,9 @@ Version v0.1.0 is complete only when:
 - no scientific `TBD` markers remain;
 - v0.0.2 circuit reference tests still pass;
 - unit, integration, invariant, and independent reference tests pass;
-- the published wash-in validation passes for every agent and cohort;
+- the published wash-in validation passes for every agent and cohort (the
+  elimination comparison in the same module is a regression band, not an
+  agreement claim, and is deliberately not a release gate);
 - mass balance closes within the documented tolerance;
 - supported step sizes pass convergence and nonnegativity tests;
 - deterministic replay passes;
