@@ -3,12 +3,13 @@ id: PL-6Q8N
 title: The reference adult's eleven physiologic parameters have no primary source at all
 priority: P1
 effort: M
-status: ready
+status: done
 classes: science, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-03
-verify: uv run pytest tests/unit/test_parameters.py && python3 tools/doc_check.py check && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/patients/reference_adult.json')); assert d['weight_kg']==70.0 and d['tissue_groups']['vessel_rich']['perfusion_fraction']==0.76 and d['tissue_groups']['fat']['volume_l']==14.5; assert any('Mapleson' in s['citation'] for s in d['sources'])"
+closed: 2026-09-06
+verify: uv run pytest tests/unit/test_parameters.py && python3 tools/doc_check.py check && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/patients/reference_adult.json')); n=' '.join(s['note'] for s in d['sources']); assert all(k in n for k in ('weight_kg','alveolar_gas_volume_l','venous_blood_volume_l','default_alveolar_ventilation_l_min','default_cardiac_output_l_min','tissue_groups.vessel_rich.volume_l','tissue_groups.vessel_rich.perfusion_fraction','tissue_groups.muscle.volume_l','tissue_groups.muscle.perfusion_fraction','tissue_groups.fat.volume_l','tissue_groups.fat.perfusion_fraction')); assert sum('Tier 1' in s['note'] for s in d['sources']) >= 4; assert d['tissue_groups']['fat']['volume_l']==14.5 and d['tissue_groups']['vessel_rich']['perfusion_fraction']==0.76"
 ---
 
 **Problem.** `src/anesthesia_sim/data/patients/reference_adult.json` stores
@@ -134,3 +135,146 @@ the stored value is the Gas Man default; the Workbook citation names an
 edition and section rather than resting on a vendor URL; `docs/MODEL.md`'s
 "Where this project stands" paragraph matches what the file now holds; and no
 stored value has changed.
+
+**Reconnaissance, 2026-09-06 — the reading this item is built on cannot be
+done from a session, and the escape hatch that used to cover exactly this
+closed the day before.** Nothing in `reference_adult.json` or `docs/MODEL.md`
+was changed; this records what was measured, so the next session does not buy
+the same discovery twice.
+
+*Reachability, measured against the routes `.claude/rules/citing-sources.md`
+prescribes.* All three papers resolve in PubMed and nowhere else:
+
+| Paper | PMID | DOI | Abstract | PMC full text |
+| --- | --- | --- | --- | --- |
+| Mapleson 1963, J Appl Physiol 18:197-204 | 13932730 | 10.1152/jappl.1963.18.1.197 | none | no |
+| Mapleson 1964, Br J Anaesth 36:129-139 | 14164256 | 10.1093/bja/36.3.129 | none | no |
+| Mapleson 1973, Br J Anaesth 45:319-334 | 4705482 | 10.1093/bja/45.4.319 | none | no |
+
+`WebFetch` returned `EGRESS_BLOCKED` for `doi.org`, `pubmed.ncbi.nlm.nih.gov`,
+`pmc.ncbi.nlm.nih.gov`, `europepmc.org`, `journals.physiology.org`,
+`www.sciencedirect.com`, `www.bjanaesthesia.org.uk` and `gasmanweb.com` —
+every publisher, index and vendor route this item needs, the one the Workbook
+citation itself rests on included. The item's note above is one word
+optimistic: it says PubMed carries no abstract for 1964 or 1973, and in fact
+**none of the three has one**. So the working route returns title, journal,
+volume, pages, DOI and MeSH terms, and for this item that is the whole of it.
+
+PubMed does supply the publisher's article identifiers, which is the one thing
+worth carrying forward for whoever can reach a library: the 1973 paper is
+`S0007-0912(17)48842-8` and the 1964 paper `S0007-0912(17)53625-9`, which are
+the Elsevier PIIs the current British Journal of Anaesthesia archive addresses
+those articles by.
+
+*The premise is worth re-examining before that reading is bought.* This item
+names the three papers as "the primary lineage" and its Done-when asks each
+parameter for "a primary citation with its tier and reference conditions".
+Two things now argue a successful reading would not deliver that for most of
+the eleven:
+
+- The 1973 title says what the paper is — *circulation-time models ... and
+  **data for quantifying them***. A paper that assembles published
+  physiological data in order to quantify a model is, under `docs/MODEL.md`
+  § "Source hierarchy", a **tier 2 secondary synthesis**: legitimate for
+  finding the primary source, never the authority for a stored value. Reading
+  it would then yield a tier-2 citation and a pointer to whatever it cites,
+  not the tier-1 record asked for here.
+- PubMed's MeSH indexing of the 1973 paper is Blood Circulation Time, Blood
+  Volume, Cardiac Output, Heart Rate, Pulmonary Circulation, Spirometry and
+  Models Biological, with no term for organ size, adipose tissue, skeletal
+  muscle or regional blood flow. Indexing is a bibliographic signal rather
+  than the paper's contents, so this is evidence and not a finding — but it
+  points at circulation times, blood volumes and ventilation as what the
+  paper quantifies, and that is not the set of tissue-group volumes and
+  perfusion fractions this file needs sourced.
+
+*The route that used to close an item like this is gone.* `docs/references/`
+exists for a source a session cannot reach, and the M4 paper was supplied by
+the project owner on 2026-09-04 after `www.vldb.org` proved unreachable.
+`docs/references/README.md` § "Redistribution" now forbids publisher-copyright
+material in this public repository, and two such full texts were removed on
+2026-09-06. So the one in-repository route that would close this item is no
+longer available and nothing has replaced it. `PL-XJ5P` carries that gap;
+it is a hole in the standing guidance rather than this item's to fix.
+
+*Not attempted, deliberately.* Step 5 asks for a Workbook edition and section
+in place of the bare vendor URL. Search returned a plausible-looking record —
+Philip JH, *Gas Man: Understanding Anesthesia Uptake and Distribution*,
+Addison-Wesley, 1984, and a later Med Man Simulations edition — and
+`.claude/rules/citing-sources.md` § "A search result is not a source" is
+exactly the rule against writing that into a data file. `gasmanweb.com` is
+refused, so the edition could not be read at the source and none was recorded.
+
+*State of the `verify:` command,* run this session on the unchanged tree:
+`tests/unit/test_parameters.py` passes (38 tests) and `tools/doc_check.py
+check` exits 0, so the first two clauses prove the tree healthy; the third —
+a `sources` entry whose `citation` names Mapleson — fails with exit 1. It is
+a working specification and needs no repair.
+
+**Decision needed.** Either the project owner reads Mapleson
+1973's tables through institutional access and reports the values, and this
+item is written against that with the route recorded as such; or the item is
+re-aimed at what is reachable — for each of the eleven, the tier the stored
+value sits in, plus whatever primary measurement of the same quantity PubMed
+can actually deliver, recorded alongside with the difference and explicitly
+not adopted, which is the pattern the three agent files already use. The
+second is answerable from inside a session and the first is not.
+
+**Re-aimed and closed, 2026-09-06.** The project owner, asked to choose between
+reading Mapleson 1973 through institutional access and re-aiming the item at
+what is reachable, chose to re-aim. So the original Done-when's demand for "a
+primary citation with its tier and reference conditions" per parameter is
+superseded: what each parameter now carries is its tier, plus a measurement of
+the same quantity cited alongside and explicitly not adopted where one is
+reachable, plus a stated reason where none is. That is the pattern the three
+agent files already use, and the `verify:` command above is the re-aimed
+specification - it fails with exit 1 on the pre-work tree and passes on this
+one, both run.
+
+**No stored value changed.** Checked mechanically, not by eye: all eleven
+compare equal to the pre-work file.
+
+*Five parameters gained a comparison.* Route and depth are recorded in each
+note, per `.claude/rules/citing-sources.md`; all five were reached through the
+PubMed MCP server, one at full-text depth and four at abstract depth.
+
+| Parameter | Stored | Reachable measurement | Tier | Gap |
+| --- | --- | --- | --- | --- |
+| `alveolar_gas_volume_l` | 2.5 L | Hudgel & Devadatta 1984, FRC 3.14 +/- 0.01 L (SE) awake, He dilution, n=10 men; with Wahba 1991's ~20% reduction under GA | 1 + 2 | 3.14 x 0.80 = 2.51 L, within 0.5% |
+| `default_cardiac_output_l_min` | 5.0 | Cattermole et al. 2017, 50-74.9 kg band median 5.51 (2.5-97.5%: 3.00-9.35), n=686 | 1 | stored 9.3% below median, inside range |
+| `tissue_groups.muscle.volume_l` | 33.0 L | Janssen et al. 2000, whole-body MRI, men 33.0 kg SM at 38.4% of body mass, n=468 | 1 | numeric match is coincidence: cohort averaged ~86 kg; scaled to 70 kg gives 26.9 kg, 18.5% below |
+| `tissue_groups.fat.perfusion_fraction` | 0.06 | Heinonen et al. 2012, PET, resting thigh subcutaneous ATBF 1.0 +/- 0.3 mL/100 g/min, n=6 | 1 | model implies ~2.1 mL/100 mL/min, roughly twice |
+| `tissue_groups.muscle.perfusion_fraction` | 0.18 | Frayn & Karpe 2014: fasting adipose flow per 100 g is similar to resting skeletal muscle | 2 | model's muscle:fat ratio ~0.8, consistent |
+
+*Six record why they have no comparison,* rather than leaving the silence to
+read as an oversight: `weight_kg` is a label no equation consumes;
+`venous_blood_volume_l` is a well-stirred mixing volume setting a 12-second
+time constant and is not the physiologic venous blood volume;
+`default_alveolar_ventilation_l_min` is a derived convention; and
+`tissue_groups.vessel_rich.volume_l`, `tissue_groups.vessel_rich.perfusion_fraction`
+and `tissue_groups.fat.volume_l` are lumped aggregates no single measurement
+covers.
+
+**The one finding that reaches a displayed curve** is the fat perfusion gap.
+It is recorded in `docs/MODEL.md` § "Known limitations" as well as in the data
+file, because a factor of two on fat flow is a factor of two on the fat group's
+time constant, and therefore on how much agent fat has taken up by the end of a
+case and on the slow tail of washout. Nothing was changed: one depot in six
+subjects does not overturn a whole-body lumped compartment, and `data/` is
+protected. `PL-8GV5` carries the question of whether the model should represent
+anaesthesia's own effect on regional perfusion at all.
+
+**Left open, and filed rather than dropped.** Step 5 of the original Approach
+asked for a Workbook edition and section in place of the bare vendor URL. That
+remains undone and is now `PL-XTMB`: `gasmanweb.com` is unreachable from a
+session, and `.claude/rules/citing-sources.md` forbids taking the edition from a
+search summary. The file's first `sources` note records the absence explicitly.
+
+**Docs swept:** `docs/MODEL.md` (§ "Parameter provenance" - the reference-patient
+paragraph rewritten, the Mapleson lineage claim removed - and § "Known
+limitations", new paragraph), `src/anesthesia_sim/data/patients/reference_adult.json`,
+`docs/references/README.md` (no change needed; nothing was added to it),
+`docs/worker.md` and `.claude/rules/citing-sources.md` (no change; `PL-XJ5P`
+carries the gap they have). `PL-BD94` was filed for the naming hazard the
+venous-pool note above exposes. The provenance table's eleven rows are unchanged
+because no value or key changed, and `make doc-check` confirms it.

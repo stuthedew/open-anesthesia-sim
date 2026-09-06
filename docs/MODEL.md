@@ -1123,12 +1123,47 @@ the Gas Man value and label it, rather than move to the textbook 1.4 or to
 Lerman's measured 1.46, was taken on 2026-09-03 and the route to primary values
 for all three agents is `ROADMAP.md`'s planned-milestone item 31.
 
-`src/anesthesia_sim/data/patients/reference_adult.json` has no primary
-citation to place beside its values, so it records that instead, in those
-words: no primary source has been adopted for any of its eleven parameters.
-Mapleson's papers are named there as the primary lineage, and explicitly as
-located-but-unread rather than as a citation — writing one for a paper nobody
-has opened would be the same failure in a different tier.
+`src/anesthesia_sim/data/patients/reference_adult.json` still adopts no
+primary source for any of its eleven parameters, and records that in those
+words. What changed on 2026-09-06 is that the file now says something specific
+about each one rather than only about the set.
+
+**Five carry a measurement cited alongside and explicitly not adopted**, in
+the form the agent files use — the measured value, its reference conditions,
+and how far the stored number sits from it. Hudgel and Devadatta's helium-
+dilution FRC in ten healthy men, read with Wahba's review of the roughly 20
+percent reduction under general anaesthesia, brackets the lung gas volume;
+Cattermole et al.'s 686 subjects in the 50–75 kg band give a cardiac output
+median of 5.51 L/min against a stored value 9.3 percent below it; Janssen et
+al.'s whole-body MRI gives a skeletal-muscle mass whose apparent agreement
+with the stored muscle volume is a coincidence, since that cohort of men
+averaged about 86 kg rather than 70; Heinonen et al.'s PET measurement of
+resting adipose perfusion is about half what the stored fat flow fraction
+implies; and Frayn and Karpe's review supplies the muscle comparison and the
+reason the fat gap is a question about the absolute level rather than the
+muscle-to-fat ratio, which the stored fractions get right.
+
+**Six have no comparison, and the file says why for each** rather than leaving
+the silence to be read as an oversight. Two are not measurements at all: the
+reference weight is a label no equation reads, and the venous pool is a
+well-stirred mixing volume setting a 12-second time constant, not the
+physiologic venous blood volume, which is several times larger. One is a
+derived convention. The remaining three are lumped-compartment aggregates —
+the vessel-rich volume and flow fraction, and the fat volume — for which no
+single measurement of the quantity this model means exists.
+
+**No stored value changed, and none of this promotes anything.** A measurement
+cited beside a tier-3 number does not source it; that is the second of the
+three rules below, and these entries are written to be read under it. The gap
+between the stored fat perfusion and the measured one is the largest of the
+five and is recorded in "Known limitations" as well, because it acts on the
+shape of a displayed curve rather than only on a number in a file.
+
+Mapleson's papers are no longer named here as the primary lineage. They were,
+until 2026-09-06, on the strength of their titles and never having been read;
+`PL-6Q8N` records what a session can and cannot reach, and why a paper
+publishing "data for quantifying" a model is a tier-2 compilation rather than
+the tier-1 source that framing implied.
 
 **So, three rules for a `sources` entry.**
 
@@ -3558,6 +3593,25 @@ either source's own confidence limits, and a reader comparing two agents at
 equipotent to that precision. The interface displays the divisor for exactly
 this reason. Moving all parameters to primary sources is `ROADMAP.md`'s
 planned-milestone item 31.
+
+**The fat group is perfused about twice as fast as the reachable resting
+measurement, and that acts on the shape of a curve.** The fat flow fraction is
+tier 3 like every other parameter in the reference patient, and
+`reference_adult.json` now carries the comparison: Heinonen et al.'s positron-
+emission-tomography measurement of resting subcutaneous adipose perfusion in
+healthy young women is close to half what this model's stored fraction
+implies, with the file's note giving both figures and the volume-to-mass
+conversion between them. The fat group's time constant is proportional to its
+volume and partition coefficient and inversely proportional to its flow, so
+halving the flow would roughly double that constant. Both values are long
+against any simulated case, so the fat compartment stays far from equilibrium
+either way and no displayed curve reaches a wrong endpoint; what moves is how
+much agent fat has taken up by the end of a case, and therefore the slow tail
+of washout, by something close to a factor of two. A learner reading the fat
+trace as a physiologic prediction rather than as this parameter set's
+behaviour would over-estimate fat loading. The measurement does not settle it
+— one depot in six subjects against a whole-body lumped compartment — which is
+why nothing was changed and the gap is recorded instead.
 
 ## Release gate
 
