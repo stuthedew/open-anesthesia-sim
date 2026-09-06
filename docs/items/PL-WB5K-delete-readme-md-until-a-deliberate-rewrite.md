@@ -6,9 +6,10 @@ effort: S
 status: done
 classes: docs, infra
 feature: project-introduction
-closed: 2026-09-05
 touches: README.md, pyproject.toml, .claude/rules/readme-hold.md, tools/readme_hold_check.py, tests/unit/test_readme_hold_check.py, Makefile, .github/workflows/quality.yml, docs/ARCHITECTURE.md, docs/MODEL.md, docs/WORKING_NOTES.md
 added: 2026-09-05
+closed: 2026-09-05
+pr: 366
 verify: python3 tools/readme_hold_check.py && python3 tools/doc_check.py check
 ---
 

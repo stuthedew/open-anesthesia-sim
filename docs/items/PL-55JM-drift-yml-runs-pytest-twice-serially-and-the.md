@@ -1,15 +1,16 @@
 ---
 id: PL-55JM
 title: drift.yml runs pytest twice serially, and the comment explaining why it stays bare is about --cov rather than about -n auto
-status: done
 priority: P2
 effort: S
+status: done
 classes: infra, test
 feature: dev-tooling
-closed: 2026-09-05
 touches: .github/workflows/drift.yml, .github/workflows/quality.yml
-verify: python3 tools/doc_check.py check && ! grep -qE '^ *- run: uv run pytest$' .github/workflows/drift.yml && ! grep -q 'deliberately keeps its bare' .github/workflows/quality.yml
 added: 2026-09-04
+closed: 2026-09-05
+pr: 369
+verify: python3 tools/doc_check.py check && ! grep -qE '^ *- run: uv run pytest$' .github/workflows/drift.yml && ! grep -q 'deliberately keeps its bare' .github/workflows/quality.yml
 ---
 
 **Problem.** `.github/workflows/drift.yml` runs `uv run pytest` twice - once at
