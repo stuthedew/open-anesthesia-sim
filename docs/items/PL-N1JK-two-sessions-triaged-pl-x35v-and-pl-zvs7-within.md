@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-06
 closed: 2026-09-06
+pr: 393
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_triage_names_an_item_whose_file_a_branch_has_already_edited' subprojects/docket/tests/test_cli.py
 ---
 

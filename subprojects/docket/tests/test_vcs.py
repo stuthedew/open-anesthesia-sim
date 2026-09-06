@@ -12,6 +12,7 @@ from pathlib import Path
 
 from docket.checks import Report
 from docket.vcs import (
+    REWRITTEN,
     BaseRelease,
     Branch,
     BranchCut,
@@ -20,6 +21,7 @@ from docket.vcs import (
     FlightReport,
     OrphanedBranch,
     OrphanedReport,
+    RewriteReport,
     StrandedItem,
     StrandedReport,
     behind_remote,
@@ -1207,6 +1209,17 @@ def test_flight_names_a_ref_that_contributes_by_name_in_both_halves() -> None:
     assert printed.count(NAMED_UNREADABLE) == 2
 
 
+def _commits(*entries: tuple[str, str, str, str, str]) -> str:
+    """A symmetric difference as `git log --left-right --format=%m..%p..%s` prints it.
+
+    Oldest first, which is what `--topo-order --reverse` gives and what the
+    rewrite rule reads: `<` for a commit only the base holds, `>` for one only
+    the branch holds. The parent field carries one hash for an ordinary commit
+    and two for a merge.
+    """
+    return "".join("\0".join(entry) + "\n" for entry in entries)
+
+
 def _branch_runner(
     branch: str = "claude/pl-k7qx-live",
     behind: int = 0,
@@ -1214,12 +1227,15 @@ def _branch_runner(
     landed: tuple[str, ...] = (),
     unrelated: bool = False,
     base_exists: bool = True,
+    divergence: str = "",
 ):
     """A git holding one checked-out branch at a known position against the base.
 
-    `unrelated` is the case the guard exists for: `merge-base` finds nothing,
-    and `rev-list --left-right --count` would still answer - with the length of
-    each side of two unrelated histories, which reads exactly like a position.
+    `unrelated` is the case the counts guard exists for: `merge-base` finds
+    nothing, and `rev-list --left-right --count` would still answer - with the
+    length of each side of two unrelated histories, which reads exactly like a
+    position. `divergence` is what the symmetric difference holds, which is a
+    different read and the one that tells a rewrite from a fork.
     """
 
     def run(args: list[str], root: Path) -> str:
@@ -1231,6 +1247,8 @@ def _branch_runner(
             return "" if unrelated else "0123456789abcdef\n"
         if args[0] == "rev-list":
             return f"{behind}\t{ahead}\n"
+        if args[:2] == ["log", "--topo-order"]:
+            return divergence
         if args[0] == "log":
             return "\n".join(f"{identifier} Something that landed" for identifier in landed)
         return ""
@@ -1293,6 +1311,204 @@ def test_branch_state_names_the_items_that_landed_while_the_branch_sat() -> None
     )
 
     assert state.landed == ("PL-K7QX", "PL-9Y42")
+
+
+# --- a rewritten history, which the counts alone read as ordinary divergence -
+#
+# `filter-repo` and `filter-branch` rebuild every commit, so a branch left on
+# the old history is counted as hundreds behind *and* hundreds ahead. Merging,
+# resetting or `checkout -B` onto the base - the three things that count
+# invites - each lose whatever the branch pushed into the rewrite's window,
+# which is the incident behind `PL-YGF3`.
+
+REWRITE = _commits(
+    ("<", "aaa1111", "1788256800", "p0", "PL-0001 The first commit"),
+    (">", "bbb1111", "1788256800", "p0", "PL-0001 The first commit"),
+    ("<", "aaa2222", "1788343200", "aaa1111", "PL-0002 The second commit"),
+    (">", "bbb2222", "1788343200", "bbb1111", "PL-0002 The second commit"),
+    ("<", "aaa3333", "1788688800", "aaa2222", "PL-9Y42 Landed after the rewrite"),
+    (">", "bbb3333", "1788602400", "bbb2222", "PL-K7QX Capture what only this branch holds"),
+)
+
+
+def test_a_rewritten_base_is_told_apart_from_a_branch_that_is_merely_behind() -> None:
+    """The divergence begins in commits the base also holds, under other hashes.
+
+    Same author date and same subject on both sides: that is what a rewrite
+    preserves and what a fork cannot fabricate. What is left over - here one
+    capture - is the only copy of itself anywhere.
+    """
+    state = branch_state(ROOT, runner=_branch_runner(behind=3, ahead=3, divergence=REWRITE))
+
+    assert state.disposition == REWRITTEN
+    assert state.rewrite is not None
+    assert state.rewrite.duplicated == 2
+    assert state.rewrite.own == (("bbb3333", "PL-K7QX Capture what only this branch holds"),)
+    assert state.rewrite.total == 3
+
+
+def test_an_ordinary_divergence_makes_no_rewrite_claim() -> None:
+    """A branch that sat while the base moved matches nothing, and merging is right."""
+    ordinary = _commits(
+        (">", "bbb1111", "1788256800", "p0", "PL-K7QX Do the thing"),
+        ("<", "aaa2222", "1788343200", "p0", "PL-9Y42 Validate wash-in"),
+    )
+    state = branch_state(ROOT, runner=_branch_runner(behind=1, ahead=1, divergence=ordinary))
+
+    assert state.rewrite is None
+    assert state.disposition == "merge"
+
+
+def test_a_commit_cherry_picked_from_the_base_is_not_a_rewritten_history() -> None:
+    """The rule reads the *oldest* divergent commit, not any duplicate anywhere.
+
+    A branch that forked, did its own work and then took a commit from the base
+    holds a duplicate too. It is not on stale history, and telling it to
+    cherry-pick its way onto a new base would be an answer to a question it
+    does not have.
+    """
+    picked = _commits(
+        (">", "bbb1111", "1788256800", "p0", "PL-K7QX Do the thing"),
+        ("<", "aaa2222", "1788343200", "p0", "PL-9Y42 Validate wash-in"),
+        (">", "bbb2222", "1788343200", "bbb1111", "PL-9Y42 Validate wash-in"),
+    )
+    state = branch_state(ROOT, runner=_branch_runner(behind=1, ahead=2, divergence=picked))
+
+    assert state.rewrite is None
+    assert state.disposition == "merge"
+
+
+def test_a_rewrite_with_no_fork_point_is_reported_rather_than_declined() -> None:
+    """The usual shape, and the one the fork-point guard used to swallow whole.
+
+    Measured 2026-09-06: a `filter-branch --index-filter` rewrite of a
+    four-commit repository leaves *no* merge base, so this arrived at the
+    decline about a `--depth` fetch - advice that does nothing to a rewritten
+    clone, and that leaves the reader holding the reflex the item is about.
+    Proving the two sides are one duplicated history is what makes the counts
+    mean something here.
+    """
+    state = branch_state(
+        ROOT, runner=_branch_runner(behind=3, ahead=3, unrelated=True, divergence=REWRITE)
+    )
+
+    assert state.disposition == REWRITTEN
+    assert state.declined == ""
+    assert (state.behind, state.ahead) == (3, 3)
+    # Nothing "landed" across a history this one shares no commit with.
+    assert state.landed == ()
+
+
+def test_two_commits_sharing_a_date_and_a_subject_match_one_on_the_base_once() -> None:
+    """Under-reporting what is held only here is the failure that costs commits."""
+    repeated = _commits(
+        ("<", "aaa1111", "1788256800", "p0", "Fix the typo"),
+        (">", "bbb1111", "1788256800", "p0", "Fix the typo"),
+        (">", "bbb2222", "1788256800", "bbb1111", "Fix the typo"),
+    )
+    state = branch_state(ROOT, runner=_branch_runner(behind=1, ahead=2, divergence=repeated))
+
+    assert state.rewrite is not None
+    assert state.rewrite.own == (("bbb2222", "Fix the typo"),)
+
+
+def test_the_rewritten_branch_line_replaces_the_advice_that_would_lose_the_work() -> None:
+    """Both ordinary commands are destructive here, so neither is offered."""
+    from docket.render import format_branch_state
+
+    printed = format_branch_state(
+        BranchState(
+            branch="claude/pl-k7qx-live",
+            base=BASE,
+            behind=699,
+            ahead=703,
+            fetched=True,
+            rewrite=RewriteReport(
+                duplicated=702, own=(("2966d9b", "PL-8PS6 Capture the fresh gas flow range"),)
+            ),
+        )
+    )
+
+    assert "rewritten history, not divergence" in printed
+    assert "2966d9b PL-8PS6 Capture the fresh gas flow range" in printed
+    assert "git checkout -B claude/pl-k7qx-live-rewritten origin/main" in printed
+    assert "git cherry-pick 2966d9b" in printed
+    # Tags are the half a branch-only cleanup misses: they still point into the
+    # old history, and `git fetch` will not move one that already exists.
+    assert "git fetch --tags --force origin" in printed
+    assert f"git merge {BASE}" not in printed
+    assert "git checkout -B claude/pl-k7qx-live origin/main" not in printed
+
+
+def test_every_commit_held_only_here_is_listed_and_picked() -> None:
+    """A truncated recovery command is the failure this whole report prevents.
+
+    It would look complete and drop exactly what it was printed to save, and no
+    shorter honest form exists: no git command lists the commits held only
+    here, because telling them from the duplicated ones is the read this module
+    just did.
+    """
+    from docket.render import format_branch_state
+
+    own = tuple((f"c{index:07d}", f"PL-000{index} Commit {index}") for index in range(9))
+    printed = format_branch_state(
+        BranchState(
+            branch="claude/pl-k7qx-live",
+            base=BASE,
+            behind=40,
+            ahead=49,
+            fetched=True,
+            rewrite=RewriteReport(duplicated=40, own=own),
+        )
+    )
+
+    assert all(f"{short} {subject}" in printed for short, subject in own)
+    picked = next(line for line in printed.splitlines() if "cherry-pick" in line)
+    assert all(short in picked for short, _ in own)
+
+
+def test_a_merge_commit_held_only_here_says_what_cherry_pick_needs() -> None:
+    """`git cherry-pick` refuses a merge without `-m`, and one of the two commits
+    the incident lost was the merge that resolved the branch's conflicts."""
+    from docket.render import format_branch_state
+
+    printed = format_branch_state(
+        BranchState(
+            branch="claude/pl-k7qx-live",
+            base=BASE,
+            behind=9,
+            ahead=11,
+            fetched=True,
+            rewrite=RewriteReport(
+                duplicated=9,
+                own=(("2966d9b", "Merge origin/main into claude/pl-k7qx-live"),),
+                merges=True,
+            ),
+        )
+    )
+
+    assert "cherry-pick -m 1" in printed
+
+
+def test_a_rewrite_the_branch_added_nothing_to_is_moved_across_whole() -> None:
+    """A local copy of the default branch left on the old history: nothing to save."""
+    from docket.render import format_branch_state
+
+    printed = format_branch_state(
+        BranchState(
+            branch="main",
+            base=BASE,
+            behind=700,
+            ahead=699,
+            fetched=True,
+            rewrite=RewriteReport(duplicated=699),
+        )
+    )
+
+    assert "Nothing is held only here" in printed
+    assert f"git checkout -B main {BASE}" in printed
+    assert "git fetch --tags --force origin" in printed
+    assert "cherry-pick" not in printed
 
 
 def test_branch_state_declines_on_a_detached_head() -> None:

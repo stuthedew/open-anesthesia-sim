@@ -211,6 +211,20 @@ the pull request's state settles it, and where the session cannot reach
 GitHub, `git log --oneline origin/main` for a squash subject naming the
 branch's ids does. A branch whose pull request is open is live work: leave it.
 
+**Clearing branch refs does not finish the job after a history rewrite.** A
+local clone keeps purged content reachable through its release tags, which
+still point at pre-rewrite commits until something re-points them by force -
+observed 2026-09-06 across `v0.3.7` to `v0.4.4`, against a remote that was
+already clean, and `git log --all` is what shows it (`PL-YGF3`):
+
+```bash
+git fetch --tags --force origin
+```
+
+`bin/docket branch` prints that line itself where it finds a rewritten
+history, which is the moment it is wanted; this is for the pass that clears
+refs without being on a diverged branch.
+
 **Delete that one ref by name; never `git fetch --prune`.** A stale
 `origin/<branch>` can be the only surviving copy of an item captured on a
 branch nobody merged, which is why `fetch_remote` does not prune and what

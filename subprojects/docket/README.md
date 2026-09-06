@@ -214,19 +214,56 @@ happen outside: the network.
 
 **It prints; it does not act.** `git checkout -B` discards commits, so a check
 that fired unattended would be a worse failure than the staleness it cures. Two
-commands and no third: a branch behind with nothing of its own is restarted, a
-branch behind with work of its own merges the base in. Rebase is deliberately
-not offered - telling "only capture commits" from any other commits means
-guessing, and a rebase of a pushed branch needs a force-push, which this
-project's squash-merge path exists to avoid.
+commands for the ordinary cases and no third: a branch behind with nothing of
+its own is restarted, a branch behind with work of its own merges the base in.
+Rebase is deliberately not offered - telling "only capture commits" from any
+other commits means guessing, and a rebase of a pushed branch needs a
+force-push, which this project's squash-merge path exists to avoid.
 
-**The fork point is proven before the counts.** `git rev-list --left-right
---count A...B` does not fail on refs sharing no history: it prints the size of
-each side, which reads exactly like a position. That state is reachable - a
-`--depth` fetch re-truncates `origin/main`, and `.git/shallow` records it, so a
-later ordinary fetch does not undo it - and a fabricated "98 ahead" argues
-against merging in the very case the line exists to catch. So a clone that
-cannot see the fork point is told to deepen instead of being given a number.
+**A rewritten history is not divergence, and no count can tell them apart.**
+`filter-repo`, `filter-branch` and a force-pushed rebase of the default branch
+rebuild every commit on it. A branch still sitting on the old history is then
+counted as hundreds behind *and* hundreds ahead, which reads exactly like a
+branch carrying a great deal of work - and both commands above lose whatever it
+pushed into the rewrite's window, one by replaying the base's own history
+against itself and one by discarding the branch outright. `PL-YGF3` is the
+incident: two commits survived only because the session that wrote them still
+had them in a live working tree, and nothing anywhere reported them missing.
+
+So the divergence is read rather than counted. A rewrite preserves author date
+and subject while changing every hash, so the two sides of the symmetric
+difference hold the same commits twice; the rule is that the **oldest** commit
+unique to this side has a counterpart on the base, which means the divergence
+*begins* in duplicated history - what a rewrite leaves and what forking and
+then committing cannot produce. An ordinary fork matches nothing there and is
+left alone, and so is a branch that cherry-picked from the base after its own
+first commit. What is left unmatched is named commit by commit, because that is
+the work held nowhere else, and the recovery carries it onto the new history
+instead of discarding it. The tags line goes with it: `git fetch` will not move
+a tag that already exists, so a clone keeps the old history reachable through
+its release tags until something forces them across.
+
+Matched on author date and subject rather than on patch id - what `git cherry`
+uses - for two reasons that both bit the incident. The rewrite stripped a file
+out of history, so the patch of every commit that had ever touched it changed;
+and `git cherry` drops merge commits entirely, while one of the two commits
+actually lost was a merge.
+
+**The fork point guards the counts, and the rewrite test runs in front of it.**
+`git rev-list --left-right --count A...B` does not fail on refs sharing no
+history: it prints the size of each side, which reads exactly like a position.
+That state is reachable - a `--depth` fetch re-truncates `origin/main`, and
+`.git/shallow` records it, so a later ordinary fetch does not undo it - and a
+fabricated "98 ahead" argues against merging in the very case the line exists
+to catch. So a clone that cannot see the fork point is told to deepen instead
+of being given a number.
+
+But a rewrite is *also* a pair of histories with no fork point, and usually is:
+rebuilding every commit shares no root with the original, measured against a
+real `filter-branch` rewrite on 2026-09-06. Deepening does nothing for it. So
+the duplicated-history test is asked first, and where it answers, the counts
+mean something and are reported; the deepen-me decline is what is left for the
+truncated clone it was written for.
 
 **The session-start hook deepens it first, so that line is a fallback rather
 than the normal case** (`PL-K2ZK`). Every environment this runs in clones

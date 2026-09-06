@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -1191,6 +1192,39 @@ CURRENT = "current"
 RESTART = "restart"
 PULL = "pull"
 MERGE = "merge"
+REWRITTEN = "rewritten"
+
+
+@dataclass(frozen=True)
+class RewriteReport:
+    """A divergence that is one history under two sets of hashes, and what only one side holds.
+
+    A history rewrite - `filter-repo`, `filter-branch`, a force-pushed rebase
+    of the default branch - replaces every commit on the base. A branch still
+    sitting on the old history is then counted as hundreds behind *and*
+    hundreds ahead, which reads exactly like a branch carrying a great deal of
+    work. It is not: almost every one of those commits is the base's own under
+    its old hash. The few that are not are the only copy of themselves
+    anywhere, and `git merge`, `git reset --hard` and `git checkout -B` - the
+    three things that ahead/behind line invites - each lose or bury them.
+    `PL-YGF3` is the incident: two commits survived only because the session
+    that wrote them still held them in a live working tree.
+
+    `duplicated` counts the branch's own commits that reappear on the base
+    under a different hash; `own` is the rest, oldest first, which is the work
+    that exists nowhere else and has to be carried across by hand. `merges`
+    says whether any of those is a merge commit, because that changes the
+    recovery - `git cherry-pick` refuses one without `-m`.
+    """
+
+    duplicated: int = 0
+    own: tuple[tuple[str, str], ...] = ()
+    merges: bool = False
+
+    @property
+    def total(self) -> int:
+        """How many commits the branch holds that the base does not, counted by hash."""
+        return self.duplicated + len(self.own)
 
 
 @dataclass(frozen=True)
@@ -1237,17 +1271,27 @@ class BranchState:
     behind: int = 0
     ahead: int = 0
     landed: tuple[str, ...] = ()
+    rewrite: RewriteReport | None = None
     fetched: bool = False
     declined: str = ""
     absent: bool = False
 
     @property
     def disposition(self) -> str:
-        """Which of the four states this is, or `""` when there is no answer."""
+        """Which of the five states this is, or `""` when there is no answer.
+
+        `REWRITTEN` outranks both `PULL` and `MERGE` because it contradicts
+        them: where the divergence is duplicated history, pulling or merging
+        replays the base's own commits against themselves, and it is the
+        default branch - the `PULL` case - where a local copy left on the old
+        history does the most damage.
+        """
         if self.declined:
             return ""
         if self.behind == 0:
             return CURRENT
+        if self.rewrite is not None:
+            return REWRITTEN
         if self.is_default:
             return PULL
         return RESTART if self.ahead == 0 else MERGE
@@ -1276,6 +1320,81 @@ def _landed_since(
             if identifier not in found:
                 found.append(identifier)
     return tuple(found)
+
+
+def _duplicated_history(base: str, root: Path, run: Runner) -> RewriteReport | None:
+    """Whether the divergence from `base` is one rewritten history, and what only this side holds.
+
+    **Stateless, and that is a requirement rather than a preference.** The
+    obvious test - has the remote ref moved to something that is not a
+    descendant of what this checkout last saw - needs a memory of the old
+    value, and the only one git keeps is the remote-tracking reflog. A
+    container clones fresh, so in the session that most needs the answer - one
+    opened after the rewrite, with nothing left in a working tree to copy out -
+    that reflog holds a single entry and the test cannot fire. This reads the
+    shape of the divergence instead, which any checkout can do at any moment.
+
+    The fingerprint is that a rewrite **preserves author date and subject while
+    changing every hash**, so the two sides of the symmetric difference hold
+    the same commits twice over. The rule is that the *oldest* commit unique to
+    this side has a counterpart on the base: the divergence begins in
+    duplicated history, which is what a rewrite leaves behind and what forking
+    and then committing cannot produce. A branch that merely sat while the base
+    moved matches nothing there and gets `None`.
+
+    Matched on author date and subject rather than on patch id - what `git
+    cherry` uses - for two reasons that both bit the incident behind
+    `PL-YGF3`. The rewrite stripped a file out of history, so the patch of
+    every commit that had ever touched it changed; and `git cherry` drops merge
+    commits entirely, while one of the two commits actually lost was a merge.
+
+    Returns `None` rather than a claim wherever the read fails, which leaves
+    the ordinary behind/ahead advice in place. That is the same posture the
+    rest of this module takes: what it reports present is present, and silence
+    is never evidence.
+    """
+    output = run(
+        [
+            "log",
+            "--topo-order",
+            "--reverse",
+            "--left-right",
+            "--format=%m%x00%h%x00%at%x00%p%x00%s",
+            f"{base}...HEAD",
+            "--",
+        ],
+        root,
+    )
+    ours: list[tuple[str, str, str, bool]] = []
+    theirs: Counter[str] = Counter()
+    for line in output.splitlines():
+        parts = line.split("\0")
+        if len(parts) != 5:
+            continue
+        side, short, when, parents, subject = parts
+        key = f"{when}\0{subject}"
+        if side == ">":
+            ours.append((key, short, subject, len(parents.split()) > 1))
+        elif side == "<":
+            theirs[key] += 1
+    # `--reverse` on `--topo-order` puts ancestors first, so `ours[0]` is where
+    # this side's divergence begins and is the one commit the rule turns on.
+    if not ours or not theirs[ours[0][0]]:
+        return None
+
+    duplicated = 0
+    own: list[tuple[str, str]] = []
+    merges = False
+    for key, short, subject, is_merge in ours:
+        # Decremented rather than tested, so two commits on this side sharing a
+        # date and a subject do not both match one commit on the base.
+        if theirs[key]:
+            theirs[key] -= 1
+            duplicated += 1
+            continue
+        own.append((short, subject))
+        merges = merges or is_merge
+    return RewriteReport(duplicated=duplicated, own=tuple(own), merges=merges)
 
 
 def fetch_remote(root: Path, *, runner: Runner | None = None) -> None:
@@ -1344,22 +1463,11 @@ def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = Fa
             declined=f"{branch} is the default branch and has no remote copy to compare with",
         )
 
-    # The fork point is asked for before the counts, and both guard and answer
-    # come from the one read: `rev-list --left-right --count` on refs sharing
-    # no history reports each side's whole length instead of failing, and a
-    # count invented that way is worse than no count at all.
+    # A missing fork point is why the counts cannot be trusted on their own:
+    # `rev-list --left-right --count` on refs sharing no history reports each
+    # side's whole length instead of failing, and a count invented that way is
+    # worse than no count at all.
     fork = run(["merge-base", "HEAD", base], root).strip()
-    if not fork:
-        return BranchState(
-            branch=branch,
-            base=base,
-            fetched=fetched,
-            declined=(
-                f"this clone shares no readable history with {base}, so its position "
-                "cannot be counted - something ran a `--depth` fetch, and "
-                "`git fetch --deepen=100 origin` restores the answer"
-            ),
-        )
 
     counts = run(["rev-list", "--left-right", "--count", f"{base}...HEAD"], root).split()
     if len(counts) != 2 or not all(part.isdigit() for part in counts):
@@ -1372,12 +1480,38 @@ def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = Fa
         )
 
     behind, ahead = int(counts[0]), int(counts[1])
+    # Asked before the missing-fork-point guard rather than after it, because a
+    # rewrite is the case that most needs an answer and the case least likely
+    # to have a fork point: `filter-repo` and `filter-branch` rebuild every
+    # commit, so the old history and the new one usually share nothing at all.
+    # Measured 2026-09-06 against a `filter-branch --index-filter` rewrite of a
+    # four-commit repository - no merge base, and `rev-list` reporting 5 and 5.
+    # Proving the two sides are one duplicated history is what makes those
+    # numbers mean something; without it this branch declined, and declined
+    # with advice about `--depth` that does nothing to a rewritten clone.
+    rewrite = _duplicated_history(base, root, run) if behind and ahead else None
+    if not fork and rewrite is None:
+        return BranchState(
+            branch=branch,
+            base=base,
+            fetched=fetched,
+            declined=(
+                f"this clone shares no readable history with {base}, so its position "
+                "cannot be counted - something ran a `--depth` fetch, and "
+                "`git fetch --deepen=100 origin` restores the answer"
+            ),
+        )
+
     return BranchState(
         branch=branch,
         base=base,
         behind=behind,
         ahead=ahead,
-        landed=_landed_since(fork, base, root, run) if behind else (),
+        # Nothing "landed" across a rewrite with no fork point: every commit on
+        # the base is then outside this history, and naming a release's worth
+        # of ids would answer a question nobody asked.
+        landed=_landed_since(fork, base, root, run) if behind and fork else (),
+        rewrite=rewrite,
         fetched=fetched,
     )
 
