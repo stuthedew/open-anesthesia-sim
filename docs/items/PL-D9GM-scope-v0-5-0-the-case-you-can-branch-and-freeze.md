@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: ROADMAP.md, docs/items
 added: 2026-09-06
 closed: 2026-09-06
+pr: 380
 verify: python3 tools/doc_check.py check && grep -qF '## v0.5.0 - the case you can branch' ROADMAP.md
 ---
 
