@@ -3,7 +3,8 @@ id: PL-7PLY
 title: formatting.py's displayed-precision comment stops at the 1.2e-2 envelope corner and omits the 2.3e-2 worst trajectory, the row that actually tests its 'second decimal is the uncertain digit' claim
 priority: P1
 effort: S
-status: ready
+status: blocked
+blocked-by: PL-X9KD
 classes: science, docs
 feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py
