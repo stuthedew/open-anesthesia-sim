@@ -657,13 +657,33 @@ MASS_BALANCE_RELATIVE_TOLERANCE = 1e-9
 
 A step passes if either tolerance is satisfied. The relative error uses `max(initial + delivered, 1e-15 L)` as its denominator to avoid division by zero when no agent has yet been delivered. Exceeding both stops the run: this is the point past which the model refuses to show a number, not the standard the shipped model is held to.
 
-**The release gate is the relative residual alone**, asserted by the reference runs in `tests/reference/` as `MASS_BALANCE_RELATIVE_GATE`:
+**The release gate is the relative residual alone**, asserted by the reference runs in `tests/reference/test_multi_agent.py` and `tests/reference/test_sevo_patient.py`, which restate it as `MASS_BALANCE_RELATIVE_GATE`:
 
 ```text
 MASS_BALANCE_RELATIVE_GATE = 1e-10
 ```
 
-It is relative because the residual is rounding accumulated once per step, so it scales with how much agent a run has handled. An absolute bound would therefore measure the delivered concentration and the run length rather than conservation: measured 2026-09-06 on the shipped exact step, halving the dial halves the absolute residual exactly and leaves the relative one unchanged to four significant figures. The same measurements put the worst relative residual at any step at 2.3e-13 over the 1200 s the reference runs cover, and at 6.4e-12 over 8 h at the most demanding corner of the supported envelope, so 1e-10 leaves about 450x headroom at the horizon those runs use and about 16x at 8 h. Neither moving a dial nor lengthening a case changes what the gate certifies, which is what it is for. `tests/reference/mass_balance_gate.py` carries the measurements and the derivation.
+It is relative because the residual is rounding accumulated once per step, so it scales with how much agent a run has handled. An absolute bound measures the delivered concentration and the run length instead of conservation. Measured 2026-09-06 on the shipped exact step, over 600 s wash-in plus 600 s washout:
+
+| Agent | Dial | Delivered | $`\varepsilon_{\mathrm{absolute}}`$ | $`\varepsilon_{\mathrm{relative}}`$ |
+| --- | --- | --- | --- | --- |
+| isoflurane | 4% | 1.60 L | 3.589e-13 L | 2.243e-13 |
+| isoflurane | 2% | 0.80 L | 1.794e-13 L | 2.243e-13 |
+| desflurane | 4% | 1.60 L | 9.262e-14 L | 5.789e-14 |
+| desflurane | 2% | 0.80 L | 4.631e-14 L | 5.789e-14 |
+
+Halving the dial halves the absolute residual exactly and leaves the relative one unchanged to four significant figures.
+
+Where the value comes from — worst relative residual at any step, measured the same day at the reference runs' own settings and at the corner of the supported envelope (fresh gas 10 L/min, alveolar ventilation 12 L/min, cardiac output 10 L/min, each agent at its calibrated dial maximum):
+
+| Horizon | Reference settings | Worst envelope corner |
+| --- | --- | --- |
+| 1200 s, what the reference runs cover | 2.12e-13 | 2.26e-13 |
+| 1 h | 2.19e-13 | 1.04e-12 |
+| 4 h | 3.75e-12 | 2.88e-12 |
+| 8 h | 5.05e-12 | 6.36e-12 |
+
+1e-10 leaves about 450x headroom at the horizon those runs use and about 16x at 8 h, so neither moving a dial nor lengthening a case changes what the gate certifies. It stays an order of magnitude inside the 1e-9 halt threshold, so passing the gate says strictly more than that the run did not stop, and a real conservation defect is orders of magnitude rather than factors of two.
 
 Clipping a negative store to zero does not repair mass balance and must not be used to conceal an unstable update.
 

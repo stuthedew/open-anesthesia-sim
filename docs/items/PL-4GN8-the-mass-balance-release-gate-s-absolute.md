@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: science, test
 feature: numerical-domain
-touches: tests/reference/test_multi_agent.py, tests/reference/test_sevo_patient.py, tests/reference/mass_balance_gate.py, docs/MODEL.md
+touches: tests/reference/test_multi_agent.py, tests/reference/test_sevo_patient.py, docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-06
 verify: uv run pytest tests/reference/test_multi_agent.py tests/reference/test_sevo_patient.py && grep -q 'relative_error <=' tests/reference/test_multi_agent.py && grep -q 'relative_error <=' tests/reference/test_sevo_patient.py
@@ -151,11 +151,20 @@ these tests carried was not merely dial-dependent, it was false past about an
 hour of ordinary simulated time and passed only because the tests stop at
 1200 s.
 
-**What shipped.** `tests/reference/mass_balance_gate.py` holds
-`MASS_BALANCE_RELATIVE_GATE = 1e-10` with the measurements it derives from, in
-one place rather than restated per file, because a release gate that means two
-things is the defect this item is about. Both reference runs assert
-`validation.relative_error <= MASS_BALANCE_RELATIVE_GATE`. `docs/MODEL.md`
+**What shipped.** Both reference runs assert `validation.relative_error <=
+MASS_BALANCE_RELATIVE_GATE`, with `MASS_BALANCE_RELATIVE_GATE = 1e-10`
+restated in each file and the derivation in `docs/MODEL.md`, which is the
+specification and therefore the single source of what the gate means.
+
+A first attempt put the constant in a shared `tests/reference/mass_balance_gate.py`
+instead, and `PL-JBZK`'s lane check - which merged onto `main` while this was
+being worked - refused it: a file under `tests/` that imports no
+`anesthesia_sim` is apparatus by that rule, and the check's suggested remedy
+would have declared simulator content as workflow. Restating the bound per file
+is the repository's own idiom anyway, for the reason
+`tests/unit/test_agent_simulation_validation.py` records, and putting the
+derivation in the specification rather than in a test helper is the better half
+of the trade. `PL-12P8` carries what the check's premise misses. `docs/MODEL.md`
 separates the run-time halt thresholds from the release gate - it called the
 halt thresholds "the release tolerance", which was half the confusion - states
 the gate and its derivation, and settles the question it had left open against

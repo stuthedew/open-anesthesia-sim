@@ -1,5 +1,4 @@
 import pytest
-from mass_balance_gate import MASS_BALANCE_RELATIVE_GATE
 
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
@@ -12,6 +11,22 @@ from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
+
+# The conservation bound the reference runs are held to, restated here rather
+# than imported for the reason `tests/unit/test_agent_simulation_validation.py`
+# gives: a bound that followed the constant it tests would move wherever that
+# constant moved. `docs/MODEL.md` § "Mass-balance identity" is the documented
+# basis and carries the derivation.
+#
+# Relative, not absolute. The mass-balance residual is rounding accumulated
+# once per step, so it scales with how much agent a run has handled: halving
+# the dial halves `absolute_error_l` exactly and leaves `relative_error`
+# unchanged to four significant figures. Asserting the absolute figure
+# therefore measured this test's own setup rather than conservation, and was
+# additionally false past about an hour of simulated time - it first exceeds
+# 1e-12 L at t = 3452 s at these settings, and these runs stop at 1200 s
+# (`PL-4GN8`, measured 2026-09-06 on the shipped exact step).
+MASS_BALANCE_RELATIVE_GATE = 1e-10
 
 # The steps docs/MODEL.md § "Step-refinement test" specifies, coarsest first.
 # All three are supported steps: the first is `MAXIMUM_SIMULATION_STEP_S`
