@@ -983,7 +983,7 @@ the figure should be re-measured against the shipped propagator before
 than rewritten: the question is what recurs, and the note records that it was
 asked and answered before.
 
-## Control resolution is not what the interface promises at speed (2026-09-06)
+## Decided: control resolution is not what the interface promised at speed - PL-X9KD, PL-NBWP, PL-NBCJ (2026-09-06)
 
 `PL-X9KD` re-derived `MAXIMUM_SIMULATION_STEP_S` as a *declared control-resolution
 tolerance*: a control change lands at the next step boundary, so it is displaced by
@@ -993,17 +993,39 @@ desflurane binding: 6.7e-3 pp for a case-opening dial change, 1.4e-1 pp for a
 ventilator start. The criterion is the model's own parameter uncertainty - one SD of
 a measured partition coefficient is worth 9e-4 to 6.8e-2 pp.
 
-Two open threads came out of that and they are coupled, which is why they are here
-rather than only in their own items.
+Two threads came out of that and they were coupled, which is why they are here
+rather than only in their own items. **The coupling is now cut, and one of the two
+is closed** (2026-09-06).
 
-`PL-NBWP`: the derivation above holds at 1x playback and nowhere else. `steps_per_tick`
-is the multiplier and `simulation_view.py`'s burst is a synchronous loop with no
-`await`, so control resolution is `SIMULATION_TICK_INTERVAL_S x multiplier` - 30
-simulated seconds at 300x. `app/playback.py` says a faster playback is "a scheduling
-change and never a modelling one", which is true of a run nobody touches and false of
-one where a slider moves.
+`PL-NBWP` **- closed.** The derivation above holds at 1x playback and nowhere else.
+`steps_per_tick` is the multiplier and `simulation_view.py`'s burst is a synchronous
+loop with no `await`, so control resolution is `SIMULATION_TICK_INTERVAL_S x
+multiplier` - 30 simulated seconds at 300x. `app/playback.py` said a faster playback
+is "a scheduling change and never a modelling one", which is true of a run nobody
+touches and false of one where a slider moves.
 
-`PL-NBCJ`: whether the step should move to 0.05 s so an abrupt manoeuvre stays inside
-one parameter SD. Halving the step at a fixed wakeup doubles the steps per tick at
-every rate, so it makes `PL-NBWP` worse. Decide `PL-NBWP` first; if the burst changes,
-revisit both together.
+Decided: keep the behaviour, correct the claims, and publish the grid per rate
+against what one step of it costs a displayed compartment - up to about 10 pp at
+300x on an abrupt manoeuvre, measured rather than extrapolated, since the
+displacement saturates and a linear estimate over-states 300x by four times. Two
+measurements settled the rejected options and are the part worth remembering here:
+a step costs 33 us, so a burst is at worst a tenth of the tick and simulated time is
+standing still when most control events arrive; and frames are two grid steps apart
+at every rate, so a finer grid would resolve control timing the display cannot show.
+The item carries both in full.
+
+`PL-NBCJ` **- closed the same day.** Whether the step should move to 0.05 s so an
+abrupt manoeuvre stays inside one parameter SD. Decided: it stays at 0.1 s, and the
+ventilator start being timed to about twice one parameter SD is accepted. `PL-NBWP`
+is what settled it, by narrowing the benefit: above 1x the playback grid is
+`multiplier x 0.1` s and dominates the step outright, so halving the step would have
+changed nothing for a reader at any rate but the slowest, while doubling the
+propagations per simulated second and forcing the tick structure to be revisited.
+
+**Why this thread is kept rather than deleted.** The three items ran together and
+`PL-NBCJ` was decided on a measurement made for `PL-NBWP`, which no single item is
+written from the vantage point of. The one live consequence is `PL-ZVS7`: none of
+the published figures - the 1x tolerance table, the per-rate grid, or the step they
+were all measured at - is held by a test, so the whole of what these three items
+established rests on prose. `PL-X35V` is the other tail: the disclosure reaches only
+a reader with `docs/MODEL.md` open, and the rate control itself still says nothing.

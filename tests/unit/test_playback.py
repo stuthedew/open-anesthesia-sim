@@ -43,6 +43,56 @@ def test_a_supported_rate_is_that_many_steps_per_tick(rate: PlaybackRate) -> Non
     )
 
 
+#: The simulated seconds between the instants a live control change can first
+#: act at, per rate. A tick advances its whole burst uninterrupted, so this is
+#: the steps that burst takes times the step, and it is what `PL-NBWP` made the
+#: module docstring and `docs/MODEL.md` § "Supported simulation step" publish.
+#:
+#: Written out rather than computed from the multipliers, which would restate
+#: the implementation and pass whatever it did. These are the numbers a reader
+#: is told, so they are the numbers to fail against.
+PUBLISHED_CONTROL_GRID_S = {1: 0.1, 5: 0.5, 20: 2.0, 60: 6.0, 300: 30.0}
+
+
+@pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES, ids=lambda rate: f"{rate.multiplier}x")
+def test_the_control_grid_at_each_rate_is_the_one_two_documents_publish(rate: PlaybackRate) -> None:
+    """The resolution claim, held where the rate ladder can move it.
+
+    Two documents state that a setting changed while the run plays first
+    acts at a tick boundary, and give the resulting grid per rate against a
+    measured cost in percentage points of a displayed compartment. Adding a
+    rung to the ladder, or re-tuning either interval, changes those numbers
+    and nothing else would notice: the prose would keep asserting the old
+    grid while the interface offered a different one, which is the failure
+    `PL-NBWP` exists to have fixed once.
+
+    Exact equality is deliberate and is not fragile here. Every product of
+    the shipped step and a supported multiplier is exact in binary, so a
+    tolerance would only hide the case this is guarding - a rung whose grid
+    is a number nobody has published.
+    """
+
+    steps = rate.steps_per_tick(
+        tick_interval_s=TICK_INTERVAL_S, simulation_step_s=SIMULATION_STEP_S
+    )
+
+    assert rate.multiplier in PUBLISHED_CONTROL_GRID_S, (
+        f"{rate.multiplier}x is offered but its control grid is published nowhere; "
+        "add it to app/playback.py and docs/MODEL.md 'Supported simulation step' first"
+    )
+    assert steps * SIMULATION_STEP_S == PUBLISHED_CONTROL_GRID_S[rate.multiplier]
+
+
+def test_every_published_control_grid_belongs_to_an_offered_rate() -> None:
+    """The other direction: a grid published for a rung nobody can select.
+
+    Removing a rung and leaving its row in the table would tell a reader
+    the interface resolves control timing at a rate it does not offer.
+    """
+
+    assert set(PUBLISHED_CONTROL_GRID_S) == {rate.multiplier for rate in SUPPORTED_PLAYBACK_RATES}
+
+
 def test_the_slowest_supported_rate_is_real_time() -> None:
     """Nothing slower than real time is offered, and the default is it."""
 

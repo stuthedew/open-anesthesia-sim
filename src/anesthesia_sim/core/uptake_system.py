@@ -81,8 +81,30 @@ SECONDS_PER_MINUTE = 60.0
 # manoeuvre is not held inside it. A ventilator start at this step displaces the
 # alveolar reading by up to 1.4e-1 pp for the duration of its transient, about
 # twice one parameter SD. Holding that inside one SD needs a step near 0.05 s.
-# docs/MODEL.md "Supported simulation step" carries the measurements and the
-# open question of whether to move the value.
+#
+# That was put to the project owner and decided on 2026-09-06: the value stays
+# here and the timing is accepted (PL-NBCJ). Moving to 0.05 s would double the
+# propagations per simulated second and force the interface's tick structure to
+# be revisited, and PL-NBWP had by then narrowed what it would buy to 1x
+# playback alone - above 1x the interface's own control grid is `multiplier x
+# 0.1` s and dominates the step outright. So this is a declared tolerance that
+# has been argued rather than a default nobody revisited, and the ventilator
+# start being timed to about twice one parameter SD is the accepted cost of it
+# rather than an oversight. docs/MODEL.md "Supported simulation step" carries
+# the measurements and the whole of the decision.
+#
+# Both figures are per step of delay, and a *caller* decides how many steps of
+# delay a control change waits (PL-NBWP). They are therefore what a caller
+# advancing one step per control opportunity sees, which the shipped interface
+# is only at 1x playback: it advances a whole tick's worth of steps between
+# opportunities, so its own resolution is that many times this one - 30 s and
+# up to about 10 pp at 300x, measured over the same manoeuvres. That is a
+# property of the caller's loop and not of this constant, which is why the
+# number here does not move; but the constant is a floor on the interface's
+# resolution rather than a statement of it, and a reader who takes it for the
+# latter is reading it as several hundred times better than it is. The whole
+# per-rate table is in docs/MODEL.md "Supported simulation step" beside this
+# one, and app/playback.py states which grid the interface actually offers.
 MAXIMUM_SIMULATION_STEP_S = 0.1
 
 

@@ -136,10 +136,31 @@ SIMULATION_STEP_S = 0.1
 # `test_a_tick_is_one_simulation_step_of_real_time`) rather than assumed;
 # re-tuning the wakeup for the host would otherwise silently falsify every
 # rate the interface displays.
+#
+# It is also the interface's control resolution, which is the second thing
+# this constant decides and the one that is easy to miss (`PL-NBWP`). A tick
+# advances its whole burst uninterrupted, so a setting changed while the run
+# plays first acts at a tick boundary: the reachable simulated instants are
+# `multiplier` times this interval apart, which is 30 s at 300x. Shortening
+# it would tighten that grid at the cost of waking the loop more often.
 SIMULATION_TICK_INTERVAL_S = SIMULATION_STEP_S
 # Render cadence, deliberately independent of the simulation step. The two
 # were previously the same 10 Hz tick, which made every redraw a gate on the
 # next simulation step and on servicing the next button press.
+#
+# Twice the tick interval, so a frame is two control-grid steps at every
+# playback rate - 0.2 s of simulated time apart at 1x and 60 s at 300x. That
+# ordering is why `PL-NBWP` left the grid where it is: a finer grid would
+# resolve control timing the display cannot show, so tightening one without
+# the other buys a reader nothing.
+#
+# Written as its own number rather than derived from the tick, for the same
+# reason the step and the tick are named apart above: a display cadence and
+# an event-loop cadence are separate decisions that happen to be in this
+# ratio today. `test_a_frame_is_two_control_grid_steps_at_every_rate` holds
+# the relation instead, because it is the premise of a published argument
+# rather than an incidental ratio, and a test is what makes it fail here
+# rather than silently in `docs/MODEL.md`.
 RENDER_INTERVAL_S = 0.2
 # How wide the chart is before the first frame runs. Every frame after it
 # derives the width from the selected time base, so this is only what the
@@ -2977,9 +2998,30 @@ class SimulationView:
         `SIMULATION_STEP_S`, at every rate: a rate that resized the step
         would make the same case read differently depending on how fast it
         was watched, which is a determinism failure regardless of the solver
-        (`PL-SN2C`). So a run played at 60x records the history a run played
-        at 1x records, element for element, and reaches it sixty times
-        sooner in real time.
+        (`PL-SN2C`). So a run played at 60x that nobody touches records the
+        history a run played at 1x records, element for element, and reaches
+        it sixty times sooner in real time.
+
+        **The qualification in that sentence is load-bearing and was absent
+        until `PL-NBWP`.** The burst below has no `await` in it and Flet
+        dispatches a sync handler inline on this loop, so no control event
+        can land between two steps of a tick: simulated time stands still
+        for one tick interval and then jumps by the whole burst. A setting
+        changed while the run plays therefore first acts at a tick boundary,
+        and the same case run at two rates with the same slider moves does
+        *not* record the same history, because the moves land on grids
+        `multiplier x SIMULATION_TICK_INTERVAL_S` apart. `app/playback.py`
+        states the grid and the pause-change-resume route that is exact at
+        every rate; `docs/MODEL.md` § "Supported simulation step" measures
+        what one grid step costs a displayed compartment.
+
+        Servicing events inside the burst was considered and rejected there
+        rather than deferred: a step costs about 33 us, so even 300 of them
+        occupy under a tenth of the tick and most control events already
+        arrive while simulated time is standing still. Yielding would move
+        no bound and would make *which* step a change lands on a function of
+        the host's scheduler, which is the one thing the paragraph above
+        promises it is not.
 
         The rate is read once per tick rather than held, so a change takes
         effect on the next wakeup and never part-way through a burst: a tick
