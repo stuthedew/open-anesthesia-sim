@@ -3,7 +3,7 @@ id: PL-6Q8N
 title: The reference adult's eleven physiologic parameters have no primary source at all
 priority: P1
 effort: M
-status: ready
+status: needs-decision
 classes: science, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
@@ -134,3 +134,87 @@ the stored value is the Gas Man default; the Workbook citation names an
 edition and section rather than resting on a vendor URL; `docs/MODEL.md`'s
 "Where this project stands" paragraph matches what the file now holds; and no
 stored value has changed.
+
+**Reconnaissance, 2026-09-06 — the reading this item is built on cannot be
+done from a session, and the escape hatch that used to cover exactly this
+closed the day before.** Nothing in `reference_adult.json` or `docs/MODEL.md`
+was changed; this records what was measured, so the next session does not buy
+the same discovery twice.
+
+*Reachability, measured against the routes `.claude/rules/citing-sources.md`
+prescribes.* All three papers resolve in PubMed and nowhere else:
+
+| Paper | PMID | DOI | Abstract | PMC full text |
+| --- | --- | --- | --- | --- |
+| Mapleson 1963, J Appl Physiol 18:197-204 | 13932730 | 10.1152/jappl.1963.18.1.197 | none | no |
+| Mapleson 1964, Br J Anaesth 36:129-139 | 14164256 | 10.1093/bja/36.3.129 | none | no |
+| Mapleson 1973, Br J Anaesth 45:319-334 | 4705482 | 10.1093/bja/45.4.319 | none | no |
+
+`WebFetch` returned `EGRESS_BLOCKED` for `doi.org`, `pubmed.ncbi.nlm.nih.gov`,
+`pmc.ncbi.nlm.nih.gov`, `europepmc.org`, `journals.physiology.org`,
+`www.sciencedirect.com`, `www.bjanaesthesia.org.uk` and `gasmanweb.com` —
+every publisher, index and vendor route this item needs, the one the Workbook
+citation itself rests on included. The item's note above is one word
+optimistic: it says PubMed carries no abstract for 1964 or 1973, and in fact
+**none of the three has one**. So the working route returns title, journal,
+volume, pages, DOI and MeSH terms, and for this item that is the whole of it.
+
+PubMed does supply the publisher's article identifiers, which is the one thing
+worth carrying forward for whoever can reach a library: the 1973 paper is
+`S0007-0912(17)48842-8` and the 1964 paper `S0007-0912(17)53625-9`, which are
+the Elsevier PIIs the current British Journal of Anaesthesia archive addresses
+those articles by.
+
+*The premise is worth re-examining before that reading is bought.* This item
+names the three papers as "the primary lineage" and its Done-when asks each
+parameter for "a primary citation with its tier and reference conditions".
+Two things now argue a successful reading would not deliver that for most of
+the eleven:
+
+- The 1973 title says what the paper is — *circulation-time models ... and
+  **data for quantifying them***. A paper that assembles published
+  physiological data in order to quantify a model is, under `docs/MODEL.md`
+  § "Source hierarchy", a **tier 2 secondary synthesis**: legitimate for
+  finding the primary source, never the authority for a stored value. Reading
+  it would then yield a tier-2 citation and a pointer to whatever it cites,
+  not the tier-1 record asked for here.
+- PubMed's MeSH indexing of the 1973 paper is Blood Circulation Time, Blood
+  Volume, Cardiac Output, Heart Rate, Pulmonary Circulation, Spirometry and
+  Models Biological, with no term for organ size, adipose tissue, skeletal
+  muscle or regional blood flow. Indexing is a bibliographic signal rather
+  than the paper's contents, so this is evidence and not a finding — but it
+  points at circulation times, blood volumes and ventilation as what the
+  paper quantifies, and that is not the set of tissue-group volumes and
+  perfusion fractions this file needs sourced.
+
+*The route that used to close an item like this is gone.* `docs/references/`
+exists for a source a session cannot reach, and the M4 paper was supplied by
+the project owner on 2026-09-04 after `www.vldb.org` proved unreachable.
+`docs/references/README.md` § "Redistribution" now forbids publisher-copyright
+material in this public repository, and two such full texts were removed on
+2026-09-06. So the one in-repository route that would close this item is no
+longer available and nothing has replaced it. `PL-XJ5P` carries that gap;
+it is a hole in the standing guidance rather than this item's to fix.
+
+*Not attempted, deliberately.* Step 5 asks for a Workbook edition and section
+in place of the bare vendor URL. Search returned a plausible-looking record —
+Philip JH, *Gas Man: Understanding Anesthesia Uptake and Distribution*,
+Addison-Wesley, 1984, and a later Med Man Simulations edition — and
+`.claude/rules/citing-sources.md` § "A search result is not a source" is
+exactly the rule against writing that into a data file. `gasmanweb.com` is
+refused, so the edition could not be read at the source and none was recorded.
+
+*State of the `verify:` command,* run this session on the unchanged tree:
+`tests/unit/test_parameters.py` passes (38 tests) and `tools/doc_check.py
+check` exits 0, so the first two clauses prove the tree healthy; the third —
+a `sources` entry whose `citation` names Mapleson — fails with exit 1. It is
+a working specification and needs no repair.
+
+**Decision needed.** Either the project owner reads Mapleson
+1973's tables through institutional access and reports the values, and this
+item is written against that with the route recorded as such; or the item is
+re-aimed at what is reachable — for each of the eleven, the tier the stored
+value sits in, plus whatever primary measurement of the same quantity PubMed
+can actually deliver, recorded alongside with the difference and explicitly
+not adopted, which is the pattern the three agent files already use. The
+second is answerable from inside a session and the first is not.
