@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: science, test
 feature: numerical-domain
+milestone: v0.4.6
 touches: tests/reference/test_published_wash_in.py, docs/MODEL.md
 added: 2026-09-03
 closed: 2026-09-06
+pr: 412
 verify: uv run pytest tests/reference/test_published_wash_in.py && grep -q 'def test_five_minute_elimination_ratio_against_published_human_measurement' tests/reference/test_published_wash_in.py
 ---
 
