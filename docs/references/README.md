@@ -1,8 +1,8 @@
 # Source documents held on hand
 
-The sources this project reads from, with the full text kept in the repository
-where its licence permits, so a session can read the source rather than recall
-it. **Being here promotes nothing.** `docs/MODEL.md` § "Source
+Full texts kept in the repository so a session can read the source rather than
+recall it, and the citations for sources this repository may not carry.
+**Being here promotes nothing.** `docs/MODEL.md` § "Source
 hierarchy: what may be cited as the authority for a value" decides what may be
 cited as the authority for a stored number, and a PDF sitting in this directory
 is evidence a session can open, not a tier in that hierarchy. Cite the work,
@@ -10,43 +10,43 @@ never the file path.
 
 ## Redistribution
 
-**The files here are not under one licence, and the difference decided what
-had to happen before this repository went public.**
+**This repository is public.** A file here is therefore redistributed to
+anyone, and the only files that may sit in this directory are ones whose own
+licence permits that. Check a new file's licence before adding it; there is no
+directory-wide policy to inherit, and "the repository is private" is no longer
+available as the thing that makes personal use lawful.
 
-The two physiology sources were publisher-copyright works held under the
-personal access of the project owner, which was ordinary personal use only
-while this repository was private.
+The M4 paper meets that bar: VLDB publishes it under Creative Commons
+Attribution-NonCommercial-NoDerivs 3.0, stated on the paper's own first page.
 
-It is now public, and **both were removed on 2026-09-06** — by a
-`git filter-repo` pass and a force-push rather than a delete commit, because
-both blobs were in the history from the commit that added them. Their entries
-below keep the full citation and no longer name a file: **citing a work is not
-redistributing it**, and the citations were recorded in full here precisely so
-that they would survive the removal. Cite either freely; neither full text is
-held.
+**Two publisher-copyright full texts were removed on 2026-09-06**, by the
+`git filter-repo` pass and force-push this section used to name as a
+prerequisite. They were kept here under the project owner's personal access
+while the repository was private; that stopped being the situation when
+`PL-XYRN` opened the go-public gate, and the removal did not happen with it.
+`PL-SHG5` carries what went wrong, what was rewritten, and what remains.
 
-The M4 paper is different and does **not** join that set: VLDB publishes it
-under Creative Commons Attribution-NonCommercial-NoDerivs 3.0, stated on the
-paper's own first page, so keeping it here is redistribution the licence
-already permits. Check a new file's own licence before adding it rather than
-assuming this directory has one policy.
+Their entries stay below, without the files. The citations were always the
+part designed to survive such a removal, which is why they are recorded here
+in full rather than left implicit in the filenames — a reader who needs one of
+those sources can now reach it the way any other reader would, through the DOI.
 
 ## The documents
 
 ### Baker & Farmery 2011 — inert gas transport in blood and tissues
 
-*Full text not held here* — publisher copyright, removed 2026-09-06. Cite the
-work below.
+**Not held here.** Removed 2026-09-06 as publisher-copyright material this
+public repository may not redistribute; see "Redistribution" above. Reach it
+through the DOI.
 
 > Baker AB, Farmery AD. Inert gas transport in blood and tissues.
 > *Comprehensive Physiology*. 2011 Apr;1(2):569–92.
 > DOI [10.1002/cphy.c100011](https://doi.org/10.1002/cphy.c100011).
 > PMID [23737195](https://pubmed.ncbi.nlm.nih.gov/23737195/).
 
-Metadata confirmed against PubMed while the file was held. Its XMP packet
-carried Wiley's legacy identifier for the same article,
-`10.1002/j.2040-4603.2011.tb00337.x`; both resolve, and the DOI above is the
-one to cite.
+Metadata confirmed against PubMed. The file's own XMP packet carries Wiley's
+legacy identifier for the same article, `10.1002/j.2040-4603.2011.tb00337.x`;
+both resolve, and the DOI above is the one to cite.
 
 This is the closest published statement of what `docs/MODEL.md` specifies. It
 derives single-compartment and multicompartment models of inert gas transfer,
@@ -59,8 +59,9 @@ being questioned or extended.
 
 ### Schüttler & Schwilden 2008 — *Modern Anesthetics*
 
-*Full text not held here* — publisher copyright, removed 2026-09-06. Cite the
-chapter, per the note below.
+**Not held here.** Removed 2026-09-06 as publisher-copyright material this
+public repository may not redistribute; see "Redistribution" above. Reach it
+through the DOI.
 
 > Schüttler J, Schwilden H, editors. *Modern Anesthetics*. Handbook of
 > Experimental Pharmacology, vol. 182. Berlin, Heidelberg: Springer; 2008.
@@ -98,8 +99,8 @@ registry should confirm the record and add one.
 
 Licensed by the publisher under
 [CC BY-NC-ND 3.0](http://creativecommons.org/licenses/by-nc-nd/3.0/), per the
-statement on its first page — the one file here that may stay if this
-repository is ever made public.
+statement on its first page — the one full text this public repository may
+carry, and now the only one it does.
 
 Supplied by the project owner, 2026-09-04, after `www.vldb.org` proved
 unreachable from a session. It is the authority for what the chart may claim

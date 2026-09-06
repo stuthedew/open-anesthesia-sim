@@ -40,25 +40,30 @@ full here and not left implicit in the filenames".
 
 **Correction to this brief as first written.** It claimed the remaining M4
 paper "records no licence or redistribution basis". That was wrong, and came
-from reading one section rather than the file: the entry states CC BY-NC-ND
+from reading one section rather than the file: the entry stated CC BY-NC-ND
 3.0 from the paper's own first page, and the "Redistribution" section already
-called it "the one file here that may stay if this repository is ever made
-public". Nothing about the M4 entry needed changing, and nothing was changed.
+called it the one file that could stay if the repository were made public.
+Nothing about the M4 entry needed correcting on those grounds.
 
-**What was done.**
+**The prose half, by `#388`.** Both entries now read "Not held here" with the
+date and the reason and keep their citations, the "Redistribution" section is
+rewritten for a public repository, and the M4 entry no longer describes itself
+in the future tense as the one file that *may* stay. Two sessions fixed this
+prose independently and `#388` merged first, so its wording stands; the line
+numbers cited above were taken before it and no longer resolve.
 
-- The two entries keep their citation and no longer name a file, each marked
-  *full text not held here* with the reason and the removal date.
-- The "Redistribution" section is rewritten in the past tense: the repository
-  is public, both texts were removed on 2026-09-06, and either may still be
-  cited freely.
-- The Baker & Farmery provenance note, which described the file's XMP packet,
-  now reads in the past tense.
-- `tools/doc_check.py` gains `_check_reference_files_exist`: a filename named
-  as inline code in `docs/references/README.md` must be present in
-  `docs/references/`. An entry naming no file passes, which is the shape a
-  citation-only entry takes. Confirmed to fire by reintroducing a bogus
-  filename, and to pass once removed.
+**The check half, by this branch.** `tools/doc_check.py` gains
+`_check_reference_files_exist`: a filename named as inline code in
+`docs/references/README.md` must be present in `docs/references/`. An entry
+naming no file passes, which is the shape a citation-only entry takes - so the
+judgment half, whether an entry should keep its file or only its citation,
+stays with a person and only the decidable half is automated.
+
+Confirmed against `#388`'s README rather than against the version it replaced:
+it reports 0 errors as written, and reintroducing either removed filename
+produces the error naming the file and the remedy. That is what closes this
+item - the prose was fixed twice, but a fix nothing enforces is the state this
+item exists to end.
 
 **Where.** `docs/references/README.md`; `tools/doc_check.py`
 (`REFERENCE_FILE_RE`, `_check_reference_files_exist`, and its call in
