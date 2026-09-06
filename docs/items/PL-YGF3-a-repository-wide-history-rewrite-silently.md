@@ -1,14 +1,16 @@
 ---
 id: PL-YGF3
 title: A repository-wide history rewrite silently dropped two commits pushed into its window, and no guard reported the loss
-status: done
-added: 2026-09-06
-closed: 2026-09-06
 priority: P2
 effort: M
+status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.5
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, tests/unit/test_no_prune_guard.py, .claude/skills/docket/SKILL.md
+added: 2026-09-06
+closed: 2026-09-06
+pr: 395
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_rewritten_base_is_told_apart_from_a_branch_that_is_merely_behind' subprojects/docket/tests/test_vcs.py
 ---
 

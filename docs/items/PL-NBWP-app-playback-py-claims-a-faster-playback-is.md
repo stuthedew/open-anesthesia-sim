@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, docs
 feature: presentation-safety
+milestone: v0.4.5
 touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-06

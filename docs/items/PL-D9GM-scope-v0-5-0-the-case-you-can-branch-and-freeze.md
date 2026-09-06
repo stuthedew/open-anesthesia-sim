@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: scenario-branching
+milestone: v0.4.5
 touches: ROADMAP.md, docs/items
 added: 2026-09-06
 closed: 2026-09-06

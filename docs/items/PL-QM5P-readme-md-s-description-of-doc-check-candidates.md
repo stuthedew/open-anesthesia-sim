@@ -3,13 +3,21 @@ id: PL-QM5P
 title: README.md's description of doc_check candidates still says it prints lines mentioning anything the diff touched, which PL-B2NS narrowed to code mentions
 priority: P3
 effort: S
-status: blocked
-blocked-by: PL-N092
+status: dropped
 classes: docs, defect
 feature: project-introduction
 touches: README.md
 added: 2026-09-05
+closed: 2026-09-06
+reason: Overtaken by PL-N092, which rewrote README.md from scratch and describes no doc_check modes at all, so the stale candidates gloss no longer exists in the file. PL-RM83's boundary rule sends tooling detail at this depth off the front page. The corrected gloss - the lines naming anything the diff touched as code - is carried in .claude/skills/docket/SKILL.md and CLAUDE.md, which is where a session reads it before running the mode.
 ---
+
+**Dropped 2026-09-06, under `PL-N092` (rewrite README as a human-readable
+introduction).** The rewritten README does not mention `doc_check.py` or its
+`candidates` mode, so the one word of drift this item recorded is gone with
+the sentence that carried it. The corrected wording survives in the two
+documents a session actually reads before running the mode — `CLAUDE.md` and
+the `docket` skill's close-out step — which `PL-B2NS` fixed in its own commit.
 
 **Problem.** `README.md:179` says `doc_check.py` "also has a `candidates` mode
 that prints the documentation lines mentioning anything a diff changed".

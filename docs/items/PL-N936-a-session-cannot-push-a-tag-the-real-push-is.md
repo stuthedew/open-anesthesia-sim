@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: dev-tooling
+milestone: v0.4.5
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-06
 closed: 2026-09-06

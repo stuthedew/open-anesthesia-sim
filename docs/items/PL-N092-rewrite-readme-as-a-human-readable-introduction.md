@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, ux
 feature: project-introduction
+milestone: v0.4.5
 touches: README.md, docs/MODEL.md, pyproject.toml, Makefile, .github/workflows/quality.yml, tools/readme_hold_check.py, tests/unit/test_readme_hold_check.py, docs/ARCHITECTURE.md
 added: 2026-09-01
 closed: 2026-09-06

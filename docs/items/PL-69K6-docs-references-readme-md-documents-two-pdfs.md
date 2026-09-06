@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: provenance
+milestone: v0.4.5
 touches: docs/references, tools/doc_check.py
 added: 2026-09-06
 closed: 2026-09-06

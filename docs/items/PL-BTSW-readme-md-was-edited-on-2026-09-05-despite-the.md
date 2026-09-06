@@ -3,13 +3,23 @@ id: PL-BTSW
 title: README.md was edited on 2026-09-05 despite the freeze, and the edit left an unwrapped line
 priority: P3
 effort: S
-status: blocked
+status: dropped
 classes: docs, defect
 feature: project-introduction
 touches: README.md
-blocked-by: PL-N092
 added: 2026-09-05
+closed: 2026-09-06
+reason: Overtaken by PL-N092, which rewrote README.md from scratch: the unwrapped line went with the old file, and the freeze whose breach this item recorded was retired in the same commit together with tools/readme_hold_check.py. The new file's longest line is 83 characters against the ~110 measured here. Nothing remains to fix, and the structural finding behind the breach - a path-scoped rule cannot gate a first write - is stated in CLAUDE.md's routing list.
 ---
+
+**Dropped 2026-09-06, under `PL-N092` (rewrite README as a human-readable
+introduction).** Both halves are gone. The unwrapped line went with the old
+file — the rewritten README's longest line is 83 characters, against the ~110
+this item measured — and the freeze whose breach it recorded was retired in
+`PL-N092`'s own commit along with `tools/readme_hold_check.py`, so there is no
+rule left to breach. The general lesson it drew, that a path-scoped rule fires
+on a read and so cannot gate a first write, is stated in `CLAUDE.md`'s routing
+list and does not depend on this record.
 
 **Problem.** `.claude/rules/readme-hold.md` froze `README.md` on 2026-09-05.
 `#336` (`PL-ZK9R`, confine `secrets` and `uuid` out of `core/` too) edited it

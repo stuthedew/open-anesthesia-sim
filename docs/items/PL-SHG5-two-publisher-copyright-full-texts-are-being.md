@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: provenance
+milestone: v0.4.5
 touches: docs/references
 added: 2026-09-06
 closed: 2026-09-06

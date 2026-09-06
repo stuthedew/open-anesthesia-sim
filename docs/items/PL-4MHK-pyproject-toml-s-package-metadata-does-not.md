@@ -6,10 +6,12 @@ effort: S
 status: done
 classes: defect, docs
 feature: project-introduction
+milestone: v0.4.5
 touches: pyproject.toml, docs/WORKING_NOTES.md
 blocked-by: PL-N092
 added: 2026-09-01
 closed: 2026-09-06
+pr: 396
 verify: python3 tools/doc_check.py check && grep -qF 'not a medical device: not for clinical prediction' pyproject.toml && grep -qF 'Topic :: Scientific/Engineering :: Medical Science Apps.' pyproject.toml
 ---
 
