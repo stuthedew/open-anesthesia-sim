@@ -8,7 +8,7 @@ classes: docs, ux
 feature: project-introduction
 touches: README.md, docs/MODEL.md, pyproject.toml, Makefile, .github/workflows/quality.yml, tools/readme_hold_check.py, tests/unit/test_readme_hold_check.py, docs/ARCHITECTURE.md
 added: 2026-09-01
-verify: python3 tools/doc_check.py check && ! grep -q 'resolution the numerical method supports' README.md
+verify: python3 tools/doc_check.py check && test -f README.md && ! grep -q 'resolution the numerical method supports' README.md
 not-delegable: docs/MODEL.md is a protected path, and the command below bounds only the mechanical half - whether the rewritten README actually introduces the project to a first-time reader is the judgment a check cannot make, which is the whole of this item
 ---
 
@@ -221,3 +221,26 @@ the tree that says what the project *is* to a stranger who has not opened
 interface and in `CITATION.cff`, neither of which a visitor to the repository
 page meets. `touches` already names `tools/readme_hold_check.py` and its test,
 which enforce the file's absence and must be retired in the same change.
+
+**The `verify:` command was vacuous and is rewritten, 2026-09-06.** It read
+`doc_check check && ! grep -q '…' README.md`, written on 2026-09-01 when the
+file existed. `PL-WB5K` deleted `README.md` on 2026-09-05, and `grep` on a
+missing file exits 2, which `!` inverts to success - so the command passed on a
+tree where none of this item's work had been done, and `docket verify` would
+have accepted a branch that did none of it. `test -f README.md` is inserted
+ahead of the `grep`, which is what fails until the file exists; the `grep` half
+is unchanged and still carries `PL-RM83`'s boundary rule against restating
+`docs/MODEL.md`.
+
+**How it surfaced is worth recording, because it is the mechanism working.**
+`docket check --verify` only replays items at `ready` or `needs-decision`, so
+while this one was `blocked` nothing ran its command and the rot was invisible.
+Unblocking it above put it in scope, and CI failed on the very next push -
+`PL-N092 is open but its verify: command already passes (1 of 1 checked)`.
+Local `make check` did not catch it and could not: `PL-P3B6` took `--verify`
+off that target deliberately. The scoped replay `PL-SDHR` added is what put the
+finding on the pull request rather than on `main` after the merge.
+
+The general hole that leaves - a `blocked` item's command can go stale
+unnoticed for as long as it stays blocked, and then reddens whichever pull
+request unblocks it - is `PL-RC0M`.
