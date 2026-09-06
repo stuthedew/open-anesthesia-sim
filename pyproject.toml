@@ -1,7 +1,7 @@
 [project]
 name = "anesthesia-sim"
 version = "0.4.4"
-description = "Open-source anesthesia simulation project"
+description = "A deterministic simulator of volatile-anesthetic uptake and distribution, built for teaching. An educational tool, not a medical device: not for clinical prediction, dosing, or monitoring."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -9,6 +9,51 @@ authors = [
     { name = "Stuart Feichtinger", email = "stuthedew@users.noreply.github.com" }
 ]
 requires-python = ">=3.14,<3.15"
+
+# The package's machine-readable statement of maturity, audience and subject.
+# Every string below is an exact row of <https://pypi.org/classifiers/>, read
+# 2026-09-06.
+#
+# **Nothing in this toolchain enforces that**, which is why the strings are
+# verified against the published list by hand rather than trusted to the build.
+# Measured 2026-09-06: `uv build` 0.12.7 built both artifacts from a
+# `Development Status :: 3 - Alpah` typo without a warning, so a misspelling
+# here ships in `PKG-INFO` and surfaces only at a PyPI upload this project does
+# not perform. `PL-4MHK` records why that is not a check: five strings that
+# change about once a release train do not earn a vendored copy of a 900-row
+# list, and re-verifying them on every `make check` would be a check that never
+# changes a decision.
+#
+# `Development Status :: 3 - Alpha` rather than `2 - Pre-Alpha`: a case runs
+# end to end today - v0.4.0 shipped the teachable case and v0.4.4 the exact
+# propagator - which is past the row that means "not yet functional". It is
+# not `4 - Beta` because the MVP is still ahead (`ROADMAP.md` row 5, v0.5.0)
+# and there is no packaged build, so the interfaces are still moving.
+#
+# Three families are deliberately absent rather than overlooked:
+#
+# - **No `License ::` row.** `license` above is an SPDX expression, which is the
+#   form PEP 639 asks for and which ships as `License-Expression` in metadata
+#   2.4. A license classifier beside it is not refused - measured the same day,
+#   `uv build` warns "License classifiers are ambiguous and deprecated per PEP
+#   639" and builds anyway - so its absence is a decision, not something the
+#   backend imposed.
+# - **No `Programming Language :: Python ::` rows.** `requires-python` directly
+#   above states the interpreter range, and installers read that rather than a
+#   classifier. A second copy would drift silently, which is the failure mode
+#   the comments through the rest of this file are written against.
+# - **No `Intended Audience :: Science/Research`.** `README.md` names two
+#   readers - educators and trainees, and contributors - and neither is a
+#   researcher. Claiming a research audience would imply the model has been
+#   validated for inference rather than for teaching, which is the kind of
+#   over-claim `CLAUDE.md`'s presentation-correctness standard forbids.
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "Intended Audience :: Healthcare Industry",
+    "Topic :: Education",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
 dependencies = [
     "flet-charts>=0.86,<1.0",
     "flet[all]>=0.86,<1.0",
