@@ -1,8 +1,15 @@
 ---
 id: PL-YGF3
 title: A repository-wide history rewrite silently dropped two commits pushed into its window, and no guard reported the loss
-status: untriaged
+status: done
 added: 2026-09-06
+closed: 2026-09-06
+priority: P2
+effort: M
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, tests/unit/test_no_prune_guard.py, .claude/skills/docket/SKILL.md
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_rewritten_base_is_told_apart_from_a_branch_that_is_merely_behind' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** On 2026-09-06 the copyrighted-PDF purge rewrote every commit on
@@ -78,3 +85,27 @@ which is the decidable half, and is what distinguishes a rewrite from ordinary
 drift - or the digest's ahead/behind line says plainly that a symmetric
 divergence of this size means history was rewritten and that `reset --hard` is
 destructive until the branch's own content has been copied out.
+
+**Approach, chosen 2026-09-06.** The "not a descendant of what this checkout
+last saw" test above needs a memory of the ref's previous value, and the only
+thing that holds one is `git reflog refs/remotes/origin/<branch>`. A container
+clones fresh, so in the session that matters most - a new one, opened after the
+rewrite - that reflog has exactly one entry and the test cannot fire. So the
+detection is stateless instead, and reads the shape of the divergence itself:
+a rewrite leaves the branch's own commits *duplicated* on the base under new
+hashes, matched by author date and subject, which `git log --left-right` prints
+from one read of the symmetric difference. The rule is that the **oldest**
+commit unique to the branch has a counterpart on the base - the divergence
+begins in duplicated history, which is what a rewrite does and what forking and
+committing cannot. Ordinary drift matches nothing and stays silent.
+
+Matching on author date and subject rather than on patch id, deliberately: the
+rewrite that prompted this stripped a file from history, so the patch of every
+commit that touched it changed, and `git cherry` drops merge commits entirely -
+one of the two commits actually lost here was a merge.
+
+It lands in `branch_state`/`format_branch_state`, not in `stranded`, because
+that is where the destructive advice is printed. `stranded` already recovers
+the item *files* off such a branch and its recovery still works; what nothing
+did was stop `git merge` or `git checkout -B` being recommended over a history
+that is one history under two sets of hashes.

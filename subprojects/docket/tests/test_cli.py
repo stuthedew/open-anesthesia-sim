@@ -1425,6 +1425,92 @@ def test_triage_names_the_refs_that_bound_its_in_flight_answer(
     assert "IN FLIGHT" not in out
 
 
+def test_triage_names_an_item_whose_file_a_branch_has_already_edited(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-N1JK: two sessions triaged one pair of items and collided at merge.
+
+    The mark above this one cannot fire for a triage pass. A pass that fills in
+    fields writes nothing outside the queue, which is exactly the diff shape
+    `branches_in_flight` refuses to read as work - so the two sessions each
+    fetched, each ran `show`, and each were told correctly that nothing was in
+    flight. Against real git rather than an injected runner, because what is
+    being proved here is that `--name-only` names the item file in a shape the
+    walk parses into an id.
+    """
+    root = _flight_repo(tmp_path, "PL-N3W1 Triage it", wrote="items/PL-N3W1-untriaged.md")
+    (root / "items" / "PL-N3W1-untriaged.md").write_text(
+        UNTRIAGED.replace("PL-U1U1", "PL-N3W1"), encoding="utf-8"
+    )
+
+    assert main(["--items", str(root / "items"), "triage"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"Its file is already edited on {BRANCH}." in out
+    assert "a second resolution of the same file, so skip it." in out
+    # The weaker mark, worded as the weaker mark: `IN FLIGHT` means work is on
+    # a branch, and reading a capture commit as work is what PL-X3WZ removed.
+    assert "IN FLIGHT" not in out
+    assert "induction curve looks wrong" in out
+
+
+def test_show_names_the_branch_that_has_already_edited_the_item_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Naming an item reaches `show` and nothing else, so the warning lives here.
+
+    It has to say the opposite of what `IN FLIGHT` says about starting: the
+    item is startable, and one file of it will need resolving.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
+    assert "PL-0001 is startable" in out
+    assert "IN FLIGHT" not in out
+
+
+def test_show_prefers_the_in_flight_mark_to_the_file_edit(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """One item, one answer. A closure writes the item and the code together."""
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+    subprocess.run(["git", "checkout", "-q", BRANCH], cwd=root, check=True, capture_output=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(
+        READY.replace("PL-B1B1", "PL-0001").replace("status: ready", "status: done"),
+        encoding="utf-8",
+    )
+    for args in (["add", "-A"], ["commit", "-qm", "PL-0001 Close it out"]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert "IN FLIGHT" in out
+    assert "Its file is already edited" not in out
+
+
+def test_next_still_offers_an_item_whose_file_a_branch_has_only_edited(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-X3WZ intact, which is the half this change must not break.
+
+    Capturing a finding before a session ends is mandatory, so an item whose
+    file a live branch has touched is the ordinary case rather than the rare
+    one. Ranking on that would withhold startable items from every session, for
+    as long as the branch went unmerged - which for a branch nobody merges is
+    forever.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+
+    assert main(["--items", str(root / "items"), "next"]) == 0
+
+    assert "PL-0001" in capsys.readouterr().out
+
+
 def test_show_leaves_an_item_no_branch_carries_out_of_flight(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1576,6 +1662,86 @@ def test_branch_state_is_spelled_in_a_way_real_git_answers(
     assert "Landed on main since this branch forked: PL-9Y42." in out
     # No caveat: this checkout's base is a local branch, which no fetch refreshes.
     assert "last fetch" not in out
+
+
+def _rewritten_repo(tmp_path: Path) -> Path:
+    """A branch left on a history the default branch has since been rebuilt from.
+
+    The shape of `PL-YGF3`'s incident, built with plumbing every git ships:
+    the same two subjects at the same author dates, committed twice over
+    different content, which is what a purge of a file out of history leaves.
+    Rebuilding every commit shares no root with the original, so there is no
+    merge base at all - measured against a real `filter-branch` rewrite on
+    2026-09-06, and the reason the fork-point guard could not be left in front
+    of this.
+    """
+    root = tmp_path / "rewritten"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    history = (
+        ("PL-0001 First", "2026-08-01T12:00:00+00:00"),
+        ("PL-0002 Second", "2026-08-02T12:00:00+00:00"),
+    )
+
+    def git(*args: str, when: str = "2026-08-05T12:00:00+00:00") -> None:
+        env = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=env)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    for index, (subject, when) in enumerate(history):
+        (root / f"f{index}.txt").write_text("before the rewrite\n")
+        git("add", "-A")
+        git("commit", "-qm", subject, when=when)
+
+    git("checkout", "-qb", "claude/pl-k7qx-live")
+    (root / "items" / "PL-9Y42-captured.md").write_text(READY.replace("PL-B1B1", "PL-9Y42"))
+    git("add", "-A")
+    git("commit", "-qm", "PL-9Y42 Capture what only this branch holds", when=history[-1][1])
+
+    git("checkout", "-q", "main")
+    git("checkout", "-q", "--orphan", "rewritten")
+    for index, (subject, when) in enumerate(history):
+        (root / f"f{index}.txt").write_text("after the rewrite\n")
+        git("add", "-A")
+        git("commit", "-qm", subject, when=when)
+    git("branch", "-qM", "main")
+    (root / "items" / "PL-0003-after.md").write_text(READY.replace("PL-B1B1", "PL-0003"))
+    git("add", "-A")
+    git("commit", "-qm", "PL-0003 Landed after the rewrite")
+    git("checkout", "-q", "claude/pl-k7qx-live")
+    return root
+
+
+def test_a_rewritten_base_is_spelled_in_a_way_real_git_answers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The plumbing half of the rewrite rule: `git log --left-right` over the divergence.
+
+    What the digest said before this existed was "3 behind and 3 ahead" with
+    `git merge main` under it - which replays the base's own history against
+    itself - or nothing at all, because a rewrite usually leaves no merge base
+    and the fork-point guard declined. Either way the branch's one unique
+    commit went unnamed, and `PL-YGF3` is what that cost.
+    """
+    root = _rewritten_repo(tmp_path)
+
+    assert main(["--items", str(root / "items"), "branch", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "Branch: claude/pl-k7qx-live is 3 behind main and 3 ahead." in out
+    assert "rewritten history, not divergence: 2 of this branch's 3 commits" in out
+    assert "PL-9Y42 Capture what only this branch holds" in out
+    assert "git checkout -B claude/pl-k7qx-live-rewritten main" in out
+    # Both of the answers that lose the commit above, and the decline that
+    # printed neither, are gone.
+    assert "git merge main" not in out
+    assert "--deepen" not in out
 
 
 def test_branch_state_says_nothing_to_the_digest_with_nothing_to_compare(

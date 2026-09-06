@@ -25,12 +25,15 @@ from .vcs import (
     CURRENT,
     PULL,
     RESTART,
+    REWRITTEN,
     BranchState,
     Carrier,
     CutsInFlight,
     FlightReport,
     OrphanedReport,
     Precedence,
+    QueueEdit,
+    RewriteReport,
     StrandedReport,
 )
 
@@ -515,6 +518,15 @@ def format_flight(report: FlightReport, today: date) -> str:
     timeout tells them apart: a branch touched an hour ago is a live session,
     and the same branch three weeks on is work nobody will merge. Only the
     reader knows which, so both get the same line and the date decides it.
+
+    **`FlightReport.editing` is deliberately not printed here.** Capturing a
+    finding before a session ends is mandatory, so nearly every live branch has
+    edited some item's file, and a section listing them would fire on almost
+    every run while changing no answer to the question this command asks -
+    which is `CLAUDE.md`'s definition of a check that should not exist. The
+    weaker mark prints where it changes a decision instead: `triage`, which is
+    about to write to one of those files, and `show`, which is about to start
+    the item (`PL-N1JK`).
     """
     lines: list[str] = []
     if report.branches:
@@ -546,6 +558,30 @@ def format_flight(report: FlightReport, today: date) -> str:
         )
         lines.extend(f"  {name}" for name in report.unreadable)
     return "\n".join(lines)
+
+
+def format_queue_edit(edit: QueueEdit, today: date) -> str:
+    """That an item's file has already been edited, which is not that it is in flight.
+
+    **The line exists to be different from `IN FLIGHT`, so it does not open
+    with a mark.** Two sessions triaged one pair of items on 2026-09-06,
+    fetched, checked and were each told correctly that nothing was in flight -
+    a triage pass has no diff outside the queue, so `_annotates_only` withholds
+    the claim and nothing else was reading the paths (`PL-N1JK`). What the
+    second session needed was not "do not start this", which would have been
+    false, but "the file you are about to write to has already been written
+    to", which is true and is a different sentence.
+
+    So it says what was observed and what follows, and it says the item is
+    startable in as many words. A weaker signal worded like a stronger one is
+    read as the stronger one, and the cost lands on the wrong side: an item
+    nobody is working left unstarted because a capture commit touched its file.
+    """
+    return (
+        f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, today)}).\n"
+        f"  Not work in flight - {edit.item_id} is startable - but a second edit to the\n"
+        "  same file collides at merge, so land the smaller change first."
+    )
 
 
 def _staked(carrier: Carrier, today: date) -> str:
@@ -631,11 +667,20 @@ def format_branch_state(state: BranchState, flight: FlightReport | None = None) 
     unattended would be a worse failure than the staleness it cures. It reports
     and the reader decides, the way `flight` and `stranded` do.
 
-    Two commands and no third. A branch behind with nothing of its own is
-    restarted; a branch behind with work of its own merges the base in. Rebase
-    is deliberately not offered: telling the two apart would mean guessing
-    which commits are disposable, and a rebase of a pushed branch needs a
-    force-push, which this project's squash-merge path is set up to avoid.
+    Two commands for the ordinary cases and no third. A branch behind with
+    nothing of its own is restarted; a branch behind with work of its own
+    merges the base in. Rebase is deliberately not offered: telling the two
+    apart would mean guessing which commits are disposable, and a rebase of a
+    pushed branch needs a force-push, which this project's squash-merge path is
+    set up to avoid.
+
+    The rewritten case is the exception, and it *replaces* that advice rather
+    than adding to it. Both ordinary commands are destructive across a rewrite
+    - a merge replays the base's own history against itself, and `checkout -B`
+    discards the only copy of whatever the branch pushed into the rewrite's
+    window - so the block names the commits held nowhere else and gives a
+    recovery that keeps them. It is longer than every other line here on
+    purpose: it prints only where the alternative is silent data loss.
 
     The ids are what make it worth re-running mid-session. "3 behind" says the
     base moved; naming what landed answers whether the thing this session was
@@ -652,6 +697,13 @@ def format_branch_state(state: BranchState, flight: FlightReport | None = None) 
     elif state.disposition == PULL:
         lines.append(f"Branch: {branch} is {state.behind} behind {base}.")
         lines.append("  `git pull` before starting.")
+    elif state.disposition == REWRITTEN and (rewrite := state.rewrite) is not None:
+        lines.append(f"Branch: {branch} is {state.behind} behind {base} and {state.ahead} ahead.")
+        lines.append(
+            f"  That is a rewritten history, not divergence: {rewrite.duplicated} of this "
+            f"branch's {rewrite.total} commits are already on {base} under different hashes."
+        )
+        lines.extend(_rewrite_recovery(rewrite, branch, base))
     elif state.disposition == RESTART:
         lines.append(f"Branch: {branch} is {state.behind} behind {base} with nothing of its own.")
         lines.append("  Its work is merged or it never had any. Restart it before editing:")
@@ -671,6 +723,51 @@ def format_branch_state(state: BranchState, flight: FlightReport | None = None) 
     if flight is not None and (extra := _flight_lines(flight)):
         lines.append(extra)
     return "\n".join(lines)
+
+
+def _rewrite_recovery(rewrite: RewriteReport, branch: str, base: str) -> list[str]:
+    """What is held only here, and how to keep it while moving onto the new history.
+
+    The listing is the point. A count of commits at risk is a number a reader
+    discounts; the subjects are what make it obvious that the branch holds a
+    capture or a conflict resolution nothing else has, and the short hashes are
+    what the recovery command needs.
+
+    **Unbounded, unlike every other list this module prints.** Truncating it
+    would truncate the `cherry-pick` line under it, and a recovery command that
+    silently drops commits is the failure this whole report exists to prevent -
+    it would look complete and lose exactly what it was printed to save. There
+    is no shorter honest form either: no single git command lists the commits
+    held only here, since telling them from the duplicated ones is what this
+    module just spent a read working out. The block fires only where a history
+    has been rewritten, so its length is not a cost anyone pays twice.
+    """
+    # Tags are the half a branch cleanup misses: they still point into the old
+    # history, so a clone keeps whatever the rewrite removed reachable through
+    # them, and `git fetch` alone will not move a tag that already exists.
+    tags = "  git fetch --tags --force origin  # tags still point at the old history"
+    if not rewrite.own:
+        return [
+            "  Nothing is held only here, so the branch can be moved across whole:",
+            f"  git checkout -B {branch} {base}",
+            tags,
+        ]
+    held = "it" if len(rewrite.own) == 1 else "them"
+    lines = [
+        f"  {_plural(len(rewrite.own), 'commit exists', 'commits exist')} only here, and "
+        f"`git merge`, `git reset --hard` and `git checkout -B` each lose {held}:"
+    ]
+    lines.extend(f"    {short} {subject}" for short, subject in rewrite.own)
+    lines.append(f"  Carry {held} onto the rewritten history rather than discarding {held}:")
+    lines.append(f"  git checkout -B {branch}-rewritten {base}")
+    lines.append(f"  git cherry-pick {' '.join(short for short, _ in rewrite.own)}")
+    lines.append(tags)
+    if rewrite.merges:
+        lines.append(
+            "  One of those is a merge commit: `cherry-pick -m 1` takes it, or redo the "
+            "resolution by hand, because its parents no longer exist on the new history."
+        )
+    return lines
 
 
 def _flight_lines(flight: FlightReport) -> str:
@@ -719,6 +816,14 @@ def format_triage(report: Report, config: Config, flight: FlightReport | None = 
     with no way to tell it apart. Triage is cheap to redo and expensive to
     have refused.
 
+    **The mark that fires here is not the one `next` ranks on, and on a triage
+    pass it is usually the only one there is.** A pass that only fills in
+    fields writes nothing outside `docs/items/`, which is exactly the shape
+    `branches_in_flight` refuses to read as work - so before `FlightReport`
+    carried the file edits, two sessions triaging one item could each fetch,
+    each run `show`, and each be told truthfully that nothing was in flight.
+    Both marks print here and neither ranks anything (`PL-N1JK`).
+
     `format_unread` comes with the mark rather than as a nicety, exactly as it
     does under `show`: the marks are drawn from the refs this checkout could
     read, and silence about the ones it could not presents a partial reading
@@ -733,11 +838,22 @@ def format_triage(report: Report, config: Config, flight: FlightReport | None = 
     # without leaving the output, which is the whole difference between a
     # warning that is heeded and one that is trained out.
     carrying = {branch.item_id: branch.name for branch in flight.branches}
+    # The weaker mark, for the case the stronger one cannot reach at all: a
+    # triage pass writes nothing outside the queue, so `_annotates_only`
+    # withholds its claim and two passes on one item are invisible to each
+    # other however carefully each fetches (`PL-N1JK`).
+    editing = {edit.item_id: edit.name for edit in flight.editing}
     lines = [f"{_plural(len(report.untriaged), 'item is', 'items are')} untriaged.", ""]
     for item in sorted(report.untriaged, key=lambda i: i.sort_key()):
         lines.append(f"{item.identifier}  {item.title}")
         if held_by := carrying.get(item.identifier):
             lines.append(f"  IN FLIGHT on {held_by} - triaging it here as well collides at merge.")
+        elif edited_on := editing.get(item.identifier):
+            lines.append(f"  Its file is already edited on {edited_on}.")
+            lines.append(
+                "  A capture or another triage pass, not work in flight - but a second answer"
+            )
+            lines.append("  here is a second resolution of the same file, so skip it.")
         lines.append(f"  unset: {_unset(item)}")
         missing, empty = brief_gaps(item.body)
         if missing:

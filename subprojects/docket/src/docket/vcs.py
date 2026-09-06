@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -89,6 +90,12 @@ BRANCH_ID_RE = re.compile(
 LEADING_IDS_RE = re.compile(rf"^\s*{ID_PATTERN}(?:\s*(?:,|&|and)\s*{ID_PATTERN})*", re.I)
 ANY_ID_RE = re.compile(ID_PATTERN, re.I)
 
+# An item file is named `<id>-<slug>.md`, so the id can be read from a tree
+# listing or from a diff without opening anything. The id grammar comes from
+# `store` rather than being spelled again here: two spellings of it would drift,
+# and the one that drifted would silently stop recognising items.
+ITEM_FILE_RE = re.compile(rf"^({ID_PATTERN})-")
+
 # One line per commit: the ref that reached it, when it was committed, the
 # parents this checkout holds, its hash, and its subject. `%S` needs
 # `--source`, and the unit separator is used as the delimiter because a subject
@@ -113,6 +120,32 @@ class Branch:
     default branch does not, or `None` when this checkout could read none of
     them - a branch created but not yet committed on, or one whose commits sit
     beyond a truncated clone's horizon.
+    """
+
+    name: str
+    item_id: str
+    last_commit: date | None = None
+
+
+@dataclass(frozen=True)
+class QueueEdit:
+    """One ref that has already changed an item's own file in the queue.
+
+    **The weaker of the two marks, and a separate type so that no caller can
+    mistake it for the stronger one.** `Branch` says a ref is *working* an
+    item, which is what `docket next` excludes on; this says only that a ref
+    has written to `docs/items/<id>-*.md`, which is what a second write to
+    that file collides with. A triage pass, a capture, a `docket record` write
+    and a note added to a brief all produce the second without the first, and
+    before this they produced nothing at all - so two sessions triaging one
+    item could each fetch, each run `show`, and each be told correctly that
+    nothing was in flight (`PL-N1JK`).
+
+    Structurally identical to `Branch` and deliberately not `Branch`: the two
+    answer different questions, and a `QueueEdit` reaching a reader that wants
+    work in flight - `plan.recommend`, `files_in_flight` - would undo
+    `PL-X3WZ`. Distinct types make that a type error rather than a judgment
+    call at each call site.
     """
 
     name: str
@@ -155,6 +188,12 @@ class FlightReport:
 
     branches: tuple[Branch, ...] = ()
     unreadable: tuple[str, ...] = ()
+    #: Refs that have edited an item's file without claiming to work it, for
+    #: the items no `Branch` already accounts for. Disjoint from `branches` by
+    #: construction: where both would fire the stronger mark is the one a
+    #: reader needs, and printing two lines about one item invites the reading
+    #: that they mean different branches.
+    editing: tuple[QueueEdit, ...] = ()
     base: str = ""
 
     @property
@@ -199,7 +238,7 @@ _UNDATED = Stake(when=datetime.min.replace(tzinfo=UTC), commit="")
 class _Walk:
     """What one pass over the unlanded refs produced.
 
-    Four readings of the same commits. They are kept together because they come
+    Five readings of the same commits. They are kept together because they come
     from one `git log`: separating them into functions of their own would mean
     walking the history once per question, and the questions are asked together
     every time.
@@ -207,6 +246,7 @@ class _Walk:
 
     last: dict[str, date]
     ids: dict[str, str]
+    edited: dict[str, str]
     staked: dict[tuple[str, str], Stake]
     opened: dict[str, Stake]
     unbounded: set[str]
@@ -241,15 +281,63 @@ def _annotates_only(paths: list[str], prefix: str) -> bool:
     session picks around, while an item wrongly unmarked is two sessions on one
     piece of work (`PL-PRHN`).
 
+    **What it withholds is the claim to be *working* an item, which is all it
+    was ever asked to withhold.** A commit that only annotates still edited
+    that item's file, and a second session editing the same file collides at
+    merge whatever either commit was for - so `_item_file_ids` reads the same
+    paths for that weaker fact and `FlightReport.editing` carries it. Two
+    sessions triaged one pair of items on 2026-09-06 and the merge discarded
+    one of the two answers: a triage pass has by definition no diff outside
+    the queue, so it could never raise the mark this function withholds, and
+    no amount of care with `show` or `flight` would have surfaced it
+    (`PL-N1JK`). Nothing here is relaxed to fix that - `docket next` still
+    ranks on `FlightReport.branches` alone, which is `PL-X3WZ`'s reading
+    intact.
+
     The residual case it cannot see is a session that *starts* an item by
     pushing only a `touches` fill or a `verify:` command, which is annotation
     by this rule and a claim in fact. A branch the session names for the item
     still carries the claim in its own name, which is read whatever the diff
     says; a branch the harness named does not, and goes unmarked until its
-    first commit outside the queue. `.claude/skills/docket/SKILL.md` says so
-    where it asks for that first push.
+    first commit outside the queue - though `show` now reports the file edit
+    underneath, which is the warning that case previously had nowhere to come
+    from. `.claude/skills/docket/SKILL.md` says so where it asks for that first
+    push.
     """
     return bool(paths) and all(path.startswith(prefix) for path in paths)
+
+
+def _item_file_ids(paths: list[str], prefix: str) -> list[str]:
+    """The items whose own file a commit changed, read from the paths alone.
+
+    **The weaker of the two readings this walk makes, and the one that infers
+    nothing.** `_annotates_only` and `leading_ids` between them decide what a
+    commit was *for*, which is a judgment about a subject; this decides which
+    item files it *changed*, which is a measurement of a diff. The second is
+    what a merge conflict is actually made of, so it is what a session about to
+    edit the same file needs (`PL-N1JK`).
+
+    The store names each file for its item - `docs/items/PL-K7QX-do-it.md` - so
+    the id is the head of the basename, and `store.filename_for` is what
+    guarantees it. `ITEM_FILE_RE` is the same constant `_items_at` reads a tree
+    listing with, for the reason stated where it is defined: two spellings of
+    one id format are two answers waiting to disagree.
+
+    **It fails toward silence where `_annotates_only` fails toward the mark**,
+    and the directions differ because the costs do. A path git quoted for its
+    non-ASCII bytes, or a store outside the repository whose prefix no path can
+    match, drops the edit rather than inventing one. What is lost is an
+    advisory a session would have picked around; what a false one costs is a
+    session told to leave alone an item nobody is holding.
+    """
+    found: list[str] = []
+    for path in paths:
+        if not path.startswith(prefix):
+            continue
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
+        if match is not None:
+            found.append(match.group(1))
+    return found
 
 
 def _unmerged_commits(
@@ -300,9 +388,16 @@ def _unmerged_commits(
     whose whole diff sits in the queue directory - a capture, a triage pass, a
     recovered item, a note written into a brief. `opened` is the claim a branch
     *name* makes, which no diff qualifies.
+
+    **`edited` reads the diff and nothing else.** Which item files a commit
+    changed is a fact about paths, so it is neither withheld by
+    `_annotates_only` nor taken from the subject at all: a commit leading with
+    one id, or with none, still collides with a second edit to the file it
+    changed. It is the weaker claim of the two, and `branches_in_flight` keeps
+    it apart from the stronger one for exactly that reason.
     """
     if not refs:
-        return _Walk({}, {}, {}, {}, set())
+        return _Walk({}, {}, {}, {}, {}, set())
     # `--name-only` rather than a `git show --stat` per commit, and that is the
     # whole reason the diff can be read at all here. This walk is on the hot
     # path of `next`, `list`, `triage`, `status` and the session-start digest,
@@ -319,6 +414,7 @@ def _unmerged_commits(
     prefix = items_dir.strip("/") + "/"
     last: dict[str, date] = {}
     ids: dict[str, str] = {}
+    edited: dict[str, str] = {}
     staked: dict[tuple[str, str], Stake] = {}
     opened: dict[str, Stake] = {}
     unbounded: set[str] = set()
@@ -335,6 +431,11 @@ def _unmerged_commits(
         if pending is None:
             return
         ref, stake, subject = pending
+        # Credited before the annotation test and never withheld by it: an
+        # annotating commit is not work, and it has still written to the file a
+        # second session is about to write to.
+        for identifier in _item_file_ids(paths, prefix):
+            edited.setdefault(identifier, ref)
         if _annotates_only(paths, prefix):
             return
         for identifier in leading_ids(subject):
@@ -376,7 +477,9 @@ def _unmerged_commits(
                 opened[ref] = stake
         pending = (ref, stake, subject)
     credit_claims()
-    return _Walk(last=last, ids=ids, staked=staked, opened=opened, unbounded=unbounded)
+    return _Walk(
+        last=last, ids=ids, edited=edited, staked=staked, opened=opened, unbounded=unbounded
+    )
 
 
 def _base_blobs(base: str, root: Path, run: Runner) -> frozenset[str]:
@@ -582,6 +685,15 @@ def branches_in_flight(
     exactly one fetch. That is an acceptable error for an advisory and an
     unacceptable one for a lock, which is why this reports rather than blocks.
 
+    **A second and weaker reading rides along, and it is the one a triage pass
+    is visible in.** `editing` names the refs that have changed an item's own
+    file without earning the mark above - which is every capture, triage pass,
+    `docket record` write and note added to a brief, since `_annotates_only`
+    withholds exactly those. That is not work in flight and must never be
+    ranked as such; it is a merge conflict waiting in one file, which is what a
+    second session about to edit that file needs to know (`PL-N1JK`). `ids`
+    stays the strong reading alone, so `docket next` is untouched.
+
     Branches whose work has landed are excluded, and that exclusion matters
     more than it looks: deleting a branch on the remote does not remove the
     local remote-tracking ref until someone prunes, so without this every item
@@ -678,9 +790,22 @@ def branches_in_flight(
             identifier, Branch(name=name, item_id=identifier, last_commit=last_commit.get(name))
         )
 
+    # Refs whose commits went unread contribute no paths either, for the reason
+    # they contribute no subject ids: the commits are what the checkout is
+    # missing. A branch *name* still proves its id, which is why the loop above
+    # reads unread refs and this does not - a name is not a diff.
+    edited = {
+        identifier: name
+        for identifier, name in walk.edited.items()
+        if name not in walk.unbounded and identifier not in in_flight
+    }
     return FlightReport(
         branches=tuple(sorted(in_flight.values(), key=lambda branch: branch.item_id)),
         unreadable=tuple(name for name in candidates if name in unreadable),
+        editing=tuple(
+            QueueEdit(name=name, item_id=identifier, last_commit=last_commit.get(name))
+            for identifier, name in sorted(edited.items())
+        ),
         base=base,
     )
 
@@ -1067,6 +1192,39 @@ CURRENT = "current"
 RESTART = "restart"
 PULL = "pull"
 MERGE = "merge"
+REWRITTEN = "rewritten"
+
+
+@dataclass(frozen=True)
+class RewriteReport:
+    """A divergence that is one history under two sets of hashes, and what only one side holds.
+
+    A history rewrite - `filter-repo`, `filter-branch`, a force-pushed rebase
+    of the default branch - replaces every commit on the base. A branch still
+    sitting on the old history is then counted as hundreds behind *and*
+    hundreds ahead, which reads exactly like a branch carrying a great deal of
+    work. It is not: almost every one of those commits is the base's own under
+    its old hash. The few that are not are the only copy of themselves
+    anywhere, and `git merge`, `git reset --hard` and `git checkout -B` - the
+    three things that ahead/behind line invites - each lose or bury them.
+    `PL-YGF3` is the incident: two commits survived only because the session
+    that wrote them still held them in a live working tree.
+
+    `duplicated` counts the branch's own commits that reappear on the base
+    under a different hash; `own` is the rest, oldest first, which is the work
+    that exists nowhere else and has to be carried across by hand. `merges`
+    says whether any of those is a merge commit, because that changes the
+    recovery - `git cherry-pick` refuses one without `-m`.
+    """
+
+    duplicated: int = 0
+    own: tuple[tuple[str, str], ...] = ()
+    merges: bool = False
+
+    @property
+    def total(self) -> int:
+        """How many commits the branch holds that the base does not, counted by hash."""
+        return self.duplicated + len(self.own)
 
 
 @dataclass(frozen=True)
@@ -1113,17 +1271,27 @@ class BranchState:
     behind: int = 0
     ahead: int = 0
     landed: tuple[str, ...] = ()
+    rewrite: RewriteReport | None = None
     fetched: bool = False
     declined: str = ""
     absent: bool = False
 
     @property
     def disposition(self) -> str:
-        """Which of the four states this is, or `""` when there is no answer."""
+        """Which of the five states this is, or `""` when there is no answer.
+
+        `REWRITTEN` outranks both `PULL` and `MERGE` because it contradicts
+        them: where the divergence is duplicated history, pulling or merging
+        replays the base's own commits against themselves, and it is the
+        default branch - the `PULL` case - where a local copy left on the old
+        history does the most damage.
+        """
         if self.declined:
             return ""
         if self.behind == 0:
             return CURRENT
+        if self.rewrite is not None:
+            return REWRITTEN
         if self.is_default:
             return PULL
         return RESTART if self.ahead == 0 else MERGE
@@ -1152,6 +1320,81 @@ def _landed_since(
             if identifier not in found:
                 found.append(identifier)
     return tuple(found)
+
+
+def _duplicated_history(base: str, root: Path, run: Runner) -> RewriteReport | None:
+    """Whether the divergence from `base` is one rewritten history, and what only this side holds.
+
+    **Stateless, and that is a requirement rather than a preference.** The
+    obvious test - has the remote ref moved to something that is not a
+    descendant of what this checkout last saw - needs a memory of the old
+    value, and the only one git keeps is the remote-tracking reflog. A
+    container clones fresh, so in the session that most needs the answer - one
+    opened after the rewrite, with nothing left in a working tree to copy out -
+    that reflog holds a single entry and the test cannot fire. This reads the
+    shape of the divergence instead, which any checkout can do at any moment.
+
+    The fingerprint is that a rewrite **preserves author date and subject while
+    changing every hash**, so the two sides of the symmetric difference hold
+    the same commits twice over. The rule is that the *oldest* commit unique to
+    this side has a counterpart on the base: the divergence begins in
+    duplicated history, which is what a rewrite leaves behind and what forking
+    and then committing cannot produce. A branch that merely sat while the base
+    moved matches nothing there and gets `None`.
+
+    Matched on author date and subject rather than on patch id - what `git
+    cherry` uses - for two reasons that both bit the incident behind
+    `PL-YGF3`. The rewrite stripped a file out of history, so the patch of
+    every commit that had ever touched it changed; and `git cherry` drops merge
+    commits entirely, while one of the two commits actually lost was a merge.
+
+    Returns `None` rather than a claim wherever the read fails, which leaves
+    the ordinary behind/ahead advice in place. That is the same posture the
+    rest of this module takes: what it reports present is present, and silence
+    is never evidence.
+    """
+    output = run(
+        [
+            "log",
+            "--topo-order",
+            "--reverse",
+            "--left-right",
+            "--format=%m%x00%h%x00%at%x00%p%x00%s",
+            f"{base}...HEAD",
+            "--",
+        ],
+        root,
+    )
+    ours: list[tuple[str, str, str, bool]] = []
+    theirs: Counter[str] = Counter()
+    for line in output.splitlines():
+        parts = line.split("\0")
+        if len(parts) != 5:
+            continue
+        side, short, when, parents, subject = parts
+        key = f"{when}\0{subject}"
+        if side == ">":
+            ours.append((key, short, subject, len(parents.split()) > 1))
+        elif side == "<":
+            theirs[key] += 1
+    # `--reverse` on `--topo-order` puts ancestors first, so `ours[0]` is where
+    # this side's divergence begins and is the one commit the rule turns on.
+    if not ours or not theirs[ours[0][0]]:
+        return None
+
+    duplicated = 0
+    own: list[tuple[str, str]] = []
+    merges = False
+    for key, short, subject, is_merge in ours:
+        # Decremented rather than tested, so two commits on this side sharing a
+        # date and a subject do not both match one commit on the base.
+        if theirs[key]:
+            theirs[key] -= 1
+            duplicated += 1
+            continue
+        own.append((short, subject))
+        merges = merges or is_merge
+    return RewriteReport(duplicated=duplicated, own=tuple(own), merges=merges)
 
 
 def fetch_remote(root: Path, *, runner: Runner | None = None) -> None:
@@ -1220,22 +1463,11 @@ def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = Fa
             declined=f"{branch} is the default branch and has no remote copy to compare with",
         )
 
-    # The fork point is asked for before the counts, and both guard and answer
-    # come from the one read: `rev-list --left-right --count` on refs sharing
-    # no history reports each side's whole length instead of failing, and a
-    # count invented that way is worse than no count at all.
+    # A missing fork point is why the counts cannot be trusted on their own:
+    # `rev-list --left-right --count` on refs sharing no history reports each
+    # side's whole length instead of failing, and a count invented that way is
+    # worse than no count at all.
     fork = run(["merge-base", "HEAD", base], root).strip()
-    if not fork:
-        return BranchState(
-            branch=branch,
-            base=base,
-            fetched=fetched,
-            declined=(
-                f"this clone shares no readable history with {base}, so its position "
-                "cannot be counted - something ran a `--depth` fetch, and "
-                "`git fetch --deepen=100 origin` restores the answer"
-            ),
-        )
 
     counts = run(["rev-list", "--left-right", "--count", f"{base}...HEAD"], root).split()
     if len(counts) != 2 or not all(part.isdigit() for part in counts):
@@ -1248,12 +1480,38 @@ def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = Fa
         )
 
     behind, ahead = int(counts[0]), int(counts[1])
+    # Asked before the missing-fork-point guard rather than after it, because a
+    # rewrite is the case that most needs an answer and the case least likely
+    # to have a fork point: `filter-repo` and `filter-branch` rebuild every
+    # commit, so the old history and the new one usually share nothing at all.
+    # Measured 2026-09-06 against a `filter-branch --index-filter` rewrite of a
+    # four-commit repository - no merge base, and `rev-list` reporting 5 and 5.
+    # Proving the two sides are one duplicated history is what makes those
+    # numbers mean something; without it this branch declined, and declined
+    # with advice about `--depth` that does nothing to a rewritten clone.
+    rewrite = _duplicated_history(base, root, run) if behind and ahead else None
+    if not fork and rewrite is None:
+        return BranchState(
+            branch=branch,
+            base=base,
+            fetched=fetched,
+            declined=(
+                f"this clone shares no readable history with {base}, so its position "
+                "cannot be counted - something ran a `--depth` fetch, and "
+                "`git fetch --deepen=100 origin` restores the answer"
+            ),
+        )
+
     return BranchState(
         branch=branch,
         base=base,
         behind=behind,
         ahead=ahead,
-        landed=_landed_since(fork, base, root, run) if behind else (),
+        # Nothing "landed" across a rewrite with no fork point: every commit on
+        # the base is then outside this history, and naming a release's worth
+        # of ids would answer a question nobody asked.
+        landed=_landed_since(fork, base, root, run) if behind and fork else (),
+        rewrite=rewrite,
         fetched=fetched,
     )
 
@@ -1759,13 +2017,6 @@ def _done_at(revision: str, path: str, name: str, root: Path, run: Runner) -> bo
     """Whether the item at `path` reads `status: done` in that revision's tree."""
     text = run(["show", f"{revision}:{path}"], root)
     return bool(text) and parse_item(text, name).status == "done"
-
-
-# An item file is named `<id>-<slug>.md`, so the id can be read from a tree
-# listing without opening anything. The id grammar comes from `store` rather
-# than being spelled again here: two spellings of it would drift, and the one
-# that drifted would silently stop recognising items.
-ITEM_FILE_RE = re.compile(rf"^({ID_PATTERN})-")
 
 
 @dataclass(frozen=True)

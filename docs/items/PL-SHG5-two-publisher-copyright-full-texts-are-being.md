@@ -9,6 +9,7 @@ feature: provenance
 touches: docs/references
 added: 2026-09-06
 closed: 2026-09-06
+pr: 390
 verify: python3 tools/doc_check.py check && ! git ls-files docs/references | grep -qE 'baker-farmery|schuttler-schwilden' && grep -q 'This repository is public' docs/references/README.md
 ---
 

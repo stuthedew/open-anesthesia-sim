@@ -715,12 +715,34 @@ whether this work is worth doing at all is met: "be aware of any time you feel
 discouraged from doing a small refactoring... Any such barrier is a smell that
 should prompt a conversation."
 
-## Open: the project's one-line self-description (PL-4MHK, PL-N092)
+## Mostly settled: the project's one-line self-description (PL-4MHK, PL-N092, PL-XF89)
 
-The GitHub repository's "About" description is empty, and the project has no
+**Superseded by events on 2026-09-06.** All three statements now exist and the
+deferral is over; what is left is narrower than what this thread was opened
+for, and it is `PL-XF89`.
+
+- **The GitHub "About" field is set** (project owner, on or before
+  2026-09-06): "PRE-RELEASE Open-source deterministic simulator of
+  volatile-anaesthetic uptake and distribution, for education. Not a clinical
+  prediction, dosing, or monitoring tool."
+- **`README.md` opens with its own** (`PL-N092`, `#391`): "A deterministic
+  simulator of inhaled-anesthetic uptake and distribution, built for
+  teaching."
+- **`pyproject.toml`'s `description` is set** (`PL-4MHK`, 2026-09-06), derived
+  from those two rather than composed fresh, precisely so that this thread was
+  not reopened.
+
+**What remains open is one word, not the register.** The first two disagree on
+"volatile" against "inhaled", and the summary had to pick one - it took
+"volatile", because a package summary describes the artifact carrying it and
+0.4.4 models three volatile agents only. `PL-XF89` carries that decision, and
+the US/British spelling split in the "About" field with it. Everything below
+is the record of how the wording got here.
+
+The original problem: the "About" description was empty and the project had no
 settled one-line statement of what it is. Three rounds of drafts were reviewed
 on 2026-09-01 and every one was rejected; the wording was deferred rather than
-decided, so nothing from that discussion is an approved form of words.
+decided, so nothing from that discussion was an approved form of words.
 
 **What was tried, and why each direction failed.** Recorded so the next
 attempt starts past these rather than at them.
@@ -753,14 +775,15 @@ draft was rejected, so they are floors rather than the unsolved part:
 - GitHub's field holds 350 characters. Every draft so far fit inside 270, so
   length has never been the binding constraint.
 
-**Related, and the order to take them in.** `PL-N092` rewrites `README.md` as
-a human-readable introduction and settles the same register question at length
-and with room to get it right; a one-liner is easier to derive from a finished
-README than to invent alongside one. `PL-4MHK` carries the package-metadata
-half - `pyproject.toml`'s vague `description` and its absent `classifiers` -
-and says the same thing about sequencing. Repository topics were proposed in
-the same discussion and not applied; they are independent of the wording and
-can be set whenever.
+**The sequencing held, and is worth keeping for the next case like it.**
+`PL-N092` rewrote `README.md` first and settled the register question at
+length; `PL-4MHK` then derived the package summary from the finished README
+and the owner's own "About" text rather than inventing a fourth draft, which
+is why closing it needed no design round. A one-liner really is easier to
+derive from a finished long document than to invent alongside one.
+
+Repository topics were proposed in the same discussion and are still not
+applied; they are independent of the wording and can be set whenever.
 
 ## Open: the repository has no README - PL-WB5K, PL-N092, PL-XYRN, PL-4MHK
 
@@ -791,8 +814,10 @@ Nothing carries the newcomer's orientation, and nothing is meant to until
 `PL-N092`.
 
 **What the deletion touched.** `pyproject.toml`'s `readme` key had to go, or
-the `uv_build` backend fails on the missing file; `PL-4MHK` (package metadata)
-already owns restoring it alongside a real description. The freeze rule under
+the `uv_build` backend fails on the missing file. `PL-N092` restored it in the
+same commit as the new README, rather than leaving it to `PL-4MHK` (package
+metadata) as this note first expected; `PL-4MHK` set the `description` and
+`classifiers` beside it on 2026-09-06. The freeze rule under
 `.claude/rules/` went in the same commit, per its own closing instruction, and
 `PL-3V4N` - which would have built a check enforcing that freeze - is dropped
 with it.

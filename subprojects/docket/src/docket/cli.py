@@ -464,6 +464,13 @@ def cmd_show(args: argparse.Namespace) -> int:
     a partial reading as a complete one, which is the collapse `FlightReport`
     exists to prevent.
 
+    **A second and weaker mark prints where the first is silent.** A branch
+    that has only edited the item's file - a capture, a triage pass, a note -
+    is not working the item and must not be reported as if it were, but it is
+    a merge conflict waiting in that one file, which is what a session about to
+    edit it needs. The wording carries the difference, per `format_queue_edit`
+    (`PL-N1JK`).
+
     **The mark then had to say *whose* branch it was.** "Do not start this
     again" is the right answer to another session's work and a false alarm
     about your own, and re-reading the item you are implementing is the
@@ -494,6 +501,12 @@ def cmd_show(args: argparse.Namespace) -> int:
                 precedence(root, item.identifier, items_dir=items_dir), args.today or date.today()
             )
         )
+    elif edit := next((e for e in flight.editing if e.item_id == item.identifier), None):
+        # The weaker mark, and only where the stronger one is silent. A session
+        # that names an item reaches `show` and nothing else, so before this
+        # the one thing it could not learn here was that another branch had
+        # already written to the file it was about to write to (`PL-N1JK`).
+        print(render.format_queue_edit(edit, args.today or date.today()))
     print()
     print(item.body.strip())
     _say_unread(flight)

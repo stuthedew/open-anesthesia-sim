@@ -12,6 +12,7 @@ from pathlib import Path
 
 from docket.checks import Report
 from docket.vcs import (
+    REWRITTEN,
     BaseRelease,
     Branch,
     BranchCut,
@@ -20,6 +21,7 @@ from docket.vcs import (
     FlightReport,
     OrphanedBranch,
     OrphanedReport,
+    RewriteReport,
     StrandedItem,
     StrandedReport,
     behind_remote,
@@ -199,8 +201,28 @@ def _in_flight(
     on_base: set[str] | None = None,
     ran_out: tuple[str, ...] = (),
 ) -> tuple[Branch, ...]:
+    return _report(refs, merged, commits, unrelated, adds, on_base, ran_out=ran_out).branches
+
+
+def _report(
+    refs: list[str],
+    merged: list[str] | None = None,
+    commits: dict[str, list[tuple[str, ...]]] | None = None,
+    unrelated: tuple[str, ...] = (),
+    adds: dict[str, list[str] | list[tuple[str, str]]] | None = None,
+    on_base: set[str] | None = None,
+    ran_out: tuple[str, ...] = (),
+) -> FlightReport:
+    """The whole report, for the tests reading the file edits beside the work.
+
+    `_in_flight` returns the branches alone because that was the whole answer
+    when it was written. `editing` is a second and weaker mark on the same
+    report, and most of what is worth asserting about it is what it says
+    *together* with the first - that an item is edited and not in flight, or in
+    flight and not also listed as edited.
+    """
     runner = _runner(refs, merged, commits, unrelated, adds, on_base, ran_out=ran_out)
-    return branches_in_flight(ROOT, runner=runner).branches
+    return branches_in_flight(ROOT, runner=runner)
 
 
 def test_a_branch_naming_an_item_is_in_flight() -> None:
@@ -482,6 +504,126 @@ def test_the_queue_directory_is_read_from_the_project_setting() -> None:
 
     assert branches_in_flight(ROOT, items_dir="tracker", runner=runner).ids == set()
     assert branches_in_flight(ROOT, items_dir="docs/items", runner=runner).ids == {"PL-K7QX"}
+
+
+def test_a_queue_only_commit_is_reported_as_a_file_edit_though_not_as_work() -> None:
+    """The failure `PL-N1JK` records: a triage pass no guard could see.
+
+    A pass that only fills in fields writes nothing outside the queue, so
+    `_annotates_only` withholds the claim - correctly, since it is not work -
+    and until the file edits were read there was nothing else to report. Two
+    sessions triaged one pair of items on 2026-09-06, each fetched, each ran
+    `show`, and each was told truthfully that nothing was in flight; the merge
+    discarded one of the two answers.
+    """
+    report = _report(
+        [HARNESS], commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", QUEUE_ONLY)]}
+    )
+
+    assert report.branches == ()
+    assert report.ids == frozenset()
+    assert [(edit.item_id, edit.name) for edit in report.editing] == [("PL-K7QX", HARNESS)]
+
+
+def test_a_branch_working_an_item_is_not_also_reported_as_editing_its_file() -> None:
+    """One item, one mark. The stronger one is the one the reader needs.
+
+    A closure writes the item and the code in one commit, so both readings fire
+    on it; printing two lines about one item invites the reading that they name
+    two different branches.
+    """
+    report = _report(
+        [HARNESS],
+        commits={
+            HARNESS: [("2026-09-03", "PL-K7QX: do the thing", "c1", QUEUE_ONLY, "src/thing.py")]
+        },
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
+    assert report.editing == ()
+
+
+def test_a_file_edit_is_read_from_the_paths_rather_than_from_the_subject() -> None:
+    """The weaker reading infers nothing: it is a fact about the diff.
+
+    A session working one item and capturing a finding about another produces
+    exactly this commit. The subject claims the first, the diff touches the
+    second, and it is the second that a triage pass on that other item would
+    collide with.
+    """
+    report = _report(
+        [HARNESS],
+        commits={
+            HARNESS: [
+                (
+                    "2026-09-03",
+                    "PL-K7QX: do the thing",
+                    "c1",
+                    "src/thing.py",
+                    "docs/items/PL-J295-a-finding.md",
+                )
+            ]
+        },
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
+    assert [(edit.item_id, edit.name) for edit in report.editing] == [("PL-J295", HARNESS)]
+
+
+def test_a_file_edit_carries_the_date_the_branch_last_moved() -> None:
+    """A branch nobody will merge and a live session look alike here too.
+
+    The same reading `flight` and `stranded` make: the age is reported and the
+    reader decides, because no timeout separates the two.
+    """
+    report = _report(
+        [HARNESS], commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", QUEUE_ONLY)]}
+    )
+
+    assert report.editing[0].last_commit == date(2026, 9, 3)
+
+
+def test_a_ref_whose_walk_ran_off_the_end_contributes_no_file_edits() -> None:
+    """The paths are as unproven as the ids when the walk was unbounded.
+
+    A walk that ended at a parentless commit ran off the end of a truncated
+    history rather than stopping against the default branch, so the commits it
+    emitted may be the default branch's own - and their paths with them.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", QUEUE_ONLY)]},
+        ran_out=(HARNESS,),
+    )
+
+    assert report.editing == ()
+    assert report.unreadable == (HARNESS,)
+
+
+def test_a_file_edit_is_read_against_the_project_queue_directory() -> None:
+    """A project keeping its queue elsewhere gets the same reading, not a default."""
+    runner = _runner(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", "tracker/PL-K7QX-a.md")]},
+    )
+
+    assert branches_in_flight(ROOT, items_dir="docs/items", runner=runner).editing == ()
+    editing = branches_in_flight(ROOT, items_dir="tracker", runner=runner).editing
+    assert [edit.item_id for edit in editing] == ["PL-K7QX"]
+
+
+def test_a_queue_path_that_names_no_item_is_not_a_file_edit() -> None:
+    """The store holds a README beside the items, and it belongs to no id."""
+    report = _report(
+        [HARNESS],
+        commits={
+            HARNESS: [
+                ("2026-09-03", "PL-K7QX: rewrite the store's README", "c1", "docs/items/README.md")
+            ]
+        },
+    )
+
+    assert report.editing == ()
 
 
 def test_the_last_commit_is_dated_so_a_stale_branch_can_be_told_apart() -> None:
@@ -1067,6 +1209,17 @@ def test_flight_names_a_ref_that_contributes_by_name_in_both_halves() -> None:
     assert printed.count(NAMED_UNREADABLE) == 2
 
 
+def _commits(*entries: tuple[str, str, str, str, str]) -> str:
+    """A symmetric difference as `git log --left-right --format=%m..%p..%s` prints it.
+
+    Oldest first, which is what `--topo-order --reverse` gives and what the
+    rewrite rule reads: `<` for a commit only the base holds, `>` for one only
+    the branch holds. The parent field carries one hash for an ordinary commit
+    and two for a merge.
+    """
+    return "".join("\0".join(entry) + "\n" for entry in entries)
+
+
 def _branch_runner(
     branch: str = "claude/pl-k7qx-live",
     behind: int = 0,
@@ -1074,12 +1227,15 @@ def _branch_runner(
     landed: tuple[str, ...] = (),
     unrelated: bool = False,
     base_exists: bool = True,
+    divergence: str = "",
 ):
     """A git holding one checked-out branch at a known position against the base.
 
-    `unrelated` is the case the guard exists for: `merge-base` finds nothing,
-    and `rev-list --left-right --count` would still answer - with the length of
-    each side of two unrelated histories, which reads exactly like a position.
+    `unrelated` is the case the counts guard exists for: `merge-base` finds
+    nothing, and `rev-list --left-right --count` would still answer - with the
+    length of each side of two unrelated histories, which reads exactly like a
+    position. `divergence` is what the symmetric difference holds, which is a
+    different read and the one that tells a rewrite from a fork.
     """
 
     def run(args: list[str], root: Path) -> str:
@@ -1091,6 +1247,8 @@ def _branch_runner(
             return "" if unrelated else "0123456789abcdef\n"
         if args[0] == "rev-list":
             return f"{behind}\t{ahead}\n"
+        if args[:2] == ["log", "--topo-order"]:
+            return divergence
         if args[0] == "log":
             return "\n".join(f"{identifier} Something that landed" for identifier in landed)
         return ""
@@ -1153,6 +1311,204 @@ def test_branch_state_names_the_items_that_landed_while_the_branch_sat() -> None
     )
 
     assert state.landed == ("PL-K7QX", "PL-9Y42")
+
+
+# --- a rewritten history, which the counts alone read as ordinary divergence -
+#
+# `filter-repo` and `filter-branch` rebuild every commit, so a branch left on
+# the old history is counted as hundreds behind *and* hundreds ahead. Merging,
+# resetting or `checkout -B` onto the base - the three things that count
+# invites - each lose whatever the branch pushed into the rewrite's window,
+# which is the incident behind `PL-YGF3`.
+
+REWRITE = _commits(
+    ("<", "aaa1111", "1788256800", "p0", "PL-0001 The first commit"),
+    (">", "bbb1111", "1788256800", "p0", "PL-0001 The first commit"),
+    ("<", "aaa2222", "1788343200", "aaa1111", "PL-0002 The second commit"),
+    (">", "bbb2222", "1788343200", "bbb1111", "PL-0002 The second commit"),
+    ("<", "aaa3333", "1788688800", "aaa2222", "PL-9Y42 Landed after the rewrite"),
+    (">", "bbb3333", "1788602400", "bbb2222", "PL-K7QX Capture what only this branch holds"),
+)
+
+
+def test_a_rewritten_base_is_told_apart_from_a_branch_that_is_merely_behind() -> None:
+    """The divergence begins in commits the base also holds, under other hashes.
+
+    Same author date and same subject on both sides: that is what a rewrite
+    preserves and what a fork cannot fabricate. What is left over - here one
+    capture - is the only copy of itself anywhere.
+    """
+    state = branch_state(ROOT, runner=_branch_runner(behind=3, ahead=3, divergence=REWRITE))
+
+    assert state.disposition == REWRITTEN
+    assert state.rewrite is not None
+    assert state.rewrite.duplicated == 2
+    assert state.rewrite.own == (("bbb3333", "PL-K7QX Capture what only this branch holds"),)
+    assert state.rewrite.total == 3
+
+
+def test_an_ordinary_divergence_makes_no_rewrite_claim() -> None:
+    """A branch that sat while the base moved matches nothing, and merging is right."""
+    ordinary = _commits(
+        (">", "bbb1111", "1788256800", "p0", "PL-K7QX Do the thing"),
+        ("<", "aaa2222", "1788343200", "p0", "PL-9Y42 Validate wash-in"),
+    )
+    state = branch_state(ROOT, runner=_branch_runner(behind=1, ahead=1, divergence=ordinary))
+
+    assert state.rewrite is None
+    assert state.disposition == "merge"
+
+
+def test_a_commit_cherry_picked_from_the_base_is_not_a_rewritten_history() -> None:
+    """The rule reads the *oldest* divergent commit, not any duplicate anywhere.
+
+    A branch that forked, did its own work and then took a commit from the base
+    holds a duplicate too. It is not on stale history, and telling it to
+    cherry-pick its way onto a new base would be an answer to a question it
+    does not have.
+    """
+    picked = _commits(
+        (">", "bbb1111", "1788256800", "p0", "PL-K7QX Do the thing"),
+        ("<", "aaa2222", "1788343200", "p0", "PL-9Y42 Validate wash-in"),
+        (">", "bbb2222", "1788343200", "bbb1111", "PL-9Y42 Validate wash-in"),
+    )
+    state = branch_state(ROOT, runner=_branch_runner(behind=1, ahead=2, divergence=picked))
+
+    assert state.rewrite is None
+    assert state.disposition == "merge"
+
+
+def test_a_rewrite_with_no_fork_point_is_reported_rather_than_declined() -> None:
+    """The usual shape, and the one the fork-point guard used to swallow whole.
+
+    Measured 2026-09-06: a `filter-branch --index-filter` rewrite of a
+    four-commit repository leaves *no* merge base, so this arrived at the
+    decline about a `--depth` fetch - advice that does nothing to a rewritten
+    clone, and that leaves the reader holding the reflex the item is about.
+    Proving the two sides are one duplicated history is what makes the counts
+    mean something here.
+    """
+    state = branch_state(
+        ROOT, runner=_branch_runner(behind=3, ahead=3, unrelated=True, divergence=REWRITE)
+    )
+
+    assert state.disposition == REWRITTEN
+    assert state.declined == ""
+    assert (state.behind, state.ahead) == (3, 3)
+    # Nothing "landed" across a history this one shares no commit with.
+    assert state.landed == ()
+
+
+def test_two_commits_sharing_a_date_and_a_subject_match_one_on_the_base_once() -> None:
+    """Under-reporting what is held only here is the failure that costs commits."""
+    repeated = _commits(
+        ("<", "aaa1111", "1788256800", "p0", "Fix the typo"),
+        (">", "bbb1111", "1788256800", "p0", "Fix the typo"),
+        (">", "bbb2222", "1788256800", "bbb1111", "Fix the typo"),
+    )
+    state = branch_state(ROOT, runner=_branch_runner(behind=1, ahead=2, divergence=repeated))
+
+    assert state.rewrite is not None
+    assert state.rewrite.own == (("bbb2222", "Fix the typo"),)
+
+
+def test_the_rewritten_branch_line_replaces_the_advice_that_would_lose_the_work() -> None:
+    """Both ordinary commands are destructive here, so neither is offered."""
+    from docket.render import format_branch_state
+
+    printed = format_branch_state(
+        BranchState(
+            branch="claude/pl-k7qx-live",
+            base=BASE,
+            behind=699,
+            ahead=703,
+            fetched=True,
+            rewrite=RewriteReport(
+                duplicated=702, own=(("2966d9b", "PL-8PS6 Capture the fresh gas flow range"),)
+            ),
+        )
+    )
+
+    assert "rewritten history, not divergence" in printed
+    assert "2966d9b PL-8PS6 Capture the fresh gas flow range" in printed
+    assert "git checkout -B claude/pl-k7qx-live-rewritten origin/main" in printed
+    assert "git cherry-pick 2966d9b" in printed
+    # Tags are the half a branch-only cleanup misses: they still point into the
+    # old history, and `git fetch` will not move one that already exists.
+    assert "git fetch --tags --force origin" in printed
+    assert f"git merge {BASE}" not in printed
+    assert "git checkout -B claude/pl-k7qx-live origin/main" not in printed
+
+
+def test_every_commit_held_only_here_is_listed_and_picked() -> None:
+    """A truncated recovery command is the failure this whole report prevents.
+
+    It would look complete and drop exactly what it was printed to save, and no
+    shorter honest form exists: no git command lists the commits held only
+    here, because telling them from the duplicated ones is the read this module
+    just did.
+    """
+    from docket.render import format_branch_state
+
+    own = tuple((f"c{index:07d}", f"PL-000{index} Commit {index}") for index in range(9))
+    printed = format_branch_state(
+        BranchState(
+            branch="claude/pl-k7qx-live",
+            base=BASE,
+            behind=40,
+            ahead=49,
+            fetched=True,
+            rewrite=RewriteReport(duplicated=40, own=own),
+        )
+    )
+
+    assert all(f"{short} {subject}" in printed for short, subject in own)
+    picked = next(line for line in printed.splitlines() if "cherry-pick" in line)
+    assert all(short in picked for short, _ in own)
+
+
+def test_a_merge_commit_held_only_here_says_what_cherry_pick_needs() -> None:
+    """`git cherry-pick` refuses a merge without `-m`, and one of the two commits
+    the incident lost was the merge that resolved the branch's conflicts."""
+    from docket.render import format_branch_state
+
+    printed = format_branch_state(
+        BranchState(
+            branch="claude/pl-k7qx-live",
+            base=BASE,
+            behind=9,
+            ahead=11,
+            fetched=True,
+            rewrite=RewriteReport(
+                duplicated=9,
+                own=(("2966d9b", "Merge origin/main into claude/pl-k7qx-live"),),
+                merges=True,
+            ),
+        )
+    )
+
+    assert "cherry-pick -m 1" in printed
+
+
+def test_a_rewrite_the_branch_added_nothing_to_is_moved_across_whole() -> None:
+    """A local copy of the default branch left on the old history: nothing to save."""
+    from docket.render import format_branch_state
+
+    printed = format_branch_state(
+        BranchState(
+            branch="main",
+            base=BASE,
+            behind=700,
+            ahead=699,
+            fetched=True,
+            rewrite=RewriteReport(duplicated=699),
+        )
+    )
+
+    assert "Nothing is held only here" in printed
+    assert f"git checkout -B main {BASE}" in printed
+    assert "git fetch --tags --force origin" in printed
+    assert "cherry-pick" not in printed
 
 
 def test_branch_state_declines_on_a_detached_head() -> None:

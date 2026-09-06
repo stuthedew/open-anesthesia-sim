@@ -211,6 +211,20 @@ the pull request's state settles it, and where the session cannot reach
 GitHub, `git log --oneline origin/main` for a squash subject naming the
 branch's ids does. A branch whose pull request is open is live work: leave it.
 
+**Clearing branch refs does not finish the job after a history rewrite.** A
+local clone keeps purged content reachable through its release tags, which
+still point at pre-rewrite commits until something re-points them by force -
+observed 2026-09-06 across `v0.3.7` to `v0.4.4`, against a remote that was
+already clean, and `git log --all` is what shows it (`PL-YGF3`):
+
+```bash
+git fetch --tags --force origin
+```
+
+`bin/docket branch` prints that line itself where it finds a rewritten
+history, which is the moment it is wanted; this is for the pass that clears
+refs without being on a diverged branch.
+
 **Delete that one ref by name; never `git fetch --prune`.** A stale
 `origin/<branch>` can be the only surviving copy of an item captured on a
 branch nobody merged, which is why `fetch_remote` does not prune and what
@@ -450,6 +464,13 @@ harness-named branch has none until it commits outside the queue, so on one of
 those either push the failing test first or accept that the item reads as
 startable until you do.
 
+That is a weaker cover rather than none, since `PL-N1JK`. `bin/docket show`
+prints `Its file is already edited on <branch>` underneath the in-flight mark,
+so a session that reaches `show` at least learns that a branch is already in
+that file - though not that anybody has claimed the item, which is the thing
+only the branch name or a commit outside the queue can say. Name the branch
+where you can.
+
 The cost is that an abandoned branch and a live session look alike in `flight`,
 which says so and separates them by age; `bin/docket stranded` recovers what
 one strands. That trade is worth taking - a session picking a different item
@@ -595,6 +616,16 @@ one of them. The mark names the branch, so another session's work is
 distinguishable from this one's. It is bounded by what has been pushed, so an
 *unmarked* item means "no ref proved it" rather than "no branch has it" — which
 is why the output also names the refs it could not read.
+
+**A second and weaker line fires where that mark cannot reach at all.** A
+triage pass writes nothing outside `docs/items/`, which is exactly the diff
+shape the in-flight mark refuses to read as work — so two passes on one item
+were invisible to each other however carefully each one fetched, and on
+2026-09-06 the merge discarded one of two identical answers (`PL-N1JK`). `Its
+file is already edited on <branch>` is that case: not work in flight, so
+`bin/docket next` still offers the item and nobody has claimed it, but a second
+answer here is still a second resolution of the same file. Skip it the same
+way, and say in the reply which branch you left it to.
 
 Fill in what capture deliberately skipped:
 `priority`, `effort`, `classes`, `touches`, and `feature` when it belongs
