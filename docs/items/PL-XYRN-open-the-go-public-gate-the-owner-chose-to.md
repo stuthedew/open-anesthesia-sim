@@ -9,6 +9,7 @@ feature: public-readiness
 touches: docs/items, ROADMAP.md
 added: 2026-09-05
 closed: 2026-09-06
+pr: 370
 verify: bin/docket check && ! grep -q '^blocked-by: PL-XYRN' docs/items/PL-N092-rewrite-readme-as-a-human-readable-introduction.md && ! grep -q 'immediately before it is made public' ROADMAP.md
 ---
 
