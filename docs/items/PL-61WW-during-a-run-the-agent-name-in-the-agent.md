@@ -46,8 +46,22 @@ Worth checking in the same pass whether any *other* control disabled during a
 run (the Start button at `simulation_view.py:2233` is the obvious one) is
 carrying information rather than just an unavailable action.
 
+**`make check` is green on this, and will stay green after a naive fix.**
+`tools/contrast_check.py:347` already declares a requirement for "the agent
+name over its ISO 5360 identification color" and it passes — because the pair
+it measures is the *enabled* one, `fill` against `foreground`. The colour
+actually rendered during a run is Flet/Material's disabled grey, which appears
+nowhere in `theme.py`; the tool reads constants out of that file with `ast`, so
+a colour the project never declares is not merely undeclared but unreachable.
+That is the general shape rather than this one control's bug: every disabled
+state in the interface is currently outside the checker's reach.
+
 **Done when.** The running agent's identity is legible throughout a run at the
-contrast bar above, and a test pins it. Candidate directions, none chosen: keep
+contrast bar above, and a test pins it. Pin it in
+`tools/contrast_check.py`'s `REQUIREMENTS` rather than only in a unit test —
+which means the disabled foreground has to become an explicit constant in
+`theme.py` instead of a theme default, and that is a reason to prefer the fix
+directions below that set the colour explicitly. Candidate directions, none chosen: keep
 the label at `scheme.foreground` when disabled rather than letting the theme
 grey it; drop `disabled` for a read-only presentation that does not recolour;
 or move the running agent's identity out of the control into a label that is
