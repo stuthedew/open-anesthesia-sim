@@ -73,6 +73,21 @@ however its commits got there. It also means the check works in a shallow
 clone, where every commit-graph question is unreliable — which is what an
 agent session's container is.
 
+**The command refreshes the default branch before it compares, and says so
+when it did not.** Every finding is a claim about what the base does *not*
+hold, so a base nobody refreshed reports whatever merged since the last fetch
+as lost — and the recovery the finding hands over is a `git checkout` that
+overwrites the merged copy with the older one. On 2026-09-05 that is what
+happened: `PL-XLQ5` merged as `#325` at 01:13, a checkout whose `origin/main`
+was from 01:05 reported it stranded at 01:16, and the recovery restored its
+pre-triage copy over the triaged one the merge had just landed. Confirming the
+branch was gone from the remote read as corroboration and was not — a merge
+deletes the branch too, so the two histories are indistinguishable from the
+ref's absence. `--no-fetch` is for a caller that already refreshed and for a
+checkout with no network; the report then carries a line saying what it rests
+on. The library function never fetches, so the read still works from a bare
+checkout.
+
 The answer is bounded by the refs the checkout holds, so the count of refs read
 is part of the output, and a checkout that can read none declines rather than
 reporting a clean store. Read the other way, the report answers whether a
@@ -96,12 +111,13 @@ It surfaced only because that session happened to check the merge file by file.
 `stranded` would have reported the item on the branch; nothing at all watched
 the skill edit beside it, which was the actual behavior change.
 
-`docket stranded` reports it now. **The rule has two parts**: a branch whose
+`docket stranded` reports it now. **The rule has three parts**: a branch whose
 introduced content is partly on the base and partly not, *and* which carries a
-commit none of whose paths reached the base at all. The first selects
-candidates — a branch nobody merged has landed nothing and is ordinary work in
-flight, and a branch merged whole never reaches the read. The second is what
-tells a commit nothing took from a commit the merge took and *merged*.
+commit none of whose paths reached the base at all, *and* one of whose commits
+the base took whole. The first selects candidates — a branch nobody merged has
+landed nothing and is ordinary work in flight, and a branch merged whole never
+reaches the read. The second tells a commit nothing took from a commit the
+merge took and *merged*. The third tells a merge from a coincidence.
 
 The second part was learned from the check's own first live firing. A branch
 carrying the v0.3.8 release commit was squash-merged as `#312` while `#311` was
@@ -111,6 +127,22 @@ the branch was reported as carrying lost work — while `main` was *ahead* of it
 Ten paths touched and seven landed is the signature of a merge that happened,
 and no comparison of the outstanding three can see that. Only counting them
 against the rest of the same commit can.
+
+The third was learned the same way, from `#372`, and it is the sharper of the
+two because the finding was destructive rather than merely noisy. That branch
+was reported as having "already taken the rest of its work" while its pull
+request was open and none of its triage had landed anywhere. What matched was
+`docket record`: eight of its first commit's twelve files changed only by a
+`pr:` line, and the sessions behind `#366` and `#369` had written the same
+line — the command writes a value the tool dictates rather than one a session
+chooses, so both sides wrote identical bytes. Agreement is not evidence of a
+merge, and no comparison of those blobs will ever say otherwise, because there
+is nothing to tell apart. What differs is the *unit*: a squash merge takes
+whole commits, so a merged branch has a commit every path of which the base
+holds, and convergence scatters files inside commits and leaves no whole one.
+The prescribed recovery for this section deletes the branch ref and restarts it
+on `main`, so believing it about a live branch throws away the work an open
+pull request was raised against.
 
 The report names the commits nothing took, the paths under each, and the
 `git checkout` line that recovers them.
@@ -128,12 +160,14 @@ That 204 is a sample rather than a proof, and the next merge after it produced
 a shape the sample did not contain. The population a measurement covered is
 part of what it measured.
 
-Both directions of error are still possible and the trade is deliberate. A
+Both directions of error are still possible and the trade is deliberate. Two
+shapes go unreported, and both are silence, which is the expensive direction: a
 commit pushed after the merge that happens to leave one file in a state the base
-has held is not reported, which is the silent direction and the expensive one;
-it is accepted only because the alternative — the content split on its own —
-fired in every session's digest, which `CLAUDE.md` calls a defect in the check
-rather than coverage.
+has held, and a post-merge push to a branch whose every pre-merge commit was
+re-merged against a base that had moved under it, since neither side then has a
+whole commit. Both are accepted only because the alternative — the content
+split on its own — fired in every session's digest, which `CLAUDE.md` calls a
+defect in the check rather than coverage.
 
 ### The other loss: a merge that deletes an item nothing deleted
 
@@ -214,7 +248,9 @@ read must work from a bare checkout with no network. A command whose one
 question is "has the base moved" would then answer "current" from a ref nobody
 refreshed, so `docket branch` refreshes first and `--no-fetch` says not to -
 and the line says which happened, rather than letting a stale answer look
-fresh.
+fresh. `docket stranded` is the second command on this pattern and the same
+three parts: it refreshes, it takes `--no-fetch`, and its report carries which
+happened.
 
 Where no comparison exists at all - a detached HEAD, no base, or the default
 branch with no remote copy of it - `--brief` prints nothing. That is what the

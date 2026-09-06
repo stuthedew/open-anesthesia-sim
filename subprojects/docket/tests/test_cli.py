@@ -999,6 +999,44 @@ def test_stranded_reports_nothing_when_every_branch_has_landed(
     assert "No item exists only on a branch" in capsys.readouterr().out
 
 
+def test_stranded_refreshes_the_base_before_deciding_anything_is_lost(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-39B7: the finding is a claim about what the base does not hold.
+
+    Read against a base eight minutes old, an item merged in those eight
+    minutes reads as existing only on a branch - and the recovery this command
+    prints then overwrites the merged copy with the older one, which is what
+    was run on 2026-09-05 (`PL-KBFN`).
+    """
+    root = _branched_repo(tmp_path)
+    fetched: list[Path] = []
+    monkeypatch.setattr("docket.cli.fetch_remote", lambda where: fetched.append(where))
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    assert fetched == [root]
+    assert "Nothing refreshed the default branch" not in capsys.readouterr().out
+
+
+def test_stranded_says_so_when_told_not_to_refresh(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A checkout with no network still gets an answer, and is told what it rests on."""
+    root = _branched_repo(tmp_path)
+    fetched: list[Path] = []
+    monkeypatch.setattr("docket.cli.fetch_remote", lambda where: fetched.append(where))
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert fetched == []
+    assert "Nothing refreshed the default branch" in out
+    # Above the recovery command, not under it: a reader who has reached the
+    # `git checkout` has already made the decision the caveat informs.
+    assert out.index("Nothing refreshed") < out.index("git checkout abandoned")
+
+
 def _pushed_after_merge_repo(tmp_path: Path) -> Path:
     """A repository in the geometry that loses a commit, built with real git.
 

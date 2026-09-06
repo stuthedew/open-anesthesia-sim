@@ -1790,11 +1790,28 @@ class StrandedReport:
 
     `declined` carries the same meaning it does for `PullRequestHistory`: a
     check that could not run, reported as such rather than as a clean result.
+
+    `fetched` is how old the *comparison point* is, and it is part of the
+    answer for the same reason `refs_read` is. Every finding here rests on the
+    default branch not holding the item, so a base nobody refreshed reports
+    whatever merged since the last fetch as lost. That is not hypothetical:
+    `PL-XLQ5` merged at 01:13 on 2026-09-05, this checkout's `origin/main` was
+    from 01:05, and at 01:16 the item read as stranded and the recovery command
+    restored its pre-triage copy over the triaged one the merge had just landed
+    (`PL-KBFN`). The deleted remote branch corroborated nothing - a merge
+    deletes the branch too - so freshness is the whole of what separates a hole
+    from a merge.
+
+    It records that the caller *attempted* a refresh, not that one arrived, and
+    for `BranchState`'s reason: a quiet `git fetch` prints nothing whether it
+    reached the remote or not. So it is reported only in the negative - nothing
+    tried - which is the claim that can be made.
     """
 
     items: tuple[StrandedItem, ...] = ()
     refs_read: int = 0
     declined: str = ""
+    fetched: bool = False
 
     @property
     def known(self) -> bool:
@@ -2072,7 +2089,12 @@ def _title_at(ref: str, path: str, root: Path, run: Runner) -> str:
 
 
 def stranded(
-    root: Path, known_ids: set[str], *, items_dir: str = "docs/items", runner: Runner | None = None
+    root: Path,
+    known_ids: set[str],
+    *,
+    items_dir: str = "docs/items",
+    runner: Runner | None = None,
+    fetched: bool = False,
 ) -> StrandedReport:
     """Items that exist on some branch and in neither the store nor the default branch.
 
@@ -2094,6 +2116,13 @@ def stranded(
     reported back to the session that captured it. The default branch's own
     ids are added to that, because a branch forked before an item landed has a
     working tree missing it and would otherwise report it as stranded.
+
+    **It never fetches, and `fetched` is what the caller says it did.** The
+    rule the rest of this module follows - a read that must work from a bare
+    checkout with no network - applies here too, so refreshing the base is
+    `cmd_stranded`'s and it is not optional there: every finding is a claim
+    about what the base does *not* hold, and that claim is only as old as the
+    last fetch. `StrandedReport.fetched` carries what happened into the output.
     """
     run = runner or _run_git
     refs = [
@@ -2104,7 +2133,7 @@ def stranded(
         if line.strip()
     ]
     if not refs:
-        return StrandedReport(declined="no branch refs this checkout can read")
+        return StrandedReport(declined="no branch refs this checkout can read", fetched=fetched)
 
     base = default_base(root, runner=run)
     on_base = _items_at(base, root, items_dir, run)
@@ -2113,7 +2142,8 @@ def stranded(
         # to. Both would make every item on every branch look stranded, which
         # is the one output worse than none: it is long, alarming and wrong.
         return StrandedReport(
-            declined=f"no items found on {base}, so every branch would read as stranding its own"
+            declined=f"no items found on {base}, so every branch would read as stranding its own",
+            fetched=fetched,
         )
 
     known = {identifier.upper() for identifier in known_ids} | set(on_base)
@@ -2139,7 +2169,7 @@ def stranded(
         )
         for identifier, (path, branches) in sorted(elsewhere.items())
     ]
-    return StrandedReport(items=tuple(found), refs_read=len(refs))
+    return StrandedReport(items=tuple(found), refs_read=len(refs), fetched=fetched)
 
 
 @dataclass(frozen=True)
@@ -2254,12 +2284,19 @@ class OrphanedBranch:
     """A branch the default branch took part of and not the rest.
 
     `landed` is what makes this different from an ordinary branch in flight,
-    and it is the whole of the evidence. A branch nobody has merged has landed
+    and it is most of the evidence. A branch nobody has merged has landed
     nothing; a branch merged whole is not reported here at all, because
     `_unlanded_refs` already excluded it. Both sides non-empty means the base
     holds some of what this branch introduced and not the rest - which is what
     a branch looks like after its pull request merged and something pushed to
     it afterwards.
+
+    It is not the *whole* of the evidence, and `_commits_by_landing` carries
+    the rest: these paths are only evidence of a merge where the base took a
+    whole commit of this branch, since two sessions running `bin/docket record`
+    write identical lines and each then holds content the other landed
+    (`PL-5TRV`). The paths are still what a reader is shown, because the count
+    is what makes the finding legible; the commits are what make it true.
     """
 
     ref: str
@@ -2296,10 +2333,20 @@ class OrphanedReport:
         return not self.declined
 
 
-def _commits_touching(
-    ref: str, base: str, paths: frozenset[str], root: Path, run: Runner
-) -> tuple[OrphanedCommit, ...]:
-    """The ref's commits *none* of whose work reached the base, newest first.
+def _commits_by_landing(
+    ref: str,
+    base: str,
+    landed: frozenset[str],
+    outstanding: frozenset[str],
+    root: Path,
+    run: Runner,
+) -> tuple[tuple[OrphanedCommit, ...], bool]:
+    """One walk of the ref's commits, read for both halves of the rule.
+
+    Returns the commits *none* of whose work reached the base, newest first,
+    and whether the base took any commit of this branch **whole**. The two
+    readings come off one `git log` because they are one question asked from
+    opposite ends, and two walks would be two answers waiting to disagree.
 
     **Wholly, not partly, and that is the whole of the rule.** A commit whose
     changes are partly on the base is a commit the merge *took*: the squash
@@ -2329,22 +2376,50 @@ def _commits_touching(
     was an advisory firing in every session's digest - which `CLAUDE.md` calls
     a defect in the check rather than coverage.
 
+    **The same rule pointed at the landed side, which is the second half.**
+    Agreement with the base does not mean the base took it: `bin/docket record`
+    writes a value the tool dictates rather than one a session chooses, so two
+    branches running it write byte-identical lines and each reads as holding
+    the other's landed work. `#372` was reported as merged on the strength of
+    eight such files while its pull request was open and none of its triage had
+    landed anywhere (`PL-5TRV`). No comparison of those blobs can ever tell
+    convergence from a merge, because there is nothing to tell apart - the
+    bytes are the same. What differs is the *unit*: a squash merge takes whole
+    commits, so a merged branch has a commit every path of which the base
+    holds, and convergence scatters files inside commits and leaves no whole
+    one. Hence the boolean, and hence it is computed the same way the commits
+    above are rather than from a count or a ratio.
+
+    Its own recall cost is the mirror of the one above and just as narrow: a
+    branch whose every pre-merge commit was re-merged against a base that moved
+    under it has no wholly landed commit either, and a post-merge push to it
+    goes unreported. The remaining false positive is a branch one of whose
+    commits is *only* `docket record` output - which the `docket` skill tells a
+    session not to make, for a different reason.
+
     `\\x1e` opens each record so a subject containing a newline cannot be read
     as the start of another commit.
     """
     output = run(["log", "--format=%x1e%H%x1f%s", "--name-only", f"^{base}", ref, "--"], root)
     found: list[OrphanedCommit] = []
+    took_one_whole = False
     for record in output.split("\x1e"):
         if not record.strip():
             continue
         header, _, body = record.partition("\n")
         commit, _, subject = header.partition("\x1f")
         touched = tuple(line.strip() for line in body.splitlines() if line.strip())
-        if touched and all(path in paths for path in touched):
+        if not touched:
+            # A merge commit, which lists no paths of its own: it introduces no
+            # work to leave behind and proves no merge of this branch either.
+            continue
+        if all(path in outstanding for path in touched):
             found.append(
                 OrphanedCommit(commit=commit.strip(), subject=subject.strip(), paths=touched)
             )
-    return tuple(found)
+        elif all(path in landed for path in touched):
+            took_one_whole = True
+    return tuple(found), took_one_whole
 
 
 def orphaned(
@@ -2377,24 +2452,27 @@ def orphaned(
     prose the base had edited under it - and the check fired falsely on it. The
     population a measurement covered is part of what it measured.
 
-    **The rule, in two parts, and the second was learned the hard way.** A
-    branch whose introduced content is partly on the base and partly not, *and*
-    which carries a commit none of whose paths reached the base at all. The
-    content split alone selects candidates - a branch nobody merged has landed
-    nothing and is ordinary work in flight; a branch merged whole never reaches
-    here - but it cannot tell a commit nothing took from a commit the merge took
-    and *merged*, which is what a squash against a base that moved underneath
-    produces. `_commits_touching` carries that half and the branch that taught
-    it (`PL-JHJ3`).
+    **The rule, in three parts, and only the first was got right first time.**
+    A branch whose introduced content is partly on the base and partly not,
+    *and* which carries a commit none of whose paths reached the base at all,
+    *and* one of whose commits the base took whole. The content split alone
+    selects candidates - a branch nobody merged has landed nothing and is
+    ordinary work in flight; a branch merged whole never reaches here - but it
+    cannot tell a commit nothing took from a commit the merge took and
+    *merged*, which is what a squash against a base that moved underneath
+    produces (`PL-JHJ3`), and it cannot tell content the base took from content
+    the base and the branch wrote identically and independently (`PL-5TRV`).
+    `_commits_by_landing` carries both of those halves and the branch that
+    taught each.
 
-    **What it can get wrong.** Two sessions running `bin/docket record` write
-    the same tool-dictated line, so one branch can hold a blob identical to one
-    the other landed and read as partly landed - which now costs nothing unless
-    a whole commit is also unaccounted for. In the other direction, a commit
-    pushed after the merge that happens to leave one file in a state the base
-    has held is not reported. Silence is the expensive direction here and the
-    trade is taken deliberately; `_commits_touching` says why. The reader
-    decides, the way they do for `flight` and `stranded`.
+    **What it can get wrong**, now that agreement alone no longer convicts. Two
+    directions, both silence. A commit pushed after the merge that happens to
+    leave one file in a state the base has held is not reported; nor is a
+    post-merge push to a branch whose every pre-merge commit was re-merged
+    against a base that had moved under it, since neither side then has a whole
+    commit. Silence is the expensive direction here and both trades are taken
+    deliberately; `_commits_by_landing` says why. The reader decides, the way
+    they do for `flight` and `stranded`.
     """
     run = runner or _run_git
     base = default_base(root, runner=run)
@@ -2409,14 +2487,18 @@ def orphaned(
         landed, outstanding = refs.landing.get(name, ((), ()))
         if not (landed and outstanding):
             continue
-        left = _commits_touching(name, base, frozenset(outstanding), root, run)
-        # A split alone is not enough, and the branch that taught this is named
-        # in `_commits_touching`. The split says some of the branch's content is
-        # not on the base, which a squash merged against a moving base produces
-        # on its own; a commit *wholly* absent says nothing took it. Without a
-        # commit to name there is also nothing to hand a reader, which is the
-        # same fact from the other side.
-        if left:
+        left, took_one_whole = _commits_by_landing(
+            name, base, frozenset(landed), frozenset(outstanding), root, run
+        )
+        # A split alone is not enough in either direction, and the branch that
+        # taught each half is named in `_commits_by_landing`. The split says
+        # some of the branch's content is not on the base, which a squash
+        # merged against a moving base produces on its own; a commit *wholly*
+        # absent says nothing took it, and without one there is also nothing to
+        # hand a reader. And the landed side is only evidence of a merge where
+        # the base took a whole commit, because two branches running `docket
+        # record` write identical lines and neither merged the other.
+        if left and took_one_whole:
             # The branch's outstanding side is narrowed to the paths of the
             # commits actually reported. The wider set includes files a merged
             # commit touched that the base then merged differently, which are
