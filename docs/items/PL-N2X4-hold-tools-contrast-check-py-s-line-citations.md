@@ -1,8 +1,10 @@
 ---
 id: PL-N2X4
 title: Hold tools/contrast_check.py's line citations to the file, or drop them
-status: needs-decision
+status: done
 added: 2026-09-04
+closed: 2026-09-06
+verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_line_number_citation_is_refused' tests/unit/test_contrast_check.py
 priority: P2
 effort: S
 classes: defect, infra
@@ -41,3 +43,19 @@ changing a decision, which `CLAUDE.md` treats as a defect in a check.
 **Done when.** Every `REQUIREMENTS` entry names where its pair is drawn in a
 form that a reader can follow and that a later edit to `app/simulation_view.py`
 cannot silently invalidate.
+
+**Resolved 2026-09-06, with `PL-GJDW`, in one change.** The decision this item
+posed went the way it expected: the line numbers are dropped and each entry
+cites the *symbol* the colour is set on. What it left open - "or make the line
+citations checkable" - is answered against, for the reason written here: a
+line-checking tool would fire on ordinary reordering of `app/simulation_view.py`
+without changing a decision, which `CLAUDE.md` treats as a defect in a check.
+
+The half this item did not propose is what makes the answer hold. Citing by
+name is a convention, and a convention is exactly what failed the first time,
+silently. So `check_citations` in `tools/contrast_check.py` now refuses any
+`*.py:<line>` in a description outright and resolves every backticked symbol
+against `app/theme.py` and `app/simulation_view.py`, both as `make check`
+errors. A rename now reddens the gate instead of rotting; whether the named
+symbol is really where the colour matters stays a reader's judgment, which is
+the same line `tools/doc_check.py` draws for documentation.

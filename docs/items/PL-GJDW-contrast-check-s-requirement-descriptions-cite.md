@@ -3,11 +3,12 @@ id: PL-GJDW
 title: contrast_check's requirement descriptions cite simulation_view line numbers, and all eight are wrong
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: dev-tooling
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-04
+closed: 2026-09-06
 verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_every_requirement_names_a_symbol_that_exists' tests/unit/test_contrast_check.py
 ---
 
