@@ -35,6 +35,14 @@ on:
 # written, and the argument for folding it survives on the concurrent-job cap
 # regardless.
 #
+# **The repository was made public to stop the billing, not as a publication
+# decision** (project owner, 2026-09-06: "I made it public before I wanted to
+# so i wouldn't get billed for minutes"). Recorded here because it is the fact
+# a session is most likely to get backwards: nothing about the CI setup is
+# waiting on the repository being private again, and the human-facing pass
+# `PL-XYRN` holds is deliberately not overdue - the owner is not advertising
+# the project yet.
+#
 # `cancel-in-progress` is conditional rather than a flat `true` on purpose.
 # `github.ref` is `refs/pull/N/merge` under `pull_request`, so each pull
 # request gets its own lane; but it is `refs/heads/main` under the `push`

@@ -62,3 +62,26 @@ Source for the billing half: GitHub Docs, *Billing and usage* - standard
 GitHub-hosted runners are free and unlimited on public repositories, and larger
 runners are not. Read via search results rather than fetched, because
 `docs.github.com` is blocked by this container's egress proxy.
+
+**Why the repository is public, recorded on the owner's approval (2026-09-06):
+to stop the Actions billing, not as a publication decision.** In their words:
+"I made it public before I wanted to so i wouldn't get billed for minutes", and
+"I'm not doing the human pass yet, because I'm not trying to advertise."
+
+It is worth a line because it is the fact a later session is most likely to
+invert. Three readings it forecloses:
+
+- That the visibility is provisional and something here wants it back. Nothing
+  in CI does; free standard runners are strictly better than the allowance, and
+  the concurrency argument above no longer depends on either.
+- That `PL-XYRN`'s human-facing pass is overdue. It is deliberately not being
+  run, and a session finding a public repository with no `README.md` should
+  read that as a decision rather than a gap. `PL-N092` stays `ready` because it
+  is genuinely workable and standalone, not because it is being asked for.
+- That this session's minute-saving work was the answer to the cost problem. It
+  was not: folding a job to reclaim a rounded-up minute (`PL-D551`, `PL-9HDH`)
+  and scoping the verify replay (`PL-SDHR`) were worth doing, and the owner
+  removed the bill outright by changing one setting. What those items still buy
+  is wall clock - 152 s to 59 s per run, measured 2026-09-06 - and runner slots
+  when several sessions push at once, which is the argument this comment now
+  rests on.

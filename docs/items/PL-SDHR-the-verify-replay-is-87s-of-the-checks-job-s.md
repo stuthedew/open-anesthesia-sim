@@ -1,15 +1,16 @@
 ---
 id: PL-SDHR
 title: The verify replay is 87s of the checks job's 152s, and nothing in the workflow records what it now costs
-status: done
 priority: P2
 effort: M
+status: done
 classes: perf, infra
 feature: ci-cost
 touches: .github/workflows/quality.yml, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py
-verify: uv run pytest subprojects/docket/tests/test_verify.py subprojects/docket/tests/test_checks.py && grep -q 'def test_a_scope_that_holds_nothing_to_run_still_carries_the_scope' subprojects/docket/tests/test_verify.py && grep -q 'verify-base' .github/workflows/quality.yml
 added: 2026-09-05
 closed: 2026-09-06
+pr: 369
+verify: uv run pytest subprojects/docket/tests/test_verify.py subprojects/docket/tests/test_checks.py && grep -q 'def test_a_scope_that_holds_nothing_to_run_still_carries_the_scope' subprojects/docket/tests/test_verify.py && grep -q 'verify-base' .github/workflows/quality.yml
 ---
 
 **Problem.** `bin/docket check --verify` is the most expensive step in CI, by

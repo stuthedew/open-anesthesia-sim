@@ -4,11 +4,12 @@ title: A pull request body loses an angle-bracket placeholder to HTML stripping,
 priority: P3
 effort: S
 status: done
-closed: 2026-09-05
 classes: docs, session-cost
 feature: dev-tooling
 touches: CLAUDE.md
 added: 2026-09-01
+closed: 2026-09-05
+pr: 369
 verify: grep -qF 'read the published body back' CLAUDE.md
 ---
 

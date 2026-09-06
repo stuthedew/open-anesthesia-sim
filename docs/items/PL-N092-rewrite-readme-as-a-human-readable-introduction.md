@@ -154,6 +154,32 @@ Nothing above is provisional because of that. `PL-RM83` settled the audience,
 the `docs/MODEL.md` boundary and the status treatment, and this brief is
 restated against them; only the timing moved.
 
+## Released, 2026-09-05 — the repository went public first
+
+The project owner answered `PL-XYRN`: "public today. Will do human facing pass
+in the nearish future." The pass no longer runs immediately before the flip, so
+the `blocked-by: PL-XYRN` edge is gone and this item is `ready`. It is now the
+work that closes a gap a stranger can already see, rather than work done ahead
+of one — which raises its value without changing a word of the brief.
+
+**Its `verify:` was silently passing, and is corrected here.** As written it was
+`python3 tools/doc_check.py check && ! grep -q 'resolution the numerical method
+supports' README.md`. `PL-WB5K` then deleted `README.md` (#366), and `grep` on a
+missing file exits 2, which `!` inverts to 0 — so from that merge onward the
+command **passed on a tree with none of the work done**, which is the one thing
+a `verify:` exists to refuse. Nothing caught it: `docket check --verify` raises
+its "already passing" advisory only for items `docket next` is about to offer,
+and this item was `blocked`, so it was invisible to exactly the check that would
+have found it. Corrected to `python3 tools/doc_check.py check && test -f
+README.md && ! grep -q 'resolution the numerical method supports' README.md`,
+run on this tree first and observed to exit 1.
+
+**The guard has to come out as part of the work.** `tools/readme_hold_check.py`
+is wired into `make check` and fails if a `README.md` exists at the repository
+root, so writing one without removing the guard turns `make check` red. That
+file and its test are already in this item's `touches`; this is the note saying
+why they are there.
+
 ## The README no longer exists, 2026-09-05 — PL-WB5K
 
 The project owner deleted `README.md` the same day, rather than leaving it
@@ -200,47 +226,16 @@ file that is gone. They are floors on the status section, not an outline of it:
   rather than from the old text in git history, which was wrong for most of its
   life and is a `science`-class error rather than a wording one.
 
-**Unblocked 2026-09-06.** `PL-XYRN`'s gate was "when does the repository go
-public?" and the project owner answered it by acting: the repository is public
-as of 2026-09-06 (`"visibility": "public"` from the API). This item's brief
-already said it was "`ready` in every other respect... it waits only for
-timing", so the `blocked-by: PL-XYRN` edge is removed rather than left to hide
-it from `docket next`.
+**One addition from the session that reached the same fix independently
+(2026-09-06).** Two sessions unblocked this item and repaired its `verify:`
+command within the hour, byte for byte - `test -f README.md` ahead of the
+`grep`, on the same diagnosis that `PL-WB5K`'s deletion had made `! grep`
+succeed on a missing file. Neither saw the other; the duplicate surfaced at the
+merge.
 
-**The sequencing this item assumed has inverted, and that is the note to read
-before starting.** `PL-XYRN` exists to run the human-facing pass *immediately
-before* the repository goes public. The repository went public first, and the
-pass has not run, so the work is now remedial rather than preparatory: the
-repository has been publicly readable, with no `README.md` at the root and no
-GitHub description, since 2026-09-06. That does not change what this item
-writes; it changes how soon.
-
-One consequence worth stating for whoever takes it: this is the only place in
-the tree that says what the project *is* to a stranger who has not opened
-`src/`. The educational-not-clinical statement currently lives in the running
-interface and in `CITATION.cff`, neither of which a visitor to the repository
-page meets. `touches` already names `tools/readme_hold_check.py` and its test,
-which enforce the file's absence and must be retired in the same change.
-
-**The `verify:` command was vacuous and is rewritten, 2026-09-06.** It read
-`doc_check check && ! grep -q '…' README.md`, written on 2026-09-01 when the
-file existed. `PL-WB5K` deleted `README.md` on 2026-09-05, and `grep` on a
-missing file exits 2, which `!` inverts to success - so the command passed on a
-tree where none of this item's work had been done, and `docket verify` would
-have accepted a branch that did none of it. `test -f README.md` is inserted
-ahead of the `grep`, which is what fails until the file exists; the `grep` half
-is unchanged and still carries `PL-RM83`'s boundary rule against restating
-`docs/MODEL.md`.
-
-**How it surfaced is worth recording, because it is the mechanism working.**
-`docket check --verify` only replays items at `ready` or `needs-decision`, so
-while this one was `blocked` nothing ran its command and the rot was invisible.
-Unblocking it above put it in scope, and CI failed on the very next push -
-`PL-N092 is open but its verify: command already passes (1 of 1 checked)`.
-Local `make check` did not catch it and could not: `PL-P3B6` took `--verify`
-off that target deliberately. The scoped replay `PL-SDHR` added is what put the
-finding on the pull request rather than on `main` after the merge.
-
-The general hole that leaves - a `blocked` item's command can go stale
-unnoticed for as long as it stays blocked, and then reddens whichever pull
-request unblocks it - is `PL-RC0M`.
+That the rot was invisible until the item left `blocked` is the general finding,
+and it is `PL-RC0M`: `already_passing` replays only `ready` and
+`needs-decision`, so a blocked item's command can stop discriminating and
+nothing runs it until whichever pull request unblocks it goes red. Recorded
+here because this item is its worked instance, and a session picking this up
+should know the command was rewritten under it rather than written for it.
