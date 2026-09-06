@@ -3,11 +3,13 @@ id: PL-X35V
 title: The playback-rate control does not state the control resolution its rung costs, so the PL-NBWP disclosure reaches only a reader who has docs/MODEL.md open
 priority: P1
 effort: M
-status: needs-decision
+status: dropped
 classes: safety, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py
 added: 2026-09-06
+closed: 2026-09-06
+reason: The interface displays no wrong value, and the figure this item asks it to display is one a reader cannot perceive or act on. RENDER_INTERVAL_S is twice SIMULATION_TICK_INTERVAL_S, so a frame is two control-grid steps at every rate: at 300x the reader sees simulated time in 60 s increments and can place a control change on a 30 s one. A `30 s control grid` caption is therefore uncheckable against anything on screen and names a difference finer than the display resolves - the inverse of the property that makes the rate label worth showing, which is that it can be checked against the clock. The 10 pp displacement in the brief is a ventilator start at the envelope corner rather than the learner's manoeuvre; opening or closing the dial reaches 1.5 pp at 300x. The plain-language alternative that survived the analysis - one static line naming pause-change-resume as the exact-timing route - was offered to the project owner alongside dropping, and they chose dropping (2026-09-06), so it is declined here rather than left to be re-raised. docs/MODEL.md § "Supported simulation step" keeps the ladder and the measurements for a reader who wants them. Stronger still, and independent of the display argument: the exact propagator means the grid is not a numerical limit at all - a burst could be split at the control event and both halves propagated exactly, at any step size, so an arbitrarily fine grid is available at every rate for the asking. It is not taken because the reader is the coarse element. At 300x the frame they are acting on is up to 60 simulated seconds old before any reaction time is added, so a 30 s quantization sits inside their own observation uncertainty and halving it would change nothing they could either perceive or intend.
 ---
 
 **Problem.** `PL-NBWP` established that a setting changed while the run plays
@@ -82,3 +84,162 @@ that rate is resolved to `multiplier x 0.1` simulated seconds - and a test holds
 the displayed text to the same ladder
 `test_the_control_grid_at_each_rate_is_the_one_two_documents_publish` holds the
 model to, so a rung cannot be added with a label that understates it.
+
+## Design round, 2026-09-06 - the question narrowed, and half the work landed
+
+**The dilemma this item calls the design work has a third horn, and taking it
+costs nothing.** The brief above frames the choice as: either both places the
+rate appears gain the disclosure, or `format_playback_rate` forks and gives up
+the single-source property its docstring argues for. Neither is necessary. What
+that property protects is that the two sites cannot state the same *mode*
+differently - not that they render the same string. A second renderer that
+*contains* the first (`f"{format_playback_rate(m)} - {format_control_grid(g)}"`)
+keeps the guarantee as a substring relation, which is stronger than "one
+function" because it is directly assertable in a test. So the fork is available
+without the loss if a later answer wants it, and it is not an argument against
+any candidate.
+
+**Withdrawn on the project owner's challenge, 2026-09-06 - see the section
+below.** Recorded as it stood: the second candidate, built as the control's own
+caption rather than as a new layout element. `ft.Dropdown` in the shipped Flet 0.86.5
+carries `helper_text` and `helper_style` (verified against
+`dataclasses.fields`), so the line under the control is three lines of view
+code and no restructuring of the transport row. `format_playback_rate` is then
+untouched, the mode line under the clock stays a mode indicator, and the
+disclosure sits where a reader is when they choose the resolution and is still
+there when they reach for a slider.
+
+**Why not the first candidate.** Putting the grid in the option text is the
+only one that prices the trade-off at the moment of *comparison*, which is a
+real advantage and the reason it is worth re-raising later. But the closed
+`ft.Dropdown` renders the selected option's own text at `width=150`, so
+`300x real time - 30 s control grid` truncates there, and a truncated safety
+disclosure is worse than none. Fixing that means widening the control to about
+270 px in a wrapping row that already holds an agent dropdown, three buttons
+and the status word. `menu_width` widens the open menu only and does not help
+the closed field.
+
+**Why not the third.** A message raised once the reader moves a control at a
+rate above 1x is a warning after the fact, and
+`.claude/rules/expert-review.md` prefers an interface that prevents an error
+over one that warns after it. It is also transient, fires repeatedly through a
+drag, and carries the most state and the most test surface of the three.
+
+**Three wording constraints found while looking, and they bind whichever
+placement wins.**
+
+- **Never "step".** The simulation step is 0.1 s at every rate and the module
+  docstring calls holding that "the safety property this module exists to
+  hold". A caption reading `30 s steps` at 300x asserts the opposite of it.
+- **Never "delay", "lag" or "late".** `docs/MODEL.md` states that nothing
+  arrives late: the recorded `ControlChange.elapsed_s` and the step the setting
+  acts over agree at every rate. What coarsens is which instants can be
+  *chosen*.
+- **The unit is simulated seconds and the caption must say so.** At 300x, 30
+  simulated seconds is 0.1 real ones. A reader taking the number as real time
+  has the cost wrong by the multiplier itself.
+
+`0.1 s` is stated at 1x rather than suppressed, for the reason
+`format_playback_rate` renders `1x real time` rather than nothing: an absent
+line makes the line's presence the signal.
+
+**Contrast costs nothing here.** `MUTED` is already declared against both
+`PANEL` and `BACKGROUND` at the 4.5:1 normal-text minimum in
+`tools/contrast_check.py`, so a `MUTED` caption amends an existing entry's
+prose to name the new site and adds no pair.
+
+**What landed in this round, being the same under all three answers.**
+
+- `PlaybackRate.control_grid_s(...)` in `app/playback.py`, deriving the
+  interval through `steps_per_tick` so it inherits that method's refusals
+  rather than re-deriving them, with a docstring naming what the number is not.
+- `format_control_grid(...)` in `app/formatting.py`, rendering the magnitude
+  alone and refusing an interval one decimal would understate rather than
+  publishing a shorter one.
+- `test_the_control_grid_at_each_rate_is_the_one_two_documents_publish` now
+  reads through `control_grid_s`, so the published ladder and the shipped
+  derivation of it are one assertion instead of two that could drift.
+
+**What is still open, and is the whole of what remains.** Where the string goes
+and what it says. No `verify:` command is written yet, deliberately: the
+command has to name the test on the interface path, and which path that is is
+the open question.
+
+## Challenged and re-derived, 2026-09-06 - the number should not be displayed
+
+The project owner asked what a caption stating the grid would mean to a
+reader, and why it needs displaying at all. Two facts checked against the
+source say the brief's premise is half wrong, and they were not in the brief.
+
+**The control grid is finer than the display, by exactly two, at every rate.**
+`RENDER_INTERVAL_S` is `2 * SIMULATION_TICK_INTERVAL_S`
+(`app/simulation_view.py`), so a frame is two grid steps: at 300x the reader
+sees simulated time in 60 s increments and can act on it in 30 s ones.
+`docs/MODEL.md` § "Supported simulation step" states this as the reason
+`PL-NBWP` left the grid alone. It has a consequence that item did not draw:
+a reader cannot check `30 s` against anything on screen, and cannot act on the
+difference between 30 s and the 60 s they can see. The rate label is
+displayable precisely because it *is* checkable against the clock
+(`format_playback_rate`'s docstring makes that the argument for it); a grid
+figure has the opposite property.
+
+**The 10 pp figure is not the learner's manoeuvre.** It is a ventilator start
+at the envelope corner. The ordinary action - open the dial, or close it -
+reaches 1.5 pp at 300x, and the transient saturates rather than scaling.
+
+**So the number and the fact separate, and only one of them is worth screen
+space.** The *number* is uncheckable, imperceptible and unactionable. The
+*fact* - that a setting cannot be placed at a chosen instant while the run is
+playing above 1x, and that pausing gives exact timing - is invisible to a
+reader precisely because the display is coarser than the grid, which is what
+makes it worth disclosing rather than leaving to be discovered. It is also a
+teaching affordance rather than a warning: nothing on screen currently tells a
+reader that timing a manoeuvre is something this simulator can do at all, and
+`docs/MODEL.md` names pause-change-resume as the exact route at every rate.
+
+**Revised recommendation.** Say the actionable half in words and drop the
+figure - a line reading approximately "Time advances in jumps while playing;
+pause to change a setting at an exact moment." `docs/MODEL.md` keeps the
+ladder for a reader who wants it. Dropping the item outright is the honest
+alternative and is not a weak one; building it as the brief describes is the
+weakest of the three, because it spends the interface's scarcest resource on
+the half a reader can neither verify nor use.
+
+**If the figure is dropped, `format_control_grid` loses its only production
+caller** and should come out with it; `PlaybackRate.control_grid_s` stays,
+because `test_the_control_grid_at_each_rate_is_the_one_two_documents_publish`
+reads the published ladder through it.
+
+**Filed while here:** `PL-SR8F`, on `docs/MODEL.md` calling the case-opening
+displacement "two orders milder at every rate" when the figures in the same
+sentence are 0.8 to 1.3 orders apart.
+
+## Outcome: dropped, 2026-09-06
+
+The project owner was offered three dispositions - say the actionable half in
+words and drop the figure; drop the item outright; or build it as the brief
+describes - and chose to drop it. The `reason` field carries the argument.
+
+**Nothing was left in `src/` or `tests/`.** `PlaybackRate.control_grid_s` and
+`format_control_grid` were written earlier in the session as the half common to
+all three dispositions, and both were reverted when the third disposition won:
+with no figure and no sentence displayed, neither has a production caller, and
+the ladder test correctly derives the grid at the point it asserts it. The
+sections above are kept as the record of what was considered, and the
+recommendation in the first of them stands withdrawn.
+
+**The finding that survived the analysis is recorded here rather than refiled**,
+so that dropping this item does not send it round again: nothing in the
+interface tells a reader that pause-change-resume is the route to timing a
+manoeuvre exactly, which is a teaching affordance rather than a disclosure, and
+it was declined with the rest.
+
+**A question worth recording, asked by the project owner after the drop.** If
+the matrix exponential is exact at any step, why do 1x and 300x differ at all?
+They do not differ numerically - that is the point of the exact step, and
+`docs/MODEL.md` measures the disagreement with an independent solution at
+1e-14 to 2e-12 in fraction, not growing with the step. What differs is the
+*input*: settings are held constant across a step, so a control moved while the
+run plays is attributed to a burst boundary, and the same gesture at two rates
+produces two different control timelines. Both runs are then computed exactly.
+They are not one run solved two ways; they are two runs.

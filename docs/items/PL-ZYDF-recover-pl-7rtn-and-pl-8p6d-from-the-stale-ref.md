@@ -10,6 +10,7 @@ milestone: v0.4.5
 touches: docs/items/
 added: 2026-09-06
 closed: 2026-09-06
+pr: 397
 verify: test -f docs/items/PL-7RTN-an-open-pull-request-can-carry-no-check-runs-at.md && test -f docs/items/PL-8P6D-checks-do-not-run-on-a-pull-request-opened-by.md
 ---
 
