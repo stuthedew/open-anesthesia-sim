@@ -1,13 +1,14 @@
 """Check the coupled six-state solution against an independent integration.
 
-Mass balance cannot detect a wrong rate. Every internal transfer is applied
-as an equal-and-opposite pair, so the accounting residual stays at ~2e-15 L
-whatever the transfer rates are — including rates that move the alveolar
-fraction by tenths of a percentage point. Conservation is necessary and
-nowhere near sufficient, and this module is the check that closes the gap:
-it re-derives the governing equations of `docs/MODEL.md` from the parameter
-files, integrates them with a from-scratch fourth-order Runge–Kutta, and
-requires the shipped operator split to agree with that solution.
+Mass balance cannot detect a wrong rate. Every internal exchange appears in
+the system matrix as a pair of entries whose contribution to the total stored
+amount cancels, so the accounting residual stays at rounding whatever the
+transfer rates are — including rates that would move the alveolar fraction by
+tenths of a percentage point. Conservation is necessary and nowhere near
+sufficient, and this module is the check that closes the gap: it re-derives
+the governing equations of `docs/MODEL.md` from the parameter files,
+integrates them with a from-scratch fourth-order Runge–Kutta, and requires the
+shipped solution to agree with that one.
 
 The independence rule is what makes this verification rather than a
 tautology, so `test_oracle_imports_no_solver_from_core` enforces it

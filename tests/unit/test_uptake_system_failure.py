@@ -61,8 +61,6 @@ from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationNumericalError,
 )
-from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
-from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem

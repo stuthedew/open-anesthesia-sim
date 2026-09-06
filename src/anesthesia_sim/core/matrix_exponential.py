@@ -192,6 +192,7 @@ def matrix_exponential(matrix: Matrix, interval_s: float) -> Matrix:
     """
 
     size = _require_square(matrix, "matrix")
+    _require_finite(matrix, "matrix")
     _require_metzler(matrix)
     require_positive_finite("interval_s", interval_s)
 
@@ -211,18 +212,25 @@ def matrix_exponential(matrix: Matrix, interval_s: float) -> Matrix:
     for _ in range(squarings):
         propagator = multiply(propagator, propagator)
 
+    _require_finite(propagator, "the propagator")
+
     return propagator
 
 
 def propagate(propagator: Matrix, state: Sequence[float]) -> tuple[float, ...]:
     """Advance a state vector by one application of `propagator`.
 
+    This is the one function here that runs on every simulation step rather
+    than once per settings change, so what it checks is chosen for that: the
+    shapes, which is what silently returns a plausible vector for a different
+    system, and the state, which is the argument that varies. The propagator's
+    own entries are checked where they are produced - `matrix_exponential`
+    validates its input and its result - and the object is immutable, so
+    walking them again here would cost every step and change no decision.
+
     Raises:
         SimulationConfigurationError: `propagator` is not square, `state` is
             not the same length as it, or `state` holds a non-finite value.
-            The length check is the one that matters: a mismatched pair would
-            otherwise be silently truncated to the shorter of the two and
-            return a plausible vector for a different system.
     """
 
     size = _require_square(propagator, "propagator")
@@ -240,7 +248,7 @@ def propagate(propagator: Matrix, state: Sequence[float]) -> tuple[float, ...]:
 
 
 def _require_square(matrix: Matrix, name: str) -> int:
-    """Return the size of a square matrix of finite entries, or refuse it."""
+    """Return the size of a square matrix, or refuse a ragged or empty one."""
 
     size = len(matrix)
 
@@ -254,13 +262,27 @@ def _require_square(matrix: Matrix, name: str) -> int:
                 "so it is not square"
             )
 
+    return size
+
+
+def _require_finite(matrix: Matrix, name: str) -> None:
+    """Require every entry to be a finite number.
+
+    Separate from the shape check because the two are wanted in different
+    places: shape is checked wherever a matrix is used, entries only where one
+    is produced or supplied. `matrix_exponential` calls this on what it is
+    given and again on what it returns, which is the stronger of the two - a
+    non-finite entry that arose during the series or the squarings is caught
+    at the moment it is built rather than at the compartment it would later
+    reach.
+    """
+
+    for index, row in enumerate(matrix):
         for column, value in enumerate(row):
             if not isfinite(value):
                 raise SimulationConfigurationError(
                     f"{name}[{index}][{column}] is {value}, which is not finite"
                 )
-
-    return size
 
 
 def _require_metzler(matrix: Matrix) -> None:

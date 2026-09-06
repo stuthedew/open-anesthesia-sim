@@ -248,6 +248,14 @@ Four things it does not cover, none of them a defect:
 
 All model concentrations are stored internally as dimensionless partial-pressure-equivalent fractions from 0 through 1.
 
+The gas-phase cascade is named as the inhaled-anesthetic literature names it,
+$`F_D \rightarrow F_I \rightarrow F_A`$, which means that
+the middle gas-phase state is $`F_I`$ (inspired) — not a symbol named after
+the breathing circuit that holds it. The container keeps the apparatus subscript — $`V_C`$ for its volume
+and $`M_C`$ for the agent in it — so a capital $`C`$ names the rig and $`F_I`$
+names the gas. "Model boundary" above carries the assumption that makes the
+two one quantity, and what would break it.
+
 For example, $`F = 0.02`$ represents a 2% gas-phase concentration.
 
 The interface alone converts between fraction and percent:
@@ -764,9 +772,28 @@ the system boundary, at the rates "External delivery" and "Circuit exhaust"
 give: $`\dot M_{\mathrm{delivered}} = \dot V_FF_D`$ and
 $`\dot M_{\mathrm{exhausted}} = \dot V_FF_I`$. Delivered agent has a closed
 form of its own, but exhausted agent is $`\dot V_F\int F_I\,dt`$ along a
-coupled trajectory and does not; carried as a state it is integrated exactly
-by the same propagator, which is what requirement 4 of "Numerical method"
-above asks for and what puts the mass-balance residual at rounding.
+coupled trajectory and does not; carried as a state it is integrated by the
+same propagator over the same trajectory, which is what requirement 4 of
+"Numerical method" above asks for.
+
+**The residual this leaves is rounding, and it is larger in absolute terms
+than the split's was.** Measured 2026-09-06 over a 3600 s run at 1 MAC, the
+worst residual at any step is 1.0e-12 L for sevoflurane, 2.4e-12 L for
+isoflurane and 1.3e-11 L for desflurane, against a relative error of at most
+9.2e-13 in every case. The split held about 2e-15 L absolute, because it moved
+agent between compartments as amounts and its equal-and-opposite pairs
+cancelled to the last bit. Here conservation is a property of the matrix and
+the arithmetic is done in fractions, so the pairs cancel only to floating-point
+precision *relative to the largest quantity in play* — and over an hour at
+desflurane's dial that quantity is about 43 L of delivered agent, which is
+where the four orders of magnitude come from.
+
+Nothing about that is a loss of accuracy: the relative residual is three orders
+inside the check's own relative tolerance, and the absolute figures scale with
+how much agent the run has handled rather than with any error in it. What it
+does mean is that `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L` (1e-12 L) is now
+routinely exceeded on a long run and the relative branch alone is carrying the
+check. Whether that is the right shape for the guard is queue item `PL-4GN8`.
 
 **What this replaces, and why the decision changed.** Until v0.4.x each step
 was the exact analytic solution of five *pairwise* exchanges, composed in
