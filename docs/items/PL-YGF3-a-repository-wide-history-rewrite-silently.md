@@ -40,6 +40,21 @@ resetting. A fresh session, or the same session after its container was
 reclaimed, would have had nothing to copy - and no report anywhere saying two
 commits were missing.
 
+**Observed 2026-09-06, and wider than one branch.** Of the nine remote refs,
+only `main` and `claude/fresh-gas-flow-range-4bom2g` descend from the rewritten
+history. The other seven - among them
+`claude/desflurane-tec6-vaporizer-kulwij`, which holds four captures including
+`PL-SHG5`'s copyright finding - still sit on the pre-rewrite history and are
+not ancestors of anything on `main`.
+
+Nothing is lost while those refs exist: the item files are readable off each
+branch and `bin/docket stranded` prints the `git checkout` line for them. What
+is lost is the ability to merge them, and two ordinary actions destroy them
+outright - a prune, which `.claude/hooks/no-prune-guard.sh` already refuses,
+and a `git reset --hard origin/main` on the branch, which nothing refuses and
+which is the natural reflex on seeing a four-figure ahead/behind count. That
+second one is the gap.
+
 **Where.** `subprojects/docket/src/docket/` - whatever `stranded` uses to
 classify a branch, which currently cannot distinguish "this branch was
 rewritten and lost commits" from "this branch is behind". The session-start
