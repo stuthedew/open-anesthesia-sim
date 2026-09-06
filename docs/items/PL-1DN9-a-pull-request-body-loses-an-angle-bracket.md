@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, session-cost
 feature: dev-tooling
+milestone: v0.4.3
 touches: CLAUDE.md
 added: 2026-09-01
 closed: 2026-09-05
