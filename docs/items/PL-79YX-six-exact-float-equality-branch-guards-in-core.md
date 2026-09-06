@@ -71,3 +71,13 @@ than by flow, so zero flow may not be a singularity in the new code at all.
 So the "Measured 2026-09-02" table describes methods that are about to change.
 Do this after `PL-GS5X`, when the count is three or four rather than seven, and
 re-measure rather than trusting the table.
+
+**Inventory changed by `PL-GS5X`, 2026-09-06.** This item's own note predicted
+that three of its seven exact-float-equality guards sit in code the exact step
+deletes or restructures. Two of the three are gone:
+`uptake_system.py`'s `_exchange_circuit_and_alveoli` no longer exists, and
+`AlveolarCompartment.apply_blood_uptake` went with it (`PL-LKRP`).
+`tissue.py`'s and `blood.py`'s `advance()` guards survive, but both methods now
+have no production caller at all — see `PL-74R0`, which decides whether they
+stay. Re-run the item's own walk before deciding; the decision may be smaller
+than the brief describes, or moot.

@@ -79,3 +79,18 @@ regression net available for a numerical-method swap, and it is worth more
 guarding the change than added afterwards. Reword the motivation as "the step
 must not produce a state its own guards reject", which holds under either
 method.
+
+**Rationale falsified by `PL-GS5X`, 2026-09-06; the item survives.** The
+motivating paragraph rests on "`_advance_step()` applies five sub-exchanges
+whose guards can each reject a value the step itself produced". It applies
+none, and — more to the point — the exact step *cannot* produce a value a guard
+rejects: the system matrix is Metzler, so its propagator is entrywise
+nonnegative and no fraction can leave its range from a state that was in range.
+The 200-run measurement was taken on the split and would need re-running, on a
+trajectory that no longer exists.
+
+The assertions the item proposes are method-agnostic and still worth having.
+What it should be re-pointed at is the guard's *new* role, which
+`docs/MODEL.md` § "Supported simulation step" now states: cover for a model
+extension whose matrix is not a pure transfer system, rather than for a caller
+stepping too coarsely.

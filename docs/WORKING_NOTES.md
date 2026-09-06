@@ -407,11 +407,21 @@ three releases and this note said so; it no longer does. `PL-SPMQ` measured what
 the split costs a *reader* rather than what it costs the numbers, and the
 project owner chose the exact matrix exponential on that ground - `ROADMAP.md`
 planned-milestone item 29's bar is that a reviewer follow `core/` without a
-lookup table, which the five composed sub-steps prevent. `PL-GS5X` makes the
-change in v0.4.1, `PL-P0BB` settled the state vector as fractions, and `PL-X9KD`
-re-derives every published statement the splitting error justified.
-`docs/MODEL.md` § "Selected method (as implemented)" carries the supersession
-(`PL-B875`).
+lookup table, which the five composed sub-steps prevented. `PL-GS5X` made the
+change in the `v0.4.x` track - the track promises no particular patch number,
+so it took whichever one it landed on - `PL-P0BB` settled the state vector as
+fractions, and `PL-X9KD` re-derives every published statement the splitting
+error justified. `docs/MODEL.md` § "Selected method (as implemented)" is
+rewritten around what ships; this thread is closed.
+
+**What was actually built, 2026-09-06 (`PL-GS5X`).** Two modules, not one:
+`core/governing_equations.py` assembles the system matrix and holds no
+arithmetic, `core/matrix_exponential.py` computes the propagator and holds no
+physiology. The matrix is 9x9 - the six fractions, the cumulative delivered and
+exhausted amounts, and the constant that carries the fresh-gas forcing. Signed
+transfers were considered as rows and rejected: they would have cost the matrix
+the Metzler property the propagator's nonnegativity rests on, and both are
+recoverable exactly from the balances instead.
 
 It bears on the playback-speed thread above, and the bearing has now changed
 direction: an exact step makes a larger step a fidelity-free choice, which is
@@ -922,11 +932,21 @@ are the three declared, and none pulls it in.
   append for free, so **numpy would make the compaction harder, not easier**.
 
 **The strongest candidate for it is already solved in the standard library.**
-`PL-GS5X` (replace the operator split with the exact matrix exponential) is the
-one piece of real numerical work in the queue, and its plan is the ~30-line
-`math`-only implementation that already exists in this repository's history at
+`PL-GS5X` (replace the operator split with the exact matrix exponential) was
+the one piece of real numerical work in the queue, and its plan was the
+~30-line `math`-only implementation in this repository's history at
 `git show 475fb92^:tools/review-verification/verify_physics.py` - scaling and
 squaring with a 24-term Taylor series.
+
+**What shipped differs from that plan in two ways worth recording**, because a
+future reader who follows the history link will not find them there. The series
+truncates at 12 terms rather than 24, against a scaled argument bounded at
+1/16 rather than the harness's looser bound, with the truncation error derived
+(3.6e-26 relative) rather than assumed. And the matrix is shifted before the
+series is summed, so every term is nonnegative and the propagator is entrywise
+nonnegative in floating point rather than by margin - the property that keeps
+an exact step from driving a compartment below zero through a rounding
+artifact. The harness had neither.
 
 **The one argument left, recorded rather than settled.** `scipy.linalg.expm`
 carries published backward-error analysis (Al-Mohy and Higham 2009) where a
@@ -942,9 +962,15 @@ write-path figures above are `select_indices` and `RunHistory.record`, which
 `PL-2FM6` and `PL-8LXM` remove: under `PL-T691` the chart evaluates a closed
 form rather than reading back recorded samples, so neither call site exists to
 be vectorized. The answer is still no, on ground the note did not have: a
-standard-library matrix exponential (scaling-and-squaring, Pade-13, Higham
-2005) renders a 600-column frame in 3.3 ms over a 1 h window and 3.6 ms over
-30 days, because chart columns are uniformly spaced and one exponential serves
-a whole inter-event segment. numpy would win nothing there either. Kept rather
+standard-library matrix exponential renders a 600-column frame in 3.3 ms over
+a 1 h window and 3.6 ms over 30 days, because chart columns are uniformly
+spaced and one exponential serves a whole inter-event segment. That
+measurement was taken against a Pade-13 scaling-and-squaring implementation;
+what `PL-GS5X` shipped is scaling and squaring with a shifted truncated Taylor
+series, which rejects Pade by name for needing a linear solve whose denominator
+conditions badly on this system's eigenvalue spread. The timing conclusion is
+unaffected - both are a handful of small matrix multiplies per segment - but
+the figure should be re-measured against the shipped propagator before
+`PL-T691` leans on it. numpy would win nothing there either. Kept rather
 than rewritten: the question is what recurs, and the note records that it was
 asked and answered before.

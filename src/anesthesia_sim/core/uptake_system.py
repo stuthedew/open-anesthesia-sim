@@ -18,7 +18,6 @@ lungs, and be wrong by a large factor on an accounting quantity (PL-006).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from math import exp
 
 from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
@@ -28,58 +27,70 @@ from anesthesia_sim.core.agent_simulation_validation import (
 from anesthesia_sim.core.alveolar import AlveolarCompartment, AlveolarCompartmentState
 from anesthesia_sim.core.circuit import BreathingCircuit, BreathingCircuitState, FreshGasExchange
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
+from anesthesia_sim.core.governing_equations import (
+    ALVEOLAR_FRACTION,
+    DELIVERED_AGENT_L,
+    EXHAUSTED_AGENT_L,
+    FIRST_TISSUE_FRACTION,
+    INSPIRED_FRACTION,
+    STATE_SIZE,
+    UNIT_STATE,
+    VENOUS_FRACTION,
+    TissueGroupEquationSettings,
+    UptakeEquationSettings,
+    build_system_matrix,
+)
+from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential, propagate
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments, PatientCompartmentsState
 from anesthesia_sim.core.validation import require_positive_finite
 
 SECONDS_PER_MINUTE = 60.0
 
-# The largest simulation step the shipped operator split is supported over.
-# Above it `advance()` refuses the step instead of returning a number, which
-# is what docs/MODEL.md's "Selected method (as implemented)" requires of a
-# step outside the split's applicability domain.
+# The largest simulation step `advance()` accepts.
 #
-# This is deliberately *not* the step at which the split breaks down. That is
-# two orders of magnitude away and agent-dependent by a factor of four - on
-# the worst reachable trajectory the capacity guard `advance()` reports as
-# `SimulationNumericalError` first fires at 12 s for isoflurane, 25 s for
-# sevoflurane and 50 s for desflurane - so it bounds nothing a reader could
-# rely on. What this value bounds is the error:
-# the split is first order, so its disagreement with the true simultaneous
-# solution is C*dt with C at most 2.29e-3 s^-1 over the reachable input
-# domain (docs/MODEL.md, "Independent-solution test"), and every claim
-# docs/MODEL.md's "Displayed precision" makes about the last displayed digit -
-# a fifth of a count in ordinary use, one count at the envelope corner, about
-# two counts on the worst trajectory the sliders can reach - is that error
-# measured at exactly this step. Doubling the step doubles all three, and each
-# claim then reads false. So this is the largest step at which what the
-# interface shows is still what the model can support, and the interface runs
-# at it: `app.simulation_view.SIMULATION_STEP_S`.
+# It is no longer a bound on the arithmetic. The propagator is the exact
+# solution of the governing equations over whatever interval it is given, so
+# nothing about the numerics degrades as the step grows and there is no
+# applicability domain left to be outside of. What a longer step degrades is
+# the assumption the step rests on: every setting is held constant across one,
+# so the step is the interval over which a control change is invisible to the
+# model. At 0.1 s a slider move is resolved to a tenth of a second; at 10 s, a
+# change made and reversed inside one step never happened at all.
 #
-# Raising it is a safety-critical change to every displayed value, not a
-# convenience: re-measure the coefficient, re-derive the displayed resolution
-# with it, and revise both sections together.
+# The value is inherited rather than re-derived, deliberately. It was set as
+# the largest step at which every claim docs/MODEL.md's "Displayed precision"
+# makes about the last displayed digit survived the operator split's
+# first-order error, and that error is now gone - so the bound is conservative
+# by an unknown margin rather than tight, which is the safe direction to be
+# wrong in. Re-deriving it, together with the displayed resolution it inverts,
+# is `PL-X9KD`; until that lands the supported step and the shipped step are
+# the same number and the interface runs at it:
+# `app.simulation_view.SIMULATION_STEP_S`.
 MAXIMUM_SIMULATION_STEP_S = 0.1
 
 
 def require_supported_simulation_step(simulation_step_s: float) -> None:
-    """Require a step the operator split has a measured error bound for.
+    """Require a step the model's control resolution is stated for.
 
-    The guard belongs to the coupled system rather than to a compartment. A
-    compartment advanced alone is an exact exponential with no splitting
-    error at any step, and `tests/unit/test_circuit.py` steps a bare circuit
-    60 s precisely to show that; it is composing those exact solutions in
-    sequence that costs first-order accuracy, and only the composition has a
-    step size it can be outside of.
+    The guard belongs to the coupled system rather than to a compartment,
+    because the interval settings are held constant over is a property of the
+    step the whole system takes.
+
+    Raises:
+        SimulationConfigurationError: the step is not positive and finite, or
+            exceeds `MAXIMUM_SIMULATION_STEP_S`. Nothing is calculated either
+            way, so a caller can retry inside the supported range with the run
+            it already has.
     """
 
     require_positive_finite("simulation_step_s", simulation_step_s)
 
     if simulation_step_s > MAXIMUM_SIMULATION_STEP_S:
         raise SimulationConfigurationError(
-            f"simulation_step_s of {simulation_step_s} s is outside the "
-            f"operator split's applicability domain, which ends at "
-            f"{MAXIMUM_SIMULATION_STEP_S} s"
+            f"simulation_step_s of {simulation_step_s} s is longer than the "
+            f"largest supported step of {MAXIMUM_SIMULATION_STEP_S} s, over which "
+            "settings are held constant"
         )
 
 
@@ -136,6 +147,16 @@ class AgentUptakeSystem:
     agent_simulation_validator: AgentSimulationValidator = field(
         default_factory=AgentSimulationValidator
     )
+    _propagator: Matrix | None = field(default=None, init=False, repr=False, compare=False)
+    _propagator_key: tuple[UptakeEquationSettings, float] | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
+    """The settings and step the cached propagator was built for.
+
+    Not captured by `capture_state()` and not restored: a propagator is a
+    function of the settings, which a step never writes and a rollback never
+    changes, so the cache is still correct for whatever the rollback left.
+    """
 
     def __post_init__(self) -> None:
         self.agent_simulation_validator.reset(initial_agent_l=self.total_stored_agent_l)
@@ -326,23 +347,40 @@ class AgentUptakeSystem:
         self.agent_simulation_validator.restore_state(state.agent_simulation_validator)
 
     def _advance_step(self, simulation_step_s: float) -> UptakeStepResult:
-        """Apply one step's transfers, assuming the step size is valid.
+        """Advance every compartment at once, by one exact propagation.
 
         Writes each compartment as it goes and does not clean up after
         itself: `advance()` is what makes a failure partway through safe,
         and this is not called from anywhere else.
+
+        The three reported transfers come out of the same solution rather
+        than out of separate calculations. Delivered and exhausted agent are
+        states of the system, so the propagator integrates them along the
+        trajectory it is producing. Patient uptake is the change in stored
+        patient agent, which by the tissue and venous balances *is* the
+        integral of the pulmonary uptake rate; and the ventilatory transfer
+        is that plus the change in stored alveolar agent, because the
+        alveolar balance says alveolar agent changes by exactly the
+        difference of the two. `governing_equations.py` carries why they are
+        recovered here instead of accumulated as rows of their own.
         """
 
-        fresh_gas_exchange = self.circuit.advance_fresh_gas(simulation_step_s)
+        alveolar_agent_before_l = self.alveoli.agent_amount_l
+        patient_agent_before_l = self.patient.total_agent_amount_l
 
-        circuit_to_alveolar_agent_l = self._exchange_circuit_and_alveoli(simulation_step_s)
+        advanced = propagate(self._propagator_for(simulation_step_s), self._state_vector())
 
-        patient_agent_change_l = self.patient.advance(
-            arterial_fraction=(self.alveoli.concentration_fraction),
-            simulation_step_s=simulation_step_s,
+        self._write_state_vector(advanced)
+
+        fresh_gas_exchange = FreshGasExchange(
+            delivered_agent_l=advanced[DELIVERED_AGENT_L],
+            exhausted_agent_l=advanced[EXHAUSTED_AGENT_L],
         )
 
-        self.alveoli.apply_blood_uptake(patient_agent_change_l)
+        patient_agent_change_l = self.patient.total_agent_amount_l - patient_agent_before_l
+        circuit_to_alveolar_agent_l = (
+            self.alveoli.agent_amount_l - alveolar_agent_before_l + patient_agent_change_l
+        )
 
         self.agent_simulation_validator.record_external_agent_transfer(
             delivered_agent_l=(fresh_gas_exchange.delivered_agent_l),
@@ -359,6 +397,107 @@ class AgentUptakeSystem:
             patient_agent_change_l=(patient_agent_change_l),
             agent_accounting=accounting_check,
         )
+
+    def _equation_settings(self) -> UptakeEquationSettings:
+        """Read the governing equations' parameters out of the compartments.
+
+        Flows are converted to litres per second here, once, because that is
+        the unit `docs/MODEL.md`'s "Governing equations" are written in and
+        the compartments hold the litres per minute a clinician sets.
+        """
+
+        patient = self.patient
+        venous_blood = patient.venous_blood
+
+        return UptakeEquationSettings(
+            circuit_volume_l=self.circuit.circuit_volume_l,
+            alveolar_volume_l=self.alveoli.gas_volume_l,
+            venous_volume_l=venous_blood.volume_l,
+            fresh_gas_flow_l_s=(self.circuit.fresh_gas_flow_l_min / SECONDS_PER_MINUTE),
+            alveolar_ventilation_l_s=(self.alveoli.alveolar_ventilation_l_min / SECONDS_PER_MINUTE),
+            cardiac_output_l_s=(patient.cardiac_output_l_min / SECONDS_PER_MINUTE),
+            blood_gas_partition_coefficient=(venous_blood.blood_gas_partition_coefficient),
+            delivered_concentration_fraction=(self.circuit.delivered_concentration_fraction),
+            tissues=tuple(
+                TissueGroupEquationSettings(
+                    name=tissue.name,
+                    volume_l=tissue.volume_l,
+                    blood_flow_l_s=(tissue.blood_flow_l_min / SECONDS_PER_MINUTE),
+                    tissue_blood_partition_coefficient=(tissue.tissue_blood_partition_coefficient),
+                )
+                for tissue in patient.tissues
+            ),
+        )
+
+    def _propagator_for(self, simulation_step_s: float) -> Matrix:
+        """Return `exp(A * simulation_step_s)`, rebuilding it if a setting moved.
+
+        The cache is keyed on the settings themselves rather than invalidated
+        by the setters, and the key is the same object the matrix is built
+        from. A setter that forgot to invalidate would be a silently wrong
+        clinical value at every subsequent step, with no guard anywhere in its
+        path; keyed by value there is nothing to forget, and a setting reached
+        through a compartment rather than through this class's own control
+        surface is caught just the same.
+
+        The comparison is the price. It is a handful of floats per step
+        against a matrix exponential per settings change, and settings are
+        constant for all but a few steps of a run.
+        """
+
+        settings = self._equation_settings()
+        key = (settings, simulation_step_s)
+
+        if self._propagator is None or self._propagator_key != key:
+            propagator = matrix_exponential(build_system_matrix(settings), simulation_step_s)
+            self._propagator = propagator
+            self._propagator_key = key
+
+            return propagator
+
+        return self._propagator
+
+    def _state_vector(self) -> tuple[float, ...]:
+        """Read the trajectory out of the compartments, in equation order.
+
+        The two accumulator states start each step at zero, so after one
+        propagation they hold that step's own delivered and exhausted agent
+        rather than a running total. The running totals belong to
+        `AgentSimulationValidator`, which already owns an accounting period
+        and can be reset independently of the trajectory.
+        """
+
+        state = [0.0] * STATE_SIZE
+
+        state[INSPIRED_FRACTION] = self.circuit.circuit_concentration_fraction
+        state[ALVEOLAR_FRACTION] = self.alveoli.concentration_fraction
+        state[VENOUS_FRACTION] = self.patient.mixed_venous_fraction
+
+        for offset, tissue in enumerate(self.patient.tissues):
+            state[FIRST_TISSUE_FRACTION + offset] = tissue.partial_pressure_fraction
+
+        state[UNIT_STATE] = 1.0
+
+        return tuple(state)
+
+    def _write_state_vector(self, state: tuple[float, ...]) -> None:
+        """Write an advanced trajectory back into the compartments.
+
+        Each compartment's own validated setter is used, so a fraction the
+        model could not represent is refused by the compartment that owns it
+        rather than stored. `advance()` restates such a refusal as
+        `SimulationNumericalError` and rolls the step back, which is the
+        required behavior: an exact solution of the equations cannot leave
+        the physical range, so a value that does is evidence the run is no
+        longer trustworthy rather than a number to display.
+        """
+
+        self.circuit.set_circuit_concentration_fraction(state[INSPIRED_FRACTION])
+        self.alveoli.set_concentration_fraction(state[ALVEOLAR_FRACTION])
+        self.patient.venous_blood.set_concentration_fraction(state[VENOUS_FRACTION])
+
+        for offset, tissue in enumerate(self.patient.tissues):
+            tissue.set_partial_pressure_fraction(state[FIRST_TISSUE_FRACTION + offset])
 
     def reset(self) -> None:
         """Clear dynamic state and restart agent accounting.
@@ -383,40 +522,3 @@ class AgentUptakeSystem:
         self.alveoli.reset()
         self.patient.reset()
         self.agent_simulation_validator.reset(initial_agent_l=self.total_stored_agent_l)
-
-    def _exchange_circuit_and_alveoli(self, simulation_step_s: float) -> float:
-        """Exchange agent exactly between two mixed gas volumes."""
-
-        ventilation_l_min = self.alveoli.alveolar_ventilation_l_min
-
-        if ventilation_l_min == 0.0:
-            return 0.0
-
-        initial_alveolar_amount_l = self.alveoli.agent_amount_l
-        circuit_volume_l = self.circuit.circuit_volume_l
-        alveolar_volume_l = self.alveoli.gas_volume_l
-        total_gas_volume_l = circuit_volume_l + alveolar_volume_l
-
-        equilibrium_fraction = (
-            self.circuit.agent_amount_l + self.alveoli.agent_amount_l
-        ) / total_gas_volume_l
-
-        concentration_difference = (
-            self.circuit.circuit_concentration_fraction - self.alveoli.concentration_fraction
-        )
-
-        ventilation_l_s = ventilation_l_min / SECONDS_PER_MINUTE
-        exchange_rate_s = ventilation_l_s * (1.0 / circuit_volume_l + 1.0 / alveolar_volume_l)
-        remaining_difference = concentration_difference * exp(-exchange_rate_s * simulation_step_s)
-
-        next_circuit_fraction = (
-            equilibrium_fraction + (alveolar_volume_l / total_gas_volume_l) * remaining_difference
-        )
-        next_alveolar_fraction = (
-            equilibrium_fraction - (circuit_volume_l / total_gas_volume_l) * remaining_difference
-        )
-
-        self.circuit.set_agent_amount(circuit_volume_l * next_circuit_fraction)
-        self.alveoli.set_concentration_fraction(next_alveolar_fraction)
-
-        return self.alveoli.agent_amount_l - initial_alveolar_amount_l

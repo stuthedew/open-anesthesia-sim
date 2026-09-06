@@ -46,6 +46,8 @@ src/anesthesia_sim/
 │   ├── blood.py                   # venous blood compartment
 │   ├── tissue.py                  # one perfusion-limited tissue group
 │   ├── patient.py                 # PatientCompartments: VRG + muscle + fat + venous blood
+│   ├── governing_equations.py     # MODEL.md's balance equations as one system matrix
+│   ├── matrix_exponential.py      # exp(A dt) for a compartment system; no physiology in it
 │   ├── uptake_system.py      # couples circuit + alveoli + patient; advances one step
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   └── simulation.py              # SimulationState: explicit elapsed time + AgentUptakeSystem
@@ -94,19 +96,24 @@ a key the schema does not declare fails the load rather than being silently
 discarded, so a data file cannot document one model while the app runs
 another. Nothing downstream re-reads or re-derives these values from disk.
 
-**Each simulation step**, `AgentUptakeSystem.advance()` runs a fixed sequence
-of exact analytic solutions (operator splitting — see `docs/MODEL.md` for the
-equations) rather than a generic numerical integrator:
+**Each simulation step**, `AgentUptakeSystem.advance()` advances the whole
+coupled system at once, by one exact propagation rather than by a sequence of
+sub-exchanges or a generic numerical integrator:
 
-1. circuit ⇄ fresh gas exchange (`BreathingCircuit.advance_fresh_gas`);
-2. circuit ⇄ alveolar gas exchange (`AgentUptakeSystem._exchange_circuit_and_alveoli`);
-3. patient uptake/return (`PatientCompartments.advance`), driven by the
-   current alveolar fraction;
-4. alveolar gas absorbs the resulting blood uptake
-   (`AlveolarCompartment.apply_blood_uptake`);
-5. the agent-accounting validator records delivered/exhausted amounts and
-   checks mass balance (`AgentSimulationValidator`), raising
+1. `core/governing_equations.py` assembles the system matrix `A` — every entry
+   one term of one balance equation in `docs/MODEL.md`, "Governing equations";
+2. `core/matrix_exponential.py` computes `exp(A dt)`, which is the system's
+   exact propagator because every setting is held constant across a step. It
+   is cached against the settings it was built for and rebuilt when one moves;
+3. one matrix-vector product advances the six fractions and, in the same
+   solution, the cumulative delivered and exhausted amounts;
+4. the agent-accounting validator records those amounts and checks mass
+   balance (`AgentSimulationValidator`), raising
    `AgentSimulationValidationError` if it fails.
+
+Steps 1 and 2 carry the split of concerns the package is arranged around: the
+equations file holds the physiology and no arithmetic, the exponential file
+holds the arithmetic and no physiology.
 
 **UI direction:** `app/controller.py`'s `SimulationController` owns a
 `SimulationState`, exposes `start()` / `pause()` / `reset()` / per-parameter
@@ -189,8 +196,9 @@ different treatment:
   its own arguments first, then restates any guard reached during the step
   as a `SimulationNumericalError`, keeping the original as `__cause__`.
   It is also what makes the step atomic — it captures every dynamic value
-  before the step and restores it on any failure, so what is left behind
-  is the last completed step rather than four of the five sub-exchanges.
+  before the step and restores it on any failure, so what is left behind is
+  the last completed step rather than a state vector written into some
+  compartments and not others.
   Each compartment captures its own state (`capture_state()` /
   `restore_state()`), so a dynamic field added without a matching capture
   is a local omission; `docs/MODEL.md`, "Step atomicity", is the contract.

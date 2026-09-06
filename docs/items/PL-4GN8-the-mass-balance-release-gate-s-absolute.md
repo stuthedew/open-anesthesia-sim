@@ -105,3 +105,26 @@ most likely to move when the exhaust integral is recomputed under coupled
 dynamics. Making it dial-independent first means it certifies a fixed thing
 across the method change, instead of being re-tuned to whatever the new method
 produces - which is the difference between a gate and a rubber stamp.
+
+**`PL-GS5X` landed 2026-09-06 and makes this item's question live rather than
+theoretical.** Measured the same day over a 3600 s run at 1 MAC, the worst
+accounting residual at any step is 1.0e-12 L for sevoflurane, 2.4e-12 L for
+isoflurane and 1.3e-11 L for desflurane — against
+`AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12`. Every one of those runs passes,
+because `check_agent_accounting` passes on *either* tolerance and the relative
+error is at most 9.2e-13 against a 1e-9 bound.
+
+The absolute branch is therefore now dead on any long run, and the relative
+branch alone is carrying the check. That is not a defect in the numbers: the
+split moved agent between compartments as amounts, so its equal-and-opposite
+pairs cancelled to the last bit and left ~2e-15 L; the exact step's conservation
+is a property of the matrix and its arithmetic is done in fractions, so the
+pairs cancel to floating-point precision relative to the largest quantity in
+play — about 43 L of delivered agent over an hour at desflurane's dial, which
+is where four orders of magnitude come from.
+
+What it means for this item is that the choice it poses — assert
+`relative_error` rather than `absolute_error_l` — now has a measurement behind
+it, and that an absolute tolerance which scales with nothing is the wrong
+shape for a quantity that scales with how much agent a run has handled. The
+two measured tables in the brief were taken under the split and need re-running.

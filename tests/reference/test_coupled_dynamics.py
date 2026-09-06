@@ -1,13 +1,14 @@
 """Check the coupled six-state solution against an independent integration.
 
-Mass balance cannot detect a wrong rate. Every internal transfer is applied
-as an equal-and-opposite pair, so the accounting residual stays at ~2e-15 L
-whatever the transfer rates are — including rates that move the alveolar
-fraction by tenths of a percentage point. Conservation is necessary and
-nowhere near sufficient, and this module is the check that closes the gap:
-it re-derives the governing equations of `docs/MODEL.md` from the parameter
-files, integrates them with a from-scratch fourth-order Runge–Kutta, and
-requires the shipped operator split to agree with that solution.
+Mass balance cannot detect a wrong rate. Every internal exchange appears in
+the system matrix as a pair of entries whose contribution to the total stored
+amount cancels, so the accounting residual stays at rounding whatever the
+transfer rates are — including rates that would move the alveolar fraction by
+tenths of a percentage point. Conservation is necessary and nowhere near
+sufficient, and this module is the check that closes the gap: it re-derives
+the governing equations of `docs/MODEL.md` from the parameter files,
+integrates them with a from-scratch fourth-order Runge–Kutta, and requires the
+shipped solution to agree with that one.
 
 The independence rule is what makes this verification rather than a
 tautology, so `test_oracle_imports_no_solver_from_core` enforces it
@@ -412,6 +413,56 @@ SPLITTING_ERROR_BOUND_PER_STEP_SECOND = 2.8e-3
 # longer be a split — see `test_shipped_split_error_is_first_order_in_step`.
 EXACT_SOLUTION_FLOOR = 1e-12
 
+# What the shipped exact step is allowed to disagree with the oracle by, as an
+# absolute difference in any of the six fractions, anywhere on any gate
+# trajectory (`PL-GS5X`).
+#
+# **It is not the splitting bound rescaled, and it is a different kind of
+# quantity.** `SPLITTING_ERROR_BOUND_PER_STEP_SECOND` above bounds a
+# first-order coefficient C in an error C·Δt: a systematic method error, which
+# shrinks as the step shrinks. The shipped step is now one matrix exponential
+# of the whole coupled system, which is the *exact* solution of these
+# equations over the interval, so there is no method error left to have an
+# order — and the residual measured here is floating-point accumulation in two
+# independently written solutions, which grows with the *number* of steps and
+# therefore gets slightly worse as the step gets smaller. Bounding a
+# coefficient would state the opposite of what is true, so this bound is
+# absolute.
+#
+# **Derived, not inherited.** `PL-P0BB` refuses reuse of the ~2e-15 figure,
+# which described the old mechanism's accounting residual. Measured 2026-09-06
+# over every agent, every horizon in `HORIZONS_S`, and every trajectory in
+# `ALL_GATE_TRAJECTORIES`, taking the maximum over the whole trajectory rather
+# than at endpoints:
+#
+#     endpoint, default settings, 3600 s      5.2e-14  (isoflurane, muscle)
+#     ordinary use                            3.8e-15
+#     envelope corner, held                   1.9e-13  (desflurane, alveolar)
+#     unperfused load then dial off           3.2e-13  (isoflurane, alveolar)
+#     ventilator start                        7.7e-13  (desflurane, alveolar)
+#
+# The worst is 7.7e-13 and this bound allows 6.5 times it. Against the split
+# it replaced, whose worst over the same domain was 2.29e-4 at this step, the
+# exact step is eight orders of magnitude closer to the independent solution.
+#
+# **The residual is rounding and not truncation, which is what makes an
+# absolute bound the right shape.** Refining the oracle's own step eightfold —
+# 0.05 s to 0.00625 s — leaves it unchanged to three figures for all three
+# agents (1.385e-14, 1.373e-14, 1.393e-14, 1.346e-14 for sevoflurane at
+# 3600 s). RK4 is fourth order, so a truncation-dominated residual would have
+# fallen by about four thousand; one that does not move is the floating-point
+# floor of two solutions that agree exactly in exact arithmetic.
+#
+# **The margin is wider than the splitting bound's 1.22 and deliberately so.**
+# That bound constrained a systematic coefficient, which is reproducible
+# between machines. This one constrains accumulated rounding, which is not: a
+# different libm `exp`, or a compiler contracting a multiply and an add into
+# one FMA, moves the last bits of both solutions. Six and a half times is
+# still eight orders below the error of any method that is not exact, so the
+# gate still fails the moment method error returns — which is the only thing
+# it is here to catch.
+EXACT_STEP_ORACLE_TOLERANCE = 5e-12
+
 # Names this module is allowed to import from `anesthesia_sim`: the two
 # parameter loaders the oracle needs, the system under test, the module
 # declaring the input domain this gate measures over, and the view module
@@ -752,6 +803,27 @@ def _worst_coefficient_over_phases(
     return worst_error / shipped_step_s, worst_time_s, worst_label
 
 
+def _worst_error_over_phases(
+    agent_id: str, phases: Sequence[Phase], shipped_step_s: float = SHIPPED_STEP_S
+) -> tuple[float, float, str]:
+    """Return the same worst disagreement as an absolute difference.
+
+    The driver above divides by the step, because under an operator split the
+    quantity worth bounding was the first-order coefficient C in an error
+    C·Δt. The exact step has no such coefficient — dividing its residual by
+    the step would produce a number that varies with the step for no physical
+    reason — so the exact-step gates take the difference itself.
+
+    Returns (absolute error, simulated time of the worst, state label).
+    """
+
+    coefficient, at_s, state_label = _worst_coefficient_over_phases(
+        agent_id, phases, shipped_step_s
+    )
+
+    return coefficient * shipped_step_s, at_s, state_label
+
+
 def _worst_state_error(left: tuple[float, ...], right: tuple[float, ...]) -> tuple[float, str]:
     """Return the largest absolute difference and the state it is in."""
 
@@ -865,6 +937,75 @@ def test_shipped_split_is_bounded_across_setting_changes(
         f"deliberate change, docs/MODEL.md's 'Independent-solution test' and "
         f"'Displayed precision' sections both quote the measured value and "
         f"must be re-derived with it."
+    )
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+@pytest.mark.parametrize(
+    ("trajectory_name", "build_phases"),
+    ALL_GATE_TRAJECTORIES,
+    ids=[name for name, _ in ALL_GATE_TRAJECTORIES],
+)
+def test_exact_step_matches_the_independent_solution_everywhere(
+    agent_id: str, trajectory_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
+) -> None:
+    """The shipped step is the solution, not an approximation of it (`PL-GS5X`).
+
+    The three gates above bound a first-order splitting error, at a bound
+    eight orders of magnitude looser than what the exact step actually
+    achieves. They still pass and still say something true, but a gate that
+    loose cannot tell an exact propagator from a merely good approximation of
+    one — so it cannot detect the regression that matters here, which is any
+    return of method error at all. `PL-X9KD` retires them; this is what
+    replaces them.
+
+    Every agent and every gate trajectory, with the maximum taken over the
+    whole run rather than at its endpoint, because the worst disagreement is
+    always inside a transient.
+    """
+
+    error, at_s, state_label = _worst_error_over_phases(agent_id, build_phases(agent_id))
+
+    assert error <= EXACT_STEP_ORACLE_TOLERANCE, (
+        f"{agent_id} on the '{trajectory_name}' trajectory diverges from the "
+        f"independent solution by {error:.3e} in the {state_label} fraction at "
+        f"{at_s:.1f} s, above the exact step's tolerance of "
+        f"{EXACT_STEP_ORACLE_TOLERANCE:.3e}. That tolerance bounds accumulated "
+        "rounding between two solutions that agree exactly in exact "
+        "arithmetic, so exceeding it means the shipped step has stopped being "
+        "an exact solution of the governing equations rather than that it has "
+        "become slightly less accurate."
+    )
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+def test_the_disagreement_does_not_shrink_with_the_step(agent_id: str) -> None:
+    """The tolerance above holds at every supported step, not just the shipped one.
+
+    This is what `test_shipped_split_error_is_first_order_in_step` did for the
+    split, inverted. There the claim was that halving the step halved the
+    error, so bounding a coefficient at one step bounded it at all of them.
+    Here the claim is that the step size does not enter: an exact propagator
+    solves the same interval exactly however it is subdivided, so the same
+    absolute bound must hold at 0.1 s, 0.05 s and 0.025 s alike.
+
+    A method error of any order would fail this by being visibly larger at the
+    coarsest step. Note that if anything the finest step is the *worst* of the
+    three, because it takes four times as many steps to cover the trajectory
+    and accumulates four times as much rounding — the opposite of what the
+    split did, and the clearest single signature that the method changed.
+    """
+
+    phases = _held_default_settings(agent_id)
+    errors = {
+        step_s: _worst_error_over_phases(agent_id, phases, step_s)[0]
+        for step_s in (0.1, 0.05, 0.025)
+    }
+
+    assert max(errors.values()) <= EXACT_STEP_ORACLE_TOLERANCE, (
+        f"{agent_id} exceeds the exact step's tolerance of "
+        f"{EXACT_STEP_ORACLE_TOLERANCE:.3e} at some supported step: "
+        + ", ".join(f"{step_s} s -> {error:.3e}" for step_s, error in errors.items())
     )
 
 

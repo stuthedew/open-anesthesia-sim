@@ -110,3 +110,63 @@ with the derivation recorded, no constant survives whose justification named the
 splitting error or was set by the displayed decimal count,
 `PINNED_REFERENCE_STATES` is unchanged and still compared against the oracle
 alone, and `make check` passes.
+
+**`PL-GS5X` landed 2026-09-06, and part of this item's ground has been cleared
+by it. Read this before starting, so the work is not done twice.**
+
+The line taken was: `PL-GS5X` corrected every statement its own change made
+*false*, and left every statement that needs *re-deriving* to this item. So the
+document no longer asserts anything untrue, and it no longer asserts the
+replacement figures either.
+
+*Already corrected, do not redo:*
+
+- `core/uptake_system.py`'s `MAXIMUM_SIMULATION_STEP_S` comment block and
+  `require_supported_simulation_step`'s message and docstring. They no longer
+  cite "the operator split's applicability domain"; they say the bound is the
+  longest interval settings are held constant over, and that the *value* is
+  carried forward rather than re-derived, naming this item. `core/simulation.py`
+  repeated the phrase and is corrected too.
+- `docs/MODEL.md` § "Supported simulation step": the false opening premise, the
+  criterion table and the capacity-guard derivation are replaced by a statement
+  of what the bound means now, with the split's coefficients kept as marked
+  history. **The value 0.1 s is untouched and its new derivation is still
+  owed.**
+- § "Selected method (as implemented)" is rewritten around what ships.
+- § "Displayed precision" carries a blockquote at its head saying every
+  numerical justification below it describes the method that shipped through
+  v0.4.2, and naming this item.
+- § "What a setting outside the range costs" is re-grounded: the refusal now
+  rests on the verification domain and physiological plausibility rather than
+  on the displayed number being numerically wrong. Its table is marked history
+  and its re-derivation is named as this item's.
+- The claim that a gap between two readouts is the least accurate thing on the
+  display is **withdrawn** in both places it appeared (§ "Independent-solution
+  test" and § "Displayed precision"), because the sequencing bias it described
+  was a property of the split.
+
+*Still owed here, unchanged:*
+
+1. § "Displayed precision" re-derived. With solver error gone, what limits the
+   resolution is parameter uncertainty, input precision and legibility. Two
+   decimals may well survive on the legibility argument alone — but "the finest
+   the numerics support" is now false and the four count-figures with it.
+2. `MAXIMUM_SIMULATION_STEP_S` re-derived, or removed with the reason recorded.
+3. The splitting-error constants in `tests/reference/test_coupled_dynamics.py`.
+   `SPLITTING_ERROR_BOUND_PER_STEP_SECOND = 2.8e-3` and its three consumers
+   still pass, but only because they are eight orders looser than what the
+   exact step achieves; `EXACT_SOLUTION_FLOOR = 1e-12` now makes
+   `test_shipped_split_error_is_first_order_in_step` return early on every run,
+   so it asserts nothing. `PL-GS5X` added `EXACT_STEP_ORACLE_TOLERANCE = 5e-12`
+   and two tests against it — `test_exact_step_matches_the_independent_solution_everywhere`
+   and `test_the_disagreement_does_not_shrink_with_the_step` — which is what
+   makes the loose ones safe to retire rather than merely stale.
+   `MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = 3.0` still derives itself from the
+   splitting bound and is untouched.
+4. The four `app/` sites, unchanged. `PL-7PLY` targets one of them and should
+   be folded in or blocked behind this — see the note on that item.
+
+*One helper name, not on the original list:* `_worst_coefficient_over_phases`
+in the same test file divides by the step to report a first-order coefficient.
+`PL-GS5X` added `_worst_error_over_phases` beside it for the exact-step gates
+and left the original for the tests this item retires; both go together.

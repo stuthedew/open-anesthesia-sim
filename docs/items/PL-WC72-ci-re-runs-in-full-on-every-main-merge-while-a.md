@@ -9,6 +9,7 @@ feature: ci-cost
 touches: CLAUDE.md
 added: 2026-09-05
 closed: 2026-09-06
+pr: 373
 verify: python3 tools/doc_check.py check && grep -qF 'into an open pull request out of habit' CLAUDE.md
 ---
 
