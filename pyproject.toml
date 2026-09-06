@@ -1,6 +1,6 @@
 [project]
 name = "anesthesia-sim"
-version = "0.4.3"
+version = "0.4.4"
 description = "Open-source anesthesia simulation project"
 # No `readme` key: the root README was deleted under `PL-WB5K` and stays gone
 # until `PL-N092` writes a deliberate one. Restore the key in the same change.

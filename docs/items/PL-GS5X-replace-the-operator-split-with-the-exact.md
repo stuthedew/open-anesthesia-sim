@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: science, refactor
 feature: numerical-domain
+milestone: v0.4.4
 touches: src/anesthesia_sim/core, docs/MODEL.md, tests/reference
 added: 2026-09-03
 closed: 2026-09-06

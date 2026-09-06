@@ -4,12 +4,13 @@ title: formatting.py's displayed-precision comment stops at the 1.2e-2 envelope 
 priority: P1
 effort: S
 status: done
-closed: 2026-09-06
-pr: 378
 classes: science, docs
 feature: presentation-safety
+milestone: v0.4.4
 touches: src/anesthesia_sim/app/formatting.py
 added: 2026-09-05
+closed: 2026-09-06
+pr: 378
 verify: uv run pytest tests/unit/test_formatting.py && grep -q '2.3e-2' src/anesthesia_sim/app/formatting.py
 ---
 
