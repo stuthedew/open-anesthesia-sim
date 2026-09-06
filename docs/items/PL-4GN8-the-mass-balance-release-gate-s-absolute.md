@@ -3,11 +3,12 @@ id: PL-4GN8
 title: The mass-balance release gate's absolute tolerance tracks whichever dial its test happens to run at
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, test
 feature: numerical-domain
-touches: tests/reference/test_multi_agent.py, tests/reference/test_sevo_patient.py, src/anesthesia_sim/core/agent_simulation_validation.py, docs/MODEL.md
+touches: tests/reference/test_multi_agent.py, tests/reference/test_sevo_patient.py, docs/MODEL.md
 added: 2026-09-02
+closed: 2026-09-06
 verify: uv run pytest tests/reference/test_multi_agent.py tests/reference/test_sevo_patient.py && grep -q 'relative_error <=' tests/reference/test_multi_agent.py && grep -q 'relative_error <=' tests/reference/test_sevo_patient.py
 ---
 
@@ -128,3 +129,58 @@ What it means for this item is that the choice it poses — assert
 it, and that an absolute tolerance which scales with nothing is the wrong
 shape for a quantity that scales with how much agent a run has handled. The
 two measured tables in the brief were taken under the split and need re-running.
+
+**Closed 2026-09-06. Both tables re-measured on the shipped exact step, and
+both moved.**
+
+The dial table is now a cleaner demonstration than the original. Over 600 s
+wash-in plus 600 s washout, halving the dial halves the absolute residual
+exactly and leaves the relative one unchanged to four significant figures:
+isoflurane 3.589e-13 L at 4% against 1.794e-13 L at 2%, relative 2.243e-13 in
+both; desflurane 9.262e-14 L against 4.631e-14 L, relative 5.789e-14 in both.
+The brief's 8% row could not be re-measured as written - isoflurane's
+calibrated maximum is 5%, so `BreathingCircuit` refuses that dial - which is
+itself worth knowing: the original table predates that guard.
+
+The horizon table moved a long way in the direction that mattered. Under the
+exact step `absolute_error_l` first exceeds 1e-12 L at t = 3452 s at the
+reference runs' own settings, not 6212 s, and at t = 538 s at the sevoflurane
+envelope corner. At 4 h the absolute residual reaches 1.246e-9 L at the
+desflurane corner while the relative residual is 2.884e-12. So the assertion
+these tests carried was not merely dial-dependent, it was false past about an
+hour of ordinary simulated time and passed only because the tests stop at
+1200 s.
+
+**What shipped.** Both reference runs assert `validation.relative_error <=
+MASS_BALANCE_RELATIVE_GATE`, with `MASS_BALANCE_RELATIVE_GATE = 1e-10`
+restated in each file and the derivation in `docs/MODEL.md`, which is the
+specification and therefore the single source of what the gate means.
+
+A first attempt put the constant in a shared `tests/reference/mass_balance_gate.py`
+instead, and `PL-JBZK`'s lane check - which merged onto `main` while this was
+being worked - refused it: a file under `tests/` that imports no
+`anesthesia_sim` is apparatus by that rule, and the check's suggested remedy
+would have declared simulator content as workflow. Restating the bound per file
+is the repository's own idiom anyway, for the reason
+`tests/unit/test_agent_simulation_validation.py` records, and putting the
+derivation in the specification rather than in a test helper is the better half
+of the trade. `PL-12P8` carries what the check's premise misses. `docs/MODEL.md`
+separates the run-time halt thresholds from the release gate - it called the
+halt thresholds "the release tolerance", which was half the confusion - states
+the gate and its derivation, and settles the question it had left open against
+this item.
+
+**Why 1e-10.** Worst relative residual at any step, measured over 8 h at the
+reference settings and at the envelope corner with each agent at its calibrated
+maximum: 2.3e-13 at the 1200 s these runs cover, at most 1.04e-12 at 1 h, and
+at most 6.36e-12 at 8 h. 1e-10 leaves about 450x headroom at the horizon the
+runs use and about 16x at 8 h, so neither a dial change nor a plausible
+lengthening changes what the gate certifies. It stays an order of magnitude
+inside the 1e-9 halt threshold, so passing says strictly more than "the run did
+not stop", and a real conservation defect is orders of magnitude rather than
+factors of two.
+
+**`core/` was not touched**, as the brief expected. The halt threshold is
+right and the disjunction is what makes it right: the absolute branch catches a
+gross error early in a run, when little has been delivered and the relative
+denominator is small, and the relative branch carries the check from then on.

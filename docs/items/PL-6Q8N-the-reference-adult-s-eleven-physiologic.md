@@ -9,7 +9,7 @@ feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-03
 closed: 2026-09-06
-pr: 401
+pr: 399
 verify: uv run pytest tests/unit/test_parameters.py && python3 tools/doc_check.py check && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/patients/reference_adult.json')); n=' '.join(s['note'] for s in d['sources']); assert all(k in n for k in ('weight_kg','alveolar_gas_volume_l','venous_blood_volume_l','default_alveolar_ventilation_l_min','default_cardiac_output_l_min','tissue_groups.vessel_rich.volume_l','tissue_groups.vessel_rich.perfusion_fraction','tissue_groups.muscle.volume_l','tissue_groups.muscle.perfusion_fraction','tissue_groups.fat.volume_l','tissue_groups.fat.perfusion_fraction')); assert sum('Tier 1' in s['note'] for s in d['sources']) >= 4; assert d['tissue_groups']['fat']['volume_l']==14.5 and d['tissue_groups']['vessel_rich']['perfusion_fraction']==0.76"
 ---
 

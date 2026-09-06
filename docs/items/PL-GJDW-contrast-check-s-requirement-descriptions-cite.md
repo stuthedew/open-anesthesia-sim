@@ -9,7 +9,7 @@ feature: dev-tooling
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-04
 closed: 2026-09-06
-pr: 401
+pr: 400
 verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_every_requirement_names_a_symbol_that_exists' tests/unit/test_contrast_check.py
 ---
 

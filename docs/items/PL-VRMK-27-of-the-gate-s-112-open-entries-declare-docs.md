@@ -9,7 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/concurrency.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_concurrency.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-06
 closed: 2026-09-06
-pr: 401
+pr: 402
 verify: uv run pytest subprojects/docket/tests/test_concurrency.py && grep -q 'def test_two_items_naming_the_same_file_are_not_a_refusal' subprojects/docket/tests/test_concurrency.py
 ---
 

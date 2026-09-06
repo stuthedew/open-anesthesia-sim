@@ -12,6 +12,22 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
+# The conservation bound the reference runs are held to, restated here rather
+# than imported for the reason `tests/unit/test_agent_simulation_validation.py`
+# gives: a bound that followed the constant it tests would move wherever that
+# constant moved. `docs/MODEL.md` § "Mass-balance identity" is the documented
+# basis and carries the derivation.
+#
+# Relative, not absolute. The mass-balance residual is rounding accumulated
+# once per step, so it scales with how much agent a run has handled: halving
+# the dial halves `absolute_error_l` exactly and leaves `relative_error`
+# unchanged to four significant figures. Asserting the absolute figure
+# therefore measured this test's own setup rather than conservation, and was
+# additionally false past about an hour of simulated time - it first exceeds
+# 1e-12 L at t = 3452 s at these settings, and these runs stop at 1200 s
+# (`PL-4GN8`, measured 2026-09-06 on the shipped exact step).
+MASS_BALANCE_RELATIVE_GATE = 1e-10
+
 # The steps docs/MODEL.md § "Step-refinement test" specifies, coarsest first.
 # All three are supported steps: the first is `MAXIMUM_SIMULATION_STEP_S`
 # itself, and refinement only moves inward.
@@ -249,7 +265,11 @@ def test_long_wash_in_and_washout_validate_agent_simulation() -> None:
     validation = system.agent_simulation_validation
 
     assert validation.passes_validation is True
-    assert validation.absolute_error_l <= 1e-12
+    # The relative residual, not the absolute one: the absolute figure scales
+    # with the dial and the run length, so asserting it measures this test's
+    # setup rather than conservation (`PL-4GN8`). `mass_balance_gate` carries
+    # the measurements the bound comes from.
+    assert validation.relative_error <= MASS_BALANCE_RELATIVE_GATE
     assert validation.delivered_agent_l > 0.0
     assert validation.exhausted_agent_l > 0.0
 

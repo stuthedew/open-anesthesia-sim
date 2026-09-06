@@ -12,14 +12,21 @@ Contrast ratio is closed-form arithmetic over two sRGB triples, so it is the
 decidable half of the project's accessibility standard and belongs here rather
 than in a session's head. `.claude/rules/ui-color.md` carries the other half.
 
-**What this decides.** Whether a declared pair meets its declared ratio.
+**What this decides.** Whether a declared requirement meets its declared
+ratio. Most are one foreground against one background (`Requirement`); an
+element whose edge is carried by either of two channels declares both and is
+held to the better of them (`EitherRequirement`), because measuring such an
+element one channel at a time reports a shortfall on a badge that is legible
+and would report one on the others if the other channel were picked.
 
 **What it must never decide.** Whether a color is text or a graphical object,
 which pairs actually appear on screen together, whether a non-color channel is
-genuinely redundant, or how far apart two chart traces ought to be. Those are
-judgments; they live in `REQUIREMENTS` below, written by a person, and this
-file only evaluates them. A tool that guesses the judgment half is worse than
-no tool, because its output looks authoritative and is not.
+genuinely redundant, *which* channels an element really has, or how far apart
+two chart traces ought to be. Those are judgments; they live in `REQUIREMENTS`
+below, written by a person, and this file only evaluates them - taking the
+maximum over channels somebody else declared is arithmetic, not judgment. A
+tool that guesses the judgment half is worse than no tool, because its output
+looks authoritative and is not.
 
 **The arithmetic.** WCAG 2.2's relative-luminance and contrast-ratio
 definitions, https://www.w3.org/TR/WCAG22/#dfn-relative-luminance and
@@ -45,8 +52,8 @@ every cited symbol against the two modules, so the form that rotted cannot come
 back. Whether the named symbol is really where that color matters stays a
 person's judgment, exactly as the pair itself does.
 
-**Known shortfalls, and why they do not simply fail the build.** The pairs
-listed in `KNOWN_SHORTFALLS` do not meet their minimum today. Listing them
+**Known shortfalls, and why they do not simply fail the build.** The
+requirements listed in `KNOWN_SHORTFALLS` do not meet their minimum today. Listing them
 there against the item that closes each one keeps `make check` green while making the
 gap visible and owned, which is the opposite of the comment-that-nobody-checks
 this file replaces. The list cannot rot: a shortfall that starts *passing* is
@@ -97,13 +104,90 @@ AA_NON_TEXT = 3.0
 
 @dataclass(frozen=True)
 class Requirement:
-    """One pair that must hold, and the judgment behind holding it."""
+    """One pair that must hold, and the judgment behind holding it.
+
+    The right model for text, which has one channel and no fallback: the
+    string is drawn in `foreground` and there is nothing else to read it by.
+    `EitherRequirement` is the model for an element carrying two.
+    """
 
     foreground: str
     background: str
     minimum: float
     criterion: str
     why: str
+
+    @property
+    def candidates(self) -> tuple[str, ...]:
+        """The foregrounds measured against the background - here, the one."""
+        return (self.foreground,)
+
+    @property
+    def label(self) -> str:
+        """How the foreground side is named in a report line."""
+        return self.foreground
+
+    @property
+    def key(self) -> tuple[str, str]:
+        """This requirement's identity in `KNOWN_SHORTFALLS`."""
+        return (self.foreground, self.background)
+
+
+@dataclass(frozen=True)
+class EitherRequirement:
+    """Several candidate foregrounds against one background, best one held.
+
+    For an element whose edge is carried by more than one channel, where
+    perceiving *any* of them is enough to locate it. The header agent badge
+    is the case this exists for: a rectangle filled in the agent's
+    identification color and outlined 1px in the agent's own text color
+    (`AGENT_RENDER_STYLES` builds the border, `_agent_header_badge` is the
+    container it is set on), so a reader finds its shape by the fill or by
+    the outline, and it is perceivable if either clears the minimum.
+
+    **Measuring such an element one channel at a time is wrong in both
+    directions.** Against the page, the sevoflurane fill is 1.27:1 and its
+    border 10.70:1; for isoflurane and desflurane the fill clears the bar
+    and the white border does not. Held to the fill alone, one of the three
+    reads as a shortfall; held to the border alone, the other two do. All
+    three badges have a perceivable boundary, and a checker reporting
+    otherwise is the failure this module's own docstring names - output that
+    looks authoritative and is not (PL-GNN1).
+
+    **A disjunction over channels, and deliberately not a boolean language.**
+    Two-channel redundancy is the case this interface has. Whether a channel
+    is genuinely redundant is a judgment, written into `why` by a person,
+    exactly as a single pair's surface is; this only takes the maximum of
+    what it is told to measure. An arbitrary requirement grammar would move
+    that judgment into the tool, which is the line the module does not cross.
+    """
+
+    foregrounds: tuple[str, ...]
+    background: str
+    minimum: float
+    criterion: str
+    why: str
+
+    @property
+    def candidates(self) -> tuple[str, ...]:
+        """The foregrounds measured against the background, the best one taken."""
+        return self.foregrounds
+
+    @property
+    def label(self) -> str:
+        """How the foreground side is named in a report line."""
+        return " or ".join(self.foregrounds)
+
+    @property
+    def key(self) -> tuple[str, str]:
+        """This requirement's identity in `KNOWN_SHORTFALLS`."""
+        return (self.label, self.background)
+
+
+#: Either kind. Two types rather than one with an optional second foreground:
+#: text has no second channel, and a model letting it declare one would invite
+#: a fallback that is not on the screen.
+AnyRequirement = Requirement | EitherRequirement
 
 
 #: The specification. Every entry names a pair that actually appears on screen
@@ -125,7 +209,7 @@ class Requirement:
 #: bold (18.66px), and Flet's default text size is 14px. The one genuinely
 #: large string, the 26px application title in `INK`, clears the stricter bar
 #: anyway, so the exception is not claimed anywhere in this interface.
-REQUIREMENTS: tuple[Requirement, ...] = (
+REQUIREMENTS: tuple[AnyRequirement, ...] = (
     Requirement(
         "INK",
         "BACKGROUND",
@@ -276,26 +360,38 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "1.4.3",
         "the agent name over its ISO 5360 identification color",
     ),
-    Requirement(
-        "sevoflurane.fill",
+    EitherRequirement(
+        ("sevoflurane.fill", "sevoflurane.foreground"),
         "BACKGROUND",
         AA_NON_TEXT,
         "1.4.11",
-        "the identification swatch in the header, read as a shape",
+        "the identification swatch in the header, read as a shape - by its "
+        "fill or by its border, whichever carries the edge. `AGENT_RENDER_STYLES` "
+        "outlines the badge 1px in the agent's own text colour and "
+        "`_agent_header_badge` is the container both are set on, so either "
+        "channel locating the badge satisfies SC 1.4.11. This one is carried "
+        "by its border: ISO 5360 yellow is far too light to hold an edge "
+        "against the page, which is why the badge is outlined at all",
     ),
-    Requirement(
-        "isoflurane.fill",
+    EitherRequirement(
+        ("isoflurane.fill", "isoflurane.foreground"),
         "BACKGROUND",
         AA_NON_TEXT,
         "1.4.11",
-        "the identification swatch in the header, read as a shape",
+        "the identification swatch in the header, read as a shape - by its "
+        "fill or by its border, whichever carries the edge. Carried by its "
+        "fill: the border is white, which is near-invisible against the page, "
+        "so the ISO 5360 purple is the channel a reader finds this badge by",
     ),
-    Requirement(
-        "desflurane.fill",
+    EitherRequirement(
+        ("desflurane.fill", "desflurane.foreground"),
         "BACKGROUND",
         AA_NON_TEXT,
         "1.4.11",
-        "the identification swatch in the header, read as a shape",
+        "the identification swatch in the header, read as a shape - by its "
+        "fill or by its border, whichever carries the edge. Carried by its "
+        "fill, for the same reason as isoflurane above: the white border "
+        "disappears into the page and the ISO 5360 blue is what remains",
     ),
     Requirement("CIRCUIT_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
     Requirement("ALVEOLAR_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
@@ -345,15 +441,8 @@ REQUIREMENTS: tuple[Requirement, ...] = (
 #: separate on-screen elements that happen to share one constant. That sharing
 #: is itself the defect each item describes, and listing them separately is what
 #: makes it visible.
-#:
-#: The sevoflurane entry is a limitation of this tool rather than of the
-#: interface. That swatch carries a border in its own foreground color, which
-#: is 10.70:1 against the page - so it is perceivable, by a channel a
-#: single-pair requirement cannot express. `PL-GNN1` adds the requirement kind
-#: that says "fill or border" and removes this entry.
 KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {
     ("ACCENT", "PANEL"): "PL-W8DQ",
-    ("sevoflurane.fill", "BACKGROUND"): "PL-GNN1",
     ("ALVEOLAR_COLOR", "PANEL"): "PL-GVXP",
 }
 
@@ -535,7 +624,7 @@ def check_citations(root: Path) -> tuple[str, ...]:
     symbols = read_symbols(root)
     errors: list[str] = []
     for requirement in REQUIREMENTS:
-        pair = f"{requirement.foreground} on {requirement.background}"
+        pair = f"{requirement.label} on {requirement.background}"
         for match in LINE_CITATION_RE.finditer(requirement.why):
             errors.append(
                 f"  {pair}: cites {match.group(0)}, a line number. Name the symbol the "
@@ -554,9 +643,13 @@ def check_citations(root: Path) -> tuple[str, ...]:
 
 @dataclass(frozen=True)
 class Result:
-    """One evaluated requirement."""
+    """One evaluated requirement, at the ratio that decided it.
 
-    requirement: Requirement
+    For a single pair that is the pair's own ratio; for an `EitherRequirement`
+    it is the best channel's, which is the one the verdict turns on.
+    """
+
+    requirement: AnyRequirement
     ratio: float
 
     @property
@@ -591,24 +684,29 @@ def analyze(root: Path) -> Report:
     missing: list[str] = []
 
     for requirement in REQUIREMENTS:
-        names = (requirement.foreground, requirement.background)
+        names = (*requirement.candidates, requirement.background)
         absent = [name for name in names if name not in palette]
         if absent:
             missing.extend(absent)
             continue
-        results.append(Result(requirement, contrast_ratio(palette[names[0]], palette[names[1]])))
+        background = palette[requirement.background]
+        # The best channel decides. For a single pair there is only one, so
+        # this is the pair's own ratio; for a disjunction it is the channel
+        # the reader actually perceives the element by.
+        results.append(
+            Result(
+                requirement,
+                max(contrast_ratio(palette[name], background) for name in requirement.candidates),
+            )
+        )
 
     unexpected = tuple(
         result
         for result in results
-        if not result.meets
-        and (result.requirement.foreground, result.requirement.background) not in KNOWN_SHORTFALLS
+        if not result.meets and result.requirement.key not in KNOWN_SHORTFALLS
     )
     repaired = tuple(
-        result
-        for result in results
-        if result.meets
-        and (result.requirement.foreground, result.requirement.background) in KNOWN_SHORTFALLS
+        result for result in results if result.meets and result.requirement.key in KNOWN_SHORTFALLS
     )
     trace_pairs = tuple(
         (first, second, contrast_ratio(palette[first], palette[second]))
@@ -632,7 +730,7 @@ def format_report(report: Report, *, matrix: bool) -> str:
         len(report.unexpected) + len(report.missing) + len(report.repaired) + len(report.citations)
     )
     lines = [
-        f"contrast: {met} of {len(report.results)} declared pairs meet WCAG 2.2 AA, "
+        f"contrast: {met} of {len(report.results)} declared requirements meet WCAG 2.2 AA, "
         f"{len(KNOWN_SHORTFALLS)} known shortfalls, "
         f"{error_count} errors"
     ]
@@ -654,7 +752,7 @@ def format_report(report: Report, *, matrix: bool) -> str:
         for result in report.unexpected:
             requirement = result.requirement
             lines.append(
-                f"  {requirement.foreground} on {requirement.background}: "
+                f"  {requirement.label} on {requirement.background}: "
                 f"{result.rounded:.2f} < {requirement.minimum} "
                 f"(SC {requirement.criterion}) - {requirement.why}"
             )
@@ -663,10 +761,10 @@ def format_report(report: Report, *, matrix: bool) -> str:
         lines.append("")
         lines.append("Listed as a known shortfall but now passing - remove the entry:")
         for result in report.repaired:
-            pair = (result.requirement.foreground, result.requirement.background)
+            requirement = result.requirement
             lines.append(
-                f"  {pair[0]} on {pair[1]}: {result.rounded:.2f}, tracked by "
-                f"{KNOWN_SHORTFALLS[pair]}"
+                f"  {requirement.label} on {requirement.background}: {result.rounded:.2f}, "
+                f"tracked by {KNOWN_SHORTFALLS[requirement.key]}"
             )
 
     shortfalls = [result for result in report.results if not result.meets and not report.errors]
@@ -674,10 +772,10 @@ def format_report(report: Report, *, matrix: bool) -> str:
         lines.append("")
         lines.append("Known shortfalls (tracked, not failing):")
         for result in shortfalls:
-            pair = (result.requirement.foreground, result.requirement.background)
+            requirement = result.requirement
             lines.append(
-                f"  {pair[0]} on {pair[1]}: {result.rounded:.2f} < "
-                f"{result.requirement.minimum} - {KNOWN_SHORTFALLS.get(pair, '?')}"
+                f"  {requirement.label} on {requirement.background}: {result.rounded:.2f} < "
+                f"{requirement.minimum} - {KNOWN_SHORTFALLS.get(requirement.key, '?')}"
             )
 
     if matrix and report.trace_pairs:
