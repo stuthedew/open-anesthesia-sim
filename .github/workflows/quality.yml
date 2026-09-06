@@ -231,15 +231,15 @@ jobs:
       # `PL-CP74`.
       - run: uv run python tools/branch_id_check.py
       - run: uv run python tools/doc_check.py check
-      # Deliberately absent from the floor section above, both of them, for a
-      # reason about the *input* rather than about the tool. That section runs
+      # Deliberately absent from the floor section above, all three of them, for
+      # a reason about the *input* rather than about the tool. That section runs
       # the tools under the 3.11 floor to prove they need no virtualenv; these
-      # two read `app/` and `src/anesthesia_sim/` with `ast`, and that source
-      # targets 3.14, so the 3.11 parser cannot read what they are given - a
-      # `SyntaxError` on `app/chart_downsampling.py`'s PEP 695 generics rather
-      # than anything about the tool. `ast.parse`'s `feature_version` cannot
-      # help: it only ever narrows the syntax accepted, so it cannot teach an
-      # older parser a newer language.
+      # three read `app/`, `src/anesthesia_sim/` and `tests/` with `ast`, and
+      # that source targets 3.14, so the 3.11 parser cannot read what they are
+      # given - a `SyntaxError` on `app/chart_downsampling.py`'s PEP 695
+      # generics rather than anything about the tool. `ast.parse`'s
+      # `feature_version` cannot help: it only ever narrows the syntax accepted,
+      # so it cannot teach an older parser a newer language.
       #
       # `contrast_check.py` ran at the floor until `PL-L17Q`, and was green only
       # because `app/theme.py` and `app/simulation_view.py` happened to contain
@@ -247,9 +247,11 @@ jobs:
       # this whole job red before uv was even installed, naming a tool whose
       # author had touched nothing. The rule that generalizes it is in
       # `tests/unit/test_tools_portability.py`'s docstring, and the Makefile
-      # carries the same note on the same two lines. `PL-Y0RZ`, `PL-L17Q`.
+      # carries the same note on the same three lines. `PL-Y0RZ`, `PL-L17Q`,
+      # `PL-JBZK`.
       - run: uv run python tools/contrast_check.py
       - run: uv run python tools/import_boundary_check.py
+      - run: uv run python tools/workflow_paths_check.py
 
       # The pull-request title check lived here and moved to its own workflow,
       # `.github/workflows/pr-title.yml`, under `PL-3V8K`: it has to run on
