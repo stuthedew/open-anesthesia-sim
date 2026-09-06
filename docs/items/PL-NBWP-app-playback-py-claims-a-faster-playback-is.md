@@ -1,17 +1,14 @@
 ---
 id: PL-NBWP
 title: app/playback.py claims a faster playback is 'never a modelling one', but the uninterruptible tick burst makes control resolution multiplier x 0.1 s - 30 s at 300x
-status: untriaged
+priority: P1
+effort: M
+status: needs-decision
+classes: safety, docs
+feature: presentation-safety
+touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md
 added: 2026-09-06
 ---
-
-**Problem.** app/playback.py claims a faster playback is 'never a modelling one', but the uninterruptible tick burst makes control resolution multiplier x 0.1 s - 30 s at 300x
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `src/anesthesia_sim/app/playback.py`'s module docstring states that
 playing a run faster is "a *scheduling* change and never a modelling one: the
@@ -44,6 +41,12 @@ burst); `core/uptake_system.py`'s `MAXIMUM_SIMULATION_STEP_S` comment and
 `docs/MODEL.md` § "Supported simulation step", both of which state the tolerance
 without naming the rate it holds at.
 
+**Decision needed.** What the application promises about control timing at
+speed, choosing among the three options below. This is the owner's call rather
+than an implementation choice: the cheapest answer is to keep the behaviour and
+correct the claims, which changes what a reader is told the tool guarantees.
+`PL-NBCJ` is blocked on the answer.
+
 **Options, not yet decided.** Service pending control events between steps of a
 burst; or cap the burst; or leave the behaviour and correct the claim in all
 three places, disclosing the per-rate control resolution. The last is the
@@ -53,3 +56,33 @@ what the application promises.
 
 **Found.** `PL-X9KD`, 2026-09-06, while measuring what control-timing
 quantization costs a displayed value.
+
+**Verified at triage, 2026-09-06.** Both mechanical claims hold in the tree as
+it stands. `playback.py`'s docstring says playing faster is "a *scheduling*
+change and never a modelling one: the same steps are taken, in the same order,
+at the same size", and `simulation_view.py`'s run timer awaits
+`SIMULATION_TICK_INTERVAL_S` and then runs `for _ in range(steps):
+self._controller.advance(SIMULATION_STEP_S)` with no `await` inside the loop, so
+the burst is uninterruptible as described.
+
+**Classed `safety` at triage, and that is the load-bearing call.** Nothing here
+computes a wrong number — every step is exact and the trajectory is
+reproducible. What is wrong is what the reader is told about it: `docs/MODEL.md`
+states the control-resolution tolerance without naming the rate it holds at, and
+the module that converts a selected rate into steps asserts that the rate cannot
+affect the model. Both are true at 1x only. `CLAUDE.md`'s standard makes that a
+safety question rather than a documentation one — "the correct number with the
+wrong ... stale state ... is still a safety failure" — because a reader who
+moves a control at 60x is shown a trajectory whose control timing is six
+simulated seconds coarser than anything the documentation admits to, and nothing
+in the interface says so. `PL-NBCJ` is blocked on this item's answer.
+
+**Done when.** One of the three options is chosen, and after it the three places
+agree with each other and with the behaviour: `playback.py`'s docstring,
+`core/uptake_system.py`'s `MAXIMUM_SIMULATION_STEP_S` comment, and
+`docs/MODEL.md` § "Supported simulation step" each state the control resolution
+*as a function of the playback rate*, or state a bound the implementation now
+actually holds at every rate. If the behaviour changes rather than the prose, a
+test pins it — a control change applied during a fast burst takes effect within
+the stated resolution — because a claim about interruptibility that no test
+holds is how this one survived.

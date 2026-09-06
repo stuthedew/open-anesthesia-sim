@@ -1,8 +1,12 @@
 ---
 id: PL-74R0
 title: core/ still holds four compartment-level advance methods that the coupled step no longer calls
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect, refactor
 feature: numerical-domain
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/patient.py, docs/MODEL.md, tests/unit/test_circuit.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_patient.py, tests/reference/test_circuit_wash_in.py
 added: 2026-09-06
 ---
 
@@ -41,8 +45,7 @@ them deletes that verification rather than moving it. Reaching the same
 properties through the coupled system means zeroing the other flows and reading
 one row, which is a weaker and less direct test than the one it would replace.
 
-**The decision this needs.** Three options, and the middle one is probably
-right:
+**Decision needed.** Which of three, and the middle one is probably right:
 
 1. Delete all four with their tests, on the ground that a public mutator that
    can advance a compartment outside the governing equations is a way to reach
@@ -54,6 +57,28 @@ right:
    `PatientCompartments.advance`, which is the only one of the five that is a
    *composition* rather than one compartment's own solution.
 
+**Why it matters.** These are public methods on `core/` compartments, and what
+`core/` offers publicly is what a future caller will reach for. Each of them
+still *works* — it advances one compartment against a fixed input, exactly and
+in isolation — so nothing about the call site would look wrong. What has changed
+is that the model behind it is gone: after `PL-GS5X` every rate is evaluated
+from one state vector, and a compartment advanced on its own is no longer a
+sub-step of anything. A caller who wrote `tissue.advance(dt)` would get a
+plausible number that solves no equation the simulator is running, which is the
+shape `CLAUDE.md` reserves its "prefer an obvious failure to a plausible-looking
+number" rule for. Nothing displayed today is wrong, because nothing in
+production calls them — that is precisely why this is worth settling now, while
+the answer costs a deletion rather than a bug.
+
+The verification the tests carry is the other half, and it points the other way.
+`tests/unit/test_tissue.py`, `test_blood.py` and `test_patient.py` check each
+compartment's own time constant against the analytic solution. That is a direct
+test of a closed form; reaching the same property through the coupled system
+means zeroing the other flows and reading one row, which is weaker. So option 1
+does not merely delete code, it trades a sharp verification for a blunt one, and
+the decision has to be made with that on the table rather than as a dead-code
+sweep.
+
 **Where.** `core/circuit.py`, `core/tissue.py`, `core/blood.py`,
 `core/patient.py`; `tests/unit/test_tissue.py`, `test_blood.py`,
 `test_patient.py`, `test_circuit.py`; `tests/reference/test_circuit_wash_in.py`.
@@ -61,3 +86,12 @@ right:
 answer is taken.
 
 **Found.** Closing out `PL-GS5X`, 2026-09-06.
+
+**Done when.** One of the three options above is chosen and applied to all five
+methods, and `docs/MODEL.md` agrees with the result — either because the closed
+forms it states are still reachable by the methods it implies, or because the
+sentences naming them have been corrected. A method that survives carries a
+docstring saying it is a single-compartment closed form and not how a run
+advances; a method that goes takes its unit test with it only if the property
+that test held is still verified somewhere. `PL-9SH6`'s renames land in the same
+pass or immediately after it, not before.
