@@ -51,6 +51,15 @@ nobody reads.
   band ends the pass at exactly its limit of twelve startable: `PL-3YZW` and
   `PL-7HDS` behind sources nobody has reached, plus the two already there.
 
+- **Two further captures arrived mid-pass and were folded in.** `#413` merged
+  `PL-61WW` (the agent name loses contrast against the agent colour during a
+  run) and `PL-NGF7` (the contrast checker can see no disabled-state colour)
+  while this pass was running. `PL-61WW` is the sixth item to enter the safety
+  band, and `#412` closing `PL-HB58` in the same window made room for it, so
+  the band still ends at twelve startable.
+- **`PL-73G7` was triaged by the branch that held it**, in `#412`, which is the
+  outcome skipping it was for.
+
 **Done when.** Every item captured before 2026-09-06 carries `priority`,
 `effort`, `classes`, `touches` and a status past `untriaged`, or is closed with
 a reason; `bin/docket check` reports 0 errors; and every item set to `ready`

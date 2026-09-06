@@ -1,8 +1,14 @@
 ---
 id: PL-61WW
 title: During a run, the agent name in the agent selector loses contrast against the agent colour
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: safety, ux
+feature: presentation-safety
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, tools/contrast_check.py, tests/unit/test_simulation_view.py
 added: 2026-09-06
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_agent_name_stays_legible_while_the_run_disables_the_selector' tests/unit/test_simulation_view.py
 ---
 
 **Problem.** `simulation_view.py:2123` sets `self._agent_dropdown.disabled =
@@ -67,3 +73,18 @@ grey it; drop `disabled` for a read-only presentation that does not recolour;
 or move the running agent's identity out of the control into a label that is
 never disabled. The third also answers the mode-awareness question — a disabled
 dropdown reads as "unavailable", not as "this is what is running".
+
+**Triaged `safety`, P1, on the brief's own argument rather than on the WCAG
+question.** The exemption for an inactive component decides a conformance claim
+and not whether this is a defect: the label carries model identity, which
+`CLAUDE.md` requires not be easily misread, and it is least readable exactly
+while the agent-specific readouts are live. The `verify:` command names the
+test the work owes rather than a fix direction, so it holds under any of the
+three candidates - run 2026-09-06 before the work: exit 1, with the file's 174
+tests passing and the test absent.
+
+**It crosses the lane boundary**, reaching `src/` and `tools/contrast_check.py`
+both, so neither `bin/docket next product` nor `next workflow` will offer it.
+That matches its sibling `PL-W8DQ` and is what the Done-when asks for: pinning
+the requirement in the checker is the half that keeps the fix from silently
+regressing.

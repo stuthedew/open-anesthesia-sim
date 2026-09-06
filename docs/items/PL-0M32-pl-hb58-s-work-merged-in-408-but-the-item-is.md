@@ -51,12 +51,14 @@ an unstarted item from every direction the tooling can see, which is why the
 two faults are one item.
 
 **Since filed, and checked rather than recalled.**
-`origin/claude/pl-hb58-close-out` (`150d06e`, unmerged as of 2026-09-06) sets
+`origin/claude/pl-hb58-close-out` sets
 `PL-HB58` to `done` and rewrites its `verify:` to
 `test_five_minute_elimination_ratio_against_published_human_measurement`, the
 test that exists. So the first fault is answered on that branch and this item
 is left with the second: whether anything can tell "finished under a renamed
-test" from "not started".
+test" from "not started". That branch merged as `#412` while this triage pass
+was running, so the first fault is closed on `origin/main` and needs nothing
+further here.
 
 **Where.**
 

@@ -66,3 +66,11 @@ for this book, so the next step is not another attempt: it is the disposition
 project owner for their institutional access, carried as an owner-supplied
 extract, or recorded as terminal. Which of those is chosen decides what closing
 this item even looks like.
+
+**A live session was working this item when the block was written, and the
+block is a triage disposition rather than a claim on it.** `list_sessions`
+2026-09-06: session `PL-7HDS`, branch `claude/pl-7hds-e170bx`, running and
+searching for the book. Nothing was pushed, so no ref could show it and
+`bin/docket show` reported the item startable. Whoever reaches the book first
+should close this and take the block off `PL-3YZW` with it; the sequencing
+above is what to do if nobody does.
