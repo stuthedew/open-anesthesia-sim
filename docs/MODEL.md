@@ -646,14 +646,24 @@ $$
 
 Here $`M_{\mathrm{scale}}`$ is a documented small positive reference amount that prevents division by zero.
 
-The release tolerance, as implemented in `core/agent_simulation_validation.py`:
+Two bounds apply, and they answer different questions.
+
+**The run-time halt thresholds, as implemented in `core/agent_simulation_validation.py`:**
 
 ```text
 MASS_BALANCE_ABSOLUTE_TOLERANCE = 1e-12 L
 MASS_BALANCE_RELATIVE_TOLERANCE = 1e-9
 ```
 
-A step passes if either tolerance is satisfied. The relative error uses `max(initial + delivered, 1e-15 L)` as its denominator to avoid division by zero when no agent has yet been delivered.
+A step passes if either tolerance is satisfied. The relative error uses `max(initial + delivered, 1e-15 L)` as its denominator to avoid division by zero when no agent has yet been delivered. Exceeding both stops the run: this is the point past which the model refuses to show a number, not the standard the shipped model is held to.
+
+**The release gate is the relative residual alone**, asserted by the reference runs in `tests/reference/` as `MASS_BALANCE_RELATIVE_GATE`:
+
+```text
+MASS_BALANCE_RELATIVE_GATE = 1e-10
+```
+
+It is relative because the residual is rounding accumulated once per step, so it scales with how much agent a run has handled. An absolute bound would therefore measure the delivered concentration and the run length rather than conservation: measured 2026-09-06 on the shipped exact step, halving the dial halves the absolute residual exactly and leaves the relative one unchanged to four significant figures. The same measurements put the worst relative residual at any step at 2.3e-13 over the 1200 s the reference runs cover, and at 6.4e-12 over 8 h at the most demanding corner of the supported envelope, so 1e-10 leaves about 450x headroom at the horizon those runs use and about 16x at 8 h. Neither moving a dial nor lengthening a case changes what the gate certifies, which is what it is for. `tests/reference/mass_balance_gate.py` carries the measurements and the derivation.
 
 Clipping a negative store to zero does not repair mass balance and must not be used to conceal an unstable update.
 
@@ -795,7 +805,17 @@ inside the check's own relative tolerance, and the absolute figures scale with
 how much agent the run has handled rather than with any error in it. What it
 does mean is that `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L` (1e-12 L) is now
 routinely exceeded on a long run and the relative branch alone is carrying the
-check. Whether that is the right shape for the guard is queue item `PL-4GN8`.
+check — first exceeded at t = 3452 s at the reference runs' own settings and at
+t = 538 s at the sevoflurane corner of the envelope, measured 2026-09-06.
+
+That settles the shape of the guard (`PL-4GN8`). The disjunction in
+`check_agent_accounting` is right: the absolute branch is the one that catches a
+gross error early in a run, when little has been delivered and the relative
+denominator is small, and the relative branch carries the check from then on.
+What was wrong was the *release gate* — the reference runs asserted the absolute
+residual, so what they certified moved with the dial they happened to use and
+was simply false past about an hour of simulated time. They now assert
+`MASS_BALANCE_RELATIVE_GATE`, above.
 
 **What this replaces, and why the decision changed.** Until v0.4.x each step
 was the exact analytic solution of five *pairwise* exchanges, composed in

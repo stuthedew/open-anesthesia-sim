@@ -1,4 +1,5 @@
 import pytest
+from mass_balance_gate import MASS_BALANCE_RELATIVE_GATE
 
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
@@ -249,7 +250,11 @@ def test_long_wash_in_and_washout_validate_agent_simulation() -> None:
     validation = system.agent_simulation_validation
 
     assert validation.passes_validation is True
-    assert validation.absolute_error_l <= 1e-12
+    # The relative residual, not the absolute one: the absolute figure scales
+    # with the dial and the run length, so asserting it measures this test's
+    # setup rather than conservation (`PL-4GN8`). `mass_balance_gate` carries
+    # the measurements the bound comes from.
+    assert validation.relative_error <= MASS_BALANCE_RELATIVE_GATE
     assert validation.delivered_agent_l > 0.0
     assert validation.exhausted_agent_l > 0.0
 
