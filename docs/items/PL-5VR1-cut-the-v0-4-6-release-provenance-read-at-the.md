@@ -9,6 +9,7 @@ feature: release-process
 touches: ROADMAP.md, pyproject.toml, uv.lock, docs/releases
 added: 2026-09-06
 closed: 2026-09-06
+pr: 411
 not-delegable: proving a release-time change means cutting a release; there is no command that can be run beforehand
 ---
 
