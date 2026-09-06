@@ -1224,6 +1224,41 @@ whether this chain ends in a measurement or in another compilation. Neither is
 assumed here: a 1981 monograph nobody has opened is recorded as located and
 unread, which is the discipline the Mapleson entries were removed for failing.
 
+**Lowe and Ernst has since been read at one remove, and is still not opened.**
+On 2026-09-06 the project owner supplied two peer-reviewed papers that used the
+book — Lerou and Booij's system model (*Br J Anaesth* 2001;86:12–28) and Couto
+da Silva, Mapleson and Vickers' study of Lowe's method (*Br J Anaesth*
+1997;79:103–12) — both read here at full text. The initial is `HJ`; the
+Workbook's `HF` is a misprint. More usefully, the book supplies this material as
+**fractions of body mass and of cardiac output, with cardiac output itself
+allometric** — 0.2 times body mass to the three-quarter power, which is
+4.84 L/min at 70 kg rather than the 5.0 stored here. Lerou and Booij's Table 6
+prints eight such compartments, captioned as data given by Lowe and Ernst and
+cited to **page 57** of the book.
+
+**Checked against that table, the Workbook's attribution holds for two of the
+seven values.** At 70 kg the kidney, heart, brain and liver rows sum to 6.02 kg
+at a flow fraction of 0.760, reproducing the stored vessel-rich pair; muscle
+(29.8 kg at 0.130) and adipose (10.5 kg at 0.050) do not reproduce the stored
+33.0 at 0.18 and 14.5 at 0.06, and no grouping of the eight compartments does.
+Alveolar volume is untouched, Lerou and Booij deriving their alveolar space
+rather than taking it from the book. That arithmetic is this project's, from a
+table read at second hand, and it convicts the Workbook of nothing — Gas Man may
+lump compartments differently, or read a different page. The data file carries
+the figures and the per-value detail.
+
+**Nothing is promoted by any of it, and the stake is narrower than the chain's
+length suggests.** A second-hand report of a book's table is not the book, so
+all seven stay tier 3 and unadopted. And the hierarchy above admits only tier 1
+as the authority for a stored value, so opening the book changes what this
+document may claim **only if it turns out to have measured these volumes and
+flows rather than collected them**. It could not be reached from a session
+container — the egress proxy refuses the Internet Archive, HathiTrust, Open
+Library and Google Books alike, and PubMed does not index monographs — so it
+still needs the project owner's institutional or library access, as the Workbook
+did; `PL-XJ5P` carries that gap. What changed is the size of the ask: page 57,
+with page 83 next.
+
 **So, three rules for a `sources` entry.**
 
 - Name the tier. Where the stored value is not a primary measurement, say
