@@ -3,8 +3,7 @@ id: PL-X9KD
 title: Re-derive Displayed precision and the supported step bound, and retire the splitting-error constants, after the exact step lands
 priority: P1
 effort: M
-status: blocked
-blocked-by: PL-GS5X
+status: ready
 classes: science, safety
 feature: numerical-domain
 touches: docs/MODEL.md, tests/reference, src/anesthesia_sim/core
