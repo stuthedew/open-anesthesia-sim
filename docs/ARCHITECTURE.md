@@ -261,7 +261,6 @@ tools/
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
-├── readme_hold_check.py  # refuses a `README.md` at the repository root, which the project owner deleted under `PL-WB5K` because sessions read it as instruction and a human reader could not use it; the freeze it replaces was a path-scoped rule, which a session that never read the file never met, and `PL-N092` deletes this script when it writes the deliberate replacement
 ├── rules_paths_check.py  # refuses a `.claude/rules/*.md` `paths:` entry that does not begin with `/`, or whose literal prefix resolves to nothing, because an unanchored glob also matches its name at any depth while `./` and a typo'd prefix match nothing at all — so a rule's real scope can differ silently from the one it declares, in either direction
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
 ```
@@ -482,8 +481,7 @@ gate rather than an older parser, and the wrong interpreter's
 `.github/workflows/quality.yml`'s `checks` job performs the run they stand in
 for: `actions/setup-python` at the declared floor, then
 `python3 tools/doc_check.py check`, `python3 tools/branch_id_check.py`,
-`python3 tools/rules_paths_check.py`, `python3 tools/readme_hold_check.py` and
-`bin/docket check` under it. It runs ahead of the uv install rather than in a
+`python3 tools/rules_paths_check.py` and `bin/docket check` under it. It runs ahead of the uv install rather than in a
 job of its own (`PL-D551`), which is what keeps the no-virtualenv claim true:
 at that point none exists. `contrast_check.py` was there too until `PL-L17Q`
 and is deliberately not now, for the input-versus-dependency reason above.

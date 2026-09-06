@@ -797,16 +797,23 @@ already owns restoring it alongside a real description. The freeze rule under
 `PL-3V4N` - which would have built a check enforcing that freeze - is dropped
 with it.
 
-**Standing rule while this holds, and it is enforced rather than written
-down.** Do not recreate the README, and do not add a placeholder. A stub is the
-same failure at smaller scale: it will be read as instruction, it will drift,
-and it will make `PL-N092` a revision rather than a first draft. That is what
-`tools/readme_hold_check.py` holds, in `make check` and in the bare-interpreter
-section of CI's `checks` job (where `PL-D551` folded the former `floor` job) -
-the freeze this replaces was routed to a path-scoped rule, which loads on a
-*read* and so was missed by the first session that edited the file without
-opening it. The check retires itself: `PL-N092` deletes the script and its two
-invocations in the commit that writes the README.
+**Closed 2026-09-06 by `PL-N092`**, which wrote the deliberate README and
+retired the guard in the same commit, as the guard's own docstring said it
+would. The hold did its job: what it was protecting against was a stub or a
+recreation landing before anyone had decided what the document was for, and
+`PL-RM83` answered that in between - two audiences, a `docs/MODEL.md` boundary
+rule (version-coupled statements are that document's), and status stated as
+capability rather than as a version number. So `PL-N092` was a first draft
+rather than a revision, which is what the deletion was for.
+
+**What the guard was, kept because the shape is reusable.** A standing rule -
+do not recreate the README, do not add a placeholder - routed to a check rather
+than to prose, running in `make check` and in the bare-interpreter section of
+CI's `checks` job (where `PL-D551` folded the former `floor` job). The freeze it
+replaced was a path-scoped rule under `.claude/rules/`, which loads on a *read*
+and so was missed by the first session that edited the file without opening it
+(`PL-3V4N`). A rule that must fire before a first write cannot be path-scoped,
+because no read precedes one.
 
 ## Settled: `.claude/rules/` path globs are unanchored - PL-ZQ35, PL-H588, PL-LLWN
 
