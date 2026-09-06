@@ -97,8 +97,9 @@ function" because it is directly assertable in a test. So the fork is available
 without the loss if a later answer wants it, and it is not an argument against
 any candidate.
 
-**Recommended: the second candidate, built as the control's own caption rather
-than as a new layout element.** `ft.Dropdown` in the shipped Flet 0.86.5
+**Withdrawn on the project owner's challenge, 2026-09-06 - see the section
+below.** Recorded as it stood: the second candidate, built as the control's own
+caption rather than as a new layout element. `ft.Dropdown` in the shipped Flet 0.86.5
 carries `helper_text` and `helper_style` (verified against
 `dataclasses.fields`), so the line under the control is three lines of view
 code and no restructuring of the transport row. `format_playback_rate` is then
@@ -161,3 +162,52 @@ prose to name the new site and adds no pair.
 and what it says. No `verify:` command is written yet, deliberately: the
 command has to name the test on the interface path, and which path that is is
 the open question.
+
+## Challenged and re-derived, 2026-09-06 - the number should not be displayed
+
+The project owner asked what a caption stating the grid would mean to a
+reader, and why it needs displaying at all. Two facts checked against the
+source say the brief's premise is half wrong, and they were not in the brief.
+
+**The control grid is finer than the display, by exactly two, at every rate.**
+`RENDER_INTERVAL_S` is `2 * SIMULATION_TICK_INTERVAL_S`
+(`app/simulation_view.py`), so a frame is two grid steps: at 300x the reader
+sees simulated time in 60 s increments and can act on it in 30 s ones.
+`docs/MODEL.md` § "Supported simulation step" states this as the reason
+`PL-NBWP` left the grid alone. It has a consequence that item did not draw:
+a reader cannot check `30 s` against anything on screen, and cannot act on the
+difference between 30 s and the 60 s they can see. The rate label is
+displayable precisely because it *is* checkable against the clock
+(`format_playback_rate`'s docstring makes that the argument for it); a grid
+figure has the opposite property.
+
+**The 10 pp figure is not the learner's manoeuvre.** It is a ventilator start
+at the envelope corner. The ordinary action - open the dial, or close it -
+reaches 1.5 pp at 300x, and the transient saturates rather than scaling.
+
+**So the number and the fact separate, and only one of them is worth screen
+space.** The *number* is uncheckable, imperceptible and unactionable. The
+*fact* - that a setting cannot be placed at a chosen instant while the run is
+playing above 1x, and that pausing gives exact timing - is invisible to a
+reader precisely because the display is coarser than the grid, which is what
+makes it worth disclosing rather than leaving to be discovered. It is also a
+teaching affordance rather than a warning: nothing on screen currently tells a
+reader that timing a manoeuvre is something this simulator can do at all, and
+`docs/MODEL.md` names pause-change-resume as the exact route at every rate.
+
+**Revised recommendation.** Say the actionable half in words and drop the
+figure - a line reading approximately "Time advances in jumps while playing;
+pause to change a setting at an exact moment." `docs/MODEL.md` keeps the
+ladder for a reader who wants it. Dropping the item outright is the honest
+alternative and is not a weak one; building it as the brief describes is the
+weakest of the three, because it spends the interface's scarcest resource on
+the half a reader can neither verify nor use.
+
+**If the figure is dropped, `format_control_grid` loses its only production
+caller** and should come out with it; `PlaybackRate.control_grid_s` stays,
+because `test_the_control_grid_at_each_rate_is_the_one_two_documents_publish`
+reads the published ladder through it.
+
+**Filed while here:** `PL-SR8F`, on `docs/MODEL.md` calling the case-opening
+displacement "two orders milder at every rate" when the figures in the same
+sentence are 0.8 to 1.3 orders apart.
