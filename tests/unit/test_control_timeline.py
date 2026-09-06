@@ -124,10 +124,19 @@ def test_flow_settings_are_displayed_in_the_unit_their_sliders_are() -> None:
     assert format_control_value(ControlInput.CARDIAC_OUTPUT, 5.0) == "5.0 L/min"
 
 
-def test_circuit_volume_is_displayed_in_litres_not_litres_per_minute() -> None:
-    """A volume rendered as a flow is the wrong-unit failure, on screen."""
+def test_every_control_has_a_label_and_a_unit() -> None:
+    """`PL-GYH2` removed a member; the three tables must stay in step.
 
-    assert format_control_value(ControlInput.CIRCUIT_VOLUME, 6.0) == "6.0 L"
+    `ControlInput`, `CONTROL_INPUT_UNITS` and `CONTROL_INPUT_LABELS` are
+    written separately and on purpose - the unit is the model's and the
+    label is the interface's - so nothing but this holds them to the same
+    set of controls. A member left in one table after being retired from
+    the enum is a displayed line with no unit, or a unit with nothing to
+    put it on.
+    """
+
+    assert set(CONTROL_INPUT_LABELS) == set(ControlInput)
+    assert set(CONTROL_INPUT_UNITS) == set(ControlInput)
 
 
 def test_a_single_change_reads_as_the_instant_it_was() -> None:

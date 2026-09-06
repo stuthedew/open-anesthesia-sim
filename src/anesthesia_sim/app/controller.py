@@ -38,13 +38,22 @@ class ControlInput(StrEnum):
     circuit, which is not the same quantity as the inspired concentration
     the circuit reaches. Naming it for the dial would have tied it to one
     machine's control rather than to the quantity the model applies.
+
+    These are the four live controls and there is no fifth. A
+    `CIRCUIT_VOLUME` member was recorded here until `PL-GYH2` established
+    the circuit volume as a fixed model parameter rather than a control:
+    it was written only by `SimulationController.set_circuit_volume`, an
+    app-layer setter no interface control ever reached, and retiring the
+    setter left an identifier for a change a run can no longer undergo.
+    Removing the member costs no recorded history, because a timeline is
+    held in memory and cleared with the run that recorded it; it is never
+    persisted, so no stored run carries the string.
     """
 
     FRESH_GAS_FLOW = "fresh_gas_flow"
     DELIVERED = "delivered"
     ALVEOLAR_VENTILATION = "alveolar_ventilation"
     CARDIAC_OUTPUT = "cardiac_output"
-    CIRCUIT_VOLUME = "circuit_volume"
 
 
 # The unit each control's recorded values are in, declared once and carried
@@ -70,7 +79,6 @@ CONTROL_INPUT_UNITS: Final[Mapping[ControlInput, str]] = {
     ControlInput.DELIVERED: "fraction of 1 atm",
     ControlInput.ALVEOLAR_VENTILATION: "L/min",
     ControlInput.CARDIAC_OUTPUT: "L/min",
-    ControlInput.CIRCUIT_VOLUME: "L",
 }
 
 
@@ -992,21 +1000,17 @@ class SimulationController:
         self._history.record(self._build_history_sample())
         self._clear_control_timeline()
 
-    def set_circuit_volume(self, circuit_volume_l: float) -> None:
-        """Change volume without creating or losing stored agent.
-
-        The conservation and the capacity guard are the circuit's own
-        (PL-006). This forwards because circuit volume is not one of the four
-        live inputs `AgentUptakeSystem` exposes; it reaches the compartment
-        that owns it, as the system's docstring says such a setting should.
-        """
-
-        circuit = self._state.uptake_system.circuit
-        previous_value = circuit.circuit_volume_l
-        circuit.set_circuit_volume(circuit_volume_l)
-        self._record_control_change(
-            ControlInput.CIRCUIT_VOLUME, previous_value, circuit.circuit_volume_l
-        )
+    # No `set_circuit_volume` here, deliberately (`PL-GYH2`). The circuit
+    # volume is a fixed model parameter rather than a control: it is set
+    # once, when this controller builds the system, and no interface control
+    # reaches it thereafter. The setter that used to sit here was public and
+    # unbounded, so it offered every caller of the app layer a route to a
+    # circuit volume outside anything `docs/MODEL.md` verifies, for a knob no
+    # teaching case has asked for. `BreathingCircuit.set_circuit_volume`
+    # stays, because `_rebuild()` is how the parameter reaches the circuit at
+    # all; what is removed is the app-level passthrough, not the core
+    # primitive. `docs/MODEL.md` § "What is not bounded this way" carries the
+    # argument.
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
         circuit = self._state.uptake_system.circuit

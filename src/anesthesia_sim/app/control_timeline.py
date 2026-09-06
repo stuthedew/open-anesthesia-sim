@@ -62,7 +62,6 @@ CONTROL_INPUT_LABELS: Final[Mapping[ControlInput, str]] = {
     ControlInput.DELIVERED: "Delivered agent",
     ControlInput.ALVEOLAR_VENTILATION: "Alveolar ventilation",
     ControlInput.CARDIAC_OUTPUT: "Cardiac output",
-    ControlInput.CIRCUIT_VOLUME: "Circuit volume",
 }
 
 
@@ -162,14 +161,13 @@ def format_control_value(control: ControlInput, value: float) -> str:
         The value with its displayed unit.
     """
 
+    # Every remaining control is a flow in L/min, so `format_flow` covers
+    # all three. A `CIRCUIT_VOLUME` branch rendering litres stood here until
+    # `PL-GYH2` retired that control; nothing recorded under it can reach
+    # this function any more, and a formatter for a control that cannot be
+    # changed is a unit rule with no value to apply it to.
     if control is ControlInput.DELIVERED:
         return format_percent(value)
-
-    if control is ControlInput.CIRCUIT_VOLUME:
-        # Litres, not litres per minute, so this is the one displayed
-        # setting `format_flow` does not cover. One decimal for the same
-        # reason it uses one: a circuit is sized in tenths of a litre.
-        return f"{value:.1f} L"
 
     return format_flow(value)
 

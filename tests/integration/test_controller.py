@@ -475,7 +475,6 @@ def test_parameter_changes_do_not_reset_dynamic_state() -> None:
     _advance_for(controller, duration_s=10.0)
     before = controller.snapshot()
 
-    controller.set_circuit_volume(5.0)
     controller.set_fresh_gas_flow(3.0)
     controller.set_delivered_concentration(0.06)
 
@@ -483,26 +482,37 @@ def test_parameter_changes_do_not_reset_dynamic_state() -> None:
 
     assert after.elapsed_s == before.elapsed_s
     assert after.stored_agent_l == pytest.approx(before.stored_agent_l)
-    assert after.circuit_volume_l == 5.0
     assert after.fresh_gas_flow_l_min == 3.0
     assert after.delivered_concentration_fraction == 0.06
+    # The circuit volume is a fixed model parameter, so a settings change
+    # must leave it exactly where the session was built with it (`PL-GYH2`).
+    assert after.circuit_volume_l == before.circuit_volume_l
 
 
-def test_rejects_circuit_volume_below_stored_circuit_agent() -> None:
-    controller = SimulationController(
-        circuit_volume_l=1.0, fresh_gas_flow_l_min=6.0, delivered_concentration_fraction=0.08
-    )
+def test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter() -> None:
+    """`PL-GYH2`: the app layer offers no route to the circuit volume.
+
+    It is set once, from the value this controller is built with, and no
+    interface control reaches it thereafter. The setter that used to sit on
+    `SimulationController` was public and unbounded, so it let any caller of
+    the app layer put the circuit outside the domain `docs/MODEL.md`
+    verifies - for a control the interface has never offered. Asserted on
+    the class rather than on an instance so that re-adding the method fails
+    here whatever a run has done.
+
+    `BreathingCircuit.set_circuit_volume` is deliberately untouched: it is
+    how the parameter reaches the circuit at all, and it is where the
+    conservation and capacity guards live (`PL-006`, `tests/unit/test_circuit.py`).
+    """
+
+    assert not hasattr(SimulationController, "set_circuit_volume")
+
+    controller = SimulationController(circuit_volume_l=5.0)
     controller.start()
-    controller.advance(0.1)
-    snapshot = controller.snapshot()
-    circuit_agent_l = snapshot.circuit_volume_l * snapshot.circuit_concentration_fraction
+    _advance_for(controller, duration_s=10.0)
+    controller.set_fresh_gas_flow(3.0)
 
-    assert circuit_agent_l > 0.0
-
-    with pytest.raises(
-        SimulationConfigurationError, match="^circuit_volume_l is smaller than stored agent$"
-    ):
-        controller.set_circuit_volume(circuit_agent_l / 2.0)
+    assert controller.snapshot().circuit_volume_l == 5.0
 
 
 def test_a_failed_session_is_not_the_same_state_as_a_pause() -> None:
@@ -762,14 +772,12 @@ def test_every_control_records_under_its_own_stable_identifier() -> None:
     controller.set_delivered_concentration(0.03)
     controller.set_alveolar_ventilation(5.0)
     controller.set_cardiac_output(4.0)
-    controller.set_circuit_volume(8.0)
 
     assert [change.control.value for change in controller.snapshot().control_timeline] == [
         "fresh_gas_flow",
         "delivered",
         "alveolar_ventilation",
         "cardiac_output",
-        "circuit_volume",
     ]
 
 
@@ -780,7 +788,6 @@ def test_every_recorded_control_carries_its_declared_unit() -> None:
     controller.set_delivered_concentration(0.03)
     controller.set_alveolar_ventilation(5.0)
     controller.set_cardiac_output(4.0)
-    controller.set_circuit_volume(8.0)
 
     for change in controller.snapshot().control_timeline:
         assert change.unit == CONTROL_INPUT_UNITS[change.control]
