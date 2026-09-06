@@ -2561,6 +2561,27 @@ def test_a_tick_is_one_simulation_step_of_real_time() -> None:
     assert SIMULATION_TICK_INTERVAL_S == SIMULATION_STEP_S
 
 
+def test_a_frame_is_two_control_grid_steps_at_every_rate() -> None:
+    """The premise of the argument `PL-NBWP` was settled on.
+
+    A tick advances its whole burst uninterrupted, so a setting changed
+    while the run plays first acts at a tick boundary; a frame is drawn
+    every render interval. Because the render interval is twice the tick,
+    a reader sees the run at half the resolution they can act on it at, at
+    every rate the ladder offers - and that ordering is the reason
+    `docs/MODEL.md` § "Supported simulation step" gives for leaving the
+    grid where it is rather than servicing control events inside the burst.
+
+    Held here rather than derived in the module, because a display cadence
+    and an event-loop cadence are separate decisions that happen to be in
+    this ratio today. Re-tuning the render interval for the display is
+    allowed; doing it while `docs/MODEL.md` still argues from the old ratio
+    is what this fails on.
+    """
+
+    assert RENDER_INTERVAL_S == 2.0 * SIMULATION_TICK_INTERVAL_S
+
+
 @pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES, ids=lambda rate: f"{rate.multiplier}x")
 def test_the_run_loop_takes_the_playback_rates_steps_per_tick(
     rate: PlaybackRate, monkeypatch: pytest.MonkeyPatch
