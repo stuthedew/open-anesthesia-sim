@@ -819,6 +819,47 @@ def test_a_default_branch_with_no_items_declines() -> None:
     assert "origin/main" in report.declined
 
 
+# The item `#325` landed while a checkout eight minutes behind was reading, and
+# the branch GitHub deleted on that merge.
+MERGED = {**MAIN, "PL-XLQ5-triaged-and-merged.md": _document("PL-XLQ5", "Merged as #325")}
+DELETED_ON_MERGE = "origin/claude/deleted-on-merge"
+
+
+def test_a_merged_and_deleted_branch_is_not_reported_as_stranded() -> None:
+    """The 2026-09-05 false report, stated as the difference the base makes.
+
+    `PL-XLQ5` merged at 01:13 and GitHub deleted the head branch; this checkout
+    held a tracking ref for it and an `origin/main` fetched at 01:05, so at
+    01:16 the item read as existing only on a branch. The recovery command that
+    finding prints was run, and restored the pre-triage copy over the triaged
+    one the merge had just landed (`PL-KBFN`).
+
+    The deleted remote branch is not the signal and cannot be - a merge deletes
+    the branch too, so both histories look identical from the ref's absence.
+    What separates them is whether the base holds the item, which is only a
+    true answer on a base something refreshed. Both halves are asserted here
+    because the second is the finding: the same trees give opposite answers
+    across one fetch, so how fresh the base is belongs in the report.
+    """
+    stale = _tree_runner({"origin/main": MAIN, DELETED_ON_MERGE: MERGED})
+    fresh = _tree_runner({"origin/main": MERGED, DELETED_ON_MERGE: MERGED})
+
+    assert [i.identifier for i in stranded(ROOT, {"PL-0001"}, runner=stale).items] == ["PL-XLQ5"]
+    assert stranded(ROOT, {"PL-0001"}, runner=fresh, fetched=True).items == ()
+
+
+def test_whether_the_comparison_point_was_refreshed_is_part_of_the_answer() -> None:
+    """Reported only in the negative, for the reason `BranchState` gives.
+
+    A quiet `git fetch` prints nothing whether it reached the remote or not, so
+    what can be claimed is that a caller tried - never that a refresh arrived.
+    """
+    runner = _tree_runner({"origin/main": MAIN, DELETED_ON_MERGE: MERGED})
+
+    assert not stranded(ROOT, {"PL-0001"}, runner=runner).fetched
+    assert stranded(ROOT, {"PL-0001"}, runner=runner, fetched=True).fetched
+
+
 DIGEST_ITEM = """---
 id: PL-0001
 title: An item in the store
@@ -2224,6 +2265,53 @@ def test_a_commit_the_merge_took_and_merged_is_not_work_left_behind() -> None:
         touched={
             PARTLY: [
                 ("Release v0.3.8", ("pyproject.toml", "docs/releases/v0.3.8.md", "ROADMAP.md"))
+            ]
+        },
+    )
+
+    assert report.branches == ()
+
+
+def test_a_branch_whose_changes_the_base_already_holds_is_not_partly_merged() -> None:
+    """The false verdict `#372` drew while it was open, and nothing had merged.
+
+    `claude/triage-fwyuus` was reported as having "already taken the rest of its
+    work" while its pull request was open and `origin/main` carried none of its
+    triage. What matched was `bin/docket record`: eight of its first commit's
+    twelve files changed only by a `pr:` line, and the sessions behind `#366`
+    and `#369` had written the same line - the command is deterministic, so both
+    sides wrote identical bytes. Eight of twelve agreed with the base and the
+    detector read agreement as merge (`PL-5TRV`).
+
+    Content agreement cannot tell a merge from a convergence, and no comparison
+    of those eight blobs ever will. What can be told apart is the *unit*: a
+    squash merge takes whole commits, so a branch whose pull request merged has
+    a commit every path of which the base holds. Convergence lands scattered
+    files inside commits and leaves no whole one, which is what the shape below
+    asserts - the branch has a wholly outstanding commit, and would have been
+    reported for it, and no commit the base took whole.
+    """
+    report = _orphaned(
+        adds={
+            PARTLY: [
+                ("r1", "docs/items/PL-AAAA-one.md"),
+                ("r2", "docs/items/PL-BBBB-two.md"),
+                ("w1", "docs/items/PL-7PLY-the-real-work.md"),
+                ("w2", "docs/WORKING_NOTES.md"),
+            ]
+        },
+        on_base={"r1", "r2"},
+        touched={
+            PARTLY: [
+                ("PL-7PLY triage the queue", ("docs/WORKING_NOTES.md",)),
+                (
+                    "PL-7PLY triage, and record the numbers the base also recorded",
+                    (
+                        "docs/items/PL-AAAA-one.md",
+                        "docs/items/PL-BBBB-two.md",
+                        "docs/items/PL-7PLY-the-real-work.md",
+                    ),
+                ),
             ]
         },
     )
