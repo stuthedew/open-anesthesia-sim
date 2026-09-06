@@ -1,13 +1,14 @@
 ---
 id: PL-LKRP
 title: apply_blood_uptake computes its result twice and accepts bool where parameters.py rejects it
-status: done
 priority: P3
 effort: S
+status: done
 classes: refactor
 touches: src/anesthesia_sim/core/alveolar.py, tests/unit/test_alveolar.py
 added: 2026-09-02
 closed: 2026-09-06
+pr: 376
 verify: uv run pytest -q tests/unit/test_alveolar.py && ! grep -q 'def apply_blood_uptake' src/anesthesia_sim/core/alveolar.py
 ---
 

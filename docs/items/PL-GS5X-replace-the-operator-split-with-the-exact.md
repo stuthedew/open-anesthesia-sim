@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: src/anesthesia_sim/core, docs/MODEL.md, tests/reference
 added: 2026-09-03
 closed: 2026-09-06
+pr: 376
 verify: uv run pytest -q tests/reference/test_coupled_dynamics.py && grep -rq 'def build_system_matrix' src/anesthesia_sim/core/
 ---
 

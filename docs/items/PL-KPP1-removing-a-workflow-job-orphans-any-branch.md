@@ -3,11 +3,12 @@ id: PL-KPP1
 title: Removing a workflow job orphans any branch-protection required check named after it, and nothing in the repository can see that list
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, docs
 feature: ci-cost
 touches: .github/workflows/pr-title.yml
 added: 2026-09-05
+closed: 2026-09-06
 verify: python3 tools/doc_check.py check && grep -q 'load-bearing outside the tree' .github/workflows/pr-title.yml
 ---
 
@@ -36,9 +37,12 @@ never reports a check to require; a requirement naming one would block every
 pull request permanently rather than silently, which is the visible failure and
 not this one.
 
-**Where.** `.github/workflows/pr-title.yml`, at the `pr-title:` job key on line
-37. Match the wording already at `.github/workflows/quality.yml:41` rather than
-writing a second version of it.
+**Where.** `.github/workflows/pr-title.yml`, at the `pr-title:` job key. Match
+the wording already carried above `.github/workflows/quality.yml`'s `checks:`
+job key rather than writing a second version of it. (The brief said
+`quality.yml:41` when written and the note sits above `checks:`, twenty lines
+further down; cited by job key here so the next edit to that file cannot move
+it again — `PL-38PN` is the general case.)
 
 **What happened.** `PL-D551` (fold the floor job into checks, ahead of the uv
 install) merged the `floor` job's steps into `checks` and deleted the job.

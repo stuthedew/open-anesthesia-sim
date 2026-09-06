@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-08-30
 closed: 2026-09-06
+pr: 376
 verify: python3 tools/doc_check.py check && grep -qF 'Requirements 2 and 3 are properties of the system matrix' docs/MODEL.md
 ---
 
