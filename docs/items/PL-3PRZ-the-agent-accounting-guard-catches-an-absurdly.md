@@ -1,17 +1,15 @@
 ---
 id: PL-3PRZ
 title: The agent-accounting guard catches an absurdly small alveolar volume at 1e-9 L but stops catching it by 1e-300 L, where the run returns a concentration of exactly zero with accounting passing
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: core-guard-coverage
+touches: src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/alveolar.py, tests/unit/test_agent_simulation_validation.py, docs/MODEL.md
 added: 2026-09-06
+verify: uv run pytest tests/unit/test_agent_simulation_validation.py && grep -q 'def test_an_alveolar_volume_that_underflows_the_accounting_residual_is_refused' tests/unit/test_agent_simulation_validation.py
 ---
-
-**Problem.** The agent-accounting guard catches an absurdly small alveolar volume at 1e-9 L but stops catching it by 1e-300 L, where the run returns a concentration of exactly zero with accounting passing
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** Measured 2026-09-06 on sevoflurane at the shipped 0.1 s step,
 driving `AlveolarCompartment.gas_volume_l` downward and advancing three steps:
@@ -45,5 +43,21 @@ the part that generalizes beyond an absurd volume.
 **Where.** `src/anesthesia_sim/core/agent_simulation_validation.py`;
 `src/anesthesia_sim/core/alveolar.py`.
 
+**Done when.** The mechanism is established rather than assumed - whether the
+amounts underflow to exactly zero, so the residual the accounting check forms
+is itself annihilated and passes - and then either the guard refuses the
+regime, or `docs/MODEL.md` records the bound below which the accounting check
+stops being evidence, with the reason. A regression test at 1e-300 L pins
+whichever it turns out to be.
+
 **Found by** `PL-GYH2`, while checking a claim written into `docs/MODEL.md`
 rather than asserting it.
+
+**Classed `defect` rather than `science`, and it can be overruled.** No
+interface path reaches an alveolar volume of 1e-300 L - the circuit and
+alveolar volumes are not user-settable - so no clinician can be misled by this
+today, and `docs/MODEL.md` § "What is not bounded this way" already states that
+the accounting guard is a backstop rather than a declared bound. What would
+change the class is the generalization the brief names: if an amount
+underflowing to zero can annihilate the residual anywhere else, the guard is
+weaker than the specification says it is.

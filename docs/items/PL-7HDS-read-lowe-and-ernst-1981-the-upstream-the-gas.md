@@ -1,7 +1,13 @@
 ---
 id: PL-7HDS
 title: Read Lowe and Ernst 1981, the upstream the Gas Man Workbook names for its volume and flow values
-status: untriaged
+priority: P1
+effort: M
+status: blocked
+classes: science
+feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
+blocked-by: PL-XJ5P
 added: 2026-09-06
 ---
 
@@ -51,3 +57,12 @@ has opened it, and for each of the seven values the book is credited with, the
 file records whether the book measured it, collected it, or cites it onward -
 or the file records that the book could not be reached and by whom it was
 tried.
+
+**Blocked on `PL-XJ5P`** (citing-sources says there is always a route, but a
+pre-abstract subscription paper has none). Every route
+`.claude/rules/citing-sources.md` describes has already been tried and refused
+for this book, so the next step is not another attempt: it is the disposition
+`PL-XJ5P` decides - whether an unreachable in-copyright source is put to the
+project owner for their institutional access, carried as an owner-supplied
+extract, or recorded as terminal. Which of those is chosen decides what closing
+this item even looks like.

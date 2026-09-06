@@ -1,18 +1,15 @@
 ---
 id: PL-GQWP
 title: The new README publishes the playback-rate ladder, the chart time-base range and the agent list, and nothing holds any of the three to the code
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs, test
 feature: project-introduction
+touches: README.md, tests/unit/test_playback.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/chart_time_base.py, tools/doc_check.py
 added: 2026-09-06
+verify: uv run pytest tests/unit/test_playback.py && grep -q 'README.md' tests/unit/test_playback.py
 ---
-
-**Problem.** The new README publishes the playback-rate ladder, the chart time-base range and the agent list, and nothing holds any of the three to the code
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `README.md` § "What it simulates" states three capability facts
 whose authority is a Python constant, and nothing compares the two:

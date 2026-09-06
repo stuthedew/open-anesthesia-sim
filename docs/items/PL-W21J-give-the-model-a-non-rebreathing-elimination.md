@@ -1,7 +1,12 @@
 ---
 id: PL-W21J
 title: Give the model a non-rebreathing elimination mode, so washout can be validated rather than only measured
-status: untriaged
+priority: P1
+effort: L
+status: needs-decision
+classes: science, feature
+feature: numerical-domain
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, docs/MODEL.md, tests/reference/test_published_wash_in.py
 added: 2026-09-06
 ---
 
@@ -48,3 +53,12 @@ validating something the shipped simulator cannot do.
 zero through a supported path, `docs/MODEL.md` records what that path changes
 about the model boundary, and the comparison against the four published cohorts
 is restated as whatever it then turns out to be.
+
+**Decision needed.** Does the model gain a supported non-rebreathing
+elimination mode, or a test-only open-circuit driver that is honest about being
+one? The first changes the stated model boundary and adds a mode the interface
+has to make visible, which `CLAUDE.md` counts as a human-factors defect if
+hidden; the second answers the scientific question at the price of validating
+something the shipped simulator cannot do. Sized `L` and out of the current
+milestone either way, so a third answer is one line of intent in `ROADMAP.md`
+and no items yet.

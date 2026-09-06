@@ -1,8 +1,14 @@
 ---
 id: PL-P757
 title: bin/docket --items pointed at a nested store makes every annotating commit read as work, silently
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-06
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_a_nested_store_reads_the_same_in_flight_answer_as_the_default' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `_tracked` in `subprojects/docket/src/docket/cli.py` derives the

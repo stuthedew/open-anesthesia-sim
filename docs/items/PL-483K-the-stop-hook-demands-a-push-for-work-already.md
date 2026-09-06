@@ -1,17 +1,15 @@
 ---
 id: PL-483K
 title: The stop hook demands a push for work already pushed after a branch is restarted per the merged-PR recovery, because checkout -B from origin/main leaves the upstream pointing at main
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: .claude/hooks/stop_hook_patch.py, tests/unit/test_stop_hook_patch.py
 added: 2026-09-06
+verify: uv run pytest tests/unit/test_stop_hook_patch.py && grep -q 'def test_a_branch_restarted_from_the_default_branch_is_not_asked_to_push_again' tests/unit/test_stop_hook_patch.py
 ---
-
-**Problem.** The stop hook demands a push for work already pushed after a branch is restarted per the merged-PR recovery, because checkout -B from origin/main leaves the upstream pointing at main
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** Observed 2026-09-06. `PL-GYH2`'s pull request merged while a
 recheck was in flight, so the session followed the web harness's own
@@ -60,5 +58,11 @@ mid-flight.
 
 **Where.** `.claude/hooks/stop_hook_patch.py`; the harness's own procedure,
 which is outside this repository (`PL-90CJ` is the existing route for that).
+
+**Done when.** A session that restarts its branch by the harness's own
+merged-pull-request recovery is not told, at the moment it finishes, to push
+work it has already pushed - and the candidate taken is recorded here. The two
+candidates outside this repository are `PL-90CJ`'s to carry rather than this
+item's.
 
 **Found by** `PL-GYH2`.

@@ -1,7 +1,12 @@
 ---
 id: PL-XJ5P
 title: Citing-sources says there is always a route, but a pre-abstract subscription paper has none and docs/references can no longer hold one
-status: untriaged
+priority: P1
+effort: M
+status: needs-decision
+classes: science, docs
+feature: model-spec-accuracy
+touches: .claude/rules/citing-sources.md, docs/references/README.md
 added: 2026-09-06
 ---
 
@@ -75,3 +80,13 @@ than a session's.
 as terminal and tells a session what to do on reaching it, and
 `docs/references/README.md` says what now stands where owner-supplied full
 texts used to.
+
+**Decision needed.** What does a session do on reaching a pre-abstract,
+subscription-held source with no route? Three candidates, and the middle one
+needs the project owner's judgment on redistribution rather than a session's:
+record the gap in the item and put the reading to the owner, who has
+institutional access; carry an owner-supplied *extract* - a table and its
+caption, quoted - which the redistribution rule may permit where a full PDF
+does not; or re-aim the item at a reachable primary measurement of the same
+quantity, recorded alongside and explicitly not adopted. Stating the
+metadata-only case as terminal is wanted whichever is chosen.

@@ -1,17 +1,14 @@
 ---
 id: PL-0Q1T
 title: The new-case dialog leads its carry-over list with circuit volume, the one entry in it a user cannot set, and it is now the interface's only mention of the parameter
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: ux
+feature: presentation-safety
+touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-06
 ---
-
-**Problem.** The new-case dialog leads its carry-over list with circuit volume, the one entry in it a user cannot set, and it is now the interface's only mention of the parameter
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `NEW_CASE_CARRYOVER_TEMPLATE`
 (`src/anesthesia_sim/app/simulation_view.py`) reads "Circuit volume, fresh gas
@@ -42,5 +39,23 @@ about what the dialog is for, so it wants deciding rather than assuming.
 **Where.** `src/anesthesia_sim/app/simulation_view.py`
 (`NEW_CASE_CARRYOVER_TEMPLATE`), and the tests asserting its text.
 
+**Done when.** `NEW_CASE_CARRYOVER_TEMPLATE` either names only settings the
+reader can act on, or names the circuit volume as fixed rather than as
+something that carries over; the choice is recorded here with its reasoning;
+and the tests asserting the dialog's text assert whichever sentence ships.
+
 **Found by** `PL-GYH2` while sweeping for interface strings the setter's
 removal might have made stale. This one it did not; it made it lopsided.
+
+**Decision needed.** Does `NEW_CASE_CARRYOVER_TEMPLATE` name the circuit volume
+at all? Drop it, so the sentence describes only the three settings the reader
+can act on; or keep it and mark it as fixed rather than as something that
+carries over. The brief argues the first - the dialog's job is to say what
+discarding a case costs, and a parameter nobody can change is not part of that
+cost.
+
+**Classed `ux` rather than `safety`, and it can be overruled.** Every claim in
+the sentence is true and no displayed value is wrong; what is lopsided is that
+the list implies a control the reader does not have. If that reads as a
+presentation failure under `CLAUDE.md`'s standard rather than an interface
+wart, the class changes and the band goes with it.

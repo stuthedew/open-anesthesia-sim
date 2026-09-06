@@ -1,8 +1,14 @@
 ---
 id: PL-B9VL
 title: Rename the wash-in validation module and its MODEL.md section now that both cover elimination too
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs, refactor
+feature: numerical-domain
+touches: tests/reference/test_published_wash_in.py, docs/MODEL.md, src/anesthesia_sim/app/formatting.py, tests/unit/test_wash_in.py
 added: 2026-09-06
+verify: python3 tools/doc_check.py check && ! grep -q 'Published wash-in validation test' docs/MODEL.md
 ---
 
 **Problem.** `tests/reference/test_published_wash_in.py` and `docs/MODEL.md`

@@ -1,18 +1,15 @@
 ---
 id: PL-MBP6
 title: The README has no image of the interface, which is the largest remaining gap for both of its audiences
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: docs, ux
 feature: project-introduction
+touches: README.md, assets/branding
+blocked-by: PL-7J96
 added: 2026-09-06
 ---
-
-**Problem.** The README has no image of the interface, which is the largest remaining gap for both of its audiences
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `README.md` describes the interface in prose - the readouts, the
 two units, the chart, the wash-in panel, the control marks - and shows none of
@@ -61,3 +58,8 @@ recorded how it was produced and when it is retaken.
 **Notes.** Found 2026-09-06 while writing the README under `PL-N092`. Not done
 there: producing a screenshot needs the app rendered, which is `PL-7J96`'s
 open decision, and the item was the document rather than the tooling under it.
+
+**Blocked on `PL-7J96`** (make the interface renderable in a check so a session
+can look at it), transcribing this item's own reasoning rather than adding a
+judgment: producing the image needs the app rendered, and growing a second
+screenshot mechanism here is the outcome the brief refuses.

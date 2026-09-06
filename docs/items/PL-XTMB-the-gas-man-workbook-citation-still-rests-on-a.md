@@ -10,6 +10,7 @@ milestone: v0.4.6
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-06
+pr: 410
 verify: uv run pytest tests/unit/test_parameters.py && python3 tools/doc_check.py check && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/patients/reference_adult.json')); s=d['sources']; assert any('Appendix B' in x['citation'] and 'page 168' in x['citation'] for x in s); assert any('Lowe and Ernst, 1981' in x['note'] for x in s); assert d['tissue_groups']['fat']['volume_l']==14.5"
 ---
 

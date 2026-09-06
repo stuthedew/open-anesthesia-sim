@@ -1,7 +1,12 @@
 ---
 id: PL-8P6D
 title: Checks refuse a pull request whose branch carries no item id, so the owner's own web edits and any contributor's pull request fail CI
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: public-readiness
+touches: tools/branch_id_check.py, .github/workflows/quality.yml, tests/unit/test_branch_id_check.py
 added: 2026-09-06
 ---
 
@@ -76,3 +81,12 @@ a branch ahead of the base with no id anywhere, opened as a pull request,
 passing. Do not treat "a contributor should file an item" as the answer -
 requiring a queue entry to fix a README typo converts the queue into a log,
 which `branch_id_check.py`'s own docstring already refuses to do.
+
+**Decision needed.** How is `branch_id_check.py` scoped so that it binds the
+agent sessions it was written for and nobody else? The brief's three
+candidates, and they are not equivalent: run the CI step only where
+`github.head_ref` matches the `claude/` prefix; demote it to a non-failing
+annotation on CI while keeping the hard failure in `make check`; or gate on
+author association, which is fragile here because every pull request carries
+the same author. Whichever is chosen, the regression test is a branch ahead of
+the base with no id anywhere, opened as a pull request, passing.

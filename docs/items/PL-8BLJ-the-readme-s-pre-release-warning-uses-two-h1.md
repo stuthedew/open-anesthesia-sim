@@ -1,8 +1,14 @@
 ---
 id: PL-8BLJ
 title: The README's PRE-RELEASE warning uses two H1 headings inside a blockquote, so GitHub's outline leads with them instead of the project name
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs, ux
+feature: project-introduction
+touches: README.md
 added: 2026-09-06
+verify: python3 tools/doc_check.py check && ! grep -q '^> # ' README.md
 ---
 
 **Problem.** `#394` added a pre-release banner above the README's title:

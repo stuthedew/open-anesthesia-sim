@@ -1,7 +1,13 @@
 ---
 id: PL-3YZW
 title: venous_blood_volume_l is 1.0 but the Workbook table it cites has no such value - its Blood row reads 5.00 L
-status: untriaged
+priority: P1
+effort: M
+status: blocked
+classes: science
+feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
+blocked-by: PL-7HDS
 added: 2026-09-06
 ---
 
@@ -47,3 +53,12 @@ where its *value* came from. They would sensibly be worked together.
 **Done when.** Either the origin of 1.0 L is established and recorded, or the
 file states that the value is a modelling choice this project cannot trace to
 its cited source - and the provenance table row says the same.
+
+**Blocked on `PL-7HDS`** (read Lowe and Ernst 1981, the upstream the Workbook
+names for its volume and flow values), and the reason is that the second branch
+of the Done-when is already written. `PL-6Q8N` recorded the gap in the file's
+first `sources` note - "the table's Blood row reads 5.00 L ... and no 1.0 L
+figure appears" - and in `docs/MODEL.md` § "Parameter provenance". So what is
+left here is the first branch, establishing where 1.0 L came from, and the only
+untried upstream is the book `PL-7HDS` names: the Workbook credits its volumes
+and flows to it, and a venous pool is a volume.
