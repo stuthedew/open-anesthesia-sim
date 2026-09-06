@@ -392,22 +392,35 @@ def format_stranded(report: StrandedReport) -> str:
     prints both - the two together being what closes the asymmetry `PL-3D2M`
     found, where a dropped commit surfaced only if it happened to touch the
     store.
+
+    **The unrefreshed-base caveat sits above the recovery command, not under
+    it.** Every line here rests on the default branch not holding the item, so
+    a stale base turns a merge into a finding - and the finding's recovery
+    overwrites the merged copy with the older one, which is what happened on
+    2026-09-05 (`PL-KBFN`). A reader who has already read `git checkout` has
+    made the decision the caveat exists to inform.
     """
     if not report.known:
         return f"Stranded items not checked: {report.declined}."
 
     refs = _plural(report.refs_read, "branch ref", "branch refs")
     if not report.items:
-        return (
-            f"No item exists only on a branch, across the {refs} this checkout holds.\n"
-            "A branch not fetched here was not read, so this is bounded by what has been."
+        return "\n".join(
+            [
+                f"No item exists only on a branch, across the {refs} this checkout holds.",
+                "A branch not fetched here was not read, so this is bounded by what has been.",
+                *_stale_base(report),
+            ]
         )
 
     lines = [
         f"{_plural(len(report.items), 'item exists', 'items exist')} only on a branch, "
         f"across the {refs} this checkout holds:",
         "",
+        *_stale_base(report),
     ]
+    if not report.fetched:
+        lines.append("")
     for item in report.items:
         lines.append(f"{item.identifier}  {item.title or '(title unreadable)'}")
         lines.append(f"  only on: {', '.join(item.branches)}")
@@ -419,6 +432,22 @@ def format_stranded(report: StrandedReport) -> str:
     )
     lines.append("Every other branch read carries no item the default branch lacks.")
     return "\n".join(lines)
+
+
+def _stale_base(report: StrandedReport) -> list[str]:
+    """The caveat a report read against an unrefreshed base owes, or nothing.
+
+    In the negative only, for the reason `StrandedReport.fetched` gives: a
+    quiet fetch prints nothing whether it reached the remote or not, so "we
+    tried" is the strongest claim available and "we did not" is the only one
+    worth a line.
+    """
+    if report.fetched:
+        return []
+    return [
+        "Nothing refreshed the default branch for this answer, so an item merged "
+        "since the last fetch reads as stranded here."
+    ]
 
 
 def format_orphaned(report: OrphanedReport) -> str:
