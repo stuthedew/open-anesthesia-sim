@@ -13,8 +13,8 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
 # The steps docs/MODEL.md § "Step-refinement test" specifies, coarsest first.
-# All three are inside the operator split's applicability domain: the first is
-# `MAXIMUM_SIMULATION_STEP_S` itself, and refinement only moves inward.
+# All three are supported steps: the first is `MAXIMUM_SIMULATION_STEP_S`
+# itself, and refinement only moves inward.
 STEP_REFINEMENT_STEPS_S = (0.1, 0.05, 0.025)
 STEP_REFINEMENT_HORIZON_S = 60.0
 

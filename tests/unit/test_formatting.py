@@ -11,6 +11,8 @@ string on the panel - stays in `tests/unit/test_simulation_view.py`, which
 is where a displayed value can be read off the control that carries it.
 """
 
+from pathlib import Path
+
 import pytest
 
 from anesthesia_sim.app.formatting import (
@@ -47,10 +49,11 @@ from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_para
 def test_format_percent_uses_the_documented_display_resolution() -> None:
     """Pin the PL-040 decision: 0.01 percentage points, uniformly.
 
-    The resolution is justified in `docs/MODEL.md` § "Displayed precision"
-    against the measured splitting error, so a change here is a change to a
-    safety-critical claim about what the model can support — not a
-    formatting preference. This test exists to make that change deliberate.
+    The resolution is derived in `docs/MODEL.md` § "Displayed precision" from
+    what the partition coefficients' measured spread supports, so this test
+    exists to make a change to it deliberate.
+    `test_concentration_decimals_are_a_choice_within_a_recorded_band` is the
+    other half, and says which direction of change re-derives something.
     """
 
     assert CONCENTRATION_DISPLAY_DECIMALS == 2
@@ -62,14 +65,52 @@ def test_format_percent_uses_the_documented_display_resolution() -> None:
     assert format_percent(0.02) == "2.00%"
 
 
+def test_concentration_decimals_are_a_choice_within_a_recorded_band() -> None:
+    """Two decimals is the owner's pick inside a one-to-two decimal band.
+
+    The band is what `docs/MODEL.md` § "Displayed precision" derives; the count
+    inside it is a presentation decision (`PL-88GQ`). The two halves fail
+    differently on purpose, and that is the whole point of pinning the band
+    separately from the value:
+
+    - Moving to **one** decimal stays inside the band. It is the project
+      owner's to make and re-derives nothing in `core/`; what rules it out
+      today is a teaching judgment - fat and muscle read a flat `0.0%` for
+      minutes to an hour - rather than a numerical limit.
+    - Moving to **three** leaves the band. It would assert a resolution finer
+      than the measured spread of the partition coefficients that produced the
+      number, which is false precision under `CLAUDE.md`'s safety standard.
+
+    A session reading only the constant cannot tell those apart, which is why
+    the band is asserted here rather than left in prose.
+    """
+
+    minimum_supported_decimals = 1
+    maximum_supported_decimals = 2
+
+    assert minimum_supported_decimals <= CONCENTRATION_DISPLAY_DECIMALS
+    assert CONCENTRATION_DISPLAY_DECIMALS <= maximum_supported_decimals
+
+    # The band is stated in decimals, and nothing in `core/` is computed from
+    # it. `PL-X9KD` cut that dependency; this is what keeps it cut.
+    core_modules = (Path(__file__).resolve().parents[2] / "src" / "anesthesia_sim" / "core").rglob(
+        "*.py"
+    )
+    for module in core_modules:
+        assert "CONCENTRATION_DISPLAY_DECIMALS" not in module.read_text(), (
+            f"{module.name} references the displayed decimal count. The display "
+            f"must not bound the model: see docs/MODEL.md § 'Displayed precision'."
+        )
+
+
 def test_format_percent_rounds_rather_than_truncates() -> None:
     """The last displayed digit is the nearest one, not a truncation.
 
     Truncation would bias every reading downward by up to a full count of
-    the uncertain digit, on top of the solver error the resolution is
-    already chosen to sit above. Exact ties are not asserted: a decimal
-    tie is not generally representable as a double, and the model's own
-    error is many orders of magnitude larger than that distinction.
+    the last displayed digit - a systematic error introduced by the display
+    itself, and the largest one anywhere between a slider and a pixel now that
+    the solver's own residual is nine orders below the readout. Exact ties are
+    not asserted: a decimal tie is not generally representable as a double.
     """
 
     assert format_percent(0.021_39) == "2.14%"

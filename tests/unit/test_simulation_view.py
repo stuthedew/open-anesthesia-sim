@@ -420,10 +420,11 @@ def test_the_sliders_span_the_supported_input_ranges() -> None:
     slider reaching past a supported maximum would hand the user a setting
     `core/` refuses, which is a control that raises when dragged to its own
     end. A slider stopping short would silently narrow the reachable domain,
-    which is how the splitting-error bound came to be measured over less than
-    the interface could produce (PL-042) - and how, before PL-0MLQ, the
-    floors could have moved and taken the bound's own worst case, a
-    trajectory holding cardiac output at zero, out of the measured domain.
+    which is how the retired splitting-error bound came to be measured over
+    less than the interface could produce (PL-042). The same hazard applies to
+    the reference gates that replaced it: they are driven at the corner these
+    constants declare, so a slider reaching past one would be a setting no gate
+    has ever measured.
 
     Read off the constructed controls rather than the module constants, so a
     literal typed into a slider fails here rather than passing because the
@@ -3174,8 +3175,9 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
     places, and a reader could reasonably take that for a statement about the
     model. It is not: every compartment state, every integration step, and
     every history sample carries full binary64 throughout, and the rounding
-    happens once, in the formatter. What limits the model is the splitting
-    error, which is smaller than the last displayed digit in ordinary use.
+    happens once, in the formatter. The gap is nine orders of magnitude: the
+    solver's own residual is around 1e-12 percentage points against a last
+    displayed digit of 0.01.
 
     Two runs whose only difference is four orders of magnitude below the
     display resolution must therefore reach different states. If anything in

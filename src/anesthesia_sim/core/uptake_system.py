@@ -287,11 +287,12 @@ class AgentUptakeSystem:
                 retry with a valid step.
             SimulationNumericalError: the step began and could not be
                 completed — a compartment guard rejected a value produced
-                by the step itself, typically because the step was large
-                enough for the operator split to drive an amount negative
-                or a fraction outside zero through one. The step has been
-                rolled back, so what the system holds is the last
-                completed step; the run must stop rather than continue
+                by the step itself. The exact propagator cannot reach this
+                for any step size, because its matrix is Metzler and the
+                propagator therefore entrywise nonnegative; it is cover for a
+                model extension whose matrix is not a pure transfer system.
+                The step has been rolled back, so what the system holds is the
+                last completed step; the run must stop rather than continue
                 from it.
         """
 

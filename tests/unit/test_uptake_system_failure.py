@@ -595,7 +595,7 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     # change to the model. Pinned rather than left implicit because what the
     # assertions below check is conservation *of this amount*, so a run that
     # silently stopped reaching it would make them compare a number against
-    # itself. `PL-X9KD` re-derives the published figures this one sits beside.
+    # itself.
     assert circuit_agent_before_l == pytest.approx(0.048305015)
 
     system.circuit.set_circuit_volume(3.0)

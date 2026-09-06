@@ -3062,16 +3062,6 @@ starts passing is reported as an error, so a fix cannot leave its excuse behind.
 
 ### Displayed precision
 
-> **Re-derivation owed (`PL-X9KD`).** Everything below that justifies the
-> displayed resolution *numerically* was derived from the operator split's
-> first-order error, and `PL-GS5X` replaced that method with an exact
-> propagator whose error is many orders smaller. The chosen resolution has not
-> moved and the legibility half of the argument is untouched; what no longer
-> holds is the claim that two decimals is the finest the numerics support, and
-> every figure quoted in counts of the last displayed digit. Read the figures
-> below as describing the method that shipped through v0.4.2. "Selected method
-> (as implemented)" states what ships.
-
 Every modeled concentration and relative partial pressure is displayed at a
 fixed resolution of **0.01 percentage points** — two decimals of a percent —
 uniformly across all six compartments. The delivered-agent setting uses the
@@ -3082,58 +3072,105 @@ displayed as `<0.01%` rather than as zero.
 
 This is a recorded decision (PL-040), not a formatting convention, because
 displayed precision is a claim about what the model can support. Earlier
-revisions displayed three decimals; the third and part of the second were
-below the solver's own error, which is to say the interface was rendering
-numerical noise as though it were model output.
+revisions displayed three decimals, and were reduced to two while the operator
+split shipped, on the ground that the third decimal and part of the second sat
+below the solver's own error.
 
-**What the solver's error was.** The step that shipped through v0.4.2 was a
-first-order operator split (see "Selected method (as implemented)"), and its
-disagreement with the independent solution is what sets the floor. Measured
-against a from-scratch RK4 integration of the governing equations — the same
-oracle construction as `tests/reference/test_coupled_dynamics.py`, extended
-across the settings the interface exposes and across the setting *changes* it
-allows — the worst disagreement in any of the six displayed states is:
+**That ground is gone, and the decision is re-derived here rather than
+inherited** (`PL-X9KD`, 2026-09-06). `PL-GS5X` replaced the split with an exact
+propagator, so the solver no longer limits anything a reader can see: measured
+against the independent solution, the shipped step's own residual is at most
+$`1.6\times10^{-12}`$ percentage points anywhere in the reference gate's
+trajectories, and $`5.2\times10^{-12}`$ over a held hour. That is about one
+two-billionth of the last displayed digit. **A third decimal would no longer be
+numerical noise**, and every figure the previous version of this section quoted
+in counts of the last digit described a method that has been retired.
 
-| Run | Worst error |
+So the constraint that decides the resolution had to be found again, and it is
+not the one that used to. It is **model fidelity** — what the parameters can
+support — bounded from the other side by **legibility**.
+
+**Two questions the old section ran together, and the distinction now carries
+the whole derivation.** Asked as *how finely can two moments within one run be
+told apart*, the answer is now about nine decimal places finer than the readout
+shows: within a run the parameters are fixed, the simulation is deterministic,
+and nothing in the arithmetic is within nine orders of the last displayed
+digit. Asked as *how finely does this model resolve a concentration in a
+patient*, the answer is very much coarser, and it is the question a clinician
+reading a percent sign is actually asking. The old section answered the first
+and presented it as the second; it could do that because the solver error
+happened to sit near the readout, and it cannot any more.
+
+**The ceiling: one measured standard deviation of a partition coefficient is
+worth about one to seven counts of the last displayed digit.** Perturbing a
+single stored coefficient by one published SD and re-running at 1 MAC with the
+reference adult's flows displaces a displayed compartment by:
+
+| Coefficient perturbed by one SD | Displacement, worst over 3600 s |
 | --- | --- |
-| Default flows, dial at 1 MAC | 1.7×10⁻³ percentage points |
-| Default flows, dial at 1 MAC, ventilator started mid-run | 2.2×10⁻³ percentage points |
-| Default flows, dial at the agent's maximum | 5.0×10⁻³ percentage points |
-| Maximum flows, dial at the agent's maximum | 1.2×10⁻² percentage points |
-| Maximum flows and dial, ventilator started mid-run | 1.5×10⁻² percentage points |
-| The worst reachable trajectory | 2.3×10⁻² percentage points |
+| Fat tissue:gas | 8.7×10⁻⁴ to 6.7×10⁻³ pp |
+| Blood:gas | 1.5×10⁻² to 5.4×10⁻² pp |
+| Vessel-rich tissue:gas | 1.3×10⁻² to 5.0×10⁻² pp |
+| Muscle tissue:gas | 1.3×10⁻² to 6.8×10⁻² pp |
 
-Default flows are 4 L/min fresh gas with the reference adult's default
-alveolar ventilation and cardiac output; maximum flows are the supported
-maxima for fresh gas, alveolar ventilation, and cardiac output — which are
-also the sliders' — and the maximum dial is each agent's
-`max_delivered_concentration_percent`.
-The held rows run for 3600 s, the setting-change rows for 600 s; extending
-either changes nothing, because the worst case in every row is an alveolar or
-mixed-venous value inside a transient rather than at an endpoint. The last
-row is the *unperfused load, then dial off* trajectory of
-"Independent-solution test", which is the worst the four sliders can reach.
+Each range runs over the three shipped agents, desflurane always the largest.
+The SDs are the measured ones "Parameter provenance" already records: Yasuda,
+Targ and Eger's human tissue coefficients, whose SDs are 3.9% of the mean for
+desflurane, 5.3% for sevoflurane and 6.4% for isoflurane, and — for
+desflurane's blood:gas — Eger's $`0.424 \pm 0.024`$, 5.7%.
 
-The last row is the same measurement the release gate in
-"Independent-solution test" bounds, expressed in percentage points instead of
-as a coefficient: $`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ at the shipped 0.1 s
-step. **The two are coupled and must be revised together** — the resolution
-chosen here rests on that measured error, and the gate is set only 1.22 times
-above it precisely so that a change large enough to invalidate this section
-fails the gate rather than passing it silently.
+Against that, the last digit of a two-decimal readout is between about a
+seventh of one parameter SD and seven times it. A third decimal would put the
+last digit at one seventieth to seven tenths of one SD: it would be asserting
+resolution in a quantity whose own measured spread is one to two orders of
+magnitude wider, in the readouts where a reader has least ability to notice.
+That is false precision in the sense `CLAUDE.md` forbids, and it is what stops
+the count at two.
 
-**Why 0.01 percentage points follows.** At that resolution the last
-displayed digit is uncertain by roughly a fifth of a count in ordinary use —
-whether or not a setting is changed during the run — half a count at a
-maximum dial setting, one count at the extreme corner of the settings
-envelope, and about two counts on the worst trajectory the sliders can reach,
-which requires holding cardiac output at zero. That is the conventional and
-honest relationship between an instrument's last digit and its error: the
-final digit is the uncertain one, and it is most uncertain where the settings
-are least physiological. At the previous 0.001 percentage points the last
-digit was uncertain by two to twenty-three counts and the digit before it by
-up to two, so two of the three displayed decimals carried no information
-about the model.
+**Parameter uncertainty governs the ceiling and still does not govern the
+within-run reading, and both halves matter.** A partition coefficient's SD
+displaces a whole trajectory: it moves where the curve sits, not how finely two
+points on it can be distinguished. So a reader comparing 09:14 against 09:16 of
+one run is not limited by it, which is why the readout may honestly carry a
+digit finer than the SD — the seventh-of-an-SD end of the range above. What the
+SD does forbid is carrying digits *far* finer than it, because a reader cannot
+tell which of the two questions a printed digit is answering, and the interface
+must not invite the second reading while only supporting the first. "Known
+limitations" is where the consequence is made good: no displayed value may be
+read as accurate to its last digit as a prediction about a patient. It is
+accurate to its last digit as a statement about this model with these
+parameters.
+
+**The floor: one decimal is legible enough to be tempting and erases the
+teaching.** At 0.1 percentage points the sevoflurane and isoflurane fat
+fractions read `0.0%` for the whole hour (0.032% and 0.015% at 3600 s);
+desflurane's stays `0.0%` for its first 19.3 minutes and reaches 0.2%. Muscle
+reads `0.0%` for its first 2.9 minutes (desflurane), 8.5 minutes (sevoflurane)
+and 14.8 minutes (isoflurane). At two decimals the same compartments come alive
+at 57, 125 and 190 seconds (muscle) and 236, 780 and 1474 seconds (fat). What
+one decimal erases is the slow-compartment wash-in that is the reason for
+displaying those compartments at all.
+
+**That floor is a teaching judgment, and it is the project owner's rather than
+the model's** (decided 2026-09-03, `PL-88GQ`). The accuracy argument does not
+reach it: one decimal is comfortably supported by both the solver and the
+parameters, so nothing numerical rules it out. What rules it out is that a
+simulator built to show uptake and distribution would show a flat zero where
+the uptake is happening. Stated as a pedagogical objection so that a future
+revisit knows exactly what it has to beat, and does not mistake it for a model
+constraint it cannot touch.
+
+**So the band is one to two decimals, and two is the chosen count.** The band
+is what the error budget licenses; the count inside it is a presentation
+decision the owner may revise without re-deriving anything in `core/`. Nothing
+in the model is computed from it: `MAXIMUM_SIMULATION_STEP_S` is a tolerance in
+seconds and the supported input ranges are intervals in L/min, and
+"Supported simulation step" and "Supported input ranges" derive both without
+reference to how many decimals the readout shows. Moving the readout to one
+decimal would change what a reader sees and nothing else. That independence is
+new: until `PL-X9KD` both were justified through this count, so a purely
+presentational change would, by the reasoning as written, have licensed a step
+ten times longer and wider input intervals.
 
 **The MAC resolution is derived from this one, not chosen beside it.** A MAC
 multiple is a percent divided by the agent's own `mac_percent`, so the
@@ -3174,27 +3211,18 @@ integration step, the mixed-venous and tissue transfers, and every
 `SimulationHistorySample` the chart is drawn from. Nothing in `core/` rounds,
 the snapshot fields the interface reads are raw fractions, and a slider's
 value reaches the model unquantized — the rounding happens exactly once, in
-the readout. So the two decimals below are a statement about what is worth
-*showing*, never about what the model computes or stores, and the quantity
-that actually limits the model is the splitting error above, which is a fifth
-of the last displayed digit in ordinary use.
+the readout. So the two decimals are a statement about what is worth
+*showing*, never about what the model computes or stores.
 `test_the_model_keeps_precision_the_display_throws_away` holds this: two runs
 whose delivered concentration differs four orders of magnitude below the
 display resolution must reach states that differ, and must still read
 identically on the display.
 
-**Re-affirmed 2026-08-30 against the widened measurement** (PL-74TX). The
-figures above are larger than the ones PL-040 chose two decimals on, because
-the solver error has since been re-measured over trajectories rather than
-over held operating points: about two counts at the extreme where the earlier
-measurement gave one. The decision stands, and the alternative is what
-settles it. A one-decimal readout would be uncertain by a fifth of a count at
-the extreme — but at 0.1 percentage points the fat fraction reads `0.0%` for
-an entire hour and muscle for its first three to fifteen minutes, which is
-the failure this section rejects two paragraphs below. Two decimals remains
-the coarsest resolution that keeps every compartment legible and the finest
-the numerics support; the widened measurement moved where inside that window
-the answer sits, not which side of it.
+That test is worth more now than when it was written, not less. While the
+solver error sat near the readout, "the model keeps more precision than the
+display shows" was a small claim; under the exact step the gap is nine orders,
+and the rounding in the readout is the only place resolution is lost anywhere
+between a slider and a pixel.
 
 **What the last digit does not cover, and what it still does.**
 ~~The error is a systematic sequencing bias rather than noise, and its sign is
@@ -3207,72 +3235,83 @@ of the operator split's sub-step ordering. The exact step drives no compartment
 from an already-moved upstream value, so there is no displacement with a sign
 and a gap between two readouts is no less accurate than either reading it is
 taken from; "Independent-solution test" above records the withdrawal in full.
-The rest of this section still derives the displayed resolution from the
-split's error, and re-deriving it is queue item `PL-X9KD` — the figures below
-should be read as describing the method that shipped through v0.4.2, not the
-one that ships now.
 
-The comparison the interface actually invites survives this, and that is a
-measurement rather than an assurance. The six readouts are placed in one row
-to be read *ordinally* — the circuit leads the alveoli lead the tissues — and
-an ordinal reading is corrupted only if the error can invert which of two
-compartments is displayed as higher. Across every trajectory in
-"Independent-solution test", all three agents, comparing every pair of the
-six readouts at every step: the shipped and reference solutions never
-disagree about the displayed ordering at ordinary settings, at the reference
-point, at the envelope corner, or across a ventilator start. They disagree
-only on the worst reachable trajectory, for 0.2 s of a 900 s run with
-sevoflurane and 1.7 s with desflurane, and only where the two compartments
-are within 1.73 counts of the last displayed digit of each other — that is,
-only while they are crossing, which is where the ordering is genuinely
-ambiguous and not where a real gradient would be misread.
+The comparison the interface actually invites is therefore no longer at risk
+from the solver, and that is a measurement rather than an assurance. The six
+readouts are placed in one row to be read *ordinally* — the circuit leads the
+alveoli lead the tissues — and an ordinal reading is corrupted only if the
+error can invert which of two compartments is displayed as higher. Across every
+trajectory in "Independent-solution test", all three agents, comparing every
+pair of the six readouts at every step — 1 485 000 pair comparisons —
+the shipped and reference solutions **never** disagree about the displayed
+ordering, anywhere, at any gap. Under the split they disagreed on the worst
+reachable trajectory for 0.2 s of a 900 s run with sevoflurane and 1.7 s with
+desflurane, at gaps up to 1.73 counts of the last displayed digit.
+
+That is a measurement on one platform rather than a guarantee, and the
+arithmetic behind it says why the gate keeps a threshold rather than asserting
+zero. Rounding to a fixed number of decimals is monotone, so it can never
+produce an ordering opposite to the raw one; an inversion therefore needs the
+two solutions to be genuinely reordered, which needs a true gap below the sum
+of the two displacements. The widest pairwise differential measured anywhere is
+$`1.1\times10^{-12}`$ in fraction, and true gaps that small do occur while two
+compartments cross, so an inversion is arithmetically reachable there even
+though none was observed.
 
 That is why the interface marks nothing here. A reader who compares the
-readouts the way the row is designed to be compared cannot be misled by the
-splitting error; a reader who subtracts two of them is doing arithmetic the
-interface does not perform, and the paragraph above is the disclosure for it.
-`test_displayed_ordering_reverses_only_at_a_crossing` holds this claim: it
-fails if the error ever inverts a displayed ordering between two compartments
-that are further apart than that.
+readouts the way the row is designed to be compared cannot be misled by solver
+error; a reader who subtracts two of them is doing arithmetic the interface
+does not perform, and the paragraph above is the disclosure for it.
+`test_displayed_ordering_reverses_only_at_a_crossing` holds the claim, now
+against a threshold derived from the absolute gate rather than fitted to a
+measurement: twice the tolerance, which is $`1.0\times10^{-7}`$ counts against
+the 3.0 counts the split's bound allowed.
 
 **Why the resolution is uniform rather than per-compartment.** The six
 readouts sit in one row and are read comparatively — the reason for showing
 them together is that a reader can see the circuit lead the alveoli lead the
 tissues. Different decimal counts across those tiles would put different
 magnitudes at the same glyph position, so a value scanned rather than read
-would be misjudged by a factor of ten. The solver's error is also bounded in
-*absolute* percentage points, and across the runs measured above it stays
-within a factor of four across the four fast compartments — 0.006 to 0.023
-percentage points in circuit, alveolar, mixed venous and vessel rich — while
-muscle is an order of magnitude smaller and fat two to three. A single
-absolute resolution is therefore the direct expression of it, set by the
-compartments where the error is largest and conservative in the two where it
-is not.
+would be misjudged by a factor of ten. That is a property of the reading task
+and holds whatever the solver does.
+
+What used to be offered beside it — that the split's error was itself bounded
+in absolute percentage points and stayed within a factor of four across the
+four fast compartments, so one absolute resolution expressed it directly — is
+withdrawn with the split. The replacement is that **parameter uncertainty is
+also absolute in its effect across the row**: the one-SD displacements tabulated
+above run from $`8.7\times10^{-4}`$ to $`6.8\times10^{-2}`$ percentage points
+across all six compartments and all four coefficients, a spread of under two
+orders on a row whose *values* span four. A single absolute resolution is the
+direct expression of that, set by the compartments where the displacement is
+largest and conservative in the ones where it is not.
 
 **Why not a significant-figures rule.** A significant-figures rule gives the
 smallest values the most decimal places, and the small values are exactly
-where this model supports the least. Relative to their own magnitude the
-sparsely filled compartments are the least accurate states in the system:
-in the first ten seconds of a run the mixed-venous, muscle, and fat
-fractions carry 3–6% relative error, falling below 0.1% only after several
-minutes. Three significant figures on the fat fraction at ten seconds would
-imply a relative resolution of 0.1% on a number whose relative error is 3%,
-over-claiming by a factor of thirty — and doing so most severely in the
-readouts where a reader has least ability to notice.
+where this model supports the least. The evidence for that is no longer the
+solver — under the exact step the sparsely filled compartments carry at most
+$`2\times10^{-4}`$ relative error anywhere in the first ten seconds of a run,
+and $`8\times10^{-11}`$ at ten seconds itself. It is the parameters. Their
+measured SDs are 3.9% to 6.4% of the mean and are *relative*, so they apply
+undiminished to a compartment holding a thousandth of a percent. Three
+significant figures on the fat fraction would imply a relative resolution of
+0.1% on a number whose parameters are known to about 5%, over-claiming by a
+factor of fifty — and doing so most severely in the readouts where a reader has
+least ability to notice.
 
 **Why not the 0.1 percentage points clinical monitors report.** Agent
 monitors display end-tidal and inspired concentrations to a tenth of a
 percentage point, and the circuit and alveolar readouts alone would be well
 matched to that. This simulator, though, displays compartments no monitor
-shows. At 1 MAC the fat fraction reaches only 0.032% (sevoflurane) and
-0.015% (isoflurane) after a full hour, so at monitor resolution both would
-read `0.0%` for the entire run, and muscle would read `0.0%` for its first
-three minutes (desflurane) to fifteen minutes (isoflurane). Rounding to
-clinical convention would erase the slow-compartment wash-in that is the
-reason for displaying those compartments at all. 0.01 percentage points is
-the coarsest resolution that keeps every displayed compartment legible and
-the finest the numerics support; the two constraints meet at one value
-rather than being traded off.
+shows, and the floor argument above is the answer: at monitor resolution the
+sevoflurane and isoflurane fat fractions read `0.0%` for an entire hour and
+muscle reads `0.0%` for its first 2.9 to 14.8 minutes. Rounding to clinical
+convention would erase the slow-compartment wash-in that is the reason for
+displaying those compartments at all. 0.01 percentage points is the coarsest
+resolution that keeps every displayed compartment legible; that it is also
+close to what the parameters support is a coincidence worth naming rather than
+a second constraint meeting the first, since the two are measured entirely
+independently.
 
 **Why a below-resolution value is marked rather than shown as zero.** Even
 at 0.01 percentage points the slow compartments start below the last digit.
@@ -3292,22 +3331,25 @@ The compartment guards make one impossible, so a negative reaching the
 formatter means something upstream is wrong, and it must remain visible as
 an anomaly rather than be absorbed into a plausible small positive reading.
 
-**Why parameter uncertainty does not govern this.** A partition coefficient
-is a measured population quantity carrying real uncertainty, and this
-model's absolute agreement with any individual patient is limited by that
-far more than by any solver error. It is nonetheless not what sets the
-number of decimals, and the distinction is worth stating: parameter
-uncertainty displaces a whole trajectory, while displayed resolution governs
-how finely two moments *within one run* can be told apart. Within a run the
-parameters are fixed and the simulation is deterministic, so what limits
-resolution is the per-step solver error, which the table above measures.
-Parameter uncertainty is disclosed where it belongs — in "Parameter
-provenance", which records each value's source, definition, and reference
-conditions — rather than encoded in a decimal count. The consequence for a
-reader is explicit, and the "Known limitations" list is where it is made
-good: no displayed value may be read as accurate to its last digit as a
-prediction about a patient. It is accurate to its last digit as a statement
-about this model with these parameters.
+**How this section changed when the solver did, stated so a reader comparing
+versions is not misled.** Through v0.4.2 this section carried a paragraph
+headed "Why parameter uncertainty does not govern this", which argued that the
+decimal count was set by the per-step solver error and that parameter
+uncertainty, displacing a whole trajectory rather than limiting within-run
+resolution, was disclosed in "Parameter provenance" instead of being encoded in
+a decimal count. The second half of that is still true and is kept above; the
+first half is not, because there is no longer a per-step solver error of a size
+any readout could express. So the roles have swapped: parameter uncertainty is
+now what bounds the count from above, and the trajectory-versus-within-run
+distinction is what explains why the bound is loose enough to permit a digit
+finer than one SD rather than forbidding it.
+
+Two things did *not* change, and neither depended on the solver: the resolution
+that ships, and the reason a reader may not treat it as a claim about a
+patient. Nothing in this document has ever licensed the second reading, and
+"Known limitations" is where it is made good — no displayed value may be read
+as accurate to its last digit as a prediction about a patient. It is accurate
+to its last digit as a statement about this model with these parameters.
 
 **Precision elsewhere in the interface, and why it differs.** Simulated
 time is displayed to 0.1 s, which is exactly `SIMULATION_STEP_S`: the

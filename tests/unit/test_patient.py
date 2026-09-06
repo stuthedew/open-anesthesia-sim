@@ -141,9 +141,9 @@ def test_reset_clears_all_patient_stores() -> None:
 
 
 def test_accepts_cardiac_output_at_both_ends_of_the_supported_range() -> None:
-    """Zero is the trajectory the splitting-error bound's worst case is
-    measured on, so it has to stay reachable; the maximum is the envelope
-    corner the same gates measure at."""
+    """Zero is the loading phase of a reference gate trajectory, so it has to
+    stay reachable; the maximum is the envelope corner the same gates measure
+    at."""
 
     patient = _build_patient()
 

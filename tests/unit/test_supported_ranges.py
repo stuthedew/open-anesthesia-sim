@@ -7,11 +7,11 @@ simulated, and the interface's sliders were the only thing keeping a run
 inside the domain the verification gates cover.
 
 The endpoints are tested as carefully as the rejections. Every range is
-closed, and both ends are load-bearing: the splitting-error bound's own
-worst case is measured on a trajectory holding cardiac output at zero, and
-the envelope corner every reference gate drives sits on all three maxima at
-once. A guard that quietly excluded an endpoint would take a measured case
-out of the reachable domain without failing anything.
+closed, and both ends are load-bearing: one reference gate trajectory holds
+cardiac output at zero for its loading phase, and the envelope corner every
+reference gate drives sits on all three maxima at once. A guard that quietly
+excluded an endpoint would take a measured case out of the reachable domain
+without failing anything.
 """
 
 from collections.abc import Callable
