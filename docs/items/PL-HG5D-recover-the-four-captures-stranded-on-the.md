@@ -1,14 +1,15 @@
 ---
 id: PL-HG5D
-status: done
-added: 2026-09-06
-closed: 2026-09-06
 title: Recover the four captures stranded on the desflurane branch by the history rewrite
 priority: P2
 effort: S
+status: done
 classes: infra
 feature: parallel-sessions
 touches: docs/items
+added: 2026-09-06
+closed: 2026-09-06
+pr: 387
 not-delegable: The work is a `git checkout` of four files off a ref, so no command can fail before it and pass after except a `grep` for the files themselves; `make docket` proves the recovered items parse, which is what actually needed checking.
 ---
 

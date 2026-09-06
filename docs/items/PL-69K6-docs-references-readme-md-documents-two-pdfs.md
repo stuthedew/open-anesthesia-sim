@@ -1,53 +1,70 @@
 ---
 id: PL-69K6
-status: untriaged
+status: done
 added: 2026-09-06
+closed: 2026-09-06
 title: docs/references/README.md documents two PDFs the copyright purge removed, and doc_check does not verify that a documented reference file exists
+priority: P2
+effort: S
+classes: docs, defect
+feature: provenance
 touches: docs/references, tools/doc_check.py
+verify: python3 tools/doc_check.py check && grep -q 'def _check_reference_files_exist' tools/doc_check.py
 ---
 
 **Problem.** The 2026-09-06 history rewrite removed
 `baker-farmery-2011-inert-gas-transport-in-blood-and-tissues.pdf` and
 `schuttler-schwilden-2008-modern-anesthetics-hep-182.pdf` from the repository.
-`docs/references/README.md` still carries a full entry for each - filename,
-citation block and provenance note - at lines 35-39 and 57-61 on `origin/main`,
-and a later paragraph still contrasts a third entry against "the Baker &
-Farmery entry, whose metadata was confirmed against PubMed". A reader is told
-the repository holds two files it does not.
+`docs/references/README.md` went on carrying a full entry for each - filename,
+citation block and provenance note - and its "Redistribution" section still
+said the repository was private and that the two "must come out before this
+repository is ever made public", both of which had stopped being true. A reader
+was told the repository holds two files it does not.
 
 **Why it matters.** `CLAUDE.md` treats stale documentation as a safety issue
 rather than tidiness, and this is the sharper form of it: the README is the
 provenance record for the model's own sources. A reader following it to check
-where a coefficient came from finds nothing, and cannot tell whether the file
-was removed deliberately, was never there, or is missing by accident. That is
-exactly the question a provenance record exists to answer.
+where a compartment structure or a coefficient came from finds nothing, and
+cannot tell a deliberate removal from an accidental one - which is exactly the
+question a provenance record exists to answer.
 
-It also leaves the purge half-finished. Removing the files was the copyright
-remedy `PL-SHG5` asked for; leaving entries that name them keeps the
-repository asserting, in prose, that it distributes them.
+**The decision, and it was not the obvious one** (project owner, 2026-09-06).
+The recommendation put to the owner was to delete both entries outright. The
+answer was to keep them: *"I'm ok with referring to these papers that were
+removed as citations when appropriate."* That is the correct distinction and a
+better answer than the one proposed - **citing a work is not redistributing
+it**, so what had to go was the claim to hold the file, not the bibliographic
+record. The README had in fact anticipated this: it already said the citations
+"are the part that survives such a removal, which is why they are recorded in
+full here and not left implicit in the filenames".
 
-**The check gap, which is the more durable half.** `make check` passes on this
-state. `tools/doc_check.py` decides the package map, the provenance table,
-dangling citations, marked prose values, math rendering and the release train,
-and it verifies that a cited *path* exists elsewhere in the tree - but nothing
-verifies that a file named in `docs/references/README.md` is present in
-`docs/references/`. That is squarely the decidable half `CLAUDE.md` asks to be
-put in code: whether a named file exists is answerable by reading the tree, and
-the judgment half - whether the entry should be deleted or the file restored -
-stays with a person.
+**Correction to this brief as first written.** It claimed the remaining M4
+paper "records no licence or redistribution basis". That was wrong, and came
+from reading one section rather than the file: the entry states CC BY-NC-ND
+3.0 from the paper's own first page, and the "Redistribution" section already
+called it "the one file here that may stay if this repository is ever made
+public". Nothing about the M4 entry needed changing, and nothing was changed.
 
-**Also unresolved, and deliberately not assumed here.** One PDF remains:
-`jugel-2014-m4-visualization-oriented-time-series-aggregation.pdf`, a
-*Proceedings of the VLDB Endowment* paper. `PL-SHG5` named only the two
-physiology texts, and the README's entry for this one records no licence or
-redistribution basis - it asserts only that its metadata came from the paper's
-own title page. Whether PVLDB's terms for volume 7 permit redistribution is a
-question for the primary source, not for memory, and it is not answered here.
+**What was done.**
 
-**Where.** `docs/references/README.md` - the Baker & Farmery entry, the
-Schüttler & Schwilden entry, and the sentence under the Jugel entry that
-refers back to Baker & Farmery. `tools/doc_check.py`, for the new check.
+- The two entries keep their citation and no longer name a file, each marked
+  *full text not held here* with the reason and the removal date.
+- The "Redistribution" section is rewritten in the past tense: the repository
+  is public, both texts were removed on 2026-09-06, and either may still be
+  cited freely.
+- The Baker & Farmery provenance note, which described the file's XMP packet,
+  now reads in the past tense.
+- `tools/doc_check.py` gains `_check_reference_files_exist`: a filename named
+  as inline code in `docs/references/README.md` must be present in
+  `docs/references/`. An entry naming no file passes, which is the shape a
+  citation-only entry takes. Confirmed to fire by reintroducing a bogus
+  filename, and to pass once removed.
 
-**Done when.** The README describes only files the repository actually holds,
-and `doc_check` fails when it names one that is absent - so the next removal
-cannot leave the provenance record asserting something untrue.
+**Where.** `docs/references/README.md`; `tools/doc_check.py`
+(`REFERENCE_FILE_RE`, `_check_reference_files_exist`, and its call in
+`analyze`).
+
+**Done when.** The README describes only files the repository holds, the
+citations survive, and `doc_check` fails when an entry names an absent file -
+so the next removal cannot leave the provenance record asserting something
+untrue. Done.
