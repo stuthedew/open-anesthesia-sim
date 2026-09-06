@@ -7,7 +7,7 @@ status: blocked
 classes: science
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
-blocked-by: PL-7HDS
+blocked-by: PL-8ZJQ
 added: 2026-09-06
 ---
 
@@ -54,11 +54,19 @@ where its *value* came from. They would sensibly be worked together.
 file states that the value is a modelling choice this project cannot trace to
 its cited source - and the provenance table row says the same.
 
-**Blocked on `PL-7HDS`** (read Lowe and Ernst 1981, the upstream the Workbook
-names for its volume and flow values), and the reason is that the second branch
-of the Done-when is already written. `PL-6Q8N` recorded the gap in the file's
-first `sources` note - "the table's Blood row reads 5.00 L ... and no 1.0 L
-figure appears" - and in `docs/MODEL.md` § "Parameter provenance". So what is
-left here is the first branch, establishing where 1.0 L came from, and the only
-untried upstream is the book `PL-7HDS` names: the Workbook credits its volumes
-and flows to it, and a venous pool is a volume.
+**Blocked on `PL-8ZJQ`** (Davis and Mapleson 1981 gives a published, quantified
+blood-pool structure), re-pointed 2026-09-06 from `PL-7HDS` (read Lowe and
+Ernst 1981). The original block rested on the book being the only untried
+upstream for a stored volume. `#417` read Lowe and Ernst at one remove and
+established otherwise: the volumes that reading can account for are the
+vessel-rich pair, not this one, and the candidate lineage for a venous mixing
+pool is Davis and Mapleson's *Br J Anaesth* 1981 structure - a journal article,
+reachable where the monograph is not. `PL-8ZJQ` carries that source and says to
+work the two together, so this waits on it rather than on the book.
+
+The second branch of the Done-when stays written and stays insufficient:
+`PL-6Q8N` recorded the gap in the file's first `sources` note - "the table's
+Blood row reads 5.00 L ... and no 1.0 L figure appears" - and in `docs/MODEL.md`
+§ "Parameter provenance". What is left is the first branch, and `PL-8ZJQ` also
+names the question to answer before any value changes: whether the stored pool
+is doing an arterial compartment's job under a venous name.

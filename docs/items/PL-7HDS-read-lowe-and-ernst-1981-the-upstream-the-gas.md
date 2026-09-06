@@ -3,12 +3,12 @@ id: PL-7HDS
 title: Read Lowe and Ernst 1981, the upstream the Gas Man Workbook names for its volume and flow values
 priority: P1
 effort: M
-status: blocked
-classes: science
+status: ready
+classes: science, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
-blocked-by: PL-XJ5P
 added: 2026-09-06
+not-delegable: No command can prove that a person opened a 1981 Williams and Wilkins monograph, and no session can do the opening. Every route this container has was tried on 2026-09-06 and refused - see "What was established" below - so what is left needs the project owner's institutional or library access. A `verify:` command here could only check that some sentence had been written into the data file, which is exactly the thing that must not be gameable on a provenance item.
 ---
 
 **Problem.** The Gas Man Workbook's Model Parameters table (Appendix B, page
@@ -41,16 +41,48 @@ primary lineage" - on the strength of their titles, never having been opened.
 to Mapleson. Recording Lowe and Ernst as read, or as tier 1, before anybody has
 opened it would be the identical error one citation later.
 
-**Reachability, and why this is likely not delegable to a session.** A 1981
-Williams & Wilkins monograph is outside every route
-`.claude/rules/citing-sources.md` describes: not in PubMed Central, not a
-journal article with a DOI, and the publisher domains are refused by the egress
-proxy. Expect this to need the project owner's institutional or library access,
-as the Workbook itself did. `PL-XJ5P` carries the general gap.
+**What was established on 2026-09-06, at one remove.** The project owner
+supplied two peer-reviewed papers that used the book; both were read at
+full-text depth and both are now `sources` entries in the data file. They
+narrow the question sharply without answering it.
 
-**Where.** `src/anesthesia_sim/data/patients/reference_adult.json` - the Lowe
-and Ernst `sources` entry, which currently records the book as located and
-unread; and `docs/MODEL.md` § "Parameter provenance".
+- **The initial is `HJ`.** Both papers cite `Lowe HJ, Ernst EA`, and PubMed
+  indexes this author as `Lowe H J` on every closed-circuit paper from 1968 to
+  1994. The Workbook's `HF` is a misprint.
+- **The book gives this material as fractions**, not as measured quantities:
+  Lerou and Booij's Table 6 (*Br J Anaesth* 2001;86:12-28) prints eight
+  body-compartment volumes as fractions of body mass and blood flows as
+  fractions of cardiac output, captioned as data given by Lowe and Ernst and
+  cited to **page 57**. Their Table 5 cites the book again at **page 83**.
+  Couto da Silva, Mapleson and Vickers (*Br J Anaesth* 1997;79:103-12) cite it
+  for a cardiac output of 0.2 x M^(3/4), which is 4.84 L/min at 70 kg.
+- **The Workbook's attribution has been checked for the first time, and it
+  holds for two of the seven.** Vessel-rich volume and perfusion fraction
+  reproduce exactly from Lerou and Booij's table at 70 kg (6.02 kg, 0.760);
+  muscle and fat do not, under any grouping of the eight compartments; alveolar
+  volume is untouched by either paper.
+
+None of that is a reading of the book, so the tier is still unassigned, and
+nothing has been promoted or adopted. Two findings that fell out of it are
+filed separately: `PL-YKSM` (the allometric cardiac output against the stored
+fixed 5.0) and `PL-8ZJQ` (a published blood-pool structure for `PL-3YZW`).
+
+**Reachability, and why the last step is not delegable.** Tried 2026-09-06 from
+a session container and refused at every route: direct HTTPS to `archive.org`,
+`babel.hathitrust.org`, `catalog.hathitrust.org`, `openlibrary.org`,
+`books.google.com` and `scholar.google.com` each returned `CONNECT tunnel
+failed, response 403` from the egress proxy; `WebFetch` returned
+`EGRESS_BLOCKED` for the same hosts; and PubMed holds no record for the book,
+monographs being outside what it indexes. So this needs the project owner's
+institutional or library access, as the Workbook itself did. `PL-XJ5P` carries
+the general gap.
+
+What changed is the size of the ask. It began as "read a 1981 monograph" and is
+now **page 57**, with page 83 next, and pages 19, 67-97, 175-179 and 215 as the
+ranges da Silva and colleagues used. ISBN 0683052004 (9780683052008); a
+HathiTrust catalog record is reported at
+<https://catalog.hathitrust.org/Record/000103271>, surfaced by web search and
+not opened from here.
 
 **Done when.** The tier of Lowe and Ernst 1981 is established by someone who
 has opened it, and for each of the seven values the book is credited with, the
@@ -58,19 +90,8 @@ file records whether the book measured it, collected it, or cites it onward -
 or the file records that the book could not be reached and by whom it was
 tried.
 
-**Blocked on `PL-XJ5P`** (citing-sources says there is always a route, but a
-pre-abstract subscription paper has none). Every route
-`.claude/rules/citing-sources.md` describes has already been tried and refused
-for this book, so the next step is not another attempt: it is the disposition
-`PL-XJ5P` decides - whether an unreachable in-copyright source is put to the
-project owner for their institutional access, carried as an owner-supplied
-extract, or recorded as terminal. Which of those is chosen decides what closing
-this item even looks like.
-
-**A live session was working this item when the block was written, and the
-block is a triage disposition rather than a claim on it.** `list_sessions`
-2026-09-06: session `PL-7HDS`, branch `claude/pl-7hds-e170bx`, running and
-searching for the book. Nothing was pushed, so no ref could show it and
-`bin/docket show` reported the item startable. Whoever reaches the book first
-should close this and take the block off `PL-3YZW` with it; the sequencing
-above is what to do if nobody does.
+The second branch is now **partly** met: the data file and `docs/MODEL.md`
+record the attempt, the routes and the date. It is deliberately not treated as
+closing the item, because the attempt that failed is the one the item predicted
+would fail, and closing on it would retire the question without answering it.
+What remains is one page and a person with a library card.
