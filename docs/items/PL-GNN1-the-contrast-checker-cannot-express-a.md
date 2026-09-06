@@ -3,11 +3,12 @@ id: PL-GNN1
 title: The contrast checker cannot express a requirement met by either of two channels
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: presentation-safety
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-02
+closed: 2026-09-06
 verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_requirement_met_by_either_channel' tests/unit/test_contrast_check.py
 ---
 

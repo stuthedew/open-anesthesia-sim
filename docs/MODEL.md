@@ -3169,13 +3169,19 @@ screen-reader support is an open question rather than a commitment.
 
 **The ratios are computed, not asserted.** `tools/contrast_check.py` runs in
 `make check`, reads the color constants out of `app/theme.py` and
-`app/simulation_view.py`, and holds each declared pair to its declared minimum
-using WCAG 2.2's own relative-luminance and contrast-ratio definitions. Its
-requirement table names the pair, the criterion and the reason the pair is held
-to that number; the judgment of *which* pairs matter stays in that table, and
-the tool only evaluates it. Pairs that do not meet their minimum today are
-listed there against the item that closes each one, and a listed shortfall that
-starts passing is reported as an error, so a fix cannot leave its excuse behind.
+`app/simulation_view.py`, and holds each declared requirement to its declared
+minimum using WCAG 2.2's own relative-luminance and contrast-ratio
+definitions. Its requirement table names the colors, the criterion and the
+reason they are held to that number; the judgment of *which* colors matter
+stays in that table, and the tool only evaluates it. Most entries are one
+foreground against one background; an element whose edge either of two
+channels can carry declares both and is held to the better of them. Each agent
+identification badge is that case — a fill outlined in the agent's own text
+color — and is perceivable by whichever of the two clears the minimum, so
+measuring one channel at a time misreports it. Requirements that do not meet
+their minimum today are listed there against the item that closes each one,
+and a listed shortfall that starts passing is reported as an error, so a fix
+cannot leave its excuse behind.
 
 ### Displayed precision
 

@@ -256,7 +256,7 @@ Outside the packaged application, and not imported by it:
 ```text
 tools/
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them
-├── contrast_check.py     # computes every declared color pair's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum
+├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
@@ -321,15 +321,21 @@ already leads needs no item of its own. A release commit is exempt, exactly:
 `app/theme.py` and `app/simulation_view.py` with `ast` rather than importing
 them, because `app/simulation_view.py` imports Flet and these tools run under a
 bare `python3`. Its `REQUIREMENTS` table is the specification: each entry names
-a pair that appears on screen together, the success criterion, the minimum, and
-the reason, which cites the code the pair is drawn in by symbol. The tool
-evaluates that table and decides nothing else — which pairs matter, and whether
+the colors that appear on screen together, the success criterion, the minimum,
+and the reason, which cites the code they are drawn in by symbol. Most entries
+are one foreground against one background; an element whose edge either of two
+channels can carry — the agent badges, each a fill with a border in the agent's
+own text color — declares both and is held to the better, because measuring
+such an element one channel at a time reports a false shortfall whichever
+channel is picked (`PL-GNN1`). The tool
+evaluates that table and decides nothing else — which colors matter, which
+channels an element really has, and whether
 a non-color channel is genuinely redundant, are judgments, and
 `.claude/rules/ui-color.md` carries them. The one thing it does decide about
 the prose is the half a script can: a description may cite no line number, and
 every symbol it names must exist in the two modules read above. Those citations
 were line numbers until `PL-GJDW`, and all fourteen had rotted into unrelated
-code, which made the tool's own coverage unauditable while looking audited. Pairs that fall short
+code, which made the tool's own coverage unauditable while looking audited. Requirements that fall short
 today are listed against the item that closes each, and a listed shortfall that
 starts passing is an error, so a fix cannot leave its excuse behind.
 

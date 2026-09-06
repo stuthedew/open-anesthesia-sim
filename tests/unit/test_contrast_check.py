@@ -411,9 +411,12 @@ def test_every_agent_badge_is_checked_as_fill_or_border() -> None:
 
     Sevoflurane by its border, isoflurane and desflurane by their fills. Three
     different accidents, which is the reason to declare both channels rather
-    than pick whichever one happens to work today: nothing else would catch an
-    agent added later whose fill is mid-tone and whose foreground is white,
-    invisible by either.
+    than pick whichever one happens to work today.
+
+    The agents are read from the palette, not listed here, because the accident
+    is the point: an agent added later whose fill is mid-tone and whose
+    foreground is white is invisible by either channel, and nothing else in
+    this file would notice that its badge had never been declared at all.
     """
     palette = contrast_check.read_palette(REPO_ROOT)
     declared = {
@@ -421,8 +424,13 @@ def test_every_agent_badge_is_checked_as_fill_or_border() -> None:
         for requirement in contrast_check.REQUIREMENTS
         if isinstance(requirement, contrast_check.EitherRequirement)
     }
+    # Read from the palette rather than named here, so that adding a fourth
+    # agent to `theme.py` and declaring nothing for its badge fails this test
+    # instead of passing unread.
+    agents = sorted(name.removesuffix(".fill") for name in palette if name.endswith(".fill"))
 
-    for agent in ("sevoflurane", "isoflurane", "desflurane"):
+    assert agents, "no agent schemes were read; this test would assert nothing"
+    for agent in agents:
         key = (f"{agent}.fill or {agent}.foreground", "BACKGROUND")
         assert key in declared, f"{agent}'s badge is not declared as fill or border"
         best = max(

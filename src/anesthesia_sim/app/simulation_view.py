@@ -1092,9 +1092,12 @@ class SimulationView:
             weight=ft.FontWeight.BOLD,
         )
         # The badge is bordered in its own foreground color because the
-        # sevoflurane fill is only 1.37:1 against the white panel: without a
-        # border its edge effectively disappears, and the colored region a
-        # reader is meant to recognize loses its shape.
+        # sevoflurane fill is only 1.27:1 against the page it is drawn on:
+        # without a border its edge effectively disappears, and the colored
+        # region a reader is meant to recognize loses its shape. That border
+        # is a channel `tools/contrast_check.py` measures rather than assumes -
+        # the badge is declared there as fill *or* border and held to the
+        # better of the two, which is what makes this one pass (PL-GNN1).
         self._agent_header_badge = ft.Container(
             content=self._subtitle_text,
             bgcolor=initial_agent_colors.fill,
