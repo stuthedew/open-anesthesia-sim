@@ -55,6 +55,16 @@ and a `git reset --hard origin/main` on the branch, which nothing refuses and
 which is the natural reflex on seeing a four-figure ahead/behind count. That
 second one is the gap.
 
+**A branch prune does not finish the job, observed 2026-09-06.** Clearing the
+stale remote-tracking branches left the purged PDFs still reachable in the
+local clone, because the release tags `v0.3.7` through `v0.4.4` had not been
+refreshed and still pointed at pre-rewrite commits. The remote was clean
+throughout - all seven branches and all thirty-one tags checked - so this was
+local state only, but a clone in that condition still holds the files the
+purge existed to remove, and `git log --all` is what shows it. `git fetch
+--tags --force` is the missing half. The `git branch -dr` recipe in the
+`docket` skill covers branches and says nothing about tags.
+
 **Where.** `subprojects/docket/src/docket/` - whatever `stranded` uses to
 classify a branch, which currently cannot distinguish "this branch was
 rewritten and lost commits" from "this branch is behind". The session-start
