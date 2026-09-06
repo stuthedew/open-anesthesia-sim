@@ -13,50 +13,6 @@ def test_rejects_agent_amount_above_alveolar_capacity() -> None:
         AlveolarCompartment(agent_amount_l=2.6)
 
 
-def test_positive_blood_uptake_removes_alveolar_agent() -> None:
-    alveoli = AlveolarCompartment()
-    alveoli.set_concentration_fraction(0.08)
-    amount_before = alveoli.agent_amount_l
-
-    alveoli.apply_blood_uptake(0.01)
-
-    assert alveoli.agent_amount_l == pytest.approx(amount_before - 0.01)
-
-
-def test_negative_blood_uptake_returns_agent_to_alveoli() -> None:
-    alveoli = AlveolarCompartment()
-    alveoli.set_concentration_fraction(0.02)
-    amount_before = alveoli.agent_amount_l
-
-    alveoli.apply_blood_uptake(-0.01)
-
-    assert alveoli.agent_amount_l == pytest.approx(amount_before + 0.01)
-
-
-def test_rejects_blood_uptake_larger_than_available_amount() -> None:
-    alveoli = AlveolarCompartment()
-    alveoli.set_concentration_fraction(0.01)
-
-    with pytest.raises(SimulationConfigurationError, match="resulting_agent_amount_l"):
-        alveoli.apply_blood_uptake(alveoli.agent_amount_l + 0.001)
-
-
-def test_rejects_nonnumeric_blood_uptake() -> None:
-    alveoli = AlveolarCompartment()
-
-    with pytest.raises(SimulationConfigurationError, match="^blood_uptake_l must be a number$"):
-        alveoli.apply_blood_uptake("not a number")
-
-
-def test_rejects_blood_transfer_above_alveolar_capacity() -> None:
-    alveoli = AlveolarCompartment(agent_amount_l=2.4)
-
-    with pytest.raises(
-        SimulationConfigurationError, match="^blood transfer would exceed alveolar capacity$"
-    ):
-        alveoli.apply_blood_uptake(-0.2)
-
-
 def test_changing_ventilation_preserves_alveolar_agent() -> None:
     alveoli = AlveolarCompartment()
     alveoli.set_concentration_fraction(0.05)

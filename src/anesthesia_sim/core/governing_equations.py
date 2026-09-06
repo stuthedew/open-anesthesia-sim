@@ -121,6 +121,26 @@ STATE_SIZE = 9
 TISSUE_GROUP_COUNT = 3
 """Vessel-rich, muscle and fat: the three groups `patient.py` builds."""
 
+CARDIAC_OUTPUT_TOLERANCE_L_S = 1e-12
+CARDIAC_OUTPUT_RELATIVE_TOLERANCE = 1e-9
+"""How far the tissue flows may sum away from cardiac output.
+
+Blood leaving the tissue groups is the whole of what returns to the venous
+pool: `docs/MODEL.md`'s venous balance is
+$`dF_v/dt = (\\sum_i Q_i F_i - QF_v)/V_v`$, so a $`\\sum_i Q_i`$ that did not
+equal $`Q`$ would put agent into that pool at one rate and take it out at
+another, and the model would create or destroy agent at a steady rate for as
+long as the mismatch stood.
+
+`patient.py` already requires the perfusion *fractions* to sum to one, which
+is the same statement about the same quantity. It is checked again here
+because these settings are assembled separately from those compartments and
+this is the object the equations are actually built from - a check that lives
+one call away from the arithmetic it protects, rather than in the class that
+usually supplies it. The absolute floor is what lets a zero cardiac output
+pass, which `docs/MODEL.md` § "Supported input ranges" requires.
+"""
+
 
 @dataclass(frozen=True, slots=True)
 class TissueGroupEquationSettings:
@@ -212,6 +232,18 @@ class UptakeEquationSettings:
             raise SimulationConfigurationError(
                 f"the model has {TISSUE_GROUP_COUNT} tissue groups but "
                 f"{len(self.tissues)} were given"
+            )
+
+        tissue_blood_flow_l_s = sum(tissue.blood_flow_l_s for tissue in self.tissues)
+
+        if abs(tissue_blood_flow_l_s - self.cardiac_output_l_s) > (
+            CARDIAC_OUTPUT_TOLERANCE_L_S
+            + CARDIAC_OUTPUT_RELATIVE_TOLERANCE * self.cardiac_output_l_s
+        ):
+            raise SimulationConfigurationError(
+                f"the tissue groups are perfused at {tissue_blood_flow_l_s} L/s in total "
+                f"but cardiac output is {self.cardiac_output_l_s} L/s; the venous balance "
+                "returns what the tissues receive, so the two must agree"
             )
 
 
