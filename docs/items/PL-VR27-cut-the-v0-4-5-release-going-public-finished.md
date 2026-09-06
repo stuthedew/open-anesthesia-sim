@@ -9,6 +9,7 @@ feature: release-roadmap-seam
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases/
 added: 2026-09-06
 closed: 2026-09-06
+pr: 397
 not-delegable: proving a release cut means cutting it; there is no command that can run beforehand and fail for the right reason
 ---
 

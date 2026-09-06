@@ -6,7 +6,7 @@ effort: M
 status: needs-decision
 classes: safety, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py
+touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py, tests/unit/test_playback.py, tools/contrast_check.py
 added: 2026-09-06
 ---
 
@@ -82,3 +82,82 @@ that rate is resolved to `multiplier x 0.1` simulated seconds - and a test holds
 the displayed text to the same ladder
 `test_the_control_grid_at_each_rate_is_the_one_two_documents_publish` holds the
 model to, so a rung cannot be added with a label that understates it.
+
+## Design round, 2026-09-06 - the question narrowed, and half the work landed
+
+**The dilemma this item calls the design work has a third horn, and taking it
+costs nothing.** The brief above frames the choice as: either both places the
+rate appears gain the disclosure, or `format_playback_rate` forks and gives up
+the single-source property its docstring argues for. Neither is necessary. What
+that property protects is that the two sites cannot state the same *mode*
+differently - not that they render the same string. A second renderer that
+*contains* the first (`f"{format_playback_rate(m)} - {format_control_grid(g)}"`)
+keeps the guarantee as a substring relation, which is stronger than "one
+function" because it is directly assertable in a test. So the fork is available
+without the loss if a later answer wants it, and it is not an argument against
+any candidate.
+
+**Recommended: the second candidate, built as the control's own caption rather
+than as a new layout element.** `ft.Dropdown` in the shipped Flet 0.86.5
+carries `helper_text` and `helper_style` (verified against
+`dataclasses.fields`), so the line under the control is three lines of view
+code and no restructuring of the transport row. `format_playback_rate` is then
+untouched, the mode line under the clock stays a mode indicator, and the
+disclosure sits where a reader is when they choose the resolution and is still
+there when they reach for a slider.
+
+**Why not the first candidate.** Putting the grid in the option text is the
+only one that prices the trade-off at the moment of *comparison*, which is a
+real advantage and the reason it is worth re-raising later. But the closed
+`ft.Dropdown` renders the selected option's own text at `width=150`, so
+`300x real time - 30 s control grid` truncates there, and a truncated safety
+disclosure is worse than none. Fixing that means widening the control to about
+270 px in a wrapping row that already holds an agent dropdown, three buttons
+and the status word. `menu_width` widens the open menu only and does not help
+the closed field.
+
+**Why not the third.** A message raised once the reader moves a control at a
+rate above 1x is a warning after the fact, and
+`.claude/rules/expert-review.md` prefers an interface that prevents an error
+over one that warns after it. It is also transient, fires repeatedly through a
+drag, and carries the most state and the most test surface of the three.
+
+**Three wording constraints found while looking, and they bind whichever
+placement wins.**
+
+- **Never "step".** The simulation step is 0.1 s at every rate and the module
+  docstring calls holding that "the safety property this module exists to
+  hold". A caption reading `30 s steps` at 300x asserts the opposite of it.
+- **Never "delay", "lag" or "late".** `docs/MODEL.md` states that nothing
+  arrives late: the recorded `ControlChange.elapsed_s` and the step the setting
+  acts over agree at every rate. What coarsens is which instants can be
+  *chosen*.
+- **The unit is simulated seconds and the caption must say so.** At 300x, 30
+  simulated seconds is 0.1 real ones. A reader taking the number as real time
+  has the cost wrong by the multiplier itself.
+
+`0.1 s` is stated at 1x rather than suppressed, for the reason
+`format_playback_rate` renders `1x real time` rather than nothing: an absent
+line makes the line's presence the signal.
+
+**Contrast costs nothing here.** `MUTED` is already declared against both
+`PANEL` and `BACKGROUND` at the 4.5:1 normal-text minimum in
+`tools/contrast_check.py`, so a `MUTED` caption amends an existing entry's
+prose to name the new site and adds no pair.
+
+**What landed in this round, being the same under all three answers.**
+
+- `PlaybackRate.control_grid_s(...)` in `app/playback.py`, deriving the
+  interval through `steps_per_tick` so it inherits that method's refusals
+  rather than re-deriving them, with a docstring naming what the number is not.
+- `format_control_grid(...)` in `app/formatting.py`, rendering the magnitude
+  alone and refusing an interval one decimal would understate rather than
+  publishing a shorter one.
+- `test_the_control_grid_at_each_rate_is_the_one_two_documents_publish` now
+  reads through `control_grid_s`, so the published ladder and the shipped
+  derivation of it are one assertion instead of two that could drift.
+
+**What is still open, and is the whole of what remains.** Where the string goes
+and what it says. No `verify:` command is written yet, deliberately: the
+command has to name the test on the interface path, and which path that is is
+the open question.
