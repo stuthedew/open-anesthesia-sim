@@ -1,7 +1,8 @@
 # Source documents held on hand
 
 Full texts kept in the repository so a session can read the source rather than
-recall it. **Being here promotes nothing.** `docs/MODEL.md` § "Source
+recall it, and the citations for sources this repository may not carry.
+**Being here promotes nothing.** `docs/MODEL.md` § "Source
 hierarchy: what may be cited as the authority for a value" decides what may be
 cited as the authority for a stored number, and a PDF sitting in this directory
 is evidence a session can open, not a tier in that hierarchy. Cite the work,
@@ -9,32 +10,34 @@ never the file path.
 
 ## Redistribution
 
-**The files here are not under one licence, and the difference decides what
-has to happen before this repository could go public.**
+**This repository is public.** A file here is therefore redistributed to
+anyone, and the only files that may sit in this directory are ones whose own
+licence permits that. Check a new file's licence before adding it; there is no
+directory-wide policy to inherit, and "the repository is private" is no longer
+available as the thing that makes personal use lawful.
 
-The two physiology sources are publisher-copyright works held under the
-personal access of the project owner. This repository is **private**, which is
-what makes that ordinary personal use rather than redistribution.
+The M4 paper meets that bar: VLDB publishes it under Creative Commons
+Attribution-NonCommercial-NoDerivs 3.0, stated on the paper's own first page.
 
-**Those two must come out before this repository is ever made public**, and
-taking them out means rewriting history — a `git filter-repo` pass and a force-push,
-not a delete commit — because both blobs are in the history from the commit
-that adds them. Anyone weighing a change to repository visibility should treat
-this as a prerequisite rather than a follow-up. The citations below are the
-part that survives such a removal, which is why they are recorded in full here
-and not left implicit in the filenames.
+**Two publisher-copyright full texts were removed on 2026-09-06**, by the
+`git filter-repo` pass and force-push this section used to name as a
+prerequisite. They were kept here under the project owner's personal access
+while the repository was private; that stopped being the situation when
+`PL-XYRN` opened the go-public gate, and the removal did not happen with it.
+`PL-SHG5` carries what went wrong, what was rewritten, and what remains.
 
-The M4 paper is different and does **not** join that set: VLDB publishes it
-under Creative Commons Attribution-NonCommercial-NoDerivs 3.0, stated on the
-paper's own first page, so keeping it here is redistribution the licence
-already permits. Check a new file's own licence before adding it rather than
-assuming this directory has one policy.
+Their entries stay below, without the files. The citations were always the
+part designed to survive such a removal, which is why they are recorded here
+in full rather than left implicit in the filenames — a reader who needs one of
+those sources can now reach it the way any other reader would, through the DOI.
 
 ## The documents
 
 ### Baker & Farmery 2011 — inert gas transport in blood and tissues
 
-`baker-farmery-2011-inert-gas-transport-in-blood-and-tissues.pdf`
+**Not held here.** Removed 2026-09-06 as publisher-copyright material this
+public repository may not redistribute; see "Redistribution" above. Reach it
+through the DOI.
 
 > Baker AB, Farmery AD. Inert gas transport in blood and tissues.
 > *Comprehensive Physiology*. 2011 Apr;1(2):569–92.
@@ -56,7 +59,9 @@ being questioned or extended.
 
 ### Schüttler & Schwilden 2008 — *Modern Anesthetics*
 
-`schuttler-schwilden-2008-modern-anesthetics-hep-182.pdf`
+**Not held here.** Removed 2026-09-06 as publisher-copyright material this
+public repository may not redistribute; see "Redistribution" above. Reach it
+through the DOI.
 
 > Schüttler J, Schwilden H, editors. *Modern Anesthetics*. Handbook of
 > Experimental Pharmacology, vol. 182. Berlin, Heidelberg: Springer; 2008.
@@ -94,8 +99,8 @@ registry should confirm the record and add one.
 
 Licensed by the publisher under
 [CC BY-NC-ND 3.0](http://creativecommons.org/licenses/by-nc-nd/3.0/), per the
-statement on its first page — the one file here that may stay if this
-repository is ever made public.
+statement on its first page — the one full text this public repository may
+carry, and now the only one it does.
 
 Supplied by the project owner, 2026-09-04, after `www.vldb.org` proved
 unreachable from a session. It is the authority for what the chart may claim
