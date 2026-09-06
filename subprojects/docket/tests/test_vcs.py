@@ -3059,3 +3059,121 @@ def test_a_checkout_with_no_default_branch_declines_rather_than_passing() -> Non
 
     assert not report.known
     assert "no default branch" in report.declined
+
+
+# --- the file's own history, across the renames a title edit makes ----------
+#
+# `docket` names an item's file from its title, so editing a title renames the
+# file and `bin/docket release` renames every item whose title has drifted. The
+# fallback walks that file's history, and a walk that does not follow renames
+# sees only as far back as the rename: `PL-3D2M` was renamed by the v0.3.9
+# release commit and `bin/docket record` declined to write its number
+# (`PL-S5LB`).
+
+
+def _rename_runner(commits: tuple[tuple[str, str, str, str], ...], items_dir: str = "docs/items"):
+    """A git whose item file changed its name partway through its own history.
+
+    `commits` is newest first, as (revision, subject, path, text): the name the
+    item file had in that commit's tree and what it read there. One path per
+    commit is the whole of it - a file is at one name in one tree - and that is
+    what makes `show <rev>^:<path>` answer the way git does, because a commit's
+    parent is simply the next entry and holds the file under whatever name that
+    entry names.
+
+    The `log` answers are the two git really gives, so a test can fail for the
+    reason the defect fails for. Asked without rename detection, the walk sees
+    the path only as far back as the commit that introduced *that name*; asked
+    with it, the walk reaches the whole history and each entry carries the name
+    the file had there. The base's own subjects lead with no id, so the subject
+    scan in `_merges_naming` cannot answer and the file's history is what is
+    left - which is the path under test.
+    """
+    paths = [f"{items_dir}/{path}" for _, _, path, _ in commits]
+
+    def entry(at: int) -> list[str]:
+        """The `--name-status` fields for a commit, against its parent's name."""
+        if at + 1 >= len(commits):
+            return ["A", paths[at]]
+        if paths[at] != paths[at + 1]:
+            return ["R100", paths[at + 1], paths[at]]
+        return ["M", paths[at]]
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "rev-parse":
+            return "" if args[-1] == "--is-shallow-repository" else f"{BASE}\n"
+        if args[0] == "for-each-ref":
+            return f"{BASE}\n"
+        if args[0] == "show":
+            revision, _, path = args[-1].partition(":")
+            named = revision.rstrip("^")
+            at = (
+                0
+                if named == BASE
+                else next(
+                    (index for index, commit in enumerate(commits) if commit[0] == named),
+                    len(commits),
+                )
+            )
+            at += len(revision) - len(named)
+            return commits[at][3] if at < len(commits) and paths[at] == path else ""
+        if args[0] != "log":
+            return ""
+        if "--" not in args:
+            # The base's own subjects, naming no id - so only the file answers.
+            return "".join(f"c{at}\x1f{commit[1]}\n" for at, commit in enumerate(commits))
+        if "--follow" in args:
+            reach = range(len(commits))
+        else:
+            stop = next((at for at, path in enumerate(paths) if path != args[-1]), len(paths))
+            reach = range(stop)
+        if "--name-status" not in args:
+            return "".join(f"{commits[at][0]}\x1f{commits[at][1]}\n" for at in reach)
+        # `-z`: every field NUL-terminated, the format's own newline landing at
+        # the front of the status that follows it.
+        fields = [
+            field
+            for at in reach
+            for field in (f"{commits[at][0]}\x1f{commits[at][1]}", "\n" + "\0".join(entry(at)))
+        ]
+        return "\0".join(fields) + "\0"
+
+    return run
+
+
+RENAMED = (
+    ("c0", "Ship v0.3.9 (#313)", "PL-K7QX-the-new-title.md", CLOSED.format(id="PL-K7QX")),
+    ("c1", "Design the thing (#204)", "PL-K7QX-the-old-title.md", CLOSED.format(id="PL-K7QX")),
+    ("c2", "Capture it (#100)", "PL-K7QX-the-old-title.md", OPEN_ITEM.format(id="PL-K7QX")),
+)
+
+
+def test_a_rename_after_the_closure_does_not_steal_the_attribution() -> None:
+    """The renaming commit is not the closure, however the walk stops at it.
+
+    Without rename detection the oldest commit the walk can see is the rename,
+    whose parent does not hold the new path at all - so it reads as "done here,
+    not done there", which is exactly the closure test, and the release that
+    renamed the file answers for the pull request that did the work.
+    """
+    run = _rename_runner(RENAMED)
+
+    numbers = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-the-new-title.md"}, runner=run).numbers
+
+    assert numbers == {"PL-K7QX": 204}
+
+
+def test_a_rename_carrying_no_number_does_not_silence_the_closure_behind_it() -> None:
+    """The same defect's quieter half: declining rather than answering wrongly.
+
+    `bin/docket release` stamps `milestone:` onto every item it ships, which
+    renames whatever titles have drifted - and its own subject carries no
+    number until it is squashed. `PL-3D2M` was renamed that way and `bin/docket
+    record` printed nothing at all for it, so the omission was visible only by
+    reading the store afterwards.
+    """
+    run = _rename_runner((("c0", "Ship v0.3.9", *RENAMED[0][2:]), *RENAMED[1:]))
+
+    numbers = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-the-new-title.md"}, runner=run).numbers
+
+    assert numbers == {"PL-K7QX": 204}
