@@ -3,12 +3,13 @@ id: PL-6Q8N
 title: The reference adult's eleven physiologic parameters have no primary source at all
 priority: P1
 effort: M
-status: needs-decision
+status: done
 classes: science, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-03
-verify: uv run pytest tests/unit/test_parameters.py && python3 tools/doc_check.py check && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/patients/reference_adult.json')); assert d['weight_kg']==70.0 and d['tissue_groups']['vessel_rich']['perfusion_fraction']==0.76 and d['tissue_groups']['fat']['volume_l']==14.5; assert any('Mapleson' in s['citation'] for s in d['sources'])"
+closed: 2026-09-06
+verify: uv run pytest tests/unit/test_parameters.py && python3 tools/doc_check.py check && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/patients/reference_adult.json')); n=' '.join(s['note'] for s in d['sources']); assert all(k in n for k in ('weight_kg','alveolar_gas_volume_l','venous_blood_volume_l','default_alveolar_ventilation_l_min','default_cardiac_output_l_min','tissue_groups.vessel_rich.volume_l','tissue_groups.vessel_rich.perfusion_fraction','tissue_groups.muscle.volume_l','tissue_groups.muscle.perfusion_fraction','tissue_groups.fat.volume_l','tissue_groups.fat.perfusion_fraction')); assert sum('Tier 1' in s['note'] for s in d['sources']) >= 4; assert d['tissue_groups']['fat']['volume_l']==14.5 and d['tissue_groups']['vessel_rich']['perfusion_fraction']==0.76"
 ---
 
 **Problem.** `src/anesthesia_sim/data/patients/reference_adult.json` stores
@@ -218,3 +219,62 @@ value sits in, plus whatever primary measurement of the same quantity PubMed
 can actually deliver, recorded alongside with the difference and explicitly
 not adopted, which is the pattern the three agent files already use. The
 second is answerable from inside a session and the first is not.
+
+**Re-aimed and closed, 2026-09-06.** The project owner, asked to choose between
+reading Mapleson 1973 through institutional access and re-aiming the item at
+what is reachable, chose to re-aim. So the original Done-when's demand for "a
+primary citation with its tier and reference conditions" per parameter is
+superseded: what each parameter now carries is its tier, plus a measurement of
+the same quantity cited alongside and explicitly not adopted where one is
+reachable, plus a stated reason where none is. That is the pattern the three
+agent files already use, and the `verify:` command above is the re-aimed
+specification - it fails with exit 1 on the pre-work tree and passes on this
+one, both run.
+
+**No stored value changed.** Checked mechanically, not by eye: all eleven
+compare equal to the pre-work file.
+
+*Five parameters gained a comparison.* Route and depth are recorded in each
+note, per `.claude/rules/citing-sources.md`; all five were reached through the
+PubMed MCP server, one at full-text depth and four at abstract depth.
+
+| Parameter | Stored | Reachable measurement | Tier | Gap |
+| --- | --- | --- | --- | --- |
+| `alveolar_gas_volume_l` | 2.5 L | Hudgel & Devadatta 1984, FRC 3.14 +/- 0.01 L (SE) awake, He dilution, n=10 men; with Wahba 1991's ~20% reduction under GA | 1 + 2 | 3.14 x 0.80 = 2.51 L, within 0.5% |
+| `default_cardiac_output_l_min` | 5.0 | Cattermole et al. 2017, 50-74.9 kg band median 5.51 (2.5-97.5%: 3.00-9.35), n=686 | 1 | stored 9.3% below median, inside range |
+| `tissue_groups.muscle.volume_l` | 33.0 L | Janssen et al. 2000, whole-body MRI, men 33.0 kg SM at 38.4% of body mass, n=468 | 1 | numeric match is coincidence: cohort averaged ~86 kg; scaled to 70 kg gives 26.9 kg, 18.5% below |
+| `tissue_groups.fat.perfusion_fraction` | 0.06 | Heinonen et al. 2012, PET, resting thigh subcutaneous ATBF 1.0 +/- 0.3 mL/100 g/min, n=6 | 1 | model implies ~2.1 mL/100 mL/min, roughly twice |
+| `tissue_groups.muscle.perfusion_fraction` | 0.18 | Frayn & Karpe 2014: fasting adipose flow per 100 g is similar to resting skeletal muscle | 2 | model's muscle:fat ratio ~0.8, consistent |
+
+*Six record why they have no comparison,* rather than leaving the silence to
+read as an oversight: `weight_kg` is a label no equation consumes;
+`venous_blood_volume_l` is a well-stirred mixing volume setting a 12-second
+time constant and is not the physiologic venous blood volume;
+`default_alveolar_ventilation_l_min` is a derived convention; and
+`tissue_groups.vessel_rich.volume_l`, `tissue_groups.vessel_rich.perfusion_fraction`
+and `tissue_groups.fat.volume_l` are lumped aggregates no single measurement
+covers.
+
+**The one finding that reaches a displayed curve** is the fat perfusion gap.
+It is recorded in `docs/MODEL.md` § "Known limitations" as well as in the data
+file, because a factor of two on fat flow is a factor of two on the fat group's
+time constant, and therefore on how much agent fat has taken up by the end of a
+case and on the slow tail of washout. Nothing was changed: one depot in six
+subjects does not overturn a whole-body lumped compartment, and `data/` is
+protected. `PL-8GV5` carries the question of whether the model should represent
+anaesthesia's own effect on regional perfusion at all.
+
+**Left open, and filed rather than dropped.** Step 5 of the original Approach
+asked for a Workbook edition and section in place of the bare vendor URL. That
+remains undone and is now `PL-XTMB`: `gasmanweb.com` is unreachable from a
+session, and `.claude/rules/citing-sources.md` forbids taking the edition from a
+search summary. The file's first `sources` note records the absence explicitly.
+
+**Docs swept:** `docs/MODEL.md` (§ "Parameter provenance" - the reference-patient
+paragraph rewritten, the Mapleson lineage claim removed - and § "Known
+limitations", new paragraph), `src/anesthesia_sim/data/patients/reference_adult.json`,
+`docs/references/README.md` (no change needed; nothing was added to it),
+`docs/worker.md` and `.claude/rules/citing-sources.md` (no change; `PL-XJ5P`
+carries the gap they have). `PL-BD94` was filed for the naming hazard the
+venous-pool note above exposes. The provenance table's eleven rows are unchanged
+because no value or key changed, and `make doc-check` confirms it.
