@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: tests/reference/test_multi_agent.py, tests/reference/test_sevo_patient.py, docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-06
+pr: 407
 verify: uv run pytest tests/reference/test_multi_agent.py tests/reference/test_sevo_patient.py && grep -q 'relative_error <=' tests/reference/test_multi_agent.py && grep -q 'relative_error <=' tests/reference/test_sevo_patient.py
 ---
 

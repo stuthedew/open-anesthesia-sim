@@ -2299,14 +2299,26 @@ saying so is the stronger claim, not the weaker one.
 
 **What a wrong volume would be wrong for.** The argument is physiological
 applicability, exactly as it is for the four controls — not numerical error.
-The exact propagator solves the governing equations for any positive volumes
-whatever, so a 5 mL alveolar compartment or a 10 000 L circuit yields an
-arithmetically correct answer to a question physiology does not ask: a 5 mL
-alveolus is not a lung, and this model's lumped structure, its fixed tissue
-volumes and its constant partition coefficients are claimed to represent a
-patient only near the values shipped. This section stated the opposite
-justification until v0.4.x — that a small alveolar volume inflated the
-operator split's error — and that argument retired with the split.
+Measured 2026-09-06 on sevoflurane at the shipped 0.1 s step: a 0.005 L
+alveolar compartment and a 10 000 L circuit both advance without incident and
+with agent accounting passing, so each yields an arithmetically correct answer
+to a question physiology does not ask. A 5 mL alveolus is not a lung, and this
+model's lumped structure, its fixed tissue volumes and its constant partition
+coefficients are claimed to represent a patient only near the values shipped.
+This section stated the opposite justification until v0.4.x — that a small
+alveolar volume inflated the operator split's error — and that argument
+retired with the split.
+
+**The numerics do eventually object, and that is a backstop rather than a
+bound.** The same measurement, continued downward: an alveolar volume of
+$`10^{-9}`$ L and below halts the run through `AgentSimulationValidationError`,
+the mass-balance guard rather than any declared domain, which is the required
+"obvious failure rather than a plausible-looking number" arriving by accident
+of arithmetic. It is not a limit this document declares and it must not be read
+as one — it sits six orders of magnitude below any volume a caller would pass
+by mistake, it says nothing about the physiological question above, and far
+enough down it stops firing at all. Circuit volume has no such point: it was
+advanced up to $`10^{300}`$ L with accounting passing throughout.
 
 **What is left open, stated plainly.** A caller writing Python against
 `core/` can still construct `BreathingCircuit(circuit_volume_l=10_000.0)` or
