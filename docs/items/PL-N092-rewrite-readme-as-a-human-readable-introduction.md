@@ -225,3 +225,17 @@ file that is gone. They are floors on the status section, not an outline of it:
   document justifies the readout at all, it takes the number from `docs/MODEL.md`
   rather than from the old text in git history, which was wrong for most of its
   life and is a `science`-class error rather than a wording one.
+
+**One addition from the session that reached the same fix independently
+(2026-09-06).** Two sessions unblocked this item and repaired its `verify:`
+command within the hour, byte for byte - `test -f README.md` ahead of the
+`grep`, on the same diagnosis that `PL-WB5K`'s deletion had made `! grep`
+succeed on a missing file. Neither saw the other; the duplicate surfaced at the
+merge.
+
+That the rot was invisible until the item left `blocked` is the general finding,
+and it is `PL-RC0M`: `already_passing` replays only `ready` and
+`needs-decision`, so a blocked item's command can stop discriminating and
+nothing runs it until whichever pull request unblocks it goes red. Recorded
+here because this item is its worked instance, and a session picking this up
+should know the command was rewritten under it rather than written for it.
