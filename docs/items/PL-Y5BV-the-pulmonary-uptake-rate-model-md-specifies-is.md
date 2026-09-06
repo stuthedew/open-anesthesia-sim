@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, test
 feature: model-spec-accuracy
+milestone: v0.4.4
 touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-08-30
 closed: 2026-09-06

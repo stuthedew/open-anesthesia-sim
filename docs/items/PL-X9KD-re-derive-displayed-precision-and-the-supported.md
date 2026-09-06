@@ -4,12 +4,13 @@ title: Re-derive Displayed precision and the supported step bound, and retire th
 priority: P1
 effort: M
 status: done
-closed: 2026-09-06
-pr: 378
 classes: science, safety
 feature: numerical-domain
+milestone: v0.4.4
 touches: docs/MODEL.md, tests/reference, src/anesthesia_sim/core
 added: 2026-09-03
+closed: 2026-09-06
+pr: 378
 verify: uv run pytest tests/reference/test_coupled_dynamics.py && grep -q 'matrix exponential' docs/MODEL.md
 ---
 

@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: refactor
+milestone: v0.4.4
 touches: src/anesthesia_sim/core/alveolar.py, tests/unit/test_alveolar.py
 added: 2026-09-02
 closed: 2026-09-06

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor, docs
 feature: core-domain-language
+milestone: v0.4.4
 touches: src/anesthesia_sim/core/circuit.py, docs/MODEL.md
 added: 2026-09-03
 closed: 2026-09-06

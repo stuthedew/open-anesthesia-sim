@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: ci-cost
+milestone: v0.4.4
 touches: CLAUDE.md
 added: 2026-09-05
 closed: 2026-09-06
