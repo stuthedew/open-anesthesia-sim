@@ -1,7 +1,12 @@
 ---
 id: PL-X35V
 title: The playback-rate control does not state the control resolution its rung costs, so the PL-NBWP disclosure reaches only a reader who has docs/MODEL.md open
-status: untriaged
+priority: P1
+effort: M
+status: needs-decision
+classes: safety, ux
+feature: presentation-safety
+touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py
 added: 2026-09-06
 ---
 
@@ -29,6 +34,16 @@ stays where it is, on the measured ground that frames are two grid steps apart
 at every rate, so a finer grid would resolve control timing the display cannot
 show. This item is about what the reader is told, and it should not reopen
 that.
+
+**Decision needed.** Where the interface states the control-resolution cost
+of a rate, and what that does to `format_playback_rate`'s single-source
+property. The three candidates below are not equivalent in cost or in
+intrusiveness, and the second half of the question cannot be dodged: the
+cheapest candidate changes a function that deliberately serves both the
+control that sets the rate and the mode line that reports it, so either both
+gain the disclosure - a judgment, not a side effect - or that function forks
+and gives up the property its docstring argues for. Answering this is the
+work; the drawing is not.
 
 **Approach, to be confirmed rather than assumed.** Candidates, cheapest first:
 state the grid in the rate's own label, so 300x reads as its resolution as well
