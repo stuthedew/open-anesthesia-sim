@@ -91,8 +91,19 @@ def test_concentration_decimals_are_a_choice_within_a_recorded_band() -> None:
     assert minimum_supported_decimals <= CONCENTRATION_DISPLAY_DECIMALS
     assert CONCENTRATION_DISPLAY_DECIMALS <= maximum_supported_decimals
 
-    # The band is stated in decimals, and nothing in `core/` is computed from
-    # it. `PL-X9KD` cut that dependency; this is what keeps it cut.
+    # `PL-X9KD` cut the dependency that ran from this count back into `core/`.
+    # This keeps the *named* route cut, and is honest about being only that: a
+    # textual check, because `tools/import_boundary_check.py` already forbids
+    # `core/` importing from `app/`, so the identifier can only reach `core/`
+    # through a comment.
+    #
+    # It would not have caught the defect it commemorates. What
+    # `core/supported_ranges.py` actually said was that the ranges rested on
+    # "every claim docs/MODEL.md makes about the last displayed digit" - the
+    # reasoning without the name. No check catches that phrasing without
+    # guessing at the judgment, which is the half `CLAUDE.md` says not to
+    # script; docs/MODEL.md § "Displayed precision" carries it in prose and a
+    # reviewer is the guard.
     core_modules = (Path(__file__).resolve().parents[2] / "src" / "anesthesia_sim" / "core").rglob(
         "*.py"
     )
