@@ -65,3 +65,23 @@ the merge commit itself rather than carrying a placeholder to fill in.
 
 **Found while cutting v0.4.3 (`PL-Y0W6`), 2026-09-06.** The release is merged
 as `bfd59c4` and was still untagged when this was written.
+
+**Confirmed the same day, and the confirmation removes the one alternative
+reading.** v0.4.3 is now tagged on the remote, so the obvious objection is that
+the push landed late and the two `ls-remote` checks were simply early. It did
+not. The tag objects differ:
+
+| | object | tagger |
+| --- | --- | --- |
+| pushed by this session | `7675d1d` | never landed |
+| on the remote | `fba19c2` | Stuart Feichtinger, 2026-09-06 |
+
+Both point at the same commit, `bfd59c4`, which is why the outcome is right;
+but the object that exists is the project owner's, created after this session
+reported the failure, and the one this session built is still only local. An
+annotated tag records its tagger and timestamp, so two people tagging the same
+commit produce different objects - which is what makes this checkable at all
+rather than a matter of timing.
+
+So the finding is not "the push is slow" or "the check was early". A session's
+tag push is dropped, and the tag that appears afterwards is somebody else's.
