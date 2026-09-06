@@ -70,6 +70,8 @@ ALLOWED = (
     "git fetch origin",
     "git fetch origin main",
     "git fetch --tags",
+    # The tags half of the rewrite recovery `docket branch` prints (PL-YGF3).
+    "git fetch --tags --force origin",
     # A branch name is not a flag, however much of one it contains.
     "git fetch origin my-prefix-branch",
     "git fetch origin claude/pl-jk0m-prune-guard",

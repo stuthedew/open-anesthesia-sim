@@ -1,14 +1,15 @@
 ---
 id: PL-69K6
-status: done
-added: 2026-09-06
-closed: 2026-09-06
 title: docs/references/README.md documents two PDFs the copyright purge removed, and doc_check does not verify that a documented reference file exists
 priority: P2
 effort: S
+status: done
 classes: docs, defect
 feature: provenance
 touches: docs/references, tools/doc_check.py
+added: 2026-09-06
+closed: 2026-09-06
+pr: 389
 verify: python3 tools/doc_check.py check && grep -q 'def _check_reference_files_exist' tools/doc_check.py
 ---
 

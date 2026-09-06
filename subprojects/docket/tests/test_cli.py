@@ -1578,6 +1578,86 @@ def test_branch_state_is_spelled_in_a_way_real_git_answers(
     assert "last fetch" not in out
 
 
+def _rewritten_repo(tmp_path: Path) -> Path:
+    """A branch left on a history the default branch has since been rebuilt from.
+
+    The shape of `PL-YGF3`'s incident, built with plumbing every git ships:
+    the same two subjects at the same author dates, committed twice over
+    different content, which is what a purge of a file out of history leaves.
+    Rebuilding every commit shares no root with the original, so there is no
+    merge base at all - measured against a real `filter-branch` rewrite on
+    2026-09-06, and the reason the fork-point guard could not be left in front
+    of this.
+    """
+    root = tmp_path / "rewritten"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    history = (
+        ("PL-0001 First", "2026-08-01T12:00:00+00:00"),
+        ("PL-0002 Second", "2026-08-02T12:00:00+00:00"),
+    )
+
+    def git(*args: str, when: str = "2026-08-05T12:00:00+00:00") -> None:
+        env = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=env)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    for index, (subject, when) in enumerate(history):
+        (root / f"f{index}.txt").write_text("before the rewrite\n")
+        git("add", "-A")
+        git("commit", "-qm", subject, when=when)
+
+    git("checkout", "-qb", "claude/pl-k7qx-live")
+    (root / "items" / "PL-9Y42-captured.md").write_text(READY.replace("PL-B1B1", "PL-9Y42"))
+    git("add", "-A")
+    git("commit", "-qm", "PL-9Y42 Capture what only this branch holds", when=history[-1][1])
+
+    git("checkout", "-q", "main")
+    git("checkout", "-q", "--orphan", "rewritten")
+    for index, (subject, when) in enumerate(history):
+        (root / f"f{index}.txt").write_text("after the rewrite\n")
+        git("add", "-A")
+        git("commit", "-qm", subject, when=when)
+    git("branch", "-qM", "main")
+    (root / "items" / "PL-0003-after.md").write_text(READY.replace("PL-B1B1", "PL-0003"))
+    git("add", "-A")
+    git("commit", "-qm", "PL-0003 Landed after the rewrite")
+    git("checkout", "-q", "claude/pl-k7qx-live")
+    return root
+
+
+def test_a_rewritten_base_is_spelled_in_a_way_real_git_answers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The plumbing half of the rewrite rule: `git log --left-right` over the divergence.
+
+    What the digest said before this existed was "3 behind and 3 ahead" with
+    `git merge main` under it - which replays the base's own history against
+    itself - or nothing at all, because a rewrite usually leaves no merge base
+    and the fork-point guard declined. Either way the branch's one unique
+    commit went unnamed, and `PL-YGF3` is what that cost.
+    """
+    root = _rewritten_repo(tmp_path)
+
+    assert main(["--items", str(root / "items"), "branch", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "Branch: claude/pl-k7qx-live is 3 behind main and 3 ahead." in out
+    assert "rewritten history, not divergence: 2 of this branch's 3 commits" in out
+    assert "PL-9Y42 Capture what only this branch holds" in out
+    assert "git checkout -B claude/pl-k7qx-live-rewritten main" in out
+    # Both of the answers that lose the commit above, and the decline that
+    # printed neither, are gone.
+    assert "git merge main" not in out
+    assert "--deepen" not in out
+
+
 def test_branch_state_says_nothing_to_the_digest_with_nothing_to_compare(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
