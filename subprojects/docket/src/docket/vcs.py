@@ -1947,12 +1947,12 @@ def _merges_naming(
     subject scan, not less, and it costs a read only for the ids the cheap pass
     missed.
 
-    That fallback has a defect of its own, recorded as `PL-S5LB` rather than
-    fixed here: it walks `git log -- <path>` without rename detection, so for an
-    item whose file was renamed after it closed, the oldest commit the walk can
-    see is the rename, whose parent does not hold the path at all. This change
-    does not introduce it and reduces the wrong answers overall, but it does
-    route more ids into it.
+    That fallback had a defect of its own when this was written, and routing
+    more ids into it is what made the defect worth fixing: it walked `git log --
+    <path>` without rename detection, so for an item whose file was renamed
+    after it closed, the oldest commit the walk could see was the rename, whose
+    parent does not hold that path at all. `_walk_following_renames` is the
+    repair (`PL-S5LB`).
     """
     if not identifiers:
         return ()
@@ -1993,6 +1993,13 @@ def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runne
     Answering with one of those would record a false provenance, which is worse
     than the missing one this exists to supply.
 
+    The walk follows renames and reads each commit at the name the file carried
+    there, per `_walk_following_renames`. Without that, a rename *is* the shape
+    this test looks for - the new name is done in the renaming commit's tree and
+    absent from its parent's - so an item whose title was edited after it closed
+    was attributed to whichever pull request happened to rename it, and one
+    whose renaming commit named no number was declined instead (`PL-S5LB`).
+
     A commit whose parent this checkout does not hold reads as "not done
     there", because `_run_git` answers a failed `show` with empty output. That
     is the safe direction on a truncated clone: it can only make the walk
@@ -2001,16 +2008,78 @@ def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runne
     the history was not whole.
     """
     path = f"{items_dir}/{name}"
-    for line in run(["log", "--format=%H%x1f%s", base, "--", path], root).splitlines():
-        revision, _, subject = line.partition("\x1f")
+    for revision, subject, here, there in _walk_following_renames(path, base, root, run):
         match = PR_SUBJECT_RE.search(subject.strip())
         if match is None:
             continue
-        if _done_at(revision, path, name, root, run) and not _done_at(
-            f"{revision}^", path, name, root, run
+        if _done_at(revision, here, _basename(here), root, run) and not _done_at(
+            f"{revision}^", there, _basename(there), root, run
         ):
             return int(match.group(1) or match.group(2))
     return None
+
+
+def _basename(path: str) -> str:
+    """The file name in a path the walk carries, for `parse_item` to record."""
+    return path.rsplit("/", 1)[-1]
+
+
+def _walk_following_renames(
+    path: str, base: str, root: Path, run: Runner
+) -> tuple[tuple[str, str, str, str], ...]:
+    """Every commit on `base` that touched one item's file, newest first.
+
+    Four fields each: the revision, its subject, the name the file carried in
+    that commit's tree, and the name it carried in its parent's. Those last two
+    differ exactly where the commit renamed the file - which is an ordinary
+    event rather than a rare one, because `docket` names a file from a slug of
+    its title, so editing a title renames it and `bin/docket release` renames
+    every item whose title has drifted since the last release.
+
+    **Rename detection is half the fix, and on its own it is the half that does
+    nothing.** `--follow` reaches past the rename, but each commit it returns
+    still has to be *read* at the name the file had there. Asking `git show
+    <rev>:<the name it has today>` of a commit older than the rename fails,
+    `_run_git` answers a failed `show` with empty output, and the closure behind
+    the rename therefore reads as "not done" - leaving the renaming commit still
+    looking like the one that closed the item. Measured against this repository
+    on 2026-09-06: `--follow` alone still answered `PL-3D2M` with `319`, the
+    pull request that renamed the file in passing, against a true `313`.
+
+    So the names come from `--name-status`, whose rename entry carries both of
+    them. `-z` is what makes that parseable - every field NUL-terminated, which
+    leaves the `--format` output's own newline at the front of the status token
+    following it, and keeps a path containing a tab or a newline in one piece.
+
+    A commit listed without a name-status entry - a merge, which git shows with
+    no diff - keeps the name carried back from the newer side of the walk, which
+    is what the file was called there.
+    """
+    fields = run(
+        ["log", "--format=%H%x1f%s", "-z", "--name-status", "-M", "--follow", base, "--", path],
+        root,
+    ).split("\0")
+    commits: list[tuple[str, str, str, str]] = []
+    revision = subject = ""
+    entry: list[str] = []
+    carried = path
+    for token in (*fields, "\x1f"):
+        if token.startswith("\n"):
+            entry = [token.lstrip("\n")]
+        elif "\x1f" in token:
+            if revision:
+                here = there = carried
+                if len(entry) > 2 and entry[0].startswith("R"):
+                    there, here = entry[1], entry[2]
+                elif len(entry) > 1:
+                    here = there = entry[1]
+                commits.append((revision, subject, here, there))
+                carried = there
+            revision, _, subject = token.partition("\x1f")
+            entry = []
+        elif token:
+            entry.append(token)
+    return tuple(commits)
 
 
 def _done_at(revision: str, path: str, name: str, root: Path, run: Runner) -> bool:

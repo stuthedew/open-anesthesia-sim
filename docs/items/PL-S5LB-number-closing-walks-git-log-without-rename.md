@@ -1,7 +1,7 @@
 ---
 id: PL-S5LB
 title: _number_closing walks git log without rename detection, so an item whose file was renamed after it closed recovers the renaming commit's pull request instead of its own
-status: ready
+status: done
 priority: P2
 effort: S
 classes: defect, infra
@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_renamed_item_file_recovers_its_own_pull_request' subprojects/docket/tests/test_vcs.py
 added: 2026-09-04
+closed: 2026-09-06
 ---
 
 **Problem.** `_number_closing` (`subprojects/docket/src/docket/vcs.py:1053`)

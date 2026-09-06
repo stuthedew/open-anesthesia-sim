@@ -1564,6 +1564,26 @@ CLOSED = "---\nid: {id}\ntitle: T\nstatus: done\n---\n"
 OPEN_ITEM = "---\nid: {id}\ntitle: T\nstatus: ready\n---\n"
 
 
+def _z_name_status(entries: tuple[tuple[str, str, list[str]], ...]) -> str:
+    """What git writes for `log --format=%H%x1f%s -z --name-status`.
+
+    `entries` is newest first, as (revision, subject, name-status fields). The
+    `-z` stream NUL-terminates every field, which leaves the format output's own
+    newline at the front of the status token that follows it - so a reader
+    splitting on NUL meets the subject, then `\nM` or `\nR100`, then the path or
+    the pair of them. Checked against this repository's own history rather than
+    remembered, because the walk under test is parsing it.
+    """
+    if not entries:
+        return ""
+    fields = [
+        field
+        for revision, subject, entry in entries
+        for field in (f"{revision}\x1f{subject}", "\n" + "\0".join(entry))
+    ]
+    return "\0".join(fields) + "\0"
+
+
 def _closure_runner(
     on_base: dict[str, str],
     subjects: tuple[str, ...] = (),
@@ -1626,8 +1646,14 @@ def _closure_runner(
             identifier = name.split("-")[0]
             return text if index <= closed_from else OPEN_ITEM.format(id=identifier)
         if args[0] == "log":
-            history = file_history if "--" in args else subjects
-            return "\n".join(f"c{index}\x1f{subject}" for index, subject in enumerate(history))
+            if "--" not in args:
+                return "\n".join(f"c{index}\x1f{subject}" for index, subject in enumerate(subjects))
+            return _z_name_status(
+                tuple(
+                    (f"c{index}", subject, ["M", args[-1]])
+                    for index, subject in enumerate(file_history)
+                )
+            )
         return ""
 
     return run
@@ -1658,7 +1684,9 @@ def _recovery_runner(history: tuple[tuple[str, str], ...], done_at: set[str], na
             )
         if args[0] == "log":
             if "--" in args:
-                return "\n".join(f"{revision}\x1f{subject}" for revision, subject in history)
+                return _z_name_status(
+                    tuple((revision, subject, ["M", args[-1]]) for revision, subject in history)
+                )
             # The base's own subjects, naming no id - the case this recovers.
             return "Design the thing and fix the checks (#220)"
         return ""
@@ -3081,13 +3109,13 @@ def _rename_runner(commits: tuple[tuple[str, str, str, str], ...], items_dir: st
     parent is simply the next entry and holds the file under whatever name that
     entry names.
 
-    The `log` answers are the two git really gives, so a test can fail for the
-    reason the defect fails for. Asked without rename detection, the walk sees
-    the path only as far back as the commit that introduced *that name*; asked
-    with it, the walk reaches the whole history and each entry carries the name
-    the file had there. The base's own subjects lead with no id, so the subject
-    scan in `_merges_naming` cannot answer and the file's history is what is
-    left - which is the path under test.
+    The `log` answer is the one git really gives for the walk's own arguments,
+    so a test fails here for the reason the defect failed for: the history
+    reaches past the rename, and each entry carries the name the file had at
+    that commit, which is the half `--follow` does not supply. The base's own
+    subjects lead with no id, so the subject scan in `_merges_naming` cannot
+    answer and the file's history is what is left - which is the path under
+    test.
     """
     paths = [f"{items_dir}/{path}" for _, _, path, _ in commits]
 
@@ -3122,21 +3150,12 @@ def _rename_runner(commits: tuple[tuple[str, str, str, str], ...], items_dir: st
         if "--" not in args:
             # The base's own subjects, naming no id - so only the file answers.
             return "".join(f"c{at}\x1f{commit[1]}\n" for at, commit in enumerate(commits))
-        if "--follow" in args:
-            reach = range(len(commits))
-        else:
-            stop = next((at for at, path in enumerate(paths) if path != args[-1]), len(paths))
-            reach = range(stop)
-        if "--name-status" not in args:
-            return "".join(f"{commits[at][0]}\x1f{commits[at][1]}\n" for at in reach)
-        # `-z`: every field NUL-terminated, the format's own newline landing at
-        # the front of the status that follows it.
-        fields = [
-            field
-            for at in reach
-            for field in (f"{commits[at][0]}\x1f{commits[at][1]}", "\n" + "\0".join(entry(at)))
-        ]
-        return "\0".join(fields) + "\0"
+        return _z_name_status(
+            tuple(
+                (revision, subject, entry(at))
+                for at, (revision, subject, _, _) in enumerate(commits)
+            )
+        )
 
     return run
 
@@ -3177,3 +3196,29 @@ def test_a_rename_carrying_no_number_does_not_silence_the_closure_behind_it() ->
     numbers = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-the-new-title.md"}, runner=run).numbers
 
     assert numbers == {"PL-K7QX": 204}
+
+
+RENAMED_THEN_STAMPED = (
+    ("d0", "Release v0.4.0 (#320)", "PL-K7QX-the-new-title.md", CLOSED.format(id="PL-K7QX")),
+    ("d1", "Chart the other thing (#319)", "PL-K7QX-the-new-title.md", CLOSED.format(id="PL-K7QX")),
+    ("d2", "Design the thing (#313)", "PL-K7QX-the-old-title.md", CLOSED.format(id="PL-K7QX")),
+    ("d3", "Capture it (#100)", "PL-K7QX-the-old-title.md", OPEN_ITEM.format(id="PL-K7QX")),
+)
+
+
+def test_a_renamed_item_file_recovers_its_own_pull_request() -> None:
+    """The shape observed on this repository, where two commits sit on the rename.
+
+    `PL-3D2M` closed in `#313`, was renamed in passing by `#319` - a pull
+    request for another item entirely, which stamped a title whose slug had
+    drifted - and was then modified again by the `v0.3.9` release commit. So the
+    walk has to pass a commit that changes the file without renaming it, and a
+    commit that renames it, before reaching the closure. Both are rejected for
+    their own reason: the release finds the item already done in its parent, and
+    the rename does too once the parent is read at the name it had there.
+    """
+    run = _rename_runner(RENAMED_THEN_STAMPED)
+
+    numbers = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-the-new-title.md"}, runner=run).numbers
+
+    assert numbers == {"PL-K7QX": 313}
