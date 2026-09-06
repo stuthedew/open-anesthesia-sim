@@ -82,8 +82,8 @@ def test_rejects_the_smallest_value_above_the_maximum(control: Control) -> None:
     """The refusal starts at the first float outside the interval.
 
     A guard written with `>=` instead of `>` would pass every other test in
-    this module while making the envelope corner — the operating point three
-    reference gates measure the splitting bound at — unreachable.
+    this module while making the envelope corner — the operating point the
+    exact-step reference gate measures at — unreachable.
     """
 
     with pytest.raises(SimulationConfigurationError):
