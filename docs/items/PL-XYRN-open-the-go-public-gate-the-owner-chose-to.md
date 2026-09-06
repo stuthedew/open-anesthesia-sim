@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, ux
 feature: public-readiness
+milestone: v0.4.3
 touches: docs/items, ROADMAP.md
 added: 2026-09-05
 closed: 2026-09-06

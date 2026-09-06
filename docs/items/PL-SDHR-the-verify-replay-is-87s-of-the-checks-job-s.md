@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: perf, infra
 feature: ci-cost
+milestone: v0.4.3
 touches: .github/workflows/quality.yml, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py
 added: 2026-09-05
 closed: 2026-09-06

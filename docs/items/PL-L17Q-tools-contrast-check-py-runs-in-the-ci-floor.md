@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.3
 touches: .github/workflows/quality.yml, Makefile, tools/contrast_check.py
 added: 2026-09-04
 closed: 2026-09-05
