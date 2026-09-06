@@ -3,7 +3,8 @@ id: PL-X9KD
 title: Re-derive Displayed precision and the supported step bound, and retire the splitting-error constants, after the exact step lands
 priority: P1
 effort: M
-status: ready
+status: done
+closed: 2026-09-06
 classes: science, safety
 feature: numerical-domain
 touches: docs/MODEL.md, tests/reference, src/anesthesia_sim/core
@@ -169,3 +170,41 @@ replacement figures either.
 in the same test file divides by the step to report a first-order coefficient.
 `PL-GS5X` added `_worst_error_over_phases` beside it for the exact-step gates
 and left the original for the tests this item retires; both go together.
+
+**Done 2026-09-06.** All three deliverables re-derived from measurement, plus
+the four `app/` sites.
+
+1. **Displayed precision.** The ceiling is now model fidelity: one published SD
+   of a partition coefficient displaces a displayed compartment by 8.7e-4 to
+   6.8e-2 percentage points, against a solver residual of about 1.6e-12 pp. Two
+   decimals puts the last digit between a seventh of one SD and seven times it;
+   three would put it at a seventieth to seven tenths. The floor is legibility
+   and is recorded as the owner's teaching judgment.
+2. **`MAXIMUM_SIMULATION_STEP_S`.** No numerical ceiling exists - swept 1e-3 s
+   to 1e300 s, error between 1e-14 and 2e-12 in fraction and U-shaped in the
+   step, propagator entrywise nonnegative at all 4374 combinations tested,
+   nothing raised below 1e18 s. Control-timing displacement is exactly linear
+   in the step with no threshold, so the constant is recorded as a *declared
+   tolerance* rather than a derived limit, stated in percentage points and
+   seconds. Value unchanged; `PL-NBCJ` carries whether it should move to 0.05 s.
+3. **The splitting-error constants.** `SPLITTING_ERROR_BOUND_PER_STEP_SECOND`,
+   `EXACT_SOLUTION_FLOOR` and `_worst_coefficient_over_phases` retired with the
+   reason recorded in place; `MAX_INVERTED_GAP_IN_DISPLAY_COUNTS` now follows
+   from the absolute bound (1.0e-7 counts, against a fitted 3.0). Coverage was
+   checked before anything was dropped: two retiring tests were reproduced
+   exactly by `PL-GS5X`'s gate, and two were not, so the step gate gained the
+   setting-change trajectories and `HELD_RUN_ROUNDING_BOUND` replaced the only
+   test driving the shipped solver past 900 s.
+   `PINNED_REFERENCE_STATES` untouched.
+
+`core/supported_ranges.py`'s three maxima and three zero floors were also
+justified by the splitting coefficient and are re-grounded on physiological
+applicability. The dependency no longer runs backwards: nothing in `core/`
+reads the displayed decimal count, and
+`test_concentration_decimals_are_a_choice_within_a_recorded_band` fails if that
+changes.
+
+**Absorbed `PL-88GQ` and `PL-7PLY`**, per this item's instruction to do them
+together. Three findings filed: `PL-NBWP` (playback multiplier voids the
+control-resolution claim), `PL-NBCJ` (whether the step should move to 0.05 s),
+`PL-B1WW` (the gate measures the oracle's error, not the shipped step's).

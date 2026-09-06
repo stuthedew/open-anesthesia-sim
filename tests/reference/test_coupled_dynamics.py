@@ -604,15 +604,22 @@ EXACT_STEP_ORACLE_TOLERANCE = 5e-12
 #     isoflurane      2.6749e-15 circuit  1.3420e-14 circuit  5.1919e-14 muscle
 #     desflurane      7.2511e-16 circuit  2.9490e-15 circuit  4.8562e-14 muscle
 #
-# The worst is 5.1919e-14 and this bound allows 19 times it. The margin is set
-# from what the shipped step's own rounding path can be moved by, rather than
-# from that figure plus a guess: solving the identical 3600 s interval at
+# The worst is 5.1919e-14 and this bound allows 19.3 times it. The margin is
+# set from what the shipped step's own rounding path can be moved by, rather
+# than from that figure plus a guess: solving the identical 3600 s interval at
 # 0.05 s and at 0.025 s instead of 0.1 s — the same exact propagator over the
 # same interval, differently subdivided, so every difference is the shipped
-# side's own accumulation — moves the answer by up to 2.0390e-13. This bound
-# clears that by 4.9 times, which is the room a different libm or a contracted
-# multiply-add needs. It does not clear a method error: the coarsest supported
-# step under any method with an order is orders above it.
+# side's own accumulation — moves the answer by up to 3.1675e-13, taking the
+# maximum over every pair of those three steps, all six fractions and all three
+# agents (desflurane worst; sevoflurane 1.3725e-13, isoflurane 2.2699e-13).
+# This bound clears that by 3.2 times, which is the room a different libm or a
+# contracted multiply-add needs. It does not clear a method error: the coarsest
+# supported step under any method with an order is orders above it.
+#
+# The subdivision spread is the larger of the two figures, and deliberately the
+# one the margin is taken over: a platform that rounds differently moves the
+# shipped solution by about as much as re-subdividing the interval does, and
+# nothing about the pinned oracle constrains that.
 #
 # Note what the growth signature is, because it is what the gate detects. The
 # residual grows with run length at a fixed step (nine- to sixty-sevenfold from

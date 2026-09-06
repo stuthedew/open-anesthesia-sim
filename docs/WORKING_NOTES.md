@@ -974,3 +974,28 @@ the figure should be re-measured against the shipped propagator before
 `PL-T691` leans on it. numpy would win nothing there either. Kept rather
 than rewritten: the question is what recurs, and the note records that it was
 asked and answered before.
+
+## Control resolution is not what the interface promises at speed (2026-09-06)
+
+`PL-X9KD` re-derived `MAXIMUM_SIMULATION_STEP_S` as a *declared control-resolution
+tolerance*: a control change lands at the next step boundary, so it is displaced by
+up to one step, and the displacement is exactly proportional to the step with no
+threshold anywhere in it. Measured at 0.1 s, in percentage points of one atmosphere,
+desflurane binding: 6.7e-3 pp for a case-opening dial change, 1.4e-1 pp for a
+ventilator start. The criterion is the model's own parameter uncertainty - one SD of
+a measured partition coefficient is worth 9e-4 to 6.8e-2 pp.
+
+Two open threads came out of that and they are coupled, which is why they are here
+rather than only in their own items.
+
+`PL-NBWP`: the derivation above holds at 1x playback and nowhere else. `steps_per_tick`
+is the multiplier and `simulation_view.py`'s burst is a synchronous loop with no
+`await`, so control resolution is `SIMULATION_TICK_INTERVAL_S x multiplier` - 30
+simulated seconds at 300x. `app/playback.py` says a faster playback is "a scheduling
+change and never a modelling one", which is true of a run nobody touches and false of
+one where a slider moves.
+
+`PL-NBCJ`: whether the step should move to 0.05 s so an abrupt manoeuvre stays inside
+one parameter SD. Halving the step at a fixed wakeup doubles the steps per tick at
+every rate, so it makes `PL-NBWP` worse. Decide `PL-NBWP` first; if the burst changes,
+revisit both together.
