@@ -46,17 +46,44 @@ publicly fetchable does not close by deleting them in a later commit. The
 repository has been public for under a day, which is the reason to decide now
 rather than at the next release.
 
+**Filed with GitHub Support, ticket 4733783** (2026-09-06), after the
+`git filter-repo` pass and force-push landed on 2026-09-06. The ticket asks
+GitHub to dereference or remove the roughly 388 `refs/pull/*/head` refs still
+pinning the pre-rewrite commits, run a server-side garbage collection, and
+purge cached commit and blob views. Those refs are read-only to the repository
+owner, so nothing local can clear them; the repository has zero forks, and
+every branch and tag was verified clean from a fresh clone before the ticket
+was raised. Framed as a redistribution problem rather than a leaked credential,
+because GitHub's documented sensitive-data assistance is scoped to risk that
+cannot be mitigated by rotating a secret, and there is no secret here.
+
+Two consequences of the rewrite are recorded rather than fixed. It stripped
+every commit signature - 375 signed commits before, none after - which no tool
+could have avoided for the commits at and after the removal point, since a
+signature covers parent hashes the rewrite changes. And it force-updated every
+branch ref to a snapshot taken before the push, dropping two commits pushed
+into that window on another session's branch; `PL-YGF3` carries that finding
+and the guard gap behind it.
+
 **Where.** `docs/references/README.md`, the two PDFs beside it, and whatever
 mechanism is chosen so the next visibility change cannot repeat this.
 
-**Decision needed.** Three things, and the first is the project owner's alone:
-whether to rewrite history now, or to accept the exposure and take the files
-out in an ordinary commit; whether the two citations stay in the README as
-text (they should — that is the part designed to survive removal); and whether
-anything deterministic should guard it, e.g. a `make check` rule that fails
-when a file under `docs/references/` has no recorded licence permitting
-redistribution. The third is the durable half, since the same trap is now armed
-for every future upload.
+**Decided, 2026-09-06 (project owner).** Rewrite history now rather than
+accept the exposure: run on the day the breach was found, with the citations
+kept in the README as text, which is the part designed to survive a removal.
+Both halves are done and verified.
+
+**Still open, and the durable half.** Nothing deterministic guards this. Two
+cited files left the tree and `make check` reported zero errors, because
+`tools/doc_check.py` validates the paths `docs/MODEL.md` cites and does not
+read `docs/references/`. The candidate is a check that fails when a file under
+`docs/references/` has no recorded licence permitting redistribution, and that
+fails when an entry in that README names a file the directory does not hold.
+Both halves are decidable by reading the tree, which is where `CLAUDE.md` says
+the work belongs. The same trap is armed for every future upload, and the
+visibility change that sprang it is not repeatable - so the guard has to key on
+the file and its licence, not on a visibility transition nobody will make
+twice.
 
 **Done when.** No file in `docs/references/` is redistributed without a licence
 that permits it, `docs/references/README.md` describes the repository's actual
