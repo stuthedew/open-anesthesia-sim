@@ -1,4 +1,4 @@
-.PHONY: sync check fix test run prebuild docket doc-check release
+.PHONY: sync check fix test run prebuild docket doc-check pr-title release
 
 sync:
 	uv sync --locked --dev
@@ -67,10 +67,14 @@ check: sync
 # `verify:` command, which was half this target's wall clock and is the wrong
 # question to ask here - it finds work that *merged* without its item being
 # closed, and a pre-commit gate on a feature branch cannot have changed that.
-# `.github/workflows/quality.yml` passes it, on the same two events it ran on
-# before, so nothing stopped being checked (`PL-P3B6`). What is left on this
-# line is the store validation, measured at 0.28 s. Measured 2026-09-05,
-# four cores: this target 60.0 s with the replay against 29.5 s without.
+# `.github/workflows/quality.yml` passes it on both the events it ran on
+# before (`PL-P3B6`), and since `PL-SDHR` it narrows the pull-request one with
+# `--verify-base` to the items that branch changed - the same argument as this
+# comment's, applied to the event that inherited the bill. The whole-store
+# sweep runs on every push to `main`, where its answer is a fact about `main`.
+# What is left on this line is the store validation, measured at 0.28 s.
+# Measured 2026-09-05, four cores: this target 60.0 s with the replay against
+# 29.5 s without.
 	bin/docket check
 # Bare `python3` for the reason the next line uses it, and placed with the
 # provenance checks rather than earlier because that is what it is: `docket
@@ -78,6 +82,16 @@ check: sync
 # is visible to the guards that read the store. It answers from `git log`
 # alone, so it costs milliseconds wherever it lands. `PL-CP74`.
 	python3 tools/branch_id_check.py
+# Beside the guard above, and the same category one level out: that one asks
+# whether this branch's work is visible in the store, this asks whether it is
+# visible in the subject a squash merge will land on `main`. It was the only
+# gate a session could not run before pushing, because CI reads the title from
+# `PR_TITLE` and nothing sets that locally, so every failure was found by CI
+# and cost a cycle. `--discover` reads the title from this branch's own open
+# pull request instead, and skips silently on every way that can fail - no
+# token, no network, no pull request open yet - so this target stays green
+# offline. `make pr-title` runs it alone. `PL-J3BB`.
+	python3 tools/pr_title_check.py --discover
 # Beside the guard above because it is the same category one level down: that
 # one asks whether this branch's work is visible, this asks whether a rule's
 # declared scope is the one it will actually get. Reads only the frontmatter of
@@ -90,22 +104,28 @@ check: sync
 # script when it writes the deliberate README.
 	python3 tools/readme_hold_check.py
 	python3 tools/doc_check.py check
-# Bare `python3` for the reason `doc_check.py` above uses it: standard library
-# only, so it runs in a checkout with no virtualenv. It reads the color
-# constants out of `app/` with `ast` rather than importing them, because
-# `app/simulation_view.py` imports Flet.
-	python3 tools/contrast_check.py
-# Under `uv run`, unlike the two lines above, and for a reason that is about
-# the *input* rather than the tool: this one reads every module under
-# `src/anesthesia_sim/` with `ast`, and that source targets 3.14. PEP 695
-# (3.12) type parameters in `app/chart_downsampling.py` are a `SyntaxError` to
-# the 3.11 parser these tools promise to run under, and `ast.parse`'s
-# `feature_version` only ever narrows the accepted syntax - it cannot teach an
-# older parser a newer language. So the parser has to be the one the source is
-# written for. `tools/ignore_check.py` above is the same category for a
-# different reason; the tool itself stays standard-library-only and parses at
-# the floor, which is what `tests/unit/test_tools_portability.py` holds it to.
-# `PL-Y0RZ`.
+# Under `uv run`, both of them, unlike the bare-`python3` lines above, and for
+# a reason about the *input* rather than about the tool. These two read `app/`
+# and every module under `src/anesthesia_sim/` with `ast`, and that source
+# targets 3.14. PEP 695 (3.12) type parameters in `app/chart_downsampling.py`
+# are a `SyntaxError` to the 3.11 parser these tools promise to run under, and
+# `ast.parse`'s `feature_version` only ever narrows the accepted syntax - it
+# cannot teach an older parser a newer language. So the parser has to be the
+# one the source is written for.
+#
+# `contrast_check.py` was bare until `PL-L17Q`, and passed only because
+# `app/theme.py` and `app/simulation_view.py` happened to carry no 3.12+ syntax
+# - one PEP 695 generic added to either turned the CI floor section red for a
+# reason having nothing to do with the change. It still reads those constants
+# with `ast` rather than importing them, because `app/simulation_view.py`
+# imports Flet.
+#
+# `tools/ignore_check.py` above is the same category for a different reason.
+# Both tools here stay standard-library-only and parse at the floor themselves,
+# which is what `tests/unit/test_tools_portability.py` holds them to; that
+# suite's docstring states the rule this pair is an instance of.
+# `PL-Y0RZ`, `PL-L17Q`.
+	uv run python tools/contrast_check.py
 	uv run python tools/import_boundary_check.py
 
 fix:
@@ -158,6 +178,12 @@ docket:
 
 doc-check:
 	python3 tools/doc_check.py check
+
+# The title half of `make check`, on its own, for the moment a session has just
+# closed a rider and wants to know what the pull request has to be renamed to
+# before it pushes. Prints nothing when there is no open pull request to read.
+pr-title:
+	python3 tools/pr_title_check.py --discover
 
 # The documented way to cut a release: everything about one that a command can
 # do, and nothing that it cannot. `bin/docket release` writes the new version

@@ -87,3 +87,18 @@ the check ships describing a job that does not exist.
 **Done when.** `make check` fails when the marked prose enumeration in
 `docs/ARCHITECTURE.md` disagrees with the run steps of `quality.yml`'s
 bare-interpreter section, and the two agree.
+
+**A third drift, in the other direction, the same day.** `PL-L17Q` *removed*
+`python3 tools/contrast_check.py` from that section - it parses `app/` source
+targeting 3.14 and cannot run under the 3.11 floor - so the section runs five
+commands, not the six the paragraph above counts: `doc_check.py check`,
+`branch_id_check.py`, `rules_paths_check.py`, `readme_hold_check.py` and
+`bin/docket check`. `docs/ARCHITECTURE.md` was corrected in that branch, by
+hand again, and `make check` stayed green again.
+
+So the enumeration has now drifted three times in one day - two additions and
+one removal - and been repaired three times by a session that happened to be
+reading it. The removal case is the one that argues hardest for the check: an
+addition at least leaves the prose *incomplete*, while a removal leaves it
+naming a command that is no longer run, which reads as authoritative and is
+false.

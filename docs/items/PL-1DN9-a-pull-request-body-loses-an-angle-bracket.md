@@ -3,7 +3,8 @@ id: PL-1DN9
 title: A pull request body loses an angle-bracket placeholder to HTML stripping, so a session ships a command that reads origin/ with no branch
 priority: P3
 effort: S
-status: ready
+status: done
+closed: 2026-09-05
 classes: docs, session-cost
 feature: dev-tooling
 touches: CLAUDE.md
@@ -54,3 +55,26 @@ clears itself on the next push and this one does not.
 
 The `verify:` command was run on the current tree before being written down and
 exits 1, as it must until the clause exists.
+
+**Closed 2026-09-05**, as a clause on the commit-and-push bullet rather than a
+bullet of its own, which is where the brief placed it: that bullet is where a
+session meets the pull-request convention, and the marginal cost is a sentence
+rather than an entry.
+
+**+337 resident characters, and the second of `doc_check`'s two answers is the
+one this takes.** There is no cheaper carrier. A check cannot see it - nothing
+repository-side runs when a pull request is created, which is the same reason
+`PL-1Q3S` landed as prose - and neither a path-scoped rule nor the `docket`
+skill fires at the moment in question, because writing a body is preceded by
+no read of any file and is not a queue workflow. A session violates this before
+it would think to look anything up, which is exactly the resident test.
+
+Stated as *read the body back*, not *avoid angle brackets*. The narrower rule
+fixes one instance of server-side rewriting and leaves every other kind
+invisible, and the brief is explicit that it does not close this.
+
+The `verify:` command was run on the tree and, on the first attempt, **failed
+after the work was written** - the phrase had wrapped across two lines and
+`grep -F` matches within one. The clause was rewrapped rather than the command
+loosened: a phrase a reader can find in one line is what the command is
+asserting.

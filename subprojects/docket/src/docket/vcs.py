@@ -1898,6 +1898,24 @@ def _changed_items(root: Path, base: str, items_dir: str, run: Runner) -> set[st
     return changed
 
 
+def changed_items(
+    root: Path, base: str, *, items_dir: str = "docs/items", runner: Runner | None = None
+) -> frozenset[str]:
+    """The item ids this checkout has changed against `base`.
+
+    The public form of `_changed_items`, which `records_on_base` has used
+    internally since it was written. `docket check --verify-base` reads it to
+    narrow the replay to the items a branch can actually have changed
+    (`PL-SDHR`), which is a different caller with the same question.
+
+    Its one-sidedness is the property both callers rely on and is documented on
+    the private function: where it cannot resolve a merge base it returns
+    nothing rather than guessing. For this caller that means a scoped run
+    checks nothing rather than checking the wrong thing, and says so.
+    """
+    return frozenset(_changed_items(root, base, items_dir, runner or _run_git))
+
+
 def records_on_base(
     root: Path,
     closed: Mapping[str, str],

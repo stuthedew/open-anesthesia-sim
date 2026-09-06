@@ -719,12 +719,21 @@ def _note_cost(report: Report, landed: LandedReport | None) -> None:
     holds no command to run - printing zeros would be this module's own
     cardinal error, an empty result rendered as a measured one.
     """
-    if landed is None or not landed.known or landed.slowest is None:
+    if landed is None or not landed.known:
+        return
+    # A scoped run says so even when it found nothing to run, which is the one
+    # case with no cost to report and the one where silence misleads: a reader
+    # who is not told the run was narrowed reads an absent line as a whole
+    # store with no commands in it (`PL-SDHR`).
+    if landed.slowest is None:
+        if landed.scope:
+            report.cost = f"verify: no command to run in {landed.scope}"
         return
     one = landed.considered == 1
+    scope = f", scoped to {landed.scope}" if landed.scope else ""
     report.cost = (
         f"verify: {landed.considered} {'command' if one else 'commands'} in "
-        f"{landed.elapsed:.1f}s ({landed.serial:.1f}s serially); slowest "
+        f"{landed.elapsed:.1f}s ({landed.serial:.1f}s serially){scope}; slowest "
         f"{landed.slowest.identifier} {landed.slowest.seconds:.1f}s "
         f"against a {landed.limit:g}s limit"
     )

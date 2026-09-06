@@ -318,7 +318,12 @@ correction rather than handing the question back.
   commits**, so a branch carrying only captured items is not a pull request; and
   where the **web harness says not to open one unless the owner explicitly
   asks**, this bullet is that ask, standing rather than per pull request, so a
-  session reading both proceeds rather than stalls.
+  session reading both proceeds rather than stalls. Then
+  **read the published body back and compare it against what was sent**: the
+  server rewrites bodies silently and still returns success, so an
+  angle-bracket placeholder — `<branch>`, `<id>` — is taken for an HTML tag and
+  vanishes with no error, code span or not. `#132` shipped `git branch -dr
+  origin/` that way (`PL-1DN9`).
 - **Capture intent, and route it by how ready it is.** A **specific change** is
   a queue item, written now. A **feature wanted but not yet ready to build** is
   one unscoped line of intent in `ROADMAP.md`'s "Planned milestones" — filing it

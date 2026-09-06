@@ -44,6 +44,7 @@ from .vcs import (
     StrandedReport,
     branch_state,
     branches_in_flight,
+    changed_items,
     closed_by,
     closures_on_base,
     cuts_in_flight,
@@ -224,7 +225,27 @@ def cmd_check(args: argparse.Namespace) -> int:
         # not ask" and says nothing, which is what a caller that was never the
         # right one to ask should produce. A line on every `make check` saying
         # the replay did not run would be an advisory nobody reads.
-        landed=already_passing(root, items) if args.verify else None,
+        #
+        # `--verify-base` narrows it further, to the items this branch changed
+        # against that ref (`PL-SDHR`). The same argument one step on: if a
+        # pre-commit gate cannot have changed whether another item's work
+        # merged, neither can a pull request, and the sweep costs 87 s of the
+        # quality job's 152 s on every push to every open pull request while
+        # growing with the queue rather than with the change. CI scopes on
+        # `pull_request` and sweeps on `push` to the default branch, which is
+        # the one event where the answer is a fact about that branch.
+        landed=(
+            already_passing(
+                root,
+                items,
+                scoped_to=changed_items(root, args.verify_base, items_dir=config.items_dir),
+                scope_base=args.verify_base,
+            )
+            if args.verify and args.verify_base
+            else already_passing(root, items)
+            if args.verify
+            else None
+        ),
         # Only the closures in question are asked about, because each costs a
         # `git show`: an item is judged for a missing `pr` once its closure
         # stands on the default base, and until then it is still in flight.
@@ -1378,6 +1399,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="also run every open item's `verify:` command; slow, and for CI rather than a gate",
+    )
+    check_cmd.add_argument(
+        "--verify-base",
+        default="",
+        metavar="REF",
+        help="with --verify, replay only the items this branch changed against REF "
+        "(for a pull request, where the whole-store sweep answers about the store "
+        "rather than about the change)",
     )
     check_cmd.set_defaults(func=cmd_check)
     add("list", "one line per open item").set_defaults(func=cmd_list)
