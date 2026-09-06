@@ -733,8 +733,10 @@ SIMULATION_TICK_INTERVAL_S = 0.1   # app/simulation_view.py
 endpoint: any positive step at or below it is supported, and both
 `AgentUptakeSystem.advance()` and `SimulationState.advance()` refuse a larger
 one. `SIMULATION_STEP_S` is the step the interface takes, which sits at that
-ceiling deliberately; "Supported simulation step" below derives the bound and
-says why those two coincide.
+ceiling deliberately; "Supported simulation step" below states what the bound
+tolerates and says why those two coincide. Neither is derived from the other,
+and the coincidence is a fact about this configuration rather than an
+identity — which is why they are named apart.
 
 `SIMULATION_TICK_INTERVAL_S` is not a step at all: it is how often the run
 loop wakes, in *real* seconds. It equals the step only because a tick that
@@ -876,13 +878,62 @@ control is invisible to the model: at 0.1 s a slider move is resolved to a
 tenth of a second, and at 10 s a change made and reversed inside one step never
 happened at all.
 
-**The value is carried forward rather than re-derived, and that is deliberate
-rather than an omission.** It was set by inverting an error bound that no
-longer exists, so it is now conservative by an unknown margin — which is the
-safe direction to be wrong in, and not a reason to move it without measuring.
-Re-deriving it, together with the displayed resolution it used to invert, is
-queue item `PL-X9KD`. Until that lands the supported step and the shipped step
-are the same number and the interface runs at it.
+**Re-derived 2026-09-06 (`PL-X9KD`), and the honest result is that this is a
+declared tolerance rather than a derived limit.** The search for a limit was
+run first and came back empty. Sweeping the step from $`10^{-3}`$ s to
+$`10^{300}`$ s across the settings envelope, the disagreement with an
+independent solution stays between about $`10^{-14}`$ and $`2\times10^{-12}`$
+in fraction, and it does not grow with the step — it is U-shaped in it, with a
+minimum around 1 to 60 s, because the only error mechanism left is rounding and
+rounding accumulates once per *step*, so a finer step is slightly worse. The
+propagator was entrywise nonnegative exactly at every one of 4374 (settings,
+step) combinations tested, so no compartment guard can be reached by stepping
+coarsely; `advance()` raises nothing until about $`10^{18}`$ s, and the first
+step at which a displayed digit is wrong by a whole count is around
+$`10^{13}`$ s. There is no numerical ceiling a caller can reach.
+
+Control resolution does not supply a threshold either, and this is the point
+that decides the shape of the constant. A control change takes effect at the
+next step boundary, so it is displaced later by up to one whole step, and that
+displacement is **exactly proportional to the step** — measured over three
+manoeuvres and all three agents, halving the step halves it, with no knee
+anywhere. No step size is therefore the one at which control timing becomes
+invisible. What the constant can honestly be is a declared tolerance, and what
+it owes a reader is the measurement of what it tolerates.
+
+**The tolerance, in percentage points of one atmosphere.** These are absolute
+concentrations, deliberately not counts of the readout: the readout's decimal
+count is a presentation decision (§ "Displayed precision") and must not reach
+back into the model. Worst displacement over all three agents at the shipped
+0.1 s step, from a control change landing one step late:
+
+| Manoeuvre | Worst displacement | Binding agent |
+| --- | --- | --- |
+| Case opening: dial off to 1 MAC, reference flows | 6.7×10⁻³ pp | desflurane |
+| Unperfused load, then perfusion on and dial off | 5.0×10⁻² pp | desflurane |
+| Ventilator start at the envelope corner | 1.4×10⁻¹ pp | desflurane |
+
+The criterion these are read against is the model's own parameter uncertainty,
+which is upstream of both the step and the display: one standard deviation of a
+single measured partition coefficient displaces a displayed compartment by
+$`9\times10^{-4}`$ to $`6.8\times10^{-2}`$ pp (Yasuda et al. 1989; § "Displayed
+precision" carries the measurement). So at 0.1 s an ordinary control action is
+timed to about a tenth of one parameter SD, which is the sense in which the
+step is fine enough.
+
+**What 0.1 s does not buy, stated rather than left to be discovered.** An
+abrupt manoeuvre is not held inside that criterion. A ventilator start at this
+step displaces the alveolar reading by up to $`1.4\times10^{-1}`$ pp — about
+twice one parameter SD — for the duration of the transient it starts. Holding
+that inside one SD would need a step near 0.05 s. The value has not been moved,
+because halving it doubles the work per simulated second and changes the
+interface's tick structure, which is a trade-off for the project owner rather
+than a correction; but a reader comparing an abrupt ventilation change against
+a measurement should know that its *timing* is resolved to a tenth of a second
+and no better.
+
+The supported step and the shipped step are the same number, and the interface
+runs at it.
 
 **The measurements the old bound rested on are kept as history**, because they
 describe a method this project shipped for eleven releases and a reader
@@ -1951,10 +2002,16 @@ stops short of the declared domain or reaches past it.
 **The simulation step is bounded too, and separately.** It is not a control a
 user sets, but it is an input to every `advance()` call, and what a caller
 may pass is bounded by `MAXIMUM_SIMULATION_STEP_S` rather than by these
-ranges; "Supported simulation step" above derives it. The two bounds are
-coupled in one direction: the coefficient the step bound inverts is measured
-over the trajectories *these* ranges produce, so widening a range means
-re-deriving both.
+ranges; "Supported simulation step" above derives it.
+
+**The two bounds are now independent, and were not before** (`PL-X9KD`). While
+the operator split shipped, the coefficient the step bound inverted was
+measured over the trajectories *these* ranges produce, so widening a range
+meant re-deriving both. That chain is cut. The step bound is a declared
+control-resolution tolerance in seconds, these intervals are a claim about
+where the compartment structure represents a patient, and neither is computed
+from the other. Widening a range means re-running the reference gates at the
+new corner; it does not mean revisiting the step.
 
 ## Reset behavior
 

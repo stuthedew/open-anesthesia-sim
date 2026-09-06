@@ -340,7 +340,8 @@ def test_a_setting_outside_the_supported_range_is_refused_by_the_system(
     `AgentUptakeSystem` forwards each of these to the compartment that owns
     the setting, so this is cover for the forwarding rather than a second
     guard: what it holds is that no supported entry point into `core/` can
-    put the model outside the domain its error bound is measured over.
+    put the model outside the domain it is claimed to represent a patient
+    over.
     """
 
     system = _sevoflurane_at_one_mac()

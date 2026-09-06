@@ -396,9 +396,10 @@ def test_the_shipped_step_is_within_the_maximum_simulation_step() -> None:
     """The interface may not run the model outside its supported domain.
 
     `SIMULATION_STEP_S` is this module's cadence and
-    `MAXIMUM_SIMULATION_STEP_S` is `core/`'s applicability domain; they are
-    separate decisions that happen to coincide today, and this is what stops
-    them from parting company unnoticed. Before PL-VP7N the only statement
+    `MAXIMUM_SIMULATION_STEP_S` is `core/`'s declared control-resolution
+    tolerance; they are separate decisions that happen to coincide today, and
+    this is what stops them from parting company unnoticed. Before PL-VP7N the
+    only statement
     of the supported step lived here in the presentation layer and bound
     nothing, so any other caller of `core/` - a headless run, a notebook, a
     test - could step as coarsely as it liked and be given a number.

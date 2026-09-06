@@ -49,24 +49,40 @@ SECONDS_PER_MINUTE = 60.0
 
 # The largest simulation step `advance()` accepts.
 #
-# It is no longer a bound on the arithmetic. The propagator is the exact
-# solution of the governing equations over whatever interval it is given, so
-# nothing about the numerics degrades as the step grows and there is no
-# applicability domain left to be outside of. What a longer step degrades is
-# the assumption the step rests on: every setting is held constant across one,
-# so the step is the interval over which a control change is invisible to the
-# model. At 0.1 s a slider move is resolved to a tenth of a second; at 10 s, a
-# change made and reversed inside one step never happened at all.
+# It is not a bound on the arithmetic, and re-deriving it (`PL-X9KD`) did not
+# find one. The propagator is the exact solution of the governing equations
+# over whatever interval it is given, and its floating-point evaluation is
+# measured across the settings envelope at 1e-14 to 2e-12 in fraction for every
+# step from 1e-3 s to 3600 s - not growing with the step but U-shaped in it,
+# because the only mechanism left is rounding, which accumulates once per step
+# and so gets *worse* as the step shrinks. The first step at which any displayed
+# digit is wrong by a whole count is around 1e13 s. No numerical ceiling
+# reachable by a caller exists.
 #
-# The value is inherited rather than re-derived, deliberately. It was set as
-# the largest step at which every claim docs/MODEL.md's "Displayed precision"
-# makes about the last displayed digit survived the operator split's
-# first-order error, and that error is now gone - so the bound is conservative
-# by an unknown margin rather than tight, which is the safe direction to be
-# wrong in. Re-deriving it, together with the displayed resolution it inverts,
-# is `PL-X9KD`; until that lands the supported step and the shipped step are
-# the same number and the interface runs at it:
-# `app.simulation_view.SIMULATION_STEP_S`.
+# What a longer step costs is control resolution. Every setting is held
+# constant across a step, so a control change takes effect at the next step
+# boundary and is displaced later by up to one whole step. That displacement is
+# exactly proportional to the step, with no threshold anywhere in it, so no step
+# size is the one at which control timing "becomes invisible" - which means this
+# constant is a declared tolerance rather than a derived limit, and is recorded
+# here as one.
+#
+# The tolerance it declares, measured 2026-09-06 in percentage points of one
+# atmosphere and stated in those units rather than in counts of any readout:
+# at this step the case-opening manoeuvre - dialling from off to 1 MAC at the
+# reference adult's own flows - displaces every displayed compartment by at most
+# 6.7e-3 pp, desflurane binding. One standard deviation of a single measured
+# partition coefficient displaces one by 9e-4 to 6.8e-2 pp (Yasuda 1989; see
+# docs/MODEL.md "Displayed precision"). So an ordinary control action is timed
+# well inside the model's own parameter uncertainty, which is the criterion,
+# and it is a criterion no display decimal count enters.
+#
+# What that does *not* cover, stated rather than left to be found: an abrupt
+# manoeuvre is not held inside it. A ventilator start at this step displaces the
+# alveolar reading by up to 1.4e-1 pp for the duration of its transient, about
+# twice one parameter SD. Holding that inside one SD needs a step near 0.05 s.
+# docs/MODEL.md "Supported simulation step" carries the measurements and the
+# open question of whether to move the value.
 MAXIMUM_SIMULATION_STEP_S = 0.1
 
 
