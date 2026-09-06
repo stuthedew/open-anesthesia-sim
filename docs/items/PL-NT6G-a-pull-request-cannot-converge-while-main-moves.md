@@ -4,12 +4,13 @@ title: A pull request cannot converge while main moves, because auto-merge updat
 priority: P2
 effort: S
 status: done
-closed: 2026-09-06
 classes: infra
 feature: parallel-sessions
 touches: .github/workflows/quality.yml
-not-delegable: the answer is a repository setting in GitHub's branch-protection UI, which no command in this tree can read or change. What proved it is the project owner reporting the box unticked (2026-09-06); the observable is that a pull request behind `main` stops reporting `behind` as a merge blocker.
 added: 2026-09-05
+closed: 2026-09-06
+pr: 371
+not-delegable: the answer is a repository setting in GitHub's branch-protection UI, which no command in this tree can read or change. What proved it is the project owner reporting the box unticked (2026-09-06); the observable is that a pull request behind `main` stops reporting `behind` as a merge blocker.
 ---
 
 **Problem.** #342 was opened at 03:20 and had still not merged eight hours
