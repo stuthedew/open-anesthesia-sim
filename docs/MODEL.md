@@ -646,14 +646,44 @@ $$
 
 Here $`M_{\mathrm{scale}}`$ is a documented small positive reference amount that prevents division by zero.
 
-The release tolerance, as implemented in `core/agent_simulation_validation.py`:
+Two bounds apply, and they answer different questions.
+
+**The run-time halt thresholds, as implemented in `core/agent_simulation_validation.py`:**
 
 ```text
 MASS_BALANCE_ABSOLUTE_TOLERANCE = 1e-12 L
 MASS_BALANCE_RELATIVE_TOLERANCE = 1e-9
 ```
 
-A step passes if either tolerance is satisfied. The relative error uses `max(initial + delivered, 1e-15 L)` as its denominator to avoid division by zero when no agent has yet been delivered.
+A step passes if either tolerance is satisfied. The relative error uses `max(initial + delivered, 1e-15 L)` as its denominator to avoid division by zero when no agent has yet been delivered. Exceeding both stops the run: this is the point past which the model refuses to show a number, not the standard the shipped model is held to.
+
+**The release gate is the relative residual alone**, asserted by the reference runs in `tests/reference/test_multi_agent.py` and `tests/reference/test_sevo_patient.py`, which restate it as `MASS_BALANCE_RELATIVE_GATE`:
+
+```text
+MASS_BALANCE_RELATIVE_GATE = 1e-10
+```
+
+It is relative because the residual is rounding accumulated once per step, so it scales with how much agent a run has handled. An absolute bound measures the delivered concentration and the run length instead of conservation. Measured 2026-09-06 on the shipped exact step, over 600 s wash-in plus 600 s washout:
+
+| Agent | Dial | Delivered | $`\varepsilon_{\mathrm{absolute}}`$ | $`\varepsilon_{\mathrm{relative}}`$ |
+| --- | --- | --- | --- | --- |
+| isoflurane | 4% | 1.60 L | 3.589e-13 L | 2.243e-13 |
+| isoflurane | 2% | 0.80 L | 1.794e-13 L | 2.243e-13 |
+| desflurane | 4% | 1.60 L | 9.262e-14 L | 5.789e-14 |
+| desflurane | 2% | 0.80 L | 4.631e-14 L | 5.789e-14 |
+
+Halving the dial halves the absolute residual exactly and leaves the relative one unchanged to four significant figures.
+
+Where the value comes from — worst relative residual at any step, measured the same day at the reference runs' own settings and at the corner of the supported envelope (fresh gas 10 L/min, alveolar ventilation 12 L/min, cardiac output 10 L/min, each agent at its calibrated dial maximum):
+
+| Horizon | Reference settings | Worst envelope corner |
+| --- | --- | --- |
+| 1200 s, what the reference runs cover | 2.12e-13 | 2.26e-13 |
+| 1 h | 2.19e-13 | 1.04e-12 |
+| 4 h | 3.75e-12 | 2.88e-12 |
+| 8 h | 5.05e-12 | 6.36e-12 |
+
+1e-10 leaves about 450x headroom at the horizon those runs use and about 16x at 8 h, so neither moving a dial nor lengthening a case changes what the gate certifies. It stays an order of magnitude inside the 1e-9 halt threshold, so passing the gate says strictly more than that the run did not stop, and a real conservation defect is orders of magnitude rather than factors of two.
 
 Clipping a negative store to zero does not repair mass balance and must not be used to conceal an unstable update.
 
@@ -795,7 +825,17 @@ inside the check's own relative tolerance, and the absolute figures scale with
 how much agent the run has handled rather than with any error in it. What it
 does mean is that `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L` (1e-12 L) is now
 routinely exceeded on a long run and the relative branch alone is carrying the
-check. Whether that is the right shape for the guard is queue item `PL-4GN8`.
+check — first exceeded at t = 3452 s at the reference runs' own settings and at
+t = 538 s at the sevoflurane corner of the envelope, measured 2026-09-06.
+
+That settles the shape of the guard (`PL-4GN8`). The disjunction in
+`check_agent_accounting` is right: the absolute branch is the one that catches a
+gross error early in a run, when little has been delivered and the relative
+denominator is small, and the relative branch carries the check from then on.
+What was wrong was the *release gate* — the reference runs asserted the absolute
+residual, so what they certified moved with the dial they happened to use and
+was simply false past about an hour of simulated time. They now assert
+`MASS_BALANCE_RELATIVE_GATE`, above.
 
 **What this replaces, and why the decision changed.** Until v0.4.x each step
 was the exact analytic solution of five *pairwise* exchanges, composed in
