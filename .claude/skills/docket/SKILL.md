@@ -871,15 +871,36 @@ session that has pushed nothing**, so a clean answer still means "nothing
 visible", never "nothing" — which is why the session check under **Mode:
 start an item** is worth running before offering a release too.
 
-**Never ask the owner to "tag vX.Y.Z". Paste the commands, filled in:**
+**Never ask the owner to "tag vX.Y.Z". Paste the commands, filled in, and
+resolve the merge commit rather than leaving a placeholder to fill:**
 
 ```bash
-git tag -a v0.3.0 <merge commit> -m "v0.3.0"
+git fetch origin main
+git tag -a v0.3.0 origin/main -m "v0.3.0"
 git push origin v0.3.0
 ```
 
 Every time, not only the first. Asking for a tag without them makes the owner
 reconstruct three commands at the moment they are trying to do something else.
+Run these straight after the merge, when `origin/main` *is* the merge commit;
+an angle-bracket placeholder is also the one thing a pull request body silently
+eats (`PL-1DN9`).
+
+**Do not try to push the tag yourself first - it fails, and it fails
+convincingly (`PL-N936`).** `git push --dry-run` reports `[new tag]` and the
+real push then dies with `send-pack: unexpected disconnect`, ending on
+`Everything up-to-date` while `git ls-remote --tags` shows nothing. Branch
+pushes from the same session work throughout, so this is tag refs specifically,
+and it is the same family as `PL-TFWR`'s branch deletion: an operation a
+session will reasonably attempt, that does not look like it failed. The tag is
+the owner's to run.
+
+**Say the tag is outstanding until they confirm it, and check rather than
+assume.** `bin/docket release` refuses to cut the next release while the
+previous one is untagged, and `tools/doc_check.py` will not catch the gap - the
+baseline-tag advisory was removed in v0.3.4 because a local checkout cannot
+tell a release never tagged from one tagged since it last fetched. So nothing
+in the tree reports it; `git ls-remote --tags origin` is what answers.
 
 ## Mode: close out an item
 
