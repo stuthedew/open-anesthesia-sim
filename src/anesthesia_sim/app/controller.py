@@ -1007,7 +1007,7 @@ class SimulationController:
     # unbounded, so it offered every caller of the app layer a route to a
     # circuit volume outside anything `docs/MODEL.md` verifies, for a knob no
     # teaching case has asked for. `BreathingCircuit.set_circuit_volume`
-    # stays, because `_rebuild()` is how the parameter reaches the circuit at
+    # stays, because `_build_state()` is how the parameter reaches the circuit at
     # all; what is removed is the app-level passthrough, not the core
     # primitive. `docs/MODEL.md` § "What is not bounded this way" carries the
     # argument.

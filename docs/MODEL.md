@@ -3001,10 +3001,14 @@ read an event into the curves.
 
 **Stability of the recorded identifiers.** Each control is recorded under a
 fixed string chosen from the domain — `fresh_gas_flow`, `delivered`,
-`alveolar_ventilation`, `cardiac_output`, `circuit_volume` — rather than
-from whatever the accessor that applies it is called. An identifier taken
-from the code would retire the vocabulary of every already-recorded run the
-next time the code was renamed.
+`alveolar_ventilation`, `cardiac_output` — rather than from whatever the
+accessor that applies it is called. An identifier taken from the code would
+retire the vocabulary of every already-recorded run the next time the code
+was renamed. A fifth string, `circuit_volume`, was recorded here until the
+circuit volume was established as a fixed model parameter rather than a
+control (§ "What is not bounded this way"); retiring it cost no recorded
+history, because a timeline is held in memory and cleared with its run
+rather than persisted.
 
 **Bounds are displayed, not silent.** The chart carries a fixed number of
 marks and the list a fixed number of lines, so a run may record more
