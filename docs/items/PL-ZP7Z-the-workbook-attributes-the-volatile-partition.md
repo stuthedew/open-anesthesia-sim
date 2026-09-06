@@ -1,8 +1,14 @@
 ---
 id: PL-ZP7Z
 title: The Workbook attributes the volatile partition coefficients to Yasuda's Anesthesiology abstract and to Abbott package-insert data, which is not what the agent files say
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: science
+feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
 added: 2026-09-06
+verify: python3 tools/doc_check.py check && grep -q 'A615' src/anesthesia_sim/data/agents/sevoflurane.json
 ---
 
 **Problem.** The three agent files under `src/anesthesia_sim/data/agents/`
@@ -56,3 +62,10 @@ carries.
 **Done when.** The agent files' Yasuda notes say what the Workbook attributes,
 which edition of Yasuda is at issue, and whether the tier assignment changes -
 or record that it does not, with the reasoning.
+
+**The `verify:` command anchors on the abstract's own citation.** The Done-when
+requires the files to record which edition of Yasuda is at issue, and the
+Workbook's reference 45 is `Anesthesiology 69:A615` rather than the 1989
+`Anesthesia & Analgesia` paper the agent files cite, so recording the
+distinction necessarily names it. Run 2026-09-06 before the work: exit 1, with
+`doc_check` passing and `A615` absent from all three agent files.

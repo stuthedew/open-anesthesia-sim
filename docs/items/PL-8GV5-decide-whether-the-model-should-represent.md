@@ -1,7 +1,12 @@
 ---
 id: PL-8GV5
 title: Decide whether the model should represent anaesthesia's own effect on cardiac output and regional perfusion, which it currently holds fixed
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: planning, docs
+feature: model-spec-accuracy
+touches: ROADMAP.md, docs/MODEL.md
 added: 2026-09-06
 ---
 
@@ -44,3 +49,16 @@ perfusion is held fixed under anaesthesia whatever is decided.
 dose-dependent haemodynamic response, or the decision not to model it is
 recorded with its reasoning; and `docs/MODEL.md` names the fixed-perfusion
 assumption in "Known limitations" either way.
+
+**Decision needed.** Does `ROADMAP.md` carry one line of intent for a
+dose-dependent haemodynamic response, or is the decision not to model it
+recorded with its reasoning? Either way `docs/MODEL.md` § "Known limitations"
+should state that cardiac output and the three perfusion fractions are held
+fixed under anaesthesia, which is the half that does not wait on the answer.
+
+**Classed `planning, docs` rather than `science`, and it can be overruled.**
+The model carries no pharmacodynamic machinery at all, so fixed perfusion is a
+boundary of the whole model rather than an unstated exception inside it, and no
+displayed value is wrong today. If the missing "Known limitations" sentence
+reads as a scientific-transparency gap rather than as scope documentation, the
+class becomes `science` and `docket check` moves it to P1.

@@ -1,7 +1,12 @@
 ---
 id: PL-JW39
 title: docket next ranks a needs-decision item first, so every fresh session opens on work whose next step is the owner's answer
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: session-cost, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-06
 ---
 
@@ -38,3 +43,10 @@ whatever `docket next`'s output line does to make status legible.
 **Done when.** Either `next` stops ranking a `needs-decision` item above
 startable work, or it says in its reason line that the item's next step is a
 decision rather than code - and the choice between those is recorded.
+
+**Decision needed.** Does `bin/docket next` stop ranking a `needs-decision`
+item above startable work, or does it keep the ranking and say in its reason
+line that the item's next step is a decision rather than code? Suppressing such
+items entirely is the third option and the brief argues against it: `bin/docket
+gate` counts them precisely so the question reaches the project owner, and a
+session running with the owner present can work one by answering it.

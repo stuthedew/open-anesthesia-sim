@@ -1,9 +1,14 @@
 ---
 id: PL-8ZJQ
 title: Davis and Mapleson 1981 gives a published, quantified blood-pool structure, which is the source PL-3YZW's 1.0 L venous pool has never had
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: science
 feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-06
+not-delegable: No command can prove that a person read Davis and Mapleson 1981, and the outcome is a provenance judgment either way - adopt a volume with that lineage, or record why the 1.0 L mixing volume is kept and what it is not. A `verify:` could only check that some sentence had been written into the data file, which is exactly the thing that must not be gameable on a provenance item (the same argument PL-7HDS records).
 ---
 
 **Problem.** `venous_blood_volume_l` is 1.0 in
@@ -50,3 +55,10 @@ to early mixed-venous readings) reads on the same compartment.
 file either adopts a blood-pool volume with that provenance or records why the
 1.0 L mixing volume is kept and what it is not - with the arterial/venous
 question above answered rather than left open.
+
+**Triaged `ready` rather than `blocked`, and `PL-3YZW` now waits on this.**
+`PL-3YZW` (the venous volume's missing provenance) was triaged earlier the same
+day to wait behind the 1981 monograph, on the reasoning that it was the only
+untried upstream for a stored volume. `#417` established otherwise, and
+this item carries the reachable candidate, so that block was re-pointed here.
+The two are one branch, as the brief above says.

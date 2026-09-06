@@ -1,7 +1,12 @@
 ---
 id: PL-NGF7
 title: tools/contrast_check.py can see no disabled-state colour, because none of them is a constant in theme.py
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: infra, test
+feature: presentation-safety
+touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_contrast_check.py
 added: 2026-09-06
 ---
 
@@ -37,3 +42,16 @@ or the tool states in its docstring that disabled states are out of scope and
 says what covers them instead. The second is a legitimate answer — but it has
 to be a decision somebody took, not the current situation, which is that
 nothing covers them and nothing says so.
+
+**Decision needed.** Does every control disabled during normal operation take
+an explicit foreground from `theme.py` with a declared requirement measuring
+it, or does `tools/contrast_check.py` state in its docstring that disabled
+states are out of scope and name what covers them instead? The second is a
+legitimate answer and the item is explicit that it has to be a decision
+somebody took: today nothing covers them and nothing says so.
+
+**Classed `infra, test` rather than `defect`, and it can be overruled.** The
+tool's docstring already disclaims deciding which pairs appear on screen
+together, so nothing it asserts is false - what is missing is coverage a reader
+of a green check assumes. `PL-61WW` is the instance and is fixable without
+closing this.

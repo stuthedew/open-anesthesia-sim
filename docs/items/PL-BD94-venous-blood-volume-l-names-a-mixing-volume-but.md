@@ -1,7 +1,12 @@
 ---
 id: PL-BD94
 title: venous_blood_volume_l names a mixing volume but reads as the physiologic venous blood volume
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: refactor, docs
+feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md
 added: 2026-09-06
 ---
 
@@ -46,3 +51,18 @@ is evidence the ambiguity was felt before.
 **Done when.** Either the key is renamed to say what it is (candidates:
 `venous_pool_volume_l`, `mixed_venous_mixing_volume_l`) with every reader
 updated, or the decision to keep the name is recorded with its reasoning.
+
+**Decision needed.** Is `venous_blood_volume_l` renamed to say what it is -
+`venous_pool_volume_l`, `mixed_venous_mixing_volume_l` - with every reader
+updated, or does the key stay and the note in the file plus the provenance
+table's "Venous blood-pool volume" carry the distinction as the whole answer? A
+rename is a schema change on a protected path, reaching the loader, the
+balance, the provenance table, `doc_check`'s row mapping and any saved state.
+
+**Classed `refactor, docs` rather than `science`, and it can be overruled.**
+`PL-6Q8N` already wrote the distinction into the file's own `sources` note and
+into `docs/MODEL.md`, so the reader who meets the misleading key meets the
+correction in the same file, and nothing is displayed under this name. If the
+key itself counts as a label under `CLAUDE.md`'s "the correct number with the
+wrong label is still a safety failure", the class becomes `science` and the
+band with it.

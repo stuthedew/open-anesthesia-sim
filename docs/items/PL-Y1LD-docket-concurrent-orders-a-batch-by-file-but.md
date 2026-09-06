@@ -1,17 +1,16 @@
 ---
 id: PL-Y1LD
 title: docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
-status: untriaged
+priority: P3
+effort: M
+status: needs-decision
+classes: session-cost, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-06
 ---
 
 **Problem.** docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Observed 2026-09-06**, handing out four gate items to four simultaneous
 sessions. `docket.toml`'s own comment says "Two lanes and no more, because two
@@ -34,7 +33,23 @@ applied to `concurrent`'s graph. That is one command, reuses both halves, and
 is the deterministic-tooling answer to a judgment a session currently re-makes
 at full context every time.
 
-**Not urgent, and it does not meet the compounding-friction bar.** Nothing
+**Where.** `subprojects/docket/src/docket/cli.py` - `cmd_concurrent` and the
+ranking `cmd_next` applies, which are the two halves that would be joined.
+
+**Done when.** Either one command returns the best `n` mutually disjoint
+startable items in rank order, so a session handing out work to three or four
+sessions runs a command rather than a scratch script, or the project records
+that four-way work is rare enough to keep doing by hand and why.
+
+**Why it matters, and why it is not urgent: it does not meet the
+compounding-friction bar.** Nothing
 gives a wrong answer silently, nothing is being routed around, and the manual
 pass took one session a few minutes. It is worth doing when four-way work
 becomes routine rather than a one-off.
+
+**Decision needed.** Is the join between `next`'s ranking and `concurrent`'s
+graph worth building - `bin/docket concurrent --pick <n>`, returning the best
+`n` mutually disjoint startable items in rank order - or is four-way work rare
+enough to keep doing by hand? Nothing gives a wrong answer today and the manual
+pass took one session a few minutes, so this is a question about how routine
+three- and four-way sessions become.

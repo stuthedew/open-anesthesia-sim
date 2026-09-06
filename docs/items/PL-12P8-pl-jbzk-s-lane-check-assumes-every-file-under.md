@@ -1,7 +1,12 @@
 ---
 id: PL-12P8
 title: PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: parallel-sessions
+touches: tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, docket.toml
 added: 2026-09-06
 ---
 
@@ -36,5 +41,12 @@ failure message; `tests/unit/test_workflow_paths_check.py`.
 something other than its imports, or excluded from the check with the reason
 recorded, or the failure message stops naming `workflow_paths` as the remedy
 for a file that is not a test. Which of the three is the decision - the first
+is the most useful and the most work, the third is nearly free and leaves the
+judgment with the author.
+
+**Decision needed.** Which of the three the brief names: classify a non-test
+module under `tests/` by something other than its imports; exclude it from the
+check with the reason recorded; or leave the rule and stop the failure message
+naming `workflow_paths` as the remedy for a file that is not a test. The first
 is the most useful and the most work, the third is nearly free and leaves the
 judgment with the author.

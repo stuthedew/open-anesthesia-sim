@@ -1,8 +1,14 @@
 ---
 id: PL-KNHX
 title: contrast_check's KNOWN_SHORTFALLS entries are never checked against the requirements they excuse, so a stale one lingers and inflates the reported shortfall count
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-06
+verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_shortfall_naming_no_declared_requirement_is_an_error' tests/unit/test_contrast_check.py
 ---
 
 **Problem.** `KNOWN_SHORTFALLS` is keyed by a requirement's identity, but

@@ -1,8 +1,14 @@
 ---
 id: PL-YKXQ
 title: This container's initial clone had local main diverged 407 commits into pre-rewrite history, so a session that checks out main gets a stale tree and an old bin/docket
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: .claude/hooks/docket-digest.sh, tests/unit/test_docket_digest_hook.py, docs/worker.md
 added: 2026-09-06
+verify: uv run pytest tests/unit/test_docket_digest_hook.py && grep -q 'rev-list --count main' .claude/hooks/docket-digest.sh
 ---
 
 **Problem.** Measured 2026-09-06 at the end of `PL-6Q8N`, in a session started
@@ -58,3 +64,11 @@ what a session should check before trusting `main`.
 that its local ref matches the remote one - by prose in `docs/worker.md` or by
 a check in the session-start hook - or the finding is reproduced against a
 second fresh container and dropped as a one-off with that evidence recorded.
+
+**Triaged `ready` on the hook-check answer, which is the direction the
+`verify:` command names.** `CLAUDE.md`'s standing approval for putting the
+decidable part in code covers it without a decision round: `git rev-list
+--count main ^origin/main` is decidable, cheap, and the digest hook already
+runs once per container. The third candidate - do nothing, on the grounds that
+this was a one-off provisioning artifact - stays available, and taking it means
+rewriting this command before the work rather than after.

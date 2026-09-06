@@ -1,17 +1,15 @@
 ---
 id: PL-Y31G
 title: bin/docket stranded classes a branch left on pre-rewrite history as one whose pull request merged, because it compares file content and a rewrite leaves content unchanged
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-06
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_on_duplicated_history_is_not_reported_as_orphaned' subprojects/docket/tests/test_vcs.py
 ---
-
-**Problem.** bin/docket stranded classes a branch left on pre-rewrite history as one whose pull request merged, because it compares file content and a rewrite leaves content unchanged
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** `format_orphaned` reports a branch under "carries work the default
 branch does not hold, having already taken the rest of it", and the evidence it

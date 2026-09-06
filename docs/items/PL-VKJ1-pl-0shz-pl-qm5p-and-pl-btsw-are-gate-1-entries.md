@@ -1,18 +1,16 @@
 ---
 id: PL-VKJ1
 title: PL-0SHZ, PL-QM5P and PL-BTSW are Gate 1 entries citing line numbers in a README.md deleted the same day they were filed
-status: untriaged
+priority: P3
+effort: S
+status: dropped
+classes: docs, defect
 feature: project-introduction
+touches: docs/items
 added: 2026-09-06
+closed: 2026-09-06
+reason: Satisfied before it was triaged. #397 dropped all three entries - PL-0SHZ, PL-QM5P and PL-BTSW - each with a reason naming PL-N092's rewrite of README.md and PL-RM83's boundary rule, which is one of the three dispositions this item's Done-when allows. Checked against the store on 2026-09-06: all three read `status: dropped` and carry a `reason`, so no Gate 1 entry now states its problem as a location in a file the tree does not hold. Nothing is left to do, and this is recorded rather than deleted so the finding is not re-raised.
 ---
-
-**Problem.** PL-0SHZ, PL-QM5P and PL-BTSW are Gate 1 entries citing line numbers in a README.md deleted the same day they were filed
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** Three entries on the Gate 1 list state their defect as a line
 number in the root `README.md`: `PL-0SHZ` cites `README.md:185-192` (the

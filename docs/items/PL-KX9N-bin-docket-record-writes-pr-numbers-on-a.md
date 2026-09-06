@@ -1,17 +1,15 @@
 ---
 id: PL-KX9N
 title: bin/docket record writes pr numbers on a shallow clone that docket check declines to verify on the same clone, so it silently records wrong provenance
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+feature: commit-provenance
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-06
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_record_declines_on_a_checkout_it_cannot_walk' subprojects/docket/tests/test_cli.py
 ---
-
-**Problem.** bin/docket record writes pr numbers on a shallow clone that docket check declines to verify on the same clone, so it silently records wrong provenance
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 
 **Problem.** Observed 2026-09-06 in a web session working `PL-GYH2`. The
 container had no checkout, so the repository was cloned per the harness
@@ -35,7 +33,8 @@ newest commit it had, whose subject named `PL-S5LB` and `#401`. Every other id
 resolved to that same commit by default. Re-run after
 `git fetch --depth=200`, `record` produced all four correctly.
 
-**Why this is the silent-wrong-answer case rather than an inconvenience.**
+**Why it matters, and why this is the silent-wrong-answer case rather than an
+inconvenience.**
 `docket check` on the *same* checkout already declines the verification half,
 printing "recorded pull requests: the checkout is a shallow clone, so the
 commits it is missing are the oldest ones and the longest-settled provenance
@@ -63,6 +62,11 @@ cheap: a session that wants the write runs one bounded fetch first.
 **Where.** `subprojects/docket/src/docket/vcs.py`,
 `subprojects/docket/src/docket/cli.py` (`cmd_record`); the completeness test
 the checker already uses is the thing to reuse rather than to reinvent.
+
+**Done when.** `bin/docket record` declines to write a `pr` on a checkout whose
+history it cannot walk, naming the fetch that would let it answer - the same
+completeness test the verifier already applies, reused rather than reinvented -
+and a test covers the shallow clone at the depth this was found at.
 
 **Found by** `PL-GYH2`, whose own commit carried four of the wrong numbers
 until the merge exposed them.

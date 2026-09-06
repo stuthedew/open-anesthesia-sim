@@ -1,7 +1,12 @@
 ---
 id: PL-LPWK
 title: A release note cites the pull request that closed an item, not the one that carried its code, whenever the two differ
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, docs
+feature: commit-provenance
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/README.md, subprojects/docket/tests/test_release.py
 added: 2026-09-06
 ---
 
@@ -48,3 +53,12 @@ whatever records the work's own pull request if the answer is to keep both.
 **Done when.** Either the notes cite the pull request that carried the work, or
 it is recorded in `subprojects/docket/README.md` that they cite the closure and
 why that was accepted.
+
+**Decision needed.** Which of the three options above, and the item argues they
+are not close: recording the work's own pull request alongside the closure adds
+a field to every item to serve a case the close-out rule forbids; leaving the
+rendering and recording in `subprojects/docket/README.md` that the notes are
+only as good as that rule is the cheapest and is right if `PL-HB58` stays the
+only instance; and changing `docket record` to prefer the oldest subject naming
+an id touches a recovery rule `PL-S5LB` and `PL-GW37` each tuned for a
+different reason, so it is the one to be most careful about.

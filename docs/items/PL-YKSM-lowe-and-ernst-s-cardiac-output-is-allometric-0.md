@@ -1,8 +1,12 @@
 ---
 id: PL-YKSM
 title: Lowe and Ernst's cardiac output is allometric (0.2 x M^0.75 = 4.84 L/min at 70 kg), not the stored fixed 5.0, and weight_kg is still read by no equation
-status: untriaged
+priority: P1
+effort: M
+status: needs-decision
+classes: science
 feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-06
 ---
 
@@ -66,3 +70,13 @@ code is the model", and a weight-scaled cardiac output is new behavior.
 `weight_kg` acquires a consumer, or the file records why the fixed 5.0 is kept
 and states the 4.84 L/min discrepancy where a reader of the stored value will
 meet it.
+
+**Triaged `science`, P1, on the discrepancy rather than on the feature.** What
+pins the band is that a stored clinical parameter and the lineage its own
+`sources` note cites do not reconcile - 5.00 L/min against 4.84 L/min at the
+70 kg the file claims to represent - which is a provenance defect in a value a
+reader can act on, and it stands whatever the decision turns out to be.
+Adopting weight-scaled cardiac output is new behavior and out of the v0.4.x
+step, as the brief says; the cheap branch of its Done-when - recording the
+discrepancy where a reader of the stored value will meet it - is in scope now
+and needs no roadmap change.

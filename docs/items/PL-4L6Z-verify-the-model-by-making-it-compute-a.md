@@ -1,9 +1,14 @@
 ---
 id: PL-4L6Z
 title: 'Verify the model by making it compute a predictable event: recover a stored parameter from a simulated measurement, as Lerou and Booij recover alveolar volume by simulated helium dilution'
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: test
 feature: model-spec-accuracy
+touches: tests/reference/, docs/MODEL.md
 added: 2026-09-06
+verify: uv run pytest tests/reference/ && grep -rq 'def test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value' tests/reference/
 ---
 
 **Problem.** This project's verification rests on comparing the shipped step
@@ -53,3 +58,18 @@ and this would be a third entry rather than a replacement for either.
 recovery of a stored parameter to a stated tolerance, and is named in
 `docs/MODEL.md` as a verification test distinct from the oracle comparison,
 with a sentence saying what class of error it catches that the oracle does not.
+
+**Classed `test` rather than `science`, and it can be overruled.** Nothing in
+the model is known to be wrong, and this adds a verification device rather than
+correcting a value or a claim - so by the reading `PL-B1WW` was triaged under,
+it is a test-quality question and the band stays P2. The counter-argument is
+real and is the brief's own: the class of error it catches is invisible to
+every check the project has, so a designer-induced error would reach a reader
+with all gates green. If that is the weight to give it, the class becomes
+`science` and `docket check` moves it to P1.
+
+The `verify:` command names candidate 1 - recovering a tissue volume from a
+washin - because it needs no new physics; candidates 2 and 3 would want the
+command re-pointed before the work rather than after. Run 2026-09-06 before the
+work: exit 1 in 87 s, with `tests/reference/` passing (the whole suite was
+green in the same session's `make check`, 1995 passed) and the test absent.

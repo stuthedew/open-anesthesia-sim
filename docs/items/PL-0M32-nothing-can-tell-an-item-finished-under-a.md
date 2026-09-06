@@ -1,7 +1,12 @@
 ---
 id: PL-0M32
-title: PL-HB58's work merged in #408 but the item is still ready, and its verify names a test the implementation renamed
-status: untriaged
+title: Nothing can tell an item finished under a renamed test from one nobody has started
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-06
 ---
 
@@ -37,11 +42,18 @@ excluded, since it is `ready`. If the closure lands after the tag, the item
 ships in v0.4.7 while its code shipped in v0.4.6 - a release whose notes do not
 describe its own contents.
 
-**Where.**
+**Why it matters.** An item that reads open while its work sits on the default
+branch is counted by `bin/docket gate`, offered by `bin/docket next`, and left
+out of the release that actually shipped it - the queue misdescribes the
+project in three places at once, and the next session can start work that is
+already done. The renamed test is what makes that state indistinguishable from
+an unstarted item from every direction the tooling can see, which is why the
+two faults are one item.
 
-- `docs/items/PL-HB58-validate-washout-against-the-same-published.md` - the
-  status, and the one word in its `verify:`.
-- `subprojects/docket/` - whether anything can decide this case at all.
+**Where.** `subprojects/docket/` - whether anything can decide this case at
+all. The other half of the original **Where.**,
+`docs/items/PL-HB58-validate-washout-against-the-same-published.md`, is settled
+and is left named above as the instance rather than as work.
 
 **This is another session's item.** It was left open rather than closed here:
 the session that merged `#408` was idle with the merge outstanding, and closing
@@ -76,3 +88,12 @@ also what an unstarted item looks like when its file already exists - so
 whether it is worth an advisory, or whether this is a case the tooling should
 decline, is the judgment to make. Dropping it with that reasoning recorded is a
 legitimate outcome.
+
+**Decision needed.** Can "finished under a renamed test" be told from "not
+started" at all, and is it worth telling? Three candidates: an advisory on the
+signal named above - a `verify:` whose test-run half passes while its `grep`
+half fails; recording in the store's documentation that the case is undecidable
+and leaving it to the close-out to read the command; or nothing, dropped with
+that reasoning. The first is the only one that would have caught this, and it
+is also what an unstarted item looks like once its test file exists, which is
+the judgment to make.

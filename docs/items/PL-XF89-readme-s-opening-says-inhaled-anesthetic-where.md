@@ -1,7 +1,12 @@
 ---
 id: PL-XF89
 title: README's opening says inhaled-anesthetic where the About field and pyproject say volatile - decide which scope word the project's one-line self-description uses
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: docs
+feature: project-introduction
+touches: README.md, pyproject.toml
 added: 2026-09-06
 ---
 
@@ -49,6 +54,22 @@ project owner sets under Settings.
 spelling. That is a one-word inconsistency in the most-read sentence the
 project has.
 
+**Done when.** The three self-descriptions either use one scope word, or the
+divergence is stated once as a deliberate split - README and About describing
+the project, `pyproject.toml` describing the release - rather than standing as
+an accident; `README.md:5` and `pyproject.toml`'s `description` are edited to
+match whichever is decided; and the spelling question is settled against the
+tree's US spelling. The GitHub "About" field is the project owner's to edit, so
+this closes on the two files and the recorded decision, naming what is left for
+them.
+
 **Notes.** `tools/doc_check.py` cannot decide this agreement and should not be
 asked to: the About text is not in the tree, and the tool is standard-library
 only and runs offline in a bare checkout. `PL-4MHK` records the same finding.
+
+**Decision needed.** Do the three self-descriptions settle on one scope word,
+or is the split deliberate and stated once - README and the GitHub "About"
+naming the teaching topic ("inhaled"), `pyproject.toml` naming what the release
+models ("volatile")? And separately, the About field's "anaesthetic" against
+the US spelling every other file uses. Both edits to the About field are the
+project owner's; the two files in the tree follow whichever answer.
