@@ -28,23 +28,33 @@ result would be worth having in both outcomes: it would either put two of the
 three agents inside the published spread or turn desflurane's -2.40 SD into a
 real disagreement about tissue return to explain.
 
-**Where.** `src/anesthesia_sim/core/circuit.py` and
-`src/anesthesia_sim/core/governing_equations.py` for the mode itself,
-`docs/MODEL.md` "Model boundary", "Assumptions" and "Known limitations" for
-what it changes about the stated boundary, and
-`tests/reference/test_published_wash_in.py` for the comparison it would let be
-written as an agreement claim.
+**Approach, decided by the project owner on 2026-09-06: the test-only
+open-circuit driver.** Two candidates were costed. A *supported* non-rebreathing
+mode is the more capable and was not taken: it changes the model boundary rather
+than a fixture, and it adds a mode the interface would then have to make
+visible, which `CLAUDE.md` treats as a human-factors cost in its own right. The
+driver answers the scientific question - whether this model's tissue return
+reproduces a human elimination once the apparatus difference is removed - at the
+price of validating a condition the shipped simulator cannot be put in. That
+price is the thing the module has to say plainly wherever it states the result,
+in the same breath as the number.
 
-**Design note before starting.** A supported non-rebreathing mode is a change
-to the model boundary rather than a test fixture, so it needs the project
-owner's decision first: it adds a mode the interface would have to make
-visible, and `CLAUDE.md` treats a hidden mode as a human-factors defect in its
-own right. The cheaper alternative, worth costing against it, is a
-test-only open-circuit driver that is honest about being one - it would answer
-the scientific question without adding a user-visible mode, at the price of
-validating something the shipped simulator cannot do.
+**Name whatever it adds for what it does, never for what it is hoped to show.**
+`PL-0M32` records what the alternative cost: `PL-HB58`'s `verify:` named a test
+`..._matches_published_human_measurement`, the comparison turned out not to
+match, the test shipped as `..._against_...`, and the item then looked exactly
+like one nobody had started. A name has to survive either outcome - and both
+outcomes are live here, since the diagnostic already puts sevoflurane and
+isoflurane inside the published spread (-0.25 and +0.54 SD) and desflurane 2.40
+SD outside it on the *other* side.
+
+**Where.** `tests/reference/test_published_wash_in.py` for the driver and the
+comparison, and `docs/MODEL.md` § "Published wash-in validation test" for the
+restatement. Nothing under `src/` moves - that is what choosing the driver over
+a supported mode means.
 
 **Done when.** The elimination comparison can be run at an inspired fraction of
-zero through a supported path, `docs/MODEL.md` records what that path changes
-about the model boundary, and the comparison against the four published cohorts
-is restated as whatever it then turns out to be.
+zero from `tests/reference/`, the module and `docs/MODEL.md` both say that the
+condition is a diagnostic the shipped simulator cannot be put in, and the
+comparison against the four published cohorts is restated as whatever it then
+turns out to be.
