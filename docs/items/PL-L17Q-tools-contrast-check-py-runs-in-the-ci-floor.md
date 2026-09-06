@@ -6,10 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
-closed: 2026-09-05
 touches: .github/workflows/quality.yml, Makefile, tools/contrast_check.py
-verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'uv run python tools/contrast_check.py' .github/workflows/quality.yml && ! grep -q 'python3 tools/contrast_check.py' .github/workflows/quality.yml
 added: 2026-09-04
+closed: 2026-09-05
+pr: 369
+verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'uv run python tools/contrast_check.py' .github/workflows/quality.yml && ! grep -q 'python3 tools/contrast_check.py' .github/workflows/quality.yml
 ---
 
 **Problem.** `.github/workflows/quality.yml`'s `floor` job runs `python3

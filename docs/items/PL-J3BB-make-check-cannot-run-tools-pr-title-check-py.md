@@ -4,12 +4,13 @@ title: make check cannot run tools/pr_title_check.py, so a branch that closes an
 priority: P3
 effort: S
 status: done
-closed: 2026-09-05
 classes: infra
 feature: dev-tooling
-verify: uv run pytest tests/unit/test_pr_title_check.py && grep -q 'def test_a_stale_title_on_the_open_pull_request_fails_locally' tests/unit/test_pr_title_check.py && grep -q 'pr-title' Makefile
 touches: Makefile, tools/pr_title_check.py, tests/unit/test_pr_title_check.py
 added: 2026-09-03
+closed: 2026-09-05
+pr: 369
+verify: uv run pytest tests/unit/test_pr_title_check.py && grep -q 'def test_a_stale_title_on_the_open_pull_request_fails_locally' tests/unit/test_pr_title_check.py && grep -q 'pr-title' Makefile
 ---
 
 **Problem.** `tools/pr_title_check.py` reads `PR_TITLE` and `PR_BASE` from the
