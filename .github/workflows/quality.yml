@@ -12,17 +12,36 @@ on:
   pull_request:
 
 # A second push to the same pull request makes the first run's answer
-# irrelevant before it finishes. Cancelling buys both of the things that run is
-# spending: the runner slot it holds, which the push that matters then queues
-# behind, and the minutes it bills. This repository is **private** (the API
-# reports `"visibility": "private"`, read 2026-09-05), so GitHub-hosted
-# standard-runner time is charged against the account's monthly allowance with
-# every job rounded up to the whole minute. Until `PL-SSQX` this comment said
-# the repository was public and standard runners free, which was never true
-# here and left one file carrying two premises - the floor section below
-# reasons from a folded job having "billed a whole minute for eight seconds".
+# irrelevant before it finishes. **What cancelling buys is the runner slot**: a
+# superseded run holds one, and the push that matters queues behind it.
 # Measured over an 18-hour window before this was added, 5 of 51 quality runs
 # were superseded while still running.
+#
+# That reason is stated without reference to billing on purpose, and the reason
+# for *that* is this comment's own history (`PL-CCLL`). It said the repository
+# was public and runners free; `PL-SSQX` corrected it to private and billed,
+# reading `"visibility": "private"` from the API; the project owner made the
+# repository public hours later, and standard runners on a public repository
+# are free and unlimited. Two flips in two days, and the setting lives in
+# GitHub's settings where nothing in this tree can check it. So the argument
+# rests on the slot, which holds under either answer, and the billing position
+# is recorded once below rather than woven through the reasoning.
+#
+# As of 2026-09-06 the repository is **public**, so standard-runner minutes are
+# free and the cost of a superseded run is the slot alone. While it was private
+# they were billed against the account's monthly allowance, rounded up per job,
+# which is the premise the folded floor section below still reasons from when
+# it says a separate job "billed a whole minute for eight seconds" - true when
+# written, and the argument for folding it survives on the concurrent-job cap
+# regardless.
+#
+# **The repository was made public to stop the billing, not as a publication
+# decision** (project owner, 2026-09-06: "I made it public before I wanted to
+# so i wouldn't get billed for minutes"). Recorded here because it is the fact
+# a session is most likely to get backwards: nothing about the CI setup is
+# waiting on the repository being private again, and the human-facing pass
+# `PL-XYRN` holds is deliberately not overdue - the owner is not advertising
+# the project yet.
 #
 # `cancel-in-progress` is conditional rather than a flat `true` on purpose.
 # `github.ref` is `refs/pull/N/merge` under `pull_request`, so each pull

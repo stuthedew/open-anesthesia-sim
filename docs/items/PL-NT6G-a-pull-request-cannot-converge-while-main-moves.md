@@ -3,10 +3,12 @@ id: PL-NT6G
 title: A pull request cannot converge while main moves, because auto-merge updates the branch only once
 priority: P2
 effort: S
-status: needs-decision
+status: done
+closed: 2026-09-06
 classes: infra
 feature: parallel-sessions
 touches: .github/workflows/quality.yml
+not-delegable: the answer is a repository setting in GitHub's branch-protection UI, which no command in this tree can read or change. What proved it is the project owner reporting the box unticked (2026-09-06); the observable is that a pull request behind `main` stops reporting `behind` as a merge blocker.
 added: 2026-09-05
 ---
 
@@ -105,3 +107,32 @@ changed. GitHub's *Update branch* button on a stalled pull request is one
 click and one CI run, which is option 2 without waiting for a human to be
 looking; and this container's `git merge origin/main` is what sessions already
 do. Both were used on this branch today.
+
+**Closed 2026-09-06 on option 4, decided and applied by the project owner**,
+who unticked "Require branches to be up to date before merging" on `main`'s
+branch-protection rule.
+
+Option 3 was this brief's own recommendation and could not be taken: merge
+queue runs in public repositories owned by an *organization*, and in private
+ones only for organizations on Enterprise Cloud. This repository is owned by a
+user account, so it was ineligible while private and stayed ineligible when the
+owner made it public the same day - the blocker moved from the visibility half
+of that sentence to the ownership half, and only moving the repository to an
+organization would clear it.
+
+**What the setting actually gave up is narrower than the brief implied**, which
+is the note worth leaving for anyone tempted to put it back.
+`.github/workflows/quality.yml` runs on `pull_request`, and that event tests
+the **merge result** rather than the branch head - so every pull request is
+still checked against the base it would land on at the moment it was pushed.
+The requirement added only that the base had not moved *since*. Against that,
+#342 lost three rounds and about eight hours to it, at a full CI run each, and
+the number of concurrent sessions is what decides how often that recurs.
+
+**What is not covered, and is now the residual risk.** Two pull requests that
+are each green against an older `main` can still merge in sequence and leave
+`main` red - the semantic conflict the up-to-date requirement existed to catch.
+Nothing here detects that; the `push` trigger on `main` is what would report it,
+after the fact, which is the trade this option makes. A merge queue is the
+mechanism that gets both, and the route to one is an organization-owned
+repository rather than a setting.
