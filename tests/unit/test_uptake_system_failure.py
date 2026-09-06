@@ -7,9 +7,9 @@ on.
 
 Also cover for PL-VP7N, which added the other half of the same distinction:
 a step larger than `MAXIMUM_SIMULATION_STEP_S` is refused as a
-configuration error before the step begins, because the operator split has
-no measured error bound there and the number it would return would be wrong
-in the first digit the interface displays.
+configuration error before the step begins. Since PL-GS5X that bound is the
+longest interval settings are held constant over rather than a numerical
+applicability domain, and the refusal it produces is unchanged.
 
 PL-0MLQ applies the same distinction to the four controls a user sets. A
 setting outside `core/supported_ranges.py` is refused by the compartment it
@@ -18,10 +18,16 @@ the run in progress stays trustworthy.
 
 PL-026 closes what PL-018 left: the step is now transactional, so a failure
 leaves every dynamic value bit-identical to its pre-step value rather than
-partway through the five sub-exchanges. The rollback tests below assert
+partway through writing the compartments. The rollback tests below assert
 `==` rather than `pytest.approx` deliberately — the claim is that nothing
 was written and then undone approximately, but that nothing survives the
 failed step at all.
+
+PL-GS5X changes how these failures are reached, and not what they are. The
+exact step cannot drive a compartment out of range — see
+`_TissueGroupThatCanRefuseAStep` — so a compartment guard is now injected
+rather than provoked, alongside the accounting failure and the nonlocal
+unwind, which never could be provoked either.
 
 PL-006 adds the case where the distinction had been drawn in the wrong
 place: `set_circuit_volume` destroyed agent and the *next* step failed for
@@ -58,88 +64,96 @@ from anesthesia_sim.core.exceptions import (
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.supported_ranges import MAXIMUM_CARDIAC_OUTPUT_L_MIN
+from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
 
-# An alveolar gas volume no patient has, and that is the point: after PL-VP7N
-# no supported step can break the split on the reference adult, so the only
-# way to reach the breakdown path through the public interface is a system
-# whose capacity is smaller than one supported step's transfer. That is not a
-# hypothetical shape - it is what a future parameter set (a paediatric patient
-# file, a far more soluble agent) could produce at a step this module still
-# accepts, which is why the guard has to stay and has to be covered.
+# How much of a run the injected failures below happen after.
 #
-# The arithmetic: one step of blood uptake removes about
-# Q * lambda_b/g * dt = (10/60) * 1.3 * 0.1 = 0.022 L of isoflurane per unit
-# alveolar fraction, at the model's maximum supported cardiac output. A lung holding
-# less than that at a fraction of 1 cannot supply it, so the alveolar guard
-# rejects the negative amount the split asks it to hold.
-BREAKDOWN_ALVEOLAR_GAS_VOLUME_L = 0.005
+# The all-zero state a fresh system fails from would make a bit-identical
+# comparison vacuous - every value it had to preserve would be 0.0 - which is
+# the failure mode PL-026's regression cover exists to avoid. 60 s of run
+# leaves all eight dynamic values distinct and nonzero.
+STEPS_BEFORE_FAILURE = 600
 
 
 def _sevoflurane_at_one_mac() -> AgentUptakeSystem:
     return AgentUptakeSystem.for_agent("sevoflurane")
 
 
-def _lungs_too_small_for_one_supported_step() -> AgentUptakeSystem:
-    """A system whose alveolar store one supported step would overdraw."""
+class _TissueGroupThatCanRefuseAStep(TissueGroup):
+    """A tissue group that can be armed to refuse the fraction it is handed.
 
-    agent = load_agent_parameters("isoflurane")
-    patient_parameters = load_reference_adult_parameters()
-    system = AgentUptakeSystem(
-        circuit=BreathingCircuit(
-            delivered_concentration_fraction=(agent.mac_percent / 100.0),
-            max_delivered_concentration_fraction=(
-                agent.max_delivered_concentration_percent / 100.0
-            ),
-        ),
-        alveoli=AlveolarCompartment(
-            gas_volume_l=BREAKDOWN_ALVEOLAR_GAS_VOLUME_L,
-            alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
-        ),
-        patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
+    **Why this failure is injected, where it used to be provoked.** Until
+    PL-GS5X this file reached the breakdown path through the model itself: an
+    alveolar compartment small enough that one step of the operator split's
+    fifth sub-exchange removed more agent than its second sub-exchange had
+    left in it, which the alveolar guard then refused. No parameter set can
+    do that any more. The step is now one matrix exponential of a matrix whose
+    every off-diagonal entry is a transfer rate, so the propagator is
+    entrywise nonnegative and cannot carry a compartment out of range from a
+    state that was in range - a property of the construction rather than of
+    any particular patient file or agent, which is exactly why the old route
+    cannot be rebuilt with different numbers.
+
+    The guard still has to work, and this is what keeps it testable. It stands
+    in for what the guard is now cover for: a model extension whose matrix is
+    not a pure transfer system, or a state that reached a compartment from
+    outside the equations. `_AccountingCheckThatFailsOnce` and
+    `_NonlocalUnwind` below inject failures the model could never provoke
+    either, and this one has joined them.
+
+    Fat is the group armed, because `_write_state_vector` writes it last: the
+    circuit, the alveoli, the venous pool and two of the three tissue groups
+    have all been written when it fires, which is the most partial state a
+    compartment guard can leave. Refusing is left to the real guard rather
+    than raised here, so what a caller sees is the production message.
+    """
+
+    refuse_next_fraction: bool = False
+
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: float) -> None:
+        if self.refuse_next_fraction:
+            self.refuse_next_fraction = False
+            partial_pressure_fraction = -1.0
+
+        super().set_partial_pressure_fraction(partial_pressure_fraction)
+
+
+def _copy_fat_group_as(system: AgentUptakeSystem, group_class: type) -> TissueGroup:
+    """Swap the system's fat group for a stand-in holding the same state.
+
+    Copied field by field rather than rebuilt from parameters, so the run in
+    progress is untouched: blood flow is derived from cardiac output and the
+    stored amount is the trajectory, and rebuilding either would change what
+    the failure is measured against.
+    """
+
+    original = system.patient.fat
+    replacement = group_class(
+        name=original.name,
+        volume_l=original.volume_l,
+        perfusion_fraction=original.perfusion_fraction,
+        blood_gas_partition_coefficient=(original.blood_gas_partition_coefficient),
+        tissue_gas_partition_coefficient=(original.tissue_gas_partition_coefficient),
+        blood_flow_l_min=original.blood_flow_l_min,
+        agent_amount_l=original.agent_amount_l,
     )
-    system.set_cardiac_output(MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    system.patient.fat = replacement
 
-    return system
-
-
-# A lung small enough that the guard fires at the model's maximum cardiac
-# output but not at the reference adult's, so a run can reach a real
-# trajectory and only then break down. The all-zero state a fresh system
-# fails from would make a bit-identical comparison vacuous - every value it
-# had to preserve would be 0.0 - which is the failure mode PL-026's
-# regression cover has to avoid. 60 s of run leaves all eight dynamic values
-# distinct and nonzero, and is well inside the window: the guard still fires
-# at 0.1 s of run and stops firing only after about 600 s, as the alveolar
-# store catches up with what one step of uptake asks of it.
-ROLLBACK_ALVEOLAR_GAS_VOLUME_L = 0.015
-ROLLBACK_STEPS_BEFORE_FAILURE = 600
+    return replacement
 
 
-def _a_run_that_breaks_down_when_cardiac_output_is_raised() -> AgentUptakeSystem:
-    """A system 60 s into a valid run, one raised setting from breaking down."""
+def _a_run_whose_next_step_a_compartment_refuses(
+    steps_first: int = STEPS_BEFORE_FAILURE,
+) -> AgentUptakeSystem:
+    """A sevoflurane run whose next `advance()` is refused mid-step."""
 
-    agent = load_agent_parameters("isoflurane")
-    patient_parameters = load_reference_adult_parameters()
-    system = AgentUptakeSystem(
-        circuit=BreathingCircuit(
-            delivered_concentration_fraction=(agent.mac_percent / 100.0),
-            max_delivered_concentration_fraction=(
-                agent.max_delivered_concentration_percent / 100.0
-            ),
-        ),
-        alveoli=AlveolarCompartment(
-            gas_volume_l=ROLLBACK_ALVEOLAR_GAS_VOLUME_L,
-            alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
-        ),
-        patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
-    )
+    system = _sevoflurane_at_one_mac()
 
-    for _ in range(ROLLBACK_STEPS_BEFORE_FAILURE):
+    for _ in range(steps_first):
         system.advance(MAXIMUM_SIMULATION_STEP_S)
 
-    system.set_cardiac_output(MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    _copy_fat_group_as(system, _TissueGroupThatCanRefuseAStep).refuse_next_fraction = True
 
     return system
 
@@ -179,7 +193,7 @@ def _sevoflurane_with(validator: AgentSimulationValidator) -> AgentUptakeSystem:
 
 
 def test_a_step_that_breaks_down_raises_a_numerical_error() -> None:
-    system = _lungs_too_small_for_one_supported_step()
+    system = _a_run_whose_next_step_a_compartment_refuses(steps_first=0)
 
     with pytest.raises(SimulationNumericalError) as raised:
         system.advance(MAXIMUM_SIMULATION_STEP_S)
@@ -193,17 +207,17 @@ def test_a_step_that_breaks_down_raises_a_numerical_error() -> None:
 def test_a_failed_step_names_the_step_and_keeps_the_failing_guard() -> None:
     """The message must stay diagnosable back to the invariant that broke."""
 
-    system = _lungs_too_small_for_one_supported_step()
+    system = _a_run_whose_next_step_a_compartment_refuses(steps_first=0)
 
     with pytest.raises(SimulationNumericalError) as raised:
         system.advance(MAXIMUM_SIMULATION_STEP_S)
 
     assert f"{MAXIMUM_SIMULATION_STEP_S} s" in str(raised.value)
-    assert "resulting_agent_amount_l" in str(raised.value)
+    assert "partial_pressure_fraction must be between 0 and 1" in str(raised.value)
 
     cause = raised.value.__cause__
     assert isinstance(cause, SimulationConfigurationError)
-    assert "resulting_agent_amount_l" in str(cause)
+    assert "partial_pressure_fraction must be between 0 and 1" in str(cause)
 
 
 def test_a_step_above_the_maximum_simulation_step_is_refused() -> None:
@@ -218,7 +232,7 @@ def test_a_step_above_the_maximum_simulation_step_is_refused() -> None:
 
     system = _sevoflurane_at_one_mac()
 
-    with pytest.raises(SimulationConfigurationError, match="applicability domain") as raised:
+    with pytest.raises(SimulationConfigurationError, match="largest supported step") as raised:
         system.advance(30.0)
 
     assert not isinstance(raised.value, SimulationNumericalError)
@@ -250,13 +264,14 @@ def test_the_maximum_simulation_step_itself_is_accepted() -> None:
 
 
 def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
-    """The bound is the coupled split's, not any one compartment's.
+    """The bound is the coupled system's, not any one compartment's.
 
-    A compartment advanced alone is solved exactly at any step, so there is
-    no splitting error to bound and nothing to refuse; `tests/unit/
-    test_circuit.py` steps a circuit on its own 60 s and compares it against
-    the analytic solution. Putting the guard on a compartment would break
-    that test and would also misstate where the error comes from.
+    It states how long settings may be held constant for, which is a property
+    of a step the whole system takes; a compartment advanced alone against a
+    fixed input has no settings to hold. `tests/unit/test_circuit.py` steps a
+    circuit on its own 60 s and compares it against the analytic solution, so
+    putting the guard on a compartment would break that test and would also
+    misstate what the bound is about.
     """
 
     circuit = BreathingCircuit(delivered_concentration_fraction=1.0)
@@ -373,19 +388,18 @@ def test_a_refused_setting_leaves_the_run_trustworthy(
 def test_a_failed_step_leaves_every_dynamic_value_bit_identical() -> None:
     """PL-026's headline claim, and the defect it fixes.
 
-    `_advance_step` applies five sub-exchanges in sequence, and the guard
-    that fires here rejects the fifth after the first four have already
-    written their compartments. Before the rollback the run was left
-    holding those four writes: circuit and alveolar gas advanced, tissues
-    and venous blood advanced against the alveolar fraction, and the
-    delivery totals recorded - a state that is not a solution of the model
-    at any time, but is a plausible-looking set of numbers.
+    `_advance_step` writes each compartment in turn, and the guard that
+    fires here rejects the last of them after the rest have already been
+    written. Before the rollback the run was left holding those writes:
+    circuit and alveolar gas advanced, the venous pool and two of the three
+    tissue groups advanced with them - a state that is not a solution of the
+    model at any time, but is a plausible-looking set of numbers.
 
     `==` rather than `pytest.approx`: the claim is not that the values come
     back close, it is that they were never left changed.
     """
 
-    system = _a_run_that_breaks_down_when_cardiac_output_is_raised()
+    system = _a_run_whose_next_step_a_compartment_refuses()
     before = system.capture_state()
 
     with pytest.raises(SimulationNumericalError):
@@ -420,12 +434,12 @@ def test_the_state_a_failed_step_leaves_is_the_last_completed_step() -> None:
     This is why rolling back settles the display question PL-018 left open.
     The values a halted run shows are bit-identical to those of a run that
     took the same steps and simply stopped - a real solution of the model,
-    at a real simulation time - rather than an artifact of how far into the
-    failed step the operators got.
+    at a real simulation time - rather than an artifact of how far into
+    writing the compartments the failed step got.
     """
 
-    failed = _a_run_that_breaks_down_when_cardiac_output_is_raised()
-    stopped = _a_run_that_breaks_down_when_cardiac_output_is_raised()
+    failed = _a_run_whose_next_step_a_compartment_refuses()
+    stopped = _a_run_whose_next_step_a_compartment_refuses()
 
     with pytest.raises(SimulationNumericalError):
         failed.advance(MAXIMUM_SIMULATION_STEP_S)
@@ -443,7 +457,7 @@ def test_a_failed_step_says_it_was_rolled_back_and_names_the_invariant() -> None
     completed step rather than the failed one.
     """
 
-    system = _a_run_that_breaks_down_when_cardiac_output_is_raised()
+    system = _a_run_whose_next_step_a_compartment_refuses()
 
     with pytest.raises(SimulationNumericalError) as raised:
         system.advance(MAXIMUM_SIMULATION_STEP_S)
@@ -453,7 +467,7 @@ def test_a_failed_step_says_it_was_rolled_back_and_names_the_invariant() -> None
     assert "rolled back" in message
     assert "last completed step" in message
     assert f"{MAXIMUM_SIMULATION_STEP_S} s" in message
-    assert "resulting_agent_amount_l" in message
+    assert "partial_pressure_fraction must be between 0 and 1" in message
 
 
 def test_simulation_time_does_not_advance_through_a_failed_step() -> None:
@@ -465,7 +479,7 @@ def test_simulation_time_does_not_advance_through_a_failed_step() -> None:
     not would report a state at a time the model never produced.
     """
 
-    state = SimulationState(uptake_system=(_a_run_that_breaks_down_when_cardiac_output_is_raised()))
+    state = SimulationState(uptake_system=(_a_run_whose_next_step_a_compartment_refuses()))
     elapsed_before_s = state.elapsed_s
 
     with pytest.raises(SimulationNumericalError):
@@ -534,7 +548,7 @@ def test_a_rolled_back_run_can_still_be_read_and_reset() -> None:
     beside it, and clearing the run.
     """
 
-    system = _a_run_that_breaks_down_when_cardiac_output_is_raised()
+    system = _a_run_whose_next_step_a_compartment_refuses()
 
     with pytest.raises(SimulationNumericalError):
         system.advance(MAXIMUM_SIMULATION_STEP_S)
@@ -551,12 +565,11 @@ def test_a_rolled_back_run_can_still_be_read_and_reset() -> None:
 def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     """Regression test for the defect PL-006 part 3 fixes.
 
-    Reproduced against the shipped code before the fix, and the numbers here
-    are that measurement rather than values read off the corrected run: a
-    sevoflurane system stepped 60 s held 0.048288200 L of agent in the
-    circuit, `set_circuit_volume(3.0)` left 0.024144100 L of it - 24.1 mL of
-    equivalent agent gas destroyed by a setter - and the next `advance(0.1)`
-    raised `AgentSimulationValidationError`.
+    Reproduced against the shipped code before the fix: a sevoflurane system
+    stepped 60 s held agent in the circuit, `set_circuit_volume(3.0)` left
+    exactly half of it - about 24 mL of equivalent agent gas destroyed by a
+    setter - and the next `advance(0.1)` raised
+    `AgentSimulationValidationError`.
 
     That failure mode is the reason this belongs with the other failure
     tests rather than only with the circuit's unit tests. The step that
@@ -577,7 +590,14 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     circuit_agent_before_l = system.circuit.agent_amount_l
     total_agent_before_l = system.total_stored_agent_l
 
-    assert circuit_agent_before_l == pytest.approx(0.048288200)
+    # The 60 s circuit load, re-measured under the exact step (`PL-GS5X`):
+    # 0.048305015 L against the 0.048288200 L the operator split produced,
+    # 1.7e-5 L apart, which is the split's own error at this step and not a
+    # change to the model. Pinned rather than left implicit because what the
+    # assertions below check is conservation *of this amount*, so a run that
+    # silently stopped reaching it would make them compare a number against
+    # itself. `PL-X9KD` re-derives the published figures this one sits beside.
+    assert circuit_agent_before_l == pytest.approx(0.048305015)
 
     system.circuit.set_circuit_volume(3.0)
 
@@ -686,38 +706,38 @@ class _NonlocalUnwind(BaseException):
     """
 
 
-class _PatientCompartmentsThatCanUnwindNonlocally(PatientCompartments):
-    """Patient compartments that can be armed to unwind without an `Exception`.
+class _TissueGroupThatCanUnwindNonlocally(TissueGroup):
+    """A tissue group that can be armed to unwind without an `Exception`.
 
-    `PatientCompartments.advance()` is the third of `_advance_step()`'s five
-    sub-exchanges, so arming it puts the unwind after the circuit and the
-    circuit-alveolar exchange have already written and before the rest has -
-    the partial state the rollback exists to undo.
+    Armed on the fat group for the same reason
+    `_TissueGroupThatCanRefuseAStep` is: `_write_state_vector` writes it
+    last, so the unwind lands after the circuit, the alveoli, the venous pool
+    and two tissue groups have written - the partial state the rollback
+    exists to undo.
     """
 
-    unwind_on_next_advance: bool = False
+    unwind_on_next_write: bool = False
 
-    def advance(self, arterial_fraction: float, simulation_step_s: float) -> float:
-        if self.unwind_on_next_advance:
-            self.unwind_on_next_advance = False
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: float) -> None:
+        if self.unwind_on_next_write:
+            self.unwind_on_next_write = False
 
             raise _NonlocalUnwind("a nonlocal unwind partway through the step")
 
-        return super().advance(
-            arterial_fraction=arterial_fraction, simulation_step_s=simulation_step_s
-        )
+        super().set_partial_pressure_fraction(partial_pressure_fraction)
 
 
-def _a_run_that_can_unwind_nonlocally() -> _PatientCompartmentsThatCanUnwindNonlocally:
-    """A sevoflurane system 10 s in, whose patient side can be armed to unwind."""
+def _a_run_that_can_unwind_nonlocally(steps_first: int = 100) -> AgentUptakeSystem:
+    """A sevoflurane run whose fat group can be armed to unwind."""
 
-    agent = load_agent_parameters("sevoflurane")
-    patient_parameters = load_reference_adult_parameters()
-    patient = _PatientCompartmentsThatCanUnwindNonlocally.from_parameters(
-        agent=agent, patient=patient_parameters
-    )
+    system = _sevoflurane_at_one_mac()
 
-    return patient
+    for _ in range(steps_first):
+        system.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    _copy_fat_group_as(system, _TissueGroupThatCanUnwindNonlocally)
+
+    return system
 
 
 def test_a_nonlocal_unwind_mid_step_is_rolled_back_too() -> None:
@@ -735,12 +755,7 @@ def test_a_nonlocal_unwind_mid_step_is_rolled_back_too() -> None:
     block.
     """
 
-    system = _sevoflurane_at_one_mac()
-    system.patient = _a_run_that_can_unwind_nonlocally()
-
-    for _ in range(100):
-        system.advance(MAXIMUM_SIMULATION_STEP_S)
-
+    system = _a_run_that_can_unwind_nonlocally()
     state_before_step = system.capture_state()
 
     # Not a vacuous comparison: 10 s of run leaves every dynamic value
@@ -748,7 +763,7 @@ def test_a_nonlocal_unwind_mid_step_is_rolled_back_too() -> None:
     assert state_before_step.circuit.circuit_concentration_fraction > 0.0
     assert state_before_step.alveoli.agent_amount_l > 0.0
 
-    system.patient.unwind_on_next_advance = True
+    system.patient.fat.unwind_on_next_write = True
 
     with pytest.raises(_NonlocalUnwind):
         system.advance(MAXIMUM_SIMULATION_STEP_S)
@@ -765,13 +780,9 @@ def test_a_nonlocal_unwind_leaves_the_run_readable_and_steppable() -> None:
     the rolled-back state and the accounting still closes.
     """
 
-    system = _sevoflurane_at_one_mac()
-    system.patient = _a_run_that_can_unwind_nonlocally()
+    system = _a_run_that_can_unwind_nonlocally()
 
-    for _ in range(100):
-        system.advance(MAXIMUM_SIMULATION_STEP_S)
-
-    system.patient.unwind_on_next_advance = True
+    system.patient.fat.unwind_on_next_write = True
 
     with pytest.raises(_NonlocalUnwind):
         system.advance(MAXIMUM_SIMULATION_STEP_S)

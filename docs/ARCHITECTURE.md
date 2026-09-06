@@ -46,6 +46,7 @@ src/anesthesia_sim/
 │   ├── blood.py                   # venous blood compartment
 │   ├── tissue.py                  # one perfusion-limited tissue group
 │   ├── patient.py                 # PatientCompartments: VRG + muscle + fat + venous blood
+│   ├── governing_equations.py     # MODEL.md's balance equations as one system matrix
 │   ├── matrix_exponential.py      # exp(A dt) for a compartment system; no physiology in it
 │   ├── uptake_system.py      # couples circuit + alveoli + patient; advances one step
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker

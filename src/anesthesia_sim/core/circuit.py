@@ -177,6 +177,23 @@ class BreathingCircuit:
         self._require_deliverable(delivered_concentration_fraction)
         self.delivered_concentration_fraction = delivered_concentration_fraction
 
+    def set_circuit_concentration_fraction(self, concentration_fraction: float) -> None:
+        """Set circuit state from a fraction, as the coupled step produces it.
+
+        The counterpart of `set_agent_amount()` for a caller that already
+        holds a fraction. `AgentUptakeSystem` is that caller: the governing
+        equations carry the gas phase as fractions, so going through the
+        amount would multiply by the volume and divide by it again for
+        nothing.
+
+        Raises:
+            SimulationConfigurationError: the fraction is not a finite number
+                in [0, 1]. Nothing is written when it is refused.
+        """
+
+        require_concentration_fraction("concentration_fraction", concentration_fraction)
+        self.circuit_concentration_fraction = concentration_fraction
+
     def set_agent_amount(self, agent_amount_l: float) -> None:
         """Set circuit state using equivalent agent gas amount."""
 

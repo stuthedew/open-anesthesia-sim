@@ -9,9 +9,9 @@ def _advance_for(state: SimulationState, duration_s: float) -> None:
     """Advance to `duration_s` at the largest supported step.
 
     Simulated time is reached by taking supported steps rather than by
-    asking for one large one: `MAXIMUM_SIMULATION_STEP_S` is the operator
-    split's applicability domain, and a caller that wants 10 s of simulated
-    time steps 100 times rather than once.
+    asking for one large one: `MAXIMUM_SIMULATION_STEP_S` is the longest
+    interval settings are held constant over, and a caller that wants 10 s of
+    simulated time steps 100 times rather than once.
     """
 
     for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
@@ -74,7 +74,7 @@ def test_rejects_a_step_above_the_maximum_simulation_step() -> None:
     state.advance(MAXIMUM_SIMULATION_STEP_S)
     before_s = state.elapsed_s
 
-    with pytest.raises(SimulationConfigurationError, match="applicability domain"):
+    with pytest.raises(SimulationConfigurationError, match="largest supported step"):
         state.advance(MAXIMUM_SIMULATION_STEP_S * 10.0)
 
     assert state.elapsed_s == before_s
@@ -177,12 +177,12 @@ def test_rejects_a_step_count_with_no_step_to_multiply_it_by() -> None:
         SimulationState(step_count=10)
 
 
-def test_rejects_an_initial_step_outside_the_applicability_domain() -> None:
-    """The step a state is constructed with is held to the same domain.
+def test_rejects_an_initial_step_above_the_largest_supported_one() -> None:
+    """The step a state is constructed with is held to the same bound.
 
     Otherwise a state could be built at a step `advance()` would refuse, and
     every step it then took would be measured against it.
     """
 
-    with pytest.raises(SimulationConfigurationError, match="applicability domain"):
+    with pytest.raises(SimulationConfigurationError, match="largest supported step"):
         SimulationState(step_count=1, simulation_step_s=MAXIMUM_SIMULATION_STEP_S * 10.0)

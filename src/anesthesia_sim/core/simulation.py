@@ -95,8 +95,8 @@ class SimulationState:
 
         The step is checked here as well as in `AgentUptakeSystem.advance()`,
         rather than left to it, so that this class states its own contract:
-        a step outside the operator split's applicability domain is refused
-        before elapsed time moves, and a caller that catches
+        a step longer than `MAXIMUM_SIMULATION_STEP_S` is refused before
+        elapsed time moves, and a caller that catches
         `SimulationConfigurationError` still holds a run it can trust. The
         second check is this class's alone: a run keeps the step it took its
         first step at, so no recorded history mixes two cadences.
