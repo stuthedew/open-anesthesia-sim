@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, Makefile, .github/workflows/quality.yml
 added: 2026-09-05
 closed: 2026-09-06
+pr: 405
 verify: uv run pytest tests/unit/test_workflow_paths_check.py && grep -q 'def test_a_tools_script_and_its_own_test_land_in_the_same_lane' tests/unit/test_workflow_paths_check.py
 ---
 
