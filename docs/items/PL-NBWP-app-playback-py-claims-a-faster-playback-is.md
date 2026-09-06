@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-06
+pr: 383
 verify: uv run pytest tests/unit/test_playback.py && grep -q 'def test_the_control_grid_at_each_rate_is_the_one_two_documents_publish' tests/unit/test_playback.py
 ---
 
