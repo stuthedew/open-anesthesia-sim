@@ -63,7 +63,8 @@ capability-boundary rule above governs.
 | v0.4.0 | Completed | The teachable case: the release that makes the model's lessons observable at all. A case runs at 1, 5, 20, 60 or 300x in steps that never change size, on a time base spanning fifteen minutes to twelve hours that defaults to fitting the run, against a vertical axis fixed at 0-3 x MAC for every agent rather than at one agent's vaporizer dial maximum - so the three obstacles this milestone was scoped on are answered together: the reservoirs that cause context-sensitive emergence (muscle at 135 min, fat at 42 h for sevoflurane) become reachable in minutes of wall clock, a 1 MAC run fills the plot instead of its bottom quarter, and three agents whose MACs differ threefold are finally comparable. Changing agent is now an explicit new case that names what will be lost before discarding it. Underneath, the recorded run is keyed by substance and quantity rather than by six flat compartment floats, so nitrous oxide will add a substance rather than reshape the record v0.5.0's forking proof is written against. Interface work on an untouched model: `src/anesthesia_sim/core/` and `src/anesthesia_sim/data/` are byte-identical to v0.3.9 and every changed source file is under `app/`, so no equation, parameter, numerical method or solver step moved, and the v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference tests are unchanged and passing. Twelve of the milestone's thirteen Required-scope entries have landed; `PL-011`'s retention rule is the thirteenth and was dropped on 2026-09-05, superseded by the score architecture rather than deferred, with the outcome recorded in place in that section. The remaining twenty-one items of the thirty-six are apparatus: the release script's own in-flight guard after two sessions cut v0.3.7 independently, the resident-instruction budget, and eleven live defects in the queue's ranking and its checks. |
 | v0.4.1 | Completed | The apparatus patch, changing no shipped code at all: `src/`, `tests/` and `docs/MODEL.md` are byte-identical to v0.4.0, so no equation, parameter, numerical method, unit or displayed value moved and the reference cases pass against exactly the code that validated them. The fourth release to change nothing shipped, and it comes straight after the largest capability release the project has had, because cutting v0.4.0 walked the plan end to end for the first time in weeks and found it out of agreement with the tooling that reads it. `bin/docket wave` was classifying the `v0.4.1` row as a milestone - which freezes a debt gate - and that gate computed to **105 entries against Gate 0's 21**; the row is now `v0.4.x`, a patch track that freezes none, and the beat reads *scope v0.5.0* as the timeline always intended. The score architecture (`PL-T691`, `PL-2FM6` and three more) is placed in v0.5.0, where forking needs it and where `PL-011`'s dropped retention debt is actually paid. The advisory that catches an undeclared prose prerequisite was reading only the first id after a cue, so "blocked on A and on B" never checked B - it had a live instance in `PL-VZL0` and reported clean. Three contradictions inside the next release's own briefs are cleared, each of which would have stopped a worker on day one, including a two-item deadlock where `PL-GS5X` and `PL-X9KD` each waited on the other. Every CI job gained a `timeout-minutes` bound against a 360-minute default, superseded pull-request runs are cancelled for the runner slot rather than the now-free minute, and `CLAUDE.md` finally states when investing in the apparatus is correct rather than only warning against it. Eleven items. This is not the exact matrix exponential - that is the `v0.4.x` track's content and has not started. |
 | v0.4.2 | Completed | The apparatus patch that closes `docket-store`, changing no shipped code: `src/` and `docs/MODEL.md` are byte-identical to v0.4.1 and the only file under `tests/` that moved is the new check's own suite, so no equation, parameter, numerical method, unit or displayed value moved. Its subject is the instruction budget every session pays and the guards that keep work visible. Resident text can now *shrink*: 563 characters whose carriers already existed were routed out of `CLAUDE.md`, and resident rules gained the retirement test that checks have had since `PL-ZBJ0` — until now a rule could only be added, because nothing said when one had stopped earning its place, and the total falls 44 545 to 44 166 characters. Beside it `tools/rules_paths_check.py` gained its second rule: a `paths:` entry that is anchored and points at nothing is refused, the same silent failure as the `./` spelling v0.4.0 closed, arriving in the form that reads as correct at every glance — a transposed directory name — and the message names the nearest existing ancestor rather than only the offence. Two provenance guards close: seven items stranded on abandoned branches are recovered, two of them created by the score-architecture drops, and the pull-request title check stopped racing the retitle it asks for, which had been showing a red run that meant nothing on a green pull request. Landing during this release's own pull request, the gate learned what it costs to run: the `floor` job billed a whole minute for eight seconds of work and held one of twenty account-wide concurrent job slots, so its steps moved inside `checks` *ahead of* the uv install — which strengthens the no-virtualenv claim rather than weakening it, because at that point no virtualenv exists to fall back on — and a spending limit and usage alert now exist, where the first sign of Actions overage had been the invoice. `README.md`'s status section is corrected too: it understated the operator split's disagreement with the exact solution as 1.2e-2 percentage points where `docs/MODEL.md` gives 2.3e-2 over the same domain, which is the kind of divergence between a summary and its specification that the `v0.4.x` track exists to remove. Nine items, one of which is the v0.4.1 cut itself. |
-| v0.4.3 | Completed / current baseline | The release where the gate learned what it costs, and the repository went public — and the second overtook the first. `src/` is byte-identical to v0.4.2 and `docs/MODEL.md`'s only change is one cross-reference following the deleted README, so no equation, parameter, numerical method, unit or displayed value moved; the sixth such release and the third in a row. **The measured half.** The `checks` job ran 152 s, of which `bin/docket check --verify` was **87 s** — more than the whole 1 820-test suite — because the replay runs every open item's own `verify:` command and 79 of the 111 that carry one start a fresh `uv run pytest`. That bill grew with the size of the queue rather than with the size of the change, and was paid on every push to every open pull request. `--verify-base` now scopes it to the items a branch actually changed, read from the diff, with the whole-store sweep kept on `push` to the default branch where its answer is a fact about that branch — 102 commands in 74.6 s becomes one in 5.5 s, and the job **152 s → 59 s** on run 34000293113. It is `PL-P3B6`'s argument one step on: if a pre-commit gate cannot have changed whether some other item's work merged, neither can a pull request. A scoped run says what it was scoped to on `docket check`'s own cost line, including when the scope held nothing to run, because a narrowed run reporting no findings is otherwise indistinguishable from a store that holds none. Three smaller gate repairs sit around it: `drift.yml` had resolved a newer `pytest-xdist` every month and never run it — a declared dependency upgraded and untested, which is the hole that workflow exists to close — and now runs `-n auto --dist worksteal` on both suites; `tools/contrast_check.py` had been parsing 3.14 `app/` source under the 3.11 floor, green only because the two files it reads happen to carry no 3.12+ syntax, which since v0.4.2 folded that job into `checks` would have reddened the whole job before uv was installed; and the pull-request title check, the one gate no session could run before pushing, now discovers the title from the branch's own open pull request and skips silently on every way that lookup can fail, so `make check` stays green offline. **The published half** is smaller in the diff and larger in consequence. The repository is public — *to stop the Actions billing, not as a publication decision* — which makes the minute arithmetic three of these items were built on moot: standard runners are free and unlimited on public repositories, and what the work still buys is wall clock and the runner slots that throttle parallel sessions. `README.md` was deleted rather than corrected and stays deleted under a check; the human-facing pass `PL-XYRN` gated is deliberately unrun; and both are recorded where a later session would otherwise read a public repository with no front door as a gap rather than a decision. Which leaves the quietest thread: the concurrency comment claimed the repository was public and runners free while it was private, was corrected to private-and-billed, and was wrong again within hours — so its argument now rests on the runner slot, which holds under either answer, with the billing position dated and stated once rather than woven through the reasoning. Twelve items, one of which is the v0.4.2 cut itself. |
+| v0.4.3 | Completed | The release where the gate learned what it costs, and the repository went public — and the second overtook the first. `src/` is byte-identical to v0.4.2 and `docs/MODEL.md`'s only change is one cross-reference following the deleted README, so no equation, parameter, numerical method, unit or displayed value moved; the sixth such release and the third in a row. **The measured half.** The `checks` job ran 152 s, of which `bin/docket check --verify` was **87 s** — more than the whole 1 820-test suite — because the replay runs every open item's own `verify:` command and 79 of the 111 that carry one start a fresh `uv run pytest`. That bill grew with the size of the queue rather than with the size of the change, and was paid on every push to every open pull request. `--verify-base` now scopes it to the items a branch actually changed, read from the diff, with the whole-store sweep kept on `push` to the default branch where its answer is a fact about that branch — 102 commands in 74.6 s becomes one in 5.5 s, and the job **152 s → 59 s** on run 34000293113. It is `PL-P3B6`'s argument one step on: if a pre-commit gate cannot have changed whether some other item's work merged, neither can a pull request. A scoped run says what it was scoped to on `docket check`'s own cost line, including when the scope held nothing to run, because a narrowed run reporting no findings is otherwise indistinguishable from a store that holds none. Three smaller gate repairs sit around it: `drift.yml` had resolved a newer `pytest-xdist` every month and never run it — a declared dependency upgraded and untested, which is the hole that workflow exists to close — and now runs `-n auto --dist worksteal` on both suites; `tools/contrast_check.py` had been parsing 3.14 `app/` source under the 3.11 floor, green only because the two files it reads happen to carry no 3.12+ syntax, which since v0.4.2 folded that job into `checks` would have reddened the whole job before uv was installed; and the pull-request title check, the one gate no session could run before pushing, now discovers the title from the branch's own open pull request and skips silently on every way that lookup can fail, so `make check` stays green offline. **The published half** is smaller in the diff and larger in consequence. The repository is public — *to stop the Actions billing, not as a publication decision* — which makes the minute arithmetic three of these items were built on moot: standard runners are free and unlimited on public repositories, and what the work still buys is wall clock and the runner slots that throttle parallel sessions. `README.md` was deleted rather than corrected and stays deleted under a check; the human-facing pass `PL-XYRN` gated is deliberately unrun; and both are recorded where a later session would otherwise read a public repository with no front door as a gap rather than a decision. Which leaves the quietest thread: the concurrency comment claimed the repository was public and runners free while it was private, was corrected to private-and-billed, and was wrong again within hours — so its argument now rests on the runner slot, which holds under either answer, with the billing position dated and stated once rather than woven through the reasoning. Twelve items, one of which is the v0.4.2 cut itself. |
+| v0.4.4 | Completed / current baseline | **The code is the model.** The first release in four to touch `src/`, and the first since v0.4.0 in which a displayed number moves. The operator split is gone: each step is now one exact propagation of the whole coupled nine-state system, `exp(AΔt)y`, with `core/governing_equations.py` assembling $`A`$ as a transcription of the balance equations this document states and `core/matrix_exponential.py` computing the propagator without carrying a unit or a compartment name. Scaling and squaring with a shifted Taylor series, about sixty lines of arithmetic on plain lists, adding no dependency. **Accuracy was not the motivation and was not a cost either** — the split was kept once on accuracy, in 2026-08-30, and that decision was right on its own terms; what overturned it was `ROADMAP.md` item 29's bar, that a reviewer who knows the standard variables should follow `core/` without a lookup table. Three of the split's five composed sub-steps were objects of the splitting scheme rather than of the physiology, the alveolar balance's two terms were computed in different sub-steps separated by a third, and the pulmonary uptake rate this document specifies was never formed at all. Measured against the same from-scratch RK4 oracle, the exponential's worst disagreement is eight orders of magnitude smaller than the split's. **Then the harder half, which is what the release is really about.** Three published statements were derived from an error that no longer exists, and each is re-derived from measurement rather than assumed to still hold. § "Displayed precision" had a numerical ceiling (a third decimal was noise) and a legibility floor; the ceiling is gone, since the shipped residual is about 1.6e-12 percentage points, nine orders below the last displayed digit. Its replacement is **model fidelity**: one published standard deviation of a partition coefficient displaces a displayed compartment by 8.7e-4 to 6.8e-2 percentage points, so two decimals puts the last digit between a seventh of one SD and seven times it and a third would put it at a seventieth — false precision. `MAXIMUM_SIMULATION_STEP_S` turned out to have **no derivation at all**: sweeping the step from 1e-3 s to 1e300 s found no numerical ceiling, the propagator entrywise nonnegative at every one of 4374 (settings, step) combinations tested, and control-timing displacement exactly proportional to the step with no knee anywhere — so it is recorded as a *declared tolerance* in percentage points and seconds, not dressed up as a limit. And the splitting-error constants are retired with their reasons recorded in place, after checking coverage rather than after the fact: two of the four retiring tests were reproduced exactly by the new gate, two were not, so the step gate gained the setting-change trajectories and a new `HELD_RUN_ROUNDING_BOUND` replaced the only test driving the shipped solver past 900 s. **The dependency stopped running backwards.** The step bound and the supported input ranges were both justified *through* the two-decimal readout, so a purely presentational move to one decimal would have licensed a step ten times longer; both are now stated in their own units, and a test fails if anything in `core/` reads the display count again. `src/anesthesia_sim/data/` is byte-identical to v0.4.3, so no parameter moved — what moved is the method, and the displayed value in its last digit. Thirteen items, one of which is the v0.4.3 cut itself. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -100,34 +101,93 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.4.3
+## Current baseline: v0.4.4
 
-v0.4.3 changes no shipped code. `src/` is byte-identical to v0.4.2, and
-`docs/MODEL.md`'s only change is one cross-reference: the two caveats bounding
-the wash-in validation used to say they belonged "including in `README.md`",
-and that file no longer exists, so the obligation transfers to whatever
-`PL-N092` writes in its place. Every file under `tests/` that moved is about
-the apparatus. So no equation, parameter, numerical method, unit or displayed
-value moved, and the reference cases pass against exactly the code that
-validated them. What changed is `.github/workflows/`, `.claude/`, `CLAUDE.md`,
-`Makefile`, `ROADMAP.md`, `docs/`, `subprojects/docket/`, `tools/` and
-`tests/unit/` — and `README.md`, which was deleted.
+v0.4.4 changes the numerical method, and it is the first release since v0.4.0
+in which a displayed number moves. Ten files under `src/` changed, two of them
+new; `src/anesthesia_sim/data/` is byte-identical to v0.4.3, so **no parameter
+moved** — what moved is how the equations are solved, and the last digit of
+what the interface shows.
 
-It is the sixth such release — v0.2.5, v0.2.9, v0.3.5, v0.4.1 and v0.4.2 were
-the others — and **the third in a row**, which is worth stating plainly rather
-than glossing. The v0.4.1/v0.4.2 pair was the cost of cutting v0.4.0. This one
-is different in kind: it is the cost of *running* the project at four to six
-concurrent sessions, which is the load that turned CI wall clock and the
-queue's own guards into the binding constraint. The reason to have paid it is
-in the number — a pull request's gate went from 152 s to 59 s while the work
-per push kept growing — and the reason not to let it become a habit is that
-three consecutive releases have now shipped no simulator change.
+**What ships.** Each simulation step is one exact propagation of the whole
+coupled nine-state system. Every setting is held constant across a step, so
+within it the model is linear and time-invariant and $`\exp(A\,\Delta t)\,y`$
+is its exact solution — no truncation error at any step size.
+`core/governing_equations.py` assembles $`A`$ as a transcription of the balance
+equations "Governing equations" states, in the order it states them;
+`core/matrix_exponential.py` computes the propagator and carries no physiology,
+no units and no compartment names. It adds no dependency: scaling and squaring
+with a shifted truncated Taylor series, about sixty lines of arithmetic on
+plain lists, with Moler and Van Loan's analysis cited for the method and for
+the half of it deliberately not taken.
 
-**Note what this release is not.** It is not the exact matrix exponential.
-That work — planned-milestone item 29, "the code is the model" — is the
-`v0.4.x` track's content, and it is not in this release either. `PL-GS5X`
-merged after v0.4.3 was cut, so the next release is the one that carries it,
-and it is the first to touch `src/` in four.
+**Why, given that the split was kept once on accuracy and that decision was
+right.** In 2026-08-30 the exponential bought a tighter number rather than the
+correction of a wrong one, and no work planned then wanted it. What overturned
+that was not accuracy but planned-milestone item 29's bar — a reviewer who
+knows the standard variables and equations should follow `core/` and recognize
+them without a lookup table — and the split could not reach it. Three of its
+five composed sub-steps were objects of the splitting scheme rather than of the
+physiology; the alveolar balance's two terms were computed in different
+sub-steps separated by a third; and the pulmonary uptake rate `docs/MODEL.md`
+specifies was never formed at all. Assembling the system matrix *is*
+transcribing the governing equations. Accuracy came along free: the worst
+disagreement with the independent RK4 oracle is eight orders of magnitude
+smaller than the split's.
+
+**The larger half of the release is what the split's removal invalidated.**
+Three published statements were derived from an error that no longer exists,
+and `PL-X9KD` re-derived each from measurement rather than assuming it still
+held. § "Displayed precision" had been a two-sided argument — numerics set the
+ceiling, legibility the floor — and the ceiling is gone: the shipped residual
+is about $`1.6\times10^{-12}`$ percentage points, nine orders below the last
+displayed digit, so a third decimal is no longer noise. Its replacement is
+**model fidelity**. One published standard deviation of a partition coefficient
+displaces a displayed compartment by $`8.7\times10^{-4}`$ to
+$`6.8\times10^{-2}`$ percentage points, so the last digit of a two-decimal
+readout sits between a seventh of one SD and seven times it, where a third
+decimal would put it at a seventieth — asserting resolution in a quantity whose
+measured spread is one to two orders wider.
+
+**`MAXIMUM_SIMULATION_STEP_S` turned out to have no derivation at all, and
+saying so is the finding.** The search for a numerical limit ran first and came
+back empty: across the settings envelope the disagreement with an independent
+solution stays between $`10^{-14}`$ and $`2\times10^{-12}`$ in fraction for
+every step from $`10^{-3}`$ s to $`10^{300}`$ s, and is U-shaped rather than
+growing, because the only mechanism left is rounding — which accumulates once
+per step and so gets *worse* as the step shrinks. The propagator was entrywise
+nonnegative exactly at every one of 4374 (settings, step) combinations tested.
+Control resolution supplies no threshold either: the displacement a control
+change suffers by landing one step late is exactly proportional to the step,
+with no knee anywhere. So the constant is now recorded as a **declared
+tolerance**, stated in percentage points and seconds and read against the
+model's own parameter uncertainty, rather than dressed up as a limit. A first
+attempt grounded it in the reference gate's step and the interface tick; both
+are circular — the gate restates the interface's step, and the tick is assigned
+*from* the step — which is why the honest answer is a declaration.
+
+**The dependency stopped running backwards.** `MAXIMUM_SIMULATION_STEP_S` and
+`core/supported_ranges.py`'s three intervals were both justified *through* the
+two-decimal readout, so a purely presentational move to one decimal would, by
+the reasoning as written, have licensed a step ten times longer and wider input
+ranges. The project owner's position (2026-09-03) was that display decimals
+were never meant to dictate back-end math. Both are now stated in their own
+units — seconds, and L/min — and `test_concentration_decimals_are_a_choice_within_a_recorded_band`
+fails if anything under `core/` reads the display count again. The readout
+itself is recorded as a *choice within a one-to-two decimal band*, with one
+decimal rejected on a teaching ground rather than a numerical one: fat would
+read a flat `0.0%` for an hour and muscle for its first 2.9 to 14.8 minutes.
+
+**What a reader comparing versions should carry across.** The displayed value
+moves in its last digit, and the reference cases were re-derived rather than
+re-fitted — the splitting-error constants are retired with their reasons
+recorded in place, after checking that the new gates cover what the old ones
+protected. Two of the four retiring tests were reproduced exactly; two were
+not, so the step gate gained the setting-change trajectories and a new
+`HELD_RUN_ROUNDING_BOUND` replaced the only test driving the shipped solver
+past 900 s. `PINNED_REFERENCE_STATES` is untouched throughout: it is the
+independent oracle's own solution, and re-pinning it from the exact solver
+would have converted a regression gate into a self-comparison.
 
 **One fact about this repository that is easy to invert.** It is public, and it
 was made public on 2026-09-06 to stop Actions minutes being billed — not as a
@@ -275,6 +335,91 @@ work had been done. It was invisible because the replay only covers `ready` and
 `needs-decision` items, and this one was `blocked` — so the rot surfaced on the
 pull request that unblocked it, which is `PL-RC0M`. Two sessions found it
 independently within the hour, and reached byte-identical fixes.
+
+### v0.4.4 — the code is the model, and what that cost the prose around it
+
+**The split hid the equations, and no renaming could reach it (`PL-GS5X`,
+`PL-SPMQ`).** Until v0.4.x each step was the exact analytic solution of five
+*pairwise* exchanges composed in sequence — fresh gas into the circuit, circuit
+against alveoli, each tissue against a held arterial fraction, venous blood
+against the flow-weighted tissue outflow, and the net uptake applied back to
+alveolar gas. Solving each exactly while holding the other flows constant made
+the composition a first-order Lie/Godunov split, whose error was
+$`O(\Delta t)`$ against the true simultaneous solution even though every
+sub-step was itself exact. `PL-SPMQ` measured what that cost a *reader* rather
+than what it cost the numbers: three of the five sub-steps were objects of the
+splitting scheme, the alveolar balance's two terms were computed in different
+sub-steps separated by a third, and the pulmonary uptake term
+$`Q\lambda_{b:g}(F_A-F_v)`$ was never formed at all. The exponential is not a
+tidier spelling of the same thing — assembling $`A`$ *is* writing the balance
+equations down, and the alveolar balance is one row of it with its two terms as
+two entries.
+
+**Two consequences worth stating rather than leaving to be inferred.** The
+system matrix is Metzler — every off-diagonal entry is a transfer rate and so
+nonnegative — which makes $`\exp(A\Delta t)`$ entrywise nonnegative, and
+`core/matrix_exponential.py` shifts before summing so that this holds in
+floating point and not only in exact arithmetic. A step therefore cannot drive
+a compartment negative at any step size, which means the compartment capacity
+guard is now unreachable through the model and survives as cover for a future
+matrix that is not a pure transfer system. And refining the step no longer
+changes the answer, so `test_step_refinement_converges` asserts the stronger
+property instead: that the step does not enter the answer at all.
+
+**The residual changed shape, and the accounting guard noticed.** Conservation
+used to be maintained by moving amounts in equal-and-opposite pairs, which
+cancelled to the last bit — about 2e-15 L absolute. It is now a property of the
+matrix, with the arithmetic done in fractions, so the pairs cancel only to
+floating-point precision *relative to the largest quantity in play*; over an
+hour at desflurane's dial that is about 43 L of delivered agent, which is where
+four orders of magnitude come from. Nothing about it is a loss of accuracy —
+the relative residual is three orders inside the check's own relative tolerance
+— but `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L` is now routinely exceeded on a
+long run with the relative branch alone carrying the check. Whether that is the
+right shape for the guard is `PL-4GN8`, filed rather than resolved in passing.
+
+**Then the re-derivations, which were the larger half (`PL-X9KD`, `PL-88GQ`,
+`PL-7PLY`).** `PL-GS5X` deliberately corrected every statement its own change
+made *false* and left every statement that needed *re-deriving*, so the
+document asserted nothing untrue and nothing replacement either. What that left
+owed was three derivations, and the interesting result is that two of them came
+back with different answers than expected. Displayed precision kept its value
+and lost its reason: the ceiling is now parameter uncertainty, measured by
+perturbing each stored coefficient by one published SD and reading the
+displacement off the six readouts. The supported step kept its value and turned
+out to have *no* reason — no numerical ceiling exists below about $`10^{13}`$ s,
+and control-timing displacement has no threshold to find — so it is recorded as
+a declaration, which is a weaker and more honest thing than the derivation it
+replaced.
+
+**Four figures were wrong in the drafts, and each was caught by re-measuring
+rather than by reading (`PL-X9KD`).** The margin on the new
+`HELD_RUN_ROUNDING_BOUND` was stated as 4.9x and is 3.2x. The claim that
+refining the reference oracle would force re-pinning all nine
+`PINNED_REFERENCE_STATES` is false — they still pass at 0.0125 s and
+0.003125 s. The oracle's share of what the trajectory gate reports was given as
+98.7–99.8% and is 86–99.8%. And a slider was described as quantizing its value
+when it carries no `divisions` at all. None changed a shipped constant; all
+four were the same failure the item existed to correct, which is generalising a
+figure measured in one place to a family.
+
+**What the gate now measures, and what it does not.** The trajectory gates
+compare the shipped step against an RK4 oracle at 0.05 s, and on the transients
+that set their worst case that oracle is *not converged* — 86 to 99.8% of what
+the gate reports is its own truncation error, not the shipped solver's. That
+makes the gate conservative rather than wrong, since it bounds the sum of both
+solutions' errors and any returning method error is orders above either. It is
+recorded in place because the comment previously said the opposite, having
+generalised a "refining the oracle changes nothing" measurement from the one
+trajectory where it is true. Refining it is a CI-cost decision rather than a
+correctness one and is `PL-B1WW`.
+
+**And the domain's own symbol, which the code had been contradicting
+(`PL-3TLK`).** `core/` and `docs/MODEL.md` called the middle gas-phase state
+$`F_C`$ for circuit, where the field's symbol is $`F_I`$ for inspired — and the
+$`F_A/F_I`$ curve is the canonical teaching graph of this entire subject. A
+learner reading the code against a textbook met a different letter for the same
+quantity, in the one place where the notation is load-bearing.
 
 ## The plan
 

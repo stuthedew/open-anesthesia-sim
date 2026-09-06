@@ -4,12 +4,13 @@ title: State every displayed decimal count as a presentation decision the owner 
 priority: P2
 effort: S
 status: done
-closed: 2026-09-06
-pr: 378
 classes: docs, ux
 feature: presentation-safety
+milestone: v0.4.4
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_formatting.py
 added: 2026-09-03
+closed: 2026-09-06
+pr: 378
 verify: uv run pytest tests/unit/test_formatting.py && grep -q 'def test_concentration_decimals_are_a_choice_within_a_recorded_band' tests/unit/test_formatting.py
 ---
 

@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: infra, docs
 feature: ci-cost
+milestone: v0.4.4
 touches: .github/workflows/pr-title.yml
 added: 2026-09-05
 closed: 2026-09-06
+pr: 377
 verify: python3 tools/doc_check.py check && grep -q 'load-bearing outside the tree' .github/workflows/pr-title.yml
 ---
 
