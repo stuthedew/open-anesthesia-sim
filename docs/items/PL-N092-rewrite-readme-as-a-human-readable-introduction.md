@@ -3,8 +3,7 @@ id: PL-N092
 title: Rewrite README as a human-readable introduction to the project
 priority: P2
 effort: M
-status: blocked
-blocked-by: PL-XYRN
+status: ready
 classes: docs, ux
 feature: project-introduction
 touches: README.md, docs/MODEL.md, pyproject.toml, Makefile, .github/workflows/quality.yml, tools/readme_hold_check.py, tests/unit/test_readme_hold_check.py, docs/ARCHITECTURE.md
@@ -200,3 +199,25 @@ file that is gone. They are floors on the status section, not an outline of it:
   document justifies the readout at all, it takes the number from `docs/MODEL.md`
   rather than from the old text in git history, which was wrong for most of its
   life and is a `science`-class error rather than a wording one.
+
+**Unblocked 2026-09-06.** `PL-XYRN`'s gate was "when does the repository go
+public?" and the project owner answered it by acting: the repository is public
+as of 2026-09-06 (`"visibility": "public"` from the API). This item's brief
+already said it was "`ready` in every other respect... it waits only for
+timing", so the `blocked-by: PL-XYRN` edge is removed rather than left to hide
+it from `docket next`.
+
+**The sequencing this item assumed has inverted, and that is the note to read
+before starting.** `PL-XYRN` exists to run the human-facing pass *immediately
+before* the repository goes public. The repository went public first, and the
+pass has not run, so the work is now remedial rather than preparatory: the
+repository has been publicly readable, with no `README.md` at the root and no
+GitHub description, since 2026-09-06. That does not change what this item
+writes; it changes how soon.
+
+One consequence worth stating for whoever takes it: this is the only place in
+the tree that says what the project *is* to a stranger who has not opened
+`src/`. The educational-not-clinical statement currently lives in the running
+interface and in `CITATION.cff`, neither of which a visitor to the repository
+page meets. `touches` already names `tools/readme_hold_check.py` and its test,
+which enforce the file's absence and must be retired in the same change.

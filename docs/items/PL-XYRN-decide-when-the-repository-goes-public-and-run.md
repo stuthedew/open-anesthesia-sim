@@ -67,3 +67,26 @@ blocked on this item yet, and each stays workable on its own until it is.
 **Done when.** The project owner has set a date or a trigger for going public;
 every item blocked on this one has been worked or explicitly released; and the
 repository is public.
+
+**The go-public half was answered by action on 2026-09-06.** The project owner
+made the repository public (`"visibility": "public"` from the API, read the
+same day), in the same message as unticking `main`'s up-to-date requirement.
+
+**The pass did not run first, which is the outcome this item was written to
+prevent.** Its whole shape - "run the human-facing pass *immediately before*
+it" - assumed the decision would arrive as a decision, with the pass between
+the answer and the switch. So the work is now remedial: the repository has been
+publicly readable with no `README.md` and no GitHub description since that
+moment. Nothing is wrong in the tree; what is missing is everything this item
+was holding for a reader who can now arrive at any time.
+
+`PL-N092` (rewrite README as a human-readable introduction) is unblocked as of
+this note, and is the piece with a reader waiting. The rest of the candidate
+list is unchanged and none of it was ever blocked on this item.
+
+**What is still `needs-decision` here, restated.** Not the timing, which is
+settled, but the shape: whether the remaining pass is scoped as a milestone in
+`ROADMAP.md` - which is what the `docket` skill requires before an `L` item is
+started - or dissolved into its parts now that the trigger has fired and each
+part has a reader. That is the project owner's call and nothing here should
+start before it, except `PL-N092`, which is `M` and stands on its own.
