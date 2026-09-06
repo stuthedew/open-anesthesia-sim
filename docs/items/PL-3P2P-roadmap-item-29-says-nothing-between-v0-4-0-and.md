@@ -1,8 +1,14 @@
 ---
 id: PL-3P2P
 title: ROADMAP item 29 says nothing between v0.4.0 and v0.7.0 touches core/, but v0.5.0's score architecture does, so the exact step is pinned ahead of v0.5.0 rather than free in that span
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: docs, defect
+touches: ROADMAP.md
 added: 2026-09-06
+closed: 2026-09-06
+verify: python3 tools/doc_check.py check && grep -qF 'it was pinned immediately ahead of v0.5.0' ROADMAP.md
 ---
 
 **Problem.** Planned-milestone item 29's *Placement* paragraph justifies putting
@@ -50,3 +56,13 @@ critical-path position are stated as the two separate reasons they are. Consider
 whether `tools/doc_check.py` can decide the mechanical half - a prose claim that
 a release touches no `core/` path, held against the `touches` of the items that
 release's section names - or record why it cannot.
+
+**Closed 2026-09-06** in the change that scoped v0.5.0. Item 29's placement
+paragraph now states the corrected position and keeps the superseded sentence
+quoted beside it, so the reasoning that was current on 2026-09-02 is legible
+rather than silently replaced. The check the *Done when* asks about was not
+built: whether a release section's prose claim about which paths it touches can
+be held to the `touches` of the items it names is decidable in principle, but
+one milestone section is not a recurring case, and `CLAUDE.md`'s gate is
+whether it will genuinely run again. `PL-GLBF` already covers the general
+problem of hand-maintained subset counts in this file.
