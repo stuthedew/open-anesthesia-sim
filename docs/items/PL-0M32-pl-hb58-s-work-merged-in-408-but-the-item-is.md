@@ -50,3 +50,29 @@ somebody else's item from outside is a second resolution of the same file.
 **Done when.** `PL-HB58` is closed with a `verify:` naming the test that
 exists, by whoever owns it; and either a check can tell "finished under a
 different name" from "not started", or it is recorded that it cannot and why.
+
+**The instance closed on 2026-09-06, hours after this was filed; the general
+question is what remains.** `#412` closed `PL-HB58` and, in the same change,
+repointed its `verify:` at the test that actually shipped -
+`test_five_minute_elimination_ratio_against_published_human_measurement`, not
+the `..._matches_...` this item found it naming. Checked on `main` at
+`029073d`: the item reads `status: done` and the grep half of its command
+resolves. So the two faults recorded above are both fixed, and neither needs
+doing again.
+
+**What is left is the reason they were invisible**, which no fix has touched. A
+`ready` item's `verify:` is *supposed* to fail, so a command that fails because
+the work has not started and a command that fails because the work landed under
+a different name are the same observation. `bin/docket check --verify` reports
+the opposite case - commands that pass unexpectedly - because that one is
+decidable. This item is therefore now a **question about whether the case can
+be decided at all**, not a defect report with a known fix, and it should be
+retitled when triaged.
+
+One shape worth testing: a `verify:` whose `grep` half fails while its test-run
+half passes is a weak signal of exactly this state, since it means the suite is
+healthy and only the named artefact is missing. That is not conclusive - it is
+also what an unstarted item looks like when its file already exists - so
+whether it is worth an advisory, or whether this is a case the tooling should
+decline, is the judgment to make. Dropping it with that reasoning recorded is a
+legitimate outcome.
