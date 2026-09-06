@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: parallel-sessions
+milestone: v0.4.5
 touches: docs/items
 added: 2026-09-06
 closed: 2026-09-06

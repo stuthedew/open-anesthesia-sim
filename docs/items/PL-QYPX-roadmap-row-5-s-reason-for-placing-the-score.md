@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs, defect
+milestone: v0.4.5
 touches: ROADMAP.md
 added: 2026-09-06
 closed: 2026-09-06

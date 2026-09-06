@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science
 feature: numerical-domain
+milestone: v0.4.5
 touches: src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md, src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-06
 closed: 2026-09-06

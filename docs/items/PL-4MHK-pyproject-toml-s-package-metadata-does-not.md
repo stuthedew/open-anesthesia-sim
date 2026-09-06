@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: project-introduction
+milestone: v0.4.5
 touches: pyproject.toml, docs/WORKING_NOTES.md
 blocked-by: PL-N092
 added: 2026-09-01
