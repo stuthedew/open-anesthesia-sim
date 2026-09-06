@@ -1199,11 +1199,30 @@ between the stored fat perfusion and the measured one is the largest of the
 five and is recorded in "Known limitations" as well, because it acts on the
 shape of a displayed curve rather than only on a number in a file.
 
-Mapleson's papers are no longer named here as the primary lineage. They were,
-until 2026-09-06, on the strength of their titles and never having been read;
-`PL-6Q8N` records what a session can and cannot reach, and why a paper
-publishing "data for quantifying" a model is a tier-2 compilation rather than
-the tier-1 source that framing implied.
+**The lineage is Lowe and Ernst's, not Mapleson's, and that is now read at the
+source rather than inferred.** Until 2026-09-06 this file named Mapleson's
+1963, 1964 and 1973 papers as its primary lineage, on the strength of their
+titles and never having been opened. `PL-6Q8N` removed that framing. Later the
+same day the project owner supplied the Workbook's front matter and appendices,
+and its Model Parameters table (Appendix B, page 168) settles the question: the
+note beneath it reads, in these words, "Values for volume, flow and relative
+flow are taken from Lowe and Ernst, 1981" — *The Quantitative Practice of
+Anesthesia: Use of Closed Circuit*, Williams & Wilkins. The Workbook attributes
+nothing to Mapleson.
+
+That reading also corrected this file about its own contents. **The table
+supplies seven of the eleven values, not all eleven**, and the citation had
+been pointing at the wrong section — page 183's "Patient default options", which
+describes the interface controls and carries no numbers. Alveolar volume, the
+three tissue volumes and the three flow fractions are in the table and equal to
+what is stored; cardiac output is there only as the sum of the flow column.
+Reference weight and alveolar ventilation are interface defaults the supplied
+chapters state no number for, and **the venous pool's 1.0 L is not in the table
+at all** — its `Blood` row reads 5.00 L. `PL-3YZW` carries that gap and
+`PL-7HDS` carries reading Lowe and Ernst, which is the link that decides
+whether this chain ends in a measurement or in another compilation. Neither is
+assumed here: a 1981 monograph nobody has opened is recorded as located and
+unread, which is the discipline the Mapleson entries were removed for failing.
 
 **So, three rules for a `sources` entry.**
 
