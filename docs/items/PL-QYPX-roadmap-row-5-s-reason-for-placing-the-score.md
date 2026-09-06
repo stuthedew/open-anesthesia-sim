@@ -8,6 +8,7 @@ classes: docs, defect
 touches: ROADMAP.md
 added: 2026-09-06
 closed: 2026-09-06
+pr: 380
 verify: python3 tools/doc_check.py check && grep -qF 'stops being a property a test has to establish' ROADMAP.md
 ---
 

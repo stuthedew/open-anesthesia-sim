@@ -8,6 +8,7 @@ classes: docs, defect
 touches: ROADMAP.md
 added: 2026-09-06
 closed: 2026-09-06
+pr: 380
 verify: python3 tools/doc_check.py check && grep -qF 'it was pinned immediately ahead of v0.5.0' ROADMAP.md
 ---
 

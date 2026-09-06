@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-06
 closed: 2026-09-06
+pr: 381
 verify: python3 tools/doc_check.py check && grep -qF 'Do not try to push the tag yourself first' .claude/skills/docket/SKILL.md
 ---
 
