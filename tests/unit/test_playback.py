@@ -70,16 +70,9 @@ def test_the_control_grid_at_each_rate_is_the_one_two_documents_publish(rate: Pl
     the shipped step and a supported multiplier is exact in binary, so a
     tolerance would only hide the case this is guarding - a rung whose grid
     is a number nobody has published.
-
-    Read through `PlaybackRate.control_grid_s` rather than multiplying the
-    step count here, because that accessor is what the interface calls to
-    tell a reader the grid (`PL-X35V`). Computing the same product in the
-    test would leave the published ladder guarded and the shipped
-    derivation of it unguarded, which is the arrangement in which the
-    displayed interval and the enforced one can differ.
     """
 
-    grid_s = rate.control_grid_s(
+    steps = rate.steps_per_tick(
         tick_interval_s=TICK_INTERVAL_S, simulation_step_s=SIMULATION_STEP_S
     )
 
@@ -87,29 +80,7 @@ def test_the_control_grid_at_each_rate_is_the_one_two_documents_publish(rate: Pl
         f"{rate.multiplier}x is offered but its control grid is published nowhere; "
         "add it to app/playback.py and docs/MODEL.md 'Supported simulation step' first"
     )
-    assert grid_s == PUBLISHED_CONTROL_GRID_S[rate.multiplier]
-
-
-def test_the_control_grid_refuses_the_intervals_the_step_count_refuses() -> None:
-    """A grid is a step count times a step, so it inherits that refusal.
-
-    The number reaches a reader as a disclosure of what the rate costs, so
-    the failure to avoid is a plausible interval derived from intervals the
-    loop could never run at. Deriving it through `steps_per_tick` rather
-    than multiplying the multiplier by the step is what makes that
-    impossible; this is what holds the derivation to that route.
-    """
-
-    rate = PlaybackRate(60)
-
-    with pytest.raises(SimulationConfigurationError, match="tick_interval_s"):
-        rate.control_grid_s(tick_interval_s=0.0, simulation_step_s=SIMULATION_STEP_S)
-
-    with pytest.raises(SimulationConfigurationError, match="simulation_step_s"):
-        rate.control_grid_s(tick_interval_s=TICK_INTERVAL_S, simulation_step_s=-1.0)
-
-    with pytest.raises(SimulationConfigurationError, match="not a whole number of steps"):
-        rate.control_grid_s(tick_interval_s=TICK_INTERVAL_S, simulation_step_s=0.07)
+    assert steps * SIMULATION_STEP_S == PUBLISHED_CONTROL_GRID_S[rate.multiplier]
 
 
 def test_every_published_control_grid_belongs_to_an_offered_rate() -> None:

@@ -59,7 +59,6 @@ __all__ = [
     "chart_grid_interval_percent",
     "format_case_discard_warning",
     "format_chart_time_label",
-    "format_control_grid",
     "format_delivered_label",
     "format_elapsed",
     "format_flow",
@@ -649,64 +648,6 @@ def format_elapsed(elapsed_s: float) -> str:
     """
 
     return f"{elapsed_s:.1f} s"
-
-
-def format_control_grid(grid_s: float) -> str:
-    """Render the interval a live control change is resolved to.
-
-    `PlaybackRate.control_grid_s` derives the number; this is the string
-    for it, and the two are separate so that the interval a reader is told
-    and the interval the run loop produces cannot be written twice. The
-    ladder it renders at the shipped rates is `0.1 s`, `0.5 s`, `2 s`,
-    `6 s` and `30 s`, which is what `app/playback.py` and `docs/MODEL.md`
-    § "Supported simulation step" publish.
-
-    **The unit is simulated seconds and the caller owes that word**, because
-    the two clocks differ by exactly the multiplier this interval is derived
-    from: at 300x, 30 simulated seconds is a tenth of a real one, and a
-    reader who reads it as real time has the cost wrong by two orders of
-    magnitude in the direction that matters. This renders the magnitude
-    alone for the same reason `format_mac_multiple` does not name the agent
-    - the surrounding phrase is where the referent belongs, and it differs
-    per site.
-
-    **A value it cannot render exactly is refused rather than rounded.**
-    Every grid the shipped ladder produces is a whole number of tenths and
-    exact in binary, so one decimal is lossless for all of them; a rung
-    whose grid is not would otherwise be published a shorter interval than
-    the one the loop enforces, which understates the cost to the reader in
-    the one direction a safety disclosure must not. `CLAUDE.md` prefers an
-    obvious failure to a plausible-looking number, and this is that failure.
-
-    Args:
-        grid_s: Simulated seconds between the instants a control change can
-            act at, as `PlaybackRate.control_grid_s` returns it. Must be
-            finite, positive, and a whole number of tenths of a second.
-
-    Returns:
-        The interval with its unit, trailing zero dropped: `30 s`, not
-        `30.0 s`.
-
-    Raises:
-        ValueError: If the interval is not finite and positive, or if one
-            decimal would not represent it exactly.
-    """
-
-    if not isfinite(grid_s) or grid_s <= 0.0:
-        raise ValueError(
-            f"a control grid is a positive, finite number of simulated seconds, not {grid_s!r}"
-        )
-
-    rendered = f"{grid_s:.1f}".removesuffix(".0")
-
-    if float(rendered) != grid_s:
-        raise ValueError(
-            f"a control grid of {grid_s!r} s is not a whole number of tenths, so displaying it "
-            f"at one decimal would publish {rendered} s and understate the interval a control "
-            "change is resolved to"
-        )
-
-    return f"{rendered} s"
 
 
 def format_playback_rate(multiplier: int) -> str:

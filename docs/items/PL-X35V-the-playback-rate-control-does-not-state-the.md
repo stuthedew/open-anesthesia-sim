@@ -3,11 +3,13 @@ id: PL-X35V
 title: The playback-rate control does not state the control resolution its rung costs, so the PL-NBWP disclosure reaches only a reader who has docs/MODEL.md open
 priority: P1
 effort: M
-status: needs-decision
+status: dropped
 classes: safety, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py, tests/unit/test_playback.py, tools/contrast_check.py
+touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py
 added: 2026-09-06
+closed: 2026-09-06
+reason: The interface displays no wrong value, and the figure this item asks it to display is one a reader cannot perceive or act on. RENDER_INTERVAL_S is twice SIMULATION_TICK_INTERVAL_S, so a frame is two control-grid steps at every rate: at 300x the reader sees simulated time in 60 s increments and can place a control change on a 30 s one. A `30 s control grid` caption is therefore uncheckable against anything on screen and names a difference finer than the display resolves - the inverse of the property that makes the rate label worth showing, which is that it can be checked against the clock. The 10 pp displacement in the brief is a ventilator start at the envelope corner rather than the learner's manoeuvre; opening or closing the dial reaches 1.5 pp at 300x. The plain-language alternative that survived the analysis - one static line naming pause-change-resume as the exact-timing route - was offered to the project owner alongside dropping, and they chose dropping (2026-09-06), so it is declined here rather than left to be re-raised. docs/MODEL.md § "Supported simulation step" keeps the ladder and the measurements for a reader who wants them. Stronger still, and independent of the display argument: the exact propagator means the grid is not a numerical limit at all - a burst could be split at the control event and both halves propagated exactly, at any step size, so an arbitrarily fine grid is available at every rate for the asking. It is not taken because the reader is the coarse element. At 300x the frame they are acting on is up to 60 simulated seconds old before any reaction time is added, so a 30 s quantization sits inside their own observation uncertainty and halving it would change nothing they could either perceive or intend.
 ---
 
 **Problem.** `PL-NBWP` established that a setting changed while the run plays
@@ -211,3 +213,33 @@ reads the published ladder through it.
 **Filed while here:** `PL-SR8F`, on `docs/MODEL.md` calling the case-opening
 displacement "two orders milder at every rate" when the figures in the same
 sentence are 0.8 to 1.3 orders apart.
+
+## Outcome: dropped, 2026-09-06
+
+The project owner was offered three dispositions - say the actionable half in
+words and drop the figure; drop the item outright; or build it as the brief
+describes - and chose to drop it. The `reason` field carries the argument.
+
+**Nothing was left in `src/` or `tests/`.** `PlaybackRate.control_grid_s` and
+`format_control_grid` were written earlier in the session as the half common to
+all three dispositions, and both were reverted when the third disposition won:
+with no figure and no sentence displayed, neither has a production caller, and
+the ladder test correctly derives the grid at the point it asserts it. The
+sections above are kept as the record of what was considered, and the
+recommendation in the first of them stands withdrawn.
+
+**The finding that survived the analysis is recorded here rather than refiled**,
+so that dropping this item does not send it round again: nothing in the
+interface tells a reader that pause-change-resume is the route to timing a
+manoeuvre exactly, which is a teaching affordance rather than a disclosure, and
+it was declined with the rest.
+
+**A question worth recording, asked by the project owner after the drop.** If
+the matrix exponential is exact at any step, why do 1x and 300x differ at all?
+They do not differ numerically - that is the point of the exact step, and
+`docs/MODEL.md` measures the disagreement with an independent solution at
+1e-14 to 2e-12 in fraction, not growing with the step. What differs is the
+*input*: settings are held constant across a step, so a control moved while the
+run plays is attributed to a burst boundary, and the same gesture at two rates
+produces two different control timelines. Both runs are then computed exactly.
+They are not one run solved two ways; they are two runs.

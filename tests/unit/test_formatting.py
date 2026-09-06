@@ -29,7 +29,6 @@ from anesthesia_sim.app.formatting import (
     chart_grid_interval_percent,
     format_case_discard_warning,
     format_chart_time_label,
-    format_control_grid,
     format_delivered_label,
     format_elapsed,
     format_mac_awake_reference,
@@ -722,69 +721,6 @@ def test_the_discard_warning_says_the_loss_is_final() -> None:
 
     assert "discarded" in warning
     assert "cannot be undone" in warning
-
-
-@pytest.mark.parametrize(
-    ("grid_s", "expected"),
-    [(0.1, "0.1 s"), (0.5, "0.5 s"), (2.0, "2 s"), (6.0, "6 s"), (30.0, "30 s")],
-)
-def test_the_control_grid_renders_the_ladder_two_documents_publish(
-    grid_s: float, expected: str
-) -> None:
-    """The five intervals the shipped rungs produce, as a reader is told them.
-
-    `tests/unit/test_playback.py` holds `PlaybackRate.control_grid_s` to
-    these same numbers, so between the two the interval the run loop
-    enforces and the interval the interface renders are pinned to one
-    ladder. Written out rather than derived from the multipliers, for the
-    reason that file gives: a computed expectation would restate the
-    implementation and pass whatever it did.
-    """
-
-    assert format_control_grid(grid_s) == expected
-
-
-def test_the_control_grid_drops_a_trailing_zero_rather_than_implying_a_decimal() -> None:
-    """`30 s`, never `30.0 s`.
-
-    A decimal a value does not have is false precision in a disclosure
-    whose whole job is to state a tolerance honestly - it would imply the
-    grid is resolved to a tenth of a second at 300x, which is the figure
-    for 1x and three hundred times too fine.
-    """
-
-    assert format_control_grid(30.0) == "30 s"
-    assert "." not in format_control_grid(2.0)
-    assert "." in format_control_grid(0.5)
-
-
-def test_the_control_grid_refuses_an_interval_one_decimal_would_understate() -> None:
-    """An interval that does not round-trip is an error, not a shorter one.
-
-    A rung whose grid were 0.25 s would render as `0.2 s` and tell a reader
-    the interface resolves control timing finer than it does. `CLAUDE.md`
-    asks for an obvious failure ahead of a plausible-looking number, and
-    the direction matters: the failure mode being refused understates the
-    cost rather than overstating it.
-    """
-
-    with pytest.raises(ValueError, match="whole number of tenths"):
-        format_control_grid(0.25)
-
-    with pytest.raises(ValueError, match="whole number of tenths"):
-        format_control_grid(1.0 / 3.0)
-
-
-@pytest.mark.parametrize("grid_s", [0.0, -0.1, float("nan"), float("inf")])
-def test_the_control_grid_refuses_an_interval_that_is_not_one(grid_s: float) -> None:
-    """No rate produces these, so reaching one means the derivation broke.
-
-    A zero or negative grid would read as "controls act instantly", which
-    is the one reading `app/playback.py` exists to prevent.
-    """
-
-    with pytest.raises(ValueError, match="positive, finite"):
-        format_control_grid(grid_s)
 
 
 def test_the_playback_rate_is_stated_at_every_rate_including_real_time() -> None:

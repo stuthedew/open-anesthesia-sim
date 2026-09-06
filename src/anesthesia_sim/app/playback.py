@@ -161,51 +161,6 @@ class PlaybackRate:
 
         return steps
 
-    def control_grid_s(self, *, tick_interval_s: float, simulation_step_s: float) -> float:
-        """The simulated seconds between the instants a live control change can act at.
-
-        A tick advances its whole burst with nothing between the steps, so
-        the reachable simulated instants are one burst apart: this is
-        `steps_per_tick(...)` steps of `simulation_step_s`, which at the
-        shipped intervals is `multiplier x 0.1` s. "What the rate does
-        change" above and `docs/MODEL.md` § "Supported simulation step"
-        publish the resulting ladder against a measured cost in percentage
-        points of a displayed compartment, and
-        `test_the_control_grid_at_each_rate_is_the_one_two_documents_publish`
-        holds it to them.
-
-        **Two things it is not, and a reader can reach either from this
-        number.** It is not a delay: `ControlChange.elapsed_s` is the
-        simulation clock at the moment of the call and the new setting acts
-        over the step beginning there, at every rate, so nothing arrives
-        late and no displayed value is stale against the recorded timeline.
-        And it is not the step size, which is `simulation_step_s` at every
-        rate and is an input here rather than an output - a rate that moved
-        the step would be a different run rather than a faster one. What
-        this coarsens is only which instants a reader can *choose*, which
-        is why anything rendering it owes the distinction in words.
-
-        Args:
-            tick_interval_s: Real seconds the run loop waits between
-                wakeups. Must be positive.
-            simulation_step_s: Simulated seconds one step advances. Must be
-                positive, and is what the returned interval is counted in.
-
-        Returns:
-            Simulated seconds, never less than one step.
-
-        Raises:
-            SimulationConfigurationError: On exactly the conditions
-                `steps_per_tick` refuses, which this calls to derive the
-                burst and therefore inherits rather than re-checks.
-        """
-
-        steps = self.steps_per_tick(
-            tick_interval_s=tick_interval_s, simulation_step_s=simulation_step_s
-        )
-
-        return steps * simulation_step_s
-
 
 #: The rates the interface offers, slowest first.
 #:
