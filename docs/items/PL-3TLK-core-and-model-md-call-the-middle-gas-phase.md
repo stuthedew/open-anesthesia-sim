@@ -1,14 +1,15 @@
 ---
 id: PL-3TLK
 title: core/ and MODEL.md call the middle gas-phase state F_C (circuit), but the domain's symbol is F_I (inspired) and the F_A/F_I curve is the field's canonical teaching graph
-touches: src/anesthesia_sim/core/circuit.py, docs/MODEL.md
-added: 2026-09-03
-closed: 2026-09-06
 priority: P2
 effort: M
 status: done
 classes: refactor, docs
 feature: core-domain-language
+touches: src/anesthesia_sim/core/circuit.py, docs/MODEL.md
+added: 2026-09-03
+closed: 2026-09-06
+pr: 376
 verify: python3 tools/doc_check.py check && grep -qF 'the middle gas-phase state is $`F_I`$ (inspired)' docs/MODEL.md
 ---
 

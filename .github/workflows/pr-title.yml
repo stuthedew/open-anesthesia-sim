@@ -14,9 +14,10 @@ name: pr-title
 # is its own workflow instead.
 #
 # No uv and no virtualenv: `tools/` runs under a bare `python3` by contract,
-# which `tests/unit/test_tools_portability.py` and `quality.yml`'s `floor` job
-# hold it to. That is what makes the split cheap - a checkout and one script,
-# with no dependency resolution in front of it.
+# which `tests/unit/test_tools_portability.py` and `quality.yml`'s floor
+# section - the steps `checks` runs before `setup-uv` - hold it to. That is
+# what makes the split cheap - a checkout and one script, with no dependency
+# resolution in front of it.
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -34,6 +35,18 @@ permissions:
   contents: read
 
 jobs:
+  # **This job's name is load-bearing outside the tree**, exactly as
+  # `quality.yml`'s `checks` is - and those two are the whole set, because they
+  # are the only jobs here that report a status check to a pull request at all
+  # (`drift.yml` runs on a schedule and never on `pull_request`). Branch
+  # protection matches a required status check by name, so renaming or removing
+  # one orphans the requirement: nothing reports it, and every pull request then
+  # waits forever on a check that cannot arrive - pending rather than failing,
+  # so it does not look like a break. `PL-D551` deleting the `floor` job from
+  # `quality.yml` did exactly that (`PL-KPP1`). The required list lives in
+  # repository settings, which no script here can read, so nothing in
+  # `make check` or CI will catch the next one. Change a job name only together
+  # with that setting.
   pr-title:
     runs-on: ubuntu-latest
     # Observed at 12 seconds; one checkout and one standard-library script.
@@ -58,12 +71,12 @@ jobs:
       # `PL-79N5`. Dropping `uv` was right - this script is standard library
       # only - but it left the script under no pinned interpreter at all:
       # not `.python-version`, which `uv run python` used to give it inside
-      # `checks`, and not the declared floor, because `quality.yml`'s `floor`
-      # job runs `doc_check.py`, `bin/docket check` and `contrast_check.py`
-      # and never this one. It ran on whatever `ubuntu-latest` happened to
-      # ship. The floor is not chosen here: it is what
-      # `subprojects/docket/pyproject.toml` declares in `requires-python`, and
-      # `tests/unit/test_tools_portability.py` holds every concrete pin in
+      # `checks`, and not the declared floor, because `quality.yml`'s floor
+      # section runs a fixed list of `tools/` scripts - `doc_check.py` and
+      # `bin/docket check` among them - and never this one. It ran on whatever
+      # `ubuntu-latest` happened to ship. The floor is not chosen here: it is
+      # what `subprojects/docket/pyproject.toml` declares in `requires-python`,
+      # and `tests/unit/test_tools_portability.py` holds every concrete pin in
       # `.github/workflows/` to it, so this one cannot drift from that one.
       - uses: actions/setup-python@v7.0.0
         with:
