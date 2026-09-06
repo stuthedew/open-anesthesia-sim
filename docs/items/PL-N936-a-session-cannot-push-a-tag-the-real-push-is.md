@@ -1,10 +1,15 @@
 ---
 id: PL-N936
 title: "A session cannot push a tag: the real push is dropped while git push --dry-run reports success, so every release tag goes to the project owner"
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: docs
 feature: dev-tooling
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-06
+closed: 2026-09-06
+verify: python3 tools/doc_check.py check && grep -qF 'Do not try to push the tag yourself first' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** Pushing a tag from a container session fails, and the way it fails
@@ -85,3 +90,28 @@ rather than a matter of timing.
 
 So the finding is not "the push is slow" or "the check was early". A session's
 tag push is dropped, and the tag that appears afterwards is somebody else's.
+
+**Closed at triage, 2026-09-06, because the work had already landed.** `a575f8d`
+("PL-N936: record that a session cannot push a tag, and that the dry run says
+otherwise", #375, on `origin/main`) both created this file and made the
+`SKILL.md` edit, and the session left the status at `untriaged`. Checked against
+the four clauses of **Done when.**: the release mode now says the push will fail
+before a session tries, that `--dry-run` reports `[new tag]` anyway, that the
+tag is the owner's to run, and its three-command block tags `origin/main`
+directly rather than carrying a `<merge commit>` placeholder. Nothing is
+outstanding, so triaging it back into the open queue would have offered finished
+work to the next session.
+
+**`pr:` will name the triage pull request, not #375.** `bin/docket record` reads
+what a commit *closed*, and `a575f8d` closed nothing — it left the status at
+`untriaged`, which is the whole defect here — so it declines the number and says
+so ("`a575f8d` closed no item, so #375 is owed to nothing"). The closure lands
+in the triage pass instead, and that is the pull request the field will record.
+The work's own provenance is the paragraph above: `a575f8d`, #375.
+
+**The `verify:` command is a reconstruction, and says so.** It was written at
+close rather than before the work, so it was never watched failing in the
+ordinary way. It was run both ways instead: it passes on the merged tree, and
+its `grep` half exits 1 against `a575f8d^`, the tree immediately before the
+edit. That is weaker evidence than a command run first — it proves the command
+discriminates, not that anyone let it.

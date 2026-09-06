@@ -1,7 +1,12 @@
 ---
 id: PL-1KTV
 title: docket.toml counts .github as the workflow lane but apparatus-standard.md's paths do not, so 500 lines of workflow comments sit under the simulator's standard by default
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: docs
+feature: worker-instructions
+touches: docket.toml, .claude/rules/apparatus-standard.md, CLAUDE.md
 added: 2026-09-06
 ---
 
@@ -35,7 +40,7 @@ all — a question about what the apparatus bar *says*. This is a question about
 which paths it *covers*, and the two answers are independent: `PL-WGXJ` could
 be resolved either way and `.github` would still be missing from the list.
 
-**The decision this needs.** Whether `.github/` is apparatus:
+**Decision needed.** Whether `.github/` is apparatus:
 
 - **If yes**, add `/.github/**` to `apparatus-standard.md`'s `paths:` and to
   `CLAUDE.md`'s naming of the apparatus half, so all three lists agree.
