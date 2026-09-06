@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md, src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-06
 closed: 2026-09-06
+pr: 383
 verify: python3 tools/doc_check.py check && grep -qF 'decided on 2026-09-06: the step stays at 0.1 s and that timing is accepted' docs/MODEL.md
 ---
 

@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-06
 closed: 2026-09-06
+pr: 385
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_changes_the_base_already_holds_is_not_partly_merged' subprojects/docket/tests/test_vcs.py
 ---
 
