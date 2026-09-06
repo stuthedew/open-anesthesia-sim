@@ -322,9 +322,14 @@ already leads needs no item of its own. A release commit is exempt, exactly:
 them, because `app/simulation_view.py` imports Flet and these tools run under a
 bare `python3`. Its `REQUIREMENTS` table is the specification: each entry names
 a pair that appears on screen together, the success criterion, the minimum, and
-the reason. The tool evaluates that table and decides nothing else — which
-pairs matter, and whether a non-color channel is genuinely redundant, are
-judgments, and `.claude/rules/ui-color.md` carries them. Pairs that fall short
+the reason, which cites the code the pair is drawn in by symbol. The tool
+evaluates that table and decides nothing else — which pairs matter, and whether
+a non-color channel is genuinely redundant, are judgments, and
+`.claude/rules/ui-color.md` carries them. The one thing it does decide about
+the prose is the half a script can: a description may cite no line number, and
+every symbol it names must exist in the two modules read above. Those citations
+were line numbers until `PL-GJDW`, and all fourteen had rotted into unrelated
+code, which made the tool's own coverage unauditable while looking audited. Pairs that fall short
 today are listed against the item that closes each, and a listed shortfall that
 starts passing is an error, so a fix cannot leave its excuse behind.
 

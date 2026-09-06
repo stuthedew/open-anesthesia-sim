@@ -25,6 +25,15 @@ declared pair. What follows is only the half it cannot decide.
    confirm which background it is drawn on, rather than assuming `PANEL` — the
    criterion, and the reason in a few words.
 
+   **Cite the code by symbol, in backticks, and never by line number.** The
+   reason is the entry, and the entry is how a later reviewer finds what it
+   defends; a line number stops leading there on the next edit to `app/` and
+   says nothing when it stops. Write the method or attribute the color is set
+   on — `` `_status_text` ``, `` `_build_metric_panel` `` — bare, so `` `mount` ``
+   rather than `` `mount()` ``. The tool refuses a line number and resolves
+   every symbol you name against `app/theme.py` and `app/simulation_view.py`,
+   so a rename fails `make check` instead of rotting quietly (`PL-GJDW`).
+
 2. **Color is never the only channel carrying a distinction.** SC 1.4.1 is the
    floor; the real reason is stronger and specific to this application. ISO 5360
    Table 2 footnote b makes displaying an agent color an obligation to display

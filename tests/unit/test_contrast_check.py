@@ -56,6 +56,27 @@ NOT_A_COLOUR = "solid"
 '''
 
 
+VIEW_WITH_SYMBOLS = '''"""Miniature view holding each kind of name a description can cite."""
+
+import flet as ft
+
+from anesthesia_sim.app.theme import INK, PANEL
+
+TRACE_ONE = INK
+
+
+class SimulationView:
+    def __init__(self) -> None:
+        self._status_text = ft.Text("Paused", color=INK)
+
+    def mount(self) -> None:
+        pass
+
+    async def _run_render_timer(self) -> None:
+        pass
+'''
+
+
 def _repo(tmp_path: Path, *, theme: str = THEME_SOURCE, view: str = VIEW_SOURCE) -> Path:
     """Build a miniature repository holding only the two color-defining modules."""
     app = tmp_path / "src" / "anesthesia_sim" / "app"
@@ -65,13 +86,11 @@ def _repo(tmp_path: Path, *, theme: str = THEME_SOURCE, view: str = VIEW_SOURCE)
     return tmp_path
 
 
-def _requirement(foreground: str, background: str, minimum: float) -> contrast_check.Requirement:
+def _requirement(
+    foreground: str, background: str, minimum: float, why: str = "a fixture"
+) -> contrast_check.Requirement:
     return contrast_check.Requirement(
-        foreground=foreground,
-        background=background,
-        minimum=minimum,
-        criterion="1.4.3",
-        why="a fixture",
+        foreground=foreground, background=background, minimum=minimum, criterion="1.4.3", why=why
     )
 
 
@@ -232,6 +251,61 @@ def test_the_verdict_is_judged_at_the_precision_it_is_printed_at(tmp_path: Path,
     assert not report.errors
 
 
+# --- citations into the code ------------------------------------------------
+
+
+def test_the_symbol_reader_finds_every_kind_of_name_a_description_can_cite(tmp_path: Path) -> None:
+    """Constants, classes, methods - sync and async - and `self.X` attributes."""
+    symbols = contrast_check.read_symbols(_repo(tmp_path, view=VIEW_WITH_SYMBOLS))
+
+    assert {"PANEL", "TRACE_ONE", "SimulationView", "mount", "_run_render_timer"} <= symbols
+    assert "_status_text" in symbols, "an attribute a control is built into is citable"
+    assert "_no_such_symbol" not in symbols
+
+
+def test_a_citation_that_resolves_is_quiet(tmp_path: Path, declare) -> None:
+    """A checker that fires on correct work gets disabled, which is worse than none."""
+    declare((_requirement("INK", "PANEL", 4.5, why="the run-status word (`_status_text`)"),))
+
+    assert contrast_check.check_citations(_repo(tmp_path, view=VIEW_WITH_SYMBOLS)) == ()
+
+
+def test_a_cited_symbol_that_does_not_exist_is_an_error(tmp_path: Path, declare) -> None:
+    """The regression guard for PL-GJDW: a renamed symbol must not fail silently."""
+    declare((_requirement("INK", "PANEL", 4.5, why="drawn by `_renamed_away`"),))
+
+    errors = contrast_check.check_citations(_repo(tmp_path, view=VIEW_WITH_SYMBOLS))
+
+    assert len(errors) == 1
+    assert "_renamed_away" in errors[0]
+
+
+@pytest.mark.parametrize("cited", ["simulation_view.py:320", "simulation_view.py:248-257"])
+def test_a_line_number_citation_is_refused(tmp_path: Path, declare, cited: str) -> None:
+    """Both forms the table used to carry. PL-GJDW: every one of them had rotted."""
+    declare((_requirement("INK", "PANEL", 4.5, why=f"the slider track ({cited})"),))
+
+    errors = contrast_check.check_citations(_repo(tmp_path, view=VIEW_WITH_SYMBOLS))
+
+    assert len(errors) == 1
+    assert cited in errors[0]
+
+
+def test_an_unresolved_citation_fails_the_run(tmp_path: Path, declare) -> None:
+    """It is an error, not an advisory: `make check` has to stop on it."""
+    declare((_requirement("INK", "PANEL", 4.5, why="drawn by `_renamed_away`"),))
+
+    assert contrast_check.analyze(_repo(tmp_path, view=VIEW_WITH_SYMBOLS)).errors
+
+
+@pytest.mark.parametrize("span", ["`docs/MODEL.md`", "`.claude/rules/ui-color.md`"])
+def test_a_backticked_path_is_not_read_as_a_symbol(tmp_path: Path, declare, span: str) -> None:
+    """Descriptions cite documents as well as code; only bare names are symbols."""
+    declare((_requirement("INK", "PANEL", 4.5, why=f"required by {span}"),))
+
+    assert contrast_check.check_citations(_repo(tmp_path, view=VIEW_WITH_SYMBOLS)) == ()
+
+
 # --- the real palette -------------------------------------------------------
 
 
@@ -271,6 +345,16 @@ def test_muted_clears_the_text_minimum_on_both_surfaces() -> None:
     for surface in ("PANEL", "BACKGROUND"):
         ratio = contrast_check.contrast_ratio(palette["MUTED"], palette[surface])
         assert round(ratio, 2) >= contrast_check.AA_TEXT, f"MUTED on {surface} is {ratio:.2f}"
+
+
+def test_every_requirement_names_a_symbol_that_exists() -> None:
+    """PL-GJDW. Fourteen line numbers were cited here and not one still landed.
+
+    `test_the_shipped_palette_holds` covers this through `main`; it is asserted
+    separately because the defect was in the descriptions rather than in the
+    arithmetic, and a failure should say so.
+    """
+    assert contrast_check.check_citations(REPO_ROOT) == ()
 
 
 def test_every_known_shortfall_names_an_item_that_exists() -> None:

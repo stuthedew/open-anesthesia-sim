@@ -33,6 +33,18 @@ standard-library-only tool cannot import it. The constants are extracted with
 `ast`, which also means this runs in a bare checkout with no virtualenv - the
 promise every tool here makes.
 
+**Descriptions cite code by symbol, and the citation is checked.** A `why`
+below names where its pair is drawn by putting a symbol from `app/theme.py` or
+`app/simulation_view.py` in backticks. It used to give line numbers, and every
+one of them rotted: on 2026-09-05 fourteen cited lines were read and not one
+landed on what its entry claimed - `:682`, cited as the run-status word, was a
+list of chart control marks (PL-GJDW). A wrong citation is worse than none,
+because it looks authoritative and quietly makes the check's own coverage
+unauditable. `check_citations` now refuses a line number outright and resolves
+every cited symbol against the two modules, so the form that rotted cannot come
+back. Whether the named symbol is really where that color matters stays a
+person's judgment, exactly as the pair itself does.
+
 **Known shortfalls, and why they do not simply fail the build.** The pairs
 listed in `KNOWN_SHORTFALLS` do not meet their minimum today. Listing them
 there against the item that closes each one keeps `make check` green while making the
@@ -45,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import combinations
@@ -52,6 +65,18 @@ from pathlib import Path
 
 THEME = Path("src/anesthesia_sim/app/theme.py")
 VIEW = Path("src/anesthesia_sim/app/simulation_view.py")
+
+#: How a requirement description cites the code its pair is drawn in: a bare
+#: symbol from one of the two modules above, in backticks. Bare, so `mount` and
+#: not `mount()`; a span holding anything else - a path, a prose word, an item
+#: id - is left alone, which is what keeps `.claude/rules/ui-color.md` and
+#: `docs/MODEL.md` readable as the citations they are.
+SYMBOL_SPAN_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)`")
+
+#: `simulation_view.py:320`, and the ranged form `:248-257`. Refused rather
+#: than merely discouraged: a convention against it is exactly what failed
+#: before, and the rotting is silent (PL-GJDW).
+LINE_CITATION_RE = re.compile(r"\b[\w./]+\.py:\d+(?:-\d+)?")
 
 #: Ratios are compared at the precision they are printed at. A verdict that
 #: disagrees with the number beside it ("it says 4.50 and it failed") is a
@@ -106,20 +131,26 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the application title in the page header (simulation_view.py:410-415)",
+        "the application title in the page header, which `mount` builds inline",
     ),
     Requirement(
         "INK",
         "PANEL",
         AA_TEXT,
         "1.4.3",
-        "every numeric readout, its unit, and each panel heading "
-        "(simulation_view.py:248-257, :519, :650, :690, :743, :1127). Also "
-        "the six compartment checkboxes that show and hide the chart's "
-        "traces, in both roles the pair has: the box itself is INK filled "
-        "with a PANEL tick, and its label is INK text while that trace is "
-        "drawn. The box is a user-interface component, so SC 1.4.11's 3:1 "
-        "would suffice for it - the text minimum is met anyway, and is what "
+        "every numeric readout and its unit (`_build_metric_value` for the "
+        "compartment grid, `_build_parameter_panel` for the four settings "
+        "beside their sliders), each panel heading (`_build_parameter_panel`, "
+        "`_build_chart_panel`, `_build_wash_in_section`, "
+        "`_build_control_timeline_panel`, `_build_agent_accounting_panel`), and "
+        "every legend label beside a swatch (`_build_legend_item`, "
+        "`_build_control_mark_legend_item`, `_build_band_legend_item`). Also "
+        "the six compartment checkboxes that show and hide the chart's traces "
+        "(`_build_compartment_trace`), in both roles the pair has: the box "
+        "itself is INK filled with a PANEL tick, and its label is INK text "
+        "while that trace is drawn - `_apply_trace_visibility` is the one "
+        "writer of that. The box is a user-interface component, so SC 1.4.11's "
+        "3:1 would suffice for it - the text minimum is met anyway, and is what "
         "the label needs. Deliberately not one of the six trace colours nor "
         "ACCENT: the legend row has already spent its colour budget on six "
         "compartments (.claude/rules/ui-color.md, judgment 3), so the "
@@ -128,11 +159,13 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "statement of the new-case confirmation (`_build_new_case_dialog`), "
         "whose surface is set to PANEL explicitly rather than left to the "
         "Flet theme, so that these three text colours stand on a background "
-        "this table measures them against (PL-R3KB). Also the playback-rate "
-        "dropdown beside the transport controls, whose fill is set to PANEL "
-        "explicitly for the same reason - it names the rate the clock is "
-        "advancing at, which docs/MODEL.md requires displayed, so it is read "
-        "rather than merely operated (PL-SN2C)",
+        "this table measures them against (PL-R3KB). Also both dropdowns whose "
+        "fill is set to PANEL explicitly for that same reason: the playback "
+        "rate beside the transport controls (`_playback_rate_dropdown`), which "
+        "names the rate the clock is advancing at, which docs/MODEL.md requires "
+        "displayed, so it is read rather than merely operated (PL-SN2C); and "
+        "the chart's time base (`_time_base_dropdown`), which names how much of "
+        "the run is on screen and is read the same way",
     ),
     Requirement(
         "MUTED",
@@ -140,10 +173,11 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the run-status word while paused, beside the transport controls "
-        "(simulation_view.py:187, :394, :684). Also the border of the "
-        "playback-rate dropdown drawn beside them, which is a user-interface "
-        "component and so needs only SC 1.4.11's 3:1 - met with room to "
-        "spare by the text minimum this pair already carries (PL-SN2C)",
+        "(`_status_text`, whose colour `_refresh_view` writes for every run "
+        "state). Also the border of the playback-rate dropdown drawn beside "
+        "them (`_playback_rate_dropdown`), which is a user-interface component "
+        "and so needs only SC 1.4.11's 3:1 - met with room to spare by the text "
+        "minimum this pair already carries (PL-SN2C)",
     ),
     Requirement(
         "MUTED",
@@ -151,32 +185,42 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the compartment name and the smaller clinical gloss under it on each "
-        "readout, the chart's axis description, and the agent-accounting "
-        "detail line (simulation_view.py:619, :622, :653, :242-244). The "
+        "readout (`_build_metric_panel`), the MAC multiple under the value "
+        "(`_build_metric_secondary_value`), both chart axis descriptions "
+        "(`_time_axis_caption`, `_wash_in_time_axis_caption`), the sub-headings "
+        "and status lines the chart and its neighbours hold "
+        "(`_build_chart_panel`, `_build_wash_in_section`, "
+        "`_build_control_timeline_panel`), and the agent-accounting detail "
+        "lines (`_agent_accounting_detail_text`, `_agent_amounts_text`). The "
         "gloss is judged at the same 4.5:1 as the name above it: at 12px it "
         "is normal text by WCAG's definition, nowhere near the 18.66px the "
         "large-text exception starts at, and it is the same MUTED colour on "
         "the same PANEL surface, so it adds no pair to this table (PL-8M05). "
         "Also the line of the new-case confirmation saying what carries over "
-        "into the new case (`_build_new_case_dialog`, PL-R3KB), and the "
-        "playback rate drawn under the simulated-time readout, which shares "
-        "the surface and the size of the MAC multiples beside it (PL-SN2C).",
+        "into the new case (`_build_new_case_dialog`, PL-R3KB), the "
+        "playback rate drawn under the simulated-time readout "
+        "(`_playback_rate_text`), which shares the surface and the size of the "
+        "MAC multiples beside it (PL-SN2C), and the border of the chart's "
+        "time-base dropdown (`_time_base_dropdown`), a user-interface component "
+        "needing only SC 1.4.11's 3:1.",
     ),
     Requirement(
         "ACCENT_TEXT",
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the run-status word while running (simulation_view.py:682)",
+        "the run-status word while running (`_status_text`, set by `_refresh_view`)",
     ),
     Requirement(
         "ACCENT_TEXT",
         "PANEL",
         AA_TEXT,
         "1.4.3",
-        "the agent-accounting status word when conservation holds. Rendered at "
-        "20px bold, which is large text, so SC 1.4.3's 3:1 would suffice - the "
-        "stricter bar is applied deliberately (simulation_view.py:208, :731)",
+        "the agent-accounting status word when conservation holds "
+        "(`_agent_accounting_status_text`, inside `_build_agent_accounting_panel`, "
+        "written by `_refresh_view`). Rendered at 20px bold, which is large text, "
+        "so SC 1.4.3's 3:1 would suffice - the stricter bar is applied "
+        "deliberately",
     ),
     Requirement(
         "ACCENT",
@@ -184,15 +228,20 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         AA_NON_TEXT,
         "1.4.11",
         "the active track and thumb of all four parameter sliders, which is how "
-        "each control shows its current value (simulation_view.py:320, :336, :346, :356)",
+        "each control shows its current value (`_fresh_gas_flow_slider`, "
+        "`_delivered_concentration_slider`, `_alveolar_ventilation_slider`, "
+        "`_cardiac_output_slider`, each drawn on the PANEL surface "
+        "`_build_parameter_panel` sets)",
     ),
     Requirement(
         "WARNING",
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the halted-run notice, the run-status word while stopped, and the "
-        "educational-use disclaimer (simulation_view.py:406, :417, :678)",
+        "the halted-run notice (`_notice_text`, written by `_refresh_notice`), "
+        "the run-status word while stopped (`_status_text`), and the "
+        "educational-use disclaimer, which `mount` builds inline at the foot of "
+        "the page",
     ),
     Requirement(
         "WARNING",
@@ -200,7 +249,8 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the agent-accounting status word when validation fails "
-        "(`_build_agent_accounting_panel`), the notice naming a compartment "
+        "(`_agent_accounting_status_text`, in `_build_agent_accounting_panel`), "
+        "the notice naming a compartment "
         "trace that is above the top of the chart (`_off_scale_text`), and the "
         "line of the new-case confirmation stating what a switch would discard "
         "(`_build_new_case_dialog`, PL-R3KB)",
@@ -433,6 +483,75 @@ def read_palette(root: Path) -> dict[str, str]:
     return palette
 
 
+def read_symbols(root: Path) -> frozenset[str]:
+    """Every name the two color-defining modules define.
+
+    Four kinds, because those are the four a description has cause to cite:
+    module-level constants, classes, functions and methods, and the `self.X`
+    attributes the view builds its controls into. Read with `ast` for the same
+    reason the palette is - `app/simulation_view.py` imports Flet.
+
+    Deliberately a flat set rather than a scope-aware resolution. It answers
+    "does this name exist here", which is the whole of what a citation check
+    can decide; it does not answer whether a method belongs to the class a
+    reader would expect, and no message here implies that it does.
+
+    Args:
+        root: Repository root.
+
+    Returns:
+        Every defined name, unqualified.
+    """
+    names: set[str] = set()
+    for relative in (THEME, VIEW):
+        path = root / relative
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                names.add(node.name)
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                names.add(node.id)
+            elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Store):
+                names.add(node.attr)
+    return frozenset(names)
+
+
+def check_citations(root: Path) -> tuple[str, ...]:
+    """Resolve every symbol the requirement descriptions cite.
+
+    Two rules, both decidable by reading the tree, which is why they are here
+    rather than in a session's head. A description may not cite a line number,
+    and every symbol it does cite must exist. What the citation is *for* -
+    whether that method is really where the pair is drawn, and whether every
+    site is named - stays with the reader, the same division `tools/doc_check.py`
+    draws between resolving a path and judging the sentence around it.
+
+    Args:
+        root: Repository root.
+
+    Returns:
+        One message per unresolved citation; empty when every one resolves.
+    """
+    symbols = read_symbols(root)
+    errors: list[str] = []
+    for requirement in REQUIREMENTS:
+        pair = f"{requirement.foreground} on {requirement.background}"
+        for match in LINE_CITATION_RE.finditer(requirement.why):
+            errors.append(
+                f"  {pair}: cites {match.group(0)}, a line number. Name the symbol the "
+                "color is set on instead - a line number is stale by the next edit "
+                "and says nothing when it is."
+            )
+        for name in SYMBOL_SPAN_RE.findall(requirement.why):
+            if name not in symbols:
+                errors.append(
+                    f"  {pair}: cites `{name}`, which {THEME.name} and {VIEW.name} do "
+                    "not define. A renamed symbol leaves the requirement pointing at "
+                    "nothing."
+                )
+    return tuple(errors)
+
+
 @dataclass(frozen=True)
 class Result:
     """One evaluated requirement."""
@@ -457,11 +576,12 @@ class Report:
     missing: tuple[str, ...]
     unexpected: tuple[Result, ...]
     repaired: tuple[Result, ...]
+    citations: tuple[str, ...]
     trace_pairs: tuple[tuple[str, str, float], ...]
 
     @property
     def errors(self) -> bool:
-        return bool(self.missing or self.unexpected or self.repaired)
+        return bool(self.missing or self.unexpected or self.repaired or self.citations)
 
 
 def analyze(root: Path) -> Report:
@@ -500,6 +620,7 @@ def analyze(root: Path) -> Report:
         missing=tuple(sorted(set(missing))),
         unexpected=unexpected,
         repaired=repaired,
+        citations=check_citations(root),
         trace_pairs=trace_pairs,
     )
 
@@ -507,11 +628,19 @@ def analyze(root: Path) -> Report:
 def format_report(report: Report, *, matrix: bool) -> str:
     """Render a report the way `bin/docket check` renders one: verdict first."""
     met = sum(1 for result in report.results if result.meets)
+    error_count = (
+        len(report.unexpected) + len(report.missing) + len(report.repaired) + len(report.citations)
+    )
     lines = [
         f"contrast: {met} of {len(report.results)} declared pairs meet WCAG 2.2 AA, "
         f"{len(KNOWN_SHORTFALLS)} known shortfalls, "
-        f"{len(report.unexpected) + len(report.missing) + len(report.repaired)} errors"
+        f"{error_count} errors"
     ]
+
+    if report.citations:
+        lines.append("")
+        lines.append("Requirement descriptions citing code that cannot be resolved:")
+        lines.extend(report.citations)
 
     if report.missing:
         lines.append("")
