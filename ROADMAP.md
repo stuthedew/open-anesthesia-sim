@@ -316,8 +316,8 @@ adds no capability and exists to clear the ground they are built on:
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 4 M, 17 S |
 | 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
 | — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan. **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged. `PL-3TLK` leads; the rest of the naming work follows the exact step. `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it. | 1 L, 6 M, 2 S |
-| 4 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
-| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — is nearly free once a run is a closed-form function of its control timeline, and expensive against a recorded sample store. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. | — |
+| 4 | **Gate 1** | **Frozen 2026-09-06**, the day v0.5.0 was scoped, and recorded in that milestone's own section below rather than here. Contents were unknown by construction and are now the list: v0.4.0's findings, the queue's own defects, and the model-specification debt. Ships inside v0.5.0, not as its own release — except for the three items "The timeline" had already placed on the `v0.4.x` step, which that patch carries. | — |
+| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Scoped 2026-09-06**, which froze Gate 1 at 111 entries; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and eighteen items carry it. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
 | 6 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
 | 7 | **v0.6.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
@@ -337,14 +337,19 @@ debt.
 Gates 1 onward hold one milestone's findings and ship inside the milestone
 they gate, which is why rows 4, 6 and 8 carry no version.
 
-Rows 5 to 9 are the intended order and are not yet scoped; each becomes real
-only when it gets its own goal, required scope, definition of done and
-out-of-scope list here, per the development rules. Row 5's internal ordering —
-forking and comparison ahead of save/load and replay — is a deliberate
-departure from "Development pathway"'s Phase 3 sequence, on the grounds that
-branching within one session is the teaching payload while persistence is a
-convenience; it is recorded here as a proposal rather than a decision, and
-Phase 3's stated order stands until v0.5.0 is scoped.
+Row 5 was scoped on 2026-09-06 and has its own section below. Rows 7 and 9 are
+the intended order and are not yet scoped; each becomes real only when it gets
+its own goal, required scope, definition of done and out-of-scope list here,
+per the development rules.
+
+Row 5's internal ordering — forking and comparison ahead of save/load and
+replay — was recorded here as a proposal rather than a decision, on the grounds
+that branching within one session is the teaching payload while persistence is
+a convenience. Scoping it decided the question, and the decision is the
+proposal: v0.5.0 takes items 26, 12 and 11 with only the *replay driver* half of
+item 8, and puts save/load (item 9) and a user-facing replay control (item 10)
+out of scope. That is a deliberate departure from "Development pathway"'s Phase
+3 sequence, which no longer stands for these four items.
 
 ### Why the gates are on this list and not behind it
 
@@ -1403,6 +1408,367 @@ v0.4.0 is complete only when:
 - Horizontal panning of the chart window (queue item PL-Z7LY), which the
   fit-run scale makes optional rather than necessary.
 
+## v0.5.0 - the case you can branch
+
+### Goal
+
+Make the comparison possible. v0.4.0 made one case observable — compressed
+time, clinical units, a case-length axis — and a single curve teaches a curve.
+What a single curve cannot teach is *why* it moved, because that needs a second
+curve differing in exactly one thing. Stated as they stand on 2026-09-06, the
+day this milestone was scoped, three gaps:
+
+- there is no way to halt a run at a target, so the playback multiplier that
+  made a twelve-hour case reachable is unusable for anything precise. A learner
+  comparing gas-management strategies watches the clock and pauses by hand,
+  which at 300x overshoots by minutes of simulated time, differs every attempt,
+  and cannot be returned to;
+- there is no way to take two managements from one point on a case. Building
+  the case twice is the only route available, and the two runs then differ by
+  everything that was not reproduced identically — which is the one thing a
+  comparison must not do, because the learner reading it cannot see which
+  differences they caused; and
+- there is no way to display two runs at once. `SimulationView` binds one
+  controller, and the readouts, the chart traces, the clinical references and
+  the control marks each assume a single run behind them.
+
+Underneath those sits a fourth, a debt rather than a gap: the run's sample
+store is unbounded. `PL-011` was dropped on 2026-09-05 on the promise that the
+score architecture removes that store rather than bounds it, and a comparison
+holds two runs, so this is the milestone where the promise is kept or the debt
+doubles.
+
+The end state: a learner runs a case, marks the decision point, forks there,
+manages the two branches differently, and reads both on one time axis — the
+branch point marked, every curve attributable to the run and the settings that
+produced it, and the pre-branch history identical between the two because it is
+the same history rather than a reproduction of it.
+
+**This milestone completes the MVP** as "What MVP means here" defines it: run a
+case, branch it at a decision point, compare the two managements side by side.
+It is a minor rather than a patch because it crosses a capability boundary the
+four releases before it did not — the application comes to hold more than one
+run, and asserts a relationship between them.
+
+**It changes `core/`, and it changes what the numerical method can be asked,
+not what it computes.** The exact matrix exponential landed ahead of this
+milestone (`PL-GS5X`, pull request 376), and the score architecture below turns
+a run from a sequence of applied steps into a closed-form function of its
+control-input timeline. The governing equations, the parameters, and the exact
+solution of them are unchanged; what changes is that a time in a run can be
+answered without having stepped to it. That is what makes a branch's pre-branch
+history *the same object* as its parent's rather than a reproduction, which is
+the property item 12 requires and the property a test can most easily be
+written to pass for the wrong reason.
+
+It promotes planned-milestone item 26 (bookmarks), item 12 (forking), item 11
+(side-by-side comparison), and the replay half of item 8 — the resimulation
+driver only. A user-facing replay control is item 10 and stays behind item 9's
+save/load, which is out of scope here (project owner, 2026-09-06).
+
+### Debt gate: the frozen list
+
+**Frozen 2026-09-06, the day this milestone was scoped.** Every open item that
+is debt by "The debt gate" below — classed `defect`, `safety`, `science`,
+`refactor` or `perf`, or at `needs-decision` — is on this list. It is by a wide
+margin the largest gate this project has held: Gate 0 held twenty-one and
+v0.2.8's frozen scope thirty-eight. The size is stated in the group headings
+below and in the timeline row naming this release, and `tools/doc_check.py`
+holds those numbers to the list. How many are *closed* is deliberately not
+recorded here, for the reason the v0.4.0 section gives: a count written into a
+document goes stale the next time an item closes. `bin/docket wave` reads these
+against `docs/items/` and reports the split.
+
+**Three groups, and only the third is a precondition.** The first is the
+`v0.4.x` track's own remaining work, which "The timeline" places *ahead* of
+this gate and which ships as a patch rather than inside this milestone. That
+looks like an exception to "A gate does not get a version" and is not one:
+those items were already placed on an earlier step when this list was frozen,
+and a gate frozen today cannot retrospectively claim a step the plan had
+already passed to. The second is debt inside this milestone's own Required
+scope, cleared by it per "Debt inside the milestone's own scope". The third is
+everything else, and it clears before implementation of this milestone begins.
+
+**Eleven items were untriaged at the freeze and are therefore on no group
+below.** An untriaged item has no `classes` yet, so nothing can say whether it
+is debt, and freezing against the store means freezing against what the store
+knows. That is a hole rather than an exemption, and "The gate is a snapshot"
+closes it: each of those was captured *before* this freeze, so the problem each
+describes was present at it, and any the triage pass classes as debt re-enters
+this gate rather than waiting for Gate 2. The list below is the record of what
+was decidable on the day; a re-entering item is added to it with the date and
+the reason, exactly as v0.4.0's three post-freeze notes record theirs.
+
+**How the third group is meant to be worked.** It splits almost evenly between
+the two lanes `docket.toml` declares, and the two halves share no files, so
+they run concurrently in two sessions rather than in series — which is what the
+lane split was built for. The product half is also ordered against the work:
+much of it names `app/controller.py`, `core/` and `docs/MODEL.md`, which
+`PL-T691` restructures, so clearing it *after* that restructure would mean
+re-diagnosing each item against code that had moved. That is the exact cost
+"The debt gate" opens by naming, and it is the reason this list was frozen
+whole rather than narrowed (project owner, 2026-09-06).
+
+**Cleared by the `v0.4.x` track, ahead of this gate — 3 entries**
+
+- PL-9SH6 (M) Give the partial-pressure-equivalent fraction one accessor name across every compartment in core/
+- PL-X2XX (M) doc_check's citation check reads neither docs/items/*.md nor source docstrings, so nothing holds the queue's or the code's citations to the docs they name
+- PL-VZL0 (S) Cite MODEL.md from every core/ function implementing a governing equation, and restate the solved form the spec lacks
+
+**Cleared by v0.5.0 itself — 9 entries**
+
+- PL-T691 (L) The run is its control-input timeline: hold keyframes at every event and answer any window in closed form
+- PL-P1Z3 (M) State the canonical evaluation rule that carries determinism once the step is no longer fixed, and gate it
+- PL-Y5WR (M) The 30-day scenario cap is enforced nowhere as an explicit halt, and dropping PL-011 removes the only item that required it
+- PL-1PSX (M) The control-input timeline is unbounded and regrouped in full on every frame
+- PL-2FM6 (M) Delete RunHistory and draw the chart from the closed-form sampler instead of from recorded samples
+- PL-8LXM (M) Delete chart_downsampling.py, its tests, the M4 paper and every citation of them
+- PL-B9PY (M) Decompose SimulationView so two runs can be rendered at once
+- PL-RD3B (M) app/controller.py now holds the run's storage as well as the UI-to-core boundary, and they are separable
+- PL-TCD1 (M) SimulationSnapshot still names six flat compartment floats, so the readouts cannot express a second substance now that the recorded run can
+
+**Cleared before v0.5.0 begins, the product lane — 40 entries**
+
+- PL-6Q8N (M) The reference adult's eleven physiologic parameters have no primary source at all
+- PL-HB58 (M) Validate washout against the same published cohorts the wash-in gate already uses
+- PL-4GN8 (S) The mass-balance release gate's absolute tolerance tracks whichever dial its test happens to run at
+- PL-GYH2 (S) Bound or document the two gas volumes, which no supported range covers
+- PL-L2F2 (S) The fixed-volume alveolus blocks nitrous oxide, not just omits it
+- PL-BLHV (M) Record the intended-use statement and the IEC 62304 safety classification in docs/MODEL.md
+- PL-FDBK (M) docs/MODEL.md has no hazard table, so every mitigation is argued forward and none is checked backward
+- PL-KGNF (M) docs/MODEL.md still names sevoflurane specifically in section headings and Purpose, four releases after three agents shipped
+- PL-WVSK (M) Nothing distinguishes a concentration fraction from a percent at the type level, and two boundaries convert implicitly
+- PL-0NQ1 (S) The reference patient's cited sources disagree on vessel-rich perfusion
+- PL-11YF (S) MODEL.md says the readouts sit in one row without saying above what width
+- PL-3355 (S) The 'Simulated time' and compartment readouts wrap their value onto a second line at some window widths
+- PL-4RBD (S) The drawn chart smooths through a control change that leaves the trace monotone, because M4 selects extremes and such a change is not one
+- PL-8PZ1 (S) docs/MODEL.md's release gate is still headed 'Version v0.1.0 is complete only when', but entries are being added to it for v0.3.0
+- PL-B32L (S) core/parameters.py raises OSError and JSONDecodeError outside the exception hierarchy its own docstring promises
+- PL-C4PH (S) Record the history sampling cadence as a decision of its own, separate from the integration step
+- PL-DXQC (S) The v0.4.0 Goal section states two problems in the present tense that are now fixed
+- PL-F5GN (S) The oracle's independence check walks only ImportFrom, so a plain import bypasses it
+- PL-GVXP (S) Separate the six chart traces by more than colour, and meet contrast minima
+- PL-GZP6 (S) Two of docs/MODEL.md's required tests are not implemented
+- PL-LKCN (S) Pin PL-010's no-rebuild property with an allocation test on the render tick
+- PL-Q4M4 (S) The simulated-time clock reads in seconds while the chart's own time axis reads in hours and minutes
+- PL-Q4VH (S) The compartment chart labels its percent axis at a different interval from the gridlines it rules
+- PL-X204 (S) require_valid_agent_accounting() reads nothing from self, so it will judge a result from another accounting period
+- PL-YK2V (S) _apply_setting catches a narrower exception class than the timer paths, so an unexpected raise escapes into Flet's dispatch
+- PL-16ZC (M) The two clinical references and the control marks have no show/hide control, though the chart's traces now do
+- PL-F0L8 (M) Establish what accessibility Flet's rendering backend can actually deliver
+- PL-WZVZ (M) 'Make an inter-machine difference attributable: which parameter differs, and what it does to the result'
+- PL-0SHZ (S) README's bare-interpreter paragraph names two ruff.toml pins and there are now three, since .claude/hooks/ carries one too
+- PL-4MHK (S) pyproject.toml's package metadata does not describe the project - a vague description and no classifiers
+- PL-6194 (S) 46 redundant parentheses around bare keyword-argument values across src/, from the initial build
+- PL-79YX (S) Six exact float-equality branch guards in core/ are correct and nowhere explained
+- PL-BTSW (S) README.md was edited on 2026-09-05 despite the freeze, and the edit left an unwrapped line
+- PL-KCWD (S) APP_VERSION falls back to 'unknown' in the one line tying a displayed value to the model that produced it
+- PL-LL9Y (S) Check the warning and alert colours against the medical alarm-colour convention
+- PL-QM5P (S) README.md's description of doc_check candidates still says it prints lines mentioning anything the diff touched, which PL-B2NS narrowed to code mentions
+- PL-TCW5 (S) FLOW_FRACTION_TOLERANCE is defined twice, so the two perfusion-sum guards can drift apart silently
+- PL-TG60 (S) Stop printing six decimals of an exhaust integral good to three
+- PL-YDKJ (S) Decide whether the chart should keep patching one control per plotted point
+- PL-YTX9 (S) Decide whether a hidden compartment trace should keep its legend entry or vanish from the legend entirely
+
+**Cleared before v0.5.0 begins, the workflow lane — 50 entries**
+
+- PL-7QKY (M) The working-notes discovery instruction is circular - a session must read the whole file to learn whether its task touches one of its threads
+- PL-8M8H (M) docket branch tells a session whose pull request already merged to merge the base in, not to restart, so the push that loses work looks correct
+- PL-NBCS (M) docket next reads an exclusion written inside a Required scope bullet as membership, so PL-B9PY is ranked in scope for v0.4.0 when ROADMAP.md sends it to Gate 1
+- PL-PGZK (M) docket concurrent's answer is dominated by docs/MODEL.md, which nearly every item touches, so it rules out almost everything and cannot discriminate between real and nominal contention
+- PL-XLQ5 (M) The orphaned report counts a branch's superseded intermediate blob as work the squash left behind
+- PL-20CQ (S) "docket check runs every open item's verify: command, so a verify: that invokes docket check recurses without bound"
+- PL-39B7 (S) Make docket stranded distinguish a merged-and-deleted branch from an abandoned one, and say when its main is stale
+- PL-4WQS (S) The docket summary and session digest label a count 'open' that excludes untriaged items, understating the queue by exactly the number beside it
+- PL-CW14 (S) The top-band advisory tells a session to demote work docket check itself pins to P1
+- PL-D188 (S) A brief written into an untriaged item is appended below docket new's template rather than replacing it, so the dead stub survives to triage
+- PL-F4JS (S) bin/docket triage omits the **Decision needed.** requirement from the rules it prints, so triaging an item to needs-decision fails check after the edit
+- PL-GBBZ (S) Clear the four undeclared prose prerequisites the new advisory names
+- PL-GJDW (S) contrast_check's requirement descriptions cite simulation_view line numbers, and all eight are wrong
+- PL-HKF4 (S) doc_check's tag advisory prints `<merge commit>`, which a shell reads as redirection, so pasting it fails with "no such file or directory: merge" instead of tagging
+- PL-JBZK (S) docket.toml's workflow_paths names three tools tests by path, so the other seven and every new one fall on the product side of the lane boundary
+- PL-JL2M (S) docket new seeds a template brief that a later-written brief appends to rather than replaces, leaving empty required headings that block triage
+- PL-JSRH (S) A closed item's closed: and milestone: are records too, and nothing stops a branch rewriting either
+- PL-K2C8 (S) The docket skill's stranded-branch recovery deletes only the local remote-tracking ref, which the next non-prune fetch restores while the branch still exists on the remote
+- PL-KBD0 (S) A blocked-by edge with no status blocked is invisible to the ranking, which is the same silent wrong answer one step along
+- PL-KD98 (S) bin/docket wave reports 'implement' for a milestone whose Required scope is complete, because the beat reads only the frozen gate list and never the scope's item ids
+- PL-MGF9 (S) The process-work grooming advisory only examines the top band, so it cannot fire for the P2 and P3 bands where all the process work actually sits
+- PL-N2X4 (S) Hold tools/contrast_check.py's line citations to the file, or drop them
+- PL-NB4D (S) '`docket verify` reports "1 commit(s)" when the work it just checked is entirely uncommitted'
+- PL-S5LB (S) _number_closing walks git log without rename detection, so an item whose file was renamed after it closed recovers the renaming commit's pull request instead of its own
+- PL-WGXJ (S) apparatus-standard.md structurally exempts the apparatus from the expert-review standard, so the largest part of the tree has no review bar
+- PL-YDL6 (S) An item whose work landed in one pull request but whose status done was written in a later one recovers the later number, which carries the closure but none of the work
+- PL-YNCW (S) docket new --touches before the title swallows it, because nargs='*' is greedy and the error names the title instead
+- PL-7790 (M) A session that starts an item by pushing only queue-file edits stakes no claim docket next can see
+- PL-B73C (M) Decide whether docket flight and the digest should name unlanded refs carrying no item id at all
+- PL-VV4D (M) Decide whether the left-behind check should compare against refs/pull/<n>/head, which is exact but makes the check GitHub-specific
+- PL-01CK (S) The in-flight content test walks the default branch's history once per blob a candidate branch adds
+- PL-3833 (S) An item file's name can drift from its title and nothing checks it, so the store carries a stale slug until some unrelated rewrite happens to fix it
+- PL-BZCM (S) docket status shows no plan placement, so the feature survey a session leads with cannot say which work the current step includes
+- PL-GNN1 (S) The contrast checker cannot express a requirement met by either of two channels
+- PL-GVNS (S) docket.toml's workflow_paths lists docs/worker.md but not docs/maintainer.md, so an apparatus item whose record lands in the maintainer doc ranks in the product lane
+- PL-H1JD (S) An outstanding needs_action is lost when its session is archived, so a request nobody acted on drops out of the closing-block read
+- PL-J7C5 (S) Cite symbols rather than line numbers in the contrast table's reasons
+- PL-JQVB (S) CLAUDE.md's four dispositions for a new rule list no carrier for a paste-able brief or an agent definition, and a skill's resident cost is invisible to measure_resident
+- PL-KJ63 (S) doc_check reads any double-quoted phrase in a doc as a section citation, so quoting a measured figure hard-fails the check
+- PL-MHQK (S) The contrast checker prints its known-shortfall detail on every run, where the verify advisory was narrowed to what a session is about to trip over
+- PL-PMT7 (S) Memoize branches_in_flight so cmd_next and cmd_digest stop computing _flight twice per invocation
+- PL-R6D8 (S) git log --source does not attribute a shared commit to the ref named first, and _unmerged_commits' docstring says it does
+- PL-S2L4 (S) bin/docket delegable offers items that docs/worker.md forbids a worker to touch
+- PL-V4LS (S) docket check recovers a merged pull request number and then asks a human to transcribe it, which is a decidable half left as prose
+- PL-VFVW (S) docket feature draws a dropped item with the same empty checkbox as an open one, so counting the boxes disagrees with the 'N left' figure printed beside them
+- PL-VP40 (S) docket verify reads per-commit patches, so a line a branch added and then removed still reads as added
+- PL-W1LN (S) The in-flight walk guard cannot catch a false positive whose walk ends against a commit the base reaches by another path
+- PL-WTQ1 (S) doc_check's math-rendering check reads a regex in an item's verify: command as LaTeX and hard-fails
+- PL-Z0G0 (S) doc_check candidates attributes a hit to the alphabetically first matching term, so a line matched through render.py prints as (render)
+- PL-Z34C (S) Retire verify_required_from and its grooming advisory once the grandfathered set reaches zero
+
+**Cleared before v0.5.0 begins, reaching both halves — 9 entries**
+
+Neither lane can take these to completion on its own, so each wants a session
+that can hold the whole change.
+
+- PL-1JDD (M) Make the source tier machine-readable so doc_check can decide it
+- PL-028F (M) Work that lands between a release cut and its merge is inside the tag's span but absent from the release notes, and nothing reconciles the two
+- PL-7J96 (M) Make the interface renderable in a check, so a presentation change can be looked at
+- PL-8XPQ (M) Nothing checks that an interface string uses glyphs the Flutter client can actually draw
+- PL-3MJH (S) CLAUDE.md's capture rule exempts a finding fixed in the same session but gives no session a way to enter that exemption, so every trivial fix becomes a queue item
+- PL-4YY1 (S) Record provenance for the circuit volume and default fresh gas flow
+- PL-K2YF (S) ROADMAP.md's release narrative skips v0.2.6, so the convention that each release adds a paragraph has already been missed once
+- PL-GLBF (S) ROADMAP.md's subset counts - not-delegable, entries reaching into src/ - are still hand-maintained and unchecked
+- PL-W8DQ (S) The four slider active tracks use ACCENT and miss the non-text minimum
+
+### Required scope
+
+Eighteen items, in the order the dependencies allow. The first five are the
+score architecture the 2026-09-05 design round filed and the project owner
+placed here; the next five are boundary work this milestone's own code moves;
+the last eight are the feature itself.
+
+- **The run becomes a closed-form function of its control-input timeline**
+  (queue item PL-T691). Keyframes are held at every control event and any
+  window is answered in closed form, so state at a time is computed rather
+  than looked up. This is the head of the milestone: everything below it that
+  touches a run depends on it, and it is what makes a branch's pre-branch
+  history the same object as its parent's.
+- **The canonical evaluation rule that carries determinism** (queue item
+  PL-P1Z3). Once a time can be reached by more than one route — stepped to, or
+  evaluated from a keyframe — "identical inputs give identical results" needs
+  a rule saying which route is authoritative, stated in `docs/MODEL.md` and
+  gated by test. Safety- and science-classed, and not deferrable within this
+  milestone.
+- **`RunHistory` is deleted and the chart drawn from the sampler** (queue item
+  PL-2FM6). This is where `PL-011`'s dropped growth debt is actually paid:
+  the controller holds a score and one keyframe per control event instead of
+  every sample ever recorded.
+- **The M4 decimation path is deleted with it** (queue item PL-8LXM),
+  including its tests, the cited paper and every reference to them. A sampler
+  answering a window in closed form has nothing to decimate.
+- **A path-scoped rule against re-introducing a sample store** (queue item
+  PL-49R8), so a later session adding a convenience buffer is told why the
+  store is absent rather than rediscovering it.
+- **The controller's storage and its UI-to-core boundary are separated**
+  (queue item PL-RD3B). Two runs need the boundary without a second copy of
+  the storage.
+- **The snapshot stops naming six flat compartment floats** (queue item
+  PL-TCD1), so a readout can name which run and which substance it describes.
+- **The control-input timeline is bounded and stops being regrouped in full on
+  every frame** (queue item PL-1PSX). It is read on every branch operation
+  here, not only drawn.
+- **`SimulationView` is decomposed so two runs can be rendered at once** (queue
+  item PL-B9PY). Held at this gate by v0.4.0 on the grounds that only this
+  milestone needs it (project owner, 2026-09-02); this is that milestone.
+- **The 30-day scenario cap becomes an explicit halt** (queue item PL-Y5WR).
+  Safety-classed, and its only requiring item was dropped with `PL-011`, so it
+  is carried here rather than lost.
+- **A recorded control timeline can be applied to a run** (queue item PL-J2TD),
+  which is the replay half of planned item 8 and the mechanism by which a point
+  *between* recorded samples is reached at all. Internal: no user-facing replay
+  control.
+- **Time bookmarks and MAC targets, as two separately listed collections**
+  (queue item PL-LPLD). The Gas Man reference simulator's own shape, and its
+  scope floor: an absolute simulated time, and a percent of MAC on any graphed
+  compartment rather than the alveolar trace alone. Kept as two kinds rather
+  than one kind with a field, so a list can show them the way the reference
+  does.
+- **Crossings are detected inside the advance loop** (queue item PL-CTD7), with
+  an explicit not-reached outcome that reads differently from a reached one.
+  Testing per rendered frame overshoots by the frame's worth of simulated time
+  and worsens with the playback multiplier, so the same bookmark would halt at
+  a different concentration depending on how fast the learner was running —
+  a presentation-correctness failure by `CLAUDE.md`'s standard, and one that
+  also breaks reproducibility of any branch taken there.
+- **A run forks at any control-input event or bookmark** (queue item PL-TFX5),
+  flat rather than as a tree: one trunk with N branches, and no sub-forks. The
+  branch carries its parent's agent and patient rather than re-choosing them.
+- **The branch reproduces its parent element-wise up to the branch point**
+  (queue item PL-Z3W6), asserted by test at every sampled point rather than
+  within a tolerance. Where exactness is unreachable the divergence is bounded,
+  documented, and shown rather than implied to be absent.
+- **Two branches are overlaid on one time axis** (queue item PL-8PSW), with the
+  run encoded by line style and the compartment by colour, one shared
+  compartment selection across both runs, and the branch point marked. Decided
+  against two stacked panels sharing a time axis (project owner, 2026-09-06):
+  the comparison is the whole point of the release, and stacking makes the eye
+  travel to do it.
+- **What the readouts show while two branches are displayed** (queue item
+  PL-1XPX). A decision rather than an implementation: a numeric readout that
+  does not say which run it describes is the safety-critical failure this
+  project treats presentation as, and there is more than one defensible answer.
+- **What a comparison asserts and what it does not** (queue item PL-W7H9), in
+  `docs/MODEL.md` and `docs/ARCHITECTURE.md`: what is shared between two
+  branches and what is not, that a difference between them is attributable only
+  to the settings that differ, and that neither branch is a prediction for a
+  patient.
+
+### Definition of done
+
+v0.5.0 is complete only when:
+
+- a branch taken at any recorded control event or bookmark reproduces its
+  parent element-wise at every sampled point up to the branch point, asserted
+  by test;
+- a bookmark halts the run on the step that crosses it, at every playback
+  multiplier, asserted by test — and a threshold that is never reached ends in
+  a distinct, visible outcome rather than in silence;
+- two branches read on one time axis with every curve attributable to its run
+  and to the settings that produced it, and no readout, label, legend entry or
+  reference band ambiguous as to which run it describes;
+- the memory a run holds is bounded by its number of control events rather
+  than by its length, and no sample store remains in `src/`;
+- `docs/MODEL.md` states the canonical evaluation rule, what a comparison
+  asserts and does not, and the bound on any divergence that could not be
+  eliminated;
+- every item of the frozen list above outside this milestone's Required scope
+  is `done`, or `dropped` with its reason recorded;
+- the v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference tests
+  remain unchanged and passing, and no equation, parameter or governing
+  constant has changed; and
+- Ruff formatting and linting, strict mypy, pytest, `docket check`,
+  `tools/doc_check.py` and GitHub Actions all pass.
+
+### Explicitly out of scope for v0.5.0
+
+- Scenario save/load (item 9) and a user-facing deterministic replay control
+  (item 10). Only the resimulation driver replay needs is in scope.
+- Sub-forks of forks, and any branch structure other than one trunk with N
+  branches (project owner, 2026-08-25).
+- More than two runs displayed at once. The comparison is specified for a
+  trunk and one branch; N branches may exist and be selected between.
+- Persisting bookmarks or branches across a restart, which is item 9's.
+- A schematic compartment view (item 27) and agent cost (item 28).
+- Nitrous oxide, coadministered gases and the concentration and second-gas
+  effects (items 6-7), and the multi-substance patient state behind them.
+- The anesthesia-machine abstraction, interlocks, agent switching with residual
+  washout, direct injection and end-tidal control (items 1-5).
+- Patient factors — age, sex, weight, body composition — and any change to the
+  MAC basis (item 30).
+- Horizontal panning of the chart window (queue item PL-Z7LY), which the
+  fit-run scale still makes optional rather than necessary.
+- Any change to the governing equations, the parameter set, or the exact
+  solution the matrix exponential computes. This milestone changes what the
+  model can be *asked*, never what it answers.
+
 ## Development rules for scientific milestones
 
 - Define equations, units, assumptions, and reference cases before changing the
@@ -2024,11 +2390,23 @@ specified.
     on the whole teachable-case milestone, and it bought nothing there:
     v0.4.0 changes no equation, parameter or numerical method, so the
     fluency it exists to provide is not exercised until items 6 and 7.
-    Nothing between v0.4.0 and v0.7.0 touches `core/` either — v0.5.0 and
-    v0.6.0 are interface releases on an unchanged model — so the step is
-    free anywhere in that span, and it now sits immediately after v0.4.0 as
-    the `v0.4.x` row of "The timeline", which keeps the benefit as early as
-    the constraint allows.
+    It therefore sits immediately after v0.4.0 as the `v0.4.x` row of "The
+    timeline", which keeps the benefit as early as the remaining constraint
+    allows.
+
+    **This paragraph read differently until 2026-09-06, and the difference
+    matters (`PL-3P2P`).** It said "Nothing between v0.4.0 and v0.7.0 touches
+    `core/` either — v0.5.0 and v0.6.0 are interface releases on an unchanged
+    model — so the step is free anywhere in that span." That was true when it
+    was written on 2026-09-02 and false three days later: the score
+    architecture the 2026-09-05 design round placed in v0.5.0 is chained
+    behind `PL-GS5X`, and `PL-T691` and `PL-P1Z3` both declare
+    `src/anesthesia_sim/core` in their `touches`. So the step was not free
+    across the span — it was pinned immediately ahead of v0.5.0, and was the
+    head of the MVP's critical path rather than a readability pass that could
+    slip. Read as originally written it understated its own priority in the one
+    document that decides priority. `PL-GS5X` closed 2026-09-06 in pull request
+    376, which is what made that chain startable.
 
     *Scoped 2026-09-03 (project owner), and the three open questions are
     answered. Re-scoped the same day, and it is no longer a patch.*
