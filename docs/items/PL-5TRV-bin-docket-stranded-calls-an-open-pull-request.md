@@ -82,6 +82,22 @@ network and must keep doing so (`PL-SK88`).
 **Found.** This session, 2026-09-06, when the resume digest told it to restart
 `claude/triage-fwyuus` on `main` while #372 was open with two commits on it.
 
+**#372 did merge later, and that does not soften this.** The merge landed at
+02:06:27Z as `6e6032c`, after the observation above. The observation is pinned
+by facts a reader can still check rather than by a clock: at the time
+`stranded` fired, `origin/main` was `40352b8`, and `git show
+40352b8:docs/items/PL-7PLY-*.md` shows `status: untriaged` — the branch's work
+was nowhere on the base and no pull request of its had merged. So the detector
+was wrong when it spoke, and only accidentally right an hour later. Had a
+session obeyed it then, `git branch -dr` plus a restart on `main` would have
+deleted the branch #372 was open against and thrown the whole triage pass away.
+
+The merge did produce the *genuine* article immediately afterwards, which is
+worth recording as the contrast: two commits pushed to the branch at 02:07:09Z,
+after the squash-merge had already taken `84cdeef` and deleted the head branch.
+That is the case this section is for, and the same output cannot distinguish it
+from the false one.
+
 **Done when.** `bin/docket stranded` does not report a branch as having had its
 pull request merged on the strength of files whose content already agrees with
 the base, and a regression test covers the shape: a branch carrying real work
