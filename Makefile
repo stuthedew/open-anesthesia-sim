@@ -114,13 +114,19 @@ check: sync
 # with `ast` rather than importing them, because `app/simulation_view.py`
 # imports Flet.
 #
+# `workflow_paths_check.py` joined them under `PL-JBZK` for the same reason
+# about its input: it reads every file under `tests/` with `ast` to decide
+# whether that file imports the simulator, and `tests/` targets 3.14 like the
+# rest of the tree.
+#
 # `tools/ignore_check.py` above is the same category for a different reason.
-# Both tools here stay standard-library-only and parse at the floor themselves,
-# which is what `tests/unit/test_tools_portability.py` holds them to; that
-# suite's docstring states the rule this pair is an instance of.
-# `PL-Y0RZ`, `PL-L17Q`.
+# All three tools here stay standard-library-only and parse at the floor
+# themselves, which is what `tests/unit/test_tools_portability.py` holds them
+# to; that suite's docstring states the rule this group is an instance of.
+# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`.
 	uv run python tools/contrast_check.py
 	uv run python tools/import_boundary_check.py
+	uv run python tools/workflow_paths_check.py
 
 fix:
 	uv run ruff format .
