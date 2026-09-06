@@ -100,6 +100,14 @@ from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUp
 # for 30 minutes and report F_A/F_I at the end of it.
 WASH_IN_DURATION_S = 1800.0
 
+# The second horizon, and the papers' own: elimination begins where the
+# 30 minutes above end, and both report F_A/F_A0 five minutes into it. F_A0 is
+# the last alveolar fraction during administration, so this run has to be the
+# continuation of the wash-in run rather than a fresh one loaded some other
+# way - which is why `_eliminate()` below washes in first rather than taking a
+# system from `_wash_in_system()`.
+ELIMINATION_DURATION_S = 300.0
+
 # Imported rather than restated as 0.1, so this measures the model as
 # shipped rather than a finer version of it no user ever sees. Raising the
 # supported step is a safety-critical change to every displayed value
@@ -141,16 +149,59 @@ DELIVERED_FRACTION = 0.01
 # this gate is the standard deviation Yasuda reported, so a parameter or
 # solver change that moves an agent outside its measured human spread fails,
 # and one that stays inside it does not.
+#
+# **Which question a band of one SD answers**, since the module now makes the
+# claim twice and it is not the conventional one. A deterministic model
+# compared against a cohort *mean* would ordinarily be judged against the
+# standard error of that mean, SD/sqrt(n), which for these cohorts is a band
+# 2.6 to 2.8 times narrower. The claim asserted here is the weaker of the two
+# and is deliberately so: that the model is a *plausible individual* drawn
+# from the published cohort, not that it reproduces the cohort's mean. The
+# distinction is not academic - desflurane's wash-in sits at +0.79 SD, which
+# is +2.2 SEM, so the same run that passes the claim this module makes would
+# fail the claim it does not make. A reader restating a passing run as
+# "reproduces the published mean" has said something this gate never tested.
 AGREEMENT_TOLERANCE_SD = 1.0
+
+# The elimination comparison does not agree, so this constant cannot mean what
+# `AGREEMENT_TOLERANCE_SD` means and is named apart from it. It is the width of
+# a *regression* band - the published SD, applied around the ratio this model
+# itself produces (`MODELLED_ELIMINATION_RATIOS`), so that a change moving
+# washout by more than one published standard deviation fails and has to be
+# explained. It asserts nothing whatever about agreement with Yasuda; the
+# distance from the published mean is measured and recorded in
+# `test_five_minute_elimination_ratio_against_published_human_measurement`,
+# and is between +1.0 and +5.0 SD.
+ELIMINATION_REGRESSION_TOLERANCE_SD = 1.0
+
+# What the shipped parameters produce at the reference operating point,
+# measured 2026-09-06 and pinned by the regression band above. These are model
+# outputs and are deliberately not fields of `PublishedMeasurement`: nothing
+# here was published, and a measured value sitting in a row of published ones
+# is how a later reader comes to cite a model output as a human measurement.
+MODELLED_ELIMINATION_RATIOS = {"sevoflurane": 0.2303, "isoflurane": 0.3195, "desflurane": 0.1603}
 
 
 @dataclass(frozen=True, slots=True)
 class PublishedMeasurement:
-    """One agent's measured 30-minute F_A/F_I from one published cohort."""
+    """One agent's two measured ratios, from one published cohort.
+
+    Both quantities come from the same subjects in the same sitting - the
+    elimination followed the administration the wash-in figure ends - so
+    they belong on one row rather than in two tables that could come to
+    disagree about which cohort is which.
+
+    The field names carry which ratio they describe. `mean` alone was
+    unambiguous while this module compared one quantity and is not now, and
+    a mean whose quantity a reader has to infer is the shape of error
+    `CLAUDE.md`'s safety-critical standard treats as part of the value.
+    """
 
     agent_id: str
-    mean: float
-    standard_deviation: float
+    wash_in_mean: float
+    wash_in_standard_deviation: float
+    elimination_mean: float
+    elimination_standard_deviation: float
     cohort_size: int
     published_inspired_percent: float
     source: str
@@ -159,41 +210,54 @@ class PublishedMeasurement:
     def label(self) -> str:
         return f"{self.agent_id}/{self.source}"
 
-    def distance_in_standard_deviations(self, ratio: float) -> float:
-        """How far a modeled ratio sits from this cohort's mean, in its SDs."""
+    def wash_in_distance_in_standard_deviations(self, ratio: float) -> float:
+        """How far a modeled F_A/F_I sits from this cohort's mean, in its SDs."""
 
-        return (ratio - self.mean) / self.standard_deviation
+        return (ratio - self.wash_in_mean) / self.wash_in_standard_deviation
+
+    def elimination_distance_in_standard_deviations(self, ratio: float) -> float:
+        """How far a modeled F_A/F_A0 sits from this cohort's mean, in its SDs."""
+
+        return (ratio - self.elimination_mean) / self.elimination_standard_deviation
 
 
 PUBLISHED_MEASUREMENTS = (
     PublishedMeasurement(
         agent_id="sevoflurane",
-        mean=0.850,
-        standard_deviation=0.018,
+        wash_in_mean=0.850,
+        wash_in_standard_deviation=0.018,
+        elimination_mean=0.157,
+        elimination_standard_deviation=0.020,
         cohort_size=7,
         published_inspired_percent=1.0,
         source="Anesth Analg 1991;72:316-24",
     ),
     PublishedMeasurement(
         agent_id="isoflurane",
-        mean=0.733,
-        standard_deviation=0.027,
+        wash_in_mean=0.733,
+        wash_in_standard_deviation=0.027,
+        elimination_mean=0.223,
+        elimination_standard_deviation=0.024,
         cohort_size=7,
         published_inspired_percent=0.6,
         source="Anesth Analg 1991;72:316-24",
     ),
     PublishedMeasurement(
         agent_id="desflurane",
-        mean=0.900,
-        standard_deviation=0.010,
+        wash_in_mean=0.900,
+        wash_in_standard_deviation=0.010,
+        elimination_mean=0.140,
+        elimination_standard_deviation=0.020,
         cohort_size=8,
         published_inspired_percent=2.0,
         source="Anesthesiology 1991;74:489-98",
     ),
     PublishedMeasurement(
         agent_id="isoflurane",
-        mean=0.730,
-        standard_deviation=0.030,
+        wash_in_mean=0.730,
+        wash_in_standard_deviation=0.030,
+        elimination_mean=0.220,
+        elimination_standard_deviation=0.020,
         cohort_size=8,
         published_inspired_percent=0.4,
         source="Anesthesiology 1991;74:489-98",
@@ -280,6 +344,94 @@ def _wash_in_ratio(
     return system.alveoli.concentration_fraction / system.circuit.circuit_concentration_fraction
 
 
+@dataclass(frozen=True, slots=True)
+class EliminationReading:
+    """The three fractions one elimination run leaves behind.
+
+    A value object rather than the system itself, because `_eliminate()` is
+    cached and a returned system would be a shared mutable one: a caller
+    stepping it further would silently change what every later call to the
+    same arguments returns. Nothing outside needs the system, so nothing
+    outside gets it.
+
+    Attributes:
+        alveolar_fraction_at_discontinuation: F_A0 - the alveolar fraction at
+            the moment the vaporizer was closed, which is the papers' own
+            definition of the denominator.
+        alveolar_fraction: F_A after `ELIMINATION_DURATION_S`.
+        inspired_fraction: F_I at the same moment. Not part of the published
+            ratio; it is what
+            `test_elimination_is_dominated_by_the_rebreathing_circuit`
+            and the module docstring's apparatus discussion are about.
+    """
+
+    alveolar_fraction_at_discontinuation: float
+    alveolar_fraction: float
+    inspired_fraction: float
+
+    @property
+    def ratio(self) -> float:
+        """F_A/F_A0, the quantity both papers report at 5 minutes."""
+
+        return self.alveolar_fraction / self.alveolar_fraction_at_discontinuation
+
+
+@cache
+def _eliminate(
+    agent_id: str,
+    alveolar_ventilation_l_min: float | None = None,
+    cardiac_output_l_min: float | None = None,
+    fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
+    delivered_fraction: float = DELIVERED_FRACTION,
+) -> EliminationReading:
+    """Wash in for the published 30 minutes, then eliminate for five.
+
+    The protocol is the papers': administer at a held inspired concentration
+    for 30 minutes, record the last alveolar fraction as F_A0, discontinue,
+    and read F_A five minutes later. Discontinuation is the vaporizer closed
+    and nothing else - the fresh gas flow, ventilation and cardiac output all
+    stay where the wash-in had them - because those are the settings the
+    published subjects' own elimination held constant too.
+
+    The system is built here rather than taken from `_wash_in_system()`,
+    whose cached instance is shared with every wash-in comparison in this
+    module; stepping that one into elimination would leave every later
+    wash-in reading measuring a washed-out system.
+    """
+
+    patient_parameters = load_reference_adult_parameters()
+    system = AgentUptakeSystem.for_agent(agent_id)
+
+    system.set_fresh_gas_flow(fresh_gas_flow_l_min)
+    system.set_delivered_concentration(delivered_fraction)
+    system.set_alveolar_ventilation(
+        patient_parameters.default_alveolar_ventilation_l_min
+        if alveolar_ventilation_l_min is None
+        else alveolar_ventilation_l_min
+    )
+    system.set_cardiac_output(
+        patient_parameters.default_cardiac_output_l_min
+        if cardiac_output_l_min is None
+        else cardiac_output_l_min
+    )
+
+    for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
+        system.advance(SIMULATION_STEP_S)
+
+    alveolar_fraction_at_discontinuation = system.alveoli.concentration_fraction
+
+    system.set_delivered_concentration(0.0)
+
+    for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
+        system.advance(SIMULATION_STEP_S)
+
+    return EliminationReading(
+        alveolar_fraction_at_discontinuation=alveolar_fraction_at_discontinuation,
+        alveolar_fraction=system.alveoli.concentration_fraction,
+        inspired_fraction=system.circuit.circuit_concentration_fraction,
+    )
+
+
 @pytest.mark.parametrize(
     "measurement", PUBLISHED_MEASUREMENTS, ids=[m.label for m in PUBLISHED_MEASUREMENTS]
 )
@@ -308,12 +460,12 @@ def test_thirty_minute_ratio_matches_published_human_measurement(
     """
 
     ratio = _wash_in_ratio(measurement.agent_id)
-    distance = measurement.distance_in_standard_deviations(ratio)
+    distance = measurement.wash_in_distance_in_standard_deviations(ratio)
 
     assert abs(distance) <= AGREEMENT_TOLERANCE_SD, (
         f"{measurement.agent_id} washes in to F_A/F_I {ratio:.4f} at 30 min, "
-        f"{distance:+.2f} SD from the {measurement.mean} +/- "
-        f"{measurement.standard_deviation} measured in {measurement.cohort_size} "
+        f"{distance:+.2f} SD from the {measurement.wash_in_mean} +/- "
+        f"{measurement.wash_in_standard_deviation} measured in {measurement.cohort_size} "
         f"volunteers ({measurement.source})"
     )
 
@@ -432,7 +584,7 @@ def test_agreement_survives_every_fresh_gas_flow(
     """
 
     ratio = _wash_in_ratio(measurement.agent_id, fresh_gas_flow_l_min=fresh_gas_flow_l_min)
-    distance = measurement.distance_in_standard_deviations(ratio)
+    distance = measurement.wash_in_distance_in_standard_deviations(ratio)
 
     assert abs(distance) <= AGREEMENT_TOLERANCE_SD, (
         f"{measurement.agent_id} at {fresh_gas_flow_l_min} L/min fresh gas gives "
@@ -489,7 +641,9 @@ def test_agreement_is_sensitive_to_ventilation_and_cardiac_output(agent_id: str)
     for alveolar_ventilation_l_min in (3.0, 5.0):
         ratio = _wash_in_ratio(agent_id, alveolar_ventilation_l_min=alveolar_ventilation_l_min)
 
-        assert abs(measurement.distance_in_standard_deviations(ratio)) > AGREEMENT_TOLERANCE_SD, (
+        assert (
+            abs(measurement.wash_in_distance_in_standard_deviations(ratio)) > AGREEMENT_TOLERANCE_SD
+        ), (
             f"{agent_id} at {alveolar_ventilation_l_min} L/min alveolar ventilation is no "
             f"longer outside the published spread; the sensitivity this module documents "
             f"has changed and its table must be re-measured"
@@ -497,10 +651,212 @@ def test_agreement_is_sensitive_to_ventilation_and_cardiac_output(agent_id: str)
 
     for cardiac_output_l_min in (4.0, 6.0):
         ratio = _wash_in_ratio(agent_id, cardiac_output_l_min=cardiac_output_l_min)
-        movement_sd = abs(ratio - shipped_ratio) / measurement.standard_deviation
+        movement_sd = abs(ratio - shipped_ratio) / measurement.wash_in_standard_deviation
 
         assert movement_sd > AGREEMENT_TOLERANCE_SD, (
             f"{agent_id} moves only {movement_sd:.2f} SD when cardiac output goes to "
             f"{cardiac_output_l_min} L/min; the sensitivity this module documents has "
             f"changed and its table must be re-measured"
         )
+
+
+@pytest.mark.parametrize(
+    "measurement", PUBLISHED_MEASUREMENTS, ids=[m.label for m in PUBLISHED_MEASUREMENTS]
+)
+def test_five_minute_elimination_ratio_against_published_human_measurement(
+    measurement: PublishedMeasurement,
+) -> None:
+    """Compare the modelled 5-minute elimination against all four cohorts.
+
+    **This comparison does not agree, and the assertion below is a regression
+    band rather than an agreement claim.** Measured 2026-09-06 at the shipped
+    defaults, as distance from each cohort's mean in that cohort's own
+    standard deviations:
+
+    | Agent | Cohort | Model | Published | Distance |
+    | --- | --- | --- | --- | --- |
+    | Sevoflurane | n=7 | 0.2303 | 0.157 +/- 0.020 | +3.67 SD |
+    | Isoflurane | n=7 | 0.3195 | 0.223 +/- 0.024 | +4.02 SD |
+    | Desflurane | n=8 | 0.1603 | 0.140 +/- 0.020 | +1.02 SD |
+    | Isoflurane | n=8 | 0.3195 | 0.220 +/- 0.020 | +4.98 SD |
+
+    Every row is *above* its published mean, which is the model retaining
+    more alveolar agent at five minutes than the volunteers did. The module
+    docstring carries the measured attribution and it is largely the
+    breathing system rather than the tissue return: this model rebreathes and
+    the published protocol did not, and holding the inspired fraction at zero
+    instead moves the same three agents to -0.25, +0.54 and -2.40 SD.
+
+    What is asserted here is therefore that the model still produces the
+    ratios in `MODELLED_ELIMINATION_RATIOS`, to within one published standard
+    deviation. That is worth asserting for the reason the wash-in comparison
+    is worth asserting - it is the only thing in this repository that looks
+    at elimination against an outside number at all - and a change moving it
+    is a change to re-measure and explain, in whichever direction it moves.
+    A change that moved these rows *inside* the published band would fail
+    here too, and should: it would mean this table and the docstring around
+    it are describing a model that no longer exists.
+    """
+
+    ratio = _eliminate(measurement.agent_id).ratio
+    modelled = MODELLED_ELIMINATION_RATIOS[measurement.agent_id]
+    drift_sd = abs(ratio - modelled) / measurement.elimination_standard_deviation
+    published_distance = measurement.elimination_distance_in_standard_deviations(ratio)
+
+    assert drift_sd <= ELIMINATION_REGRESSION_TOLERANCE_SD, (
+        f"{measurement.agent_id} eliminates to F_A/F_A0 {ratio:.4f} at 5 min against the "
+        f"{modelled} this module measured on 2026-09-06, a drift of {drift_sd:.2f} published "
+        f"SD; it now sits {published_distance:+.2f} SD from the {measurement.elimination_mean} "
+        f"+/- {measurement.elimination_standard_deviation} measured in "
+        f"{measurement.cohort_size} volunteers ({measurement.source}). Re-measure this "
+        f"module's tables and docs/MODEL.md's rather than widening the band"
+    )
+
+
+@pytest.mark.parametrize(
+    "measurement", PUBLISHED_MEASUREMENTS, ids=[m.label for m in PUBLISHED_MEASUREMENTS]
+)
+def test_the_model_eliminates_more_slowly_than_every_published_cohort(
+    measurement: PublishedMeasurement,
+) -> None:
+    """State the direction of the disagreement, so it cannot drift unnoticed.
+
+    The regression band above pins the magnitude and would fail on a move in
+    either direction. This pins the sign, which is the part a reader of the
+    model needs: the modelled alveolar fraction at five minutes of
+    elimination is higher than every published cohort's, so a learner
+    watching this simulator's washout is watching a slower recovery than
+    these volunteers had, not a faster one.
+
+    Asserted separately from the magnitude because the two would be read
+    differently if either changed. A magnitude that moved is a measurement to
+    redo; a sign that flipped would mean the model had crossed the published
+    values, and every statement in this module about which side it sits on
+    would be wrong.
+    """
+
+    ratio = _eliminate(measurement.agent_id).ratio
+
+    assert ratio > measurement.elimination_mean, (
+        f"{measurement.agent_id} now eliminates to F_A/F_A0 {ratio:.4f}, at or below the "
+        f"{measurement.elimination_mean} measured in {measurement.cohort_size} volunteers "
+        f"({measurement.source}); the direction this module documents has reversed"
+    )
+
+
+def test_eliminated_agents_are_ordered_by_solubility() -> None:
+    """The published elimination ordering must be reproduced.
+
+    This is the part of the elimination comparison that is a validation
+    rather than a regression, and it is the one claim here the disagreement
+    above does not touch. Both papers report the same ordering - desflurane
+    leaves fastest, then sevoflurane, then isoflurane - and it is the
+    prediction they were run to test, in the opposite direction from the
+    wash-in ordering that `test_published_agents_are_ordered_by_solubility`
+    checks. Published: 0.14, 0.157, 0.22-0.223. Modelled: 0.1603, 0.2303,
+    0.3195.
+
+    An ordering is what survives the apparatus mismatch the module docstring
+    measures, because the rebreathing that displaces every ratio upward
+    displaces them all in the same direction. So this is a weaker claim than
+    the wash-in ordering and a real one: three agents differing only in their
+    partition coefficients rank correctly on the way out as well as on the
+    way in.
+    """
+
+    by_agent = {agent_id: _eliminate(agent_id).ratio for agent_id in AGENT_IDS}
+
+    assert by_agent["desflurane"] < by_agent["sevoflurane"] < by_agent["isoflurane"]
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+def test_elimination_ratio_does_not_depend_on_the_delivered_fraction(agent_id: str) -> None:
+    """One dial setting may stand for four published inspired concentrations.
+
+    The wash-in counterpart of this test carries the argument: the governing
+    equations are linear in the delivered fraction, so a ratio of two
+    fractions from the same run is independent of it. It is checked again for
+    the elimination ratio rather than inherited, because the two ratios are
+    not the same quotient - F_A/F_A0 divides the alveolar fraction by an
+    earlier value of itself, and a future nonlinearity could leave one of
+    them invariant while breaking the other.
+    """
+
+    ratios = [
+        _eliminate(agent_id, delivered_fraction=percent / 100.0).ratio
+        for percent in PUBLISHED_INSPIRED_PERCENTS
+    ]
+
+    for ratio in ratios:
+        assert ratio == pytest.approx(ratios[0], rel=1e-9)
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+def test_elimination_is_dominated_by_the_rebreathing_circuit(agent_id: str) -> None:
+    """Show that this comparison measures the apparatus, not only the patient.
+
+    This is the assertion that keeps the elimination result from being
+    over-read, and it is the mirror image of
+    `test_agreement_survives_every_fresh_gas_flow`. That test shows fresh gas
+    flow is *not* carrying the wash-in result: every agent stays inside its
+    published spread from 1 to 10 L/min. Here the same sweep moves the
+    elimination ratio across many published standard deviations, measured
+    2026-09-06 as distance from the first cohort's mean:
+
+    | Agent | 1 | 2 | 4 | 6 | 8 | 10 L/min |
+    | --- | --- | --- | --- | --- | --- | --- |
+    | Sevoflurane | +21.91 | +15.68 | +9.22 | +6.25 | +4.64 | +3.67 |
+    | Isoflurane | +15.60 | +11.93 | +7.94 | +5.94 | +4.77 | +4.02 |
+    | Desflurane | +22.66 | +14.93 | +7.14 | +3.74 | +2.01 | +1.02 |
+
+    The mechanism is in `docs/MODEL.md` § "Model boundary": inspired gas is
+    circuit gas, and the circuit is a closed recirculating path except for
+    fresh-gas inflow and exhaust, so during elimination the inspired fraction
+    settles near V_A/(V_A + fresh gas flow) of the alveolar one - 4/(4+10),
+    or 0.29, at the highest supported flow. F_A/F_I divides that term out and
+    F_A/F_A0 does not, which is the whole of why one comparison is
+    flow-insensitive and the other is not.
+
+    Both the magnitude and the direction are asserted, at the two ends of the
+    supported range, so that a future circuit or ventilation change that made
+    the elimination ratio flow-insensitive would fail here - and it should,
+    because this module's account of why the published values are missed
+    would then be wrong.
+    """
+
+    measurement = next(m for m in PUBLISHED_MEASUREMENTS if m.agent_id == agent_id)
+    lowest_flow = _eliminate(agent_id, fresh_gas_flow_l_min=1.0).ratio
+    highest_flow = _eliminate(agent_id, fresh_gas_flow_l_min=FRESH_GAS_FLOW_L_MIN).ratio
+    movement_sd = (lowest_flow - highest_flow) / measurement.elimination_standard_deviation
+
+    assert movement_sd > 10.0, (
+        f"{agent_id} moves only {movement_sd:.2f} published SD in F_A/F_A0 between 1 and "
+        f"{FRESH_GAS_FLOW_L_MIN} L/min fresh gas; this module documents the elimination "
+        f"comparison as dominated by rebreathing, and that is no longer measured"
+    )
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+def test_the_elimination_run_is_outside_the_displayed_wash_in_domain(agent_id: str) -> None:
+    """The interface must refuse to draw a wash-in number for this run.
+
+    The wash-in counterpart of this test asserts that the ratio validated
+    here is the ratio the chart draws. Its opposite matters just as much and
+    is what `app/wash_in.py` was written for: five minutes into elimination
+    the alveolar fraction is about three times the inspired one, so the
+    quotient is far above `WASH_IN_EQUILIBRIUM_RATIO` and the reading is
+    `WashInDomain.ELIMINATION` with no number to plot.
+
+    Asserting it here, against a run built from a published protocol rather
+    than from chosen fractions, is what `tests/unit/test_wash_in.py` cannot
+    do: it shows the domain rule excludes a *physiologically real* washout
+    that this simulator can be driven into, rather than a constructed pair of
+    numbers. A regression that let this run plot would draw a wash-in curve
+    for a patient who is waking up.
+    """
+
+    reading = _eliminate(agent_id)
+    displayed = read_wash_in(reading.alveolar_fraction, reading.inspired_fraction)
+
+    assert displayed.domain is WashInDomain.ELIMINATION
+    assert displayed.plotted_ratio is None
