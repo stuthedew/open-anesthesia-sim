@@ -126,7 +126,12 @@ defaulted at this boundary. Conservation is core's on the same terms: until
 PL-006 the controller read the circuit's stored agent out and put it back
 around `set_circuit_volume`, which left `core/` exposing an unconserving
 primitive publicly and the invariant holding only for the caller that knew
-to compensate. The setter conserves, and the controller forwards. The
+to compensate. The core setter conserves, and the controller calls it once,
+from `_build_state()`, to apply the volume the session was built with.
+There is no live setter above it: PL-GYH2 established the circuit volume as
+a fixed model parameter rather than a control, so the per-parameter setters
+named above are the four the interface offers and no fifth exists.
+`docs/MODEL.md` § "What is not bounded this way" carries the argument. The
 snapshot is the run's state at one instant: a fixed number of values,
 however long the run has been going. The recorded run itself — one
 `SimulationHistorySample` per simulation step, not trimmed — is answered for

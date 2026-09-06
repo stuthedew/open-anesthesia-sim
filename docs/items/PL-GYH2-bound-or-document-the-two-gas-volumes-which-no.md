@@ -3,10 +3,11 @@ id: PL-GYH2
 title: Bound or document the two gas volumes, which no supported range covers
 priority: P1
 effort: S
-status: ready
+status: done
+closed: 2026-09-06
 classes: safety
 feature: numerical-domain
-touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/control_timeline.py, tests/integration/test_controller.py, tests/unit/test_control_timeline.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-02
 verify: uv run pytest tests/integration/test_controller.py && python3 tools/doc_check.py check && ! grep -q 'def set_circuit_volume' src/anesthesia_sim/app/controller.py && ! grep -q 'PL-GYH2' docs/MODEL.md
 ---
@@ -83,3 +84,50 @@ Whether circuit volume should be a control, and what range it would need, is
 untouched — it is a question about the settings envelope and the verification
 domain, which `docs/MODEL.md` § "What a setting outside the range costs" now
 grounds those on rather than on numerical error. Re-argue on that ground.
+
+**Done, 2026-09-06.** The argument was restated on physiological grounds, as
+the 2026-09-03 and 2026-09-06 notes above require, and it is now the same
+ground `core/supported_ranges.py` and § "What a setting outside the range
+costs" stand on after `PL-X9KD`: the exact propagator solves the governing
+equations for any positive volumes, so a 5 mL alveolus yields an
+arithmetically correct answer to a question physiology does not ask. Nothing
+in the delivered documentation rests on a splitting error.
+
+Three things the brief did not anticipate, found while implementing it:
+
+1. **Four test call sites, not two.** `tests/integration/test_controller.py`
+   lines 264 and 291 were stale citations; the calls were at 478, 505, 765 and
+   783. Two of them were control-timeline tests rather than volume tests.
+2. **`ControlInput.CIRCUIT_VOLUME` had to go with the setter.**
+   `SimulationController.set_circuit_volume` was its only writer, so retiring
+   the setter left a stable identifier for a change no run can undergo, plus a
+   `CONTROL_INPUT_UNITS` entry, a `CONTROL_INPUT_LABELS` entry, a
+   `format_control_value` litres branch and a test for it. All removed. This
+   costs no recorded history: a control timeline is held in memory and cleared
+   with its run, never persisted, so no stored run carries the string. Replaced
+   by a test holding the enum and both tables to the same set of controls,
+   which nothing checked before.
+3. **The circuit volume is not a data-file parameter**, so "both volumes are
+   established in `docs/MODEL.md` as data-file parameters" could not be written
+   truthfully. The alveolar gas volume is one
+   (`data/patients/reference_adult.json`, `alveolar_gas_volume_l = 2.5`); the
+   circuit volume is the hardcoded default `circuit_volume_l: float = 6.0` on
+   `BreathingCircuit`, with no recorded source at all. That is `PL-4YY1`, still
+   open. § "What is not bounded this way" therefore establishes both as **fixed
+   model parameters rather than controls** - which is the decision that was
+   actually taken - names each one's provenance separately, and points at
+   `PL-4YY1` for the missing half rather than asserting a data file that does
+   not exist.
+
+The section also now states plainly what remains reachable: a caller writing
+Python against `core/` can still construct either compartment at any positive
+finite volume, and `SimulationController` still takes `circuit_volume_l` at
+construction. Both are outside the verified domain and neither is refused. That
+is deliberate under the recorded decision - it is a build-time choice by a
+caller who has gone to the trouble, not a live control a run can be steered
+with - and saying so is better than a document that implies it is closed.
+
+The `BREAKDOWN_ALVEOLAR_GAS_VOLUME_L = 0.005` fixture the 2026-09-03 note asks
+about no longer exists: `PL-GS5X` removed it when compartment failures became
+injected rather than provoked (`_TissueGroupThatCanRefuseAStep`). Nothing was
+owed there.
