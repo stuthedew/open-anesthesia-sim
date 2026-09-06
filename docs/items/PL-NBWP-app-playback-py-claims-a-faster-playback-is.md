@@ -3,11 +3,13 @@ id: PL-NBWP
 title: app/playback.py claims a faster playback is 'never a modelling one', but the uninterruptible tick burst makes control resolution multiplier x 0.1 s - 30 s at 300x
 priority: P1
 effort: M
-status: needs-decision
+status: done
 classes: safety, docs
 feature: presentation-safety
 touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md
 added: 2026-09-06
+closed: 2026-09-06
+verify: uv run pytest tests/unit/test_playback.py && grep -q 'def test_the_control_grid_at_each_rate_is_the_one_two_documents_publish' tests/unit/test_playback.py
 ---
 
 **Problem.** `src/anesthesia_sim/app/playback.py`'s module docstring states that
@@ -47,12 +49,30 @@ than an implementation choice: the cheapest answer is to keep the behaviour and
 correct the claims, which changes what a reader is told the tool guarantees.
 `PL-NBCJ` is blocked on the answer.
 
-**Options, not yet decided.** Service pending control events between steps of a
-burst; or cap the burst; or leave the behaviour and correct the claim in all
-three places, disclosing the per-rate control resolution. The last is the
-cheapest and may be right for a teaching tool - a reader at 300x is watching a
-wash-in, not titrating - but it is the project owner's call because it decides
-what the application promises.
+**Options.** Service pending control events between steps of a burst; or cap
+the burst; or leave the behaviour and correct the claim in all three places,
+disclosing the per-rate control resolution. The last is the cheapest and may be
+right for a teaching tool - a reader at 300x is watching a wash-in, not
+titrating - but it is the project owner's call because it decides what the
+application promises.
+
+**Decided 2026-09-06 (project owner): the third, and on the measurement rather
+than on the cost.** The two rejected options were rejected because the
+measurement below shows neither works, not because they were dearer:
+
+- *Servicing events inside the burst* moves no bound. A burst occupies at worst
+  a tenth of the tick, so simulated time is standing still when most control
+  events arrive and they already land on the next tick boundary either way.
+  What it would add is a dependence on where the host's scheduler was, in the
+  one place `_run_simulation_timer`'s docstring promises there is none.
+- *Capping the burst* tightens the grid to about 3 s at 300x at the price of a
+  100 Hz wakeup, and the display cannot show it: frames are two grid steps
+  apart at every rate, so the reader would be given control resolution twice as
+  fine as the resolution they observe the result at.
+
+Two additions the owner approved with it: **pause, change, resume** is
+documented as the route that is exact at every rate, and the disclosure reaching
+the interface rather than only the documents is filed as `PL-X35V`.
 
 **Found.** `PL-X9KD`, 2026-09-06, while measuring what control-timing
 quantization costs a displayed value.

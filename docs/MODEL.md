@@ -932,6 +932,51 @@ than a correction; but a reader comparing an abrupt ventilation change against
 a measurement should know that its *timing* is resolved to a tenth of a second
 and no better.
 
+**Everything above is per step of delay, and the interface waits one step for a
+control change only at 1× playback.** Which is to say: the table above is the
+tolerance this constant declares, and it is not the resolution the application
+offers. The run loop advances a whole tick's worth of steps with nothing
+between them, so simulated time stands still for one real tick interval and
+then jumps by `multiplier × 0.1` s. A setting changed while the run is playing
+therefore first acts at a tick boundary, and the reachable simulated instants
+are that far apart:
+
+| Playback rate | Control grid | Frames are | Worst displacement per grid step |
+| --- | --- | --- | --- |
+| 1× | 0.1 s | 0.2 s | 1.4×10⁻¹ pp |
+| 5× | 0.5 s | 1 s | 7.0×10⁻¹ pp |
+| 20× | 2 s | 4 s | 2.5 pp |
+| 60× | 6 s | 12 s | 5.8 pp |
+| 300× | 30 s | 60 s | 1.0×10¹ pp |
+
+Every column is in simulated seconds except the last, which is the same
+measurement the table above reports, re-run at each rate over the same three
+manoeuvres and all three agents (2026-09-06, `PL-NBWP`). The binding case is
+the ventilator start with desflurane throughout; the case opening is two orders
+milder at every rate, reaching 1.5 pp at 300×. **The displacement saturates
+rather than scaling with the delay** — the transient has largely run by the time
+a 30 s grid step has passed — so extrapolating the 1× figure linearly
+over-states 300× by about four times, and the measured values are the ones to
+use.
+
+Three things follow, and the third is why the behaviour was left alone.
+
+- **Nothing arrives late.** A recorded `ControlChange` carries
+  `SimulationState.elapsed_s` at the moment of the call, and the new setting
+  acts over the step beginning there, at every rate. So the control timeline is
+  exact to the step and no displayed value is stale against it. What the rate
+  coarsens is only which instants a reader can *choose*.
+- **An exact route exists at every rate: pause, change, resume.** The run loop
+  takes no steps while the run is paused, so a setting changed then acts from
+  the step the run resumes on. Timing a manoeuvre is what this is for; the rate
+  ladder is for watching one.
+- **The grid is already finer than the display, by exactly two.** Frames are
+  one render interval apart, which is two tick intervals, so at every rate a
+  reader sees the run at half the resolution they can act on it at. Tightening
+  the grid — by servicing control events inside the burst, or by waking the loop
+  more often — would resolve control timing that the display cannot show. What
+  was wrong here was the documentation, and it is what has been fixed.
+
 The supported step and the shipped step are the same number, and the interface
 runs at it.
 
@@ -1831,6 +1876,16 @@ read a case played at sixty times real time as a different run rather than as
 the same run watched faster, which is the reading "The reproducibility
 guarantee" exists to rule out.
 
+**"Identical inputs" is doing work in that paragraph, and the playback rate
+is what decides when an input arrives.** The rate is not a model input and
+changes nothing about a step — that much is exactly as stated. What it does
+decide is the grid of simulated instants at which a control changed *during*
+a run can first act, which is `multiplier × 0.1` s wide, so the same slider
+moves performed at two rates are not the same inputs and do not produce the
+same run. Nothing here is stale or resized; the reader simply has a coarser
+choice of when. § "Supported simulation step" measures it, and `PL-NBWP` is
+where the claim above was found overstated.
+
 ### The control-input record
 
 Every change to a runtime control that the model actually runs under is
@@ -2225,7 +2280,7 @@ labelling this paragraph requires.
 on screen.** The two compartments that make uptake and distribution worth
 teaching cannot be watched in real time — sevoflurane's muscle group has a
 time constant of about 135 min at the reference settings and fat about 42 h
-— so the interface may play a run faster by taking more steps per tick. Two
+— so the interface may play a run faster by taking more steps per tick. Three
 things bound it, and they are of different kinds.
 
 The first is arithmetic. The step size is fixed, and the rate is realised
@@ -2238,7 +2293,19 @@ solution: identical inputs still produce identical recorded histories, and
 two learners comparing the same case at different speeds are comparing the
 same arithmetic.
 
-The second is human factors, and it is why the rate is a required displayed
+The second is control resolution, and it is the one that limits what the
+sentence above may be taken to mean. Those two learners are comparing the
+same arithmetic, and they are comparing the same *case* only if neither of
+them touches a control: a tick advances its whole burst uninterrupted, so a
+setting changed while the run plays first acts at a tick boundary, and the
+boundaries are `multiplier × 0.1` s of simulated time apart. The same slider
+moves made at two rates therefore land at two different simulated instants
+and produce two different runs — not because the arithmetic differed, but
+because the inputs did. § "Supported simulation step" carries the grid per
+rate, what one step of it costs a displayed compartment, and the
+pause-change-resume route that is exact at every rate.
+
+The third is human factors, and it is why the rate is a required displayed
 output rather than a preference. A rate is a **mode**, and a clock advancing
 at sixty times real time beside numbers that look like a live case is
 misreadable at a glance. So the rate must be shown wherever simulated time

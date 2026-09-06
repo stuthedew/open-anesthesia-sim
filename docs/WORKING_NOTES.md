@@ -993,17 +993,33 @@ desflurane binding: 6.7e-3 pp for a case-opening dial change, 1.4e-1 pp for a
 ventilator start. The criterion is the model's own parameter uncertainty - one SD of
 a measured partition coefficient is worth 9e-4 to 6.8e-2 pp.
 
-Two open threads came out of that and they are coupled, which is why they are here
-rather than only in their own items.
+Two threads came out of that and they were coupled, which is why they are here
+rather than only in their own items. **The coupling is now cut, and one of the two
+is closed** (2026-09-06).
 
-`PL-NBWP`: the derivation above holds at 1x playback and nowhere else. `steps_per_tick`
-is the multiplier and `simulation_view.py`'s burst is a synchronous loop with no
-`await`, so control resolution is `SIMULATION_TICK_INTERVAL_S x multiplier` - 30
-simulated seconds at 300x. `app/playback.py` says a faster playback is "a scheduling
-change and never a modelling one", which is true of a run nobody touches and false of
-one where a slider moves.
+`PL-NBWP` **- closed.** The derivation above holds at 1x playback and nowhere else.
+`steps_per_tick` is the multiplier and `simulation_view.py`'s burst is a synchronous
+loop with no `await`, so control resolution is `SIMULATION_TICK_INTERVAL_S x
+multiplier` - 30 simulated seconds at 300x. `app/playback.py` said a faster playback
+is "a scheduling change and never a modelling one", which is true of a run nobody
+touches and false of one where a slider moves.
 
-`PL-NBCJ`: whether the step should move to 0.05 s so an abrupt manoeuvre stays inside
-one parameter SD. Halving the step at a fixed wakeup doubles the steps per tick at
-every rate, so it makes `PL-NBWP` worse. Decide `PL-NBWP` first; if the burst changes,
-revisit both together.
+Decided: keep the behaviour, correct the claims, and publish the grid per rate
+against what one step of it costs a displayed compartment - up to about 10 pp at
+300x on an abrupt manoeuvre, measured rather than extrapolated, since the
+displacement saturates and a linear estimate over-states 300x by four times. Two
+measurements settled the rejected options and are the part worth remembering here:
+a step costs 33 us, so a burst is at worst a tenth of the tick and simulated time is
+standing still when most control events arrive; and frames are two grid steps apart
+at every rate, so a finer grid would resolve control timing the display cannot show.
+The item carries both in full.
+
+`PL-NBCJ` **- still open, and now narrower.** Whether the step should move to 0.05 s
+so an abrupt manoeuvre stays inside one parameter SD. Halving the step at a fixed
+wakeup doubles the steps per tick at every rate, which is why it waited on
+`PL-NBWP`; that answer left the burst alone, so the question survives unchanged in
+cost. What `PL-NBWP` did change is its scope: above 1x the playback grid dominates
+the step by the multiplier, so halving the step improves the timing only for a
+reader watching at 1x. That is now the whole of the question, and it lives in its
+own item rather than needing this file - **the thread closes here once `PL-NBCJ` is
+answered.**

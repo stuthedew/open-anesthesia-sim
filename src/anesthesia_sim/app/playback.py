@@ -2,10 +2,15 @@
 
 A run's trajectory is a function of its inputs and of the number of steps
 taken, and of nothing else (`docs/MODEL.md` § "The reproducibility
-guarantee"). Playing a run faster is therefore a *scheduling* change and
-never a modelling one: the same steps are taken, in the same order, at the
-same size — more of them per wakeup of the loop. This module is the one
-place that converts the rate a reader selects into that number of steps.
+guarantee"). For a run nobody touches, playing it faster is therefore a
+*scheduling* change and never a modelling one: the same steps are taken, in
+the same order, at the same size — more of them per wakeup of the loop. This
+module is the one place that converts the rate a reader selects into that
+number of steps.
+
+For a run in which a control moves, the rate is not free, and until
+`PL-NBWP` the sentence above said it was without the qualification. What it
+costs is below, under "What the rate does change".
 
 **Why the interface needs this at all.** At one step per tick the
 simulation advances in real time, and the two compartments that make
@@ -26,6 +31,32 @@ playback that moved it would not be a slightly coarser answer — it would
 be a different run. Steps per tick is the only quantity here that varies;
 `simulation_step_s` is an input to the conversion and never an output of
 it.
+
+**What the rate does change is the grid a live control action can land
+on.** A tick advances its whole burst with nothing between the steps, so
+simulated time is a staircase: it stands still for one real tick interval
+and then jumps by `multiplier × tick_interval_s`. A setting changed while
+the run is playing therefore first acts at a tick boundary, which spaces
+the reachable simulated instants `multiplier × 0.1` s apart — 0.1 s at 1×,
+and 0.5, 2, 6 and 30 s at 5×, 20×, 60× and 300×.
+
+Nothing arrives *late*, and the distinction decides what a reader may
+conclude. `ControlChange.elapsed_s` is `SimulationState.elapsed_s` at the
+moment of the call and the new setting acts over the step beginning there,
+at every rate, so the recorded timeline is exact to the step and no
+displayed value is stale against it. What coarsens is only which instants
+can be chosen. `docs/MODEL.md` § "Supported simulation step" measures what
+one grid step of that costs a displayed compartment, which at 300× on an
+abrupt manoeuvre is percentage points rather than the hundredths the 1×
+tolerance is stated in.
+
+**A control change timed to the step is available at every rate: pause,
+change, resume.** `SimulationView._run_simulation_timer` takes no steps
+while the run is paused and this application's setters apply
+unconditionally, so a setting changed while paused acts from the step the
+run resumes on. That is the route when *when* a change happened is the
+point of the exercise; the ladder below is for watching a trajectory
+rather than for timing one.
 
 **The rate is stated as a multiple of real time, because that is what a
 reader can check.** "60x real time" is a claim about the clock on screen,
@@ -145,6 +176,12 @@ class PlaybackRate:
 #: Nothing faster is offered. Fat's time constant is about 42 h, so no rate
 #: that leaves the chart legible reaches three of them, and a ladder that
 #: implied otherwise would be promising a run the reader cannot follow.
+#:
+#: Each rung also buys its speed with control resolution, at `multiplier x
+#: 0.1` simulated seconds: 0.1, 0.5, 2, 6 and 30 s. Adding a rung therefore
+#: adds a row to `docs/MODEL.md` § "Supported simulation step", and
+#: `test_the_control_grid_at_each_rate_is_the_one_two_documents_publish`
+#: fails until it has been written.
 SUPPORTED_PLAYBACK_RATES: Final[tuple[PlaybackRate, ...]] = (
     PlaybackRate(1),
     PlaybackRate(5),

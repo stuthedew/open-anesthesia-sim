@@ -3,8 +3,7 @@ id: PL-NBCJ
 title: Decide whether MAXIMUM_SIMULATION_STEP_S should move to 0.05 s so an abrupt manoeuvre's timing stays inside one parameter SD
 priority: P1
 effort: S
-status: blocked
-blocked-by: PL-NBWP
+status: needs-decision
 classes: science
 feature: numerical-domain
 touches: src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md, src/anesthesia_sim/app/simulation_view.py
@@ -67,6 +66,40 @@ band.
 tick burst, and `PL-NBWP`'s options include changing it; deciding this one first
 would either be undone by that answer or would silently constrain it. The block
 is one-directional: `PL-NBWP` can be answered without this item.
+
+**Unblocked 2026-09-06: `PL-NBWP` was decided, and it decided to leave the
+burst alone.** So this item's own recommendation - "leave it at 0.1 s unless
+`PL-NBWP` is resolved by changing the burst" - now points at leaving it, and
+the condition that would have reopened it did not occur. Its "What it costs"
+paragraph stands unchanged: `SIMULATION_TICK_INTERVAL_S` is still assigned from
+`SIMULATION_STEP_S`, so halving the step still doubles the steps per tick at
+every rate.
+
+**What `PL-NBWP` adds to the case, and it argues the same way.** It measured
+that the interface's own control resolution is `multiplier x 0.1` s rather than
+0.1 s, so at every rate above 1x the *playback grid* already dominates the step
+by a factor of the multiplier - 30 s at 300x against the 0.1 s this item would
+halve. Halving the step would therefore improve the timing of an abrupt
+manoeuvre only for a reader watching at 1x, which is a real case and a narrow
+one, and it would leave the 300x figure untouched. It also measured that frames
+are two grid steps apart at every rate, which is the reason `PL-NBWP` gives for
+not tightening the grid and applies here unchanged: a step of 0.05 s would
+resolve control timing to half of what the display can show even at 1x.
+
+Read together, the recommendation is unchanged and now has a second reason
+behind it.
+
+**Decision needed.** Whether `MAXIMUM_SIMULATION_STEP_S` moves to 0.05 s so
+that a reader at 1x playback, comparing an abrupt ventilation change against a
+measurement, gets its timing inside one parameter SD rather than at about twice
+one - at the cost of twice the propagations per simulated second and a revisit
+of the interface's tick structure. `PL-NBWP` narrowed this to the 1x case and
+did not settle it: above 1x the playback grid dominates the step by the
+multiplier, so halving the step would not move the figure any faster reader
+sees. The recommendation above stands - leave it at 0.1 s, since the
+disclosure in `docs/MODEL.md` § "Supported simulation step" means nothing is
+overclaimed - but it is the owner's call because it decides a declared
+clinical-output tolerance.
 
 **Done when.** `PL-NBWP` is answered, and then either the step moves to 0.05 s
 with `SIMULATION_TICK_INTERVAL_S` and `steps_per_tick` revisited together and

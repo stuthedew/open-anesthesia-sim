@@ -83,6 +83,19 @@ SECONDS_PER_MINUTE = 60.0
 # twice one parameter SD. Holding that inside one SD needs a step near 0.05 s.
 # docs/MODEL.md "Supported simulation step" carries the measurements and the
 # open question of whether to move the value.
+#
+# Both figures are per step of delay, and a *caller* decides how many steps of
+# delay a control change waits (PL-NBWP). They are therefore what a caller
+# advancing one step per control opportunity sees, which the shipped interface
+# is only at 1x playback: it advances a whole tick's worth of steps between
+# opportunities, so its own resolution is that many times this one - 30 s and
+# up to about 10 pp at 300x, measured over the same manoeuvres. That is a
+# property of the caller's loop and not of this constant, which is why the
+# number here does not move; but the constant is a floor on the interface's
+# resolution rather than a statement of it, and a reader who takes it for the
+# latter is reading it as several hundred times better than it is. The whole
+# per-rate table is in docs/MODEL.md "Supported simulation step" beside this
+# one, and app/playback.py states which grid the interface actually offers.
 MAXIMUM_SIMULATION_STEP_S = 0.1
 
 
