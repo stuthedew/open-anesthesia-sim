@@ -5,6 +5,7 @@ priority: P1
 effort: S
 status: done
 closed: 2026-09-06
+pr: 378
 classes: science, docs
 feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py

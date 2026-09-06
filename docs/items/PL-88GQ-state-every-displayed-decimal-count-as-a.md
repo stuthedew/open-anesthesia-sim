@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 closed: 2026-09-06
+pr: 378
 classes: docs, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_formatting.py

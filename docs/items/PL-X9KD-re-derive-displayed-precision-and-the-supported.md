@@ -5,6 +5,7 @@ priority: P1
 effort: M
 status: done
 closed: 2026-09-06
+pr: 378
 classes: science, safety
 feature: numerical-domain
 touches: docs/MODEL.md, tests/reference, src/anesthesia_sim/core
