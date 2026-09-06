@@ -691,13 +691,22 @@ def format_branch_state(state: BranchState, flight: FlightReport | None = None) 
     return "\n".join(lines)
 
 
-def _rewrite_recovery(rewrite: RewriteReport, branch: str, base: str, limit: int = 6) -> list[str]:
+def _rewrite_recovery(rewrite: RewriteReport, branch: str, base: str) -> list[str]:
     """What is held only here, and how to keep it while moving onto the new history.
 
     The listing is the point. A count of commits at risk is a number a reader
     discounts; the subjects are what make it obvious that the branch holds a
     capture or a conflict resolution nothing else has, and the short hashes are
     what the recovery command needs.
+
+    **Unbounded, unlike every other list this module prints.** Truncating it
+    would truncate the `cherry-pick` line under it, and a recovery command that
+    silently drops commits is the failure this whole report exists to prevent -
+    it would look complete and lose exactly what it was printed to save. There
+    is no shorter honest form either: no single git command lists the commits
+    held only here, since telling them from the duplicated ones is what this
+    module just spent a read working out. The block fires only where a history
+    has been rewritten, so its length is not a cost anyone pays twice.
     """
     # Tags are the half a branch cleanup misses: they still point into the old
     # history, so a clone keeps whatever the rewrite removed reachable through
@@ -714,12 +723,10 @@ def _rewrite_recovery(rewrite: RewriteReport, branch: str, base: str, limit: int
         f"  {_plural(len(rewrite.own), 'commit exists', 'commits exist')} only here, and "
         f"`git merge`, `git reset --hard` and `git checkout -B` each lose {held}:"
     ]
-    lines.extend(f"    {short} {subject}" for short, subject in rewrite.own[:limit])
-    if len(rewrite.own) > limit:
-        lines.append(f"    +{len(rewrite.own) - limit} more (`git log --oneline {base}..HEAD`)")
+    lines.extend(f"    {short} {subject}" for short, subject in rewrite.own)
     lines.append(f"  Carry {held} onto the rewritten history rather than discarding {held}:")
     lines.append(f"  git checkout -B {branch}-rewritten {base}")
-    lines.append(f"  git cherry-pick {' '.join(short for short, _ in rewrite.own[:limit])}")
+    lines.append(f"  git cherry-pick {' '.join(short for short, _ in rewrite.own)}")
     lines.append(tags)
     if rewrite.merges:
         lines.append(

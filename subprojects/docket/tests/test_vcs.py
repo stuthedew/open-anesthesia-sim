@@ -1300,6 +1300,33 @@ def test_the_rewritten_branch_line_replaces_the_advice_that_would_lose_the_work(
     assert "git checkout -B claude/pl-k7qx-live origin/main" not in printed
 
 
+def test_every_commit_held_only_here_is_listed_and_picked() -> None:
+    """A truncated recovery command is the failure this whole report prevents.
+
+    It would look complete and drop exactly what it was printed to save, and no
+    shorter honest form exists: no git command lists the commits held only
+    here, because telling them from the duplicated ones is the read this module
+    just did.
+    """
+    from docket.render import format_branch_state
+
+    own = tuple((f"c{index:07d}", f"PL-000{index} Commit {index}") for index in range(9))
+    printed = format_branch_state(
+        BranchState(
+            branch="claude/pl-k7qx-live",
+            base=BASE,
+            behind=40,
+            ahead=49,
+            fetched=True,
+            rewrite=RewriteReport(duplicated=40, own=own),
+        )
+    )
+
+    assert all(f"{short} {subject}" in printed for short, subject in own)
+    picked = next(line for line in printed.splitlines() if "cherry-pick" in line)
+    assert all(short in picked for short, _ in own)
+
+
 def test_a_merge_commit_held_only_here_says_what_cherry_pick_needs() -> None:
     """`git cherry-pick` refuses a merge without `-m`, and one of the two commits
     the incident lost was the merge that resolved the branch's conflicts."""
