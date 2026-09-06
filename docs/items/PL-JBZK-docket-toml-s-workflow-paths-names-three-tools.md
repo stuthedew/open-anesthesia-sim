@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.4.6
 touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, Makefile, .github/workflows/quality.yml
 added: 2026-09-05
 closed: 2026-09-06

@@ -1,16 +1,16 @@
 ---
 id: PL-GJYL
 title: docs/MODEL.md claimed the exact propagator solves the governing equations at any positive gas volumes, which measurement contradicts below 1e-9 L
+status: done
+milestone: v0.4.6
+closed: 2026-09-06
 priority: P1
 effort: S
-status: done
 classes: safety, docs
 feature: numerical-domain
 touches: docs/MODEL.md
-added: 2026-09-06
-closed: 2026-09-06
-pr: 409
 verify: python3 tools/doc_check.py check && ! grep -qF 'for any positive volumes' docs/MODEL.md
+added: 2026-09-06
 ---
 
 **Problem.** docs/MODEL.md claimed the exact propagator solves the governing equations at any positive gas volumes, which measurement contradicts below 1e-9 L

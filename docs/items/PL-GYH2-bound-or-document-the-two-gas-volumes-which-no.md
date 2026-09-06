@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety
 feature: numerical-domain
+milestone: v0.4.6
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/control_timeline.py, tests/integration/test_controller.py, tests/unit/test_control_timeline.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-02
 closed: 2026-09-06
