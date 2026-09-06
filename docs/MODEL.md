@@ -2051,14 +2051,61 @@ and the supported step bound.
 
 #### What is not bounded this way
 
-The two gas volumes — the circuit's and the alveolar compartment's — are
-model parameters taken from the data files rather than controls, and are
-validated as positive and finite rather than against a measured domain. The
-interface offers no control for either, and every reference measurement in
-this document holds both at their data-file values. `SimulationController`
-does expose `set_circuit_volume`, which no interface control reaches; a
-caller using it is outside the verified domain in a way this section does not
-yet bound (PL-GYH2).
+The two gas volumes — the breathing circuit's and the alveolar
+compartment's — are **fixed model parameters rather than controls**, and
+they carry no declared interval. Each is set once, when
+`AgentUptakeSystem.for_agent()` builds the system, and nothing moves it
+afterwards: the interface offers no control for either, and since v0.4.x
+`SimulationController` exposes no setter for either. Both are validated as
+positive and finite, by `core/validation.py`, rather than against a measured
+domain.
+
+The two do not have the same provenance, and the difference is worth stating
+rather than smoothing over. The alveolar gas volume is a patient parameter,
+2.5 L, read from `data/patients/reference_adult.json` and carried in the
+provenance table above with the FRC measurement it is reconciled against.
+The circuit volume is a *machine* parameter and is not in a data file at all:
+it is the default `circuit_volume_l: float = 6.0` on `BreathingCircuit`, and
+it has no recorded source. That is a real gap in this document's provenance
+coverage rather than a property of the parameter — the value sets the
+fresh-gas wash-in time constant that every displayed concentration passes
+through — and it is queue item `PL-4YY1`, which moves the constant into a
+data file and gives it a row above without changing it.
+<!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
+
+**Why neither gets a supported range.** A supported range describes an
+envelope a run can be steered *within*: the four controls above each name an
+interval because a user can put the model anywhere in it, and the
+verification gates are what establish that the model represents a patient
+across it. Neither volume moves. The single shipped value is the whole of
+each one's domain, every reference measurement in this document is made at
+it, and an interval declared around it would assert verification across a
+span nothing has measured — the same overstatement that widening one of the
+four intervals without re-running the gates would be. Fixing the value and
+saying so is the stronger claim, not the weaker one.
+
+**What a wrong volume would be wrong for.** The argument is physiological
+applicability, exactly as it is for the four controls — not numerical error.
+The exact propagator solves the governing equations for any positive volumes
+whatever, so a 5 mL alveolar compartment or a 10 000 L circuit yields an
+arithmetically correct answer to a question physiology does not ask: a 5 mL
+alveolus is not a lung, and this model's lumped structure, its fixed tissue
+volumes and its constant partition coefficients are claimed to represent a
+patient only near the values shipped. This section stated the opposite
+justification until v0.4.x — that a small alveolar volume inflated the
+operator split's error — and that argument retired with the split.
+
+**What is left open, stated plainly.** A caller writing Python against
+`core/` can still construct `BreathingCircuit(circuit_volume_l=10_000.0)` or
+`AlveolarCompartment(gas_volume_l=1e-6)`, and `SimulationController` still
+takes a `circuit_volume_l` argument at construction. Those are outside the
+verified domain and nothing refuses them. They are a different exposure from
+the one the four controls had before `PL-0MLQ`: not a live setting a run can
+be steered with, and not reachable from the interface at all, but a value
+chosen once by a caller who has gone to the trouble of building the model
+directly. `BreathingCircuit.set_circuit_volume` remains for the same reason
+— it is how the parameter reaches the circuit, and it is where the agent
+conservation and capacity guards live (`PL-006`).
 
 **Zero is a supported input on all four, deliberately** (PL-629Z). Three
 reasons, and the third is the one that decides it:
