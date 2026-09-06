@@ -3,13 +3,13 @@ id: PL-Y5BV
 title: The pulmonary uptake rate MODEL.md specifies is never computed
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-GS5X
+status: done
 classes: defect, test
 feature: model-spec-accuracy
 touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-08-30
-verify: uv run pytest -k pulmonary_uptake_identity
+closed: 2026-09-06
+verify: uv run pytest -q tests/unit/test_governing_equations.py && grep -q 'def test_the_pulmonary_uptake_rate_is_formed' tests/unit/test_governing_equations.py
 ---
 
 **Problem.** `docs/MODEL.md:358-361` specifies the pulmonary uptake rate as

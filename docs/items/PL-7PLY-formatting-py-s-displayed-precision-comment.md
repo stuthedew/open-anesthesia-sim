@@ -3,7 +3,8 @@ id: PL-7PLY
 title: formatting.py's displayed-precision comment stops at the 1.2e-2 envelope corner and omits the 2.3e-2 worst trajectory, the row that actually tests its 'second decimal is the uncertain digit' claim
 priority: P1
 effort: S
-status: ready
+status: blocked
+blocked-by: PL-X9KD
 classes: science, docs
 feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py
@@ -73,3 +74,27 @@ figure in the file that no longer exists.
 **Done when.** The comment gives the trajectory-wide 2.3e-2 bound alongside
 the 5e-3 and 1.2e-2 operating-point figures, and its claim about the last
 displayed digit is true of the widest of them rather than only the narrowest.
+
+**Do not work this as written — `PL-GS5X` landed 2026-09-06 and its whole
+deliverable is void.** This item asks for a splitting-error figure (2.3e-2
+percentage points on the worst trajectory) to be written into the comment above
+`CONCENTRATION_DISPLAY_DECIMALS` in `app/formatting.py`. There is no splitting
+error: the operator split was replaced by one exact propagation of the coupled
+system, whose worst disagreement with the independent oracle is 7.7e-13 in
+fraction — nine orders below the figure this item would record.
+
+Writing it would put a measured number describing a retired method into a live
+comment about displayed precision, which is the exact failure `docs/MODEL.md`'s
+safety-critical standard treats as a presentation error rather than a tidiness
+one. The comment block it targets is also named as `PL-X9KD`'s to delete
+(`PL-X9KD` deliverable 1, `app/formatting.py:40-41`).
+
+**What survives.** The finding underneath — that a comment quotes an envelope
+figure while omitting the worse trajectory, so the row that actually tests its
+claim is the missing one — is a real defect in how the comment was written and
+would be a real defect in whatever replaces it. So this item should be
+re-pointed at the exact step's own error budget once `PL-X9KD` re-derives the
+displayed resolution, not worked before it.
+
+Recommend `blocked-by: PL-X9KD`, or dropping it into `PL-X9KD`'s scope
+outright, since that item rewrites the same comment.

@@ -3,11 +3,12 @@ id: PL-GS5X
 title: Replace the operator split with the exact matrix exponential, so the code that computes the answer is the governing equations
 priority: P1
 effort: L
-status: ready
+status: done
 classes: science, refactor
 feature: numerical-domain
 touches: src/anesthesia_sim/core, docs/MODEL.md, tests/reference
 added: 2026-09-03
+closed: 2026-09-06
 verify: uv run pytest -q tests/reference/test_coupled_dynamics.py && grep -rq 'def build_system_matrix' src/anesthesia_sim/core/
 ---
 

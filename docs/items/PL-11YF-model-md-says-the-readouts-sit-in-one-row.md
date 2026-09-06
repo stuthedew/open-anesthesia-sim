@@ -52,3 +52,14 @@ compares the readouts the way the row is designed to be compared", and its third
 instance sits in § "Independent-solution test" - both rewritten by `PL-X9KD`.
 Cheaper after it; if taken before, qualify the width claim and leave the
 splitting-error sentence for `PL-X9KD` to replace.
+
+**Half the target text is deleted rather than qualified, after `PL-GS5X`
+(2026-09-06).** One of the two arguments this item wants width-qualified is
+that "the splitting error cannot mislead a reader who compares the readouts the
+way the row invites". That claim, and the sequencing-bias analysis behind it,
+are **withdrawn** — `docs/MODEL.md` records the withdrawal in both places the
+claim appeared. There is no bias with a sign, so a gap between two readouts is
+now no less accurate than either reading it is taken from.
+
+The other argument, about the ordinal reading the row invites, is untouched and
+is still worth qualifying. Re-scope to it alone.

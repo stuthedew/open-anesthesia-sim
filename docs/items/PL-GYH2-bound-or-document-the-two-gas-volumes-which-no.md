@@ -72,3 +72,14 @@ volume "small enough to break the split at a supported step"; an exact
 exponential does not break there. The bound is still wanted - a 5 mL alveolus is
 not a patient - but on physiological grounds rather than numerical ones. Restate
 it that way and the item survives `PL-X9KD` unchanged.
+
+**Central argument void after `PL-GS5X`, 2026-09-06.** The finding rests on
+"the splitting error depends on both — the circuit-to-alveolar exchange rate is
+$`\dot V_A(1/V_C + 1/V_A)`$". There is no splitting error, and no
+circuit-to-alveolar exchange rate as a separate quantity: ventilation is a pair
+of entries in the system matrix and the whole system is solved at once.
+
+Whether circuit volume should be a control, and what range it would need, is
+untouched — it is a question about the settings envelope and the verification
+domain, which `docs/MODEL.md` § "What a setting outside the range costs" now
+grounds those on rather than on numerical error. Re-argue on that ground.

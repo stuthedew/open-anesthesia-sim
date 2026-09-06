@@ -3,13 +3,13 @@ id: PL-2HTF
 title: MODEL.md's numerical requirements contradict the operator split it implements
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-GS5X
+status: done
 classes: defect, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-08-30
-verify: grep -q 'tissue-then-venous' docs/MODEL.md && python3 tools/doc_check.py check
+closed: 2026-09-06
+verify: python3 tools/doc_check.py check && grep -qF 'Requirements 2 and 3 are properties of the system matrix' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md:514-522` states a normative requirement list — "The

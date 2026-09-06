@@ -16,6 +16,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationNumericalError,
 )
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
+from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
 
 
@@ -627,34 +628,47 @@ def test_a_refused_setting_does_not_fail_the_session() -> None:
     assert after.delivered_concentration_fraction == before.delivered_concentration_fraction
 
 
-# A reference patient whose lungs one supported step of uptake can overdraw at
-# the model's maximum cardiac output, but not at the patient file's own. It is
-# the only route from the app boundary to a step that breaks down: after
-# PL-VP7N no supported step does so on the shipped patient, which is the point
-# of that item. The alveolar volume comes through the patient file because that
-# is where a future parameter set - a paediatric patient, a far more soluble
-# agent - would bring it from.
-BREAKDOWN_ALVEOLAR_GAS_VOLUME_L = 0.015
-BREAKDOWN_CARDIAC_OUTPUT_L_MIN = 10.0
+class _FatThatRefusesTheStep(TissueGroup):
+    """A fat group that refuses the fraction the exact step hands it.
+
+    Until `PL-GS5X` these tests reached a failing step through the model, on
+    a patient file whose lungs one supported step of uptake could overdraw.
+    The exact step closed that route for good rather than for these numbers:
+    it is the solution of a system whose every off-diagonal entry is a
+    transfer rate, so its propagator is entrywise nonnegative and no
+    parameter set can make it carry a compartment out of range.
+
+    What these tests are about is unchanged and still worth covering - that a
+    numerical failure reaching the app boundary halts the run, leaves the
+    chart history alone and leaves every displayed value bit-identical - so
+    the failure is injected here instead. `tests/unit/
+    test_uptake_system_failure.py` carries the same construction and the
+    reasoning behind it; fat is the group armed because
+    `_write_state_vector` writes it last.
+    """
+
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: float) -> None:
+        super().set_partial_pressure_fraction(-1.0)
 
 
 def _controller_one_setting_from_a_failed_step() -> SimulationController:
-    """A run 60 s in, whose next step at a raised cardiac output breaks down."""
+    """A run 60 s in, whose next step a compartment refuses mid-write."""
 
-    original = uptake_system.load_reference_adult_parameters
-    edited = dataclasses.replace(
-        load_reference_adult_parameters(), alveolar_gas_volume_l=BREAKDOWN_ALVEOLAR_GAS_VOLUME_L
-    )
-    uptake_system.load_reference_adult_parameters = lambda: edited
-
-    try:
-        controller = SimulationController(agent_id="isoflurane")
-    finally:
-        uptake_system.load_reference_adult_parameters = original
-
+    controller = SimulationController(agent_id="isoflurane")
     controller.start()
     _advance_for(controller, duration_s=60.0)
-    controller.set_cardiac_output(BREAKDOWN_CARDIAC_OUTPUT_L_MIN)
+
+    patient = controller._state.uptake_system.patient
+    original = patient.fat
+    patient.fat = _FatThatRefusesTheStep(
+        name=original.name,
+        volume_l=original.volume_l,
+        perfusion_fraction=original.perfusion_fraction,
+        blood_gas_partition_coefficient=(original.blood_gas_partition_coefficient),
+        tissue_gas_partition_coefficient=(original.tissue_gas_partition_coefficient),
+        blood_flow_l_min=original.blood_flow_l_min,
+        agent_amount_l=original.agent_amount_l,
+    )
 
     return controller
 
