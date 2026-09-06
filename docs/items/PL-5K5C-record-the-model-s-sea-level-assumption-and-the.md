@@ -1,10 +1,14 @@
 ---
 id: PL-5K5C
 title: Record the model's sea-level assumption and the vaporizer-class dependence of the delivered-concentration dial
-status: untriaged
+priority: P1
+effort: M
+status: ready
 classes: docs, science
+feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-06
+verify: python3 tools/doc_check.py check && grep -q '760 mmHg' docs/MODEL.md && grep -q 'variable-bypass' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md` § "Assumptions" says only *"pressure is
