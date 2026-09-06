@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, test
 feature: numerical-domain
+milestone: v0.4.6
 touches: tests/reference/test_multi_agent.py, tests/reference/test_sevo_patient.py, docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-06

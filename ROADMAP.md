@@ -65,7 +65,8 @@ capability-boundary rule above governs.
 | v0.4.2 | Completed | The apparatus patch that closes `docket-store`, changing no shipped code: `src/` and `docs/MODEL.md` are byte-identical to v0.4.1 and the only file under `tests/` that moved is the new check's own suite, so no equation, parameter, numerical method, unit or displayed value moved. Its subject is the instruction budget every session pays and the guards that keep work visible. Resident text can now *shrink*: 563 characters whose carriers already existed were routed out of `CLAUDE.md`, and resident rules gained the retirement test that checks have had since `PL-ZBJ0` — until now a rule could only be added, because nothing said when one had stopped earning its place, and the total falls 44 545 to 44 166 characters. Beside it `tools/rules_paths_check.py` gained its second rule: a `paths:` entry that is anchored and points at nothing is refused, the same silent failure as the `./` spelling v0.4.0 closed, arriving in the form that reads as correct at every glance — a transposed directory name — and the message names the nearest existing ancestor rather than only the offence. Two provenance guards close: seven items stranded on abandoned branches are recovered, two of them created by the score-architecture drops, and the pull-request title check stopped racing the retitle it asks for, which had been showing a red run that meant nothing on a green pull request. Landing during this release's own pull request, the gate learned what it costs to run: the `floor` job billed a whole minute for eight seconds of work and held one of twenty account-wide concurrent job slots, so its steps moved inside `checks` *ahead of* the uv install — which strengthens the no-virtualenv claim rather than weakening it, because at that point no virtualenv exists to fall back on — and a spending limit and usage alert now exist, where the first sign of Actions overage had been the invoice. `README.md`'s status section is corrected too: it understated the operator split's disagreement with the exact solution as 1.2e-2 percentage points where `docs/MODEL.md` gives 2.3e-2 over the same domain, which is the kind of divergence between a summary and its specification that the `v0.4.x` track exists to remove. Nine items, one of which is the v0.4.1 cut itself. |
 | v0.4.3 | Completed | The release where the gate learned what it costs, and the repository went public — and the second overtook the first. `src/` is byte-identical to v0.4.2 and `docs/MODEL.md`'s only change is one cross-reference following the deleted README, so no equation, parameter, numerical method, unit or displayed value moved; the sixth such release and the third in a row. **The measured half.** The `checks` job ran 152 s, of which `bin/docket check --verify` was **87 s** — more than the whole 1 820-test suite — because the replay runs every open item's own `verify:` command and 79 of the 111 that carry one start a fresh `uv run pytest`. That bill grew with the size of the queue rather than with the size of the change, and was paid on every push to every open pull request. `--verify-base` now scopes it to the items a branch actually changed, read from the diff, with the whole-store sweep kept on `push` to the default branch where its answer is a fact about that branch — 102 commands in 74.6 s becomes one in 5.5 s, and the job **152 s → 59 s** on run 34000293113. It is `PL-P3B6`'s argument one step on: if a pre-commit gate cannot have changed whether some other item's work merged, neither can a pull request. A scoped run says what it was scoped to on `docket check`'s own cost line, including when the scope held nothing to run, because a narrowed run reporting no findings is otherwise indistinguishable from a store that holds none. Three smaller gate repairs sit around it: `drift.yml` had resolved a newer `pytest-xdist` every month and never run it — a declared dependency upgraded and untested, which is the hole that workflow exists to close — and now runs `-n auto --dist worksteal` on both suites; `tools/contrast_check.py` had been parsing 3.14 `app/` source under the 3.11 floor, green only because the two files it reads happen to carry no 3.12+ syntax, which since v0.4.2 folded that job into `checks` would have reddened the whole job before uv was installed; and the pull-request title check, the one gate no session could run before pushing, now discovers the title from the branch's own open pull request and skips silently on every way that lookup can fail, so `make check` stays green offline. **The published half** is smaller in the diff and larger in consequence. The repository is public — *to stop the Actions billing, not as a publication decision* — which makes the minute arithmetic three of these items were built on moot: standard runners are free and unlimited on public repositories, and what the work still buys is wall clock and the runner slots that throttle parallel sessions. `README.md` was deleted rather than corrected and stays deleted under a check; the human-facing pass `PL-XYRN` gated is deliberately unrun; and both are recorded where a later session would otherwise read a public repository with no front door as a gap rather than a decision. Which leaves the quietest thread: the concurrency comment claimed the repository was public and runners free while it was private, was corrected to private-and-billed, and was wrong again within hours — so its argument now rests on the runner slot, which holds under either answer, with the billing position dated and stated once rather than woven through the reasoning. Twelve items, one of which is the v0.4.2 cut itself. |
 | v0.4.4 | Completed | **The code is the model.** The first release in four to touch `src/`, and the first since v0.4.0 in which a displayed number moves. The operator split is gone: each step is now one exact propagation of the whole coupled nine-state system, `exp(AΔt)y`, with `core/governing_equations.py` assembling $`A`$ as a transcription of the balance equations this document states and `core/matrix_exponential.py` computing the propagator without carrying a unit or a compartment name. Scaling and squaring with a shifted Taylor series, about sixty lines of arithmetic on plain lists, adding no dependency. **Accuracy was not the motivation and was not a cost either** — the split was kept once on accuracy, in 2026-08-30, and that decision was right on its own terms; what overturned it was `ROADMAP.md` item 29's bar, that a reviewer who knows the standard variables should follow `core/` without a lookup table. Three of the split's five composed sub-steps were objects of the splitting scheme rather than of the physiology, the alveolar balance's two terms were computed in different sub-steps separated by a third, and the pulmonary uptake rate this document specifies was never formed at all. Measured against the same from-scratch RK4 oracle, the exponential's worst disagreement is eight orders of magnitude smaller than the split's. **Then the harder half, which is what the release is really about.** Three published statements were derived from an error that no longer exists, and each is re-derived from measurement rather than assumed to still hold. § "Displayed precision" had a numerical ceiling (a third decimal was noise) and a legibility floor; the ceiling is gone, since the shipped residual is about 1.6e-12 percentage points, nine orders below the last displayed digit. Its replacement is **model fidelity**: one published standard deviation of a partition coefficient displaces a displayed compartment by 8.7e-4 to 6.8e-2 percentage points, so two decimals puts the last digit between a seventh of one SD and seven times it and a third would put it at a seventieth — false precision. `MAXIMUM_SIMULATION_STEP_S` turned out to have **no derivation at all**: sweeping the step from 1e-3 s to 1e300 s found no numerical ceiling, the propagator entrywise nonnegative at every one of 4374 (settings, step) combinations tested, and control-timing displacement exactly proportional to the step with no knee anywhere — so it is recorded as a *declared tolerance* in percentage points and seconds, not dressed up as a limit. And the splitting-error constants are retired with their reasons recorded in place, after checking coverage rather than after the fact: two of the four retiring tests were reproduced exactly by the new gate, two were not, so the step gate gained the setting-change trajectories and a new `HELD_RUN_ROUNDING_BOUND` replaced the only test driving the shipped solver past 900 s. **The dependency stopped running backwards.** The step bound and the supported input ranges were both justified *through* the two-decimal readout, so a purely presentational move to one decimal would have licensed a step ten times longer; both are now stated in their own units, and a test fails if anything in `core/` reads the display count again. `src/anesthesia_sim/data/` is byte-identical to v0.4.3, so no parameter moved — what moved is the method, and the displayed value in its last digit. Thirteen items, one of which is the v0.4.3 cut itself. |
-| v0.4.5 | Completed / current baseline | **Going public, finished.** v0.4.3 made the repository public to stop Actions minutes being billed rather than as a publication decision, and left the human-facing pass deliberately unrun; this release runs that pass and finds what the sideways route had left behind. Two publisher-copyright full texts — Baker & Farmery 2011 and Schüttler & Schwilden 2008 — were being redistributed from a public repository, against `docs/references/README.md`'s own statement that removing them was a prerequisite for going public. They came out on the day the breach was found, by a `git filter-repo` pass and a force-push rather than a delete commit, because both blobs were in the history from the commit that added them; GitHub Support ticket 4733783 covers the pre-rewrite commits still pinned by `refs/pull/*/head` refs the repository owner cannot reach. **The durable half is a check.** `make check` had passed on the broken state, because `doc_check` verifies the paths `docs/MODEL.md` cites and nothing verified that a file named in the reference index is present; it now refuses an entry naming a file the directory does not hold — the decidable half in code, with whether an entry *should* keep its file left to a person. **The rewrite's own costs are recorded rather than absorbed.** It stripped every commit signature, force-updated branch refs to a snapshot taken before the push and dropped two commits pushed into that window, and left four captures reachable on one branch only. Both losses were recovered, and `bin/docket stranded` learned to tell a rewritten history from an ordinary divergence. A branch deleted in this release's own cleanup held the last copy of two more items, recovered from the stale remote-tracking ref that `git fetch` does not prune — the case the no-prune guard exists to preserve. **And the front door exists.** `README.md` is written against the audience, boundary and status questions `PL-RM83` settled — two domain-literate readers, nothing whose truth is tied to a model version, capability rather than a version string — and retires the check that guarded the file's absence, together with both its invocations, in the same commit that writes it; `pyproject.toml` now describes the project and classifies its maturity, audience and subject. **The one thing that reached `src/` is prose.** `app/playback.py` had said that playing a run faster is "never a modelling one" without qualification: true for a run nobody touches, false for one in which a control moves, because the tick burst has no yield in it and the reachable simulated instants are therefore `multiplier × 0.1` s apart — 0.1 s at 1x and 30 s at 300x. Nothing arrives late and no displayed value is stale; what coarsens is which instants can be chosen, and pause-change-resume stays exact at every rate. `MAXIMUM_SIMULATION_STEP_S` stays 0.1 s on the same finding, argued rather than defaulted: 0.05 s would double the propagations per simulated second and buy tighter timing at 1x alone, since above it the interface's own grid dominates. Three files under `src/` changed and every changed line is a comment or a docstring — all three are AST-identical to v0.4.4 with docstrings stripped — and `src/anesthesia_sim/data/` is byte-identical, so no equation, parameter, numerical method, solver step or displayed value moved. Eighteen items, one of which is the v0.4.4 cut itself. |
+| v0.4.5 | Completed | **Going public, finished.** v0.4.3 made the repository public to stop Actions minutes being billed rather than as a publication decision, and left the human-facing pass deliberately unrun; this release runs that pass and finds what the sideways route had left behind. Two publisher-copyright full texts — Baker & Farmery 2011 and Schüttler & Schwilden 2008 — were being redistributed from a public repository, against `docs/references/README.md`'s own statement that removing them was a prerequisite for going public. They came out on the day the breach was found, by a `git filter-repo` pass and a force-push rather than a delete commit, because both blobs were in the history from the commit that added them; GitHub Support ticket 4733783 covers the pre-rewrite commits still pinned by `refs/pull/*/head` refs the repository owner cannot reach. **The durable half is a check.** `make check` had passed on the broken state, because `doc_check` verifies the paths `docs/MODEL.md` cites and nothing verified that a file named in the reference index is present; it now refuses an entry naming a file the directory does not hold — the decidable half in code, with whether an entry *should* keep its file left to a person. **The rewrite's own costs are recorded rather than absorbed.** It stripped every commit signature, force-updated branch refs to a snapshot taken before the push and dropped two commits pushed into that window, and left four captures reachable on one branch only. Both losses were recovered, and `bin/docket stranded` learned to tell a rewritten history from an ordinary divergence. A branch deleted in this release's own cleanup held the last copy of two more items, recovered from the stale remote-tracking ref that `git fetch` does not prune — the case the no-prune guard exists to preserve. **And the front door exists.** `README.md` is written against the audience, boundary and status questions `PL-RM83` settled — two domain-literate readers, nothing whose truth is tied to a model version, capability rather than a version string — and retires the check that guarded the file's absence, together with both its invocations, in the same commit that writes it; `pyproject.toml` now describes the project and classifies its maturity, audience and subject. **The one thing that reached `src/` is prose.** `app/playback.py` had said that playing a run faster is "never a modelling one" without qualification: true for a run nobody touches, false for one in which a control moves, because the tick burst has no yield in it and the reachable simulated instants are therefore `multiplier × 0.1` s apart — 0.1 s at 1x and 30 s at 300x. Nothing arrives late and no displayed value is stale; what coarsens is which instants can be chosen, and pause-change-resume stays exact at every rate. `MAXIMUM_SIMULATION_STEP_S` stays 0.1 s on the same finding, argued rather than defaulted: 0.05 s would double the propagations per simulated second and buy tighter timing at 1x alone, since above it the interface's own grid dominates. Three files under `src/` changed and every changed line is a comment or a docstring — all three are AST-identical to v0.4.4 with docstrings stripped — and `src/anesthesia_sim/data/` is byte-identical, so no equation, parameter, numerical method, solver step or displayed value moved. Eighteen items, one of which is the v0.4.4 cut itself. |
+| v0.4.6 | Completed / current baseline | **Provenance read at the source, and three checks that were asserting more than they knew.** `src/anesthesia_sim/core/` is byte-identical to v0.4.5 and every stored value in `src/anesthesia_sim/data/` is unchanged, so no equation, parameter, numerical method, solver step or displayed value moved; what changed under `data/` is entirely what the citations claim. **The reference patient's numbers had never been traced to a document anybody opened.** `PL-6Q8N` set out to read Mapleson's 1963, 1964 and 1973 papers, named in the file as its primary lineage — and found them unreachable from a session: all three return PubMed metadata only, none has an abstract, none is in PMC, and every publisher, index and vendor route is refused by the egress proxy. Re-aimed on the project owner's decision at what PubMed can actually deliver, five of the eleven parameters gained a measurement of the same quantity cited alongside and explicitly *not* adopted — Hudgel and Devadatta's helium-dilution FRC read with Wahba's ~20% reduction under general anaesthesia brackets the lung gas volume at 2.51 L against a stored 2.5; Cattermole et al.'s 686 subjects in the 50–75 kg band give a cardiac-output median of 5.51 L/min against a stored value 9.3% below it; Janssen et al.'s whole-body MRI gives a skeletal-muscle mass whose apparent agreement with the stored 33.0 is *coincidence*, that cohort of men having averaged about 86 kg rather than 70; and Heinonen et al.'s PET measurement of resting adipose perfusion is close to half what the stored fat flow fraction implies. The other six record why no comparison exists rather than leaving the silence to read as an oversight. The fat gap is the one that reaches a learner: time constant is `V·λ/Q`, so a factor of two on fat flow is a factor of two on how much agent fat has taken up by the end of a case and on the slow tail of every washout curve — recorded in `docs/MODEL.md` § "Known limitations" rather than fixed, because one depot in six subjects does not overturn a whole-body lumped compartment. **Then the project owner supplied the Gas Man Workbook, and the guess collapsed.** `PL-XTMB` read it at the source: the Model Parameters table is Appendix B, page 168, and the citation had been pointing at page 183's interface controls, which carry none of the values. The file's own claim to be sourced entirely from that table was false — it supplies **seven of the eleven**; cardiac output appears only as the sum of the flow column; weight and alveolar ventilation are interface defaults with no number in it; and `venous_blood_volume_l` = 1.0 is absent altogether, the table's `Blood` row reading 5.00 L, which leaves a stored value its cited source does not contain (`PL-3YZW`). And the lineage is not Mapleson at all: printed beneath the table, *"Values for volume, flow and relative flow are taken from Lowe and Ernst, 1981"*. That book is recorded as located and unread, inside the Workbook's own note rather than as a citation line of its own — an unread document with its own entry is the Mapleson failure one link later, and the schema made the point first by refusing the empty `url` a 1981 monograph would need. **Three checks were measuring something other than what they claimed.** `tools/contrast_check.py` cited `simulation_view` line numbers for its eight requirements and all eight were wrong, and it could not express a requirement met by either of two channels at all; the mass-balance release gate's absolute tolerance tracked whichever dial its test happened to run at rather than a stated bound; and `docket.toml`'s `workflow_paths` named three `tools` tests by path, so the other seven and every new one fell on the product side of the lane boundary that exists to keep two sessions apart. **Two queue mechanics and one model-boundary correction** close beside them: the closure walk follows renames, so an item renamed after it closed no longer recovers the renaming commit's pull request; the conflict graph is tiered, so a shared file orders work instead of forbidding it — which matters because 27 of Gate 1's entries declare `docs/MODEL.md`; and `SimulationController.set_circuit_volume` is gone, both gas volumes established as data-file parameters rather than controls, with the bound restated on physiological rather than numerical grounds now that an exact propagator solves the equations for any positive volume. Eleven items, one of which is the v0.4.5 cut itself. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -102,111 +103,92 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.4.5
+## Current baseline: v0.4.6
 
-v0.4.5 finishes what v0.4.3 started sideways. That release made the repository
-public to stop Actions minutes being billed — not as a publication decision —
-and recorded the human-facing pass as deliberately unrun. This one runs the
-pass, and the first thing it found was a breach rather than a gap.
+v0.4.6 is the release in which the reference patient's numbers were traced to
+a document somebody had actually opened, and in which three checks that had
+been reporting confidently turned out to be measuring something else.
 
-**Two publisher-copyright full texts were being redistributed from a public
-repository (`PL-SHG5`).** Baker & Farmery 2011 (*Comprehensive Physiology*,
-Wiley) and Schüttler & Schwilden 2008 (*Modern Anesthetics*, Springer) were
-held under the project owner's personal access, which is ordinary personal use
-while a repository is private and redistribution the moment it is not.
-`docs/references/README.md` had said so itself, naming their removal as a
-prerequisite for going public — and the removal did not happen when the
-visibility did. The relevant terms are Wiley's and Springer's, not this
-project's Apache-2.0 licence, which covers only what the project authored.
+**The eleven physiologic parameters had a lineage nobody had read (`PL-6Q8N`).**
+`src/anesthesia_sim/data/patients/reference_adult.json` named Mapleson's 1963,
+1964 and 1973 papers as its primary lineage, on the strength of their titles.
+The item existed to read Mapleson 1973's quantifying tables; the reading cannot
+be done from a session. All three papers return PubMed metadata and nothing
+else — no abstract for any of the three, no PMC record — and `doi.org`,
+`pubmed.ncbi.nlm.nih.gov`, `pmc.ncbi.nlm.nih.gov`, `europepmc.org`,
+`journals.physiology.org`, `sciencedirect.com`, `bjanaesthesia.org.uk` and
+`gasmanweb.com` are all refused by the egress proxy. The route
+`docs/references/` used to provide — the project owner supplying a full text —
+had closed the day before, when v0.4.5 removed publisher-copyright material
+from what is now a public repository.
 
-They came out on the day the breach was found, by a `git filter-repo` pass and
-a force-push rather than a delete commit, because both blobs were in the
-history from the commit that added them and a later deletion does not close the
-window. Every branch and tag was verified clean from a fresh clone; the
-repository has no forks. **GitHub Support ticket 4733783** covers what remains:
-roughly 388 `refs/pull/*/head` refs still pinning pre-rewrite commits, which
-are read-only to the repository owner, so nothing local can clear them. It is
-framed as a redistribution problem rather than a leaked credential, because
-there is no secret here to rotate. `PL-0SCG` tracks it until GitHub answers.
+**Re-aimed rather than stalled.** On the project owner's decision the item was
+pointed at what PubMed can deliver, and five parameters gained a measurement of
+the same quantity cited alongside and explicitly not adopted, in the form the
+three agent files already use: the measured value, its reference conditions,
+and how far the stored number sits from it. The sharpest of the five is the fat
+flow fraction, which implies roughly twice Heinonen et al.'s resting adipose
+perfusion; since a tissue time constant is `V·λ/Q`, that is a factor of two on
+how much agent fat has taken up by the end of a case and on the slow tail of
+washout. It is recorded in `docs/MODEL.md` § "Known limitations" and left
+alone — one depot in six young women does not overturn a whole-body lumped
+compartment, and `data/` is protected. The most instructive is the muscle
+volume, where Janssen et al.'s measured 33.0 kg matches the stored 33.0 L
+exactly and the match is a coincidence: that cohort of men averaged about 86 kg,
+and scaled to 70 kg the measurement gives 26.9. A file that *looks* sourced is
+worse than one citing nothing.
 
-**The durable half is a check, not the cleanup (`PL-69K6`).** `make check`
-passed on the broken state throughout. `tools/doc_check.py` verifies that the
-paths `docs/MODEL.md` cites exist, and nothing verified that a file named in
-the reference index is present — so two cited files left the tree and the gate
-reported zero errors. It now refuses an entry naming a file
-`docs/references/` does not hold. The split is the point: whether a named file
-is present is decidable and is checked; whether an entry *should* keep its file
-or keep only its citation is a person's judgment and is not. An entry naming no
-file passes, which is the shape a citation-only entry takes — and the two
-removed works keep their full citations, because citing a work is not
-redistributing it.
+**Then the source itself arrived, and the guess collapsed (`PL-XTMB`).** The
+project owner supplied the Gas Man Workbook's front matter and appendices the
+same day. Its Model Parameters table is Appendix B, page 168; the citation had
+named page 183, which describes the interface controls and carries none of the
+values. Three things fell out of reading it:
 
-**The rewrite's own costs are recorded rather than absorbed.** It stripped
-every commit signature, which no tool could have avoided: a signature covers
-parent hashes the rewrite changes. It force-updated every branch ref to a
-snapshot taken before the push, dropping two commits pushed into that window
-(`PL-YGF3`), and it left four captures reachable on one branch only
-(`PL-HG5D`). Both were recovered, the first only because a live session still
-held the files in its working tree — luck rather than design, and the finding
-is that every loss guard here assumes the ref survives and the commit is what
-is at risk, where a rewrite inverts that. `bin/docket stranded` now tells a
-rewritten history from an ordinary divergence and names what only the branch
-holds. A branch deleted in this release's own cleanup then held the last copy
-of two further items, recovered from the stale remote-tracking ref that `git
-fetch` does not prune (`PL-ZYDF`) — precisely the case
-`.claude/hooks/no-prune-guard.sh` exists to preserve, arriving for real.
+- **The file was wrong about its own contents.** It asserted the Workbook was
+  the source of every stored value. The table supplies seven of eleven. Cardiac
+  output is there only as the sum of the flow column; weight and alveolar
+  ventilation are interface defaults the supplied chapters give no number for.
+- **`venous_blood_volume_l` = 1.0 is not in the table at all** — its `Blood`
+  row reads 5.00 L. That is a stored value its cited source does not contain,
+  which is no provenance at all, and `PL-3YZW` carries it.
+- **The lineage is Lowe and Ernst, not Mapleson.** Printed beneath the table:
+  *"Values for volume, flow and relative flow are taken from Lowe and Ernst,
+  1981"* — *The Quantitative Practice of Anesthesia: Use of Closed Circuit*.
+  The Workbook attributes nothing to Mapleson. The book is recorded as located
+  and unread, as a quotation inside the Workbook's own note rather than as a
+  `sources` entry of its own, and `PL-7HDS` carries reading it.
 
-**And the project has a front door (`PL-N092`).** `README.md` was deleted in
-v0.4.3 and stayed deleted under a check until the question of what it was for
-had an answer. `PL-RM83` settled three: the readers are a contributor and a
-teacher, both domain-literate, and the second cannot be served yet because
-there is no packaged build, so the README says so and links here rather than
-offering a setup path nobody can finish; anything whose truth is tied to a
-model version belongs in `docs/MODEL.md`, not on the front page; and status is
-stated as capability rather than as a version string, which goes stale every
-release. The rewrite retires the check that had guarded the file's
-absence, together with both its invocations, in the same commit that writes the
-file, so the hold ends with nothing left to remember to remove. `pyproject.toml` follows (`PL-4MHK`),
-describing what the package models and classifying its maturity, audience and
-subject.
+**Three checks were asserting more than they knew.** `tools/contrast_check.py`
+cited `app/simulation_view.py` line numbers for each of its eight requirements
+and every one was wrong, and it had no way to express a requirement satisfied by
+either of two channels — so it was both misciting its subject and unable to
+state part of it. The mass-balance release gate's absolute tolerance tracked
+whichever dial its test happened to run at, which means the number it enforced
+was a property of the test rather than a bound anyone had chosen. And
+`docket.toml`'s `workflow_paths` named three `tools` tests by path, so the
+other seven and every test added later fell on the product side of the lane
+boundary that exists to keep two simultaneous sessions off each other's work.
 
-**What reached `src/`, and what it is.** Three files changed and every changed
-line is a comment or a docstring; all three are AST-identical to v0.4.4 once
-docstrings are stripped, and `src/anesthesia_sim/data/` is byte-identical, so
-no equation, parameter, numerical method, solver step or displayed value moved.
-What changed is what the code *claims*. `app/playback.py` had said that playing
-a run faster is a scheduling change and "never a modelling one" — true for a
-run nobody touches, and false for one in which a control moves (`PL-NBWP`).
-The tick burst contains no `await` and Flet dispatches a sync handler inline,
-so no control event can land between two steps of a tick: simulated time stands
-still for a tick interval and then jumps by the whole burst, which spaces the
-reachable simulated instants `multiplier × 0.1` s apart — 0.1 s at 1x, and 0.5,
-2, 6 and 30 s at 5x, 20x, 60x and 300x. **Nothing arrives late**, and that
-distinction decides what a reader may conclude: the recorded timeline is exact
-to the step at every rate and no displayed value is stale against it. What
-coarsens is only which instants can be chosen, and a change timed to the step
-is available at every rate by pause, change, resume.
+**One model-boundary correction reached `src/`.**
+`SimulationController.set_circuit_volume` is gone and both gas volumes are
+established as data-file parameters rather than controls, with the bound
+restated on physiological rather than numerical grounds: the exact propagator
+introduced in v0.4.4 solves the governing equations for any positive volume, so
+a 5 mL alveolus is an arithmetically correct answer to a question physiology
+does not ask. Every changed file under `src/` is in `app/`;
+`src/anesthesia_sim/core/` is byte-identical to v0.4.5 and every stored value
+in `src/anesthesia_sim/data/` is unchanged, so no equation, parameter,
+numerical method, solver step or displayed value moved.
 
-`MAXIMUM_SIMULATION_STEP_S` stays at 0.1 s on the same finding (`PL-NBCJ`).
-v0.4.4 left open whether to move it to 0.05 s so a ventilator start's timing
-displacement stays inside one parameter standard deviation. Moving it would
-double the propagations per simulated second and force the interface's tick
-structure to be revisited, and it would buy that tighter timing at 1x playback
-alone — above 1x the interface's own control grid is `multiplier × 0.1` s and
-dominates the step outright. So the constant is a declared tolerance that has
-been argued rather than a default nobody revisited, and it is a floor on the
-interface's resolution rather than a statement of it: a reader who takes it for
-the latter is reading it as several hundred times better than it is.
+**And two queue mechanics.** The closure walk follows renames, so an item whose
+file was renamed after it closed no longer recovers the renaming commit's pull
+request instead of its own; and the conflict graph is tiered, so a shared file
+orders work rather than forbidding it — which is what made this release's own
+parallelism possible, since 27 of Gate 1's open entries declare
+`docs/MODEL.md`.
 
-**One fact about this repository that is easy to invert, restated.** It is
-public, and it was made public on 2026-09-06 to stop Actions minutes being
-billed. As of this release the human-facing pass has been run, `README.md`
-exists, and the reference directory holds only what its licence permits — so a
-session finding a front page here is looking at `PL-N092`'s first draft, which
-is a draft rather than a finished document. `PL-GQWP` is already open against
-it: it publishes the playback-rate ladder, the chart time-base range and the
-agent list, which is exactly the version-coupled material `PL-RM83`'s boundary
-rule sends to `docs/MODEL.md`.
+Eleven items, one of which is the v0.4.5 cut itself. Gate 1 stands at 17 of
+121 cleared.
 
 ### Release narrative
 
@@ -472,6 +454,47 @@ because a session still held them in a live checkout, which is luck. Two more
 items were recovered later in the same release from a remote-tracking ref that
 outlived the branch it named, which is not luck — that is the no-prune guard
 doing precisely the job `PL-HKF4` argued for, on its first real occasion.
+
+### v0.4.6 — a citation nobody has opened is a guess wearing a reference's clothes
+
+For months this project's reference patient named three Mapleson papers as its
+primary lineage. Nobody had opened them. The names were chosen from titles —
+*Circulation-time models of the uptake of inhaled anaesthetics and data for
+quantifying them* reads exactly like the source of a table of tissue volumes
+and blood flows — and once written into a data file, that guess was
+indistinguishable from a reading.
+
+It was wrong twice over. The Workbook the values actually came from attributes
+them to a different work entirely, Lowe and Ernst's 1981 monograph on
+closed-circuit practice. And the Workbook does not supply all eleven values, as
+the file claimed it did: it supplies seven, and one of the four it does not
+supply is a number with no stated origin anywhere in the tree.
+
+What is worth extracting is that the project's existing defence did not catch
+this. `docs/MODEL.md`'s source hierarchy is a good rule and it was being
+followed: it says a reference implementation is not a source, and the file
+correctly labelled Gas Man tier 3 and adopted nothing from it. But the
+hierarchy answers *does this document count*, and the failure here was one
+level earlier — *did anyone look at this document at all*. A tier label on an
+unopened paper is a confident statement about a thing nobody has seen.
+
+`.claude/rules/citing-sources.md` had already named the fix, in the rule that
+every note record which route it came by and how deeply it was read. That rule
+is what made the difference this time: it is why the reconnaissance recorded
+"located but unread" instead of a citation, why the Mapleson entries could be
+removed without argument once the reading proved impossible, and why the Lowe
+and Ernst attribution is written as a quotation from the Workbook rather than
+as an entry of its own. The discipline is cheap and it is the whole mechanism.
+
+Two smaller things are worth keeping. The first is that a schema caught a
+design error a person had not: giving Lowe and Ernst its own `sources` entry
+required a URL a 1981 book does not have, and the refusal was the correct
+answer to a bad structure rather than an obstacle to route around. The second
+is that the reading only happened because the environment's limits were
+reported rather than worked around. A session cannot reach a paywalled 1973
+paper; saying so plainly, with what was tried, is what produced the PDF that
+settled the question — and the route it came by, a document supplied by the
+project owner, is one `citing-sources.md` still does not describe (`PL-XJ5P`).
 
 ## The plan
 

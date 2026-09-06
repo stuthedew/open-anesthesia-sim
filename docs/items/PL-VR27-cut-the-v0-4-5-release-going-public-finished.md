@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: release-roadmap-seam
+milestone: v0.4.6
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases/
 added: 2026-09-06
 closed: 2026-09-06
