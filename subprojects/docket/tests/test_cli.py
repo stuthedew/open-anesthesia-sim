@@ -134,6 +134,28 @@ def test_check_replays_verify_commands_when_asked(tmp_path: Path) -> None:
     assert (tmp_path / "ran.marker").exists()
 
 
+def test_verify_base_narrows_the_replay_to_what_the_branch_changed(tmp_path: Path) -> None:
+    """`--verify-base` is the flag CI passes on a pull request (`PL-SDHR`).
+
+    The sweep costs 87 s of the quality job's 152 s and answers about the
+    store, which a pull request cannot have changed - `PL-P3B6`'s argument for
+    taking it off `make check`, one step on. Here the base resolves to no
+    changed item, so the marking command must not run: that is the flag
+    narrowing rather than being ignored.
+
+    An unresolvable base lands in the same place deliberately, and the two
+    cases are one line apart in `_changed_items`: it returns nothing where it
+    cannot resolve a merge base, so a scoped run checks nothing rather than
+    checking the wrong thing. `docket check`'s cost line says which it was.
+    """
+    store = _store(tmp_path, MARKING)
+
+    assert (
+        _run("check", "--verify", "--verify-base", "docket-no-such-ref", "--items", str(store)) == 0
+    )
+    assert not (tmp_path / "ran.marker").exists()
+
+
 def test_digest_is_silent_on_an_empty_store(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

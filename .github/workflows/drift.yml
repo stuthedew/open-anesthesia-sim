@@ -75,7 +75,25 @@ jobs:
       - name: resolved versions
         run: uv pip list
 
-      - run: uv run pytest
+      # `-n auto --dist worksteal`, and the two flags this line does *not*
+      # carry are the point. `--cov --cov-fail-under=100` stays off: that
+      # measures the project against its own policy, so a red run caused by it
+      # would say nothing about dependencies, which is what this workflow is
+      # for (`PL-22Z3`). `-n auto` is the opposite case and was left off with
+      # it by association rather than by argument until `PL-55JM`.
+      # `pytest-xdist` is a declared `dev` dependency, and `uv sync --upgrade
+      # --dev` above resolves whatever xdist is newest and then never ran it -
+      # a constraint upgraded and untested, which is the exact hole this
+      # workflow's header says it exists to close. An xdist regression *is* a
+      # dependency break, so a red run here is the news this job is built to
+      # deliver.
+      #
+      # It also leaves execution topology matching `make test` rather than
+      # differing from every other run in the project, so what this job varies
+      # is dependency versions alone. Wall clock is not the argument - this
+      # runs monthly, gates nothing and blocks nobody's iteration - though the
+      # CI minutes are real on a private repository.
+      - run: uv run pytest -n auto --dist worksteal
       - run: uv run mypy
 
       # Never fails, and that is the point. It reports what exists *beyond*
@@ -183,4 +201,6 @@ jobs:
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
 
-      - run: uv run pytest
+      # Same flags and the same reasoning as the `dependencies` job's pytest
+      # line above, which carries it in full. `PL-55JM`.
+      - run: uv run pytest -n auto --dist worksteal

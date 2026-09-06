@@ -39,6 +39,7 @@ docket stranded              # work that exists only on a branch
 docket record                # write every pull request number the base is owed
 docket check                 # validate the store; exits non-zero on errors
 docket check --verify        # ...and replay every open item's `verify:` command
+docket check --verify --verify-base origin/main   # ...only the ones this branch changed
 ```
 
 ### Capture costs nothing
@@ -1176,6 +1177,17 @@ already *merged*, so a `make check` on a feature branch was spending about half
 its wall clock asking about a state its own commit could not have changed.
 Measured 2026-09-05 on four cores, `make check` went 60.0 s → 29.5 s. CI passes
 the flag and answers on the same events it always did (`PL-P3B6`).
+
+**`--verify-base REF` narrows the replay to the items this branch changed
+against `REF`**, which is the same argument one step on (`PL-SDHR`). A pull
+request cannot have changed whether some *other* item's work merged, any more
+than a pre-commit gate can, and the sweep was measured at 74.6 s of a 102-command
+run against 5.5 s scoped. So CI scopes on `pull_request` and sweeps on `push` to
+the default branch, where the answer is a fact about that branch. The scope is
+read from the diff — the item files the branch touched, not their declared
+`touches`, which is a claim made before the work. **A scoped run always says so**,
+on the cost line and even when the scope held nothing to run: a narrowed run
+reporting nothing must never read as a whole store with nothing to report.
 
 **It reports two findings rather than a verdict**, because a passing command is
 consistent with two states no exit status can separate:

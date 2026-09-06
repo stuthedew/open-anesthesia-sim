@@ -3,11 +3,12 @@ id: PL-J3BB
 title: make check cannot run tools/pr_title_check.py, so a branch that closes an item after its PR opened goes red in CI with nothing locally to catch it
 priority: P3
 effort: S
-status: ready
+status: done
+closed: 2026-09-05
 classes: infra
 feature: dev-tooling
-verify: uv run pytest tests/unit/test_pr_title_check.py && grep -q 'pr-title' Makefile
-touches: Makefile, tools/pr_title_check.py
+verify: uv run pytest tests/unit/test_pr_title_check.py && grep -q 'def test_a_stale_title_on_the_open_pull_request_fails_locally' tests/unit/test_pr_title_check.py && grep -q 'pr-title' Makefile
+touches: Makefile, tools/pr_title_check.py, tests/unit/test_pr_title_check.py
 added: 2026-09-03
 ---
 
@@ -78,3 +79,47 @@ unrelated commit to make CI look again. What remains is one wasted CI cycle and
 the round trip of noticing, which is real but small. P3 rather than P2 for that
 reason, and because the second approach above needs a GitHub call from
 `make check`, which has to stay green offline.
+
+**Closed 2026-09-05, on the second approach**, with the third folded into how
+it declines rather than added beside it.
+
+`tools/pr_title_check.py` gained `--discover`: when `PR_TITLE` is unset it
+reads the title from *this branch's own open pull request* through the GitHub
+API, and `make check` runs it on that flag. `make pr-title` runs it alone, for
+the moment a session has just closed a rider and wants the string to rename to
+before pushing.
+
+**Every way the lookup can fail is a silent skip returning 0** - no token, no
+network, a proxy refusing, a rate limit, a repository the token cannot see, a
+detached HEAD, a non-GitHub remote, or simply no pull request open yet. That is
+what keeps `make check` green offline, and it is why the skip prints nothing
+rather than declining out loud: a decline would print on every run before a
+pull request exists, which is the "prints on most branches without changing
+what anyone does" shape this brief said to check against `CLAUDE.md` first.
+The advisory from `PL-3BC5` is not built for the same reason; what survives of
+it is that the failure message names the exact replacement title, which it
+already did.
+
+**The lookup runs before `closes()`, and that ordering is the design.**
+`closes()` is a `git show` per item file at both ends of the range - measured
+3.2 s against `origin/main` on 555 files - while the lookup is one request. So
+a branch with nothing open pays milliseconds, and the expensive half runs only
+when there is a title to check it against. The test named for the silent skip
+that never reads the trees pins it, with a `_git` that raises if reached.
+
+Ten tests added, seventeen in the file: the stale-title failure and that it
+names the pull request number, a leading title passing, the silent skip,
+`PR_TITLE` winning over the lookup without spending a request, no token and a
+refused connection both declining, all four remote spellings, a non-GitHub
+remote, and a detached HEAD.
+
+**The `verify:` command was strengthened when the item was started**, per the
+rule about a command that specifies nothing: it was `pytest … && grep -q
+'pr-title' Makefile`, which the Makefile edit alone would have satisfied with
+no test written. It now also names the test the work owes. Both new halves were
+confirmed absent at `HEAD` before the work rather than assumed - `git show
+HEAD:… | grep` exits 1 for each - and the whole command passes now.
+
+One thing this still cannot see, unchanged from the brief: a merger who
+retypes the subject in GitHub's squash dialog. `PL-2XTF`'s recovery half is
+what covers that.

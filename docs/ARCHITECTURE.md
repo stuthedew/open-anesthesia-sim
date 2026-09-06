@@ -268,16 +268,26 @@ throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
 
-`tools/pr_title_check.py` runs only on pull requests, and is the prevention
-half of `PL-2XTF`. A squash merge takes its subject from the pull request
-title, so a title naming none of the items it closes lands a subject that
-`docket check` cannot trace a closure back to. That happened once: a
-UI-generated title closed three items, `main` went red with errors no recovery
-could clear, and the numbers had to be read off GitHub by hand. The recovery
-half now falls back to each item's own file history, and this half stops the
-bad subject reaching `main` while the title can still be edited. Both are
-wanted — recovery alone leaves the wrong subject on `main` for good, and the
-check alone leaks when a merger retypes the subject in the squash dialog.
+`tools/pr_title_check.py` is the prevention half of `PL-2XTF`. A squash merge
+takes its subject from the pull request title, so a title naming none of the
+items it closes lands a subject that `docket check` cannot trace a closure back
+to. That happened once: a UI-generated title closed three items, `main` went
+red with errors no recovery could clear, and the numbers had to be read off
+GitHub by hand. The recovery half now falls back to each item's own file
+history, and this half stops the bad subject reaching `main` while the title
+can still be edited. Both are wanted — recovery alone leaves the wrong subject
+on `main` for good, and the check alone leaks when a merger retypes the subject
+in the squash dialog.
+
+It runs in `.github/workflows/pr-title.yml`, which takes the title from
+`PR_TITLE`, and in `make check` and `make pr-title`, which pass `--discover`
+and read it from the branch's own open pull request instead (`PL-J3BB`). It
+was CI-only until then, which made it the one gate a session could not run
+before pushing: the check compares the title against *what the branch closes*,
+and a branch closes more items as it goes, so a correct title goes stale the
+moment the next item closes on it. Every way the lookup can fail — no token, no
+network, no pull request open yet — is a silent skip, so `make check` stays
+green offline.
 
 `tools/branch_id_check.py` is the same shape of guard aimed at the other end of
 the same problem, and the two do not overlap: the title check asks whether a
@@ -439,9 +449,11 @@ opens `def first_index_at_or_after[SampleT](`, PEP 695 syntax that is a
 narrows the syntax it accepts rather than extending it. A tool that parses
 repository source can only run under an interpreter that understands that
 source. Both still meet the promise above, which is what the portability suite
-holds them to — `contrast_check.py` reads `app/` too and runs bare, and
-`PL-L17Q` is the item saying that it does so only because the two files it
-happens to read carry no 3.12+ syntax yet.
+holds them to. `contrast_check.py` reads `app/` too and ran bare until
+`PL-L17Q`, green only because the two files it reads happened to carry no
+3.12+ syntax; it now runs under `uv run python` beside
+`import_boundary_check.py`, and the rule the pair is an instance of is stated
+in `tests/unit/test_tools_portability.py`'s module docstring.
 
 `tools/ruff.toml` is what keeps that true. The repository targets 3.14, where
 PEP 758 makes the parentheses in `except (OSError, TimeoutError):` redundant,
@@ -462,16 +474,16 @@ gate rather than an older parser, and the wrong interpreter's
 `.github/workflows/quality.yml`'s `checks` job performs the run they stand in
 for: `actions/setup-python` at the declared floor, then
 `python3 tools/doc_check.py check`, `python3 tools/branch_id_check.py`,
-`python3 tools/rules_paths_check.py`, `python3 tools/readme_hold_check.py`,
-`bin/docket check` and
-`python3 tools/contrast_check.py` under it. It runs ahead of the uv install
-rather than in a job of its own (`PL-D551`), which is what keeps the
-no-virtualenv claim true: at that point none exists.
+`python3 tools/rules_paths_check.py`, `python3 tools/readme_hold_check.py` and
+`bin/docket check` under it. It runs ahead of the uv install rather than in a
+job of its own (`PL-D551`), which is what keeps the no-virtualenv claim true:
+at that point none exists. `contrast_check.py` was there too until `PL-L17Q`
+and is deliberately not now, for the input-versus-dependency reason above.
 That decides syntax, imports and runtime behavior at once, with no list to keep
 current. A fourth test holds that section's pinned version to `requires-python`, so
 raising the floor cannot leave CI exercising an interpreter the project no
 longer supports. The approximations stay because they name the offending file
-and import, run before a push, and reach what those two commands never do.
+and import, run before a push, and reach what those five commands never do.
 
 ## Wired hooks (`.claude/hooks/`)
 
