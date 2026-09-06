@@ -10,6 +10,7 @@ milestone: v0.4.6
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/control_timeline.py, tests/integration/test_controller.py, tests/unit/test_control_timeline.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-02
 closed: 2026-09-06
+pr: 406
 verify: uv run pytest tests/integration/test_controller.py && python3 tools/doc_check.py check && ! grep -q 'def set_circuit_volume' src/anesthesia_sim/app/controller.py && ! grep -q 'PL-GYH2' docs/MODEL.md
 ---
 

@@ -10,6 +10,7 @@ milestone: v0.4.6
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-02
 closed: 2026-09-06
+pr: 404
 verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_requirement_met_by_either_channel' tests/unit/test_contrast_check.py
 ---
 
