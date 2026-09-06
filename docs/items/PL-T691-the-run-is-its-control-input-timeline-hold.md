@@ -3,8 +3,7 @@ id: PL-T691
 title: The run is its control-input timeline: hold keyframes at every event and answer any window in closed form
 priority: P1
 effort: L
-status: blocked
-blocked-by: PL-GS5X
+status: ready
 classes: refactor, perf
 feature: numerical-domain
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, docs/MODEL.md, docs/ARCHITECTURE.md

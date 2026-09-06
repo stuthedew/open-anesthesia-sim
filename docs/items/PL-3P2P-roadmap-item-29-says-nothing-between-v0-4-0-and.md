@@ -23,10 +23,13 @@ and the step is **not** free anywhere in that span.
 **Why it matters.** The sentence understates the exact step's own priority in
 the one document that decides priority. Read as written, `PL-GS5X` is a
 readability pass that could slip anywhere before v0.7.0 without cost. In fact
-`bin/docket concurrent PL-GS5X` names `PL-T691`, `PL-X9KD` and `PL-2HTF` as
-waiting on it, and behind `PL-T691` sit `PL-2FM6`, `PL-P1Z3`, `PL-8LXM` and
-`PL-49R8` - so the exact step is the head of v0.5.0's whole dependency chain and
-therefore of the MVP's critical path. Timeline row 5 records the chaining
+`bin/docket concurrent PL-GS5X` named `PL-T691`, `PL-X9KD` and `PL-2HTF` as
+waiting on it, and the score architecture's remaining four items - `PL-2FM6`,
+`PL-P1Z3`, `PL-8LXM`, `PL-49R8` - chain from `PL-T691` in turn, so the exact
+step was the head of v0.5.0's whole dependency chain and therefore of the MVP's
+critical path. (`PL-GS5X` closed 2026-09-06 in pull request 376, which is what
+makes that chain startable; the sentence in item 29 is unchanged and still
+wrong.) Timeline row 5 records the chaining
 ("chained behind `PL-GS5X`"); item 29 does not record being chained *to*, and
 the two paragraphs are read at different moments by different sessions.
 
