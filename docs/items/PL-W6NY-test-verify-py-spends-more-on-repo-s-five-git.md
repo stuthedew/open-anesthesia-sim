@@ -1,10 +1,14 @@
 ---
 id: PL-W6NY
 title: test_verify.py spends more on _repo's five git subprocesses per test than on sleeping, and 63 other tests pay the same fixture
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: session-cost, infra
 feature: dev-tooling
 touches: subprojects/docket/tests/test_verify.py
 added: 2026-09-05
+not-delegable: both outcomes are judgments a command cannot hold. The suite passes today, so it proves nothing about whether a shared or copied fixture has introduced order-dependence - which is the risk the brief says makes the obvious move unsafe, and which surfaces later, in a different test, as a flake. The other outcome is a timing measurement recorded with the reason the fixture was left alone, and a threshold assertion tight enough to discriminate 12 s of git subprocesses would itself flake on a slower runner. `.claude/rules/apparatus-standard.md` is the bar being weighed against, and it is prose.
 ---
 
 **Problem.** `PL-VJ7W` was filed against the `sleep` durations in
@@ -48,3 +52,19 @@ price.
 **Found while working `PL-VJ7W`** (trim the file's non-load-bearing sleeps),
 which measured the file to decide which sleeps were real and found half the
 cost was somewhere else.
+
+**Done when.** The file's per-test fixture cost has been measured again after a
+deliberate choice among the three candidates, and the outcome is written down
+either way. If the fixture changes, `--durations` shows the ~12 s of non-sleep
+cost reduced, every test in the file still passes when run alone and in a
+shuffled order, and no test that commits into its repository can see another
+test's commits. If it does not change, the reason sits in a comment on `_repo`
+— that the five subprocesses are the price of per-test isolation and that a
+shared fixture was weighed against `.claude/rules/apparatus-standard.md` and
+rejected — so the next session to measure this file does not re-derive it.
+
+**Triaged as a task rather than a decision, 2026-09-06.** The brief's three
+candidates include "leave it alone", which reads like a question for the owner
+and is not one: it is an apparatus test fixture, and the brief itself directs
+the weighing to `.claude/rules/apparatus-standard.md`, which is addressed to
+whoever builds it. The owner is owed the outcome, not the choice.

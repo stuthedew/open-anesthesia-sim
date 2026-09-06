@@ -1,8 +1,14 @@
 ---
 id: PL-5TRV
 title: bin/docket stranded calls an open pull request's branch merged-and-abandoned when another PR independently wrote the same docket record pr: lines, and its recovery would discard the branch
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, .claude/skills/docket/SKILL.md
 added: 2026-09-06
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_changes_the_base_already_holds_is_not_partly_merged' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** `bin/docket stranded`'s second section — "carries work the default
@@ -61,6 +67,14 @@ startup and did not, only because it had the pull request's state in context.
 `stranded`'s second section; the session-start digest line that summarises it
 ("Left on a branch after its pull request merged"); and the `docket` skill's
 stranded prose, which states the recovery.
+
+**Sequence it with `PL-39B7`** (make `stranded` distinguish a merged-and-deleted
+branch from an abandoned one). Noted at triage, 2026-09-06: that item is the
+same command's *first* section and declares the same three files, so the two are
+one branch rather than two. Neither subsumes the other — `PL-39B7` is about a
+stale comparison point and a deleted ref read as corroboration, this is about
+the second section counting agreement as merge — but whichever runs second will
+resolve against the first.
 
 **Approach, and where the decidable line falls.** The current test appears to be
 file-level agreement with the default branch, which cannot distinguish "merged"

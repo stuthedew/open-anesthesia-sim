@@ -1,9 +1,12 @@
 ---
 id: PL-RC0M
 title: "A blocked item's verify: command is never replayed, so it can rot unnoticed and redden whichever pull request unblocks it"
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-06
 ---
 
@@ -37,6 +40,10 @@ nothing.
 **Where.** `subprojects/docket/src/docket/verify.py`, `LANDED_STATUSES` and
 `already_passing`'s candidate filter; `subprojects/docket/src/docket/checks.py`
 for how a finding about a blocked item should be worded.
+
+**Decision needed.** What the `verify:` replay is for — whether it guards every
+open item's command, or only the commands of items a session could act on now.
+The three options below follow from that, and none is obviously right.
 
 **Options, none obviously right.**
 

@@ -1,8 +1,13 @@
 ---
 id: PL-BHJW
 title: docs/WORKING_NOTES.md says rules_paths_check.py is wired into CI's floor job, which PL-D551 folded into checks
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+touches: docs/WORKING_NOTES.md
 added: 2026-09-06
+verify: python3 tools/doc_check.py check && ! grep -qE "into .make check. and CI.s .floor. job" docs/WORKING_NOTES.md
 ---
 
 **Problem.** `docs/WORKING_NOTES.md:837` reads "`PL-LLWN` added
@@ -34,6 +39,23 @@ reader wants today's wiring or the history.
 
 **Where.** `docs/WORKING_NOTES.md`, the **Closed 2026-09-05** paragraph on
 `PL-LLWN`.
+
+**Line numbers, re-checked at triage 2026-09-06.** The file has grown since
+capture: the stale statement is now at `:845` and the correct spelling it
+should follow at `:805`. Both are still verbatim what the brief quotes, so the
+finding stands; find them by their text rather than by the numbers above.
+
+**No `feature`, deliberately.** `PL-HDDJ` — the sibling that cleared the two
+instances inside `.github/workflows/` — sits in `ci-cost`, which is finished and
+in the unreleased set. Filing this there would reopen a completed feature and
+change what the next release is said to complete, for a one-word edit. Left
+outside any feature instead.
+
+**The `verify:` command allows either answer.** It matches only the stale
+spelling `into `make check` and CI's `floor` job`, so correcting it to `checks`
+passes, and so does `:805`'s history-preserving form, which puts `checks`
+immediately after "CI's" and names `floor` only as the job that was folded. What
+it refuses is leaving the sentence as it stands.
 
 **Found.** During `PL-KPP1`/`PL-HDDJ`'s doc sweep, which grepped `floor`
 across `docs/` and `.claude/` to confirm the workflow-directory fix was
