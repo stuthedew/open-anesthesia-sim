@@ -3,11 +3,12 @@ id: PL-XYRN
 title: Open the go-public gate: the owner chose to publish now and run the human-facing pass afterwards
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, ux
 feature: public-readiness
 touches: docs/items, ROADMAP.md
 added: 2026-09-05
+closed: 2026-09-06
 verify: bin/docket check && ! grep -q '^blocked-by: PL-XYRN' docs/items/PL-N092-rewrite-readme-as-a-human-readable-introduction.md && ! grep -q 'immediately before it is made public' ROADMAP.md
 ---
 
@@ -83,6 +84,34 @@ stays workable on its own.
 tree without the work; `ROADMAP.md` item 32 no longer says the pass runs
 immediately before the flip, and says instead that the pass is owed and the
 repository is already public; and the repository is public.
+
+**Done. The repository is public as of 2026-09-06 (00:09 UTC / 2026-09-05
+evening US Central), confirmed against the GitHub API rather than assumed:**
+`GET /repos/stuthedew/open-anesthesia-sim` returns `visibility: public`. The
+owner flipped it themselves; visibility is an owner-only setting and no session
+here can reach it. That was the last clause of the **Done when** above, and it
+closes this item and with it the `public-readiness` feature, which held only
+this one.
+
+**Two consequences that outlive the item.** Neither is work for this item; both
+are recorded so they are not rediscovered.
+
+- **Standard GitHub Actions runners are free on a public repository**, which is
+  the premise `PL-SSQX` (quality.yml's concurrency comment says the repository
+  is public and standard runners are free, closed in #369) was filed against
+  while the repository was still private. Several `ci-cost` items were scoped to
+  save billed minutes that are no longer billed. What survives the change is
+  wall-clock latency, which is a real cost to a session waiting on a merge and a
+  different argument from the one those items make. Re-read on their own merits
+  rather than assumed still-valid; the owner should confirm against the
+  repository's own Actions billing page rather than against this sentence.
+- **The pre-publication sweep is a matter of record.** `LICENSE` and
+  `CITATION.cff` present, no tracked `.env`/key/credential files, and no
+  credential-shaped strings in any of the 733 commits then in history. Nine
+  commits dated 2026-08-31 carry a personal email address rather than the GitHub
+  noreply one; the owner was told before the flip and it stands, since a history
+  rewrite would break every `pr:` link `PL-ZQ9C`, `PL-99Y4` and `PL-XCYB` exist
+  to preserve.
 
 **The pass has no gate now, which is the risk this item was built to prevent.**
 Item 32 is where it lives, and `ROADMAP.md` "Planned milestones" is deliberately

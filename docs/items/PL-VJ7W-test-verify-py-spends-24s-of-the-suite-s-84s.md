@@ -7,9 +7,10 @@ status: done
 classes: session-cost, infra
 feature: dev-tooling
 touches: subprojects/docket/tests/test_verify.py
-verify: uv run pytest subprojects/docket/tests/test_verify.py && ! grep -q 'verify="sleep 4"' subprojects/docket/tests/test_verify.py && grep -q 'verify="sleep 0.5"' subprojects/docket/tests/test_verify.py
 added: 2026-09-05
 closed: 2026-09-05
+pr: 369
+verify: uv run pytest subprojects/docket/tests/test_verify.py && ! grep -q 'verify="sleep 4"' subprojects/docket/tests/test_verify.py && grep -q 'verify="sleep 0.5"' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** `subprojects/docket/tests/test_verify.py` runs 24.0 s serially,

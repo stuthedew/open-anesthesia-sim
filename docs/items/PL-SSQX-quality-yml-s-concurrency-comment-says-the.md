@@ -1,15 +1,16 @@
 ---
 id: PL-SSQX
 title: quality.yml's concurrency comment says the repository is public and standard runners are free, and the repository is private
-status: done
 priority: P2
 effort: S
+status: done
 classes: docs, infra
 feature: ci-cost
 touches: .github/workflows/quality.yml
-verify: python3 tools/doc_check.py check && ! grep -q 'the repository is public and standard runners are free' .github/workflows/quality.yml
 added: 2026-09-05
 closed: 2026-09-05
+pr: 369
+verify: python3 tools/doc_check.py check && ! grep -q 'the repository is public and standard runners are free' .github/workflows/quality.yml
 ---
 
 **Problem.** `.github/workflows/quality.yml`'s `concurrency` comment reads:
