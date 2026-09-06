@@ -10,9 +10,14 @@ from __future__ import annotations
 from datetime import date
 
 from docket.concurrency import (
+    ORDERING,
+    SAME_AREA,
+    SAME_FILE,
     conflicts_for,
     observed_conflicts,
     parallel_batch,
+    refusals,
+    sequenceable,
     shared_paths,
     undeclared,
 )
@@ -72,8 +77,39 @@ def test_shared_files_are_a_conflict() -> None:
     one = _item("PL-1111", ("a.py",))
     (conflict,) = conflicts_for(one, [one, _item("PL-2222", ("a.py",))])
 
-    assert conflict.reason == "shares files"
+    assert conflict.reason == "edits the same file"
     assert conflict.paths == ("a.py",)
+
+
+def test_two_items_naming_the_same_file_are_not_a_refusal() -> None:
+    """`PL-VRMK`: a shared file orders work, it does not forbid it.
+
+    27 of Gate 1's 112 open entries declared `docs/MODEL.md`, so reading this
+    as a refusal excluded the gate's whole science half from every batch.
+    """
+    one = _item("PL-1111", ("docs/MODEL.md",))
+    conflicts = conflicts_for(one, [one, _item("PL-2222", ("docs/MODEL.md",))])
+
+    assert [c.strength for c in conflicts] == [SAME_FILE]
+    assert refusals(conflicts) == []
+
+
+def test_a_covering_directory_is_weaker_evidence_than_a_shared_file() -> None:
+    """An item declaring `tests/` has not said it edits any particular file."""
+    one = _item("PL-1111", ("tests/",))
+    (conflict,) = conflicts_for(one, [one, _item("PL-2222", ("tests/unit/test_x.py",))])
+
+    assert conflict.strength == SAME_AREA
+    assert conflict.reason == "declares an area covering it"
+    assert refusals([conflict]) == []
+
+
+def test_an_ordering_edge_is_the_only_refusal() -> None:
+    blocked = _item("PL-1111", ("a.py",), blocked_by=("PL-2222",))
+    conflicts = conflicts_for(blocked, [_item("PL-2222", ("b.py",))])
+
+    assert [c.strength for c in conflicts] == [ORDERING]
+    assert refusals(conflicts) == conflicts
 
 
 def test_a_blocker_is_a_conflict_in_both_directions() -> None:
@@ -97,10 +133,46 @@ def test_items_declaring_nothing_are_reported_not_assumed_safe() -> None:
     assert undeclared([silent, _item("PL-2222", ("a.py",))]) == [silent]
 
 
-def test_a_batch_excludes_items_that_share_files() -> None:
+def test_an_unlimited_batch_stays_the_independent_set() -> None:
+    """Unlimited, the batch is still work that needs no thought about order."""
     items = [_item("PL-1111", ("a.py",)), _item("PL-2222", ("a.py",)), _item("PL-3333", ("b.py",))]
 
     assert [i.identifier for i in parallel_batch(items)] == ["PL-1111", "PL-3333"]
+
+
+def test_a_limited_batch_fills_out_with_items_that_only_share_a_file() -> None:
+    """Asked for three, the batch offers three rather than one (`PL-VRMK`).
+
+    The independent set here is one item deep, because all three declare the
+    same file - which is the shape of Gate 1's science half.
+    """
+    items = [_item(f"PL-{n}{n}{n}{n}", ("docs/MODEL.md",)) for n in (1, 2, 3)]
+
+    batch = parallel_batch(items, limit=3)
+
+    assert [i.identifier for i in batch] == ["PL-1111", "PL-2222", "PL-3333"]
+
+
+def test_a_limited_batch_still_stops_at_an_ordering_edge() -> None:
+    """Filling relaxes the file rule and never the `blocked-by` one."""
+    first = _item("PL-1111", ("docs/MODEL.md",))
+    waits = _item("PL-2222", ("docs/MODEL.md",), blocked_by=("PL-1111",))
+
+    assert [i.identifier for i in parallel_batch([first, waits], limit=3)] == ["PL-1111"]
+
+
+def test_sequenceable_names_what_a_shared_file_kept_out_of_the_batch() -> None:
+    items = [_item("PL-1111", ("a.py",)), _item("PL-2222", ("a.py",)), _item("PL-3333", ("b.py",))]
+    batch = parallel_batch(items)
+
+    assert [i.identifier for i in sequenceable(items, batch)] == ["PL-2222"]
+
+
+def test_sequenceable_excludes_what_an_ordering_edge_refuses() -> None:
+    first = _item("PL-1111", ("a.py",))
+    waits = _item("PL-2222", ("a.py",), blocked_by=("PL-1111",))
+
+    assert sequenceable([first, waits], parallel_batch([first, waits])) == []
 
 
 def test_a_batch_never_includes_an_item_declaring_no_paths() -> None:

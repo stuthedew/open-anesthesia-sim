@@ -656,13 +656,28 @@ answer below is:
 ### Concurrency is computed, and honestly qualified
 
 Each item declares the paths it expects to touch. `docket concurrent` reads
-those as a conflict graph and reports what cannot run alongside what.
+those as a conflict graph and reports what stands between two items being
+worked at the same time.
 
 It reports in one direction only. Declared overlap proves two items will
 contend. *Absence* of declared overlap proves only that nobody foresaw a
 collision — the work may still wander into a shared file. So the command
 rules pairs out and never certifies a pair as safe, and items declaring no
 paths at all are reported as unanalysable rather than assumed harmless.
+
+**Contending is not the same as being refused, and the three tiers say
+which.** Only a `blocked-by` edge means the work cannot be done yet. Two
+items naming the same file is ordinary — the second branch to merge resolves
+against the first, and the practice is to land the smaller change first — and
+an overlap that exists only because one item declared a *directory* covering
+the other's file is weaker still, since it has not claimed that file at all.
+Reporting all three as "cannot run alongside" made the graph refuse work that
+was startable: 27 of Gate 1's 112 open entries declared `docs/MODEL.md`, so
+the gate's most expensive half excluded itself from every batch, and a session
+asked for three concurrent gate items withheld the strongest one it had
+(`PL-VRMK`, 2026-09-06). A batch therefore stays the independent set when
+unlimited, and fills out with same-file work — annotated with what it shares
+and with which item — when `--limit` asks for a batch of a given size.
 
 **`docket concurrent <id>` also reports what the branches in flight have
 already changed**, which is the other half of the question and the one that

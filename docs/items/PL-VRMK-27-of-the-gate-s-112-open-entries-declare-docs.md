@@ -1,52 +1,54 @@
 ---
 id: PL-VRMK
 title: 27 of the gate's 112 open entries declare docs/MODEL.md, so a quarter of Gate 1 can only be worked one item at a time
-status: needs-decision
+status: done
 priority: P2
 effort: M
 classes: infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/concurrency.py, subprojects/docket/tests/test_concurrency.py, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/concurrency.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_concurrency.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
+verify: uv run pytest subprojects/docket/tests/test_concurrency.py && grep -q 'def test_two_items_naming_the_same_file_are_not_a_refusal' subprojects/docket/tests/test_concurrency.py
 added: 2026-09-06
+closed: 2026-09-06
 ---
 
 **Problem.** Counted 2026-09-06 against the frozen Gate 1 list: of its 112 open
-entries, 27 name `docs/MODEL.md` in `touches`. `shared_paths` treats any shared
-path as contention and `conflicts_for` turns it into a `Conflict`, so those 27
-mutually exclude one another and each appears in the other 26's "Cannot run
-alongside" list. The gate's science half is therefore serial by declaration,
-whatever the owner's session budget - a session asked for three concurrent gate
-items can be offered at most one of them.
+entries, 27 name `docs/MODEL.md` in `touches`. `shared_paths` treated any
+shared path as contention and `conflicts_for` turned it into a `Conflict`, so
+those 27 mutually excluded one another and each appeared in the other 26's
+"Cannot run alongside" list. The gate's science half was therefore serial by
+declaration, whatever the owner's session budget.
 
-**Why it matters.** The beat is clearing the gate, and the science entries are
-the expensive part of it - the ones wanting the strongest model at high effort.
-Serializing them is the single largest limit on how fast the gate closes. It is
-also only partly real: most of these items add or correct one section of
-`docs/MODEL.md` and would merge cleanly against a different section, so the
-declaration is coarser than the actual contention. `concurrent` cannot see
-that, because `touches` has no unit smaller than a file.
+**What it cost, in the session that found it.** Asked for three gate items that
+could run concurrently, this session read the refusal literally and withheld
+`PL-4GN8` - P1, science-classed, the strongest item in the gate - because a
+running session on `PL-6Q8N` also declared `docs/MODEL.md`. Both edit different
+sections. The right answer was the one the `docket` skill already gives:
+proceed, and land the smaller change first.
 
-**Where.** `conflicts_for` and `shared_paths` in
-`subprojects/docket/src/docket/concurrency.py:74`; the `Conflict` it builds is
-what `cmd_concurrent` prints under "Cannot run alongside"
-(`subprojects/docket/src/docket/cli.py:570`). `docs/MODEL.md` is the contended
-file; the declarations are the `touches:` fields across `docs/items/*.md`.
+**Second mechanism, same cause.** `_covers` lets a directory match a file
+beneath it, and `shared_paths` collapsed both cases into one reason string. 38
+of the store's 202 open declaring items name a directory, so an item declaring
+`tests/` read as contending with every test change, in the same words as two
+items naming the same module.
 
-**Decision needed.** Should `concurrent` keep the file as its unit and give
-sequencing advice instead of a refusal, or should `touches` gain a sub-file
-unit? Two routes, with different costs and probably only one worth building:
+**Decision, answered by the project owner 2026-09-06:** fix it now rather than
+carry it as a decision. Route taken is sequencing advice, not a sub-file unit
+for `touches` - the second changes the item format, every declaration wanting
+the precision, and the parser, for a payoff bounded by how long `docs/MODEL.md`
+stays this contended. It is not deferred; it is declined.
 
-- **Sequencing advice.** `concurrent` keeps the file as its unit but stops
-  treating a shared path as a refusal, and instead says which of the group to
-  land first - the skill already tells a session to expect to resolve rather
-  than to pick something else, so the output would match the working practice.
-  Cheap, and it helps every future gate rather than only this one.
-- **A sub-file unit for `touches`.** A heading or section anchor, so two items
-  in different sections of `docs/MODEL.md` run together. Precise, and expensive:
-  it changes the item format, every declaration that wants the precision, and
-  the parser - for a payoff bounded by how long `docs/MODEL.md` stays this
-  contended.
+**What changed.** `Conflict` gained a `strength`, and `conflicts_for` now
+tiers: `ordering` (a `blocked-by` edge, the only real refusal), `same file`
+(both name the identical path - proceed, smaller change first), `same area`
+(one item's directory merely covers the other's file). `refusals` is the
+subset that forbids. `parallel_batch` fills in two passes: the independent set
+first, then - only when `--limit` asks for a batch of a given size - items
+whose sole contention is a declared path, each annotated in the output with
+what it shares and with which item. `sequenceable` names what a shared file
+alone kept out. Unlimited, the batch is unchanged.
 
-**Done when.** One of the two is chosen and built, or the item is dropped with
-the reasoning recorded. Decide before building: the second route is most of the
-work and the first may be the whole answer.
+**Done when.** `docket concurrent PL-4GN8` reports nothing it cannot run
+alongside, `docket concurrent --limit <n>` can offer n gate items where the
+independent set holds fewer, and no output presents a shared file as a
+refusal. All three hold.
