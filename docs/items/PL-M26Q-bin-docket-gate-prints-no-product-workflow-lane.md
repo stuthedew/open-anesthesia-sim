@@ -7,7 +7,7 @@ status: ready
 classes: infra
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests
 added: 2026-09-06
-verify: uv run pytest -q subprojects/docket/tests && grep -rq 'lane' subprojects/docket/src/docket/render.py
+verify: uv run pytest -q subprojects/docket/tests && grep -rq 'def test_gate_reports_lanes' subprojects/docket/tests
 ---
 
 **Problem.** `bin/docket gate` prints the open debt split into what a milestone
@@ -38,4 +38,9 @@ question per item.
 
 **Done when.** `bin/docket gate` reports each of its groups by lane as well as
 by effort, using the same `lane()` reading `docket next` uses, so the two can
-never disagree.
+never disagree, and `subprojects/docket/tests` carries a
+`test_gate_reports_lanes` asserting it. The `verify:` command names that test
+rather than grepping the source: the first one written here grepped
+`render.py` for `lane`, which it already says fifteen times, so it passed on a
+tree that had done none of the work and `docket check --verify-base` failed the
+branch that recorded it.
