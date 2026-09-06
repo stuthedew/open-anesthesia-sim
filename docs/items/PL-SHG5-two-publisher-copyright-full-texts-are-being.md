@@ -62,3 +62,13 @@ for every future upload.
 that permits it, `docs/references/README.md` describes the repository's actual
 visibility, and the rule that was violated is either enforced by a check or
 recorded where the next session filing a PDF will read it.
+
+**Update, 2026-09-06, after recovery.** This item was captured before the
+history rewrite and its premise has since half-changed. Both named PDFs are
+gone from `origin/main` and from its history - the purge did what this item
+asked for. What remains is that `docs/references/README.md` still carries a
+full entry for each, so the repository still asserts in prose that it
+distributes them; that residue is `PL-69K6`, together with the fact that
+`doc_check` does not verify a documented reference file exists. Read this item
+as the record of why the purge happened rather than as outstanding work, and
+confirm against `git ls-tree origin/main` rather than against the text above.
