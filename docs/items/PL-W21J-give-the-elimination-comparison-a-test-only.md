@@ -1,6 +1,6 @@
 ---
 id: PL-W21J
-title: Give the model a non-rebreathing elimination mode, so washout can be validated rather than only measured
+title: Give the elimination comparison a test-only open-circuit driver, so washout can be validated rather than only measured
 priority: P1
 effort: M
 status: ready
@@ -79,3 +79,10 @@ result, which is what the brief above asks for: `..._without_rebreathing_...`
 survives either outcome, where `..._matches_...` would not. Run 2026-09-06
 before the work: exit 1, with the module's 57 tests passing and the test
 absent.
+
+**Retitled 2026-09-06, after `#415` decided the approach** (project owner). The
+old title - "Give the model a non-rebreathing elimination mode" - promised a
+change under `src/`, which the driver route explicitly does not make, so a
+session meeting it in `bin/docket next` would open an item whose brief refuses
+what its title offers. The purpose clause is unchanged, because it is still
+what the work is for.
