@@ -324,6 +324,16 @@ correction rather than handing the question back.
   angle-bracket placeholder — `<branch>`, `<id>` — is taken for an HTML tag and
   vanishes with no error, code span or not. `#132` shipped `git branch -dr
   origin/` that way (`PL-1DN9`).
+- **Do not merge `origin/main` into an open pull request out of habit.** Bring
+  the base in when the branch is genuinely conflicted, or when a base-recovery
+  notice says the base is green again; otherwise leave it. A merge commit
+  pushed to the head branch is a `synchronize` like any other, so it re-runs
+  the whole of `quality.yml` and discards a green result the branch had already
+  earned — on content `main`'s own run proved minutes earlier. A stale base
+  costs nothing that CI proves: it matters only when it conflicts, which is the
+  first case. Restarting a branch that carries nothing of its own is a reset
+  rather than a merge, and is unaffected (`PL-WC72`, project owner,
+  2026-09-06).
 - **Capture intent, and route it by how ready it is.** A **specific change** is
   a queue item, written now. A **feature wanted but not yet ready to build** is
   one unscoped line of intent in `ROADMAP.md`'s "Planned milestones" — filing it
