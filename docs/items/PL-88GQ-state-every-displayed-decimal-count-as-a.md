@@ -3,7 +3,9 @@ id: PL-88GQ
 title: State every displayed decimal count as a presentation decision the owner can revise
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-06
+pr: 378
 classes: docs, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_formatting.py
@@ -108,3 +110,27 @@ splitting bound.
 
 **Related.** PL-TG60 (stop printing six decimals of an exhaust integral good to
 three) fixes one instance of this and could be closed alongside it.
+
+**Done 2026-09-06 inside `PL-X9KD`**, which re-derived the band this item had to
+record and says to do the two together.
+
+The concentration readout is now stated as a *choice within a one-to-two decimal
+band*: the band is what `docs/MODEL.md` § "Displayed precision" derives from the
+partition coefficients' measured spread, two is the owner's pick inside it
+(decided 2026-09-03), and one is rejected on the pedagogical ground that fat
+reads a flat `0.0%` for an hour and muscle for its first 2.9 to 14.8 minutes -
+written down as a teaching judgment, explicitly not as a numerical limit.
+`test_concentration_decimals_are_a_choice_within_a_recorded_band` pins the band
+and fails if anything in `core/` starts reading the display count.
+
+`FLOW_DISPLAY_DECIMALS` is likewise recorded as a choice: the sliders carry no
+`divisions`, so a flow reaches `core/` unquantized and one decimal is flowmeter
+convention rather than a bound imposed by input precision. `WASH_IN_DISPLAY_DECIMALS`
+already carried a rationale of exactly this shape and needed no change.
+
+**Not done here, and deliberately left:** the inline `.1f` on elapsed seconds
+and the `.6f`/`.3e` in the agent-accounting panel. Both are already argued in
+`docs/MODEL.md` § "Displayed precision" - elapsed time resolves one step and no
+finer, and the accounting panel is a numerical diagnostic deliberately finer
+than any clinical reading - so neither is an unrecorded default. `PL-TG60` holds
+the one that is genuinely over-precise.

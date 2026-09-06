@@ -332,14 +332,22 @@ frame currently costs ~17 ms of which ~15 ms is chart-point construction, so
 PL-010 (point reuse, measured 20x cheaper) is the headroom to spend if a
 high multiplier makes the render rate the constraint again.
 
-Half of this is now decided rather than open. PL-VP7N put the operator
-split's applicability domain in the core as `MAXIMUM_SIMULATION_STEP_S`, and
-a step above it is refused, so the multiplier cannot be a larger step even
+Half of this is now decided rather than open. PL-VP7N put the supported step
+in the core as `MAXIMUM_SIMULATION_STEP_S` - then the operator split's
+applicability domain, now a declared control-resolution tolerance (`PL-X9KD`) -
+and a step above it is refused, so the multiplier cannot be a larger step even
 if someone wanted it to be: it is steps per tick, and that is enforced
 rather than merely written down. What "a larger step is a model-fidelity
 question" was pointing at has an answer - `docs/MODEL.md` § "Supported
 simulation step" - and the answer is that the supported step and the shipped
 step are the same number.
+
+**The other half is not decided, and this paragraph read as though it were
+until 2026-09-06.** Bounding the *step* does not bound what the multiplier
+costs, because the cost arrives through steps per tick rather than through step
+size: the burst that takes them is synchronous, so a control change cannot land
+inside one and is displaced by up to `tick x multiplier`. `PL-NBWP` carries it,
+and the section on control resolution below has the measurements.
 
 Still undecided, and the reason this stays `needs-decision` rather than
 `ready`: how the multiplier is exposed without creating a hidden mode - a
@@ -974,3 +982,28 @@ the figure should be re-measured against the shipped propagator before
 `PL-T691` leans on it. numpy would win nothing there either. Kept rather
 than rewritten: the question is what recurs, and the note records that it was
 asked and answered before.
+
+## Control resolution is not what the interface promises at speed (2026-09-06)
+
+`PL-X9KD` re-derived `MAXIMUM_SIMULATION_STEP_S` as a *declared control-resolution
+tolerance*: a control change lands at the next step boundary, so it is displaced by
+up to one step, and the displacement is exactly proportional to the step with no
+threshold anywhere in it. Measured at 0.1 s, in percentage points of one atmosphere,
+desflurane binding: 6.7e-3 pp for a case-opening dial change, 1.4e-1 pp for a
+ventilator start. The criterion is the model's own parameter uncertainty - one SD of
+a measured partition coefficient is worth 9e-4 to 6.8e-2 pp.
+
+Two open threads came out of that and they are coupled, which is why they are here
+rather than only in their own items.
+
+`PL-NBWP`: the derivation above holds at 1x playback and nowhere else. `steps_per_tick`
+is the multiplier and `simulation_view.py`'s burst is a synchronous loop with no
+`await`, so control resolution is `SIMULATION_TICK_INTERVAL_S x multiplier` - 30
+simulated seconds at 300x. `app/playback.py` says a faster playback is "a scheduling
+change and never a modelling one", which is true of a run nobody touches and false of
+one where a slider moves.
+
+`PL-NBCJ`: whether the step should move to 0.05 s so an abrupt manoeuvre stays inside
+one parameter SD. Halving the step at a fixed wakeup doubles the steps per tick at
+every rate, so it makes `PL-NBWP` worse. Decide `PL-NBWP` first; if the burst changes,
+revisit both together.

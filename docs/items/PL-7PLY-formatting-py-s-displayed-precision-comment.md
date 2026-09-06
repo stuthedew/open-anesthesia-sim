@@ -3,8 +3,9 @@ id: PL-7PLY
 title: formatting.py's displayed-precision comment stops at the 1.2e-2 envelope corner and omits the 2.3e-2 worst trajectory, the row that actually tests its 'second decimal is the uncertain digit' claim
 priority: P1
 effort: S
-status: blocked
-blocked-by: PL-X9KD
+status: done
+closed: 2026-09-06
+pr: 378
 classes: science, docs
 feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py
@@ -98,3 +99,15 @@ displayed resolution, not worked before it.
 
 Recommend `blocked-by: PL-X9KD`, or dropping it into `PL-X9KD`'s scope
 outright, since that item rewrites the same comment.
+
+**Closed 2026-09-06 inside `PL-X9KD`.** Not worked as written, for the reason
+this item already records: the figure it asked for described the retired
+operator split.
+
+The finding underneath was that the comment quoted the narrower envelope figure
+(1.2e-2) while omitting the worst trajectory (2.3e-2), so the row that actually
+tested its claim was the missing one. `PL-X9KD` removes the possibility rather
+than fixing the instance: all four `app/` sites now **cite** `docs/MODEL.md` §
+"Displayed precision" instead of restating its figures, so there is no quoted
+number in `app/` to be selectively quoted. That is the general form of this
+defect - four restatements went stale together when the solver changed.

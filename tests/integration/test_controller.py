@@ -24,8 +24,8 @@ def _advance_for(controller: SimulationController, duration_s: float) -> None:
     """Advance a running controller to `duration_s` at the largest supported step.
 
     Simulated time comes from taking supported steps rather than from asking
-    for one large one: `MAXIMUM_SIMULATION_STEP_S` is where the operator
-    split's applicability domain ends, and a step past it is refused.
+    for one large one: `MAXIMUM_SIMULATION_STEP_S` is the declared
+    control-resolution tolerance, and a step past it is refused.
     """
 
     for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):

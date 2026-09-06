@@ -340,7 +340,8 @@ def test_a_setting_outside_the_supported_range_is_refused_by_the_system(
     `AgentUptakeSystem` forwards each of these to the compartment that owns
     the setting, so this is cover for the forwarding rather than a second
     guard: what it holds is that no supported entry point into `core/` can
-    put the model outside the domain its error bound is measured over.
+    put the model outside the domain it is claimed to represent a patient
+    over.
     """
 
     system = _sevoflurane_at_one_mac()
@@ -594,7 +595,7 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     # change to the model. Pinned rather than left implicit because what the
     # assertions below check is conservation *of this amount*, so a run that
     # silently stopped reaching it would make them compare a number against
-    # itself. `PL-X9KD` re-derives the published figures this one sits beside.
+    # itself.
     assert circuit_agent_before_l == pytest.approx(0.048305015)
 
     system.circuit.set_circuit_volume(3.0)
