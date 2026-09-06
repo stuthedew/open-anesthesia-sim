@@ -983,7 +983,7 @@ the figure should be re-measured against the shipped propagator before
 than rewritten: the question is what recurs, and the note records that it was
 asked and answered before.
 
-## Control resolution is not what the interface promises at speed (2026-09-06)
+## Decided: control resolution is not what the interface promised at speed - PL-X9KD, PL-NBWP, PL-NBCJ (2026-09-06)
 
 `PL-X9KD` re-derived `MAXIMUM_SIMULATION_STEP_S` as a *declared control-resolution
 tolerance*: a control change lands at the next step boundary, so it is displaced by
@@ -1014,12 +1014,18 @@ standing still when most control events arrive; and frames are two grid steps ap
 at every rate, so a finer grid would resolve control timing the display cannot show.
 The item carries both in full.
 
-`PL-NBCJ` **- still open, and now narrower.** Whether the step should move to 0.05 s
-so an abrupt manoeuvre stays inside one parameter SD. Halving the step at a fixed
-wakeup doubles the steps per tick at every rate, which is why it waited on
-`PL-NBWP`; that answer left the burst alone, so the question survives unchanged in
-cost. What `PL-NBWP` did change is its scope: above 1x the playback grid dominates
-the step by the multiplier, so halving the step improves the timing only for a
-reader watching at 1x. That is now the whole of the question, and it lives in its
-own item rather than needing this file - **the thread closes here once `PL-NBCJ` is
-answered.**
+`PL-NBCJ` **- closed the same day.** Whether the step should move to 0.05 s so an
+abrupt manoeuvre stays inside one parameter SD. Decided: it stays at 0.1 s, and the
+ventilator start being timed to about twice one parameter SD is accepted. `PL-NBWP`
+is what settled it, by narrowing the benefit: above 1x the playback grid is
+`multiplier x 0.1` s and dominates the step outright, so halving the step would have
+changed nothing for a reader at any rate but the slowest, while doubling the
+propagations per simulated second and forcing the tick structure to be revisited.
+
+**Why this thread is kept rather than deleted.** The three items ran together and
+`PL-NBCJ` was decided on a measurement made for `PL-NBWP`, which no single item is
+written from the vantage point of. The one live consequence is `PL-ZVS7`: none of
+the published figures - the 1x tolerance table, the per-rate grid, or the step they
+were all measured at - is held by a test, so the whole of what these three items
+established rests on prose. `PL-X35V` is the other tail: the disclosure reaches only
+a reader with `docs/MODEL.md` open, and the rate control itself still says nothing.

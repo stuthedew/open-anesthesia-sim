@@ -45,10 +45,24 @@ first risks pinning a table that is about to gain four columns. Its measured
 per-rate figures are in that item and are the values this gate would pin under
 the disclose-and-correct option.
 
+**It also owes the step the table was measured at, added 2026-09-06 when
+`PL-NBCJ` closed.** Nothing pins `MAXIMUM_SIMULATION_STEP_S` to its value
+either - `test_the_shipped_step_is_within_the_maximum_simulation_step` asserts
+only `SIMULATION_STEP_S <= MAXIMUM_SIMULATION_STEP_S`, a relation both sides of
+which could move together. Since `PL-NBCJ` the value is an argued decision with
+three recorded reasons rather than a default, and every figure in the table
+above is measured *at* it, so a silent change to the constant would leave two
+documents describing a tolerance the code no longer holds. A bare pin was
+deliberately not written into `PL-NBCJ`: it would be a weaker duplicate of what
+this item builds, and the two belong in one test that says the table and the
+step are one decision.
+
 **Done when.** A reference test computes the displacement for each manoeuvre in
 `SETTING_CHANGE_SCENARIOS` plus the case opening, over all three agents, and
 asserts the figures `docs/MODEL.md` publishes - so that moving the model moves
 the test before it moves a reader's understanding of the tolerance. The
 tolerance is a bound rather than a prediction, so the assertion is against the
 published value with a stated relative tolerance, and the test names
-`docs/MODEL.md`'s section so the two are found together.
+`docs/MODEL.md`'s section so the two are found together. The same test pins
+`MAXIMUM_SIMULATION_STEP_S` to the step those figures were measured at, so the
+table and the constant cannot part company.

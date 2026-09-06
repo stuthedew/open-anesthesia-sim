@@ -925,11 +925,26 @@ step is fine enough.
 abrupt manoeuvre is not held inside that criterion. A ventilator start at this
 step displaces the alveolar reading by up to $`1.4\times10^{-1}`$ pp — about
 twice one parameter SD — for the duration of the transient it starts. Holding
-that inside one SD would need a step near 0.05 s. The value has not been moved,
-because halving it doubles the work per simulated second and changes the
-interface's tick structure, which is a trade-off for the project owner rather
-than a correction; but a reader comparing an abrupt ventilation change against
-a measurement should know that its *timing* is resolved to a tenth of a second
+that inside one SD would need a step near 0.05 s.
+
+**Put to the project owner as a trade-off rather than a correction, and
+decided on 2026-09-06: the step stays at 0.1 s and that timing is accepted**
+(`PL-NBCJ`). Three things decided it. Halving the step doubles the
+propagations per simulated second and changes the interface's tick structure,
+since `SIMULATION_TICK_INTERVAL_S` is assigned from the step and the playback
+rates are derived from their ratio. The benefit is confined to 1× playback:
+above it the control grid below is `multiplier × 0.1` s wide and dominates the
+step outright, so a reader at 60× would see no change at all. And frames are
+two grid steps apart even at 1×, so a 0.05 s step would resolve control timing
+to half of what the display can show.
+
+What is therefore accepted, and stated here rather than left for a reader to
+infer from a value: at the shipped step an abrupt ventilation change is timed
+to about twice one parameter SD, which is the one case where the step
+contributes more error than the parameters do. It is small in absolute terms —
+1.4×10⁻¹ pp against a 6.0% 1 MAC for desflurane — and it is disclosed rather
+than removed. A reader comparing an abrupt ventilation change against a
+measurement should know that its *timing* is resolved to a tenth of a second
 and no better.
 
 **Everything above is per step of delay, and the interface waits one step for a

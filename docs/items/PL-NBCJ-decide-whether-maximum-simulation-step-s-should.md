@@ -3,11 +3,13 @@ id: PL-NBCJ
 title: Decide whether MAXIMUM_SIMULATION_STEP_S should move to 0.05 s so an abrupt manoeuvre's timing stays inside one parameter SD
 priority: P1
 effort: S
-status: needs-decision
+status: done
 classes: science
 feature: numerical-domain
 touches: src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md, src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-06
+closed: 2026-09-06
+verify: python3 tools/doc_check.py check && grep -qF 'decided on 2026-09-06: the step stays at 0.1 s and that timing is accepted' docs/MODEL.md
 ---
 
 **Problem, and the decision wanted.** `MAXIMUM_SIMULATION_STEP_S` stays at 0.1 s after
@@ -100,6 +102,39 @@ sees. The recommendation above stands - leave it at 0.1 s, since the
 disclosure in `docs/MODEL.md` § "Supported simulation step" means nothing is
 overclaimed - but it is the owner's call because it decides a declared
 clinical-output tolerance.
+
+**Decided 2026-09-06 (project owner): the step stays at 0.1 s, and the
+ventilator start being timed to about twice one parameter SD is accepted.** The
+recommendation this item carried from the day it was written, taken after
+`PL-NBWP` narrowed what moving it would buy.
+
+Three things decided it, and only the first was in this item when it was
+written:
+
+1. **Cost.** Twice the propagations per simulated second, and the interface's
+   tick structure revisited: `SIMULATION_TICK_INTERVAL_S` is assigned from
+   `SIMULATION_STEP_S` and every playback rate is derived from their ratio, so
+   halving the step doubles the steps per tick at all five rates.
+2. **The benefit is confined to 1x playback.** `PL-NBWP` measured the
+   interface's own control grid at `multiplier x 0.1` s, which dominates the
+   step outright above 1x - 6 s at 60x against the 0.05 s this item would have
+   bought. A reader at any rate but the slowest would see no change whatever.
+3. **Even at 1x the display is coarser.** Frames are two grid steps apart at
+   every rate, so a 0.05 s step would resolve control timing to half of what
+   the interface can show.
+
+**Recorded beside the constant, which is what this item asked for**: the
+comment deriving `MAXIMUM_SIMULATION_STEP_S` in
+`src/anesthesia_sim/core/uptake_system.py` now says the value was argued and
+decided rather than defaulted, and `docs/MODEL.md` § "Supported simulation
+step" carries the three reasons and what is accepted. Nothing in either
+document now describes the question as open.
+
+**Not built, deliberately.** No test pins `MAXIMUM_SIMULATION_STEP_S` to its
+value, so a silent change would leave both documents describing a tolerance the
+code no longer holds. That gap is real and it is `PL-ZVS7`'s (the published
+tolerance table has no regression test), which was extended to cover the step
+the table was measured at rather than duplicated here with a weaker check.
 
 **Done when.** `PL-NBWP` is answered, and then either the step moves to 0.05 s
 with `SIMULATION_TICK_INTERVAL_S` and `steps_per_tick` revisited together and
