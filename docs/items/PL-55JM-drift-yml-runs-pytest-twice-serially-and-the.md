@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, test
 feature: dev-tooling
+milestone: v0.4.3
 touches: .github/workflows/drift.yml, .github/workflows/quality.yml
 added: 2026-09-04
 closed: 2026-09-05

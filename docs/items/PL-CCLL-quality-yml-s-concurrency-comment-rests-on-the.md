@@ -1,15 +1,16 @@
 ---
 id: PL-CCLL
 title: quality.yml's concurrency comment rests on the repository's visibility, which flipped twice in a day
-status: done
 priority: P2
 effort: S
+status: done
 classes: docs, infra
 feature: ci-cost
+milestone: v0.4.3
 touches: .github/workflows/quality.yml
-verify: python3 tools/doc_check.py check && ! grep -q 'This repository is \*\*private\*\*' .github/workflows/quality.yml
 added: 2026-09-06
 closed: 2026-09-06
+verify: python3 tools/doc_check.py check && ! grep -q 'This repository is \*\*private\*\*' .github/workflows/quality.yml
 ---
 
 **Problem.** `.github/workflows/quality.yml`'s `concurrency` comment justified
