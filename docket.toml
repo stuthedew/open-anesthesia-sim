@@ -141,16 +141,28 @@ known_classes = [
 # session. `touches` is declared on 142 of those 145 and is already what the
 # conflict graph and the delegation guard read.
 #
-# Four entries are here for reasons the directory names do not carry:
+# Two groups of entries are here for reasons the directory names do not carry:
 #
-# - `tests/unit/test_doc_check.py` and `tests/unit/test_contrast_check.py` test
-#   `tools/` scripts, and only live in the simulator's test tree because that
-#   is where pytest is configured to look. Without them, eight items that are
-#   plainly one script and its own test would cross the boundary.
+# - The `tests/unit/test_*.py` entries test `tools/` scripts and `.claude/`
+#   hooks, and only live in the simulator's test tree because that is where
+#   pytest is configured to look. Without them, an item that is plainly one
+#   script and its own test crosses the boundary and is offered to neither
+#   lane.
 # - `Makefile` and `.github` are the same apparatus `gate_paths` names, and are
 #   listed again rather than derived from it: `gate_paths` answers "may a
 #   delegated diff touch this", which is a different question that could
 #   reasonably change without this one changing with it.
+#
+# **Do not maintain the test-file entries by hand; they drifted when they were
+# (`PL-JBZK`).** The list was written with three of them and was nine short a
+# day later - `tools/` grows, every new script brings its own test, and the
+# omission is silent in exactly the direction that hurts: `docket next
+# workflow` and `docket next product` both set the item aside and neither says
+# so. `tools/workflow_paths_check.py` now decides membership from the file
+# itself, on the rule that a test under `tests/` is apparatus when it does not
+# import `anesthesia_sim`, and `make check` fails until this list agrees. So
+# the answer to "a new tools test landed" is to run the check and paste the
+# line it prints, not to remember this paragraph.
 #
 # Deliberately absent, and each is a judgment rather than an oversight:
 #
@@ -176,9 +188,18 @@ workflow_paths = [
   "docs/items",
   "docs/worker.md",
   "subprojects",
+  "tests/unit/test_branch_id_check.py",
   "tests/unit/test_contrast_check.py",
   "tests/unit/test_doc_check.py",
+  "tests/unit/test_docket_branch_guard.py",
+  "tests/unit/test_docket_digest_hook.py",
+  "tests/unit/test_ignore_check.py",
   "tests/unit/test_import_boundary_check.py",
+  "tests/unit/test_no_prune_guard.py",
+  "tests/unit/test_pr_title_check.py",
+  "tests/unit/test_rules_paths_check.py",
+  "tests/unit/test_stop_hook_patch.py",
+  "tests/unit/test_tools_portability.py",
   "tools",
 ]
 
