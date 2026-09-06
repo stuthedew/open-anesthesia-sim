@@ -94,12 +94,20 @@ def _requirement(
     )
 
 
+def _either(
+    foregrounds: tuple[str, ...], background: str, minimum: float, why: str = "a fixture"
+) -> contrast_check.EitherRequirement:
+    return contrast_check.EitherRequirement(
+        foregrounds=foregrounds, background=background, minimum=minimum, criterion="1.4.11", why=why
+    )
+
+
 @pytest.fixture
 def declare(monkeypatch: pytest.MonkeyPatch):
     """Substitute the requirement table and the shortfall list for one test."""
 
     def _declare(
-        requirements: tuple[contrast_check.Requirement, ...],
+        requirements: tuple[contrast_check.AnyRequirement, ...],
         shortfalls: dict[tuple[str, str], str] | None = None,
     ) -> None:
         monkeypatch.setattr(contrast_check, "REQUIREMENTS", requirements)
@@ -228,6 +236,60 @@ def test_a_shortfall_that_starts_passing_is_an_error(tmp_path: Path, declare) ->
     assert "remove the entry" in contrast_check.format_report(report, matrix=False)
 
 
+def test_a_requirement_met_by_either_channel(tmp_path: Path, declare) -> None:
+    """PL-GNN1. The badge case: an edge carried by the fill *or* by the border.
+
+    Both halves matter. Passing on a candidate that is not the first is what a
+    single-pair requirement could not express - it reported the sevoflurane
+    badge as a shortfall while that badge's border stood at 10.70:1 against
+    the page. Failing when every channel is weak is what stops the new kind
+    becoming an excuse: an element nobody can perceive by any of its channels
+    is a shortfall however many channels it declares.
+
+    The fixture reproduces the shipped shape rather than inventing one.
+    `demoflurane.foreground` is white on a white surface - 1.00:1, the
+    near-invisible border isoflurane and desflurane really have - while the
+    fill behind it stands at 6.52:1.
+    """
+    repo = _repo(tmp_path)
+    declare(
+        (
+            _either(
+                ("demoflurane.foreground", "demoflurane.fill"), "PANEL", contrast_check.AA_NON_TEXT
+            ),
+        )
+    )
+
+    carried = contrast_check.analyze(repo)
+
+    assert not carried.errors
+    assert carried.results[0].meets
+    assert carried.results[0].rounded == 6.52, "the best channel decides it, not the first"
+
+    declare((_either(("demoflurane.foreground", "FAINT"), "PANEL", contrast_check.AA_NON_TEXT),))
+
+    weak = contrast_check.analyze(repo)
+
+    assert weak.errors
+    assert weak.results[0].rounded == 2.32, "the best of two weak channels is still the best"
+    assert "demoflurane.foreground or FAINT on PANEL" in contrast_check.format_report(
+        weak, matrix=False
+    )
+
+
+def test_a_two_channel_shortfall_is_excused_under_both_names(tmp_path: Path, declare) -> None:
+    """A disjunction is keyed by what the report prints, so its entry is findable."""
+    declare(
+        (_either(("demoflurane.foreground", "FAINT"), "PANEL", contrast_check.AA_NON_TEXT),),
+        {("demoflurane.foreground or FAINT", "PANEL"): "PL-DEMO"},
+    )
+
+    report = contrast_check.analyze(_repo(tmp_path))
+
+    assert not report.errors
+    assert "PL-DEMO" in contrast_check.format_report(report, matrix=False)
+
+
 def test_a_renamed_constant_is_an_error_rather_than_a_skipped_check(
     tmp_path: Path, declare
 ) -> None:
@@ -326,10 +388,7 @@ def test_the_run_status_text_is_checked_against_the_page_background() -> None:
     a color appears on both, and `MUTED` failed there by more than the panel
     measurement showed.
     """
-    declared = {
-        (requirement.foreground, requirement.background)
-        for requirement in contrast_check.REQUIREMENTS
-    }
+    declared = {requirement.key for requirement in contrast_check.REQUIREMENTS}
 
     for foreground in ("MUTED", "ACCENT_TEXT", "WARNING"):
         assert (foreground, "BACKGROUND") in declared, (
@@ -345,6 +404,34 @@ def test_muted_clears_the_text_minimum_on_both_surfaces() -> None:
     for surface in ("PANEL", "BACKGROUND"):
         ratio = contrast_check.contrast_ratio(palette["MUTED"], palette[surface])
         assert round(ratio, 2) >= contrast_check.AA_TEXT, f"MUTED on {surface} is {ratio:.2f}"
+
+
+def test_every_agent_badge_is_checked_as_fill_or_border() -> None:
+    """PL-GNN1. Each badge is legible by a different one of its two channels.
+
+    Sevoflurane by its border, isoflurane and desflurane by their fills. Three
+    different accidents, which is the reason to declare both channels rather
+    than pick whichever one happens to work today: nothing else would catch an
+    agent added later whose fill is mid-tone and whose foreground is white,
+    invisible by either.
+    """
+    palette = contrast_check.read_palette(REPO_ROOT)
+    declared = {
+        requirement.key: requirement
+        for requirement in contrast_check.REQUIREMENTS
+        if isinstance(requirement, contrast_check.EitherRequirement)
+    }
+
+    for agent in ("sevoflurane", "isoflurane", "desflurane"):
+        key = (f"{agent}.fill or {agent}.foreground", "BACKGROUND")
+        assert key in declared, f"{agent}'s badge is not declared as fill or border"
+        best = max(
+            contrast_check.contrast_ratio(palette[name], palette["BACKGROUND"])
+            for name in declared[key].candidates
+        )
+        assert round(best, 2) >= contrast_check.AA_NON_TEXT, (
+            f"{agent}'s badge is {best:.2f} by its best channel"
+        )
 
 
 def test_every_requirement_names_a_symbol_that_exists() -> None:
