@@ -51,3 +51,13 @@ refers back to Baker & Farmery. `tools/doc_check.py`, for the new check.
 **Done when.** The README describes only files the repository actually holds,
 and `doc_check` fails when it names one that is absent - so the next removal
 cannot leave the provenance record asserting something untrue.
+
+**Prose half fixed by #388 (2026-09-06).** The entries for both removed files
+now read "Not held here" with the date and the reason, and keep their
+citations; the Jugel M4 entry no longer describes itself as the one file that
+*may* stay if the repository is ever made public. So the README no longer
+asserts that the repository distributes two files it does not hold. What
+remains is this item's check half, which is untouched: nothing verifies that a
+file named in `docs/references/README.md` is present in `docs/references/`.
+Re-read the line numbers cited above against the current file before working
+it - they were taken before that change.
