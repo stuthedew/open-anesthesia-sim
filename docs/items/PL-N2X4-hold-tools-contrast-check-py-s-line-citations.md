@@ -1,15 +1,16 @@
 ---
 id: PL-N2X4
 title: Hold tools/contrast_check.py's line citations to the file, or drop them
-status: done
-added: 2026-09-04
-closed: 2026-09-06
-verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_line_number_citation_is_refused' tests/unit/test_contrast_check.py
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tools/contrast_check.py
+added: 2026-09-04
+closed: 2026-09-06
+pr: 400
+verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_line_number_citation_is_refused' tests/unit/test_contrast_check.py
 ---
 
 **Problem.** `tools/contrast_check.py`'s `REQUIREMENTS` entries each cite the

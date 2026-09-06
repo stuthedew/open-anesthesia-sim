@@ -1,15 +1,16 @@
 ---
 id: PL-VRMK
 title: 27 of the gate's 112 open entries declare docs/MODEL.md, so a quarter of Gate 1 can only be worked one item at a time
-status: done
 priority: P2
 effort: M
+status: done
 classes: infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/concurrency.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_concurrency.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
-verify: uv run pytest subprojects/docket/tests/test_concurrency.py && grep -q 'def test_two_items_naming_the_same_file_are_not_a_refusal' subprojects/docket/tests/test_concurrency.py
 added: 2026-09-06
 closed: 2026-09-06
+pr: 402
+verify: uv run pytest subprojects/docket/tests/test_concurrency.py && grep -q 'def test_two_items_naming_the_same_file_are_not_a_refusal' subprojects/docket/tests/test_concurrency.py
 ---
 
 **Problem.** Counted 2026-09-06 against the frozen Gate 1 list: of its 112 open

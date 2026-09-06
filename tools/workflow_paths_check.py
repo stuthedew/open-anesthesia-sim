@@ -1,29 +1,27 @@
-"""Refuse a test file that `docket.toml`'s `workflow_paths` puts on the wrong side of the lane boundary.
+"""Refuse a test file whose side of the lane boundary disagrees with what it imports.
 
-`workflow_paths` decides which half of the project an item belongs to:
-`Item.lane()` reads each declared `touches` path against it, and an item whose
-paths land on both sides is `crossing` - set aside by `docket next workflow`
-and by `docket next product` alike, for a session that can hold the whole
-change.
+`docket.toml`'s `workflow_paths` decides which half of the project an item
+belongs to: `Item.lane()` reads each declared `touches` path against it, and an
+item whose paths land on both sides is `crossing` - set aside by `docket next
+workflow` and by `docket next product` alike, for a session that can hold the
+whole change.
 
-Most of the list is directories, which do not drift. Four entries are single
-files, and three of those are test files that only live in the simulator's test
-tree because that is where pytest is configured to look:
-`tests/unit/test_doc_check.py`, `tests/unit/test_contrast_check.py` and
-`tests/unit/test_import_boundary_check.py`. They are apparatus tests wearing a
-product path.
+Most of that list is directories, which do not drift. The exceptions are the
+`tests/unit/test_*.py` entries, which are named one by one because they are
+apparatus tests wearing a product path: they exercise `tools/` scripts and
+`.claude/` hooks, and only live in the simulator's test tree because that is
+where pytest is configured to look.
 
-**The hand-list drifted, which is what this check is for (`PL-JBZK`).** When it
-was written those were the only three. Nine more test files were in exactly the
-same position by 2026-09-06 - the `tools/` scripts `branch_id_check`,
+**Named one by one, they drifted, which is what this check is for (`PL-JBZK`).**
+The list held three when it was written. Nine more test files were in exactly
+the same position by 2026-09-06 - the `tools/` scripts `branch_id_check`,
 `ignore_check`, `pr_title_check` and `rules_paths_check`, the four
 `.claude/hooks/` guards, and `test_tools_portability.py` - and two of the nine
-arrived on the day this check was written. So the list does not fall behind
-once and get corrected; it falls behind continuously, at the rate `tools/`
-grows, and every gap is silent. `PL-8XPQ` is the shape of the loss: an item
-declaring `tools/glyph_check.py`, `tests/unit/test_glyph_check.py` and
-`Makefile` touches no product code at all, and was set aside from both lanes by
-a filename.
+had arrived the day before. So the list does not fall behind once and get
+corrected; it falls behind continuously, at the rate `tools/` grows, and every
+gap is silent. `PL-8XPQ` is the shape of the loss: an item declaring
+`tools/glyph_check.py`, `tests/unit/test_glyph_check.py` and `Makefile` touches
+no product code at all, and would be set aside from both lanes by a filename.
 
 **The rule, and why it can be a check rather than a judgment.** A test file
 under `tests/` is apparatus when it does not import the product package, and
@@ -158,22 +156,22 @@ def problems(root: Path) -> list[str]:
             # Reported rather than skipped: a file this check cannot read is a
             # file whose side it cannot vouch for, and passing it silently is
             # the failure the check exists to stop.
-            found.append(f'{relative} could not be parsed, so its side is unknown: {error}')
+            found.append(f"{relative} could not be parsed, so its side is unknown: {error}")
             continue
         apparatus = is_apparatus(tree)
         covered = is_covered(relative, roots)
         if apparatus and not covered:
             found.append(
-                f'{relative} imports no `{PRODUCT_PACKAGE}`, so it is apparatus, but '
+                f"{relative} imports no `{PRODUCT_PACKAGE}`, so it is apparatus, but "
                 f"{CONFIG.as_posix()}'s workflow_paths does not cover it. An item "
-                f'declaring it alongside the thing it tests lands in neither lane. '
+                f"declaring it alongside the thing it tests lands in neither lane. "
                 f'Add "{relative}" to workflow_paths'
             )
         elif not apparatus and covered:
             found.append(
                 f"{relative} imports `{PRODUCT_PACKAGE}`, so it is the simulator's, "
                 f"but {CONFIG.as_posix()}'s workflow_paths covers it. A product item "
-                f'declaring it would be offered to a workflow session. Remove '
+                f"declaring it would be offered to a workflow session. Remove "
                 f'"{relative}" from workflow_paths'
             )
     return found

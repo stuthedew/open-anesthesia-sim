@@ -200,6 +200,7 @@ workflow_paths = [
   "tests/unit/test_rules_paths_check.py",
   "tests/unit/test_stop_hook_patch.py",
   "tests/unit/test_tools_portability.py",
+  "tests/unit/test_workflow_paths_check.py",
   "tools",
 ]
 
