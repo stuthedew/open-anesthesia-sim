@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-05
 closed: 2026-09-06
+pr: 385
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_merged_and_deleted_branch_is_not_reported_as_stranded' subprojects/docket/tests/test_vcs.py
 ---
 

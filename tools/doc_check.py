@@ -178,6 +178,7 @@ MODEL = Path("docs/MODEL.md")
 # on this table, and a parser guessing at free prose would be guessing at the
 # plan.
 ROADMAP = Path("ROADMAP.md")
+REFERENCES = Path("docs/references/README.md")
 
 PACKAGE_ROOT = PurePosixPath("src/anesthesia_sim")
 
@@ -223,6 +224,8 @@ NON_PARAMETER_KEYS = frozenset({"schema_version", "sources"})
 
 FENCE_RE = re.compile(r"^```")
 TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
+#: A source file named in the reference index, as inline code: `name.pdf`.
+REFERENCE_FILE_RE = re.compile(r"`(?P<name>[\w][\w.-]*\.(?:pdf|txt|csv|json))`")
 TREE_ENTRY_RE = re.compile(r"^(?P<indent>(?:(?:│   )|(?:    ))*)(?:├──|└──) (?P<name>\S+)")
 CODE_SPAN_RE = re.compile(r"`([^`\n]+)`")
 LINK_RE = re.compile(r"\[[^\]\n]*\]\((?P<target>[^)\s]+)\)")
@@ -1965,6 +1968,43 @@ def check_resident_instructions(root: Path, report: Report) -> None:
         )
 
 
+def _check_reference_files_exist(root: Path, report: Report) -> None:
+    """Refuse a source document the reference index names but does not hold.
+
+    `docs/references/README.md` is the provenance record for the model's own
+    sources: a reader follows it to see the text a coefficient or a compartment
+    structure came from. An entry naming a file the directory does not contain
+    sends them looking for something that is not there, and leaves them unable
+    to tell a deliberate removal from an accidental one - which is the exact
+    question a provenance record exists to answer.
+
+    It became reachable on 2026-09-06, when the two publisher-copyright texts
+    were removed from the history and their entries went on naming them.
+    Nothing in `make check` noticed. Whether an entry should keep its file or
+    keep only its citation stays a person's judgment; whether a named file is
+    present is decidable, so only that half is checked here.
+
+    An entry that names no file is correct and passes - that is the shape a
+    citation-only entry takes.
+    """
+    path = root / REFERENCES
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UNREADABLE:
+        return
+    for number, line in enumerate(text.splitlines(), 1):
+        for match in REFERENCE_FILE_RE.finditer(line):
+            name = match.group("name")
+            if (path.parent / name).exists():
+                continue
+            report.errors.append(
+                f"{REFERENCES}:{number} names {name}, which is not in "
+                f"{REFERENCES.parent}/; drop the filename and keep the citation if the "
+                "text was deliberately removed, since citing a work is not "
+                "redistributing it"
+            )
+
+
 def analyze(root: Path) -> Report:
     """Run every mechanical documentation check over a checkout."""
     report = Report()
@@ -1985,6 +2025,7 @@ def analyze(root: Path) -> Report:
     check_coverage_gate(root, report)
     check_math_delimiters(root, report)
     check_resident_instructions(root, report)
+    _check_reference_files_exist(root, report)
     return report
 
 

@@ -1,8 +1,14 @@
 ---
 id: PL-JBRC
 title: docket stranded still calls a branch merged when one of its commits is only docket record output, which converges byte-for-byte with the base
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-06
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_only_landed_commit_is_docket_record_output_is_not_merged' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** `PL-5TRV` narrowed `orphaned`'s merge verdict from "the base holds

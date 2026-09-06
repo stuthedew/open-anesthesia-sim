@@ -1,8 +1,14 @@
 ---
 id: PL-TNB6
 title: docket next attributes the whole of Gate 1 to the v0.4.x step, where the plan makes Gate 1 its own row that no patch may ship
-status: untriaged
+status: ready
 added: 2026-09-06
+priority: P2
+effort: S
+classes: defect, infra
+feature: planning-cadence
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
+verify: uv run pytest subprojects/docket/tests/test_plan.py && grep -q 'def test_the_placement_line_names_the_step_that_clears_the_gate' subprojects/docket/tests/test_plan.py
 ---
 
 **Problem.** Every ranked item in `bin/docket next` now carries a placement
