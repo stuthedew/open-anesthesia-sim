@@ -36,3 +36,25 @@ says why, rather than silently recording the closure's number. A test in
 `test_vcs.py` fixes the case. Declining is an acceptable answer - `PL-99Y4`
 already established that a provenance question the checkout cannot answer is
 reported rather than guessed.
+
+**Measured while fixing `PL-S5LB`, 2026-09-06: three items, and the recorded
+value is the right one in all three.** Auditing every closed item's recorded
+`pr` against what `_number_closing` recovers from real history, 249 of the 252
+it can answer agree. The three that disagree are this shape, each off by one:
+
+| Item | Recorded `pr` | What the walk recovers |
+| --- | --- | --- |
+| `PL-3CBS` | 128 | 129 |
+| `PL-64LS` | 108 | 109 |
+| `PL-D2GW` | 134 | 135 |
+
+`#128` did `PL-3CBS`'s work and left the item at `status: ready`; the triage
+pass merged as `#129` is what wrote `status: done`. So the store already holds
+the better answer and needs no repair - what needs deciding is only what the
+walk should do when the field is *missing*, which is this item.
+
+That also bounds the problem: three items, all predating the same-commit
+closure rule (`PL-D2GW`, `PL-P5S0`), and none of them reachable through the
+subject scan, which `PL-GW37` made the first reading. Declining is a defensible
+answer here, per the `Done when` above.
+

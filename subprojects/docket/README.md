@@ -1180,14 +1180,18 @@ answer and disagreed nowhere, and across every closed item carrying a `pr` the
 recovery went from 101 correct and 25 wrong to 114 correct and 12 wrong
 (`PL-GW37`).
 
-Two shapes make up most of what is left, and each has its own item. An item
-whose file was renamed after it closed recovers the renaming commit, because
-the fallback walks `git log` without rename detection and the parent does not
-hold the path at all (`PL-S5LB`). An item whose work landed in one pull
-request but whose `status: done` was written in a later one recovers the
-later number, which carries the closure and none of the work (`PL-YDL6`) —
-the shape `PL-D2GW` closed by requiring the closure to travel in the same
-commit as the work, so it exists only in items predating that rule.
+Two shapes made up most of what was left. The first is fixed: an item whose
+file was renamed after it closed used to recover the renaming commit, because
+the fallback walked `git log` without rename detection and the parent does not
+hold the new path at all. The walk now follows renames *and* reads each commit
+at the name the file carried there — the second half being the one that does
+the work, since `--follow` on its own still leaves every commit older than the
+rename reading as "not done" (`PL-S5LB`). The second shape is open: an item
+whose work landed in one pull request but whose `status: done` was written in
+a later one recovers the later number, which carries the closure and none of
+the work (`PL-YDL6`) — the shape `PL-D2GW` closed by requiring the closure to
+travel in the same commit as the work, so it exists only in the three items
+predating that rule.
 
 - **The number is recoverable** → an advisory naming it, and the command that
   writes it. Nothing is lost; the way back exists in git, and the field is a
