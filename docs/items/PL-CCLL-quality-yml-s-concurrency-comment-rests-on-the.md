@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: ci-cost
+milestone: v0.4.3
 touches: .github/workflows/quality.yml
 added: 2026-09-06
 closed: 2026-09-06

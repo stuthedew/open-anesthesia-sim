@@ -283,13 +283,55 @@ def test_the_patient_state_covers_every_patient_compartment() -> None:
     assert "cardiac_output_l_min" not in {f.name for f in fields(PatientCompartmentsState)}
 
 
+DERIVED_SYSTEM_FIELDS = frozenset({"_propagator", "_propagator_key"})
+"""The system's fields that carry no trajectory and are deliberately not captured.
+
+Both belong to the cached propagator, which is a function of the settings
+alone: the settings are what a step never writes and a rollback never
+restores, so the cache is still correct for whatever a rollback leaves. They
+are named here rather than filtered out by a rule, so that adding a field is
+still a test failure that has to be answered - the guard below only means
+something if a genuinely dynamic field cannot join this set by accident.
+"""
+
+
 def test_the_system_state_covers_every_part_of_the_system() -> None:
     """Same guard one level up, where a sixth compartment would be added."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
+    field_names = {f.name for f in fields(system)}
 
     assert {f.name for f in fields(AgentUptakeSystemState)} == _capturable_field_names(system)
-    assert {f.name for f in fields(system)} == _capturable_field_names(system)
+    assert field_names - DERIVED_SYSTEM_FIELDS == _capturable_field_names(system)
+    assert DERIVED_SYSTEM_FIELDS <= field_names, (
+        "a field named here as derived no longer exists; remove it from "
+        "DERIVED_SYSTEM_FIELDS rather than leaving the exemption standing"
+    )
+
+
+def test_the_propagator_cache_is_not_restored_by_a_rollback() -> None:
+    """A rollback leaves the cache alone, because it cannot invalidate it.
+
+    The exemption above is only safe if it is true, and what makes it true is
+    that a propagator depends on settings rather than on the trajectory.
+    Capture a state, change nothing but the trajectory, restore, and the same
+    propagator must still be the right one - which shows up as the next step
+    producing exactly what it produced the first time.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    for _ in range(10):
+        system.advance(0.1)
+
+    captured = system.capture_state()
+    system.advance(0.1)
+    after_first_l = system.total_stored_agent_l
+
+    system.restore_state(captured)
+    system.advance(0.1)
+
+    assert system.total_stored_agent_l == after_first_l
 
 
 def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:

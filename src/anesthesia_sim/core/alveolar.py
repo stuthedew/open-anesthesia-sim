@@ -1,6 +1,15 @@
 """The alveolar gas compartment: one ideal, perfectly mixed lung-gas volume
 that exchanges agent with the breathing circuit (ventilation) and with
 pulmonary blood (uptake), sitting between `circuit.py` and `patient.py`.
+
+Both of those exchanges are terms of the alveolar balance in
+`governing_equations.py`, and this class holds no method that applies either.
+It had one - `apply_blood_uptake()`, which moved a signed amount of agent in
+or out on a caller's say-so - and `PL-GS5X` removed it with the operator
+split whose fifth sub-step was its only caller. Nothing outside the governing
+equations may move agent between compartments: a mutator that can is a way to
+reach a state that solves nothing, and it evaluated its own result twice and
+accepted a `bool` where `parameters.py` refuses one (`PL-LKRP`).
 """
 
 from dataclasses import dataclass
@@ -64,25 +73,6 @@ class AlveolarCompartment:
 
         require_concentration_fraction("concentration_fraction", concentration_fraction)
         self.agent_amount_l = self.gas_volume_l * concentration_fraction
-
-    def apply_blood_uptake(self, blood_uptake_l: float) -> None:
-        """Apply a signed alveolar-to-blood transfer.
-
-        Positive values remove agent from alveolar gas.
-        Negative values return agent from blood to alveolar gas.
-        """
-
-        if not isinstance(blood_uptake_l, (int, float)):
-            raise SimulationConfigurationError("blood_uptake_l must be a number")
-
-        require_nonnegative_finite("resulting_agent_amount_l", self.agent_amount_l - blood_uptake_l)
-
-        resulting_amount_l = self.agent_amount_l - blood_uptake_l
-
-        if resulting_amount_l > self.gas_volume_l:
-            raise SimulationConfigurationError("blood transfer would exceed alveolar capacity")
-
-        self.agent_amount_l = resulting_amount_l
 
     def capture_state(self) -> AlveolarCompartmentState:
         """Record run state so a failed step can be rolled back."""

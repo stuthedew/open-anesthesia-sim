@@ -62,7 +62,8 @@ capability-boundary rule above governs.
 | v0.3.9 | Completed | What a frame costs, what a learner is allowed to look at, and what a run *is*. Decimation had rescanned every sample in the visible window on every frame — 62.6 ms at a four-hour window and 207.7 ms at twelve, against a 200 ms frame budget — and now reads precomputed M4 aggregates held on a dyadic grid anchored to absolute sample index, merged tier to tier without revisiting a raw sample, so a frame costs what it draws rather than what the window holds. Beside it, a checkbox per compartment: the reference implementation's own affordance, the two-trace comparison a question like *why does fat lag muscle* actually needs, and the one lever on render cost that trades no fidelity, since a trace nobody is looking at is not a resolution loss. Underneath both, simulated time became the number of steps taken times the run's step rather than a sum accumulated a step at a time, and `docs/MODEL.md` states as a guarantee what had been an implementation detail: a run is a function of its inputs and its step count and of nothing else, so a machine that wakes the loop late runs slower and never differently — with the four things that guarantee does not cover named beside it. Interface and determinism work: no equation, parameter, numerical method or solver step moved, `src/anesthesia_sim/data/` is byte-identical to v0.3.8, and no displayed number changes — the recorded sample times differ in their last bits, about 35 ns after four hours, which no readout, axis or trace resolves. Three apparatus defects close alongside: a commit pushed after its own pull request merged is reported rather than silently dropped, the check that reports it stopped calling merged work lost, and `docket next` reserves what it recommends, so two sessions handed the same answer do not both start it. |
 | v0.4.0 | Completed | The teachable case: the release that makes the model's lessons observable at all. A case runs at 1, 5, 20, 60 or 300x in steps that never change size, on a time base spanning fifteen minutes to twelve hours that defaults to fitting the run, against a vertical axis fixed at 0-3 x MAC for every agent rather than at one agent's vaporizer dial maximum - so the three obstacles this milestone was scoped on are answered together: the reservoirs that cause context-sensitive emergence (muscle at 135 min, fat at 42 h for sevoflurane) become reachable in minutes of wall clock, a 1 MAC run fills the plot instead of its bottom quarter, and three agents whose MACs differ threefold are finally comparable. Changing agent is now an explicit new case that names what will be lost before discarding it. Underneath, the recorded run is keyed by substance and quantity rather than by six flat compartment floats, so nitrous oxide will add a substance rather than reshape the record v0.5.0's forking proof is written against. Interface work on an untouched model: `src/anesthesia_sim/core/` and `src/anesthesia_sim/data/` are byte-identical to v0.3.9 and every changed source file is under `app/`, so no equation, parameter, numerical method or solver step moved, and the v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference tests are unchanged and passing. Twelve of the milestone's thirteen Required-scope entries have landed; `PL-011`'s retention rule is the thirteenth and was dropped on 2026-09-05, superseded by the score architecture rather than deferred, with the outcome recorded in place in that section. The remaining twenty-one items of the thirty-six are apparatus: the release script's own in-flight guard after two sessions cut v0.3.7 independently, the resident-instruction budget, and eleven live defects in the queue's ranking and its checks. |
 | v0.4.1 | Completed | The apparatus patch, changing no shipped code at all: `src/`, `tests/` and `docs/MODEL.md` are byte-identical to v0.4.0, so no equation, parameter, numerical method, unit or displayed value moved and the reference cases pass against exactly the code that validated them. The fourth release to change nothing shipped, and it comes straight after the largest capability release the project has had, because cutting v0.4.0 walked the plan end to end for the first time in weeks and found it out of agreement with the tooling that reads it. `bin/docket wave` was classifying the `v0.4.1` row as a milestone - which freezes a debt gate - and that gate computed to **105 entries against Gate 0's 21**; the row is now `v0.4.x`, a patch track that freezes none, and the beat reads *scope v0.5.0* as the timeline always intended. The score architecture (`PL-T691`, `PL-2FM6` and three more) is placed in v0.5.0, where forking needs it and where `PL-011`'s dropped retention debt is actually paid. The advisory that catches an undeclared prose prerequisite was reading only the first id after a cue, so "blocked on A and on B" never checked B - it had a live instance in `PL-VZL0` and reported clean. Three contradictions inside the next release's own briefs are cleared, each of which would have stopped a worker on day one, including a two-item deadlock where `PL-GS5X` and `PL-X9KD` each waited on the other. Every CI job gained a `timeout-minutes` bound against a 360-minute default, superseded pull-request runs are cancelled for the runner slot rather than the now-free minute, and `CLAUDE.md` finally states when investing in the apparatus is correct rather than only warning against it. Eleven items. This is not the exact matrix exponential - that is the `v0.4.x` track's content and has not started. |
-| v0.4.2 | Completed / current baseline | The apparatus patch that closes `docket-store`, changing no shipped code: `src/` and `docs/MODEL.md` are byte-identical to v0.4.1 and the only file under `tests/` that moved is the new check's own suite, so no equation, parameter, numerical method, unit or displayed value moved. Its subject is the instruction budget every session pays and the guards that keep work visible. Resident text can now *shrink*: 563 characters whose carriers already existed were routed out of `CLAUDE.md`, and resident rules gained the retirement test that checks have had since `PL-ZBJ0` — until now a rule could only be added, because nothing said when one had stopped earning its place, and the total falls 44 545 to 44 166 characters. Beside it `tools/rules_paths_check.py` gained its second rule: a `paths:` entry that is anchored and points at nothing is refused, the same silent failure as the `./` spelling v0.4.0 closed, arriving in the form that reads as correct at every glance — a transposed directory name — and the message names the nearest existing ancestor rather than only the offence. Two provenance guards close: seven items stranded on abandoned branches are recovered, two of them created by the score-architecture drops, and the pull-request title check stopped racing the retitle it asks for, which had been showing a red run that meant nothing on a green pull request. Landing during this release's own pull request, the gate learned what it costs to run: the `floor` job billed a whole minute for eight seconds of work and held one of twenty account-wide concurrent job slots, so its steps moved inside `checks` *ahead of* the uv install — which strengthens the no-virtualenv claim rather than weakening it, because at that point no virtualenv exists to fall back on — and a spending limit and usage alert now exist, where the first sign of Actions overage had been the invoice. `README.md`'s status section is corrected too: it understated the operator split's disagreement with the exact solution as 1.2e-2 percentage points where `docs/MODEL.md` gives 2.3e-2 over the same domain, which is the kind of divergence between a summary and its specification that the `v0.4.x` track exists to remove. Nine items, one of which is the v0.4.1 cut itself. |
+| v0.4.2 | Completed | The apparatus patch that closes `docket-store`, changing no shipped code: `src/` and `docs/MODEL.md` are byte-identical to v0.4.1 and the only file under `tests/` that moved is the new check's own suite, so no equation, parameter, numerical method, unit or displayed value moved. Its subject is the instruction budget every session pays and the guards that keep work visible. Resident text can now *shrink*: 563 characters whose carriers already existed were routed out of `CLAUDE.md`, and resident rules gained the retirement test that checks have had since `PL-ZBJ0` — until now a rule could only be added, because nothing said when one had stopped earning its place, and the total falls 44 545 to 44 166 characters. Beside it `tools/rules_paths_check.py` gained its second rule: a `paths:` entry that is anchored and points at nothing is refused, the same silent failure as the `./` spelling v0.4.0 closed, arriving in the form that reads as correct at every glance — a transposed directory name — and the message names the nearest existing ancestor rather than only the offence. Two provenance guards close: seven items stranded on abandoned branches are recovered, two of them created by the score-architecture drops, and the pull-request title check stopped racing the retitle it asks for, which had been showing a red run that meant nothing on a green pull request. Landing during this release's own pull request, the gate learned what it costs to run: the `floor` job billed a whole minute for eight seconds of work and held one of twenty account-wide concurrent job slots, so its steps moved inside `checks` *ahead of* the uv install — which strengthens the no-virtualenv claim rather than weakening it, because at that point no virtualenv exists to fall back on — and a spending limit and usage alert now exist, where the first sign of Actions overage had been the invoice. `README.md`'s status section is corrected too: it understated the operator split's disagreement with the exact solution as 1.2e-2 percentage points where `docs/MODEL.md` gives 2.3e-2 over the same domain, which is the kind of divergence between a summary and its specification that the `v0.4.x` track exists to remove. Nine items, one of which is the v0.4.1 cut itself. |
+| v0.4.3 | Completed / current baseline | The release where the gate learned what it costs, and the repository went public — and the second overtook the first. `src/` is byte-identical to v0.4.2 and `docs/MODEL.md`'s only change is one cross-reference following the deleted README, so no equation, parameter, numerical method, unit or displayed value moved; the sixth such release and the third in a row. **The measured half.** The `checks` job ran 152 s, of which `bin/docket check --verify` was **87 s** — more than the whole 1 820-test suite — because the replay runs every open item's own `verify:` command and 79 of the 111 that carry one start a fresh `uv run pytest`. That bill grew with the size of the queue rather than with the size of the change, and was paid on every push to every open pull request. `--verify-base` now scopes it to the items a branch actually changed, read from the diff, with the whole-store sweep kept on `push` to the default branch where its answer is a fact about that branch — 102 commands in 74.6 s becomes one in 5.5 s, and the job **152 s → 59 s** on run 34000293113. It is `PL-P3B6`'s argument one step on: if a pre-commit gate cannot have changed whether some other item's work merged, neither can a pull request. A scoped run says what it was scoped to on `docket check`'s own cost line, including when the scope held nothing to run, because a narrowed run reporting no findings is otherwise indistinguishable from a store that holds none. Three smaller gate repairs sit around it: `drift.yml` had resolved a newer `pytest-xdist` every month and never run it — a declared dependency upgraded and untested, which is the hole that workflow exists to close — and now runs `-n auto --dist worksteal` on both suites; `tools/contrast_check.py` had been parsing 3.14 `app/` source under the 3.11 floor, green only because the two files it reads happen to carry no 3.12+ syntax, which since v0.4.2 folded that job into `checks` would have reddened the whole job before uv was installed; and the pull-request title check, the one gate no session could run before pushing, now discovers the title from the branch's own open pull request and skips silently on every way that lookup can fail, so `make check` stays green offline. **The published half** is smaller in the diff and larger in consequence. The repository is public — *to stop the Actions billing, not as a publication decision* — which makes the minute arithmetic three of these items were built on moot: standard runners are free and unlimited on public repositories, and what the work still buys is wall clock and the runner slots that throttle parallel sessions. `README.md` was deleted rather than corrected and stays deleted under a check; the human-facing pass `PL-XYRN` gated is deliberately unrun; and both are recorded where a later session would otherwise read a public repository with no front door as a gap rather than a decision. Which leaves the quietest thread: the concurrency comment claimed the repository was public and runners free while it was private, was corrected to private-and-billed, and was wrong again within hours — so its argument now rests on the runner slot, which holds under either answer, with the billing position dated and stated once rather than woven through the reasoning. Twelve items, one of which is the v0.4.2 cut itself. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -99,27 +100,42 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.4.2
+## Current baseline: v0.4.3
 
-v0.4.2 changes no shipped code. `src/` and `docs/MODEL.md` are byte-identical
-to v0.4.1, and the two files under `tests/` that moved are both about the
-apparatus — a new check's own suite and the portability suite that follows the
-CI restructure — so no equation, parameter, numerical method, unit or displayed
+v0.4.3 changes no shipped code. `src/` is byte-identical to v0.4.2, and
+`docs/MODEL.md`'s only change is one cross-reference: the two caveats bounding
+the wash-in validation used to say they belonged "including in `README.md`",
+and that file no longer exists, so the obligation transfers to whatever
+`PL-N092` writes in its place. Every file under `tests/` that moved is about
+the apparatus. So no equation, parameter, numerical method, unit or displayed
 value moved, and the reference cases pass against exactly the code that
 validated them. What changed is `.github/workflows/`, `.claude/`, `CLAUDE.md`,
-`README.md`, `ROADMAP.md`, `docs/`, `tools/` and `tests/unit/`.
+`Makefile`, `ROADMAP.md`, `docs/`, `subprojects/docket/`, `tools/` and
+`tests/unit/` — and `README.md`, which was deleted.
 
-It is the fifth such release — v0.2.5, v0.2.9, v0.3.5 and v0.4.1 were the
-others — and the second in a row. That is worth stating plainly rather than
-glossing: two consecutive releases have shipped no simulator change. Both are
-the cost of cutting v0.4.0, which walked the plan end to end for the first time
-in weeks and surfaced a run of apparatus defects that would each have cost a
-session. `CLAUDE.md`'s statement that the apparatus is not judged by its share
-of the queue was written during this pair, and this pair is why.
+It is the sixth such release — v0.2.5, v0.2.9, v0.3.5, v0.4.1 and v0.4.2 were
+the others — and **the third in a row**, which is worth stating plainly rather
+than glossing. The v0.4.1/v0.4.2 pair was the cost of cutting v0.4.0. This one
+is different in kind: it is the cost of *running* the project at four to six
+concurrent sessions, which is the load that turned CI wall clock and the
+queue's own guards into the binding constraint. The reason to have paid it is
+in the number — a pull request's gate went from 152 s to 59 s while the work
+per push kept growing — and the reason not to let it become a habit is that
+three consecutive releases have now shipped no simulator change.
 
 **Note what this release is not.** It is not the exact matrix exponential.
 That work — planned-milestone item 29, "the code is the model" — is the
-`v0.4.x` track's content and still has not started.
+`v0.4.x` track's content, and it is not in this release either. `PL-GS5X`
+merged after v0.4.3 was cut, so the next release is the one that carries it,
+and it is the first to touch `src/` in four.
+
+**One fact about this repository that is easy to invert.** It is public, and it
+was made public on 2026-09-06 to stop Actions minutes being billed — not as a
+publication decision. The human-facing pass `PL-XYRN` holds is deliberately
+unrun and `README.md` is deliberately absent, so a session finding a public
+repository with no front door is looking at a decision rather than a gap.
+`PL-N092` stays `ready` because it is workable and standalone, not because it
+is being asked for.
 
 ### Release narrative
 
@@ -185,6 +201,81 @@ so a pull request that was correct showed a red run that meant nothing — the
 precise failure mode `CLAUDE.md` names when it says an advisory nobody can act
 on trains a session to skim the output where a real one appears.
 
+### v0.4.3 — what the gate costs, and a repository that went public sideways
+
+**The largest thing in a pull request's CI was not the test suite
+(`PL-SDHR`).** The `checks` job ran 152 s, and 87 s of it was
+`bin/docket check --verify` replaying every open item's own `verify:` command —
+more than the whole 1 820-test suite, because 79 of the 111 commands in the
+store start a fresh `uv run pytest`. The shape of that cost is the problem
+rather than its size: it grows with the number of items in the queue, so every
+item triaged to `ready` made every future pull request slower, and it was
+charged on every push to every open branch.
+
+The fix is `PL-P3B6`'s argument taken one step further. That item removed the
+replay from `make check` because a pre-commit gate cannot have changed whether
+some *other* item's work has merged — and a pull request cannot either. What a
+branch can have changed is the items it edited, so `--verify-base` scopes the
+replay to exactly those, read from the diff rather than from any declared
+`touches`, and the whole-store sweep stays on `push` to the default branch
+where the answer is a fact about that branch. 102 commands in 74.6 s becomes
+one in 5.5 s; the job goes 152 s → 59 s.
+
+The care went into the silence. A narrowed run that finds nothing is
+indistinguishable from a store that holds nothing, so `LandedReport.scope` is
+set on every path out — including the nested-run decline and the case where the
+scope holds nothing at all to run — and `docket check` prints it on its own
+cost line. The one that would otherwise have lied is the empty scope, where
+there is no cost to report and an absent line reads as a clean store.
+
+**Three gate repairs around it.** `drift.yml` had been resolving whatever
+`pytest-xdist` was newest, every month, and never running it — a declared
+dependency upgraded and untested, which is precisely the hole that workflow's
+own header says it exists to close (`PL-55JM`). `tools/contrast_check.py` was
+parsing 3.14 `app/` source under the 3.11 floor and was green only because the
+two files it reads happen to contain no 3.12+ syntax; since v0.4.2 folded the
+floor job into `checks`, one PEP 695 generic in either would have reddened the
+entire job before uv was installed, naming a tool whose author had touched
+nothing (`PL-L17Q`). And the pull-request title check — the only gate a session
+could not run before pushing, so the only one whose failures were always found
+by CI — now discovers the title from the branch's own open pull request, with
+every way that lookup can fail treated as a silent skip so `make check` stays
+green offline (`PL-J3BB`).
+
+**The repository went public sideways, and that is the fact to keep straight
+(`PL-XYRN`, `PL-CCLL`).** It was made public to stop Actions minutes being
+billed, not because the project was ready to be read. The consequence for this
+release is that the minute arithmetic three of its items were built on is moot
+— standard runners are free and unlimited on public repositories — and what the
+work still buys is wall clock and the runner slots that throttle four to six
+concurrent sessions. The consequence for the next reader is larger: `PL-XYRN`
+existed to run a human-facing pass *immediately before* publication, that pass
+is deliberately unrun, and `README.md` is deliberately absent under a check
+that enforces it. Both are recorded in the tree, because the alternative is a
+future session reading a public repository with no front door as a gap and
+"fixing" it.
+
+**Three statements the project was making about its own CI were false.** The
+concurrency comment said the repository was public and standard runners free
+while it was private; that was corrected to private-and-billed (`PL-SSQX`); the
+owner made it public hours later, and it was wrong again. The repair is not the
+third correction but the removal of the dependency: the argument for cancelling
+a superseded run now rests on the runner slot, which holds under either answer,
+with the billing position dated and stated once. Beside it, a comment
+describing a job `PL-D551` had deleted, and two prose enumerations of the CI
+floor section that had each gone stale within a day of being written — the
+second of which is now the third independent drift of that same list, and the
+argument for `PL-5N7T` rather than a fourth hand-correction.
+
+**And one finding the release surfaced by accident.** `PL-N092`'s `verify:`
+command was `! grep -q … README.md`, written while that file existed; `grep` on
+a missing file exits 2, which `!` inverts to success, so from the moment
+`PL-WB5K` deleted the README the command passed on a tree where none of its
+work had been done. It was invisible because the replay only covers `ready` and
+`needs-decision` items, and this one was `blocked` — so the rot surfaced on the
+pull request that unblocked it, which is `PL-RC0M`. Two sessions found it
+independently within the hour, and reached byte-identical fixes.
+
 ## The plan
 
 One timeline. Debt clearing and feature milestones are steps on the same
@@ -224,7 +315,7 @@ adds no capability and exists to clear the ground they are built on:
 | 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 35 S |
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 4 M, 17 S |
 | 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
-| — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch, `v0.4.1` — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan. **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged. `PL-3TLK` leads; the rest of the naming work follows the exact step. `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it. | 1 L, 6 M, 2 S |
+| — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan. **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged. `PL-3TLK` leads; the rest of the naming work follows the exact step. `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it. | 1 L, 6 M, 2 S |
 | 4 | **Gate 1** | Frozen when v0.5.0 is scoped. Contents unknown by construction: v0.4.0's own findings land here. Ships inside v0.5.0, not as its own release. | — |
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — is nearly free once a run is a closed-form function of its control timeline, and expensive against a recorded sample store. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
@@ -1949,17 +2040,17 @@ specified.
     `.claude/rules/core-domain.md`, and it is what the answers below are held
     to.
 
-    **Naming alone cannot reach it, which is what the re-scope found.** The
-    alveolar balance's two terms are computed in two different steps of the
-    operator split, separated by a third, and the pulmonary uptake term is
-    never formed at all; three of the five composed sub-steps are objects of
-    the splitting scheme rather than of the domain. The equations exist in the
-    repository in exactly the right form — in the independent RK4 oracle, which
-    may not be imported from `core/` without making the verification a
-    tautology. So the split is replaced by the exact matrix exponential
-    (`PL-GS5X`), under which assembling the system matrix *is* transcribing the
-    governing equations, and the code that computes the answer is the code a
-    reviewer recognizes. `PL-SPMQ` carries the measurement and the options that
+    **Naming alone could not reach it, which is what the re-scope found.** The
+    alveolar balance's two terms were computed in two different steps of the
+    operator split, separated by a third, and the pulmonary uptake term was
+    never formed at all; three of the five composed sub-steps were objects of
+    the splitting scheme rather than of the domain. The equations existed in
+    the repository in exactly the right form — in the independent RK4 oracle,
+    which may not be imported from `core/` without making the verification a
+    tautology. So the split was replaced by the exact matrix exponential
+    (`PL-GS5X`, landed 2026-09-06), under which assembling the system matrix
+    *is* transcribing the governing equations, and the code that computes the
+    answer is the code a reviewer recognizes. `PL-SPMQ` carries the measurement and the options that
     were weighed.
 
     That supersedes `PL-6GS0`, which decided in v0.2.8 to keep the split. That
@@ -2044,9 +2135,13 @@ specified.
     is why the naming rule for ratios is worth enforcing mechanically rather
     than left to a reader's recall (`PL-212V`).
 
-    No behavior, equation, parameter, or numerical method changes, so it
-    crosses no capability boundary and takes a patch version rather than a
-    minor, per "Versioning decision".
+    The numerical method changes and the displayed value moves in its last
+    digit, but no capability boundary is crossed — same model, same parameters,
+    same controls, same agents, and nothing a learner can do that they could
+    not before — so it takes a patch version rather than a minor, per
+    "Versioning decision". The paragraph above this one said "no behavior,
+    equation, parameter, or numerical method changes"; that was written when
+    item 29 was a naming pass and the 2026-09-03 re-scope superseded it.
 
 30. Add patient factors - age, sex and weight as inputs - so a
     learner can see how patient characteristics change the anesthetic. This

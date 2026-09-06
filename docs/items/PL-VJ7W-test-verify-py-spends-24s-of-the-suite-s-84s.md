@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost, infra
 feature: dev-tooling
+milestone: v0.4.3
 touches: subprojects/docket/tests/test_verify.py
 added: 2026-09-05
 closed: 2026-09-05

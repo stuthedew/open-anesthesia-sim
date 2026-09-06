@@ -1,13 +1,14 @@
 """Check the coupled six-state solution against an independent integration.
 
-Mass balance cannot detect a wrong rate. Every internal transfer is applied
-as an equal-and-opposite pair, so the accounting residual stays at ~2e-15 L
-whatever the transfer rates are — including rates that move the alveolar
-fraction by tenths of a percentage point. Conservation is necessary and
-nowhere near sufficient, and this module is the check that closes the gap:
-it re-derives the governing equations of `docs/MODEL.md` from the parameter
-files, integrates them with a from-scratch fourth-order Runge–Kutta, and
-requires the shipped operator split to agree with that solution.
+Mass balance cannot detect a wrong rate. Every internal exchange appears in
+the system matrix as a pair of entries whose contribution to the total stored
+amount cancels, so the accounting residual stays at rounding whatever the
+transfer rates are — including rates that would move the alveolar fraction by
+tenths of a percentage point. Conservation is necessary and nowhere near
+sufficient, and this module is the check that closes the gap: it re-derives
+the governing equations of `docs/MODEL.md` from the parameter files,
+integrates them with a from-scratch fourth-order Runge–Kutta, and requires the
+shipped solution to agree with that one.
 
 The independence rule is what makes this verification rather than a
 tautology, so `test_oracle_imports_no_solver_from_core` enforces it
@@ -42,7 +43,24 @@ AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")
 # Simulated horizons, chosen for what each one exercises: 60 s is circuit
 # and alveolar wash-in while the tissues are still empty, 600 s is the
 # vessel-rich group approaching its own equilibrium, and 3600 s is far
-# enough in for muscle and fat to carry a meaningful load.
+# enough in for muscle and fat to carry a meaningful load. They are the
+# horizons the pinned reference states below are computed at.
+#
+# 3600 s is also the only run this module drives past 900 s, and it is the
+# one horizon whose measured residual is genuinely the shipped step's own:
+# the trajectory gates all peak inside a transient the oracle cannot resolve
+# at its 0.05 s step (see `ORACLE_STEP_S`), whereas held settings for an hour
+# leave the oracle converged to 1.2e-15 and the residual is then rounding
+# accumulated over 36 000 shipped steps. It grows by nine to sixty-seven fold
+# from 60 s to 3600 s — 8.9x for sevoflurane, 19.4x for isoflurane, 67.0x for
+# desflurane, over the endpoint table at `HELD_RUN_ROUNDING_BOUND` — and the
+# spread is why the growth is quoted as a range rather than as one figure: it
+# is set by how far the slow compartments have filled by the horizon, which
+# differs by agent. The worst state migrates from the fast circuit to the slow
+# muscle compartment, which no trajectory shorter than an hour ever reaches.
+# `test_the_shipped_step_reaches_the_pinned_reference_horizons` is the gate
+# that covers it, and endpoint sampling is right there for the same reason:
+# at 3600 s the maximum is at the endpoint, not inside a transient.
 HORIZONS_S = (60.0, 600.0, 3600.0)
 
 # The historical operating point, kept because the pinned reference states
@@ -83,24 +101,6 @@ MIN_DELIVERED_CONCENTRATION_PERCENT = 0.0
 # test. `docs/MODEL.md` § "Displayed precision" is where the choice is argued.
 CONCENTRATION_DISPLAY_DECIMALS = 2
 
-# How far apart two compartments may be while the split still inverts which of
-# them is displayed as higher. The ordinal reading the interface invites — the
-# circuit leads the alveoli lead the tissues — is only misleading if an
-# inversion happens between two readouts a reader would see as separated, so
-# this bounds the gap at which one can occur rather than forbidding inversions
-# outright.
-#
-# The worst measured is 1.73 counts, on the worst reachable trajectory alone;
-# at ordinary settings, at the reference point, at the envelope corner and
-# across a ventilator start there is no inversion at any gap. Three counts
-# allows 1.7 times the measurement — and is far tighter than the arithmetic
-# alone would give: two readings each displaced by up to
-# SPLITTING_ERROR_BOUND_PER_STEP_SECOND * SHIPPED_STEP_S in opposite
-# directions, plus half a count of rounding each, could invert a gap of about
-# 6.6 counts. A degradation large enough to matter fails this well before it
-# reaches what the error bound alone permits.
-MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = 3.0
-
 
 @dataclass(frozen=True)
 class OperatingPoint:
@@ -110,9 +110,9 @@ class OperatingPoint:
     exactly the sliders that enter the governing equations. Circuit volume is
     not among them: it is a data-file parameter with no slider, and it scales
     the circuit equation alone rather than changing the coupling between
-    compartments, which is where the splitting error lives. PL-GYH2 carries
-    the question of whether it should be a control at all, and what range it
-    would need if it became one.
+    compartments, which is where a wrong transfer rate would show. PL-GYH2
+    carries the question of whether it should be a control at all, and what
+    range it would need if it became one.
     """
 
     delivered_fraction: float
@@ -155,15 +155,24 @@ def _max_dial(agent_id: str) -> float:
 
 
 def _envelope_corner(agent_id: str) -> OperatingPoint:
-    """The corner of the settings envelope, where the split is worst.
+    """The corner of the settings envelope, where the shipped step's own error is worst.
 
     Established by sweeping all four axes rather than assumed: fresh gas flow
-    and alveolar ventilation both increase the coefficient monotonically to
+    and alveolar ventilation both increase the disagreement monotonically to
     their slider maxima; cardiac output has an interior *minimum* near
     5 L/min and rises toward both ends, with the upper end the larger; and the
     equations are linear in the delivered fraction, so the agent's own
     vaporizer maximum is its worst dial. The measurements are recorded in
     `docs/MODEL.md` § "Independent-solution test".
+
+    The sweep was run while the operator split shipped, and the corner it
+    found is still the right one under the exact step, for a different
+    reason: measured against a converged oracle (RK4 at 0.0015625 s), the
+    shipped step's own worst residual anywhere in `ALL_GATE_TRAJECTORIES` is
+    1.5626e-14 in the desflurane vessel-rich fraction at 567.5 s, here. What
+    it is no longer is the worst number this module *reports* — that is the
+    ventilator start, where most of what is measured is the oracle's own
+    truncation rather than the shipped step's error (`ORACLE_STEP_S`).
 
     Monotonicity is measured, not proved. A change to the governing equations
     could move the maximum off this corner, which is why the sweep is worth
@@ -218,14 +227,23 @@ def _ventilator_start(agent_id: str) -> tuple[Phase, ...]:
 def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
     """Fill circuit and lungs with no circulation, then restore it and dial off.
 
-    This is the worst trajectory the four sliders can produce, and it is worst
-    for a reason that is structural rather than clinical: holding cardiac
-    output at zero lets circuit and alveoli saturate at the dial setting while
-    every blood and tissue compartment stays empty, which is the furthest apart
-    the six states can be driven. Turning perfusion on and the vaporizer off in
+    This is the most violent trajectory the four sliders can produce, for a
+    reason that is structural rather than clinical: holding cardiac output at
+    zero lets circuit and alveoli saturate at the dial setting while every
+    blood and tissue compartment stays empty, which is the furthest apart the
+    six states can be driven. Turning perfusion on and the vaporizer off in
     the same move then makes every compartment's equilibrium the opposite of
-    where it sits, so all six transients run at once and the split is under the
-    most strain it can be put under.
+    where it sits, so all six transients run at once.
+
+    Under the operator split it was also the trajectory that measured worst,
+    which is why it was added. It no longer is: the exact step's disagreement
+    with the oracle peaks on `_ventilator_start` instead — 7.747e-13 against
+    this scenario's 2.693e-13 for desflurane, 2.9 times — because what a
+    trajectory that turns now measures is mostly how hard the *oracle* is
+    working through the transient, not how hard the shipped step is. The
+    scenario is kept because it is still the widest spread of initial states
+    the interface can set up, and because it is the only gate trajectory that
+    reaches a floor rather than a maximum on any control.
 
     Zero cardiac output is a supported input, decided and recorded rather than
     inherited: `docs/MODEL.md` § "Supported input ranges" gives the reasons,
@@ -235,12 +253,13 @@ def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
     tolerated at its boundary.
 
     The gate does not rest on it alone even so: `_ventilator_start` above
-    reaches 1.52e-3 s^-1 without it, two thirds of this scenario's 2.29e-3
-    s^-1, so a later decision to floor the slider would leave a gate that
-    still means something while the bound was re-measured.
+    needs no zero-perfusion phase and measures worse, so a later decision to
+    floor the slider above zero would leave a gate that still means something
+    while this trajectory was replaced.
 
     Ten minutes of loading is enough to saturate: extending it to twenty
-    changes the measured coefficient by 4e-5 relative.
+    changed the measured coefficient by 4e-5 relative when that was the
+    quantity being measured.
     """
 
     return (
@@ -268,9 +287,10 @@ def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
 def _ordinary_use(agent_id: str) -> tuple[Phase, ...]:
     """The settings a run starts at, held: 1 MAC and the reference adult's own flows.
 
-    The gate's other trajectories are chosen for where the split is worst.
-    This one is chosen for where a reader actually is, so that a claim about
-    what the interface displays is not established only at its extremes.
+    The gate's other trajectories are chosen for where the disagreement is
+    worst. This one is chosen for where a reader actually is, so that a claim
+    about what the interface displays is not established only at its
+    extremes.
     """
 
     patient = load_reference_adult_parameters()
@@ -308,24 +328,30 @@ def _held_default_settings(agent_id: str) -> tuple[Phase, ...]:
 #
 #   - The worst is always the first transition after the loading phase
 #     saturates. Repeating the cycle three or six times does not raise the
-#     peak at all, and shortening the phases lowers it, so the coefficient is
-#     bounded rather than accumulating over a run.
+#     peak at all, and shortening the phases lowers it, so the disagreement is
+#     bounded rather than accumulating over a run. Re-measured under the exact
+#     step this still holds and holds more sharply: on the ventilator start
+#     the running maximum at 60 s, 600 s, 1800 s and 3600 s is the same
+#     number, reached at about 306 s and never approached again.
 #   - Inserting a third phase between the two never beat the pair; the best
 #     middle phases were the ones that simply held the loading corner longer.
 #   - Every axis is monotone toward the corner used, except cardiac output in
 #     the loading phase, which is worst at zero — the opposite end from the
 #     constant-setting corner, where it is worst at the maximum.
 #
-# Monotonicity is measured, not proved, so a change to the governing
-# equations could move the maximum off these trajectories and the sweep is
-# worth re-running rather than trusting.
+# The sweep was run while the split shipped and its ordering of the two
+# scenarios has since reversed (see `_unperfused_load_then_dial_off`), so what
+# it establishes now is that these two bracket what a turning trajectory does,
+# not which of them is the extreme. Monotonicity is measured, not proved, so a
+# change to the governing equations could move the maximum off these
+# trajectories and the sweep is worth re-running rather than trusting.
 SETTING_CHANGE_SCENARIOS = (
     ("ventilator start", _ventilator_start),
     ("unperfused load then dial off", _unperfused_load_then_dial_off),
 )
 
 # Every trajectory this module drives, for the checks that must hold on all of
-# them rather than only where the split is worst.
+# them rather than only where the disagreement is worst.
 ALL_GATE_TRAJECTORIES = (
     ("ordinary use", _ordinary_use),
     ("reference point, held", _held_default_settings),
@@ -335,82 +361,327 @@ ALL_GATE_TRAJECTORIES = (
 
 
 # Long enough to contain the worst disagreement anywhere in the envelope: at
-# the corner it occurs at about 85 s, during the wash-in transient, and the
-# measured coefficient is unchanged whether the run stops at 600 s, 1800 s or
-# 3600 s. The envelope gate therefore runs to 600 s and takes the maximum over
+# the corner it occurs early in the wash-in transient — 5.4 s for isoflurane,
+# 6.6 s for sevoflurane, 7.2 s for desflurane — and the running maximum is
+# unchanged whether the run stops at 60 s, 600 s, 1800 s or 3600 s, to every
+# digit. The trajectory gates therefore run to 600 s and take the maximum over
 # the whole trajectory rather than sampling endpoints.
+#
+# Held *default* settings are the exception and are why `HORIZONS_S` still has
+# a 3600 s entry: there nothing transient is happening, the residual is
+# rounding accumulating with the step count, and it keeps growing for the
+# whole hour. Taking a maximum over 600 s cannot see that; only a longer run
+# can, which is what `test_the_shipped_step_reaches_the_pinned_reference_horizons`
+# is for.
 ENVELOPE_HORIZON_S = 600.0
 
 # The step the interface runs at (`app.simulation_view.SIMULATION_STEP_S`),
 # restated rather than imported so that this reference test stays
 # independent of the application layer.
 #
-# `test_envelope_limits_match_the_interface` checks the restatement, for the
-# same reason it checks the slider limits: every measured figure in
-# docs/MODEL.md - the splitting coefficient, the displayed resolution it
-# justifies, and the applicability domain `MAXIMUM_SIMULATION_STEP_S`
-# declares - is that error at this step, so a shipped step that moved while
-# this one did not would leave all of them quietly describing a run nobody
-# takes. Until PL-VP7N the step was restated here without that check.
+# `test_displayed_resolution_and_shipped_step_match_the_interface` checks the
+# restatement, for the same reason it checks the slider limits, but not for
+# the reason it used to. It used to say that every measured figure here was a
+# first-order coefficient multiplied by this step, so that a moved step
+# rescaled all of them. That was true of the operator split and is not true of
+# the exact propagator, which solves the interval exactly however it is
+# subdivided and has no coefficient to multiply (`PL-X9KD`).
+#
+# The step still has to be checked, for two reasons that survive:
+#
+#   - What this module measures is accumulated floating-point rounding, and
+#     rounding accumulates with the *number* of steps rather than with their
+#     size. A run of an hour is 36 000 roundings at this step and 144 000 at
+#     0.025 s, and the measured residual over held default settings duly
+#     grows: 6.96e-15, 2.72e-14, 4.997e-14 for sevoflurane at 0.1 s, 0.05 s
+#     and 0.025 s. That is what `HELD_RUN_ROUNDING_BOUND` measures, and it is
+#     the shipped step's own. It is *not* what the trajectory gates report:
+#     on the transients that set their worst case, 86% to 99.8% of the figure
+#     is the oracle's own truncation rather than the shipped step's, which
+#     `ORACLE_STEP_S` decomposes.
+#   - The step is when a setting change takes effect, so it is what the phase
+#     boundaries of every trajectory here mean. Two of the five trajectories
+#     turn, and a shipped step that moved while this one did not would move
+#     those turns off the instants these measurements were taken at.
+#
+# What is *not* a reason any more: `core.uptake_system.MAXIMUM_SIMULATION_STEP_S`
+# is not derived from anything measured here. `docs/MODEL.md` § "Supported
+# simulation step" records its old derivation as void and the value as carried
+# forward pending `PL-X9KD`. Until PL-VP7N the step was restated here without
+# any check at all.
 SHIPPED_STEP_S = 0.1
 
-# The oracle's own step. RK4 is fourth order and this system is smooth and
-# slow, so its truncation error here is already at the double-precision
-# floor: measured against an RK4 run at 0.005 s, a 0.05 s run differs by
-# 2.6e-16 across all six states, which is ten orders of magnitude below the
-# splitting error under test. Deliberately not 0.1 s, so that agreement can
-# never be an artifact of the two solvers sharing a step size.
+# The oracle's own step. Deliberately not 0.1 s, so that agreement can never
+# be an artifact of the two solvers sharing a step size.
+#
+# **It is not converged during a fast transient, and that is now the larger
+# half of every number this module reports.** The 2.6e-16 figure this comment
+# used to quote — a 0.05 s RK4 run against a 0.005 s one, across all six
+# states — was measured at the *default* settings, where it is true and
+# remains true. It does not transfer to a trajectory driven at the envelope
+# corner or through a setting change, and the gates that matter are driven at
+# both. Decomposing the worst gate number three ways, at the instant and state
+# it occurs (desflurane, ventilator start, alveolar, 307.4 s), against a
+# converged oracle at 0.0015625 s:
+#
+#     what the gate reports  |shipped(0.1) - oracle(0.05)|   7.7470e-13
+#     the oracle's own error  |oracle(0.05) - converged|     7.7562e-13
+#     the shipped step's own  |shipped(0.1) - converged|     9.1593e-16
+#
+# so 99.88% of it is the oracle at that instant. Halving the oracle's step
+# divides that term by 15.94 and then 15.38, against 2^4 = 16: the signature of
+# RK4 truncation and not of rounding. Taken as maxima over the whole trajectory
+# rather than at one instant the shipped step's own term is larger — 9.7977e-15,
+# in vessel rich at 592.1 s — because the three maxima fall at different places.
+# The same decomposition on the envelope corner and the unperfused-load
+# trajectories gives the oracle 86% to 99.8%, lowest at the sevoflurane
+# envelope corner.
+#
+# **This makes the gates conservative rather than wrong.** What they bound is
+# the sum of both solutions' errors, of which the shipped step's own share is
+# at most 1.5626e-14 anywhere in `ALL_GATE_TRAJECTORIES` and 5.2260e-14 over a
+# 3600 s run. A returning method error still fails them, because any method
+# error is orders above either figure. What they cannot do is measure the
+# shipped step at better than the oracle's own resolution on a transient.
+#
+# **Refining it is not free, and it is not done here — but not because the
+# pinned states forbid it.** That was the reason first written down and it is
+# wrong: re-integrating the oracle at 0.0125 s and at 0.003125 s leaves all
+# nine `PINNED_REFERENCE_STATES` entries passing under this module's own
+# `rel=1e-9, abs=1e-15`, so refinement would not re-pin them. What it would
+# cost is `_oracle_step_for`'s "half the step under test" rule and
+# `ORACLE_STEP_S` moving together, or
+# `test_lockstep_oracle_step_matches_the_pinned_one` fails; and RK4 time rising
+# fourfold per halving on a file that already runs for the better part of a
+# minute. Refining to 0.0125 s is therefore a CI-cost decision rather than a
+# correctness one, and it is left open here rather than settled.
+# `test_the_shipped_step_reaches_the_pinned_reference_horizons` is the gate
+# that does not need this: held settings for an hour leave the oracle's own
+# error at 1.2e-15 to 2.1e-15, so there the residual is the shipped step's own.
 ORACLE_STEP_S = 0.05
 
-# The tolerance is a bound on the first-order splitting coefficient rather
-# than a number fitted to today's run: `docs/MODEL.md` documents the shipped
-# composition as a first-order (Lie/Godunov) split, so its error scales as
-# C·Δt, and the gate bounds C.
+# Retired here (`PL-X9KD`): `SPLITTING_ERROR_BOUND_PER_STEP_SECOND = 2.8e-3`,
+# `EXACT_SOLUTION_FLOOR = 1e-12`, and the four tests they served. Recorded
+# rather than simply deleted, because "the gate was loosened until it passed"
+# and "the gate measured a quantity that no longer exists" look identical in a
+# diff and are opposite things.
 #
-# The measured worst over the whole reachable domain is 2.29e-3 s^-1
-# (desflurane, in the alveolar fraction about 13 s after a setting change;
-# see `_unperfused_load_then_dial_off`). This bound allows 1.22 times that.
+# The bound was a first-order splitting coefficient C in an error C·Δt, set at
+# 1.22 times a measured worst of 2.29e-3 s^-1. The shipped step is now one
+# matrix exponential of the whole coupled system, so there is no C: re-expressed
+# as a coefficient, the worst residual reachable anywhere is 7.747e-12 s^-1, and
+# the bound sat 3.61e8 times above it. Its three consumers passed with 8.6 to
+# 9.7 orders of magnitude of slack, which is not a gate.
 #
-# The domain is *trajectories*, not operating points, and that is what the
-# previous bound got wrong. Held settings measure the split only where it
-# never turns; the four sliders turn, and turning one is what puts the split
-# under strain, because a setting change leaves the state far from the
-# equilibrium of the settings now in force. Driving the same envelope corner
-# through a setting change is 1.9 times worse than holding it — 2.29e-3
-# against 1.21e-3 — and an ordinary ventilator start at the corner already
-# reaches 1.52e-3, above the 1.5e-3 this bound replaces. That gate never
-# failed only because no run it drove ever changed a setting.
+# `EXACT_SOLUTION_FLOOR` was the escape hatch `test_shipped_split_error_is_first_order_in_step`
+# took when the error fell below what a split could produce. Measured, it fired
+# on all nine parametrizations, so that test asserted nothing — and worse than
+# nothing: with the early return removed, all nine would *fail*, because the
+# measured step ratios run 0.147 to 18.6 and the assertion required every one
+# of them in (1.9, 2.1). Its own margin to the floor was 1.29x on desflurane's
+# ventilator start, so a platform accumulating slightly more rounding would
+# have stopped taking the early return and started failing on a true property.
+# It cost about 25 s of the file's 56 s to do that.
 #
-# The margin is deliberately narrow, and narrower than the factor of two an
-# earlier revision of this bound used, because the two things a wider margin
-# would buy are both already covered:
+# What replaced each of them, and what needed a new gate rather than a
+# replacement:
 #
-#   - Parameter revision does not need headroom here. Any change to an agent
-#     or patient parameter moves the reference solution and fails
-#     `test_independent_solution_matches_pinned_reference_states`, which
-#     already forces the re-derivation and review a revision should have.
-#   - Domain variation does not need headroom either, now that the bound
-#     follows a measurement over the settings envelope *and* over setting
-#     changes rather than over one held operating point.
+#   - `test_shipped_split_is_bounded_across_the_settings_envelope` and
+#     `test_shipped_split_is_bounded_across_setting_changes` are reproduced
+#     exactly by `test_exact_step_matches_the_independent_solution_everywhere`
+#     — same trajectories, same driver, same measured residuals to every
+#     printed digit, at the same instants and in the same states — under a
+#     tolerance 6.45 times the worst rather than 3.61e8 times it. Pure
+#     deletion; nothing transfers because nothing was lost.
+#   - `test_shipped_split_error_is_first_order_in_step` varied the step over
+#     trajectories that *turn*, which its nearest replacement
+#     (`test_the_disagreement_does_not_shrink_with_the_step`) did not. That is
+#     a real property and it is not decorative: on a turning trajectory the
+#     coarsest step is the worst by 10 to 35 times, the opposite of what
+#     happens at held settings. The step test now runs the setting-change
+#     trajectories too, which is where that property went.
+#   - `test_shipped_split_matches_independent_solution` was the only test in
+#     the repository driving the shipped solver past 900 s. That is not
+#     cleanup-able: at 3600 s the residual is two to sixteen times its 600 s
+#     value, it sits at the endpoint rather than in a transient, and it lives
+#     in muscle — a compartment that is never the worst state on any of the
+#     five surviving trajectories. Retiring it as written would also have
+#     orphaned the 3600 s entries of `PINNED_REFERENCE_STATES`, leaving them
+#     constraining the oracle alone. It survives as
+#     `test_the_shipped_step_reaches_the_pinned_reference_horizons` under
+#     `HELD_RUN_ROUNDING_BOUND` below.
 #
-# What the margin does cover is float and platform variation, and a
-# composition change that stays first order. Keeping it narrow also keeps the
-# gate honest about displayed precision: at the shipped 0.1 s step this bound
-# is 2.8e-4 in fraction, i.e. 0.028 percentage points, against a displayed
-# resolution of 0.01. `docs/MODEL.md` § "Displayed precision" states that the
-# last displayed digit is uncertain by about two counts at the worst reachable
-# trajectory; a wider gate would let that claim quietly become false while
-# still passing.
+# What the shipped exact step is allowed to disagree with the oracle by, as an
+# absolute difference in any of the six fractions, anywhere on any gate
+# trajectory (`PL-GS5X`).
 #
-# `test_shipped_split_error_is_first_order_in_step` is what keeps the bound
-# meaningful: it confirms the error really does scale as C·Δt — across a
-# setting change as well as at held settings — so bounding C at one step size
-# bounds it at every supported step size.
-SPLITTING_ERROR_BOUND_PER_STEP_SECOND = 2.8e-3
+# **It is not the retired splitting bound rescaled, and it is a different kind
+# of quantity.** That bound was a first-order coefficient C in an error C·Δt:
+# a systematic method error, which shrinks as the step shrinks. The shipped
+# step is now one matrix exponential
+# of the whole coupled system, which is the *exact* solution of these
+# equations over the interval, so there is no method error left to have an
+# order — and the residual measured here is floating-point accumulation in two
+# independently written solutions, which grows with the *number* of steps and
+# therefore gets slightly worse as the step gets smaller. Bounding a
+# coefficient would state the opposite of what is true, so this bound is
+# absolute.
+#
+# **Derived, not inherited.** `PL-P0BB` refuses reuse of the ~2e-15 figure,
+# which described the old mechanism's accounting residual. Measured 2026-09-06
+# over every agent, every horizon in `HORIZONS_S`, and every trajectory in
+# `ALL_GATE_TRAJECTORIES`, taking the maximum over the whole trajectory rather
+# than at endpoints:
+#
+#     endpoint, default settings, 3600 s      5.2e-14  (isoflurane, muscle)
+#     ordinary use                            3.8e-15
+#     envelope corner, held                   1.9e-13  (desflurane, alveolar)
+#     unperfused load then dial off           3.2e-13  (isoflurane, alveolar)
+#     ventilator start                        7.7e-13  (desflurane, alveolar)
+#
+# The worst is 7.7e-13 and this bound allows 6.5 times it. Against the split
+# it replaced, whose worst over the same domain was 2.29e-4 at this step, the
+# exact step is eight orders of magnitude closer to the independent solution.
+#
+# **What that 6.5 is headroom over was misstated when this bound was set, and
+# the correction is worth having even though it does not move the value
+# (`PL-X9KD`).** The 7.7e-13 is not the shipped step's error. Decomposed
+# against a converged oracle it is 86% to 99.8% the oracle's own RK4
+# truncation at `ORACLE_STEP_S`, across the trajectories that set it — 99.8%
+# on the ventilator start that carries the worst figure, 86% at its lowest on
+# the sevoflurane envelope corner. Measured against a
+# converged oracle instead, the shipped step is inside 1.5626e-14 anywhere in
+# `ALL_GATE_TRAJECTORIES` and 5.2260e-14 over an hour, so this bound has 320x
+# and 95.7x over what it is nominally protecting. It is set where it is because
+# what the gate can *observe* is the sum of both solutions' errors, and 6.5x is
+# the honest margin on the observable.
+#
+# **The residual is rounding and not truncation, which is what makes an
+# absolute bound the right shape — but the evidence originally given for that
+# covered one trajectory only.** Refining the oracle's own step eightfold —
+# 0.05 s to 0.00625 s — leaves the residual unchanged to three figures at held
+# default settings (1.385e-14, 1.373e-14, 1.393e-14, 1.346e-14 for sevoflurane
+# at 3600 s; reproduced exactly). Held settings are the case where that is
+# true. The same refinement on the ventilator start drops the residual 68-fold,
+# from 7.7470e-13 to 1.1435e-14, and on the envelope corner 12-fold, because
+# there the oracle is not converged and the refinement is removing *its*
+# truncation. So the claim holds for the shipped step and is established by the
+# held-settings run and by the three-way decomposition above, not by refinement
+# on a trajectory that turns.
+#
+# **The margin is wider than the retired splitting bound's 1.22 and
+# deliberately so.** That bound constrained a systematic coefficient, which is
+# reproducible between machines. This one constrains accumulated rounding,
+# which is not: a different libm `exp`, or a compiler contracting a multiply
+# and an add into one FMA, moves the last bits of both solutions. Six and a
+# half times is still eight orders below the error of any method that is not
+# exact, so the gate still fails the moment method error returns — which is the
+# only thing it is here to catch.
+EXACT_STEP_ORACLE_TOLERANCE = 5e-12
 
-# Below this the split would no longer be first order because it would no
-# longer be a split — see `test_shipped_split_error_is_first_order_in_step`.
-EXACT_SOLUTION_FLOOR = 1e-12
+# What the shipped step alone is allowed to accumulate over a run at held
+# settings, as an absolute difference in any of the six fractions at the
+# horizon (`PL-X9KD`). Used by
+# `test_the_shipped_step_reaches_the_pinned_reference_horizons`.
+#
+# **Why this is a second constant rather than a reuse of the tolerance above.**
+# The trajectory gates measure the shipped step and the oracle together, and on
+# the transients that set their worst case the oracle is the larger term (see
+# `ORACLE_STEP_S`). Held default settings for an hour are the one place in this
+# module where that is not so: refining the oracle from 0.05 s to 0.00625 s
+# moves the number by under 3%, and the three-way decomposition gives the
+# oracle 2.1168e-15 against the shipped step's own 5.2260e-14. This is
+# therefore the only gate here whose bound can be derived from what the shipped
+# step itself does, and a bound derived from that should not be five times
+# looser than the arithmetic it is bounding just because a different gate,
+# measuring a different thing, needs the room.
+#
+# **The derivation.** Measured 2026-09-06 at the reference operating point,
+# endpoint of each horizon in `HORIZONS_S`, worst over the six fractions:
+#
+#                     60 s                600 s               3600 s
+#     sevoflurane     1.5543e-15 circuit  6.8279e-15 circuit  1.3850e-14 muscle
+#     isoflurane      2.6749e-15 circuit  1.3420e-14 circuit  5.1919e-14 muscle
+#     desflurane      7.2511e-16 circuit  2.9490e-15 circuit  4.8562e-14 muscle
+#
+# The worst is 5.1919e-14 and this bound allows 19.3 times it. The margin is
+# set from what the shipped step's own rounding path can be moved by, rather
+# than from that figure plus a guess: solving the identical 3600 s interval at
+# 0.05 s and at 0.025 s instead of 0.1 s — the same exact propagator over the
+# same interval, differently subdivided, so every difference is the shipped
+# side's own accumulation — moves the answer by up to 3.1675e-13, taking the
+# maximum over every pair of those three steps, all six fractions and all three
+# agents (desflurane worst; sevoflurane 1.3725e-13, isoflurane 2.2699e-13).
+# This bound clears that by 3.2 times, which is the room a different libm or a
+# contracted multiply-add needs. It does not clear a method error: the coarsest
+# supported step under any method with an order is orders above it.
+#
+# The subdivision spread is the larger of the two figures, and deliberately the
+# one the margin is taken over: a platform that rounds differently moves the
+# shipped solution by about as much as re-subdividing the interval does, and
+# nothing about the pinned oracle constrains that.
+#
+# Note what the growth signature is, because it is what the gate detects. The
+# residual grows with run length at a fixed step (nine- to sixty-sevenfold from
+# 60 s to 3600 s, by agent) and grows again as the step *shrinks*, and the
+# worst state migrates
+# from circuit to muscle as the slow compartment fills. That is rounding
+# accumulating once per step, not truncation. A residual that started shrinking
+# with the step would be method error returning, and
+# `test_the_disagreement_does_not_shrink_with_the_step` is what looks for it.
+HELD_RUN_ROUNDING_BOUND = 1e-12
+
+# How far apart two compartments may be while the shipped step still inverts
+# which of them is displayed as higher. The ordinal reading the interface
+# invites — the circuit leads the alveoli lead the tissues — is only misleading
+# if an inversion happens between two readouts a reader would see as separated,
+# so this bounds the gap at which one can occur rather than forbidding
+# inversions outright.
+#
+# **Derived from the absolute bound rather than fitted, which the previous
+# value was not.** It used to be 3.0 counts, set at 1.7 times a measured 1.73
+# counts under the operator split, with an arithmetic sanity check that was
+# itself wrong: it added "half a count of rounding each" on top of two
+# displacements. Rounding cannot contribute. `_displayed_percent` is monotone
+# non-decreasing — verified over 2 000 000 random ordered pairs and 18 009
+# pairs straddling exact display-count boundaries at ±3e-17 to ±5e-16, with
+# zero violations — so it can never produce an ordering opposite to the raw
+# one. The correct figure for that check was 5.6 counts, not 6.6.
+#
+# With monotonicity, the bound is a consequence rather than a measurement.
+# Write e = reference - shipped. An inversion of (left, right) needs
+# shipped[left] > shipped[right] and reference[left] < reference[right], and by
+# monotonicity both hold on the raw values too. The gap the test measures is
+# then
+#
+#     reference[right] - reference[left]
+#         = (shipped[right] - shipped[left]) + (e[right] - e[left])
+#         < e[right] - e[left]  <=  |e[right]| + |e[left]|
+#         <= 2 * EXACT_STEP_ORACLE_TOLERANCE
+#
+# because the first bracket is negative and every |e| is what the gate above
+# bounds. Converting to counts of the last displayed digit gives the expression
+# below: 1.0e-7 counts. Measured, the widest gap any inversion occupies is 0.0
+# — there are no inversions at all, over 1 485 000 pair comparisons — and the
+# largest pairwise differential |e[left] - e[right]| anywhere is 1.104e-12 in
+# fraction, 1.104e-8 counts, 9.1 times under this. An error-injection sweep
+# confirms the shape: displacing the states by ±ε produces a widest inverted
+# gap that approaches 2ε from below at every scale and never exceeds it.
+#
+# **What this test is for, now that the bound follows from the one above.** It
+# is no longer a second, independent bound on the solver: if the absolute gate
+# passes, this one cannot fail. What it still checks is the step from a state
+# to a displayed row — that `_displayed_percent` is monotone in practice on
+# real trajectories rather than only on random pairs, and that the display path
+# has not acquired a transformation that reorders. The gate keeps its
+# gap-threshold shape rather than asserting zero inversions, because crossings
+# really are sampled at gaps below the differential (the smallest nonzero true
+# gap seen is 2.354e-15 in fraction, below the 1.104e-12 differential), so an
+# inversion is arithmetically reachable there and a zero-inversion assertion
+# would be a platform coin-flip.
+MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
+    2.0 * EXACT_STEP_ORACLE_TOLERANCE * 100.0 * 10.0**CONCENTRATION_DISPLAY_DECIMALS
+)
 
 # Names this module is allowed to import from `anesthesia_sim`: the two
 # parameter loaders the oracle needs, the system under test, the module
@@ -690,35 +961,48 @@ def _oracle_step_for(shipped_step_s: float) -> float:
     """Half the step under test.
 
     Halving keeps the two solvers off a shared step size — agreement then
-    cannot be an artifact of them taking the same stride — while leaving the
-    oracle's own truncation error ten orders of magnitude below the splitting
-    error being measured. At the shipped 0.1 s step this is `ORACLE_STEP_S`,
-    so a trajectory driven here and a pinned reference state above are
-    integrated identically.
+    cannot be an artifact of them taking the same stride. At the shipped 0.1 s
+    step this is `ORACLE_STEP_S`, so a trajectory driven here and a pinned
+    reference state above are integrated identically, which is the coincidence
+    `test_lockstep_oracle_step_matches_the_pinned_one` keeps true.
+
+    This rule, not `EXACT_STEP_ORACLE_TOLERANCE`, is what would have to change
+    to make the trajectory gates measure the shipped step rather than the sum
+    of both solutions' errors. It is what pins the oracle to 0.05 s during a
+    transient it needs 0.0125 s to resolve, and `ORACLE_STEP_S` records what
+    that costs and why it is not changed here.
     """
 
     return shipped_step_s / 2.0
 
 
-def _worst_coefficient_over_phases(
+def _worst_error_over_phases(
     agent_id: str, phases: Sequence[Phase], shipped_step_s: float = SHIPPED_STEP_S
 ) -> tuple[float, float, str]:
-    """Return the largest splitting coefficient anywhere in the trajectory.
+    """Return the largest disagreement anywhere in the trajectory.
 
     Both solutions are driven through the same phase list, and both apply a
     phase's settings at the same instant: the shipped system by the setters
     the interface calls, the oracle by rebuilding its derivative. What is
-    compared is therefore the split alone, not two different piecewise
+    compared is therefore the two solvers alone, not two different piecewise
     schedules.
 
     Sampling endpoints is not enough here, and neither is one held setting.
-    The worst disagreement is always inside a transient — at held settings it
-    is the wash-in one, at about 85 s; across a setting change it is the one
-    the change itself starts, about 13 s later. Stepping the two solutions in
-    lockstep and taking the maximum costs nothing extra, since the RK4
-    integration is the expense and it happens either way.
+    Except at held default settings, the worst disagreement is always inside a
+    transient — the wash-in one, or the one a setting change itself starts.
+    Stepping the two solutions in lockstep and taking the maximum costs nothing
+    extra, since the RK4 integration is the expense and it happens either way.
 
-    Returns (coefficient, simulated time of the worst, state label).
+    Until `PL-X9KD` this returned `worst_error / shipped_step_s`, and a second
+    wrapper multiplied the step back in for the callers that wanted the
+    difference. That division was the first-order coefficient C in an error
+    C·Δt, which the exact step does not have; dividing its residual by the step
+    produces a number varying with the step for no physical reason. The round
+    trip was also not lossless — two of five sampled residuals came back a unit
+    in the last place adrift — so with the last caller wanting C retired, the
+    division goes with it.
+
+    Returns (absolute error, simulated time of the worst, state label).
     """
 
     system = _empty_shipped_system(agent_id)
@@ -749,7 +1033,7 @@ def _worst_coefficient_over_phases(
                 worst_time_s = step_index * shipped_step_s
                 worst_label = label
 
-    return worst_error / shipped_step_s, worst_time_s, worst_label
+    return worst_error, worst_time_s, worst_label
 
 
 def _worst_state_error(left: tuple[float, ...], right: tuple[float, ...]) -> tuple[float, str]:
@@ -767,9 +1051,14 @@ def test_independent_solution_matches_pinned_reference_states(
 ) -> None:
     """The oracle and its parameter inputs are both unchanged.
 
-    This is also what lets the splitting bound below keep a narrow margin:
-    any parameter revision fails here first and must be re-derived and
-    reviewed, so the bound does not have to leave room for one.
+    This is also what lets the bounds below keep narrow margins: any parameter
+    revision fails here first and must be re-derived and reviewed, so no bound
+    has to leave room for one.
+
+    These states are the RK4 oracle's own solution, not the shipped solver's,
+    and that is what makes this a regression gate rather than a self-comparison
+    — re-pinning them from the shipped solver would destroy it. It is also why
+    `ORACLE_STEP_S` cannot be refined without re-deriving all nine of them.
     """
 
     assert _reference_state(agent_id, duration_s, _default_operating_point()) == pytest.approx(
@@ -779,11 +1068,36 @@ def test_independent_solution_matches_pinned_reference_states(
 
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
 @pytest.mark.parametrize("duration_s", HORIZONS_S)
-def test_shipped_split_matches_independent_solution(agent_id: str, duration_s: float) -> None:
-    """Every state the interface displays is within the splitting bound.
+def test_the_shipped_step_reaches_the_pinned_reference_horizons(
+    agent_id: str, duration_s: float
+) -> None:
+    """The shipped step still lands where the pinned states say it should.
 
     This is the check mass balance cannot make: a wrong transfer rate leaves
     the accounting residual untouched but moves these six numbers.
+
+    It is also the only gate here that drives the shipped solver for a full
+    hour, and the only one whose measured residual is the shipped step's own at
+    every horizon it drives. The trajectory gate's held-settings
+    parametrizations are shipped-dominated too — the oracle contributes 17.7%
+    of the "reference point, held" figure — but the three transients that set
+    that gate's tolerance are not (`ORACLE_STEP_S` decomposes the difference).
+    Both properties follow from holding settings: nothing transient
+    is happening, so the oracle is converged and the disagreement is rounding
+    accumulated once per step. It therefore keeps growing for as long as the
+    run does — two to sixteen times its 600 s value by 3600 s — and none of the
+    trajectory gates, which top out at 900 s and take a maximum over a
+    transient, can see it. By the endpoint the worst state is muscle, which is
+    never the worst state on any of the five gate trajectories.
+
+    Sampling the endpoint rather than the whole run is right for the same
+    reason: at 3600 s the maximum *is* the endpoint.
+
+    Retiring this test's predecessor without replacing it would also have
+    orphaned the 3600 s entries of `PINNED_REFERENCE_STATES`. The 60 s and
+    600 s entries stay anchored to the shipped solver through the
+    "reference point, held" trajectory, whose inline oracle is bit-identical
+    to `_reference_state` at those horizons; nothing else reaches 3600 s.
     """
 
     point = _default_operating_point()
@@ -791,80 +1105,114 @@ def test_shipped_split_matches_independent_solution(agent_id: str, duration_s: f
         _run_shipped(agent_id, duration_s, SHIPPED_STEP_S, point),
         _reference_state(agent_id, duration_s, point),
     )
-    bound = SPLITTING_ERROR_BOUND_PER_STEP_SECOND * SHIPPED_STEP_S
 
-    assert error <= bound, (
+    assert error <= HELD_RUN_ROUNDING_BOUND, (
         f"{agent_id} at {duration_s:.0f} s diverges from the independent "
         f"solution by {error:.3e} in the {state_label} fraction, above the "
-        f"first-order splitting bound of {bound:.3e} at Δt = {SHIPPED_STEP_S} s"
-    )
-
-
-@pytest.mark.parametrize("agent_id", AGENT_IDS)
-def test_shipped_split_is_bounded_across_the_settings_envelope(agent_id: str) -> None:
-    """The bound holds at the corner of the envelope, not just at defaults.
-
-    This is the check PL-042 added, and the reason it exists is that the gate
-    above is not one: it runs at a single operating point, and the split is
-    about five times worse at settings three sliders can reach. A release
-    gate narrower than the reachable input domain is a verification claim
-    broader than its evidence.
-
-    The maximum is taken over the whole trajectory rather than at the
-    endpoint, because the worst disagreement is in the wash-in transient.
-    """
-
-    coefficient, at_s, state_label = _worst_coefficient_over_phases(
-        agent_id, (Phase(ENVELOPE_HORIZON_S, _envelope_corner(agent_id)),)
-    )
-
-    assert coefficient <= SPLITTING_ERROR_BOUND_PER_STEP_SECOND, (
-        f"{agent_id} at the envelope corner reaches a splitting coefficient "
-        f"of {coefficient:.3e} s^-1 in the {state_label} fraction at "
-        f"{at_s:.1f} s, above the bound of "
-        f"{SPLITTING_ERROR_BOUND_PER_STEP_SECOND:.3e} s^-1. If this is a "
-        f"deliberate change, docs/MODEL.md's 'Independent-solution test' and "
-        f"'Displayed precision' sections both quote the measured value and "
-        f"must be re-derived with it."
+        f"{HELD_RUN_ROUNDING_BOUND:.3e} allowed. At held settings the oracle "
+        f"is converged at {ORACLE_STEP_S} s, so this residual is the shipped "
+        "step's own accumulated rounding and not the oracle's truncation: "
+        "exceeding it means the shipped step has stopped solving these "
+        "equations exactly, or has started accumulating rounding faster than "
+        "once per step."
     )
 
 
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
 @pytest.mark.parametrize(
-    ("scenario_name", "build_phases"),
-    SETTING_CHANGE_SCENARIOS,
-    ids=[name for name, _ in SETTING_CHANGE_SCENARIOS],
+    ("trajectory_name", "build_phases"),
+    ALL_GATE_TRAJECTORIES,
+    ids=[name for name, _ in ALL_GATE_TRAJECTORIES],
 )
-def test_shipped_split_is_bounded_across_setting_changes(
-    agent_id: str, scenario_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
+def test_exact_step_matches_the_independent_solution_everywhere(
+    agent_id: str, trajectory_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
 ) -> None:
-    """The bound holds on trajectories that turn, not only on held settings.
+    """The shipped step is the solution, not an approximation of it (`PL-GS5X`).
 
-    The two gates above each hold one `OperatingPoint` for a whole run, so
-    between them they cover only the runs in which nobody ever moves a
-    slider. That is not what the application produces: the settings are four
-    sliders, and moving one is precisely when the split is under strain,
-    because the state is then far from the equilibrium of the settings now in
-    force. Measured across a setting change the coefficient is 1.9 times its
-    held-setting worst, which is more than the margin the previous bound
-    carried — the gate could not see the case it was built to catch.
+    This replaced two gates that bounded a first-order splitting coefficient
+    over the same trajectories, at a bound eight orders of magnitude looser
+    than what the exact step achieves. They still passed and still said
+    something true, but a gate that loose cannot tell an exact propagator from
+    a merely good approximation of one — so it could not detect the regression
+    that matters here, which is any return of method error at all. `PL-X9KD`
+    retired them once this had been measured to reproduce them exactly: same
+    trajectories, same driver, same residuals to every printed digit, at the
+    same instants and in the same states.
 
-    This is the settings-envelope check one dimension over: the envelope
-    widened *where* the run sits, this widens *what the run does*.
+    Every agent and every gate trajectory, with the maximum taken over the
+    whole run rather than at its endpoint, because outside held default
+    settings the worst disagreement is always inside a transient. A full hour
+    of held settings is the case this cannot see, and
+    `test_the_shipped_step_reaches_the_pinned_reference_horizons` is what
+    covers it.
     """
 
-    coefficient, at_s, state_label = _worst_coefficient_over_phases(
-        agent_id, build_phases(agent_id)
+    error, at_s, state_label = _worst_error_over_phases(agent_id, build_phases(agent_id))
+
+    assert error <= EXACT_STEP_ORACLE_TOLERANCE, (
+        f"{agent_id} on the '{trajectory_name}' trajectory diverges from the "
+        f"independent solution by {error:.3e} in the {state_label} fraction at "
+        f"{at_s:.1f} s, above the exact step's tolerance of "
+        f"{EXACT_STEP_ORACLE_TOLERANCE:.3e}. That tolerance bounds accumulated "
+        "rounding between two solutions that agree exactly in exact "
+        "arithmetic, so exceeding it means the shipped step has stopped being "
+        "an exact solution of the governing equations rather than that it has "
+        "become slightly less accurate."
     )
 
-    assert coefficient <= SPLITTING_ERROR_BOUND_PER_STEP_SECOND, (
-        f"{agent_id} on the '{scenario_name}' trajectory reaches a splitting "
-        f"coefficient of {coefficient:.3e} s^-1 in the {state_label} fraction "
-        f"at {at_s:.1f} s, above the bound of "
-        f"{SPLITTING_ERROR_BOUND_PER_STEP_SECOND:.3e} s^-1. If this is a "
-        f"deliberate change, docs/MODEL.md's 'Independent-solution test' and "
-        f"'Displayed precision' sections both quote the measured value and "
-        f"must be re-derived with it."
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+@pytest.mark.parametrize(
+    ("trajectory_name", "build_phases"),
+    (("reference point, held", _held_default_settings), *SETTING_CHANGE_SCENARIOS),
+    ids=["reference point, held", *(name for name, _ in SETTING_CHANGE_SCENARIOS)],
+)
+def test_the_disagreement_does_not_shrink_with_the_step(
+    agent_id: str, trajectory_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
+) -> None:
+    """The tolerance above holds at every supported step, not just the shipped one.
+
+    This is what the retired `test_shipped_split_error_is_first_order_in_step`
+    did for the split, inverted. There the claim was that halving the step
+    halved the error, so bounding a coefficient at one step bounded it at all
+    of them. Here the claim is that the step size does not enter: an exact
+    propagator solves the same interval exactly however it is subdivided, so
+    the same absolute bound must hold at 0.1 s, 0.05 s and 0.025 s alike. A
+    method error of any order fails this by being visibly larger at the
+    coarsest step and shrinking as the step shrinks.
+
+    **The setting-change trajectories are here because the retired test ran
+    them and this one did not (`PL-X9KD`).** That was the one property of the
+    retired test that did not transfer, and it is not decorative: which step is
+    worst depends on the trajectory, in opposite directions.
+
+      - At held settings the *finest* step is the worst, because it takes four
+        times as many steps and accumulates four times as much rounding:
+        6.96e-15, 2.72e-14, 4.997e-14 for sevoflurane at 0.1, 0.05, 0.025 s.
+      - On a trajectory that turns the *coarsest* is the worst, by 10 to 35
+        times: 7.747e-13, 5.954e-14, 5.704e-14 for desflurane's ventilator
+        start. That is not the shipped step degrading at 0.1 s. The oracle runs
+        at half the step under test (`_oracle_step_for`), so at the coarsest
+        pairing it is running at 0.05 s through a transient it needs 0.0125 s
+        to resolve, and what falls away as the step shrinks is the oracle's own
+        truncation.
+
+    So the only claim this test makes is that no supported step exceeds the
+    tolerance. It deliberately does not assert a direction: a version of it
+    that did would have been true on one trajectory and false on the other two.
+    """
+
+    phases = build_phases(agent_id)
+    errors = {
+        step_s: _worst_error_over_phases(agent_id, phases, step_s)[0]
+        for step_s in (0.1, 0.05, 0.025)
+    }
+
+    assert max(errors.values()) <= EXACT_STEP_ORACLE_TOLERANCE, (
+        f"{agent_id} on the '{trajectory_name}' trajectory exceeds the exact "
+        f"step's tolerance of {EXACT_STEP_ORACLE_TOLERANCE:.3e} at some "
+        "supported step: "
+        + ", ".join(f"{step_s} s -> {error:.3e}" for step_s, error in errors.items())
     )
 
 
@@ -932,8 +1280,11 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
     The displayed resolution, because
     `test_displayed_ordering_reverses_only_at_a_crossing` measures a property
     of the rounded values and adding a decimal would change what it proves
-    without changing anything it reads. The shipped step, because everything
-    this module measures is a coefficient multiplied by it.
+    without changing anything it reads. The shipped step, because what this
+    module measures is rounding accumulated once per step and because the step
+    is when a setting change takes effect — `SHIPPED_STEP_S` carries both, and
+    records that neither is the coefficient-times-step reason this docstring
+    used to give.
 
     The delivered-concentration floor is here rather than with the supported
     ranges above because it is the only control the interface states in
@@ -983,21 +1334,32 @@ def _display_ordering(displayed: tuple[float, ...], left: int, right: int) -> in
 def test_displayed_ordering_reverses_only_at_a_crossing(
     agent_id: str, trajectory_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
 ) -> None:
-    """The split cannot invert a gradient a reader would see as a gradient.
+    """No reader is shown two compartments in an order the model does not have.
 
-    The bound above is on the absolute error in one readout, which is not the
-    same claim as this one. The six readouts sit in one row to be read
-    *ordinally* — the circuit leads the alveoli lead the tissues — and an
-    ordinal reading is corrupted only if the error flips which of two
-    compartments is displayed as higher. Because the error's sign is opposite
-    at the two ends of the transfer chain, a difference carries the sum of two
-    displacements rather than their cancellation, so this does not follow from
-    the absolute bound and is measured separately.
+    The six readouts sit in one row to be read *ordinally* — the circuit leads
+    the alveoli lead the tissues — and an ordinal reading is corrupted only if
+    the error flips which of two compartments is displayed as higher. An
+    inversion while two compartments are crossing is not a defect: their true
+    gap is then below what the display resolves, and the ordering is genuinely
+    ambiguous. An inversion at a gap a reader would call a gradient is, and
+    that is what this forbids.
 
-    An inversion while two compartments are crossing is not a defect: their
-    true gap is then below what the display resolves, and the ordering is
-    genuinely ambiguous. An inversion at a gap a reader would call a gradient
-    is, and that is what this forbids.
+    **What this measures, now that its threshold is derived rather than
+    fitted.** `MAX_INVERTED_GAP_IN_DISPLAY_COUNTS` is a consequence of
+    `EXACT_STEP_ORACLE_TOLERANCE` plus the monotonicity of
+    `_displayed_percent`, so a failure here that was not also a failure of
+    `test_exact_step_matches_the_independent_solution_everywhere` would mean
+    the monotonicity assumption had broken — a display path that reorders, or
+    a rounding rule that does. That is the part of the chain the absolute gate
+    cannot see, and it is on the safety-critical side of the model-to-readout
+    boundary. The derivation is written out where the constant is defined.
+
+    Measured, there are no inversions at all: zero over 1 485 000 pair
+    comparisons. The test keeps its gap-threshold shape rather than asserting
+    that, because crossings really are sampled at gaps below the arithmetic —
+    the smallest nonzero true gap seen is 2.354e-15 in fraction, below the
+    1.104e-12 worst pairwise differential — so an inversion is reachable there
+    and a zero-inversion assertion would turn a different libm into a failure.
 
     `docs/MODEL.md` § "Displayed precision" cites this test as the reason the
     interface marks nothing about comparing two compartments.
@@ -1047,64 +1409,22 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
                         )
 
     widest_in_counts = widest_inverted_gap_percent / resolution_percent
+    # `worst` is None only when no inversion was found, and the threshold is
+    # positive, so the fallback below can never reach a failure message.
+    at_s, left_label, right_label = worst if worst is not None else (0.0, "?", "?")
 
     assert widest_in_counts <= MAX_INVERTED_GAP_IN_DISPLAY_COUNTS, (
         f"{agent_id} on the '{trajectory_name}' trajectory displays "
-        f"{worst[1] if worst else '?'} and {worst[2] if worst else '?'} in the "
-        f"wrong order at {worst[0] if worst else 0.0:.1f} s while their true "
-        f"gap is {widest_in_counts:.2f} counts of the last displayed digit, "
-        f"above the {MAX_INVERTED_GAP_IN_DISPLAY_COUNTS:.1f} allowed. The "
-        f"split is inverting a gradient rather than resolving a crossing; "
-        f"docs/MODEL.md's 'Displayed precision' cites this test as the reason "
-        f"the interface marks nothing about comparing two compartments."
-    )
-
-
-@pytest.mark.parametrize("agent_id", AGENT_IDS)
-@pytest.mark.parametrize(
-    ("trajectory_name", "build_phases"),
-    (("held settings", _held_default_settings), *SETTING_CHANGE_SCENARIOS),
-    ids=["held settings", *(name for name, _ in SETTING_CHANGE_SCENARIOS)],
-)
-def test_shipped_split_error_is_first_order_in_step(
-    agent_id: str, trajectory_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
-) -> None:
-    """Halving the step halves the error, as a first-order split requires.
-
-    Without this, the bounds above would constrain the error at one step size
-    only. With it, each bound is a statement about the coefficient C in C·Δt,
-    and therefore about every supported step size.
-
-    A setting change is a discontinuity in the coefficients of the governing
-    equations, which is the one thing that could plausibly cost the split its
-    order — so the trajectories that turn are checked here as well as at held
-    settings, and the coefficient measured across a change is flat to four
-    figures from 0.025 s up to 1.6 s.
-    """
-
-    phases = build_phases(agent_id)
-    # The driver reports C = error / Δt; the claim under test is about the
-    # error itself, so multiply the step back in rather than restating the
-    # ratio in terms of C.
-    errors = [
-        _worst_coefficient_over_phases(agent_id, phases, step_s)[0] * step_s
-        for step_s in (0.1, 0.05, 0.025)
-    ]
-
-    if max(errors) < EXACT_SOLUTION_FLOOR:
-        # The composition has been replaced by something exact for this
-        # linear system (a matrix exponential, say). There is then no
-        # first-order error left to measure, and no order to confirm.
-        return
-
-    ratios = [errors[index] / errors[index + 1] for index in range(len(errors) - 1)]
-
-    assert all(1.9 < ratio < 2.1 for ratio in ratios), (
-        f"{agent_id} splitting error on the '{trajectory_name}' trajectory "
-        "does not halve with the step: errors "
-        + ", ".join(f"{error:.3e}" for error in errors)
-        + " give ratios "
-        + ", ".join(f"{ratio:.3f}" for ratio in ratios)
+        f"{left_label} and {right_label} in the wrong order at {at_s:.1f} s "
+        f"while their true gap is {widest_in_counts:.3e} counts of the last "
+        f"displayed digit, above the "
+        f"{MAX_INVERTED_GAP_IN_DISPLAY_COUNTS:.3e} allowed. The shipped step "
+        f"is inverting a gradient rather than resolving a crossing. That gap "
+        f"exceeds twice the absolute tolerance the neighbouring gate enforces, "
+        f"so either that gate is also failing or the display path has stopped "
+        f"being monotone; docs/MODEL.md's 'Displayed precision' cites this "
+        f"test as the reason the interface marks nothing about comparing two "
+        f"compartments."
     )
 
 

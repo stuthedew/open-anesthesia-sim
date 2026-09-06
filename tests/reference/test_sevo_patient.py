@@ -13,8 +13,8 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
 # The steps docs/MODEL.md § "Step-refinement test" specifies, coarsest first.
-# All three are inside the operator split's applicability domain: the first is
-# `MAXIMUM_SIMULATION_STEP_S` itself, and refinement only moves inward.
+# All three are supported steps: the first is `MAXIMUM_SIMULATION_STEP_S`
+# itself, and refinement only moves inward.
 STEP_REFINEMENT_STEPS_S = (0.1, 0.05, 0.025)
 STEP_REFINEMENT_HORIZON_S = 60.0
 
@@ -24,6 +24,17 @@ STEP_REFINEMENT_HORIZON_S = 60.0
 # relative in the alveolar fraction, an order of magnitude inside this.
 STEP_REFINEMENT_RELATIVE_TOLERANCE = 5e-3
 STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
+
+# How far two supported steps may leave a fraction apart after 60 s.
+#
+# The exact step puts this at the floating-point floor rather than at a
+# method error: measured 2026-09-06, the worst successive-halving gap across
+# all four reported values is 8.1e-16 in the alveolar fraction, and the two
+# gaps for a given value sit within a factor of two of each other rather than
+# halving. This bound allows about twelve times the worst measured, which is
+# room for another machine's rounding and still four orders below the 1.4e-11
+# a genuinely first-order method would show at these steps.
+STEP_REFINEMENT_SETTLED_GAP = 1e-14
 
 
 def _run_for(system: AgentUptakeSystem, duration_s: float, simulation_step_s: float) -> None:
@@ -167,9 +178,21 @@ def test_step_refinement_converges() -> None:
     """The three steps docs/MODEL.md specifies, not the two this compared.
 
     Two steps can only show that a pair of runs agree. Three show the thing
-    the section is named for: that refining the step moves the solution
-    *toward* a limit rather than merely somewhere else nearby, which two
-    points cannot distinguish from coincidence.
+    the section is named for: that the solution the supported steps produce
+    is one solution rather than three nearby ones, which two points cannot
+    distinguish from coincidence.
+
+    **What the third point tests changed with `PL-GS5X`, and it is now a
+    stronger statement.** Under the operator split this asserted that the
+    gaps *shrank* — a first-order error halving with the step, converging to
+    a limit none of the three steps reached. The step is now the exact
+    solution of the governing equations, so every one of the three is already
+    at that limit and there is no convergence left to observe: the gaps sit
+    at the floating-point floor, an order of magnitude below the smallest
+    difference the split's finest step could reach. Asserting they still
+    shrink would fail correct arithmetic, and asserting nothing would give
+    the gate up. What is asserted instead is that the step does not enter the
+    answer at all.
 
     Each comparison is between successive halvings rather than against the
     finest step, which is the ordinary grid-refinement idiom and is also
@@ -207,8 +230,10 @@ def test_step_refinement_converges() -> None:
             for coarse_step_s, fine_step_s in successive
         ]
 
-        assert gaps[0] > gaps[1] > 0.0, (
-            f"{label} does not settle as the step is refined: successive halvings move it by {gaps}"
+        assert max(gaps) <= STEP_REFINEMENT_SETTLED_GAP, (
+            f"{label} has not settled across the supported steps: successive "
+            f"halvings move it by {gaps}, above the {STEP_REFINEMENT_SETTLED_GAP:.1e} "
+            "a solution that does not depend on the step may move by"
         )
 
 

@@ -3,12 +3,15 @@ id: PL-ZHTT
 title: docs/MODEL.md says an exact solver leaves the fixed 0.1 s step unaffected, and that is false — the step's determinism justification does not survive the matrix exponential
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs
 touches: docs/MODEL.md
 added: 2026-09-05
-verify: python3 tools/doc_check.py check && grep -q 'canonical evaluation rule' docs/MODEL.md
+closed: 2026-09-06
+pr: 376
+verify: python3 tools/doc_check.py check && grep -qF 'What a longer step still costs is **control resolution**' docs/MODEL.md
 ---
+
 **Problem.** `docs/MODEL.md` § "Selected method (as implemented)" closes with:
 
 > "The fixed 0.1 s step is unaffected either way. The playback multiplier is

@@ -91,16 +91,12 @@ from anesthesia_sim.app.simulation_view import (
 from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, INK, MUTED, WARNING
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, read_wash_in, wash_in_ratio
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
-from anesthesia_sim.core.alveolar import AlveolarCompartment
-from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import SimulationNumericalError
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
     MacAwakeReference,
     load_agent_parameters,
-    load_reference_adult_parameters,
 )
-from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -109,6 +105,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
 )
+from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
 
 
@@ -399,9 +396,10 @@ def test_the_shipped_step_is_within_the_maximum_simulation_step() -> None:
     """The interface may not run the model outside its supported domain.
 
     `SIMULATION_STEP_S` is this module's cadence and
-    `MAXIMUM_SIMULATION_STEP_S` is `core/`'s applicability domain; they are
-    separate decisions that happen to coincide today, and this is what stops
-    them from parting company unnoticed. Before PL-VP7N the only statement
+    `MAXIMUM_SIMULATION_STEP_S` is `core/`'s declared control-resolution
+    tolerance; they are separate decisions that happen to coincide today, and
+    this is what stops them from parting company unnoticed. Before PL-VP7N the
+    only statement
     of the supported step lived here in the presentation layer and bound
     nothing, so any other caller of `core/` - a headless run, a notebook, a
     test - could step as coarsely as it liked and be given a number.
@@ -422,10 +420,11 @@ def test_the_sliders_span_the_supported_input_ranges() -> None:
     slider reaching past a supported maximum would hand the user a setting
     `core/` refuses, which is a control that raises when dragged to its own
     end. A slider stopping short would silently narrow the reachable domain,
-    which is how the splitting-error bound came to be measured over less than
-    the interface could produce (PL-042) - and how, before PL-0MLQ, the
-    floors could have moved and taken the bound's own worst case, a
-    trajectory holding cardiac output at zero, out of the measured domain.
+    which is how the retired splitting-error bound came to be measured over
+    less than the interface could produce (PL-042). The same hazard applies to
+    the reference gates that replaced it: they are driven at the corner these
+    constants declare, so a slider reaching past one would be a setting no gate
+    has ever measured.
 
     Read off the constructed controls rather than the module constants, so a
     literal typed into a slider fails here rather than passing because the
@@ -2813,41 +2812,44 @@ def _real_step_failure() -> SimulationNumericalError:
     `SimulationNumericalError` here, this helper fails rather than letting
     the interface tests pass against a fiction.
 
-    The step taken is a supported one. Since PL-VP7N a step outside the
-    operator split's applicability domain is refused as a *configuration*
-    error, which is a different thing entirely and is not what these tests
-    are about: the interface has to halt a run whose numbers went bad
-    mid-step, not one whose argument was rejected before it began. So the
-    breakdown is reached the way a future parameter set could reach it -
-    a compartment whose capacity one supported step overdraws - rather
-    than by asking for a step nothing would grant.
-    `tests/unit/test_uptake_system_failure.py` carries the same
-    construction and the reasoning behind its numbers.
+    The step taken is a supported one. Since PL-VP7N a step longer than
+    `MAXIMUM_SIMULATION_STEP_S` is refused as a *configuration* error, which
+    is a different thing entirely and is not what these tests are about: the
+    interface has to halt a run whose numbers went bad mid-step, not one
+    whose argument was rejected before it began.
+
+    The failure is injected rather than provoked, and since PL-GS5X it has to
+    be. The exact step is the solution of a pure transfer system, so its
+    propagator is entrywise nonnegative and cannot carry a compartment out of
+    range - no parameter set reaches the guard through the model any more.
+    What is stood in for is what the guard remains cover for: a compartment
+    handed a value the equations could not have produced.
+    `tests/unit/test_uptake_system_failure.py` carries the same construction
+    and the full reasoning.
     """
 
-    agent = load_agent_parameters("isoflurane")
-    patient_parameters = load_reference_adult_parameters()
-    system = AgentUptakeSystem(
-        circuit=BreathingCircuit(
-            delivered_concentration_fraction=(agent.mac_percent / 100.0),
-            max_delivered_concentration_fraction=(
-                agent.max_delivered_concentration_percent / 100.0
-            ),
-        ),
-        alveoli=AlveolarCompartment(
-            gas_volume_l=0.005,
-            alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
-        ),
-        patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
+    system = AgentUptakeSystem.for_agent("isoflurane")
+    original = system.patient.fat
+
+    class _FatThatRefusesTheStep(TissueGroup):
+        def set_partial_pressure_fraction(self, partial_pressure_fraction: float) -> None:
+            super().set_partial_pressure_fraction(-1.0)
+
+    system.patient.fat = _FatThatRefusesTheStep(
+        name=original.name,
+        volume_l=original.volume_l,
+        perfusion_fraction=original.perfusion_fraction,
+        blood_gas_partition_coefficient=(original.blood_gas_partition_coefficient),
+        tissue_gas_partition_coefficient=(original.tissue_gas_partition_coefficient),
+        blood_flow_l_min=original.blood_flow_l_min,
     )
-    system.set_cardiac_output(10.0)
 
     try:
         system.advance(MAXIMUM_SIMULATION_STEP_S)
     except SimulationNumericalError as error:
         return error
 
-    raise AssertionError("expected the coupled step to break down on these compartments")
+    raise AssertionError("expected the coupled step to be refused by the fat compartment")
 
 
 class _StepFailingController(SimulationController):
@@ -3173,8 +3175,9 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
     places, and a reader could reasonably take that for a statement about the
     model. It is not: every compartment state, every integration step, and
     every history sample carries full binary64 throughout, and the rounding
-    happens once, in the formatter. What limits the model is the splitting
-    error, which is smaller than the last displayed digit in ordinary use.
+    happens once, in the formatter. The gap is nine orders of magnitude: the
+    solver's own residual is around 1e-12 percentage points against a last
+    displayed digit of 0.01.
 
     Two runs whose only difference is four orders of magnitude below the
     display resolution must therefore reach different states. If anything in

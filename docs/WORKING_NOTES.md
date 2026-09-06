@@ -332,14 +332,22 @@ frame currently costs ~17 ms of which ~15 ms is chart-point construction, so
 PL-010 (point reuse, measured 20x cheaper) is the headroom to spend if a
 high multiplier makes the render rate the constraint again.
 
-Half of this is now decided rather than open. PL-VP7N put the operator
-split's applicability domain in the core as `MAXIMUM_SIMULATION_STEP_S`, and
-a step above it is refused, so the multiplier cannot be a larger step even
+Half of this is now decided rather than open. PL-VP7N put the supported step
+in the core as `MAXIMUM_SIMULATION_STEP_S` - then the operator split's
+applicability domain, now a declared control-resolution tolerance (`PL-X9KD`) -
+and a step above it is refused, so the multiplier cannot be a larger step even
 if someone wanted it to be: it is steps per tick, and that is enforced
 rather than merely written down. What "a larger step is a model-fidelity
 question" was pointing at has an answer - `docs/MODEL.md` § "Supported
 simulation step" - and the answer is that the supported step and the shipped
 step are the same number.
+
+**The other half is not decided, and this paragraph read as though it were
+until 2026-09-06.** Bounding the *step* does not bound what the multiplier
+costs, because the cost arrives through steps per tick rather than through step
+size: the burst that takes them is synchronous, so a control change cannot land
+inside one and is displaced by up to `tick x multiplier`. `PL-NBWP` carries it,
+and the section on control resolution below has the measurements.
 
 Still undecided, and the reason this stays `needs-decision` rather than
 `ready`: how the multiplier is exposed without creating a hidden mode - a
@@ -407,11 +415,21 @@ three releases and this note said so; it no longer does. `PL-SPMQ` measured what
 the split costs a *reader* rather than what it costs the numbers, and the
 project owner chose the exact matrix exponential on that ground - `ROADMAP.md`
 planned-milestone item 29's bar is that a reviewer follow `core/` without a
-lookup table, which the five composed sub-steps prevent. `PL-GS5X` makes the
-change in v0.4.1, `PL-P0BB` settled the state vector as fractions, and `PL-X9KD`
-re-derives every published statement the splitting error justified.
-`docs/MODEL.md` § "Selected method (as implemented)" carries the supersession
-(`PL-B875`).
+lookup table, which the five composed sub-steps prevented. `PL-GS5X` made the
+change in the `v0.4.x` track - the track promises no particular patch number,
+so it took whichever one it landed on - `PL-P0BB` settled the state vector as
+fractions, and `PL-X9KD` re-derives every published statement the splitting
+error justified. `docs/MODEL.md` § "Selected method (as implemented)" is
+rewritten around what ships; this thread is closed.
+
+**What was actually built, 2026-09-06 (`PL-GS5X`).** Two modules, not one:
+`core/governing_equations.py` assembles the system matrix and holds no
+arithmetic, `core/matrix_exponential.py` computes the propagator and holds no
+physiology. The matrix is 9x9 - the six fractions, the cumulative delivered and
+exhausted amounts, and the constant that carries the fresh-gas forcing. Signed
+transfers were considered as rows and rejected: they would have cost the matrix
+the Metzler property the propagator's nonnegativity rests on, and both are
+recoverable exactly from the balances instead.
 
 It bears on the playback-speed thread above, and the bearing has now changed
 direction: an exact step makes a larger step a fidelity-free choice, which is
@@ -922,11 +940,21 @@ are the three declared, and none pulls it in.
   append for free, so **numpy would make the compaction harder, not easier**.
 
 **The strongest candidate for it is already solved in the standard library.**
-`PL-GS5X` (replace the operator split with the exact matrix exponential) is the
-one piece of real numerical work in the queue, and its plan is the ~30-line
-`math`-only implementation that already exists in this repository's history at
+`PL-GS5X` (replace the operator split with the exact matrix exponential) was
+the one piece of real numerical work in the queue, and its plan was the
+~30-line `math`-only implementation in this repository's history at
 `git show 475fb92^:tools/review-verification/verify_physics.py` - scaling and
 squaring with a 24-term Taylor series.
+
+**What shipped differs from that plan in two ways worth recording**, because a
+future reader who follows the history link will not find them there. The series
+truncates at 12 terms rather than 24, against a scaled argument bounded at
+1/16 rather than the harness's looser bound, with the truncation error derived
+(3.6e-26 relative) rather than assumed. And the matrix is shifted before the
+series is summed, so every term is nonnegative and the propagator is entrywise
+nonnegative in floating point rather than by margin - the property that keeps
+an exact step from driving a compartment below zero through a rounding
+artifact. The harness had neither.
 
 **The one argument left, recorded rather than settled.** `scipy.linalg.expm`
 carries published backward-error analysis (Al-Mohy and Higham 2009) where a
@@ -942,9 +970,40 @@ write-path figures above are `select_indices` and `RunHistory.record`, which
 `PL-2FM6` and `PL-8LXM` remove: under `PL-T691` the chart evaluates a closed
 form rather than reading back recorded samples, so neither call site exists to
 be vectorized. The answer is still no, on ground the note did not have: a
-standard-library matrix exponential (scaling-and-squaring, Pade-13, Higham
-2005) renders a 600-column frame in 3.3 ms over a 1 h window and 3.6 ms over
-30 days, because chart columns are uniformly spaced and one exponential serves
-a whole inter-event segment. numpy would win nothing there either. Kept rather
+standard-library matrix exponential renders a 600-column frame in 3.3 ms over
+a 1 h window and 3.6 ms over 30 days, because chart columns are uniformly
+spaced and one exponential serves a whole inter-event segment. That
+measurement was taken against a Pade-13 scaling-and-squaring implementation;
+what `PL-GS5X` shipped is scaling and squaring with a shifted truncated Taylor
+series, which rejects Pade by name for needing a linear solve whose denominator
+conditions badly on this system's eigenvalue spread. The timing conclusion is
+unaffected - both are a handful of small matrix multiplies per segment - but
+the figure should be re-measured against the shipped propagator before
+`PL-T691` leans on it. numpy would win nothing there either. Kept rather
 than rewritten: the question is what recurs, and the note records that it was
 asked and answered before.
+
+## Control resolution is not what the interface promises at speed (2026-09-06)
+
+`PL-X9KD` re-derived `MAXIMUM_SIMULATION_STEP_S` as a *declared control-resolution
+tolerance*: a control change lands at the next step boundary, so it is displaced by
+up to one step, and the displacement is exactly proportional to the step with no
+threshold anywhere in it. Measured at 0.1 s, in percentage points of one atmosphere,
+desflurane binding: 6.7e-3 pp for a case-opening dial change, 1.4e-1 pp for a
+ventilator start. The criterion is the model's own parameter uncertainty - one SD of
+a measured partition coefficient is worth 9e-4 to 6.8e-2 pp.
+
+Two open threads came out of that and they are coupled, which is why they are here
+rather than only in their own items.
+
+`PL-NBWP`: the derivation above holds at 1x playback and nowhere else. `steps_per_tick`
+is the multiplier and `simulation_view.py`'s burst is a synchronous loop with no
+`await`, so control resolution is `SIMULATION_TICK_INTERVAL_S x multiplier` - 30
+simulated seconds at 300x. `app/playback.py` says a faster playback is "a scheduling
+change and never a modelling one", which is true of a run nobody touches and false of
+one where a slider moves.
+
+`PL-NBCJ`: whether the step should move to 0.05 s so an abrupt manoeuvre stays inside
+one parameter SD. Halving the step at a fixed wakeup doubles the steps per tick at
+every rate, so it makes `PL-NBWP` worse. Decide `PL-NBWP` first; if the burst changes,
+revisit both together.

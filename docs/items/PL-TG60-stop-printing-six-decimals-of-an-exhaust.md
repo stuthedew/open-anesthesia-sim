@@ -68,3 +68,23 @@ which case the right decimal count is a different number, or it could be
 computed a way that changes the argument entirely. Six decimals on a value good
 to three is still wrong today; how many are right is not answerable until the
 exact step lands.
+
+**Basis changed by `PL-GS5X`, 2026-09-06 — re-read before working.** This
+item's quantitative argument was that the exhausted-agent integral is good to
+about three decimals because `BreathingCircuit.advance_fresh_gas` integrates
+the *fresh-gas-only* sub-step trajectory analytically, which is not the
+trajectory the coupled system takes.
+
+That is no longer how the integral is formed. Exhausted agent is now a state of
+the system matrix, with $`dM_{exhausted}/dt = \dot V_F F_I`$ as its row, so the
+propagator integrates it along the same coupled trajectory it produces for
+everything else — exactly, not approximately. `docs/MODEL.md` § "Selected
+method (as implemented)" carries why it is a state rather than a side
+calculation.
+
+So the "six decimals of a number good to three" framing is void. The measured
+residual is now 1.0e-12 L to 1.3e-11 L over an hour depending on the agent
+(recorded in the same section), which is a different and much smaller number
+than this item assumed — but the *displayed* question it raises is untouched:
+six decimals of an exhaust total is still more precision than a reader can use,
+whatever the value is good to. Re-measure and re-argue on the new figure.

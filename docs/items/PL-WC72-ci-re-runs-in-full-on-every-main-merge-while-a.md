@@ -3,11 +3,14 @@ id: PL-WC72
 title: CI re-runs in full on every main merge while a pull request waits for approval, discarding a green result each time
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: infra
 feature: ci-cost
-touches: .github/workflows/quality.yml
+touches: CLAUDE.md
 added: 2026-09-05
+closed: 2026-09-06
+pr: 373
+verify: python3 tools/doc_check.py check && grep -qF 'into an open pull request out of habit' CLAUDE.md
 ---
 
 **Problem.** An open pull request that has already gone green re-runs the whole
@@ -77,3 +80,41 @@ under route (c); `CLAUDE.md`'s drive-to-green rules under route (b).
 **Done when.** The route is chosen and recorded — including "accept it", which
 closes this item with a `reason` rather than a change — and if a change follows,
 the measurement above is what justifies it.
+
+---
+
+**Decided 2026-09-06 by the project owner: route (b).** Sessions stop merging
+`origin/main` into an open pull request out of habit; the two cases that keep
+it are a branch genuinely conflicted against its base, and a base-recovery
+notice saying the base is green again. Recorded as a resident bullet in
+`CLAUDE.md`, immediately after "Commit and push as you go".
+
+**Why resident rather than a check**, against `CLAUDE.md`'s four dispositions.
+The decidable half looks available — `git merge-tree` can say whether a merge
+was needed — but it is not: the base-recovery case is a fact about a *past* CI
+result on the base, which no read of the tree recovers, so a check would fire
+on the legitimate merges too. Worse, it could only fire on or after the push
+that already spent the run, which makes it a check that costs attention without
+changing a decision — the defect `CLAUDE.md` says to retire a check for, not to
+build one as. A pre-push hook fires early enough but is scripting exactly the
+judgment it must not. A `paths:` rule cannot carry it either: `git merge origin/main`
+is preceded by no read, which is the case that section names as the one
+path-scoping cannot serve. That leaves resident, which is where it went.
+
+**The measurement named above was not taken, deliberately.** It existed to
+decide whether the cost justified a change; route (b) removes runs at no cost
+to what CI proves, so the answer does not depend on the number. If a later
+session wants it: how many completed `pull_request` runs in a window had a
+base-merge as their head commit and were not superseded.
+
+**One caveat this rests on.** If branch protection later requires branches to
+be up to date before merging, the first exception widens to "whenever the base
+has moved" and most of the saving goes with it. That setting is off today, on
+the evidence that pull requests here merge minutes apart without an intervening
+base merge each time — but it lives off-tree where nothing can read it, which
+is the same blind spot `PL-KPP1` records.
+
+**Not addressed here, and deliberately out of scope.** Route (c) — narrowing
+what `quality.yml` runs on such a push — stays unbuilt. It trades away the
+guarantee that the merge-result run catches a semantic conflict between two
+green branches, and route (b) makes the push it would optimize rare.

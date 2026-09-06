@@ -106,16 +106,24 @@ from anesthesia_sim.core.supported_ranges import (
 )
 
 # The step each simulation tick advances by. What range of steps is *supported*
-# is `core/`'s to declare and no longer this module's: the operator split's
-# applicability domain is `core.uptake_system.MAXIMUM_SIMULATION_STEP_S`,
-# and a step above it is refused there rather than displayed here. This is a
-# cadence choice inside that domain, and it sits at the domain's ceiling
-# deliberately - docs/MODEL.md § "Displayed precision" derives the two-decimal
-# readout from the split's error at exactly this step, so a coarser step would
-# make that derivation false while a finer one would cost frames without
-# moving a displayed digit.
-# `test_the_shipped_step_is_within_the_maximum_simulation_step` holds the
-# relationship, so a cadence and a limit cannot drift apart unnoticed.
+# is `core/`'s to declare and no longer this module's:
+# `core.uptake_system.MAXIMUM_SIMULATION_STEP_S` is that declaration, and a step
+# above it is refused there rather than displayed here.
+#
+# This is a cadence choice inside that range, and it sits at the ceiling
+# deliberately. Running finer would buy nothing a reader could see: with
+# settings held, halving the step moves a displayed fraction by around 1e-16,
+# which is nine orders below anything the readout resolves. Running coarser
+# would cost control resolution, which is what `core/`'s constant is a
+# tolerance on. `test_the_shipped_step_is_within_the_maximum_simulation_step`
+# holds the relationship, so a cadence and a limit cannot drift apart
+# unnoticed.
+#
+# The two coinciding is a fact about this configuration rather than an
+# identity, which is why they are named apart. Neither is derived from the
+# other, and neither is derived from how many decimals the readout shows -
+# docs/MODEL.md § "Supported simulation step" and § "Displayed precision"
+# carry the two derivations separately (`PL-X9KD`).
 SIMULATION_STEP_S = 0.1
 # How often the simulation loop wakes, in *real* seconds. Numerically equal to
 # the step above and conceptually unrelated to it: one is a property of the

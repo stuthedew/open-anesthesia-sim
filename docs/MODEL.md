@@ -90,14 +90,41 @@ unfilled parameter. See "Known limitations."
 
 Inspired gas is likewise not a separate compartment. The circuit is one ideal,
 perfectly mixed volume with no dead space and no separate inspiratory and
-expiratory limbs, so the gas the patient inspires is the circuit gas and the
-inspired fraction is defined as $`F_I \equiv F_C`$, with no second state and no
-transport delay between them. This is what makes the displayed $`F_A/F_I`$
-ratio computable at all — see "F_A/F_I as a displayed ratio" — and it is an
-assumption of the circuit model rather than a property of breathing systems in
-general: a multi-limb system such as Lerou and Booij's three-part model
-separates inspired gas from mean circuit gas, and the identity would not hold
-under it.
+expiratory limbs, so the gas the patient inspires *is* the circuit gas: there
+is no second state to carry and no transport delay between them. The model
+therefore holds one gas-phase state between the vaporizer and the alveoli, and
+names it for the clinical quantity rather than for its container — the
+**inspired fraction** $`F_I`$, the middle term of the literature's
+$`F_D \rightarrow F_I \rightarrow F_A`$ cascade. The container keeps its own
+name: $`V_C`$ is the circuit's volume and $`M_C`$ the agent stored in it, so
+$`M_C = V_CF_I`$ reads as what it is, a volume of apparatus holding gas at the
+inspired fraction.
+
+This is an assumption of the circuit model rather than a property of breathing
+systems in general, and it is what makes the displayed $`F_A/F_I`$ ratio the
+textbook one — the canonical teaching curve of inhaled-anesthetic uptake — see
+"F_A/F_I as a displayed ratio". A multi-limb system such as Lerou and Booij's
+three-part model separates inspired gas from mean circuit gas; there the two
+would be distinct states, this model's single $`F_I`$ would no longer describe
+both, and the departure would have to be recorded here before the model was
+extended that way.
+
+The naming is Hendrickx and De Wolf's, which is the field's: the gas-phase
+cascade and the symbols $`F_D`$, $`F_I`$ and $`F_A`$ are set out on pp. 161-162,
+the $`F_D - F_I`$ gradient attributed to rebreathing on p. 169 and $`F_I - F_A`$
+to uptake on p. 171, and the didactic role of the $`F_A/F_I`$ curve on p. 167
+(Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation
+anesthesia. In: Schuttler J, Schwilden H, eds. Modern Anesthetics. Handbook of
+Experimental Pharmacology 182. Springer, 2008:159-186). Supplied by the project
+owner and recorded at that depth; the pages above are what the citation is
+being used for, and no page beyond them is relied on here.
+
+**One symbol to read carefully.** $`F_I`$ is the inspired fraction and $`F_i`$
+is tissue group $`i`$'s; they differ only in case. The collision is the
+literature's rather than this document's — both conventions are standard — and
+it is kept rather than worked around because renaming either would leave this
+model's symbols disagreeing with every source a reader arrives from. Where both
+appear in one expression the tissue index is written out.
 
 The external inputs and outputs are:
 
@@ -201,15 +228,17 @@ to be watching, which is a determinism failure no label repairs.
 
 Four things it does not cover, none of them a defect:
 
-- **A different step size.** Two runs at different steps are two numerical
-  solutions of the same equations, and "Step-refinement test" is what bounds
-  the distance between them.
+- **A different step size.** Two runs at different steps are two roundings of
+  the same solution rather than two solutions: the step is exact, so what
+  separates them is floating-point accumulation, and "Step-refinement test" is
+  what bounds it.
 - **A different model version.** The guarantee holds within one version of
   the equations and one parameter set, which is why both are versioned.
 - **A different platform.** Addition, multiplication and division are
-  correctly rounded and so identical everywhere, but the exponential each
-  compartment's analytic solution calls is a library function whose last bit
-  may differ between platforms, interpreters and math libraries.
+  correctly rounded and so identical everywhere, but the step's propagator is
+  built from one `exp()` call — a library function whose last bit may differ
+  between platforms, interpreters and math libraries — and from a series and a
+  sequence of squarings whose summation order a compiler may reassociate.
   Reproducibility is claimed for one build, not across all of them.
 - **Elapsed real time.** How long a machine takes to reach step *n*, and how
   many steps it has reached when a wall-clock minute is up, are properties
@@ -218,6 +247,14 @@ Four things it does not cover, none of them a defect:
 ### Concentrations
 
 All model concentrations are stored internally as dimensionless partial-pressure-equivalent fractions from 0 through 1.
+
+The gas-phase cascade is named as the inhaled-anesthetic literature names it,
+$`F_D \rightarrow F_I \rightarrow F_A`$, which means that
+the middle gas-phase state is $`F_I`$ (inspired) — not a symbol named after
+the breathing circuit that holds it. The container keeps the apparatus subscript — $`V_C`$ for its volume
+and $`M_C`$ for the agent in it — so a capital $`C`$ names the rig and $`F_I`$
+names the gas. "Model boundary" above carries the assumption that makes the
+two one quantity, and what would break it.
 
 For example, $`F = 0.02`$ represents a 2% gas-phase concentration.
 
@@ -263,9 +300,8 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | $`t`$ | Explicit simulation time | s |
 | $`\Delta t`$ | Simulation step | s |
 | $`F_D`$ | Delivered fresh-gas sevoflurane fraction | dimensionless |
-| $`F_C`$ | Breathing-circuit sevoflurane fraction | dimensionless |
+| $`F_I`$ | Inspired sevoflurane fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless |
 | $`F_A`$ | Alveolar sevoflurane fraction | dimensionless |
-| $`F_I`$ | Inspired sevoflurane fraction (one perfectly mixed circuit: $`F_I \equiv F_C`$; not an independent state) | dimensionless |
 | $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless |
 | $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless |
 | $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless |
@@ -292,7 +328,7 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 The equivalent sevoflurane amount in the breathing circuit is:
 
 $$
-M_C = V_C F_C
+M_C = V_C F_I
 $$
 
 The equivalent sevoflurane amount in the alveolar gas compartment is:
@@ -304,7 +340,7 @@ $$
 Therefore:
 
 $$
-F_C = \frac{M_C}{V_C}
+F_I = \frac{M_C}{V_C}
 $$
 
 and:
@@ -398,38 +434,38 @@ All flow terms below must use liters per second after conversion from user-facin
 
 ### Breathing circuit
 
-Fresh gas enters at concentration $`F_D`$. An equal fresh-gas volume leaves through the exhaust at the current mixed-circuit concentration $`F_C`$.
+Fresh gas enters at concentration $`F_D`$. An equal fresh-gas volume leaves through the exhaust at the current mixed-circuit concentration $`F_I`$.
 
 Ventilation transfers gas between the breathing circuit and alveolar compartment.
 
 The circuit amount balance is:
 
 $$
-\frac{dM_C}{dt} = \dot V_F(F_D-F_C) - \dot V_A(F_C-F_A)
+\frac{dM_C}{dt} = \dot V_F(F_D-F_I) - \dot V_A(F_I-F_A)
 $$
 
 Because:
 
 $$
-M_C = V_CF_C
+M_C = V_CF_I
 $$
 
 the concentration equation is:
 
 $$
-\frac{dF_C}{dt} = \frac{\dot V_F}{V_C}(F_D-F_C) - \frac{\dot V_A}{V_C}(F_C-F_A)
+\frac{dF_I}{dt} = \frac{\dot V_F}{V_C}(F_D-F_I) - \frac{\dot V_A}{V_C}(F_I-F_A)
 $$
 
 When alveolar ventilation is zero, this reduces to the v0.0.2 circuit equation:
 
 $$
-\frac{dF_C}{dt} = \frac{\dot V_F}{V_C}(F_D-F_C)
+\frac{dF_I}{dt} = \frac{\dot V_F}{V_C}(F_D-F_I)
 $$
 
 For constant input and no patient connection, the exact v0.0.2 solution remains:
 
 $$
-F_C(t+\Delta t) = F_D+\left[F_C(t)-F_D\right]\exp\left(-\frac{\dot V_F\Delta t}{V_C}\right)
+F_I(t+\Delta t) = F_D+\left[F_I(t)-F_D\right]\exp\left(-\frac{\dot V_F\Delta t}{V_C}\right)
 $$
 
 The existing v0.0.2 analytic reference tests must continue to pass unchanged.
@@ -443,7 +479,7 @@ Pulmonary blood flow enters the lungs at venous concentration $`F_v`$ and leaves
 The alveolar amount balance is:
 
 $$
-\frac{dM_A}{dt} = \dot V_A(F_C-F_A) - Q\lambda_{b:g}(F_A-F_v)
+\frac{dM_A}{dt} = \dot V_A(F_I-F_A) - Q\lambda_{b:g}(F_A-F_v)
 $$
 
 Because:
@@ -455,7 +491,7 @@ $$
 the alveolar concentration equation is:
 
 $$
-\frac{dF_A}{dt} = \frac{\dot V_A(F_C-F_A) - Q\lambda_{b:g}(F_A-F_v)}{V_A}
+\frac{dF_A}{dt} = \frac{\dot V_A(F_I-F_A) - Q\lambda_{b:g}(F_A-F_v)}{V_A}
 $$
 
 Alveolar gas has no single time constant. Ventilation acting alone — that is, at $`Q = 0`$ — would turn the alveolar volume over with:
@@ -469,7 +505,7 @@ using compatible time and flow units, which is 37.5 s for the reference adult, w
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
 <!-- derived: 37.5 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
 
-That quantity is not the time constant of the coupled system, and it is recorded here — as a limitation of any single-mechanism description of alveolar kinetics — rather than exposed as a derived output, because two things separate it from what a run exhibits. First, blood uptake is a second exchange term acting on the same compartment: holding $`F_C`$ and $`F_v`$ fixed, $`F_A`$ relaxes with $`V_A/(\dot V_A + Q\lambda_{b:g})`$, which is 20.7 s for the reference adult on sevoflurane rather than 37.5 s. Second, $`F_C`$ and $`F_v`$ are not fixed — they are state variables of the same system — so the alveolar trajectory is a sum of exponentials over all six modeled compartments and no single constant describes it. A $`\tau_A^{\mathrm{vent}}`$ presented as "the alveolar time constant" would be a plausible number for a rate the simulation does not exhibit.
+That quantity is not the time constant of the coupled system, and it is recorded here — as a limitation of any single-mechanism description of alveolar kinetics — rather than exposed as a derived output, because two things separate it from what a run exhibits. First, blood uptake is a second exchange term acting on the same compartment: holding $`F_I`$ and $`F_v`$ fixed, $`F_A`$ relaxes with $`V_A/(\dot V_A + Q\lambda_{b:g})`$, which is 20.7 s for the reference adult on sevoflurane rather than 37.5 s. Second, $`F_I`$ and $`F_v`$ are not fixed — they are state variables of the same system — so the alveolar trajectory is a sum of exponentials over all six modeled compartments and no single constant describes it. A $`\tau_A^{\mathrm{vent}}`$ presented as "the alveolar time constant" would be a plausible number for a rate the simulation does not exhibit.
 <!-- derived: 20.7 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5 -->
 <!-- derived: 20.7 s from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 
@@ -567,7 +603,7 @@ $$
 The cumulative exhausted sevoflurane amount is:
 
 $$
-M_{\mathrm{exhausted}}(t) = \int_0^t \dot V_FF_C\,dt
+M_{\mathrm{exhausted}}(t) = \int_0^t \dot V_FF_I\,dt
 $$
 
 ### Stored amount
@@ -629,29 +665,40 @@ The implementation must:
 
 1. derive concentrations from the current stored amounts;
 2. evaluate every transfer from one consistent state;
-3. apply equal and opposite internal transfers to their source and destination compartments;
-4. integrate fresh-gas delivery and exhaust using the same numerical method;
+3. carry every internal transfer as an equal and opposite pair, so that no
+   compartment can gain what another does not lose;
+4. integrate fresh-gas delivery and exhaust by the same method, and over the
+   same trajectory, as the compartments they cross the boundary of;
 5. advance the cumulative delivery and exhaust amounts;
 6. advance explicit simulation time; and
 7. calculate the post-step mass-balance residual.
 
-A step is all-or-nothing. Steps 1 through 7 write compartment state as they
-go, and a guard can reject a value produced by a later one after an earlier
-one has already written; so a step that cannot be completed must leave every
-dynamic value exactly as it was before the step, rather than as the operators
-left it. "Step atomicity" below says why, and what a caller is left holding.
+Requirements 2 and 3 are properties of the system matrix rather than of a
+sequence of operations. "Selected method (as implemented)" advances the whole
+system in one step, so there is no order in which transfers are applied and
+nothing to hold fixed while another moves: requirement 2 is satisfied because
+every rate reads the same state vector, and requirement 3 because each
+internal exchange appears as a pair of off-diagonal entries whose contribution
+to the total stored amount cancels — a structural property of the matrix,
+checked as such in `tests/unit/test_governing_equations.py`, rather than an
+invariant maintained by applying paired deltas. Requirement 4 is why delivered
+and exhausted agent are states of that system too.
+
+A step is all-or-nothing. It writes each compartment in turn, and a guard can
+reject a value after earlier compartments have already been written; so a step
+that cannot be completed must leave every dynamic value exactly as it was
+before the step. "Step atomicity" below says why, and what a caller is left
+holding.
 
 ### Step atomicity
 
-A partially applied step is not a solution of the model at any time. Its
-numbers are an artifact of the order the sub-exchanges ran in — the fifth
-having run against the second's output — rather than evidence of where the
-model broke down, and they are indistinguishable, in the interface, from
-numbers the model produced. Preferring an obvious failure to a
-plausible-looking number therefore requires undoing the step, not annotating
-it.
+A partially applied step is not a solution of the model at any time. It holds
+some compartments at $`t+\Delta t`$ and others at $`t`$ — a set of numbers no
+instant of the model ever produced, and indistinguishable in the interface
+from numbers it did. Preferring an obvious failure to a plausible-looking
+number therefore requires undoing the step, not annotating it.
 
-`RespiratorySystem.advance()` captures every dynamic value before the step
+`AgentUptakeSystem.advance()` captures every dynamic value before the step
 and restores it on any failure. What the model holds afterwards is the last
 completed step: a real solution, at a real simulation time, which the
 interface may display and a reader may reason about. The diagnosis that would
@@ -659,10 +706,10 @@ otherwise have to be inferred from those numbers is carried in the raised
 `SimulationNumericalError` message instead, which names the invariant that
 failed and the step size it failed at.
 
-The dynamic values are the eight the trajectory is carried in — the circuit
-concentration fraction, the alveolar amount, each of the three tissue
-amounts, the venous amount, and the cumulative delivered and exhausted
-amounts — plus the accounting period's initial amount. Settings and
+The dynamic values are the eight the trajectory is carried in — the circuit's
+inspired fraction, the alveolar amount, each of the three tissue amounts, the
+venous amount, and the cumulative delivered and exhausted amounts — plus the
+accounting period's initial amount. Settings and
 parameters are deliberately not captured: a rollback that restored cardiac
 output would undo a change the run had accepted. Each compartment captures
 its own, so a dynamic field added later without a matching capture is a local
@@ -686,8 +733,10 @@ SIMULATION_TICK_INTERVAL_S = 0.1   # app/simulation_view.py
 endpoint: any positive step at or below it is supported, and both
 `AgentUptakeSystem.advance()` and `SimulationState.advance()` refuse a larger
 one. `SIMULATION_STEP_S` is the step the interface takes, which sits at that
-ceiling deliberately; "Supported simulation step" below derives the bound and
-says why those two coincide.
+ceiling deliberately; "Supported simulation step" below states what the bound
+tolerates and says why those two coincide. Neither is derived from the other,
+and the coincidence is a fact about this configuration rather than an
+identity — which is why they are named apart.
 
 `SIMULATION_TICK_INTERVAL_S` is not a step at all: it is how often the run
 loop wakes, in *real* seconds. It equals the step only because a tick that
@@ -700,162 +749,216 @@ otherwise falsify every rate on screen and fail nowhere.
 
 ### Selected method (as implemented)
 
-Each simulation step is advanced by exact analytic solution of every pairwise
-exchange, composed by first-order operator splitting rather than a generic
-numerical integrator:
+Each simulation step is advanced by **one exact propagation of the whole
+coupled system**. Every setting is held constant across a step, so within that
+step the six modelled fractions obey a linear, time-invariant system
+$`dy/dt = Ay + b`$; carrying the constant $`b`$ against a ninth state whose
+value is always 1 makes it $`dy/dt = Ay`$, and
 
-1. the circuit exchanges exactly with fresh gas (`BreathingCircuit.advance_fresh_gas`), holding ventilation fixed for the step;
-2. the circuit and alveolar compartments then exchange exactly with each other (`AgentUptakeSystem._exchange_circuit_and_alveoli`), a closed-form solution of the two-compartment linear exchange that conserves $`M_C+M_A`$ exactly;
-3. each tissue group exchanges exactly with arterial blood (`TissueGroup.advance`), holding the arterial fraction ($`=F_A`$) fixed for the step;
-4. venous blood mixes exactly with the flow-weighted tissue outflow (`VenousBloodCompartment.advance`); and
-5. the net patient uptake is applied back to alveolar gas (`AlveolarCompartment.apply_blood_uptake`).
+$$
+y(t+\Delta t) = \exp(A\,\Delta t)\,y(t)
+$$
 
-Because each sub-exchange is solved exactly while temporarily holding the
-other flows constant, this is a first-order (Lie/Godunov) operator split of
-the fully coupled system: the splitting error is $`O(\Delta t)`$ relative to
-the true simultaneous solution, even though each individual sub-step is
-exact. Two release gates bound that error empirically, and they answer
-different questions. The step-refinement test
-(`test_step_refinement_converges`) asks whether the shipped composition is
-self-consistent across supported step sizes; the independent-solution test
-(`tests/reference/test_coupled_dynamics.py`) asks whether it converges to
-the right answer at all, by comparing all six states against a from-scratch
-integration of the equations above. Neither the mass-balance gate nor the
-step-refinement gate can answer the second question: every internal transfer
-is applied as an equal-and-opposite pair, so a wrong transfer *rate* leaves
-the accounting residual at ~2e-15 L, and a wrong rate applied consistently
-at every step size still refines consistently. A fourth-order Runge–Kutta
-method would remove the splitting error but was not required to pass the
-documented tolerances at `SIMULATION_STEP_S = 0.1`.
+is then its exact solution, with no truncation error at any step size.
 
-**The exact alternative, and why it replaces this one.** Because every setting is
-held constant across a step, the six-state system is linear and time-invariant
-*within* that step, so a single matrix exponential of the system matrix solves
-it exactly — with no splitting error at any step size. Measured against the
-same from-scratch RK4 oracle at 5% delivered, over horizons of 60 s and
-3600 s, the exponential's worst disagreement across all six states is
-$`1.3\times10^{-16}`$ to $`4.8\times10^{-14}`$, against
-$`5.2\times10^{-6}`$ to $`1.7\times10^{-5}`$ for the shipped split.
-**The split was kept on that comparison** (project owner, 2026-08-30). Its
-error is not unknown but bounded — by the two release gates above across the
-settings envelope, and quantified in percentage points under "Displayed
-precision" below, which sets the displayed resolution from it. What an exact
-step would buy is therefore the removal of the applicability-domain bound
-under "Supported simulation step" below, not the correction of a wrong value,
-and no work planned at that date wanted it. That reasoning still holds on its
-own terms, and is why the split remains sound to ship until it is replaced.
+`core/governing_equations.py` assembles $`A`$: every entry is one term of one
+balance equation in "Governing equations" above, written in the order this
+document states them. `core/matrix_exponential.py` computes
+$`\exp(A\Delta t)`$ and carries no physiology. Neither adds a dependency —
+the exponential is scaling and squaring with a truncated Taylor series, about
+sixty lines of arithmetic on plain lists, and its module docstring carries the
+method's provenance and the derivation of its two constants.
 
-**This decision was superseded on 2026-09-03** (project owner), on a ground
-the original did not weigh: not accuracy, but whether the code can be read as
-the model. `ROADMAP.md` planned-milestone item 29 sets the bar that a reviewer
-who knows the standard variables and equations should be able to follow
-`core/` and recognize them without a lookup table, and the split cannot reach
-it — three of its five composed sub-steps are objects of the splitting scheme
-rather than of the physiology, the alveolar balance's two terms are computed
-in different sub-steps separated by a third, and the pulmonary uptake rate
-specified under "Alveolar gas" above is never formed at all. Assembling the
-system matrix, by contrast, *is* transcribing the governing equations. The
-split is therefore to be replaced by the exact matrix exponential in v0.4.1,
-under queue item `PL-GS5X`, and `PL-X9KD` re-derives every statement in this
-document that the splitting error justifies — "Displayed precision" and
-"Supported simulation step" among them.
+Two of the nine states are not fractions. They accumulate the agent crossing
+the system boundary, at the rates "External delivery" and "Circuit exhaust"
+give: $`\dot M_{\mathrm{delivered}} = \dot V_FF_D`$ and
+$`\dot M_{\mathrm{exhausted}} = \dot V_FF_I`$. Delivered agent has a closed
+form of its own, but exhausted agent is $`\dot V_F\int F_I\,dt`$ along a
+coupled trajectory and does not; carried as a state it is integrated by the
+same propagator over the same trajectory, which is what requirement 4 of
+"Numerical method" above asks for.
 
-**Until those land, this section describes what ships**, and its error bounds
-are the live ones. This paragraph is an interim correction (`PL-B875`) rather
-than the rewrite; `PL-GS5X` owns that.
+**The residual this leaves is rounding, and it is larger in absolute terms
+than the split's was.** Measured 2026-09-06 over a 3600 s run at 1 MAC, the
+worst residual at any step is 1.0e-12 L for sevoflurane, 2.4e-12 L for
+isoflurane and 1.3e-11 L for desflurane, against a relative error of at most
+9.2e-13 in every case. The split held about 2e-15 L absolute, because it moved
+agent between compartments as amounts and its equal-and-opposite pairs
+cancelled to the last bit. Here conservation is a property of the matrix and
+the arithmetic is done in fractions, so the pairs cancel only to floating-point
+precision *relative to the largest quantity in play* — and over an hour at
+desflurane's dial that quantity is about 43 L of delivered agent, which is
+where the four orders of magnitude come from.
 
-The fixed 0.1 s step is unaffected either way. The playback multiplier is
-implemented as steps per tick with the step fixed at 0.1 s, and it is fixed
-there for *determinism* — removing the step-size divergence and the
-machine-speed dependence that make a run irreproducible on another computer —
-rather than for accuracy, so an exact solver does not change that design. The
-measurements above are carried in queue item PL-6GS0; they were produced by the
-v0.2.0 architecture review's verification harness, retired under PL-STNV.
+Nothing about that is a loss of accuracy: the relative residual is three orders
+inside the check's own relative tolerance, and the absolute figures scale with
+how much agent the run has handled rather than with any error in it. What it
+does mean is that `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L` (1e-12 L) is now
+routinely exceeded on a long run and the relative branch alone is carrying the
+check. Whether that is the right shape for the guard is queue item `PL-4GN8`.
+
+**What this replaces, and why the decision changed.** Until v0.4.x each step
+was the exact analytic solution of five *pairwise* exchanges, composed in
+sequence: fresh gas into the circuit; circuit and alveoli against each other;
+each tissue against a held arterial fraction; venous blood against the
+flow-weighted tissue outflow; and the net patient uptake applied back to
+alveolar gas. Solving each exactly while holding the other flows constant made
+the composition a first-order (Lie/Godunov) operator split, whose error was
+$`O(\Delta t)`$ against the true simultaneous solution even though every
+sub-step was itself exact.
+
+**The split was kept once, on accuracy, and that decision was right on its own
+terms** (project owner, 2026-08-30). Measured against the same from-scratch RK4
+oracle at 5% delivered over 60 s and 3600 s, the exponential's worst
+disagreement across all six states was $`1.3\times10^{-16}`$ to
+$`4.8\times10^{-14}`$ against $`5.2\times10^{-6}`$ to $`1.7\times10^{-5}`$
+for the split — but the split's error was bounded rather than unknown, so what
+an exact step bought was a tighter number rather than the correction of a wrong
+one, and no work planned at that date wanted it. Those measurements are carried
+in queue item PL-6GS0 and were produced by the v0.2.0 architecture review's
+verification harness, retired under PL-STNV.
+
+**It was superseded on 2026-09-03** (project owner) on a ground the original
+did not weigh: not accuracy, but whether the code can be read as the model.
+`ROADMAP.md` planned-milestone item 29 sets the bar that a reviewer who knows
+the standard variables and equations should follow `core/` and recognize them
+without a lookup table, and the split could not reach it. Three of its five
+composed sub-steps were objects of the splitting scheme rather than of the
+physiology; the alveolar balance's two terms were computed in different
+sub-steps separated by a third; and the pulmonary uptake rate specified under
+"Alveolar gas" above was never formed at all. Assembling the system matrix, by
+contrast, *is* transcribing the governing equations — the alveolar balance is
+one row and its two terms are two entries of it. Accuracy was not the
+motivation and was not a cost either.
+
+**Two consequences worth stating rather than leaving to be inferred.**
+
+First, **the fractions cannot leave their physical range**. Every off-diagonal
+entry of $`A`$ is a transfer rate and so is nonnegative, which makes $`A`$ a
+Metzler matrix and $`\exp(A\Delta t)`$ an entrywise nonnegative one;
+`core/matrix_exponential.py` shifts before summing its series so that this
+holds in floating point and not only in exact arithmetic. A step therefore
+cannot drive a compartment negative at any step size. That is a property of the
+construction rather than of the shipped parameters, so no patient file or agent
+can reach the compartment capacity guard through the model. The guard and the
+rollback remain as cover for a model extension whose matrix is not a pure
+transfer system.
+
+Second, **refining the step no longer changes the answer**. Under the split,
+halving $`\Delta t`$ halved the error, and the step-refinement gate
+(`test_step_refinement_converges`) asserted that successive halvings moved the
+solution less each time. Every supported step now lands on the same solution to
+within floating-point rounding, so that gate asserts the stronger property
+instead: that the step does not enter the answer. What it cannot answer is
+whether the answer is *right* — a wrong transfer rate is equally step-independent
+— and neither can the mass-balance gate, since every internal transfer is an
+equal-and-opposite pair. "Independent-solution test" below is the gate that
+answers it, by comparing all six states against a from-scratch integration of
+the equations above.
 
 #### Supported simulation step
 
-The split has an applicability domain, and stepping outside it fails rather
-than producing a number. `MAXIMUM_SIMULATION_STEP_S` is that domain's upper
-bound, and a step above it is refused as a `SimulationConfigurationError`
-before anything is calculated — nothing is miscalculated, the argument is
-simply not one the model has an error bound for, and a caller can retry
-inside the domain with the run it already has intact.
+`MAXIMUM_SIMULATION_STEP_S` is the largest step `AgentUptakeSystem.advance()`
+and `SimulationState.advance()` accept; a longer one is refused as a
+`SimulationConfigurationError` before anything is calculated, so nothing is
+miscalculated and a caller can retry inside the range with the run it already
+has intact.
 
-**The bound is not the breakdown.** "Applicability domain" hides several
-different questions, and their answers are two orders of magnitude apart.
-Measured on the worst trajectory the four sliders can reach (the *unperfused
-load, then dial off* run of "Independent-solution test" below), across all
-three agents:
+**What the bound now means, and what it no longer rests on.** Until v0.4.x it
+was an *applicability domain*: the method was first order, so its error grew
+with the step, and 0.1 s was the largest step at which every claim "Displayed
+precision" makes about the last displayed digit still held. That derivation is
+void. The exact step has no truncation error at any step size and its
+propagator keeps every fraction in range at any step size, so there is no
+accuracy-derived domain left to be outside of.
 
-| Criterion | Largest step it allows |
-| --- | --- |
-| Every claim "Displayed precision" makes about the last displayed digit stays true | **0.1 s** |
-| The error stays within *one* count of the last displayed digit | 0.044 s |
-| The first-order coefficient $`C`$ is still flat to about 1% | 0.6 s (isoflurane) to 2.5 s (the other two) |
-| The compartment capacity guard fires | 12 s (isoflurane), 25 s (sevoflurane), 50 s (desflurane) |
+What a longer step still costs is **control resolution**. Settings are held
+constant across a step, so the step is the interval over which a change to a
+control is invisible to the model: at 0.1 s a slider move is resolved to a
+tenth of a second, and at 10 s a change made and reversed inside one step never
+happened at all.
 
-Only the first is a bound worth carrying, and the other three are each
-unusable for a different reason.
+**Re-derived 2026-09-06 (`PL-X9KD`), and the honest result is that this is a
+declared tolerance rather than a derived limit.** The search for a limit was
+run first and came back empty. Sweeping the step from $`10^{-3}`$ s to
+$`10^{300}`$ s across the settings envelope, the disagreement with an
+independent solution stays between about $`10^{-14}`$ and $`2\times10^{-12}`$
+in fraction, and it does not grow with the step — it is U-shaped in it, with a
+minimum around 1 to 60 s, because the only error mechanism left is rounding and
+rounding accumulates once per *step*, so a finer step is slightly worse. The
+propagator was entrywise nonnegative exactly at every one of 4374 (settings,
+step) combinations tested, so no compartment guard can be reached by stepping
+coarsely; `advance()` raises nothing until about $`10^{18}`$ s, and the first
+step at which a displayed digit is wrong by a whole count is around
+$`10^{13}`$ s. There is no numerical ceiling a caller can reach.
 
-The **capacity guard** is what the implementation relied on before this
-domain check existed, and it is not a domain check at all: it fires when the
-sequential composition drives an amount negative — step 5 tries to remove
-more agent from alveolar gas than step 2 left in it — which is a statement
-about capacity, not accuracy. It is agent-dependent by a factor of four — the
-figures above are grid-resolved, the coarsest step accepted below each being
-10, 20 and 30 s — and it says nothing whatever about the range below it. A
-600 s sevoflurane wash-in at default settings runs to completion at a 30 s
-step and lands 0.205 percentage points from the same run at 0.1 s, twenty
-times the resolution the interface displays, so the readout is wrong in its
-*first* decimal while presenting itself as a settled value.
+Control resolution does not supply a threshold either, and this is the point
+that decides the shape of the constant. A control change takes effect at the
+next step boundary, so it is displaced later by up to one whole step, and that
+displacement is **exactly proportional to the step** — measured over three
+manoeuvres and all three agents, halving the step halves it, with no knee
+anywhere. No step size is therefore the one at which control timing becomes
+invisible. What the constant can honestly be is a declared tolerance, and what
+it owes a reader is the measurement of what it tolerates.
 
-A **flat coefficient** is not reassurance either. $`C`$ is flat because the
-error is first order, and the error is $`C\,\Delta t`$: at a 5 s step $`C`$ is
-within 2% of its value at 0.1 s while the alveolar error is 1.12 percentage
-points, 112 counts of the last displayed digit. $`C`$ also *falls* for
-desflurane beyond about 20 s — $`1.91\times10^{-3}\ \mathrm{s^{-1}}`$ at a
-30 s step against $`2.29\times10^{-3}`$ at 0.1 s — so a flat or falling
-coefficient does not even indicate that the step is still inside the regime
-the coefficient was measured in.
+**The tolerance, in percentage points of one atmosphere.** These are absolute
+concentrations, deliberately not counts of the readout: the readout's decimal
+count is a presentation decision (§ "Displayed precision") and must not reach
+back into the model. Worst displacement over all three agents at the shipped
+0.1 s step, from a control change landing one step late:
 
-**One count** of the last displayed digit is the intuitive criterion and is
-stricter than anything this model claims. "Displayed precision" states the
-last digit as uncertain by about *two* counts on this trajectory — that is
-what a last digit being the uncertain one means — so a one-count rule would
-make the shipped 0.1 s step illegal against a claim the project does not
-make.
+| Manoeuvre | Worst displacement | Binding agent |
+| --- | --- | --- |
+| Case opening: dial off to 1 MAC, reference flows | 6.7×10⁻³ pp | desflurane |
+| Unperfused load, then perfusion on and dial off | 5.0×10⁻² pp | desflurane |
+| Ventilator start at the envelope corner | 1.4×10⁻¹ pp | desflurane |
 
-**So the bound inverts "Displayed precision".** The split is first order, so
-its error is $`C\,\Delta t`$ with
-$`C \leq 2.29\times10^{-3}\ \mathrm{s^{-1}}`$ over the reachable input domain,
-and every figure in that section — a fifth of a count of the last digit in
-ordinary use, half a count at a maximum dial setting, one count at the
-envelope corner, about two counts on the worst reachable trajectory — is that
-error at exactly $`\Delta t = 0.1\ \mathrm{s}`$. Doubling the step doubles all
-four, and
-each of them then reads false. `MAXIMUM_SIMULATION_STEP_S` is therefore the
-largest step at which what the interface shows is still what the model
-supports, and **the supported step and the shipped step are the same
-number**. There is no headroom for a deliberately coarser run, which is the
-intended outcome and not an oversight: a coarser run's numbers would not
-survive being displayed, and preferring an obvious failure to a
-plausible-looking number is the required behavior here. Raising the bound is
-a safety-critical change to every displayed value — re-measure the
-coefficient, re-derive the displayed resolution with it, and revise both
-sections together.
+The criterion these are read against is the model's own parameter uncertainty,
+which is upstream of both the step and the display: one standard deviation of a
+single measured partition coefficient displaces a displayed compartment by
+$`9\times10^{-4}`$ to $`6.8\times10^{-2}`$ pp (Yasuda et al. 1989; § "Displayed
+precision" carries the measurement). So at 0.1 s an ordinary control action is
+timed to about a tenth of one parameter SD, which is the sense in which the
+step is fine enough.
 
-**The capacity guard remains, and reports something else.** Where a supported
-step still drives an amount negative, `AgentUptakeSystem.advance()` reports
-`SimulationNumericalError`: the step is rolled back in full, simulation time
-does not advance, and the caller must stop the run — from a state that is the
-last completed step rather than a partially applied one. No supported step
-reaches that on the reference
-adult with any shipped agent, so the guard is now cover for a parameter set
-that could — a smaller alveolar gas volume, a far more soluble agent — rather
-than for a caller stepping too coarsely. The two failures are deliberately
-distinct: `SimulationConfigurationError` says the setting was refused and the
-run is still trustworthy, `SimulationNumericalError` says a run in progress
-is not.
+**What 0.1 s does not buy, stated rather than left to be discovered.** An
+abrupt manoeuvre is not held inside that criterion. A ventilator start at this
+step displaces the alveolar reading by up to $`1.4\times10^{-1}`$ pp — about
+twice one parameter SD — for the duration of the transient it starts. Holding
+that inside one SD would need a step near 0.05 s. The value has not been moved,
+because halving it doubles the work per simulated second and changes the
+interface's tick structure, which is a trade-off for the project owner rather
+than a correction; but a reader comparing an abrupt ventilation change against
+a measurement should know that its *timing* is resolved to a tenth of a second
+and no better.
+
+The supported step and the shipped step are the same number, and the interface
+runs at it.
+
+**The measurements the old bound rested on are kept as history**, because they
+describe a method this project shipped for eleven releases and a reader
+comparing versions needs them. On the worst trajectory the four sliders can
+reach, across all three agents, the operator split's first-order coefficient
+$`C`$ was at most $`2.29\times10^{-3}\ \mathrm{s^{-1}}`$; its error was
+$`C\,\Delta t`$, so every figure "Displayed precision" quoted was that error
+at exactly $`\Delta t = 0.1\ \mathrm{s}`$ and doubling the step doubled all
+of them. Its compartment capacity guard first fired at 12 s for isoflurane,
+25 s for sevoflurane and 50 s for desflurane, two orders of magnitude above
+the bound and agent-dependent by a factor of four, which is why the guard was
+never the domain check. None of these figures describes what ships.
+
+**The capacity guard remains, and now reports something the model cannot
+reach.** Where a step drives an amount out of range,
+`AgentUptakeSystem.advance()` reports `SimulationNumericalError`: the step is
+rolled back in full, simulation time does not advance, and the caller must stop
+the run — from a state that is the last completed step rather than a partially
+applied one. Under the exact step no parameter set reaches it, because the
+system matrix is Metzler and its propagator therefore entrywise nonnegative
+(see "Selected method (as implemented)"); the guard is cover for a model
+extension whose matrix is not a pure transfer system, not for a caller stepping
+too coarsely. The two failures stay deliberately distinct:
+`SimulationConfigurationError` says the setting was refused and the run is
+still trustworthy, `SimulationNumericalError` says a run in progress is not.
 
 The implementation must not depend on:
 
@@ -1278,7 +1381,7 @@ The v0.0.2 analytic wash-in and washout tests must remain unchanged and continue
 With no patient ventilation:
 
 $$
-F_C(t) = F_D+\left[F_C(0)-F_D\right]e^{-t/\tau_C}
+F_I(t) = F_D+\left[F_I(0)-F_D\right]e^{-t/\tau_C}
 $$
 
 where:
@@ -1310,16 +1413,16 @@ For any tissue $`i`$, $`Q_i=0`$ must imply $`\frac{dM_i}{dt}=0`$.
 ### Equilibrium test
 
 If all connected compartments have the same partial-pressure-equivalent
-fraction, $`F_C=F_A=F_a=F_v=F_i`$, then all internal transfer rates must be
-zero.
+fraction — $`F_I=F_A=F_a=F_v`$ and every tissue group at the same value —
+then all internal transfer rates must be zero.
 
 ### Directional ventilation test
 
-With otherwise identical conditions, increasing alveolar ventilation must accelerate the approach of $`F_A`$ toward $`F_C`$.
+With otherwise identical conditions, increasing alveolar ventilation must accelerate the approach of $`F_A`$ toward $`F_I`$.
 
 ### Directional solubility test
 
-In controlled synthetic cases, increasing $`\lambda_{b:g}`$ must increase blood capacity and slow the rise of $`F_A/F_C`$.
+In controlled synthetic cases, increasing $`\lambda_{b:g}`$ must increase blood capacity and slow the rise of $`F_A/F_I`$.
 
 ### Directional tissue-capacity test
 
@@ -1339,7 +1442,8 @@ Individual tissue concentrations may temporarily rise through redistribution, so
 
 ### Step-refinement test
 
-Reference simulations using supported smaller steps must converge toward the same solution.
+Reference simulations at supported smaller steps must produce the same
+solution, to within floating-point rounding.
 
 At minimum, compare:
 
@@ -1355,9 +1459,19 @@ there.
 
 The gate compares *successive* halvings — 0.1 against 0.05, then 0.05
 against 0.025 — rather than each step against the finest, and additionally
-requires that the second gap be smaller than the first. Two step sizes can
-only show that a pair of runs agree; three show that refining the step moves
-the solution toward a limit rather than merely somewhere else nearby.
+requires every gap to sit below a stated rounding-level bound. Two step sizes
+can only show that a pair of runs agree; three show that the step does not
+enter the answer.
+
+**What the third point asserts changed with the exact step, and it is now a
+stronger claim.** Under the operator split it required each gap to be *smaller*
+than the last — a first-order error halving with the step, converging to a
+limit that none of the three steps reached. Every supported step now lands on
+that limit, so the gaps sit at the floating-point floor and no longer shrink;
+requiring them to would fail correct arithmetic. What is required instead is
+that they stay at that floor. Measured 2026-09-06, the worst successive-halving
+gap across the four reported values is 8.1e-16, against the 1.4e-11 a
+first-order method would show at these steps.
 
 The release comparison tolerance is 5e-3 relative or 1e-8 absolute, either
 satisfying, on the alveolar, vessel-rich and mixed-venous fractions after
@@ -1367,9 +1481,9 @@ fill at 60 s, so a difference of 1.4e-6 in fraction, a seventh of a count of
 the last displayed digit, is 0.55% of it.
 
 This gate is self-consistency across the supported steps, not correctness: a
-wrong transfer rate applied consistently at every step size refines
-consistently and passes here. "Independent-solution test" below is what asks
-whether the composition converges to the right answer at all.
+wrong transfer rate is exactly as step-independent as a right one and passes
+here. "Independent-solution test" below is what asks whether the solution is
+the right one at all.
 
 ### Independent-solution test
 
@@ -1380,17 +1494,47 @@ parameter files and nothing else from the package under test; a comparison
 against code derived from the implementation is a tautology, not a
 verification, so the test enforces that restriction on its own imports.
 
-The comparison covers every shipped agent, and its tolerance is a bound on
-the first-order splitting coefficient rather than a value fitted to a
-particular run:
+The comparison covers every shipped agent, and its tolerance is **absolute**:
 
 $$
-\max_i \left| F_i^{\mathrm{shipped}} - F_i^{\mathrm{reference}} \right|
+\max_k \left| F_k^{\mathrm{shipped}} - F_k^{\mathrm{reference}} \right|
 \leq
-C_{\max}\,\Delta t,
-\qquad
-C_{\max} = 2.8\times10^{-3}\ \mathrm{s^{-1}}
+5\times10^{-12}
 $$
+
+over every state $`k`$, every horizon and every trajectory below.
+
+**Why absolute, where the split's bound was a coefficient.** The split's error
+was $`C\,\Delta t`$, so bounding $`C`$ bounded the error at every step size.
+The exact step has no such coefficient: it is the solution of these equations
+over the interval, and what the comparison measures is the accumulated
+floating-point difference between two independently written solutions that
+agree exactly in exact arithmetic. That residual grows with the *number* of
+steps rather than with their size, so it is slightly worse at a finer step —
+the opposite of the split — and a per-step coefficient would state the reverse
+of what is true.
+
+**Derived from the exact step's own error, not inherited.** Measured
+2026-09-06 across all three agents, the horizons above and every trajectory
+below, taking the maximum over the whole trajectory: 5.2e-14 at the endpoint
+of a 3600 s default run, 1.9e-13 at the envelope corner, 3.2e-13 on the
+*unperfused load, then dial off* trajectory, and 7.7e-13 — the worst — on a
+*ventilator start*. The bound allows 6.5 times that. Against the operator
+split, whose worst over the same domain was 2.29e-4 at this step, the exact
+step is eight orders of magnitude closer to the independent solution.
+
+**The residual is rounding, not truncation, and that is checked rather than
+asserted.** Refining the oracle's own step eightfold — 0.05 s to 0.00625 s —
+leaves it unchanged to three figures for every agent. RK4 is fourth order, so
+a residual dominated by the oracle's truncation would have fallen by about
+four thousand; one that does not move is the floating-point floor.
+
+The margin is wider than the 1.22 the splitting bound carried, deliberately: a
+systematic coefficient reproduces between machines and accumulated rounding
+does not, since a different `exp` implementation or a contracted multiply-add
+moves the last bits of both solutions. Six and a half times is still eight
+orders below the error of any method that is not exact, so the gate fails the
+moment method error returns — which is the only thing it is there to catch.
 
 **The domain the bound covers.** The domain is *trajectories*, not operating
 points. A run of the application is a sequence of settings held until someone
@@ -1441,6 +1585,13 @@ from the held-settings corner. That monotonicity is measured, not proved, so
 a change to the governing equations could move the maximum off these
 trajectories, and the sweep is worth re-running rather than trusted.
 
+**The split's own coefficients are kept as history**, because they describe
+what this project shipped for eleven releases and because any later work on
+step size starts from them rather than re-deriving them. The worst measured
+over the whole reachable domain was
+$`C_{\max} = 2.29\times10^{-3}\ \mathrm{s^{-1}}`$, on the
+*unperfused load, then dial off* trajectory with desflurane:
+
 | Run | Worst coefficient |
 | --- | --- |
 | Reference point, worst of the three agents | $`3.1\times10^{-4}\ \mathrm{s^{-1}}`$ |
@@ -1454,70 +1605,39 @@ trajectories, and the sweep is worth re-running rather than trusted.
 | Unperfused load then dial off, isoflurane | $`1.40\times10^{-3}\ \mathrm{s^{-1}}`$ |
 | Unperfused load then dial off, desflurane | $`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ |
 
-**$`C_{\max} = 2.29\times10^{-3}\ \mathrm{s^{-1}}`$ is the worst measured
-coefficient over the whole reachable domain**, and is the figure any later
-work on step size should start from rather than re-deriving. The gate allows
-a factor of 1.22 over it. That margin is deliberately narrower than the
-factor of two an earlier revision used, and the reason is that the two things
-a wider margin would buy are already covered elsewhere: a parameter revision
-fails the pinned reference states first, which forces the re-derivation and
-review it should have; and domain variation no longer needs absorbing now
-that the bound follows a measurement across the settings envelope *and*
-across setting changes.
+Two lessons from that gate survive it, and both are why the trajectories above
+are still driven. Domain variation is what made each of its bounds wrong,
+twice over, one dimension at a time: set at
+$`5\times10^{-4}\ \mathrm{s^{-1}}`$ from the reference point alone it was
+exceeded by a factor of about 2.4 at settings three sliders could reach, and
+reset at $`1.5\times10^{-3}\ \mathrm{s^{-1}}`$ from the envelope but measured
+only on runs holding one operating point, it was exceeded by a ventilator start
+at that same corner — a manoeuvre a user performs. Neither gate ever failed,
+because nothing it drove ever went where the error was. A release gate narrower
+than the reachable input domain is a verification claim broader than its
+evidence, whatever the method under it.
 
-Domain variation is exactly what made each previous bound wrong, twice over,
-one dimension at a time. Set at $`5\times10^{-4}\ \mathrm{s^{-1}}`$ from the
-reference point alone, it was exceeded by a factor of about 2.4 at settings
-three sliders could reach. Reset at $`1.5\times10^{-3}\ \mathrm{s^{-1}}`$
-from the envelope but still measured only on runs that hold one operating
-point, it was exceeded by a ventilator start at that same corner — a
-manoeuvre a user performs — and again by a factor of 1.5 at the worst
-reachable trajectory. Neither gate ever failed, because nothing it drove
-ever went where the error was.
+**One safety disclosure this section used to carry is now withdrawn.** The
+split applied its transfers in order, so each compartment was driven across the
+interval by an upstream value the same step had already moved, and the
+resulting bias had opposite signs at the two ends of the transfer chain: the
+circuit read below the independent solution and the tissues above it, so a
+*difference* between two readouts carried the sum of two displacements and was
+the least accurate thing the interface displayed — up to 1.8 times the error in
+either reading it was taken from. That was true of the split and is not true of
+the exact step, which drives no compartment from an already-moved value and
+leaves no bias with a sign. A gradient between two compartments is now no less
+accurate than either reading it is taken from. The withdrawn claim is recorded
+here rather than deleted because it was published in "Displayed precision"
+below as well, and a reader comparing versions needs to know which way it went.
 
-Keeping the margin narrow also keeps the gate consistent with "Displayed
-precision" below: at the shipped 0.1 s step this bound is $`2.8\times10^{-4}`$
-in fraction, or 0.028 percentage points, against a displayed resolution of
-0.01. A much wider gate would let that section's claim — that the last
-displayed digit is uncertain by about two counts at the worst reachable
-trajectory — quietly become false while still passing.
-
-**The error is a systematic sequencing bias, not noise, and it does not
-cancel between compartments.** The shipped step applies its transfers in
-order — fresh gas into the circuit, circuit to alveoli, alveoli to blood and
-tissues — and each compartment is therefore driven across the interval by an
-upstream value the same step has *already* moved. The measured consequence is
-a bias whose sign depends on a compartment's position in that chain, and the
-signs are opposite at the two ends. Through a 600 s wash-in at the envelope
-corner, for all three agents, the circuit reads *below* the reference at
-every sampled step while mixed venous, vessel rich, muscle and fat all read
-*above* it at every sampled step; the alveolar fraction sits between the two
-mechanisms and follows the blood-uptake term, below the reference for 95% or
-more of the run. Reversing the trajectory reverses the bias where the
-trajectory itself reverses: dialling to zero after that wash-in puts the
-circuit above the reference for 97–99% of the washout and mixed venous and
-vessel rich below it for 90–97%, while muscle and fat stay above throughout
-because they are still filling. The pattern is reproducible, not random.
-
-For a reader this is the difference between an error that cancels in a
-comparison and one that does not, and it does not cancel. The six readouts
-are placed in one row to be read comparatively — the circuit leads the
-alveoli lead the tissues — and a difference between two of them carries the
-*sum* of two displacements of opposite sign. Measured across the trajectories
-above, the error in a displayed difference runs up to 1.8 times the error in
-either reading it is taken from, and its worst value is 0.030 percentage
-points — alveolar minus mixed venous, on the worst trajectory — against 0.023
-for the worst single reading. A gradient between two compartments is
-therefore the least accurate thing this interface displays, not the most.
-
-A companion test confirms that halving $`\Delta t`$ halves the error, which
-is what makes a bound established at one step size a bound on the
-coefficient itself. The reference states are pinned in the test file: a
-change to the oracle or to a parameter file must be re-derived and reviewed
-rather than silently adopted. The supported ranges above are restated in the
-test file and checked against `core/supported_ranges.py`, so widening the
-model's declared domain cannot silently leave this gate measuring a subset
-of it.
+The reference states are pinned in the test file: a change to the oracle or to
+a parameter file must be re-derived and reviewed rather than silently adopted.
+They are the oracle's own solution, not the shipped solver's, and re-pinning
+them from the implementation would convert this gate into a self-comparison.
+The supported ranges above are restated in the test file and checked against
+`core/supported_ranges.py`, so widening the model's declared domain cannot
+silently leave this gate measuring a subset of it.
 
 ### Published wash-in validation test
 
@@ -1764,13 +1884,33 @@ through.
 
 #### What a setting outside the range costs
 
-The ranges are not merely the domain nothing has measured. The shipped split
-is first order, so its error is $`C\,\Delta t`$, and $`C`$ grows with the
-flows roughly in proportion — doubling all three roughly doubles it. Measured
-on desflurane over the *unperfused load, then dial off* trajectory of
-"Independent-solution test" above, which is what the documented
-$`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ is measured on, and quoted at the
-shipped 0.1 s step against the 0.01-percentage-point displayed resolution:
+**The argument here changed with the exact step, and the ranges did not.**
+Until v0.4.x these limits were justified numerically: the operator split was
+first order, its coefficient $`C`$ grew with the flows roughly in proportion,
+and a setting outside the ranges therefore produced a displayed number that was
+not merely unverified but *wrong*, by a known multiple of the last displayed
+digit. The exact step removes that argument entirely — it solves the equations
+exactly at any flow, so an out-of-range setting now yields a number that is
+numerically right.
+
+**What justifies refusing one is therefore what it always also was**, stated
+here now that it stands alone. These ranges define the **verification domain**:
+they are what "Independent-solution test" drives its trajectories over, what
+"Published wash-in validation test" compares against measured human data, and
+what every figure in this document is measured across. Outside them the
+implementation has not been checked against anything — and, more seriously,
+neither has the *model*. A cardiac output of 1000 L/min is not a patient, and
+these equations were never proposed as a description of one; solving them
+exactly for it produces a precise answer to a question physiology does not ask.
+Preferring an obvious failure to a plausible-looking number is the required
+behavior for exactly that case, and it does not depend on the arithmetic being
+imprecise.
+
+The numerical figures below are kept as history. They were measured on
+desflurane over the *unperfused load, then dial off* trajectory of
+"Independent-solution test" above, at the shipped 0.1 s step against the
+0.01-percentage-point displayed resolution, and they describe the method that
+shipped through v0.4.2:
 
 | Setting | $`C`$ (s⁻¹) | Multiple of the bound | Last displayed digit uncertain by |
 | --- | --- | --- | --- |
@@ -1781,22 +1921,28 @@ shipped 0.1 s step against the 0.01-percentage-point displayed resolution:
 | All three at ten times their maxima | $`2.28\times10^{-2}`$ | 10.0 | 23 counts |
 | Cardiac output 1000 L/min | $`9.12\times10^{-2}`$ | 40 | 91 counts |
 
-The last row is the setting PL-0MLQ found accepted. Ninety-one counts is an
-alveolar readout wrong in its *first* decimal while presenting itself as a
-settled two-decimal value, which is the plausible-but-wrong clinical number
-`CLAUDE.md` requires an obvious failure in place of. Every other row fails a
-claim "Displayed precision" below makes about the last displayed digit, by
-the multiple in the third column. So a setting outside these intervals is not
-an unverified number but a wrong one, and the amount it is wrong by is known.
+The last row is the setting PL-0MLQ found accepted. Under the split, ninety-one
+counts was an alveolar readout wrong in its *first* decimal while presenting
+itself as a settled two-decimal value. Under the exact step that readout is
+right to the last digit, and is a precise concentration for a patient with a
+cardiac output twenty times any human's — which is the worse of the two
+failures, not the better one, because nothing about the display invites doubt.
 
-Note what the table also shows: the error does *not* explode at the boundary.
-Nothing breaks at 10.01 L/min, and the interval's exact endpoints are a
-decision — they are the settings envelope the interface offers and the
-verification measures over — rather than a discovered cliff. Widening one is
-therefore a legitimate change and a safety-critical one: re-measure $`C`$ over
-the new domain, re-derive the displayed resolution and the supported
-simulation step from it, and revise this section, "Independent-solution
-test", "Supported simulation step" and "Displayed precision" together.
+Note what the table also showed: the error did *not* explode at the boundary.
+Nothing broke at 10.01 L/min, and the interval's exact endpoints are a decision
+— the settings envelope the interface offers and the verification measures
+over — rather than a discovered cliff. That is still true, and it is now the
+whole of the story rather than half of it: the endpoints are where verification
+stops, and nothing else marks them. Widening one is a legitimate change and a
+safety-critical one — extend the verification domain first, re-run the
+trajectories of "Independent-solution test" over it, and revise this section
+with them.
+
+**Re-derivation still owed.** This subsection has been re-grounded rather than
+re-measured: the argument above is complete, but the table is history and the
+displayed-resolution claims it refers to have not yet been re-derived for the
+exact step. That is queue item `PL-X9KD`, together with "Displayed precision"
+and the supported step bound.
 
 #### What is not bounded this way
 
@@ -1839,12 +1985,13 @@ it. A run at $`Q=0`$ answers "where does the agent go when perfusion stops",
 not "what is happening to this patient".
 
 **These ranges define the verification domain.** "Independent-solution test"
-above bounds the operator split's error over the trajectories these ranges
-can produce, and its worst case — $`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ — is
-reached on a trajectory that holds cardiac output at zero. Narrowing a range
-would take that worst case out of the reachable domain, and widening one
-would admit trajectories never measured; either way the bound must be
-re-measured. Three checks keep that from happening silently:
+above drives its trajectories over what these ranges can produce, and its worst
+disagreement with the independent solution is reached on one that holds cardiac
+output at zero. Narrowing a range would take that worst case out of the
+reachable domain, and widening one would admit trajectories never measured;
+either way the gate must be re-measured. This is what the ranges are *for* now
+that the exact step has removed the numerical argument for them — see "What a
+setting outside the range costs" above. Three checks keep that from happening silently:
 `test_envelope_limits_match_the_supported_input_ranges` restates all six flow
 limits and fails if the model moves one,
 `test_displayed_resolution_and_shipped_step_match_the_interface` does the
@@ -1855,10 +2002,16 @@ stops short of the declared domain or reaches past it.
 **The simulation step is bounded too, and separately.** It is not a control a
 user sets, but it is an input to every `advance()` call, and what a caller
 may pass is bounded by `MAXIMUM_SIMULATION_STEP_S` rather than by these
-ranges; "Supported simulation step" above derives it. The two bounds are
-coupled in one direction: the coefficient the step bound inverts is measured
-over the trajectories *these* ranges produce, so widening a range means
-re-deriving both.
+ranges; "Supported simulation step" above derives it.
+
+**The two bounds are now independent, and were not before** (`PL-X9KD`). While
+the operator split shipped, the coefficient the step bound inverted was
+measured over the trajectories *these* ranges produce, so widening a range
+meant re-deriving both. That chain is cut. The step bound is a declared
+control-resolution tolerance in seconds, these intervals are a claim about
+where the compartment structure represents a patient, and neither is computed
+from the other. Widening a range means re-running the reference gates at the
+new corner; it does not mean revisiting the step.
 
 ## Reset behavior
 
@@ -2717,8 +2870,9 @@ than leaves to inspection. Six absolute concentrations cannot be laid beside a
 published figure; this can.
 
 **The denominator is the modelled inspired concentration, not the vaporizer
-dial.** $`F_I \equiv F_C`$ here, and that identity is an assumption of this
-circuit model rather than a general fact — see "Model boundary". The
+dial.** The inspired fraction here is the breathing circuit's own, which is an
+assumption of this circuit model rather than a general fact — see "Model
+boundary". The
 distinction from the dial is not pedantic: the circuit only approaches the
 delivered concentration over its own time constant, so early in a run the two
 differ substantially, and dividing by the dial would understate the ratio for
@@ -2918,58 +3072,105 @@ displayed as `<0.01%` rather than as zero.
 
 This is a recorded decision (PL-040), not a formatting convention, because
 displayed precision is a claim about what the model can support. Earlier
-revisions displayed three decimals; the third and part of the second were
-below the solver's own error, which is to say the interface was rendering
-numerical noise as though it were model output.
+revisions displayed three decimals, and were reduced to two while the operator
+split shipped, on the ground that the third decimal and part of the second sat
+below the solver's own error.
 
-**What the solver's error actually is.** The shipped step is a first-order
-operator split (see "Selected method (as implemented)"), and its
-disagreement with the independent solution is what sets the floor. Measured
-against a from-scratch RK4 integration of the governing equations — the same
-oracle construction as `tests/reference/test_coupled_dynamics.py`, extended
-across the settings the interface exposes and across the setting *changes* it
-allows — the worst disagreement in any of the six displayed states is:
+**That ground is gone, and the decision is re-derived here rather than
+inherited** (`PL-X9KD`, 2026-09-06). `PL-GS5X` replaced the split with an exact
+propagator, so the solver no longer limits anything a reader can see: measured
+against the independent solution, the shipped step's own residual is at most
+$`1.6\times10^{-12}`$ percentage points anywhere in the reference gate's
+trajectories, and $`5.2\times10^{-12}`$ over a held hour. That is about one
+two-billionth of the last displayed digit. **A third decimal would no longer be
+numerical noise**, and every figure the previous version of this section quoted
+in counts of the last digit described a method that has been retired.
 
-| Run | Worst error |
+So the constraint that decides the resolution had to be found again, and it is
+not the one that used to. It is **model fidelity** — what the parameters can
+support — bounded from the other side by **legibility**.
+
+**Two questions the old section ran together, and the distinction now carries
+the whole derivation.** Asked as *how finely can two moments within one run be
+told apart*, the answer is now about nine decimal places finer than the readout
+shows: within a run the parameters are fixed, the simulation is deterministic,
+and nothing in the arithmetic is within nine orders of the last displayed
+digit. Asked as *how finely does this model resolve a concentration in a
+patient*, the answer is very much coarser, and it is the question a clinician
+reading a percent sign is actually asking. The old section answered the first
+and presented it as the second; it could do that because the solver error
+happened to sit near the readout, and it cannot any more.
+
+**The ceiling: one measured standard deviation of a partition coefficient is
+worth about one to seven counts of the last displayed digit.** Perturbing a
+single stored coefficient by one published SD and re-running at 1 MAC with the
+reference adult's flows displaces a displayed compartment by:
+
+| Coefficient perturbed by one SD | Displacement, worst over 3600 s |
 | --- | --- |
-| Default flows, dial at 1 MAC | 1.7×10⁻³ percentage points |
-| Default flows, dial at 1 MAC, ventilator started mid-run | 2.2×10⁻³ percentage points |
-| Default flows, dial at the agent's maximum | 5.0×10⁻³ percentage points |
-| Maximum flows, dial at the agent's maximum | 1.2×10⁻² percentage points |
-| Maximum flows and dial, ventilator started mid-run | 1.5×10⁻² percentage points |
-| The worst reachable trajectory | 2.3×10⁻² percentage points |
+| Fat tissue:gas | 8.7×10⁻⁴ to 6.7×10⁻³ pp |
+| Blood:gas | 1.5×10⁻² to 5.4×10⁻² pp |
+| Vessel-rich tissue:gas | 1.3×10⁻² to 5.0×10⁻² pp |
+| Muscle tissue:gas | 1.3×10⁻² to 6.8×10⁻² pp |
 
-Default flows are 4 L/min fresh gas with the reference adult's default
-alveolar ventilation and cardiac output; maximum flows are the supported
-maxima for fresh gas, alveolar ventilation, and cardiac output — which are
-also the sliders' — and the maximum dial is each agent's
-`max_delivered_concentration_percent`.
-The held rows run for 3600 s, the setting-change rows for 600 s; extending
-either changes nothing, because the worst case in every row is an alveolar or
-mixed-venous value inside a transient rather than at an endpoint. The last
-row is the *unperfused load, then dial off* trajectory of
-"Independent-solution test", which is the worst the four sliders can reach.
+Each range runs over the three shipped agents, desflurane always the largest.
+The SDs are the measured ones "Parameter provenance" already records: Yasuda,
+Targ and Eger's human tissue coefficients, whose SDs are 3.9% of the mean for
+desflurane, 5.3% for sevoflurane and 6.4% for isoflurane, and — for
+desflurane's blood:gas — Eger's $`0.424 \pm 0.024`$, 5.7%.
 
-The last row is the same measurement the release gate in
-"Independent-solution test" bounds, expressed in percentage points instead of
-as a coefficient: $`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ at the shipped 0.1 s
-step. **The two are coupled and must be revised together** — the resolution
-chosen here rests on that measured error, and the gate is set only 1.22 times
-above it precisely so that a change large enough to invalidate this section
-fails the gate rather than passing it silently.
+Against that, the last digit of a two-decimal readout is between about a
+seventh of one parameter SD and seven times it. A third decimal would put the
+last digit at one seventieth to seven tenths of one SD: it would be asserting
+resolution in a quantity whose own measured spread is one to two orders of
+magnitude wider, in the readouts where a reader has least ability to notice.
+That is false precision in the sense `CLAUDE.md` forbids, and it is what stops
+the count at two.
 
-**Why 0.01 percentage points follows.** At that resolution the last
-displayed digit is uncertain by roughly a fifth of a count in ordinary use —
-whether or not a setting is changed during the run — half a count at a
-maximum dial setting, one count at the extreme corner of the settings
-envelope, and about two counts on the worst trajectory the sliders can reach,
-which requires holding cardiac output at zero. That is the conventional and
-honest relationship between an instrument's last digit and its error: the
-final digit is the uncertain one, and it is most uncertain where the settings
-are least physiological. At the previous 0.001 percentage points the last
-digit was uncertain by two to twenty-three counts and the digit before it by
-up to two, so two of the three displayed decimals carried no information
-about the model.
+**Parameter uncertainty governs the ceiling and still does not govern the
+within-run reading, and both halves matter.** A partition coefficient's SD
+displaces a whole trajectory: it moves where the curve sits, not how finely two
+points on it can be distinguished. So a reader comparing 09:14 against 09:16 of
+one run is not limited by it, which is why the readout may honestly carry a
+digit finer than the SD — the seventh-of-an-SD end of the range above. What the
+SD does forbid is carrying digits *far* finer than it, because a reader cannot
+tell which of the two questions a printed digit is answering, and the interface
+must not invite the second reading while only supporting the first. "Known
+limitations" is where the consequence is made good: no displayed value may be
+read as accurate to its last digit as a prediction about a patient. It is
+accurate to its last digit as a statement about this model with these
+parameters.
+
+**The floor: one decimal is legible enough to be tempting and erases the
+teaching.** At 0.1 percentage points the sevoflurane and isoflurane fat
+fractions read `0.0%` for the whole hour (0.032% and 0.015% at 3600 s);
+desflurane's stays `0.0%` for its first 19.3 minutes and reaches 0.2%. Muscle
+reads `0.0%` for its first 2.9 minutes (desflurane), 8.5 minutes (sevoflurane)
+and 14.8 minutes (isoflurane). At two decimals the same compartments come alive
+at 57, 125 and 190 seconds (muscle) and 236, 780 and 1474 seconds (fat). What
+one decimal erases is the slow-compartment wash-in that is the reason for
+displaying those compartments at all.
+
+**That floor is a teaching judgment, and it is the project owner's rather than
+the model's** (decided 2026-09-03, `PL-88GQ`). The accuracy argument does not
+reach it: one decimal is comfortably supported by both the solver and the
+parameters, so nothing numerical rules it out. What rules it out is that a
+simulator built to show uptake and distribution would show a flat zero where
+the uptake is happening. Stated as a pedagogical objection so that a future
+revisit knows exactly what it has to beat, and does not mistake it for a model
+constraint it cannot touch.
+
+**So the band is one to two decimals, and two is the chosen count.** The band
+is what the error budget licenses; the count inside it is a presentation
+decision the owner may revise without re-deriving anything in `core/`. Nothing
+in the model is computed from it: `MAXIMUM_SIMULATION_STEP_S` is a tolerance in
+seconds and the supported input ranges are intervals in L/min, and
+"Supported simulation step" and "Supported input ranges" derive both without
+reference to how many decimals the readout shows. Moving the readout to one
+decimal would change what a reader sees and nothing else. That independence is
+new: until `PL-X9KD` both were justified through this count, so a purely
+presentational change would, by the reasoning as written, have licensed a step
+ten times longer and wider input intervals.
 
 **The MAC resolution is derived from this one, not chosen beside it.** A MAC
 multiple is a percent divided by the agent's own `mac_percent`, so the
@@ -3010,98 +3211,107 @@ integration step, the mixed-venous and tissue transfers, and every
 `SimulationHistorySample` the chart is drawn from. Nothing in `core/` rounds,
 the snapshot fields the interface reads are raw fractions, and a slider's
 value reaches the model unquantized — the rounding happens exactly once, in
-the readout. So the two decimals below are a statement about what is worth
-*showing*, never about what the model computes or stores, and the quantity
-that actually limits the model is the splitting error above, which is a fifth
-of the last displayed digit in ordinary use.
+the readout. So the two decimals are a statement about what is worth
+*showing*, never about what the model computes or stores.
 `test_the_model_keeps_precision_the_display_throws_away` holds this: two runs
 whose delivered concentration differs four orders of magnitude below the
 display resolution must reach states that differ, and must still read
 identically on the display.
 
-**Re-affirmed 2026-08-30 against the widened measurement** (PL-74TX). The
-figures above are larger than the ones PL-040 chose two decimals on, because
-the solver error has since been re-measured over trajectories rather than
-over held operating points: about two counts at the extreme where the earlier
-measurement gave one. The decision stands, and the alternative is what
-settles it. A one-decimal readout would be uncertain by a fifth of a count at
-the extreme — but at 0.1 percentage points the fat fraction reads `0.0%` for
-an entire hour and muscle for its first three to fifteen minutes, which is
-the failure this section rejects two paragraphs below. Two decimals remains
-the coarsest resolution that keeps every compartment legible and the finest
-the numerics support; the widened measurement moved where inside that window
-the answer sits, not which side of it.
+That test is worth more now than when it was written, not less. While the
+solver error sat near the readout, "the model keeps more precision than the
+display shows" was a small claim; under the exact step the gap is nine orders,
+and the rounding in the readout is the only place resolution is lost anywhere
+between a slider and a pixel.
 
-**What the last digit does not cover, and what it still does.** The error is
-a systematic sequencing bias rather than noise, and its sign is opposite at
-the two ends of the transfer chain (see "Independent-solution test"). A
-*difference* between two of the six readouts therefore carries the sum of two
-displacements, up to 1.8 times the error in either reading alone, worst
-measured at 0.030 percentage points. **The numeric gap between two readouts
-is accordingly the least certain thing on the display**, and its last digit
-should be read as carrying no information.
+**What the last digit does not cover, and what it still does.**
+~~The error is a systematic sequencing bias rather than noise, and its sign is
+opposite at the two ends of the transfer chain. A *difference* between two of
+the six readouts therefore carries the sum of two displacements, up to 1.8
+times the error in either reading alone, worst measured at 0.030 percentage
+points, so the numeric gap between two readouts is the least certain thing on
+the display.~~ **Withdrawn 2026-09-06 (`PL-GS5X`).** That bias was a property
+of the operator split's sub-step ordering. The exact step drives no compartment
+from an already-moved upstream value, so there is no displacement with a sign
+and a gap between two readouts is no less accurate than either reading it is
+taken from; "Independent-solution test" above records the withdrawal in full.
 
-The comparison the interface actually invites survives this, and that is a
-measurement rather than an assurance. The six readouts are placed in one row
-to be read *ordinally* — the circuit leads the alveoli lead the tissues — and
-an ordinal reading is corrupted only if the error can invert which of two
-compartments is displayed as higher. Across every trajectory in
-"Independent-solution test", all three agents, comparing every pair of the
-six readouts at every step: the shipped and reference solutions never
-disagree about the displayed ordering at ordinary settings, at the reference
-point, at the envelope corner, or across a ventilator start. They disagree
-only on the worst reachable trajectory, for 0.2 s of a 900 s run with
-sevoflurane and 1.7 s with desflurane, and only where the two compartments
-are within 1.73 counts of the last displayed digit of each other — that is,
-only while they are crossing, which is where the ordering is genuinely
-ambiguous and not where a real gradient would be misread.
+The comparison the interface actually invites is therefore no longer at risk
+from the solver, and that is a measurement rather than an assurance. The six
+readouts are placed in one row to be read *ordinally* — the circuit leads the
+alveoli lead the tissues — and an ordinal reading is corrupted only if the
+error can invert which of two compartments is displayed as higher. Across every
+trajectory in "Independent-solution test", all three agents, comparing every
+pair of the six readouts at every step — 1 485 000 pair comparisons —
+the shipped and reference solutions **never** disagree about the displayed
+ordering, anywhere, at any gap. Under the split they disagreed on the worst
+reachable trajectory for 0.2 s of a 900 s run with sevoflurane and 1.7 s with
+desflurane, at gaps up to 1.73 counts of the last displayed digit.
+
+That is a measurement on one platform rather than a guarantee, and the
+arithmetic behind it says why the gate keeps a threshold rather than asserting
+zero. Rounding to a fixed number of decimals is monotone, so it can never
+produce an ordering opposite to the raw one; an inversion therefore needs the
+two solutions to be genuinely reordered, which needs a true gap below the sum
+of the two displacements. The widest pairwise differential measured anywhere is
+$`1.1\times10^{-12}`$ in fraction, and true gaps that small do occur while two
+compartments cross, so an inversion is arithmetically reachable there even
+though none was observed.
 
 That is why the interface marks nothing here. A reader who compares the
-readouts the way the row is designed to be compared cannot be misled by the
-splitting error; a reader who subtracts two of them is doing arithmetic the
-interface does not perform, and the paragraph above is the disclosure for it.
-`test_displayed_ordering_reverses_only_at_a_crossing` holds this claim: it
-fails if the error ever inverts a displayed ordering between two compartments
-that are further apart than that.
+readouts the way the row is designed to be compared cannot be misled by solver
+error; a reader who subtracts two of them is doing arithmetic the interface
+does not perform, and the paragraph above is the disclosure for it.
+`test_displayed_ordering_reverses_only_at_a_crossing` holds the claim, now
+against a threshold derived from the absolute gate rather than fitted to a
+measurement: twice the tolerance, which is $`1.0\times10^{-7}`$ counts against
+the 3.0 counts the split's bound allowed.
 
 **Why the resolution is uniform rather than per-compartment.** The six
 readouts sit in one row and are read comparatively — the reason for showing
 them together is that a reader can see the circuit lead the alveoli lead the
 tissues. Different decimal counts across those tiles would put different
 magnitudes at the same glyph position, so a value scanned rather than read
-would be misjudged by a factor of ten. The solver's error is also bounded in
-*absolute* percentage points, and across the runs measured above it stays
-within a factor of four across the four fast compartments — 0.006 to 0.023
-percentage points in circuit, alveolar, mixed venous and vessel rich — while
-muscle is an order of magnitude smaller and fat two to three. A single
-absolute resolution is therefore the direct expression of it, set by the
-compartments where the error is largest and conservative in the two where it
-is not.
+would be misjudged by a factor of ten. That is a property of the reading task
+and holds whatever the solver does.
+
+What used to be offered beside it — that the split's error was itself bounded
+in absolute percentage points and stayed within a factor of four across the
+four fast compartments, so one absolute resolution expressed it directly — is
+withdrawn with the split. The replacement is that **parameter uncertainty is
+also absolute in its effect across the row**: the one-SD displacements tabulated
+above run from $`8.7\times10^{-4}`$ to $`6.8\times10^{-2}`$ percentage points
+across all six compartments and all four coefficients, a spread of under two
+orders on a row whose *values* span four. A single absolute resolution is the
+direct expression of that, set by the compartments where the displacement is
+largest and conservative in the ones where it is not.
 
 **Why not a significant-figures rule.** A significant-figures rule gives the
 smallest values the most decimal places, and the small values are exactly
-where this model supports the least. Relative to their own magnitude the
-sparsely filled compartments are the least accurate states in the system:
-in the first ten seconds of a run the mixed-venous, muscle, and fat
-fractions carry 3–6% relative error, falling below 0.1% only after several
-minutes. Three significant figures on the fat fraction at ten seconds would
-imply a relative resolution of 0.1% on a number whose relative error is 3%,
-over-claiming by a factor of thirty — and doing so most severely in the
-readouts where a reader has least ability to notice.
+where this model supports the least. The evidence for that is no longer the
+solver — under the exact step the sparsely filled compartments carry at most
+$`2\times10^{-4}`$ relative error anywhere in the first ten seconds of a run,
+and $`8\times10^{-11}`$ at ten seconds itself. It is the parameters. Their
+measured SDs are 3.9% to 6.4% of the mean and are *relative*, so they apply
+undiminished to a compartment holding a thousandth of a percent. Three
+significant figures on the fat fraction would imply a relative resolution of
+0.1% on a number whose parameters are known to about 5%, over-claiming by a
+factor of fifty — and doing so most severely in the readouts where a reader has
+least ability to notice.
 
 **Why not the 0.1 percentage points clinical monitors report.** Agent
 monitors display end-tidal and inspired concentrations to a tenth of a
 percentage point, and the circuit and alveolar readouts alone would be well
 matched to that. This simulator, though, displays compartments no monitor
-shows. At 1 MAC the fat fraction reaches only 0.032% (sevoflurane) and
-0.015% (isoflurane) after a full hour, so at monitor resolution both would
-read `0.0%` for the entire run, and muscle would read `0.0%` for its first
-three minutes (desflurane) to fifteen minutes (isoflurane). Rounding to
-clinical convention would erase the slow-compartment wash-in that is the
-reason for displaying those compartments at all. 0.01 percentage points is
-the coarsest resolution that keeps every displayed compartment legible and
-the finest the numerics support; the two constraints meet at one value
-rather than being traded off.
+shows, and the floor argument above is the answer: at monitor resolution the
+sevoflurane and isoflurane fat fractions read `0.0%` for an entire hour and
+muscle reads `0.0%` for its first 2.9 to 14.8 minutes. Rounding to clinical
+convention would erase the slow-compartment wash-in that is the reason for
+displaying those compartments at all. 0.01 percentage points is the coarsest
+resolution that keeps every displayed compartment legible; that it is also
+close to what the parameters support is a coincidence worth naming rather than
+a second constraint meeting the first, since the two are measured entirely
+independently.
 
 **Why a below-resolution value is marked rather than shown as zero.** Even
 at 0.01 percentage points the slow compartments start below the last digit.
@@ -3121,22 +3331,25 @@ The compartment guards make one impossible, so a negative reaching the
 formatter means something upstream is wrong, and it must remain visible as
 an anomaly rather than be absorbed into a plausible small positive reading.
 
-**Why parameter uncertainty does not govern this.** A partition coefficient
-is a measured population quantity carrying real uncertainty, and this
-model's absolute agreement with any individual patient is limited by that
-far more than by any solver error. It is nonetheless not what sets the
-number of decimals, and the distinction is worth stating: parameter
-uncertainty displaces a whole trajectory, while displayed resolution governs
-how finely two moments *within one run* can be told apart. Within a run the
-parameters are fixed and the simulation is deterministic, so what limits
-resolution is the per-step solver error, which the table above measures.
-Parameter uncertainty is disclosed where it belongs — in "Parameter
-provenance", which records each value's source, definition, and reference
-conditions — rather than encoded in a decimal count. The consequence for a
-reader is explicit, and the "Known limitations" list is where it is made
-good: no displayed value may be read as accurate to its last digit as a
-prediction about a patient. It is accurate to its last digit as a statement
-about this model with these parameters.
+**How this section changed when the solver did, stated so a reader comparing
+versions is not misled.** Through v0.4.2 this section carried a paragraph
+headed "Why parameter uncertainty does not govern this", which argued that the
+decimal count was set by the per-step solver error and that parameter
+uncertainty, displacing a whole trajectory rather than limiting within-run
+resolution, was disclosed in "Parameter provenance" instead of being encoded in
+a decimal count. The second half of that is still true and is kept above; the
+first half is not, because there is no longer a per-step solver error of a size
+any readout could express. So the roles have swapped: parameter uncertainty is
+now what bounds the count from above, and the trajectory-versus-within-run
+distinction is what explains why the bound is loose enough to permit a digit
+finer than one SD rather than forbidding it.
+
+Two things did *not* change, and neither depended on the solver: the resolution
+that ships, and the reason a reader may not treat it as a claim about a
+patient. Nothing in this document has ever licensed the second reading, and
+"Known limitations" is where it is made good — no displayed value may be read
+as accurate to its last digit as a prediction about a patient. It is accurate
+to its last digit as a statement about this model with these parameters.
 
 **Precision elsewhere in the interface, and why it differs.** Simulated
 time is displayed to 0.1 s, which is exactly `SIMULATION_STEP_S`: the
@@ -3199,8 +3412,9 @@ Version v0.1.0 assumes:
 - partition coefficients are constant;
 - tissue volumes and flow fractions are constant;
 - outgoing pulmonary blood equilibrates with alveolar gas;
-- inspired gas is circuit gas, $`F_I \equiv F_C`$, there being one perfectly
-  mixed circuit with no dead space and no separate limbs (see "Model boundary");
+- inspired gas is circuit gas — one gas-phase state $`F_I`$ between the
+  vaporizer and the alveoli, there being one perfectly mixed circuit with no
+  dead space and no separate limbs (see "Model boundary");
 - tissue venous blood equilibrates with its tissue group;
 - carrier gases do not affect sevoflurane kinetics;
 - temperature is constant;

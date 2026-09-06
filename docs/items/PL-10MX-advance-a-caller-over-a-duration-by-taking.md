@@ -51,3 +51,19 @@ collapses to a single exact step and this item is close to moot; if it stays -
 on capacity-guard, scaling-and-squaring or observability grounds rather than
 splitting error - the item stands with a new rationale and the same shape.
 Either way the answer is `PL-X9KD`'s to give.
+
+**Mechanism void after `PL-GS5X`, 2026-09-06.** This item proposes an
+`advance_over(duration_s)` that sub-steps internally at
+`MAXIMUM_SIMULATION_STEP_S`. Sub-stepping now buys nothing: the propagator is
+the exact solution over whatever interval it is given, so
+`matrix_exponential(A, 3600.0)` is as exact as 36000 applications of
+`matrix_exponential(A, 0.1)` and considerably cheaper — that is
+`PL-GS5X`'s 2026-09-05 amendment, and `core/matrix_exponential.matrix_exponential`
+takes the interval as an argument for exactly this reason.
+
+The *interface* question survives and is worth keeping: `advance()` still
+refuses an interval longer than `MAXIMUM_SIMULATION_STEP_S`, and that bound is
+now about control resolution rather than about accuracy, so what a caller
+wanting an hour of simulated time should ask for is a real question.
+`PL-T691` answers most of it by making the run a closed-form function of its
+control timeline. Re-scope against that rather than against sub-stepping.

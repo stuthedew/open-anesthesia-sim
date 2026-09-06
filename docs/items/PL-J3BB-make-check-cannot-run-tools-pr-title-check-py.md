@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.4.3
 touches: Makefile, tools/pr_title_check.py, tests/unit/test_pr_title_check.py
 added: 2026-09-03
 closed: 2026-09-05
