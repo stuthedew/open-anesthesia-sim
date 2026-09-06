@@ -180,6 +180,14 @@ judgment is the reply's: leave a branch someone is working, and recover from
 one nobody will merge - restore the file, commit it on its own, and say in the
 reply which branch it came off.
 
+**Run the command; do not act on the digest's copy of its line.** The digest is
+written once, at session start, and then resent on every turn for the rest of
+the session, so its stranded line ages while the reply reading it does not. The
+command refreshes the default branch before it compares and the digest cannot,
+which is the difference between "this item is lost" and "this item merged nine
+minutes ago" - and the recovery is a `git checkout` that overwrites the merged
+copy with the older one, which is what `PL-XLQ5` cost (`PL-KBFN`, `PL-39B7`).
+
 **The same command's second half is not about items at all, and it is not a
 judgment call in the same way.** It names a branch whose pull request already
 took part of its work and left the rest - a commit pushed after the merge,
@@ -192,6 +200,16 @@ git branch -dr origin/<branch>
 git fetch origin main
 git checkout -B <branch> origin/main
 ```
+
+**These three commands destroy a branch, so confirm the merge before running
+them.** The check now requires the base to have taken one of the branch's
+commits whole, which is what a squash merge leaves and what two sessions
+writing identical `docket record` lines does not (`PL-5TRV`, `#372` reported
+as merged while its pull request was open with two commits on it). That
+narrows the false verdict; it does not remove the reader's part. One look at
+the pull request's state settles it, and where the session cannot reach
+GitHub, `git log --oneline origin/main` for a squash subject naming the
+branch's ids does. A branch whose pull request is open is live work: leave it.
 
 **Delete that one ref by name; never `git fetch --prune`.** A stale
 `origin/<branch>` can be the only surviving copy of an item captured on a

@@ -152,7 +152,12 @@ def _say_unread(flight: FlightReport) -> None:
 
 
 def _stranded(
-    root: Path, directory: Path, items: Sequence[Item], args: argparse.Namespace
+    root: Path,
+    directory: Path,
+    items: Sequence[Item],
+    args: argparse.Namespace,
+    *,
+    fetched: bool = False,
 ) -> StrandedReport | None:
     """What exists only on a branch, or `None` when the question cannot be asked.
 
@@ -162,6 +167,12 @@ def _stranded(
     A store outside the repository is `None` rather than an answer. Git can
     only be asked about paths it tracks, and searching the wrong path would
     find no items and report every branch as stranding all of its own.
+
+    `fetched` is the caller's, because the two callers refresh differently and
+    neither should refresh twice. `cmd_stranded` fetches for itself; the digest
+    is run by a hook that has just fetched through `docket branch`, and a
+    second fetch would cost every session start a network round trip for an
+    answer it already has.
     """
     if getattr(args, "no_git", False):
         return None
@@ -169,7 +180,7 @@ def _stranded(
         tracked = directory.resolve().relative_to(root.resolve()).as_posix()
     except ValueError:
         return None
-    return stranded(root, {item.identifier for item in items}, items_dir=tracked)
+    return stranded(root, {item.identifier for item in items}, items_dir=tracked, fetched=fetched)
 
 
 def _orphaned(root: Path, args: argparse.Namespace) -> OrphanedReport | None:
@@ -1134,10 +1145,22 @@ def cmd_stranded(args: argparse.Namespace) -> int:
     being worked is the normal case, and the command cannot tell that from an
     item on a branch nobody will merge. Reporting is the whole job; deciding
     which of the two a branch is remains the reader's.
+
+    **This fetches, and the library functions it calls do not**, exactly as
+    `cmd_branch` does and for a sharper reason than that one has. Every finding
+    below is a claim about what the default branch does *not* hold, so a base
+    nobody refreshed reports whatever merged since the last fetch as lost - and
+    the recovery this command hands over is a `git checkout` that overwrites
+    the newer copy with the older one. That is not the hazard in theory: it
+    happened on 2026-09-05, eight minutes after `#325` merged (`PL-KBFN`,
+    `PL-39B7`). `--no-fetch` is for the caller that already fetched and for a
+    checkout with no network; the report says which of the two happened.
     """
     directory, items, _ = _load(args)
     root = args.items.parent if args.items else find_root()
-    report = _stranded(root, directory, items, args)
+    if not args.no_fetch:
+        fetch_remote(root)
+    report = _stranded(root, directory, items, args, fetched=not args.no_fetch)
     if report is None:
         print("branch detection is off (`--no-git`), so nothing was read")
         return 0
@@ -1432,7 +1455,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="say nothing unless the branch is behind, for a caller that speaks unasked",
     )
     branch_cmd.set_defaults(func=cmd_branch)
-    add("stranded", "work that exists only on a branch").set_defaults(func=cmd_stranded)
+    stranded_cmd = add("stranded", "work that exists only on a branch")
+    stranded_cmd.add_argument(
+        "--no-fetch",
+        action="store_true",
+        default=False,
+        help="read the refs as they are; the caller refreshed them, or cannot",
+    )
+    stranded_cmd.set_defaults(func=cmd_stranded)
 
     record = add("record", "write the pull request number onto the closures owed one")
     record.add_argument(

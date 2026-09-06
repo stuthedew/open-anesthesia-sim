@@ -1,8 +1,14 @@
 ---
 id: PL-ZVS7
 title: docs/MODEL.md's control-resolution tolerance table is a measured safety claim with no regression test; re-measuring it 2026-09-06 reproduced it, but nothing would have caught a drift
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: safety, test
+feature: numerical-domain
+touches: tests/reference, docs/MODEL.md, src/anesthesia_sim/core/uptake_system.py
 added: 2026-09-06
+verify: uv run pytest -q tests/reference && grep -rq 'def test_the_control_resolution_tolerance_table' tests/reference
 ---
 
 **Problem.** `docs/MODEL.md` § "Supported simulation step" publishes three

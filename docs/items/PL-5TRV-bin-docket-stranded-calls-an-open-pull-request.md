@@ -3,11 +3,13 @@ id: PL-5TRV
 title: bin/docket stranded calls an open pull request's branch merged-and-abandoned when another PR independently wrote the same docket record pr: lines, and its recovery would discard the branch
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, .claude/skills/docket/SKILL.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-06
+closed: 2026-09-06
+pr: 385
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_changes_the_base_already_holds_is_not_partly_merged' subprojects/docket/tests/test_vcs.py
 ---
 
@@ -116,3 +118,37 @@ from the false one.
 pull request merged on the strength of files whose content already agrees with
 the base, and a regression test covers the shape: a branch carrying real work
 plus several `pr:`-only edits that the base independently made.
+
+**Closed 2026-09-06 on `PL-39B7`'s branch, as its triage note anticipated.**
+The two are one function and one walk, and splitting them would have meant the
+second resolving against the first for nothing.
+
+Of the two decidable signals proposed above, **neither survived as written and
+the second's idea did.** Counting only files whose branch-side change is absent
+from the base is what `_landing_split` already does: the eight `pr:` blobs
+*are* on the base, byte for byte, so no content comparison can subtract them —
+convergence and a merge are indistinguishable at the blob, because there is
+nothing to distinguish. And requiring an ancestor on the default branch is the
+ancestry test a squash merge defeats, which would have silenced the check in
+every true case (`PL-39B7`'s close-out spells that out).
+
+What separates them is the **unit** rather than the content: a squash merge
+takes whole commits, so a branch whose pull request merged has a commit every
+path of which the base holds, while convergence scatters agreement inside
+commits and leaves no whole one. `_commits_by_landing` now reads both halves of
+that off the one walk `_commits_touching` already made — the commits nothing
+took, and whether the base took any commit whole — and `orphaned` requires
+both. The observed shape is pinned by
+`test_a_branch_whose_changes_the_base_already_holds_is_not_partly_merged`.
+
+Its cost is one narrow recall loss, documented in the docstring and in
+`subprojects/docket/README.md`: a post-merge push to a branch whose every
+pre-merge commit was re-merged against a base that had moved under it has no
+whole commit on either side and goes unreported. The remaining false positive
+is a branch one of whose commits is *only* `docket record` output, which the
+skill already tells a session not to make.
+
+The third signal — the pull request's own state — stayed out, for the reason
+guessed above (`PL-SK88`). The skill prose instead tells the reader to confirm
+the merge before running a recovery that deletes a branch, since narrowing the
+verdict is not the same as removing the reader's part.

@@ -71,21 +71,32 @@ mechanism is chosen so the next visibility change cannot repeat this.
 **Decided, 2026-09-06 (project owner).** Rewrite history now rather than
 accept the exposure: run on the day the breach was found, with the citations
 kept in the README as text, which is the part designed to survive a removal.
-Both halves are done and verified.
+Both halves are done and verified. This supersedes the three-part
+`Decision needed` this item carried until the merge of #388; the first two
+questions were answered by doing the work, and the third is below.
 
-**Still open, and the durable half.** Nothing deterministic guards this. Two
-cited files left the tree and `make check` reported zero errors, because
-`tools/doc_check.py` validates the paths `docs/MODEL.md` cites and does not
-read `docs/references/`. The candidate is a check that fails when a file under
-`docs/references/` has no recorded licence permitting redistribution, and that
-fails when an entry in that README names a file the directory does not hold.
-Both halves are decidable by reading the tree, which is where `CLAUDE.md` says
-the work belongs. The same trap is armed for every future upload, and the
-visibility change that sprang it is not repeatable - so the guard has to key on
-the file and its licence, not on a visibility transition nobody will make
-twice.
+**Still open, and the durable half: `PL-69K6`.** Nothing deterministic guards
+this. Two cited files left the tree and `make check` reported zero errors,
+because `tools/doc_check.py` verifies that a path *cited* elsewhere in the tree
+exists and never reads `docs/references/`. `PL-69K6` (the README documents two
+PDFs the purge removed, and `doc_check` does not verify a documented reference
+file exists) is where that check belongs and is specified there; it is not
+duplicated here. The one thing worth adding to it: the guard has to key on a
+file and its licence rather than on a visibility transition, because the
+transition that sprang this trap is not one anybody will make twice.
 
 **Done when.** No file in `docs/references/` is redistributed without a licence
 that permits it, `docs/references/README.md` describes the repository's actual
 visibility, and the rule that was violated is either enforced by a check or
 recorded where the next session filing a PDF will read it.
+
+**Update, 2026-09-06, after recovery.** This item was captured before the
+history rewrite and its premise has since changed. Both named PDFs are gone
+from `origin/main` and from its history - the purge did what this item asked
+for. The prose residue that survived the purge, where the README still carried
+a full entry for each file, is fixed by the same pull request that carries this
+paragraph: both entries now read "Not held here" with the date and the reason,
+and the citations stay. That closes the first half of `PL-69K6` and leaves its
+check half open. Read this item as the record of why the purge happened rather
+than as outstanding work, and confirm against `git ls-tree origin/main` rather
+than against the text above.

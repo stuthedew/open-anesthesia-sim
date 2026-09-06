@@ -3,11 +3,13 @@ id: PL-39B7
 title: Make docket stranded distinguish a merged-and-deleted branch from an abandoned one, and say when its main is stale
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-05
+closed: 2026-09-06
+pr: 385
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_merged_and_deleted_branch_is_not_reported_as_stranded' subprojects/docket/tests/test_vcs.py
 ---
 
@@ -65,3 +67,31 @@ abandoned one, and a live branch duplicating another's files.
 
 **Sequencing.** Independent. Worth doing before the next session that acts on a
 `stranded` line, which is every session — the digest prints it at startup.
+
+**Closed 2026-09-06, with two corrections to the fix as written above.**
+
+Part 2 was already implemented and had been since `PL-FBCC` (`#108`,
+2026-08-31): `stranded` adds the default branch's own ids to `known_ids`
+before comparing, so an item on `main` is not reported however many branches
+also carry it. What made `PL-XLQ5` read as stranded was part 1 alone — the
+base those ids were read from was eight minutes old. Part 1 is therefore the
+whole of the item's first two thirds, and it landed as `cmd_stranded` fetching
+(`--no-fetch` for a caller that already did, or cannot), with
+`StrandedReport.fetched` carrying which happened into the output.
+
+**Part 3's proposed mechanism could not be built, and the outcome was reached
+another way.** "Distinguish the two by whether the branch's own commits are
+ancestors of `main`" is an ancestry test, and this repository squash-merges:
+a squash writes one new commit carrying the branch's content and none of its
+commits, so no merged branch here has an ancestor on `main` and the test would
+have silenced `orphaned` in every true case rather than only the false one —
+deleting the check `PL-3D2M` built. `_landing_split`'s docstring already
+records that trap from the other direction.
+
+What was built instead is the rule `PL-5TRV` reached independently a day
+later, sharpened: the base is only evidence of a merge where it took one of
+the branch's commits **whole**. A squash merge takes whole commits; two
+sessions writing identical `bin/docket record` lines scatters agreement inside
+commits and leaves no whole one. Same walk, no extra git call, and the true
+positive (`#284`'s shape) is unaffected. `PL-5TRV` carries the full reasoning
+and closed on this branch with it.
