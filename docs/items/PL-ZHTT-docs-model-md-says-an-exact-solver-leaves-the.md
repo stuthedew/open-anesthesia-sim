@@ -8,8 +8,10 @@ classes: science, docs
 touches: docs/MODEL.md
 added: 2026-09-05
 closed: 2026-09-06
+pr: 376
 verify: python3 tools/doc_check.py check && grep -qF 'What a longer step still costs is **control resolution**' docs/MODEL.md
 ---
+
 **Problem.** `docs/MODEL.md` § "Selected method (as implemented)" closes with:
 
 > "The fixed 0.1 s step is unaffected either way. The playback multiplier is

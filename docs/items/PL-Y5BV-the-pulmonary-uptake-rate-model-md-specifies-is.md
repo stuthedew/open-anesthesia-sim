@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-08-30
 closed: 2026-09-06
+pr: 376
 verify: uv run pytest -q tests/unit/test_governing_equations.py && grep -q 'def test_the_pulmonary_uptake_rate_is_formed' tests/unit/test_governing_equations.py
 ---
 

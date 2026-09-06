@@ -1,14 +1,15 @@
 ---
 id: PL-Y0W6
 title: Cut the v0.4.3 release: the CI-cost and public-readiness batch
-status: done
 priority: P2
 effort: S
+status: done
 classes: planning, docs
 feature: planning-cadence
-not-delegable: proving a release cut means cutting the release. No command can run beforehand - `make release` refuses while the previous version is untagged, and the version-table row, baseline mark and release prose it stops short of are judged by a reader rather than by a check
-closed: 2026-09-06
 added: 2026-09-06
+closed: 2026-09-06
+pr: 374
+not-delegable: proving a release cut means cutting the release. No command can run beforehand - `make release` refuses while the previous version is untagged, and the version-table row, baseline mark and release prose it stops short of are judged by a reader rather than by a check
 ---
 
 **Problem.** Cut the v0.4.3 release: the CI-cost and public-readiness batch
