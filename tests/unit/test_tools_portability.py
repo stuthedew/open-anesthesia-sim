@@ -36,7 +36,27 @@ virtualenv exists yet to leak from.
 The approximations stay because they are not redundant: they name the offending
 file, import or construct where a traceback from CI would not, they run before
 a push rather than after one, and they reach a file or a lazily-imported branch
-that job's two commands never touch.
+that section's four commands never touch.
+
+**The promise is about what a tool depends on, not about what it can read**,
+and the difference decides where a tool is invoked from. Everything here may
+import only the standard library and must parse at the floor; that is what
+these checks hold, and it is what lets a bare checkout run them. It does not
+follow that every tool may *run* at the floor. One that parses repository
+source with `ast` can only run under an interpreter that understands that
+source, and `src/` is free to use the language `.python-version` pins.
+`ast.parse`'s `feature_version` cannot bridge that: it only ever narrows the
+syntax accepted, so it cannot teach an older parser a newer language.
+
+So `tools/contrast_check.py` and `tools/import_boundary_check.py` are invoked
+through `uv run python` in both `make check` and
+`.github/workflows/quality.yml`, and are deliberately absent from that
+workflow's floor section - while staying standard-library-only and
+floor-parseable themselves, which is what keeps them in scope here. `PL-Y0RZ`
+established this for the second. `PL-L17Q` found the first still at the floor,
+green only because `app/theme.py` and `app/simulation_view.py` happened to
+carry no 3.12+ syntax; one PEP 695 generic added to either would have failed
+the floor section on a tool its author had not touched.
 """
 
 from __future__ import annotations

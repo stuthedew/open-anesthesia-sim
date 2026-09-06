@@ -615,11 +615,16 @@ def test_two_heavy_commands_are_both_named(tmp_path: Path) -> None:
 
 
 def test_the_named_commands_come_worst_first(tmp_path: Path) -> None:
+    # The gap carries the ordering and nothing else, so it is 1 s rather than
+    # the 2 s it was: both members still clear `SLOW_COMMAND_FLOOR` with the
+    # same margin every other test here uses, and `sleep` cannot return early,
+    # so the measured order can only be wrong if startup jitter exceeds a
+    # second. This was the slowest test in the repository at 4.1 s (`PL-VJ7W`).
     root = _repo(tmp_path)
     items = [_item(identifier=f"PL-000{n}") for n in range(4)]
     items += [
         _item(identifier="PL-SLW1", verify="sleep 2"),
-        _item(identifier="PL-SLW2", verify="sleep 4"),
+        _item(identifier="PL-SLW2", verify="sleep 3"),
     ]
     report = already_passing(root, items, workers=8)
 
@@ -654,10 +659,14 @@ def test_the_run_carries_what_it_would_have_cost_serially(tmp_path: Path) -> Non
     # is what the store actually asks for, and it climbs with every item
     # triaged to `ready` (`PL-9NKK`).
     root = _repo(tmp_path)
-    items = [_item(identifier=f"PL-000{n}", verify="sleep 1") for n in range(4)]
+    # Four commands of 0.5 s rather than 1 s. What is under test is that the
+    # total is summed while the wall clock is not, and the ratio carrying it is
+    # four-to-one either way: eight workers run these at once, so `elapsed`
+    # stays near one command's duration whatever that duration is (`PL-VJ7W`).
+    items = [_item(identifier=f"PL-000{n}", verify="sleep 0.5") for n in range(4)]
     report = already_passing(root, items, workers=8)
 
-    assert report.serial >= 4
+    assert report.serial >= 2
     assert report.elapsed < report.serial
 
 
@@ -676,7 +685,10 @@ def test_the_costliest_command_is_carried_whether_or_not_it_is_an_outlier(tmp_pa
 def test_the_costliest_command_is_the_one_that_actually_cost_the_most(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     items = [_item(identifier=f"PL-000{n}") for n in range(4)]
-    items.append(_item(identifier="PL-SLOW", verify="sleep 1"))
+    # 0.3 s, not 1: `slowest` is a maximum and is held to no threshold, unlike
+    # `slow` above, so this only has to beat four commands that take
+    # milliseconds - which it does by about sixty times (`PL-VJ7W`).
+    items.append(_item(identifier="PL-SLOW", verify="sleep 0.3"))
     report = already_passing(root, items, workers=8)
 
     assert report.slowest is not None
@@ -916,3 +928,73 @@ def test_a_verify_report_of_a_real_failure_makes_no_such_claim(tmp_path: Path) -
     command = next(c for c in report.checks if "`verify:` command" in c.name)
     assert not command.passed
     assert not any("selects no test" in line for line in command.lines)
+
+
+# Scoping the replay to what a branch changed (`PL-SDHR`). The sweep answers a
+# question about the store, which a pull request cannot have changed - the same
+# argument `PL-P3B6` used to take it off `make check` - while costing 87 s of
+# the quality job's 152 s and growing with the queue rather than the change.
+
+
+def test_a_scoped_run_checks_only_the_items_it_was_given(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-A1B2", verify="true")]
+    report = already_passing(root, items, scoped_to={"PL-K7QX"})
+
+    assert report.passing == ("PL-K7QX",)
+    assert report.considered == 1
+
+
+def test_a_scoped_run_says_what_it_was_narrowed_to(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    report = already_passing(
+        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-K7QX"}, scope_base="origin/main"
+    )
+
+    assert report.scope == "1 item(s) this branch changed against origin/main"
+
+
+def test_a_scope_that_holds_nothing_to_run_still_carries_the_scope(tmp_path: Path) -> None:
+    # The path that would otherwise lie. A branch changing only closed items
+    # runs no command, and an empty report with no scope on it is
+    # indistinguishable from a store that holds no command at all - the exact
+    # confusion `declined` exists to prevent one level up.
+    root = _repo(tmp_path)
+    report = already_passing(
+        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-NONE"}, scope_base="origin/main"
+    )
+
+    assert report.passing == ()
+    assert report.considered == 0
+    assert report.scope == "1 item(s) this branch changed against origin/main"
+
+
+def test_an_unscoped_run_carries_no_scope(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+
+    assert already_passing(root, [_item()]).scope == ""
+
+
+def test_an_empty_scope_is_not_the_same_as_no_scope(tmp_path: Path) -> None:
+    # A branch that changed no item at all is still a scoped run, and saying
+    # "0 item(s)" is the answer. `scoped_to=None` is what means "sweep".
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item()], scoped_to=set(), scope_base="origin/main")
+
+    assert report.scope == "0 item(s) this branch changed against origin/main"
+    assert report.considered == 0
+
+
+def test_a_declined_run_still_reports_what_it_would_have_covered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A nested run declines before running anything, and the scope is built
+    # first so the decline can still say what was asked of it.
+    root = _repo(tmp_path)
+    monkeypatch.setenv(LANDED_GUARD, "1")
+    report = already_passing(
+        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-K7QX"}, scope_base="origin/main"
+    )
+
+    assert not report.known
+    assert report.scope == "1 item(s) this branch changed against origin/main"

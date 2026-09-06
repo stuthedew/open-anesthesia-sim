@@ -1720,3 +1720,35 @@ def test_a_caller_that_did_not_ask_gets_no_answer() -> None:
 
     assert report.errors == []
     assert not _has(report.declined, "recorded `verify:` was rewritten")
+
+
+# A scoped replay, and the property that makes it safe to have one: a narrowed
+# run must never be readable as a clean whole-store answer (`PL-SDHR`).
+
+
+def test_a_scoped_run_says_what_it_was_scoped_to() -> None:
+    cost = _cost(_landed(considered=1, scope="9 item(s) this branch changed against origin/main"))
+
+    assert "scoped to 9 item(s) this branch changed against origin/main" in cost
+
+
+def test_a_whole_store_run_claims_no_scope() -> None:
+    # The other half of the same property: the unscoped line must not acquire a
+    # qualifier that would make a complete answer look partial.
+    assert "scoped" not in _cost(_landed(considered=78))
+
+
+def test_a_scope_holding_no_command_still_says_it_was_scoped() -> None:
+    # The case the whole field exists for. A branch that changed no open item
+    # runs nothing, so there is no cost to report - and an absent line reads as
+    # a store with no commands in it rather than as a run that was narrowed
+    # past everything.
+    cost = _cost(LandedReport(scope="3 item(s) this branch changed against origin/main"))
+
+    assert "no command to run in 3 item(s) this branch changed" in cost
+
+
+def test_a_whole_store_run_with_nothing_to_run_still_reports_nothing() -> None:
+    # Unscoped, the absent line is the honest one: nothing was narrowed, so
+    # there is nothing a reader could mistake.
+    assert _cost(LandedReport()) == ""

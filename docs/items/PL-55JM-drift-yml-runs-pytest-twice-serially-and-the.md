@@ -1,11 +1,12 @@
 ---
 id: PL-55JM
 title: drift.yml runs pytest twice serially, and the comment explaining why it stays bare is about --cov rather than about -n auto
-status: needs-decision
+status: done
 priority: P2
 effort: S
 classes: infra, test
 feature: dev-tooling
+closed: 2026-09-05
 touches: .github/workflows/drift.yml, .github/workflows/quality.yml
 verify: python3 tools/doc_check.py check && ! grep -qE '^ *- run: uv run pytest$' .github/workflows/drift.yml && ! grep -q 'deliberately keeps its bare' .github/workflows/quality.yml
 added: 2026-09-04
@@ -79,3 +80,28 @@ a declared dependency that job should be exercising.
 enumerate every place the flag lives to say what it was and was not joining.
 Left rather than fixed there: `PL-FX3N`'s `touches` was `Makefile, README.md`,
 and widening a branch past its brief is what `CLAUDE.md` forbids.
+
+**Closed 2026-09-05, on the recommended answer** - `-n auto` on both lines,
+taken rather than referred back, because the brief had already argued it and
+the project owner's instruction for this session was to work the CI items. The
+two objections it records were re-read and neither has changed: every
+parallel-unsafe test is already red on every pull request, and an xdist
+regression is a dependency break rather than a coverage-policy failure.
+
+**`--dist worksteal` went on with it**, which the brief did not name. Its own
+argument requires it: it asks that this job differ from the gate on dependency
+versions alone, and leaving the distribution mode different would have left a
+second topology axis varying - `make test`, `make check` and `quality.yml` all
+run `--dist worksteal` (`PL-VZ8P`). Both lines are now exactly `make test`'s.
+
+`quality.yml`'s comment no longer says `drift.yml` "deliberately keeps its bare
+`uv run pytest`". It states the two flags as two decisions: `--cov` stays off
+for the reason `PL-22Z3` gives, `-n auto` goes on because xdist is a declared
+dependency that job upgrades and was never running.
+
+One correction to the brief's closing line, which said the saving was CI
+minutes rather than speed. That is right about the *ranking* - this job is
+monthly, gates nothing and blocks nobody - but it is worth being exact about
+the size: two jobs, once a month, so the minutes are a rounding error against
+the per-push cost of `quality.yml`. The reason to do it is the untested
+dependency, and the wall clock and minutes are incidental.
