@@ -170,7 +170,43 @@ jobs:
       # on the same command. The flag moves the bill here without moving the
       # coverage: this is the job and these are the events it ran on before
       # (`PL-P3B6`). CI wall clock is not what that item was optimizing.
-      - run: bin/docket check --verify
+      #
+      # It is now, and the two steps below are one decision (`PL-SDHR`).
+      # Measured on run 33998014593: the sweep was **87 s of this job's 152 s**,
+      # more than the whole 1820-test suite, because 111 open items carry a
+      # command and 79 of them start a fresh `uv run pytest`. That bill grows
+      # with the size of the queue rather than with the size of the change, and
+      # it is paid on every push to every open pull request.
+      #
+      # So the scope follows the event, which is `PL-P3B6`'s own argument one
+      # step on. That item took the replay off `make check` because a
+      # pre-commit gate cannot have changed whether some *other* item's work
+      # merged - and neither can a pull request. What a branch can have changed
+      # is the items it edited, so a pull request replays exactly those, which
+      # `--verify-base` reads from the diff. The finding a session can act on -
+      # "you finished this item's work and left it open" - is kept; the finding
+      # about the rest of the store is not a pull request's question.
+      #
+      # The whole-store sweep still runs on every push to the default branch,
+      # which is where it is a fact about `main` rather than about a branch. A
+      # scoped run says what it was scoped to on `docket check`'s own cost
+      # line, including when the scope held nothing, so a narrowed answer can
+      # never be read as a clean whole-store one.
+      #
+      # Two steps rather than one job, deliberately: this job's name is
+      # load-bearing for branch protection (see the note on `checks:` above), so
+      # the alternative of splitting the sweep into a parallel job would have
+      # orphaned a required check as well as buying a second rounded-up minute.
+      - name: verify replay, scoped to what this branch changed
+        if: github.event_name == 'pull_request'
+        # Through the environment rather than a `${{ }}` interpolation in the
+        # `run:` line, as in `pr-title.yml` and for the same reason.
+        env:
+          VERIFY_BASE: origin/${{ github.base_ref }}
+        run: bin/docket check --verify --verify-base "$VERIFY_BASE"
+      - name: verify replay, the whole store
+        if: github.event_name != 'pull_request'
+        run: bin/docket check --verify
       # Repeated from the floor section above, unlike the two lines after them:
       # these read `git log`, the branch name and the documentation, never
       # project source, so the 3.11 parser has nothing it cannot read.

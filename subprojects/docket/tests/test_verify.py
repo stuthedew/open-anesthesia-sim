@@ -928,3 +928,73 @@ def test_a_verify_report_of_a_real_failure_makes_no_such_claim(tmp_path: Path) -
     command = next(c for c in report.checks if "`verify:` command" in c.name)
     assert not command.passed
     assert not any("selects no test" in line for line in command.lines)
+
+
+# Scoping the replay to what a branch changed (`PL-SDHR`). The sweep answers a
+# question about the store, which a pull request cannot have changed - the same
+# argument `PL-P3B6` used to take it off `make check` - while costing 87 s of
+# the quality job's 152 s and growing with the queue rather than the change.
+
+
+def test_a_scoped_run_checks_only_the_items_it_was_given(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-A1B2", verify="true")]
+    report = already_passing(root, items, scoped_to={"PL-K7QX"})
+
+    assert report.passing == ("PL-K7QX",)
+    assert report.considered == 1
+
+
+def test_a_scoped_run_says_what_it_was_narrowed_to(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    report = already_passing(
+        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-K7QX"}, scope_base="origin/main"
+    )
+
+    assert report.scope == "1 item(s) this branch changed against origin/main"
+
+
+def test_a_scope_that_holds_nothing_to_run_still_carries_the_scope(tmp_path: Path) -> None:
+    # The path that would otherwise lie. A branch changing only closed items
+    # runs no command, and an empty report with no scope on it is
+    # indistinguishable from a store that holds no command at all - the exact
+    # confusion `declined` exists to prevent one level up.
+    root = _repo(tmp_path)
+    report = already_passing(
+        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-NONE"}, scope_base="origin/main"
+    )
+
+    assert report.passing == ()
+    assert report.considered == 0
+    assert report.scope == "1 item(s) this branch changed against origin/main"
+
+
+def test_an_unscoped_run_carries_no_scope(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+
+    assert already_passing(root, [_item()]).scope == ""
+
+
+def test_an_empty_scope_is_not_the_same_as_no_scope(tmp_path: Path) -> None:
+    # A branch that changed no item at all is still a scoped run, and saying
+    # "0 item(s)" is the answer. `scoped_to=None` is what means "sweep".
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item()], scoped_to=set(), scope_base="origin/main")
+
+    assert report.scope == "0 item(s) this branch changed against origin/main"
+    assert report.considered == 0
+
+
+def test_a_declined_run_still_reports_what_it_would_have_covered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A nested run declines before running anything, and the scope is built
+    # first so the decline can still say what was asked of it.
+    root = _repo(tmp_path)
+    monkeypatch.setenv(LANDED_GUARD, "1")
+    report = already_passing(
+        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-K7QX"}, scope_base="origin/main"
+    )
+
+    assert not report.known
+    assert report.scope == "1 item(s) this branch changed against origin/main"

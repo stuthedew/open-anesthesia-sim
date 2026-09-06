@@ -1,10 +1,15 @@
 ---
 id: PL-SDHR
 title: The verify replay is 87s of the checks job's 152s, and nothing in the workflow records what it now costs
-status: untriaged
+status: done
+priority: P2
+effort: M
+classes: perf, infra
 feature: ci-cost
-touches: .github/workflows/quality.yml, subprojects/docket/src/docket/verify.py
+touches: .github/workflows/quality.yml, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py
+verify: uv run pytest subprojects/docket/tests/test_verify.py subprojects/docket/tests/test_checks.py && grep -q 'def test_a_scope_that_holds_nothing_to_run_still_carries_the_scope' subprojects/docket/tests/test_verify.py && grep -q 'verify-base' .github/workflows/quality.yml
 added: 2026-09-05
+closed: 2026-09-06
 ---
 
 **Problem.** `bin/docket check --verify` is the most expensive step in CI, by
@@ -78,3 +83,58 @@ the price and why.
 
 **Found while working the CI-cost items 2026-09-05**, measuring where the
 checks job's time actually goes before optimizing anything.
+
+**Closed 2026-09-06 on option 3, decided by the project owner.**
+
+Measured on this checkout, `bin/docket check`:
+
+| | Commands | Wall clock | Serially |
+| --- | --- | --- | --- |
+| `--verify` (the sweep) | 102 | **74.6 s** | 570.5 s |
+| `--verify --verify-base origin/main` | 1 | **5.5 s** | 5.5 s |
+
+The branch had changed ten item files; one of them was still open and carried a
+command, so one command ran. In CI that is the 87 s step becoming a few
+seconds, and the `checks` job roughly halving.
+
+**What the scope is, and why that set.** The items whose *files* the branch
+changed, read from `<base>...HEAD` plus the uncommitted tree by `vcs.py`'s
+`_changed_items` - which `records_on_base` has used since it was written, now
+public as `changed_items`. Decidable from the diff, and not a prediction: an
+item's declared `touches` would have been the other reading and is a claim
+made before the work, which goes stale exactly when it matters.
+
+The finding a session can act on survives scoping. `already_passing` names
+open items whose command already passes, and on a pull request the useful
+instance of that is "you finished this item's work and left it open" - which
+is about an item the branch edited, so it is inside the scope by construction.
+What is dropped is the finding about *other* items, which is a fact about
+`main` and is still swept there on every push.
+
+**The anti-silence property is the part that needed care.** A narrowed run
+reporting no findings is indistinguishable from a whole store with none unless
+it says which it was, so `LandedReport.scope` is set on every path out of
+`already_passing` - the ordinary return, the nested-run decline, and the case
+where the scope holds nothing to run - and `docket check`'s cost line prints
+it. The zero-candidate case is the one that would otherwise lie, because there
+is no cost to report and an absent line reads as a store with no commands in
+it; it now prints `verify: no command to run in N item(s) this branch changed`.
+
+**Option 4 was refused on evidence that arrived mid-session.** `PL-KPP1`
+landed while this was being built: the `checks` job's *name* is matched by a
+branch-protection required check, so splitting the replay into a parallel job
+would have orphaned that requirement - every pull request waiting forever on a
+check that cannot arrive - on top of buying a second rounded-up billable
+minute. Two `if:`-gated steps inside the one job cost nothing and rename
+nothing.
+
+**What this does not do.** It does not make the sweep cheaper; it moves it to
+the one event where its answer is about that event. The serial total is still
+570 s and still climbs with every item triaged to `ready`, so a store several
+times this size will make the `push` run to `main` slow even though no pull
+request pays it. `PL-W6NY` and the per-command `uv run pytest` startup are
+where that would be attacked next; nothing here forecloses it.
+
+**The `verify:` command was run before being written down**, and both `grep`
+halves confirmed absent at `HEAD` before the work, so the whole command exited
+1 for the right reason.

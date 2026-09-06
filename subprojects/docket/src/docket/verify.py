@@ -31,7 +31,7 @@ import subprocess
 import tempfile
 import time
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -642,6 +642,12 @@ class LandedReport:
     #: run is their total divided across the workers, and a report that knows
     #: the total but not the divisor can only guess (`PL-FRGP`).
     workers: int = 0
+    #: What this run was narrowed to, empty when it swept the whole store. Set
+    #: whenever `scoped_to` was given, on every path out - including a decline
+    #: and a scope holding nothing to run - because a narrowed run reporting no
+    #: findings is otherwise indistinguishable from a store with none, which is
+    #: this module's cardinal error read one level up (`PL-SDHR`).
+    scope: str = ""
     declined: str = ""
 
     @property
@@ -656,6 +662,8 @@ def already_passing(
     statuses: tuple[str, ...] = LANDED_STATUSES,
     timeout: float = LANDED_TIMEOUT,
     workers: int | None = None,
+    scoped_to: Collection[str] | None = None,
+    scope_base: str = "",
 ) -> LandedReport:
     """Run every open item's `verify:` command, and report what running it showed.
 
@@ -697,6 +705,24 @@ def already_passing(
     Where only some commands could not answer the run still reports, and names
     them in `timed_out` and `unavailable` rather than counting them checked.
 
+    `scoped_to` narrows the run to those ids, and exists because the cost of
+    sweeping the whole store is paid on every push to every open pull request
+    while the answer is about the store rather than about the commit. It is
+    `PL-P3B6`'s argument one step further: that item took the replay off `make
+    check` because a pre-commit gate cannot have changed whether some *other*
+    item's work merged, and a pull request cannot either. What a branch can
+    have changed is the items it edited, so CI scopes to those on
+    `pull_request` and sweeps everything on `push` to the default branch, where
+    the question is a fact about that branch. Measured 2026-09-05: 87 s of the
+    quality job's 152 s for 111 commands, against nine items changed by the
+    branch that measured it.
+
+    A scoped run says so in `scope`, and every path out of here carries it -
+    including the one where the scope holds nothing to run. A narrowed run
+    reporting nothing is indistinguishable from a whole store with nothing to
+    report unless it says which it was, which is the same rule the declines
+    below follow.
+
     `slow` is the third finding, and the only one about cost rather than
     correctness. The pool cannot finish before its slowest member, so a single
     heavy `verify:` sets the floor for every `make check` from the moment it is
@@ -705,14 +731,29 @@ def already_passing(
     to reconsider it and was the one session told nothing, so a command far
     enough above the typical one is named with what it cost.
     """
+    # Built before the guard returns, so a declined run still says what it
+    # would have covered. "Nothing was checked" and "nothing was checked, and
+    # it would have been nine items rather than the store" are different
+    # sentences to whoever reads the log.
+    scope = (
+        ""
+        if scoped_to is None
+        else (
+            f"{len(scoped_to)} item(s) this branch changed"
+            + (f" against {scope_base}" if scope_base else "")
+        )
+    )
     if os.environ.get(LANDED_GUARD):
         return LandedReport(
             declined="a `verify:` command re-entered `docket check`, which cannot "
-            "ask this question about itself"
+            "ask this question about itself",
+            scope=scope,
         )
     candidates = [item for item in items if item.status in statuses and item.verify]
+    if scoped_to is not None:
+        candidates = [item for item in candidates if item.identifier in scoped_to]
     if not candidates:
-        return LandedReport()
+        return LandedReport(scope=scope)
 
     child = {**os.environ, LANDED_GUARD: "1"}
 
@@ -778,7 +819,8 @@ def already_passing(
         return LandedReport(
             declined="no `verify:` command ran to completion here "
             f"({', '.join(why)}), so finding none passing would say only that the "
-            "toolchain is missing or the limit too low"
+            "toolchain is missing or the limit too low",
+            scope=scope,
         )
 
     # Only the commands that ran to completion. A killed one did not take its
@@ -828,4 +870,5 @@ def already_passing(
         serial=serial,
         slowest=slowest,
         workers=width,
+        scope=scope,
     )
