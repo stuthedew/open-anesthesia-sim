@@ -3,13 +3,24 @@ id: PL-0SHZ
 title: README's bare-interpreter paragraph names two ruff.toml pins and there are now three, since .claude/hooks/ carries one too
 priority: P3
 effort: S
-status: blocked
+status: dropped
 classes: docs, defect
 feature: project-introduction
 touches: README.md
-blocked-by: PL-N092
 added: 2026-09-05
+closed: 2026-09-06
+reason: Overtaken by PL-N092, which rewrote README.md from scratch and carried no bare-interpreter paragraph at all, so there is no sentence left to correct. PL-RM83's boundary rule keeps tooling detail at this depth off the front page, and the property this item wanted stated already exists where a contributor looks for it: docs/ARCHITECTURE.md says .claude/hooks/ruff.toml inherits the pin from tools/ruff.toml rather than restating it. tests/unit/test_tools_portability.py holds both trees through BARE_ROOTS, so nothing is unguarded and nothing is undocumented.
 ---
+
+**Dropped 2026-09-06, under `PL-N092` (rewrite README as a human-readable
+introduction).** The rewritten README has no bare-interpreter paragraph, so
+the incompleteness this item measured no longer has a home. What it was
+protecting survives in two better places than the front page:
+`docs/ARCHITECTURE.md` states that `.claude/hooks/ruff.toml` inherits the pin
+rather than restating it — the exact sentence this item said the README
+stopped short of — and `BARE_ROOTS` in `tests/unit/test_tools_portability.py`
+enforces both trees, which is the half that would actually catch a regression.
+The original brief below is the record of why three trees exist.
 
 **Problem.** `README.md:185-192` says that running in a bare checkout means
 running under whatever `python3` is on PATH, and that `tools/ruff.toml` and
