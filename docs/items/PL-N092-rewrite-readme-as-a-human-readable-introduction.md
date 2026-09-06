@@ -3,13 +3,12 @@ id: PL-N092
 title: Rewrite README as a human-readable introduction to the project
 priority: P2
 effort: M
-status: blocked
-blocked-by: PL-XYRN
+status: ready
 classes: docs, ux
 feature: project-introduction
 touches: README.md, docs/MODEL.md, pyproject.toml, Makefile, .github/workflows/quality.yml, tools/readme_hold_check.py, tests/unit/test_readme_hold_check.py, docs/ARCHITECTURE.md
 added: 2026-09-01
-verify: python3 tools/doc_check.py check && ! grep -q 'resolution the numerical method supports' README.md
+verify: python3 tools/doc_check.py check && test -f README.md && ! grep -q 'resolution the numerical method supports' README.md
 not-delegable: docs/MODEL.md is a protected path, and the command below bounds only the mechanical half - whether the rewritten README actually introduces the project to a first-time reader is the judgment a check cannot make, which is the whole of this item
 ---
 
@@ -154,6 +153,32 @@ same documents written singly over months do not.
 Nothing above is provisional because of that. `PL-RM83` settled the audience,
 the `docs/MODEL.md` boundary and the status treatment, and this brief is
 restated against them; only the timing moved.
+
+## Released, 2026-09-05 — the repository went public first
+
+The project owner answered `PL-XYRN`: "public today. Will do human facing pass
+in the nearish future." The pass no longer runs immediately before the flip, so
+the `blocked-by: PL-XYRN` edge is gone and this item is `ready`. It is now the
+work that closes a gap a stranger can already see, rather than work done ahead
+of one — which raises its value without changing a word of the brief.
+
+**Its `verify:` was silently passing, and is corrected here.** As written it was
+`python3 tools/doc_check.py check && ! grep -q 'resolution the numerical method
+supports' README.md`. `PL-WB5K` then deleted `README.md` (#366), and `grep` on a
+missing file exits 2, which `!` inverts to 0 — so from that merge onward the
+command **passed on a tree with none of the work done**, which is the one thing
+a `verify:` exists to refuse. Nothing caught it: `docket check --verify` raises
+its "already passing" advisory only for items `docket next` is about to offer,
+and this item was `blocked`, so it was invisible to exactly the check that would
+have found it. Corrected to `python3 tools/doc_check.py check && test -f
+README.md && ! grep -q 'resolution the numerical method supports' README.md`,
+run on this tree first and observed to exit 1.
+
+**The guard has to come out as part of the work.** `tools/readme_hold_check.py`
+is wired into `make check` and fails if a `README.md` exists at the repository
+root, so writing one without removing the guard turns `make check` red. That
+file and its test are already in this item's `touches`; this is the note saying
+why they are there.
 
 ## The README no longer exists, 2026-09-05 — PL-WB5K
 
