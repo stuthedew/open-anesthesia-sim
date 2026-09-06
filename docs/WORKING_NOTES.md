@@ -332,14 +332,22 @@ frame currently costs ~17 ms of which ~15 ms is chart-point construction, so
 PL-010 (point reuse, measured 20x cheaper) is the headroom to spend if a
 high multiplier makes the render rate the constraint again.
 
-Half of this is now decided rather than open. PL-VP7N put the operator
-split's applicability domain in the core as `MAXIMUM_SIMULATION_STEP_S`, and
-a step above it is refused, so the multiplier cannot be a larger step even
+Half of this is now decided rather than open. PL-VP7N put the supported step
+in the core as `MAXIMUM_SIMULATION_STEP_S` - then the operator split's
+applicability domain, now a declared control-resolution tolerance (`PL-X9KD`) -
+and a step above it is refused, so the multiplier cannot be a larger step even
 if someone wanted it to be: it is steps per tick, and that is enforced
 rather than merely written down. What "a larger step is a model-fidelity
 question" was pointing at has an answer - `docs/MODEL.md` § "Supported
 simulation step" - and the answer is that the supported step and the shipped
 step are the same number.
+
+**The other half is not decided, and this paragraph read as though it were
+until 2026-09-06.** Bounding the *step* does not bound what the multiplier
+costs, because the cost arrives through steps per tick rather than through step
+size: the burst that takes them is synchronous, so a control change cannot land
+inside one and is displaced by up to `tick x multiplier`. `PL-NBWP` carries it,
+and the section on control resolution below has the measurements.
 
 Still undecided, and the reason this stays `needs-decision` rather than
 `ready`: how the multiplier is exposed without creating a hidden mode - a
