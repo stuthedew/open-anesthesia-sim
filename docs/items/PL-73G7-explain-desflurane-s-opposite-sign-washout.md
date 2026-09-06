@@ -1,7 +1,12 @@
 ---
 id: PL-73G7
 title: Explain desflurane's opposite-sign washout disagreement once rebreathing is removed
-status: untriaged
+priority: P1
+effort: M
+status: blocked
+classes: science, docs
+blocked-by: PL-W21J
+touches: src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md, tests/reference/test_published_wash_in.py
 added: 2026-09-06
 ---
 

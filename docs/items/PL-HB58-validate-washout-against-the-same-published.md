@@ -3,12 +3,13 @@ id: PL-HB58
 title: Validate washout against the same published cohorts the wash-in gate already uses
 priority: P1
 effort: M
-status: ready
+status: done
 classes: science, test
 feature: numerical-domain
 touches: tests/reference/test_published_wash_in.py, docs/MODEL.md
 added: 2026-09-03
-verify: uv run pytest tests/reference/test_published_wash_in.py && grep -q 'def test_five_minute_elimination_ratio_matches_published_human_measurement' tests/reference/test_published_wash_in.py
+closed: 2026-09-06
+verify: uv run pytest tests/reference/test_published_wash_in.py && grep -q 'def test_five_minute_elimination_ratio_against_published_human_measurement' tests/reference/test_published_wash_in.py
 ---
 
 **Problem.** `tests/reference/test_published_wash_in.py` is this project's only
