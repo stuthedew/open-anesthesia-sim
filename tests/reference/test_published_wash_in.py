@@ -51,8 +51,8 @@ own spread that a single comparison hides.
    still have failed, which is what makes it worth running; it is weaker than
    "validated against a human measurement" and must not be described as more.
 
-What a pass does establish is that six coupled compartments, a first-order
-operator split, a circuit model, and three parameter files together land
+What a pass does establish is that six coupled compartments, an exact
+propagation of them, a circuit model, and three parameter files together land
 inside the measured spread of a human study for three agents at once,
 ordered correctly by solubility — which nothing else in this suite can tell
 us, because nothing else looks outside the repository.

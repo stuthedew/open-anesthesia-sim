@@ -10,18 +10,24 @@ instead of relying on the interface's sliders to stay inside the domain.
 look like presentation choices, and they were: until this module existed the
 only statement of the supported range was `app/simulation_view.py`, and
 `AgentUptakeSystem.set_cardiac_output(1000.0)` was accepted and simulated.
-What makes them the model's own is that the shipped operator split is first
-order, so its error is `C * dt` with the coefficient `C` measured over the
-trajectories *these* ranges produce, and every claim `docs/MODEL.md` makes
-about the last displayed digit is that error at the shipped 0.1 s step. `C`
-grows with the flows, and roughly in proportion: on the worst trajectory the
-four controls can reach, doubling all three flows doubles it, and cardiac
-output alone at 1000 L/min multiplies it by 40 - which turns the displayed
-resolution's "uncertain by about two counts" into 91 counts, an alveolar
-readout wrong in its first decimal while presenting itself as settled. So
-outside these intervals the number is not merely unverified; it is wrong by a
-margin the interface cannot show. `docs/MODEL.md` § "Supported input ranges"
-records the measurements.
+
+What makes them the model's own is **physiological applicability, not
+numerical error** (`PL-X9KD`). The previous statement here was that the shipped
+operator split's first-order coefficient grew with the flows, so far enough
+outside these intervals a displayed number was wrong by a margin the interface
+could not show. That method is retired: the exact propagator solves the
+governing equations at any flows whatever, so a cardiac output of 1000 L/min
+now yields an *arithmetically correct* answer. It is a correct answer to a
+question physiology does not ask. These intervals are the range over which the
+lumped three-group compartment structure, the reference adult's fixed
+volumes and the constant-coefficient partition model are claimed to represent a
+patient at all; outside them the equations still solve and their solution
+stands for nothing. `docs/MODEL.md` § "Supported input ranges" argues each
+interval.
+
+That the reference gates are driven at this envelope's corner is a consequence
+of declaring it, not evidence for it: the trajectories are built from these
+constants, so they would follow the interval wherever it was put.
 
 **Refused, not clamped**, for the reason `BreathingCircuit` gives for the
 vaporizer maximum it enforces the same way: a silently clamped setting would
@@ -32,11 +38,14 @@ The fourth control, delivered concentration, is bounded here only by the
 calibrated maximum, which is agent-specific and therefore lives on
 `BreathingCircuit` as instance state rather than as a constant here.
 
-Widening any interval is a safety-critical change and not a convenience:
-re-measure the splitting coefficient over the new domain, re-derive the
-displayed resolution and the supported simulation step from it, and revise
-`docs/MODEL.md` §§ "Supported input ranges", "Independent-solution test",
-"Supported simulation step" and "Displayed precision" together.
+Widening any interval is a safety-critical change and not a convenience, but
+the work it now takes is different: argue that the compartment structure still
+represents a patient over the wider range, re-run the reference gates at the
+new corner, and revise `docs/MODEL.md` §§ "Supported input ranges" and
+"Independent-solution test" together. What it no longer implies is a
+re-derivation of the displayed resolution or of the supported simulation step.
+Those two used to hang off the splitting coefficient measured here, and that
+chain is cut: neither is derived from anything measured over this envelope.
 """
 
 from math import isfinite
@@ -58,12 +67,17 @@ MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
 
 # Every floor is zero, and each is named separately because each is a separate
 # decision that could change on its own: flooring cardiac output above zero
-# would not imply flooring ventilation. They are load-bearing rather than
-# incidental - the splitting coefficient's own worst case is measured on a
-# trajectory that holds cardiac output at zero, so raising that floor would
-# take the bound's worst case out of the domain it is measured over.
-# `docs/MODEL.md` § "Supported input ranges" argues why zero is supported on
-# all three (PL-629Z).
+# would not imply flooring ventilation. Zero is supported on all three because
+# each names a real clinical state the simulator exists to teach - apnoea,
+# circulatory arrest, the fresh gas turned off - and `docs/MODEL.md` §
+# "Supported input ranges" argues each (PL-629Z).
+#
+# The reason previously given here was different and is retired with the
+# operator split (`PL-X9KD`): that the splitting coefficient's worst case was
+# measured on a zero-cardiac-output trajectory, so raising the floor would take
+# the bound's worst case out of its own domain. There is no such coefficient
+# now, and the gate trajectory that measures worst is the ventilator start,
+# which needs no zero-perfusion phase.
 
 
 def _require_supported(name: str, value: float, minimum: float, maximum: float) -> None:
@@ -77,9 +91,9 @@ def _require_supported(name: str, value: float, minimum: float, maximum: float) 
     if not isfinite(value) or not minimum <= value <= maximum:
         raise SimulationConfigurationError(
             f"{name} of {value} is outside the supported input range of "
-            f"{minimum} to {maximum} L/min, which is the domain the model's "
-            f"error bound is measured over (docs/MODEL.md, "
-            f'"Supported input ranges")'
+            f"{minimum} to {maximum} L/min, which is the domain this "
+            f"compartment model is claimed to represent a patient over "
+            f'(docs/MODEL.md, "Supported input ranges")'
         )
 
 

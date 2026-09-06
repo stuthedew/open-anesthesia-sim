@@ -62,8 +62,12 @@ class SimulationNumericalError(SimulationExecutionError):
     Distinct from `SimulationConfigurationError` in that the inputs were
     valid: it is the step itself that produced a state the model cannot
     represent — a negative compartment amount, a fraction outside zero
-    through one — typically because the step was too large for the
-    operator split in `AgentUptakeSystem.advance()`.
+    through one.
+
+    No step size can reach this through the shipped propagator, whatever its
+    size: the system matrix is Metzler, so the exponential of it is entrywise
+    nonnegative. It is cover for a model extension whose matrix is not a pure
+    transfer system, and `docs/MODEL.md` § "Supported simulation step" says so.
     """
 
 

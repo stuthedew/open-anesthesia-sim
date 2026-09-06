@@ -6,14 +6,18 @@ reader sees. Nothing in this module builds a control, reads simulation
 state, or performs a physiological calculation.
 
 Why it is its own module. `docs/MODEL.md` § "Displayed precision" is a
-derivation - from the shipped operator split's measured error, to how many
-digits of a concentration are worth showing - and this is where that
-derivation terminates. `CLAUDE.md` treats presentation correctness as part
-of the safety standard and requires a displayed value to be traceable to
-the transformations that produced it, so the last transformation in that
-chain has to be readable, citable and testable on its own rather than
-reachable only by loading the whole dashboard. `tests/unit/test_formatting.py`
-is what pins it.
+derivation - from what the model's parameters can support, to how many digits
+of a concentration are worth showing - and this is where that derivation
+terminates. `CLAUDE.md` treats presentation correctness as part of the safety
+standard and requires a displayed value to be traceable to the transformations
+that produced it, so the last transformation in that chain has to be readable,
+citable and testable on its own rather than reachable only by loading the whole
+dashboard. `tests/unit/test_formatting.py` is what pins it.
+
+Nothing here restates that derivation's figures, deliberately. They were
+restated at four sites in this package and every one of them went stale
+together when the solver changed (`PL-X9KD`); the section is cited instead, so
+the next re-derivation reaches one place.
 
 The displayed resolution is a property of the display alone. Everything
 upstream carries full binary64 - the compartment states, every integration
@@ -72,16 +76,23 @@ __all__ = [
 ]
 
 # Displayed resolution for every modeled concentration and relative partial
-# pressure, and for the delivered-agent setting shown beside its slider. Two
-# decimals of a percent — 0.01 percentage points — is a recorded decision
-# (PL-040), justified in `docs/MODEL.md` § "Displayed precision" against the
-# measured error of the shipped operator split. The short version: the
-# split disagrees with the independent solution by up to 5e-3 percentage
-# points at the default flows and 1.2e-2 at the extreme corner of the
-# settings envelope, so the second decimal is the uncertain digit — as the
-# last displayed digit should be — and the third and beyond were noise.
-# Changing this is a safety-critical change to how a clinical value reads,
-# not a formatting preference: revise the documented basis with it.
+# pressure, and for the delivered-agent setting shown beside its slider.
+#
+# **A choice, inside a band the model imposes.** `docs/MODEL.md` § "Displayed
+# precision" derives the band as one to two decimals: bounded above by what the
+# partition coefficients' measured spread supports, and below by the fat and
+# muscle compartments reading a flat `0.0%` for minutes to an hour at one
+# decimal, which erases the wash-in the simulator exists to teach. Two is the
+# project owner's pick inside that band (PL-040, re-affirmed 2026-09-03 under
+# `PL-88GQ`), and the reason one is not taken is a teaching judgment rather
+# than a numerical limit.
+#
+# So moving this to one decimal is the owner's to make and re-derives nothing
+# in `core/`: no model-side bound is computed from it. Moving it to three would
+# leave the band and is a safety-critical change, because it would assert a
+# resolution the parameters do not support - revise the documented derivation
+# with it. The figures behind both halves live in that section and are
+# deliberately not restated here.
 CONCENTRATION_DISPLAY_DECIMALS: Final = 2
 # Smallest percentage-point difference the concentration readouts resolve.
 CONCENTRATION_DISPLAY_RESOLUTION_PERCENT: Final = 10.0**-CONCENTRATION_DISPLAY_DECIMALS
@@ -89,6 +100,14 @@ CONCENTRATION_DISPLAY_RESOLUTION_PERCENT: Final = 10.0**-CONCENTRATION_DISPLAY_D
 # Decimals shown on the flow sliders' drag labels, matching the ".1f L/min"
 # readouts beside them. Flet's default is 0, which would make a slider's own
 # label disagree with the text next to it mid-drag.
+#
+# **A choice, and revisable** (`PL-88GQ`). No model bound sets it: a flow is a
+# setting the reader dialled rather than a modelled output being rounded, and
+# the sliders carry no `divisions`, so a value reaches `core/` unquantized and a
+# second decimal would display something real rather than noise. One decimal is
+# taken because it is the resolution flowmeters are read at, so the number on
+# screen matches what the same setting looks like on a machine. Changing it
+# re-derives nothing.
 FLOW_DISPLAY_DECIMALS: Final = 1
 
 # Decimals shown on a MAC multiple, and the resolution that follows. This is
@@ -188,9 +207,8 @@ WASH_IN_DISPLAY_DECIMALS: Final = 2
 def format_percent(concentration_fraction: float) -> str:
     """Convert a concentration fraction to display percent.
 
-    Renders at `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, the
-    resolution `docs/MODEL.md` § "Displayed precision" justifies against
-    the measured error of the shipped operator split.
+    Renders at `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, the resolution
+    `docs/MODEL.md` § "Displayed precision" derives.
 
     A value that is positive but rounds to zero is rendered as below the
     resolution rather than as zero. The distinction is the point: muscle
