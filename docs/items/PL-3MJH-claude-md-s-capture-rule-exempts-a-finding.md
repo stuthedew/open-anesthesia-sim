@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, docs, session-cost
 feature: worker-instructions
-touches: CLAUDE.md, .claude/skills/docket/SKILL.md, ROADMAP.md
+touches: CLAUDE.md, .claude/skills/docket/SKILL.md, ROADMAP.md, docs/WORKING_NOTES.md
 added: 2026-09-01
 closed: 2026-09-07
 verify: python3 tools/doc_check.py check && grep -qF 'at most two per branch' CLAUDE.md
@@ -171,6 +171,13 @@ declared `touches`:
   for test 2 to read and no id to lead the commit. This is the case that
   otherwise reads as an unstated gap, being the same shape of hole the item was
   filed against.
+
+`docs/WORKING_NOTES.md`'s "Open: when a session may fix a small finding" thread
+said in as many words that this design "is not built", which the change makes
+false, so it is retitled and rewritten to what now stands - the two durable
+lessons it carries about gate placement and about beating the cited source are
+kept, being the reason that section exists. `docs/WORKING_NOTES.md` was added to
+`touches` for it rather than the edit being made outside the declaration.
 
 `docs/worker.md` needed nothing and was deliberately left alone. It is outside
 `touches`, and its standing "Do not start anything not on your list, however
