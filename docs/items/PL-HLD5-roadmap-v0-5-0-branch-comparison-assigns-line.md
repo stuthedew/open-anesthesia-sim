@@ -1,8 +1,15 @@
 ---
 id: PL-HLD5
 title: ROADMAP v0.5.0 branch comparison assigns line style to the run, which leaves the compartment on colour alone
-status: untriaged
+priority: P1
+effort: S
+status: done
+classes: safety, docs
+feature: scenario-branching
+touches: ROADMAP.md, docs/items/
 added: 2026-09-07
+closed: 2026-09-07
+verify: grep -qF 'the run on line width, and at most two compartments drawn while two' ROADMAP.md && grep -qF 'The encoding, settled 2026-09-07' docs/items/PL-8PSW-overlay-two-branches-on-one-time-axis-with.md
 ---
 
 **Problem.** `ROADMAP.md`'s v0.5.0 scope says two branches are overlaid on one
@@ -61,3 +68,48 @@ will read it.
 **Note.** Do not resolve this by re-picking colours. That was measured and
 declined in `PL-GVXP`; the ceiling is a property of the bounded luminance axis,
 not of the palette.
+
+**Decided 2026-09-07 by the project owner, on the recommendation below.**
+`ROADMAP.md`'s v0.5.0 bullet and `PL-8PSW` both now carry it.
+
+**The assignment: compartment on line style and colour exactly as the
+single-run chart draws them, run on line width, at most two compartments drawn
+while two branches are shown.** The overlay itself is kept.
+
+**What the candidate list above was missing.** All three options were really
+arguments about which channel to *free*, because the six-compartment encoding
+already spends every channel a single line has: line style carries the
+compartment across six patterns, colour is the second cue, and width is spent
+too - `docs/MODEL.md` § "The six compartment traces" gives 3 px for circuit and
+alveolar against 2 px for the other four. There is no unspent line-level
+channel to give the run at six compartments. That is why the compartment cap is
+the load-bearing half of the decision rather than a convenience: capping is what
+frees width.
+
+**Why not simply swap the roadmap's two channels.** Run-by-colour would work
+arithmetically - colour carries two categories comfortably where it carries six
+at 1.01:1 - and was rejected on mode awareness. Colour means "compartment" in
+the single-run chart, and making it mean "run" in compare mode would put two
+meanings on one channel either side of a mode change, on the chart where a
+misread is a misread of a clinical value. `.claude/rules/expert-review.md` names
+hidden modes and context-dependent behaviour directly.
+
+**Why the overlay survives, with evidence rather than only the owner's
+instinct.** The bullet already recorded the decision against stacked panels
+because "the comparison is the whole point of the release". Javed, McDonnel and
+Elmqvist measured that shared-space line graphs are the more efficient technique
+for comparisons over *small* visual spans, with separate-chart techniques
+winning as the span grows - and comparing one compartment against itself under
+two settings is a small-visual-span comparison by construction. The citation is
+now in the roadmap bullet.
+
+**The fallback, recorded so it is not rediscovered.** If two compartments proves
+too tight once built, three works with the run moved to direct labelling at each
+curve's end; position is the strongest channel and survives every colour-vision
+deficiency. Test it rather than assuming it. Opacity and a vertical offset stay
+out, for the reasons in the candidate list above.
+
+**One question this raised and did not answer, filed as `PL-JX0Z`.** Whether
+trace-against-trace 3:1 is stricter than SC 1.4.11 actually requires. It is the
+premise `PL-GVXP`'s palette search rests on, and it could not be checked from
+this environment.

@@ -1756,11 +1756,41 @@ the last eight are the feature itself.
   within a tolerance. Where exactness is unreachable the divergence is bounded,
   documented, and shown rather than implied to be absent.
 - **Two branches are overlaid on one time axis** (queue item PL-8PSW), with the
-  run encoded by line style and the compartment by colour, one shared
-  compartment selection across both runs, and the branch point marked. Decided
-  against two stacked panels sharing a time axis (project owner, 2026-09-06):
-  the comparison is the whole point of the release, and stacking makes the eye
-  travel to do it.
+  **compartment on line style and colour exactly as the single-run chart draws
+  it, the run on line width, and at most two compartments drawn while two
+  branches are shown**. The branch point is marked. Decided against two stacked
+  panels sharing a time axis (project owner, 2026-09-06): the comparison is the
+  whole point of the release, and stacking makes the eye travel to do it — a
+  choice the evidence supports, since shared-space line graphs are the more
+  efficient technique for comparisons over *small* visual spans, which is what
+  comparing one compartment against itself under two settings is (Javed W,
+  McDonnel B, Elmqvist N. *Graphical Perception of Multiple Time Series.* IEEE
+  Trans Vis Comput Graph. 2010;16(6):927-34. doi:10.1109/TVCG.2010.162).
+
+  **The channel assignment is reversed from what this bullet said until
+  2026-09-07, and the compartment cap is what makes it possible** (`PL-HLD5`).
+  It read "the run encoded by line style and the compartment by colour", which
+  `PL-GVXP` established the next day is not available: `docs/MODEL.md` § "The
+  six compartment traces" measures the worst trace-against-trace pair at
+  **1.01:1** against a 3:1 requirement, so colour cannot carry six categories
+  here and re-picking the palette does not reach it. Line style is the only
+  non-data channel with six-category capacity, so the compartment keeps it.
+
+  That leaves nothing free for the run at six compartments — line style,
+  colour and width are all already spent, width varying 2 px to 3 px across the
+  six. **Capping the drawn compartments is what frees width**, which is why the
+  cap is load-bearing rather than a convenience, and why "one shared compartment
+  selection across both runs" is now a constraint the design rests on rather
+  than an interface nicety. Two compartments times two runs is four curves,
+  which is also the comparison a learner actually makes.
+
+  **Colour keeps meaning "compartment" in both modes, deliberately.** Handing it
+  to the run would make one channel mean two different things either side of a
+  mode change, on the chart where a misread is a misread of a clinical value.
+  If two compartments proves too tight in practice, the fallback is three with
+  the run moved to direct labelling at each curve's end — position being the
+  strongest channel available and the one that survives every colour-vision
+  deficiency — but that is a change to test rather than to assume.
 - **What the readouts show while two branches are displayed** (queue item
   PL-1XPX). A decision rather than an implementation: a numeric readout that
   does not say which run it describes is the safety-critical failure this

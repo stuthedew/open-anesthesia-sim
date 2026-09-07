@@ -27,13 +27,35 @@ comparison the release exists for, and separate vertical scales would make two
 curves at the same height mean different things. Superposition is the right
 choice when the question is how two series differ.
 
-**The encoding, and the constraint it inherits.** Run by line style,
-compartment by colour, one shared compartment selection across both runs, and
-the branch point marked. `PL-GVXP` already records that six traces are not
-adequately separated by colour alone; doubling to twelve while line style is
-spoken for by run identity makes that acute, so a comparison opens with a
-small compartment selection rather than all six, and the legend has to name
-both dimensions.
+**The encoding, settled 2026-09-07 (`PL-HLD5`); do not re-derive it.** The
+paragraph this replaces said run by line style and compartment by colour, which
+is the assignment `ROADMAP.md` carried until the same day and which is not
+available. Build this instead:
+
+- **Compartment on line style and colour, exactly as the single-run chart draws
+  them.** Nothing about a compartment's appearance changes on entering compare
+  mode. `docs/MODEL.md` § "The six compartment traces" measures the worst
+  trace-against-trace colour pair at 1.01:1 against a 3:1 requirement, so colour
+  cannot carry the compartment and line style is the only non-data channel with
+  six-category capacity. Handing colour to the run instead would make one
+  channel mean two different things either side of a mode change, on the chart
+  where a misread is a misread of a clinical value.
+- **Run on line width.** Two levels, and the distinction only has to be read
+  *locally* - between two curves of the same compartment, which are adjacent by
+  construction - rather than decoded across the whole plot.
+- **At most two compartments drawn while two branches are shown.** This is the
+  load-bearing part rather than a nicety: at six compartments line style,
+  colour and width are all already spent (width varies 2 px to 3 px across the
+  six), so nothing is free for the run until the cap frees it. It also makes
+  "one shared compartment selection across both runs" a constraint the design
+  rests on. Two compartments times two runs is four curves.
+
+If two compartments proves too tight once it is built, the fallback is three
+with the run moved to direct labelling at each curve's end - position being the
+strongest channel and the one that survives every colour-vision deficiency.
+Test that rather than assuming it, and do not reach for opacity (it walks into
+the 3:1 floor against the panel) or a vertical offset (it falsifies the value
+axis). The legend still has to name both dimensions.
 
 **Where.** `simulation_view.py` (after `PL-B9PY`'s decomposition),
 `chart_series.py` for the per-run series assembly, `theme.py` for the line
