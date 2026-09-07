@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, ux
 feature: presentation-safety
+milestone: v0.4.7
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, tools/contrast_check.py, .claude/rules/ui-color.md, docs/MODEL.md, tests/unit/test_simulation_view.py, tests/unit/test_contrast_check.py
 added: 2026-08-30
 closed: 2026-09-07
+pr: 422
 verify: uv run pytest tests/unit/test_contrast_check.py tests/unit/test_simulation_view.py && grep -q 'def test_every_trace_contrast_clears_the_floor_in_all_four_vision_models' tests/unit/test_contrast_check.py && grep -q 'def test_no_two_chart_traces_are_separated_by_colour_alone' tests/unit/test_simulation_view.py
 ---
 

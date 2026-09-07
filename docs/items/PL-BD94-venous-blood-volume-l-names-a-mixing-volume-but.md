@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: refactor, docs
 feature: model-spec-accuracy
+milestone: v0.4.7
 touches: src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-07
+pr: 423
 verify: uv run pytest tests/unit/test_parameters.py && python3 -c "import json,pathlib; d=json.loads(pathlib.Path('src/anesthesia_sim/data/patients/reference_adult.json').read_text()); raise SystemExit(0 if 'venous_blood_volume_l' not in d and d['venous_pool_volume_l'] == 1.222 else 1)"
 ---
 

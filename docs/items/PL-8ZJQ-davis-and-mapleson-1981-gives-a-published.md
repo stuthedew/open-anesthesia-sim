@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: science
 feature: model-spec-accuracy
+milestone: v0.4.7
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-07
+pr: 423
 not-delegable: No command can prove that a person read Davis and Mapleson 1981, and the outcome is a provenance judgment either way - adopt a volume with that lineage, or record why the 1.0 L mixing volume is kept and what it is not. A `verify:` could only check that some sentence had been written into the data file, which is exactly the thing that must not be gameable on a provenance item (the same argument PL-7HDS records).
 ---
 

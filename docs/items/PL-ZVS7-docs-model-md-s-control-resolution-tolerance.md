@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, test
 feature: numerical-domain
+milestone: v0.4.7
 touches: tests/reference, docs/MODEL.md, src/anesthesia_sim/core/uptake_system.py
 added: 2026-09-06
 closed: 2026-09-07

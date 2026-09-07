@@ -66,7 +66,8 @@ capability-boundary rule above governs.
 | v0.4.3 | Completed | The release where the gate learned what it costs, and the repository went public — and the second overtook the first. `src/` is byte-identical to v0.4.2 and `docs/MODEL.md`'s only change is one cross-reference following the deleted README, so no equation, parameter, numerical method, unit or displayed value moved; the sixth such release and the third in a row. **The measured half.** The `checks` job ran 152 s, of which `bin/docket check --verify` was **87 s** — more than the whole 1 820-test suite — because the replay runs every open item's own `verify:` command and 79 of the 111 that carry one start a fresh `uv run pytest`. That bill grew with the size of the queue rather than with the size of the change, and was paid on every push to every open pull request. `--verify-base` now scopes it to the items a branch actually changed, read from the diff, with the whole-store sweep kept on `push` to the default branch where its answer is a fact about that branch — 102 commands in 74.6 s becomes one in 5.5 s, and the job **152 s → 59 s** on run 34000293113. It is `PL-P3B6`'s argument one step on: if a pre-commit gate cannot have changed whether some other item's work merged, neither can a pull request. A scoped run says what it was scoped to on `docket check`'s own cost line, including when the scope held nothing to run, because a narrowed run reporting no findings is otherwise indistinguishable from a store that holds none. Three smaller gate repairs sit around it: `drift.yml` had resolved a newer `pytest-xdist` every month and never run it — a declared dependency upgraded and untested, which is the hole that workflow exists to close — and now runs `-n auto --dist worksteal` on both suites; `tools/contrast_check.py` had been parsing 3.14 `app/` source under the 3.11 floor, green only because the two files it reads happen to carry no 3.12+ syntax, which since v0.4.2 folded that job into `checks` would have reddened the whole job before uv was installed; and the pull-request title check, the one gate no session could run before pushing, now discovers the title from the branch's own open pull request and skips silently on every way that lookup can fail, so `make check` stays green offline. **The published half** is smaller in the diff and larger in consequence. The repository is public — *to stop the Actions billing, not as a publication decision* — which makes the minute arithmetic three of these items were built on moot: standard runners are free and unlimited on public repositories, and what the work still buys is wall clock and the runner slots that throttle parallel sessions. `README.md` was deleted rather than corrected and stays deleted under a check; the human-facing pass `PL-XYRN` gated is deliberately unrun; and both are recorded where a later session would otherwise read a public repository with no front door as a gap rather than a decision. Which leaves the quietest thread: the concurrency comment claimed the repository was public and runners free while it was private, was corrected to private-and-billed, and was wrong again within hours — so its argument now rests on the runner slot, which holds under either answer, with the billing position dated and stated once rather than woven through the reasoning. Twelve items, one of which is the v0.4.2 cut itself. |
 | v0.4.4 | Completed | **The code is the model.** The first release in four to touch `src/`, and the first since v0.4.0 in which a displayed number moves. The operator split is gone: each step is now one exact propagation of the whole coupled nine-state system, `exp(AΔt)y`, with `core/governing_equations.py` assembling $`A`$ as a transcription of the balance equations this document states and `core/matrix_exponential.py` computing the propagator without carrying a unit or a compartment name. Scaling and squaring with a shifted Taylor series, about sixty lines of arithmetic on plain lists, adding no dependency. **Accuracy was not the motivation and was not a cost either** — the split was kept once on accuracy, in 2026-08-30, and that decision was right on its own terms; what overturned it was `ROADMAP.md` item 29's bar, that a reviewer who knows the standard variables should follow `core/` without a lookup table. Three of the split's five composed sub-steps were objects of the splitting scheme rather than of the physiology, the alveolar balance's two terms were computed in different sub-steps separated by a third, and the pulmonary uptake rate this document specifies was never formed at all. Measured against the same from-scratch RK4 oracle, the exponential's worst disagreement is eight orders of magnitude smaller than the split's. **Then the harder half, which is what the release is really about.** Three published statements were derived from an error that no longer exists, and each is re-derived from measurement rather than assumed to still hold. § "Displayed precision" had a numerical ceiling (a third decimal was noise) and a legibility floor; the ceiling is gone, since the shipped residual is about 1.6e-12 percentage points, nine orders below the last displayed digit. Its replacement is **model fidelity**: one published standard deviation of a partition coefficient displaces a displayed compartment by 8.7e-4 to 6.8e-2 percentage points, so two decimals puts the last digit between a seventh of one SD and seven times it and a third would put it at a seventieth — false precision. `MAXIMUM_SIMULATION_STEP_S` turned out to have **no derivation at all**: sweeping the step from 1e-3 s to 1e300 s found no numerical ceiling, the propagator entrywise nonnegative at every one of 4374 (settings, step) combinations tested, and control-timing displacement exactly proportional to the step with no knee anywhere — so it is recorded as a *declared tolerance* in percentage points and seconds, not dressed up as a limit. And the splitting-error constants are retired with their reasons recorded in place, after checking coverage rather than after the fact: two of the four retiring tests were reproduced exactly by the new gate, two were not, so the step gate gained the setting-change trajectories and a new `HELD_RUN_ROUNDING_BOUND` replaced the only test driving the shipped solver past 900 s. **The dependency stopped running backwards.** The step bound and the supported input ranges were both justified *through* the two-decimal readout, so a purely presentational move to one decimal would have licensed a step ten times longer; both are now stated in their own units, and a test fails if anything in `core/` reads the display count again. `src/anesthesia_sim/data/` is byte-identical to v0.4.3, so no parameter moved — what moved is the method, and the displayed value in its last digit. Thirteen items, one of which is the v0.4.3 cut itself. |
 | v0.4.5 | Completed | **Going public, finished.** v0.4.3 made the repository public to stop Actions minutes being billed rather than as a publication decision, and left the human-facing pass deliberately unrun; this release runs that pass and finds what the sideways route had left behind. Two publisher-copyright full texts — Baker & Farmery 2011 and Schüttler & Schwilden 2008 — were being redistributed from a public repository, against `docs/references/README.md`'s own statement that removing them was a prerequisite for going public. They came out on the day the breach was found, by a `git filter-repo` pass and a force-push rather than a delete commit, because both blobs were in the history from the commit that added them; GitHub Support ticket 4733783 covers the pre-rewrite commits still pinned by `refs/pull/*/head` refs the repository owner cannot reach. **The durable half is a check.** `make check` had passed on the broken state, because `doc_check` verifies the paths `docs/MODEL.md` cites and nothing verified that a file named in the reference index is present; it now refuses an entry naming a file the directory does not hold — the decidable half in code, with whether an entry *should* keep its file left to a person. **The rewrite's own costs are recorded rather than absorbed.** It stripped every commit signature, force-updated branch refs to a snapshot taken before the push and dropped two commits pushed into that window, and left four captures reachable on one branch only. Both losses were recovered, and `bin/docket stranded` learned to tell a rewritten history from an ordinary divergence. A branch deleted in this release's own cleanup held the last copy of two more items, recovered from the stale remote-tracking ref that `git fetch` does not prune — the case the no-prune guard exists to preserve. **And the front door exists.** `README.md` is written against the audience, boundary and status questions `PL-RM83` settled — two domain-literate readers, nothing whose truth is tied to a model version, capability rather than a version string — and retires the check that guarded the file's absence, together with both its invocations, in the same commit that writes it; `pyproject.toml` now describes the project and classifies its maturity, audience and subject. **The one thing that reached `src/` is prose.** `app/playback.py` had said that playing a run faster is "never a modelling one" without qualification: true for a run nobody touches, false for one in which a control moves, because the tick burst has no yield in it and the reachable simulated instants are therefore `multiplier × 0.1` s apart — 0.1 s at 1x and 30 s at 300x. Nothing arrives late and no displayed value is stale; what coarsens is which instants can be chosen, and pause-change-resume stays exact at every rate. `MAXIMUM_SIMULATION_STEP_S` stays 0.1 s on the same finding, argued rather than defaulted: 0.05 s would double the propagations per simulated second and buy tighter timing at 1x alone, since above it the interface's own grid dominates. Three files under `src/` changed and every changed line is a comment or a docstring — all three are AST-identical to v0.4.4 with docstrings stripped — and `src/anesthesia_sim/data/` is byte-identical, so no equation, parameter, numerical method, solver step or displayed value moved. Eighteen items, one of which is the v0.4.4 cut itself. |
-| v0.4.6 | Completed / current baseline | **Provenance read at the source, and three checks that were asserting more than they knew.** `src/anesthesia_sim/core/` is byte-identical to v0.4.5 and every stored value in `src/anesthesia_sim/data/` is unchanged, so no equation, parameter, numerical method, solver step or displayed value moved; what changed under `data/` is entirely what the citations claim. **The reference patient's numbers had never been traced to a document anybody opened.** `PL-6Q8N` set out to read Mapleson's 1963, 1964 and 1973 papers, named in the file as its primary lineage — and found them unreachable from a session: all three return PubMed metadata only, none has an abstract, none is in PMC, and every publisher, index and vendor route is refused by the egress proxy. Re-aimed on the project owner's decision at what PubMed can actually deliver, five of the eleven parameters gained a measurement of the same quantity cited alongside and explicitly *not* adopted — Hudgel and Devadatta's helium-dilution FRC read with Wahba's ~20% reduction under general anaesthesia brackets the lung gas volume at 2.51 L against a stored 2.5; Cattermole et al.'s 686 subjects in the 50–75 kg band give a cardiac-output median of 5.51 L/min against a stored value 9.3% below it; Janssen et al.'s whole-body MRI gives a skeletal-muscle mass whose apparent agreement with the stored 33.0 is *coincidence*, that cohort of men having averaged about 86 kg rather than 70; and Heinonen et al.'s PET measurement of resting adipose perfusion is close to half what the stored fat flow fraction implies. The other six record why no comparison exists rather than leaving the silence to read as an oversight. The fat gap is the one that reaches a learner: time constant is `V·λ/Q`, so a factor of two on fat flow is a factor of two on how much agent fat has taken up by the end of a case and on the slow tail of every washout curve — recorded in `docs/MODEL.md` § "Known limitations" rather than fixed, because one depot in six subjects does not overturn a whole-body lumped compartment. **Then the project owner supplied the Gas Man Workbook, and the guess collapsed.** `PL-XTMB` read it at the source: the Model Parameters table is Appendix B, page 168, and the citation had been pointing at page 183's interface controls, which carry none of the values. The file's own claim to be sourced entirely from that table was false — it supplies **seven of the eleven**; cardiac output appears only as the sum of the flow column; weight and alveolar ventilation are interface defaults with no number in it; and `venous_blood_volume_l` = 1.0 is absent altogether, the table's `Blood` row reading 5.00 L, which leaves a stored value its cited source does not contain (`PL-3YZW`). And the lineage is not Mapleson at all: printed beneath the table, *"Values for volume, flow and relative flow are taken from Lowe and Ernst, 1981"*. That book is recorded as located and unread, inside the Workbook's own note rather than as a citation line of its own — an unread document with its own entry is the Mapleson failure one link later, and the schema made the point first by refusing the empty `url` a 1981 monograph would need. **Three checks were measuring something other than what they claimed.** `tools/contrast_check.py` cited `simulation_view` line numbers for its eight requirements and all eight were wrong, and it could not express a requirement met by either of two channels at all; the mass-balance release gate's absolute tolerance tracked whichever dial its test happened to run at rather than a stated bound; and `docket.toml`'s `workflow_paths` named three `tools` tests by path, so the other seven and every new one fell on the product side of the lane boundary that exists to keep two sessions apart. **Two queue mechanics and one model-boundary correction** close beside them: the closure walk follows renames, so an item renamed after it closed no longer recovers the renaming commit's pull request; the conflict graph is tiered, so a shared file orders work instead of forbidding it — which matters because 27 of Gate 1's entries declare `docs/MODEL.md`; and `SimulationController.set_circuit_volume` is gone, both gas volumes established as data-file parameters rather than controls, with the bound restated on physiological rather than numerical grounds. That restatement then produced the release's third correction: `PL-GYH2` had landed the sentence "the exact propagator solves the governing equations for any positive volumes whatever", written from the argument rather than from a measurement, and run it is false — below 1e-9 L the alveolar compartment raises, at 1e-100 L the step rolls back, and at 1e-300 L it advances and returns exactly zero with the accounting passing. `PL-GJYL` replaced it with the measured statement. **And the first comparison in the elimination direction.** `PL-HB58` extended the project's only external validation to the second quantity both Yasuda papers report on the same volunteers, $`F_A/F_{A0}`$ at five minutes of elimination — and it does not agree: the model holds more alveolar agent at five minutes than every cohort did, by +1.0 to +5.0 published SD. Most of that is apparatus rather than physiology, and it is measured rather than argued: $`F_A/F_I`$ carries the inspired fraction in its denominator so a breathing system divides out of it, $`F_A/F_{A0}`$ has no such term, and this model's rebreathing circuit cannot be set below about 29% of the alveolar fraction at any supported flow — so agent returning from the circuit is counted as though it came back out of the patient. The values are therefore asserted as a *regression* band that claims nothing about agreement, while the published ordering by solubility, the independence from delivered fraction and the sign of the departure are asserted as the validations they are. What the second direction buys is a different axis rather than a tighter one: the wash-in comparison and its flow sweep were still passing at a tenth of the shipped vessel-rich tissue coefficient, and the elimination point closes that tolerance to about a fifth either way. Thirteen items, one of which is the v0.4.5 cut itself. |
+| v0.4.6 | Completed | **Provenance read at the source, and three checks that were asserting more than they knew.** `src/anesthesia_sim/core/` is byte-identical to v0.4.5 and every stored value in `src/anesthesia_sim/data/` is unchanged, so no equation, parameter, numerical method, solver step or displayed value moved; what changed under `data/` is entirely what the citations claim. **The reference patient's numbers had never been traced to a document anybody opened.** `PL-6Q8N` set out to read Mapleson's 1963, 1964 and 1973 papers, named in the file as its primary lineage — and found them unreachable from a session: all three return PubMed metadata only, none has an abstract, none is in PMC, and every publisher, index and vendor route is refused by the egress proxy. Re-aimed on the project owner's decision at what PubMed can actually deliver, five of the eleven parameters gained a measurement of the same quantity cited alongside and explicitly *not* adopted — Hudgel and Devadatta's helium-dilution FRC read with Wahba's ~20% reduction under general anaesthesia brackets the lung gas volume at 2.51 L against a stored 2.5; Cattermole et al.'s 686 subjects in the 50–75 kg band give a cardiac-output median of 5.51 L/min against a stored value 9.3% below it; Janssen et al.'s whole-body MRI gives a skeletal-muscle mass whose apparent agreement with the stored 33.0 is *coincidence*, that cohort of men having averaged about 86 kg rather than 70; and Heinonen et al.'s PET measurement of resting adipose perfusion is close to half what the stored fat flow fraction implies. The other six record why no comparison exists rather than leaving the silence to read as an oversight. The fat gap is the one that reaches a learner: time constant is `V·λ/Q`, so a factor of two on fat flow is a factor of two on how much agent fat has taken up by the end of a case and on the slow tail of every washout curve — recorded in `docs/MODEL.md` § "Known limitations" rather than fixed, because one depot in six subjects does not overturn a whole-body lumped compartment. **Then the project owner supplied the Gas Man Workbook, and the guess collapsed.** `PL-XTMB` read it at the source: the Model Parameters table is Appendix B, page 168, and the citation had been pointing at page 183's interface controls, which carry none of the values. The file's own claim to be sourced entirely from that table was false — it supplies **seven of the eleven**; cardiac output appears only as the sum of the flow column; weight and alveolar ventilation are interface defaults with no number in it; and `venous_blood_volume_l` = 1.0 is absent altogether, the table's `Blood` row reading 5.00 L, which leaves a stored value its cited source does not contain (`PL-3YZW`). And the lineage is not Mapleson at all: printed beneath the table, *"Values for volume, flow and relative flow are taken from Lowe and Ernst, 1981"*. That book is recorded as located and unread, inside the Workbook's own note rather than as a citation line of its own — an unread document with its own entry is the Mapleson failure one link later, and the schema made the point first by refusing the empty `url` a 1981 monograph would need. **Three checks were measuring something other than what they claimed.** `tools/contrast_check.py` cited `simulation_view` line numbers for its eight requirements and all eight were wrong, and it could not express a requirement met by either of two channels at all; the mass-balance release gate's absolute tolerance tracked whichever dial its test happened to run at rather than a stated bound; and `docket.toml`'s `workflow_paths` named three `tools` tests by path, so the other seven and every new one fell on the product side of the lane boundary that exists to keep two sessions apart. **Two queue mechanics and one model-boundary correction** close beside them: the closure walk follows renames, so an item renamed after it closed no longer recovers the renaming commit's pull request; the conflict graph is tiered, so a shared file orders work instead of forbidding it — which matters because 27 of Gate 1's entries declare `docs/MODEL.md`; and `SimulationController.set_circuit_volume` is gone, both gas volumes established as data-file parameters rather than controls, with the bound restated on physiological rather than numerical grounds. That restatement then produced the release's third correction: `PL-GYH2` had landed the sentence "the exact propagator solves the governing equations for any positive volumes whatever", written from the argument rather than from a measurement, and run it is false — below 1e-9 L the alveolar compartment raises, at 1e-100 L the step rolls back, and at 1e-300 L it advances and returns exactly zero with the accounting passing. `PL-GJYL` replaced it with the measured statement. **And the first comparison in the elimination direction.** `PL-HB58` extended the project's only external validation to the second quantity both Yasuda papers report on the same volunteers, $`F_A/F_{A0}`$ at five minutes of elimination — and it does not agree: the model holds more alveolar agent at five minutes than every cohort did, by +1.0 to +5.0 published SD. Most of that is apparatus rather than physiology, and it is measured rather than argued: $`F_A/F_I`$ carries the inspired fraction in its denominator so a breathing system divides out of it, $`F_A/F_{A0}`$ has no such term, and this model's rebreathing circuit cannot be set below about 29% of the alveolar fraction at any supported flow — so agent returning from the circuit is counted as though it came back out of the patient. The values are therefore asserted as a *regression* band that claims nothing about agreement, while the published ordering by solubility, the independence from delivered fraction and the sign of the departure are asserted as the validations they are. What the second direction buys is a different axis rather than a tighter one: the wash-in comparison and its flow sweep were still passing at a tenth of the shipped vessel-rich tissue coefficient, and the elimination point closes that tolerance to about a fifth either way. Thirteen items, one of which is the v0.4.5 cut itself. |
+| v0.4.7 | Completed / current baseline | **Three claims the model made without defending, and the first stored parameter to leave the Gas Man set.** Each of the three had been asserted in prose and enforced by nothing, and each turned out to be wrong or unenforced in a way only the enforcement could show. **The run length was a memory limit wearing a modelling limit's clothes.** A 30-day cap was set on 2026-08-25 to size a concentration history that no longer exists, was carried forward as though it described the model, and was enforced nowhere at all: nothing in `core/` or `app/` bounded elapsed simulated time, so a run could reach day 45 of a 30-day cap and go on displaying two-decimal concentrations. It is now **24 hours**, and the number moved *down* by more than an order of magnitude because the question changed: the item proposed the fat group's ~42 h time constant as a scale to take multiples of, which inverts the relationship - many multiples of the slowest mode is precisely the regime `docs/MODEL.md` § "Published wash-in validation test" already refuses to validate over, having rejected the Yasuda papers' own multi-day elimination curves because over days the missing metabolism is no longer negligible and neither is the fat group's flow. What binds a run length is what the model omits, so the fat time constant is a floor and not a multiplier. Sevoflurane is the binding agent at 2% to 5% of the absorbed dose, beginning within minutes rather than late (Kharasch 1995, marked tier 2 in both the code and the specification, because 24 hours is a declared envelope argued against the omission and not a figure computed from a metabolic rate). Enforcement is an integer step-count comparison derived once per step size, so the boundary falls at the same step on every machine and deterministic replay holds across it; the interval is closed like the four flow ranges, a run completing exactly 864 000 steps of 0.1 s to land on 86 400.0 s before the next is refused. And reaching it is **not a failure**: `SimulationDomainLimitError` subclasses the execution branch so a caller that knows only the base classes still stops the run, while `app/` reads the specific type to say "Stopped - supported run length reached" in place of a failure banner describing a rollback that did not happen. Telling a learner the simulator broke when it stopped exactly where the specification says it must spends the one signal the interface has for a real fault. **The control-resolution tolerance was three published numbers no test computed.** § "Supported simulation step" publishes the displacements the step bound *is* since `PL-X9KD` retired its accuracy derivation, and `grep` for them across the suite returned one unrelated comment: a change to an equation, a partition coefficient, the reference adult's volumes or the supported envelope would have moved them silently while both documents kept asserting the old figures. `tests/reference/test_control_resolution.py` now drives each manoeuvre twice from an empty system in lockstep, differing only in when the control change lands, and every published figure reproduced - 6.66e-3, 5.03e-2 and 1.43e-1 pp at 1x, and 1.43e-1, 6.95e-1, 2.51, 5.83 and 1.04e1 pp down the per-rate column - with the gate mutation-checked rather than assumed, a 0.2 s step, a 2 L/min wider ventilation envelope, an 0.42 to 0.50 desflurane blood:gas and a 2.5 to 2.8 L alveolar volume each failing it. **It found a defect on its first run**: the specification read "the case opening is two orders milder at every rate" where it is 21x milder at 1x and 6.9x at 300x, the binding manoeuvre's displacement saturating while the case opening's stays nearly linear in the delay, so a reader budgeting an ordinary dial change at 60x would have inferred about 0.06 pp against a true 0.375 pp. **The six chart traces were separable only to normal vision.** Contrast composes along a bounded axis, so no palette of six clears 3:1 pairwise and the fix could never have been a re-pick; the traces now carry line style as a second channel, and `tools/contrast_check.py` gained the Brettel 1997 projection with a hard floor holding every trace to 3:1 against the panel in four vision models. That floor immediately found what no normal-vision check could see - `MUSCLE_COLOR` at 3.19:1 as displayed and **2.98:1** simulated for deuteranopia - and corrected the specification's own dichromacy claim about the ISO 5360 agent colours from "1.1-1.4" to a measured 1.06 to 1.48. **And the venous pool got a source, which it had never had.** `venous_blood_volume_l` = 1.0 L entered at v0.1.0 under a Workbook citation belonging to its neighbours; the Workbook's Blood row reads 5.00 L and no 1.0 L figure appears in it anywhere. Davis and Mapleson 1981 states, for models of inhaled anaesthetics specifically, that the two venous pools may be combined into one of **1222 ml**, 23.6% of their standard man's 5189 ml blood volume - the same object as this model's single well-stirred venous pool - and that value is adopted on the project owner's decision, the first parameter in `reference_adult.json` to carry a source other than Gas Man. It is tier 2 and stays unadopted-as-measurement: the Appendix derives the pool from ICRP (1975) blood distribution to reproduce circulation times rather than measuring it. The competing hypothesis was tested and failed - `PL-8ZJQ` had suspected 1.0 L was an arterial compartment under a venous name, on Lerou and Booij's arterial fraction of 0.2, and Davis and Mapleson's own arterial pool for an inhaled-anaesthetic model is 799 ml at 15.4%, so the coincidence does not survive the primary source. The key is renamed `venous_pool_volume_l` in the same change, because it names a mixing volume and read as the physiologic venous blood volume. **This is the first release since v0.4.4 in which a displayed number moves, and the only one in which a stored parameter does.** The mixed-venous time constant V_v/Q goes from 12.0 s to 14.7 s at the stored 5.0 L/min, visible on the mixed-venous trace through the first minute of every simulation; the 30-minute F_A/F_I wash-in distances are unchanged to two decimal places, the pool being long equilibrated by then, and the 5-minute F_A/F_A0 elimination ratios move 0.11 to 0.13 published SD *further* from their cohort means - the same direction the module already attributes to this model's rebreathing circuit rather than to tissue return. No equation, numerical method or solver step moved. Three apparatus items close beside them: `bin/docket record` had written pull-request numbers a shallow clone could not verify, `bin/docket trend` makes the workflow-to-product balance a command rather than a session's derivation, and thirty-one captures from one day were triaged into the queue. Ten items, one of which is the v0.4.6 cut itself. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -103,451 +104,182 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.4.6
+## Current baseline: v0.4.7
 
-v0.4.6 is the release in which the reference patient's numbers were traced to
-a document somebody had actually opened, and in which three checks that had
-been reporting confidently turned out to be measuring something else.
+v0.4.7 is the release in which three things the model asserted about its own
+limits stopped being prose and became enforceable, and in which the first
+stored parameter left the Gas Man set for a published source.
 
-**The eleven physiologic parameters had a lineage nobody had read (`PL-6Q8N`).**
-`src/anesthesia_sim/data/patients/reference_adult.json` named Mapleson's 1963,
-1964 and 1973 papers as its primary lineage, on the strength of their titles.
-The item existed to read Mapleson 1973's quantifying tables; the reading cannot
-be done from a session. All three papers return PubMed metadata and nothing
-else — no abstract for any of the three, no PMC record — and `doi.org`,
-`pubmed.ncbi.nlm.nih.gov`, `pmc.ncbi.nlm.nih.gov`, `europepmc.org`,
-`journals.physiology.org`, `sciencedirect.com`, `bjanaesthesia.org.uk` and
-`gasmanweb.com` are all refused by the egress proxy. The route
-`docs/references/` used to provide — the project owner supplying a full text —
-had closed the day before, when v0.4.5 removed publisher-copyright material
-from what is now a public repository.
+The three had nothing in common except their shape. Each was a statement about
+where the model stops being trustworthy; each was written down; and each was
+defended by nothing, so nothing would have caught it drifting. Two of them
+turned out to be *wrong* the moment something checked, which is the argument
+for the checking rather than a coincidence.
 
-**Re-aimed rather than stalled.** On the project owner's decision the item was
-pointed at what PubMed can deliver, and five parameters gained a measurement of
-the same quantity cited alongside and explicitly not adopted, in the form the
-three agent files already use: the measured value, its reference conditions,
-and how far the stored number sits from it. The sharpest of the five is the fat
-flow fraction, which implies roughly twice Heinonen et al.'s resting adipose
-perfusion; since a tissue time constant is `V·λ/Q`, that is a factor of two on
-how much agent fat has taken up by the end of a case and on the slow tail of
-washout. It is recorded in `docs/MODEL.md` § "Known limitations" and left
-alone — one depot in six young women does not overturn a whole-body lumped
-compartment, and `data/` is protected. The most instructive is the muscle
-volume, where Janssen et al.'s measured 33.0 kg matches the stored 33.0 L
-exactly and the match is a coincidence: that cohort of men averaged about 86 kg,
-and scaled to 70 kg the measurement gives 26.9. A file that *looks* sourced is
-worse than one citing nothing.
+**The run length was a memory limit wearing a modelling limit's clothes
+(`PL-Y5WR`).** The project owner set a 30-day scenario cap on 2026-08-25 as a
+working figure, revisable upward. It was set to size a concentration history
+that has since been superseded, it was carried forward as though it described
+the model, and it was enforced nowhere at all: `MAXIMUM_SIMULATION_STEP_S`
+bounded one step's size and `core/supported_ranges.py` bounded the four flows,
+but nothing anywhere bounded the *number* of steps a run could take. So a run
+could reach day 45 of a 30-day cap and go on presenting two-decimal
+concentrations, with the fat compartment - time constant about 42 h - still the
+one visibly moving out there. The v0.4.0 playback multiplier is what made that
+reachable rather than theoretical: at 300x a 30-day case is about 2.4 hours of
+wall clock.
 
-**Then the source itself arrived, and the guess collapsed (`PL-XTMB`).** The
-project owner supplied the Gas Man Workbook's front matter and appendices the
-same day. Its Model Parameters table is Appendix B, page 168; the citation had
-named page 183, which describes the interface controls and carries none of the
-values. Three things fell out of reading it:
+**The number moved down, and the reason it moved down is the substance of the
+item.** The brief proposed the fat time constant as the scale a cap should be
+"many multiples of", and read 30 days as about seventeen of them. That inverts
+the relationship. Many multiples of the slowest mode is exactly the regime this
+project already declines to stand behind: `docs/MODEL.md` § "Published wash-in
+validation test" says in terms that this model has no metabolism, and rejects
+the two Yasuda papers' own multi-day elimination curves as a comparison,
+*because over days the missing metabolism is no longer negligible, and neither
+is the fat group's flow* - which § "Known limitations" records as about twice
+Heinonen et al.'s reachable resting measurement. A run past the fat time
+constant is therefore displaying a trace whose slow component is increasingly
+the two omissions rather than the model. The fat time constant bounds a useful
+cap from *below* - shorter than about one of them and the fat trace stops
+showing what it exists to show - and says nothing about how far above it a run
+may go.
 
-- **The file was wrong about its own contents.** It asserted the Workbook was
-  the source of every stored value. The table supplies seven of eleven. Cardiac
-  output is there only as the sum of the flow column; weight and alveolar
-  ventilation are interface defaults the supplied chapters give no number for.
-- **`venous_blood_volume_l` = 1.0 is not in the table at all** — its `Blood`
-  row reads 5.00 L. That is a stored value its cited source does not contain,
-  which is no provenance at all, and `PL-3YZW` carries it.
-- **The lineage is Lowe and Ernst, not Mapleson.** Printed beneath the table:
-  *"Values for volume, flow and relative flow are taken from Lowe and Ernst,
-  1981"* — *The Quantitative Practice of Anesthesia: Use of Closed Circuit*.
-  The Workbook attributes nothing to Mapleson. The book is recorded as located
-  and unread, as a quotation inside the Workbook's own note rather than as a
-  `sources` entry of its own, and `PL-7HDS` carries reading it.
+What binds it is the omitted metabolism, and sevoflurane is the binding agent:
+2% to 5% of the absorbed dose, beginning within minutes of the start rather
+than late. What makes omitting it safe over a case is the same review's finding
+that metabolism does not contribute to the termination of clinical drug effect
+— true while ventilation and perfusion dominate the trace, and progressively
+false once the only thing still moving is the slow tail this model gives no
+sink to. **24 hours** clears every anesthetic this simulator exists to teach by
+a wide margin, is about 0.6 of the fat time constant so the slow-compartment
+demonstration survives intact, and sits near the outer edge of the 0.35-to-9.5
+MAC-hour exposure range over which that omission's size has been measured at
+all. The citation is marked **tier 2** in both `core/supported_ranges.py` and
+`docs/MODEL.md`: 24 hours is a declared envelope argued against the omission,
+not a value computed from a metabolic rate, and a review may not be the
+authority for a stored value.
 
-**Three checks were asserting more than they knew.** `tools/contrast_check.py`
-cited `app/simulation_view.py` line numbers for each of its eight requirements
-and every one was wrong, and it had no way to express a requirement satisfied by
-either of two channels — so it was both misciting its subject and unable to
-state part of it. The mass-balance release gate's absolute tolerance tracked
-whichever dial its test happened to run at, which means the number it enforced
-was a property of the test rather than a bound anyone had chosen. And
-`docket.toml`'s `workflow_paths` named three `tools` tests by path, so the
-other seven and every test added later fell on the product side of the lane
-boundary that exists to keep two simultaneous sessions off each other's work.
+**Two properties of the enforcement are load-bearing rather than
+implementation detail.** The comparison is on integer step counts derived once
+per step size, never on accumulated seconds, because § "Simulated time is a
+count of steps, not a running total" is what the reproducibility guarantee
+rests on and a float comparison would put the boundary at a different step on
+different machines - breaking deterministic replay at precisely the point a
+regression test pins. And the interval is closed, like the four flow ranges: at
+the shipped 0.1 s step a run completes exactly 864 000 steps and lands on
+86 400.0 s, and it is the 864 001st that is refused.
 
-**One model-boundary correction reached `src/`.**
-`SimulationController.set_circuit_volume` is gone and both gas volumes are
-established as data-file parameters rather than controls, with the bound
-restated on physiological rather than numerical grounds: a 5 mL alveolus is an
-arithmetically correct answer to a question physiology does not ask, so the
-bound is a statement about patients rather than about arithmetic.
+**Reaching it is not a failure, and the interface may not say it is.**
+`SimulationDomainLimitError` subclasses `SimulationExecutionError`, so a caller
+that knows only the base classes stops the run — the safe default — while one
+that catches the specific type knows nothing went wrong. `app/` reads it: the
+status line says "Stopped — supported run length reached" rather than
+"simulation error", not in the failure's `WARNING` colour; the notice names the
+limit and why it sits there, instead of describing a rolled-back step that
+never happened; and Start is disabled, because the controller would refuse it.
+Describing a correct model as a broken one misleads a reader as surely as the
+reverse does — it spends the one signal this interface has for a real fault, and
+teaches a reader to discount it when it matters. Two consequences are filed
+rather than built: the elapsed-time readout still states seconds, so a run at
+the limit reads "86400.0 s" (`PL-CZFY`), and nothing signals a run
+*approaching* the boundary (`PL-H2K2`).
 
-**That restatement produced the release's third correction (`PL-GJYL`).** The
-sentence `PL-GYH2` landed to carry it — "the exact propagator solves the
-governing equations for any positive volumes whatever" — was written from the
-argument rather than from a measurement, and the argument only ever needed the
-claim at the volumes under discussion. Run, it is false: from 1e-9 L down the
-alveolar compartment raises `AgentSimulationValidationError`, at 1e-100 L the
-step rolls back with `SimulationNumericalError`, and at 1e-300 L it advances
-and returns exactly zero with the accounting passing. Circuit volume has no
-such point, holding to 1e300 L. `docs/MODEL.md` now states what was measured. Every changed file under `src/` is in `app/`;
-`src/anesthesia_sim/core/` is byte-identical to v0.4.5 and every stored value
-in `src/anesthesia_sim/data/` is unchanged, so no equation, parameter,
-numerical method, solver step or displayed value moved.
+**The control-resolution tolerance was three published numbers no test computed
+(`PL-ZVS7`).** Since `PL-X9KD` retired its accuracy derivation,
+`MAXIMUM_SIMULATION_STEP_S` *is* a declared control-resolution tolerance stated
+in percentage points, and § "Supported simulation step" publishes the three
+measured displacements that constitute it. Nothing in `tests/` computed any of
+them; `grep` for the figures across the suite returned one unrelated comment. A
+change to a governing equation, a partition coefficient, the reference adult's
+volumes or the supported envelope would have moved them in silence, `make
+check` passing while both documents went on asserting a tolerance the code no
+longer held. `tests/reference/test_control_resolution.py` now drives each
+manoeuvre twice from an empty system in lockstep, differing only in when the
+control change lands, and takes the worst difference over all six displayed
+compartments. Every published figure reproduced — 6.66e-3, 5.03e-2 and 1.43e-1
+pp at 1x, and 1.43e-1, 6.95e-1, 2.51, 5.83 and 1.04e1 pp down the per-rate
+column — and the gate is mutation-checked rather than assumed: a 0.2 s step, a
+2 L/min wider ventilation envelope, an 0.42 to 0.50 desflurane blood:gas and a
+2.5 to 2.8 L alveolar volume each fail it. It also pins the constant those
+figures were measured at, so the table and the step cannot part company.
 
-**And two queue mechanics.** The closure walk follows renames, so an item whose
-file was renamed after it closed no longer recovers the renaming commit's pull
-request instead of its own; and the conflict graph is tiered, so a shared file
-orders work rather than forbidding it — which is what made this release's own
-parallelism possible, since 27 of Gate 1's open entries declare
-`docs/MODEL.md`.
+**It found a defect on its first run**, which is the clearest argument the
+release makes for building the gate at all. The specification read "the case
+opening is two orders milder at every rate". It is 21x milder at 1x and 6.9x at
+300x: the binding manoeuvre's displacement saturates while the case opening's
+stays nearly linear in the delay, so the gap narrows as the playback grid
+coarsens. A reader budgeting an ordinary dial change at 60x would have inferred
+about 0.06 pp against a true 0.375 pp. Corrected in the same commit, with the
+corrected relation asserted rather than left as prose.
 
-**And the first comparison against a human measurement in the elimination
-direction (`PL-HB58`).** Both Yasuda papers report a second measured quantity
-on the same volunteers — $`F_A/F_{A0}`$ five minutes after the 30-minute
-administration the wash-in figures end — and nothing here had used it. It does
-not agree. At the shipped defaults the model holds more alveolar agent at five
-minutes than every cohort did, by +1.0 to +5.0 published SD, and the reason is
-mostly the breathing system rather than the tissue return: $`F_A/F_I`$ carries
-the inspired fraction in its denominator, so whatever a circuit does to it
-divides out of the wash-in comparison, while $`F_A/F_{A0}`$ has no such term
-and counts agent returning from the circuit as though it had come back out of
-the patient. This model always rebreathes, and cannot be set below about 29% of
-the alveolar fraction at any supported fresh gas flow. So the values are
-asserted as a *regression* band that claims nothing about agreement, with the
-published ordering by solubility, the independence from delivered fraction and
-the sign of the departure asserted separately as the validations they are.
+**The six chart traces were separable only to normal vision (`PL-GVXP`).** This
+one could never have been fixed by re-picking colours, and the reason is
+arithmetic: contrast composes along a bounded axis, so no arrangement of six
+traces gives every pair more than 21^(1/5) ≈ 1.84, well under SC 1.4.11's 3:1.
+The traces carry line style as a second channel now, and the checker gained the
+measurement rather than the claim — `tools/contrast_check.py` carries the
+Brettel 1997 projection, with a `TRACE_FLOOR` holding every trace to 3:1
+against the panel in all four vision models as a hard error. That floor
+immediately found a shortfall no normal-vision check could see: `MUSCLE_COLOR`
+at 3.19:1 as displayed and **2.98:1** simulated for deuteranopia. It also
+corrected `docs/MODEL.md`'s own dichromacy claim about the ISO 5360 agent
+identification colours, which said 1.1-1.4 where the measured values are 1.06 to
+1.48. `ACCENT` is no longer a chart colour at all, which answers the question
+`PL-W8DQ` was waiting on; the legend swatch is still a solid bar for a dashed
+trace, filed as `PL-THXF`.
 
-What that second direction buys is not a tighter gate but a different axis, and
-the re-measured discriminating power says so: against blood:gas the elimination
-point changes nothing, because the wash-in flow sweep still fails first
-everywhere. Against the vessel-rich tissue coefficient it is the whole of the
-gate — the wash-in comparison and its flow sweep were still passing at a *tenth*
-of the shipped value, and the elimination point closes the tolerance to −16%/
-+19%, −13%/+16% and −20%/+24% for the three agents. A validation that cannot
-agree is still worth its place when it is the only thing measuring a parameter.
+**And the venous pool got a source, which it had never had (`PL-3YZW`,
+`PL-8ZJQ`, `PL-BD94`).** `venous_blood_volume_l` = 1.0 L entered the repository
+at v0.1.0 under a Gas Man Workbook citation that belonged to its neighbours.
+When v0.4.6 read that Workbook at the source, the gap became explicit: the
+table's `Blood` row reads 5.00 L, which is a blood volume rather than this
+model's venous mixing pool, and no 1.0 L figure appears in it anywhere. So the
+stored value was one its cited source did not contain.
 
-Thirteen items, one of which is the v0.4.5 cut itself. Gate 1 stands at 18
-of 121 cleared - `PL-GJYL` was captured after the freeze and is not a gate
-entry, and `PL-HB58` is.
+Davis and Mapleson 1981 states, for models of inhaled anaesthetics
+specifically, that the two venous pools may be combined — "in which case it
+would be marginally more accurate to make the arterial pool 799 ml (15.4% of
+the total blood volume) and the combined venous pool **1222 ml** (23.6%)". That
+combined pool is the same object as this model's single well-stirred venous
+compartment, and 1.222 L is adopted on the project owner's decision: the first
+value in `reference_adult.json` to carry a source other than the Workbook, and
+the first published counterpart this parameter has ever had. It stays **tier
+2** and is not promoted by adoption — the paper's Appendix derives the pool
+sizes from ICRP (1975) blood distribution to reproduce circulation times rather
+than measuring them.
 
-### Release narrative
+**The competing hypothesis was tested and lost, which is why the entry is worth
+reading.** `PL-8ZJQ` had suspected 1.0 L might be an arterial compartment under
+a venous name, on Lerou and Booij's arterial fraction of 0.2 — 0.98 L at their
+4.9 L total, within 2% of what was stored. Davis and Mapleson's own arterial
+pool for an inhaled-anaesthetic model is 799 ml, 15.4% rather than 20%, so the
+coincidence does not survive the primary source. Their venous pool is the
+closer structural match on every reading. The key is renamed
+`venous_pool_volume_l` in the same change (`PL-BD94`), because it names a
+mixing volume whose only role is the mixed-venous time constant and had been
+reading as the physiologic venous blood volume.
 
-**The resident instruction set could only grow (`PL-4H01`, `PL-NJTZ`).**
-`CLAUDE.md` § "A check earns its place every run, or it is retired" gives every
-check a retirement rule, and `PL-ZBJ0` carries the evidence for it. Resident
-*rules* had no equivalent. `PL-H7XN` built a measurement and `PL-JK0M` ran the
-routing pass, but neither answered when a rule has stopped earning the context
-it costs — so the file could be added to on argument and removed from only by
-someone willing to make the case from scratch each time. The asymmetry is the
-defect: a budget with no retirement test is a ratchet.
+**This is the first release since v0.4.4 in which a displayed number moves, and
+the only one so far in which a stored parameter does.** V_v/Q goes from 12.0 s
+to 14.7 s at the stored 5.0 L/min cardiac output, visible on the mixed-venous
+trace through the first minute of every simulation. The consequence for the
+published comparisons was measured rather than argued: the 30-minute F_A/F_I
+wash-in distances are unchanged to two decimal places, the pool being long
+equilibrated by then, while the 5-minute F_A/F_A0 elimination ratios move 0.11
+to 0.13 published SD *further* from their cohort means — sevoflurane +3.67 to
++3.79, isoflurane +4.02 to +4.15, desflurane +1.02 to +1.13 — because a larger
+pool returns more agent, which is the same direction the module already
+attributes to this model's rebreathing circuit rather than to tissue return. No
+equation, numerical method or solver step moved.
 
-There is now a test for it, and 563 characters went out through it — the lane
-sentence, the finish-a-feature bullet and a quality-suite line duplicated from
-its own carrier, each retired because something else already states it. The
-resident total falls from 44 545 to 44 166 characters. The direction matters
-more than the size: this is the first release in which the number went down
-because a rule was *retired* rather than because prose was tightened.
+Three apparatus items close beside them. `bin/docket record` had written
+pull-request numbers on a shallow clone that `docket check` declined to verify
+on the same clone, recording wrong provenance silently (`PL-KX9N`);
+`bin/docket trend` makes the workflow-to-product balance over time a command
+rather than something each session re-derives (`PL-QPJZ`); and the thirty-one
+captures opened on 2026-09-06 were triaged into the queue (`PL-LYX2`).
 
-**A rule's declared scope and its real scope could differ silently
-(`PL-DNYL`).** `tools/rules_paths_check.py` shipped in v0.4.0 refusing an
-unanchored `paths:` entry, which also matches its name at any depth, and the
-`./` spelling, which matches nothing at all. It said nothing about an entry
-that is anchored and points somewhere that does not exist.
-`/scr/anesthesia_sim/core/**` passes the first rule and delivers its rule to
-nobody, and it is worse than `./` on that check's own test: `./` is at least
-visibly unusual, while a transposed directory name reads as correct at every
-glance. Both failures are silent, and a rule is trusted in a way a check is
-not — these files carry the standards a session is held to, so one that never
-loads means work judged against a bar nobody applied.
-
-It is a hard error rather than an advisory, on the project owner's decision
-that a rule may not declare scope ahead of the code it governs: the rule is
-written when the path exists. The message names the nearest existing ancestor,
-which is what turns "this path is wrong" into "it stopped being real here".
-What the check still refuses to decide is whether a glob describes the *right*
-set of files — that is judgment, it differs per rule, and a tool guessing at it
-would be the "worse than no tool" case.
-
-**The gate learned what it costs (`PL-D551`, `PL-W9DW`).** The `floor` job
-existed to prove the bare-interpreter contract: that `tools/` and `bin/docket`
-run at the declared Python floor with no virtualenv. It proved it at the price
-of a whole billable minute for eight seconds of work, and of one slot against
-the account-wide twenty-concurrent-job cap — which is what actually throttles
-several sessions at once, now that minutes are not the only constraint. Its
-steps moved inside `checks`, *before* the uv install.
-
-The order is the design rather than an implementation detail. A separate job
-only assumed isolation; running these steps before uv is installed makes the
-claim stronger, because at that point no virtualenv and no `UV_*` variable
-exists to leak from. It also fails fast — a broken documentation reference now
-costs one billable minute instead of five, since the suite never starts.
-Alongside it, a spending limit and a usage alert: until now the first sign of
-Actions overage would have been the invoice.
-
-**Two guards that report on work were reporting wrongly (`PL-VSJZ`,
-`PL-X1S4`).** Seven items existed only on branches nobody would merge,
-including two created by the score-architecture drops themselves; they are
-recovered into the store, where every command that ranks or counts work can see
-them. And the pull-request title check was racing the rename it asks for: a
-closing commit pushed before the retitle ran the check against the old title,
-so a pull request that was correct showed a red run that meant nothing — the
-precise failure mode `CLAUDE.md` names when it says an advisory nobody can act
-on trains a session to skim the output where a real one appears.
-
-### v0.4.3 — what the gate costs, and a repository that went public sideways
-
-**The largest thing in a pull request's CI was not the test suite
-(`PL-SDHR`).** The `checks` job ran 152 s, and 87 s of it was
-`bin/docket check --verify` replaying every open item's own `verify:` command —
-more than the whole 1 820-test suite, because 79 of the 111 commands in the
-store start a fresh `uv run pytest`. The shape of that cost is the problem
-rather than its size: it grows with the number of items in the queue, so every
-item triaged to `ready` made every future pull request slower, and it was
-charged on every push to every open branch.
-
-The fix is `PL-P3B6`'s argument taken one step further. That item removed the
-replay from `make check` because a pre-commit gate cannot have changed whether
-some *other* item's work has merged — and a pull request cannot either. What a
-branch can have changed is the items it edited, so `--verify-base` scopes the
-replay to exactly those, read from the diff rather than from any declared
-`touches`, and the whole-store sweep stays on `push` to the default branch
-where the answer is a fact about that branch. 102 commands in 74.6 s becomes
-one in 5.5 s; the job goes 152 s → 59 s.
-
-The care went into the silence. A narrowed run that finds nothing is
-indistinguishable from a store that holds nothing, so `LandedReport.scope` is
-set on every path out — including the nested-run decline and the case where the
-scope holds nothing at all to run — and `docket check` prints it on its own
-cost line. The one that would otherwise have lied is the empty scope, where
-there is no cost to report and an absent line reads as a clean store.
-
-**Three gate repairs around it.** `drift.yml` had been resolving whatever
-`pytest-xdist` was newest, every month, and never running it — a declared
-dependency upgraded and untested, which is precisely the hole that workflow's
-own header says it exists to close (`PL-55JM`). `tools/contrast_check.py` was
-parsing 3.14 `app/` source under the 3.11 floor and was green only because the
-two files it reads happen to contain no 3.12+ syntax; since v0.4.2 folded the
-floor job into `checks`, one PEP 695 generic in either would have reddened the
-entire job before uv was installed, naming a tool whose author had touched
-nothing (`PL-L17Q`). And the pull-request title check — the only gate a session
-could not run before pushing, so the only one whose failures were always found
-by CI — now discovers the title from the branch's own open pull request, with
-every way that lookup can fail treated as a silent skip so `make check` stays
-green offline (`PL-J3BB`).
-
-**The repository went public sideways, and that is the fact to keep straight
-(`PL-XYRN`, `PL-CCLL`).** It was made public to stop Actions minutes being
-billed, not because the project was ready to be read. The consequence for this
-release is that the minute arithmetic three of its items were built on is moot
-— standard runners are free and unlimited on public repositories — and what the
-work still buys is wall clock and the runner slots that throttle four to six
-concurrent sessions. The consequence for the next reader is larger: `PL-XYRN`
-existed to run a human-facing pass *immediately before* publication, that pass
-is deliberately unrun, and `README.md` is deliberately absent under a check
-that enforces it. Both are recorded in the tree, because the alternative is a
-future session reading a public repository with no front door as a gap and
-"fixing" it.
-
-**Three statements the project was making about its own CI were false.** The
-concurrency comment said the repository was public and standard runners free
-while it was private; that was corrected to private-and-billed (`PL-SSQX`); the
-owner made it public hours later, and it was wrong again. The repair is not the
-third correction but the removal of the dependency: the argument for cancelling
-a superseded run now rests on the runner slot, which holds under either answer,
-with the billing position dated and stated once. Beside it, a comment
-describing a job `PL-D551` had deleted, and two prose enumerations of the CI
-floor section that had each gone stale within a day of being written — the
-second of which is now the third independent drift of that same list, and the
-argument for `PL-5N7T` rather than a fourth hand-correction.
-
-**And one finding the release surfaced by accident.** `PL-N092`'s `verify:`
-command was `! grep -q … README.md`, written while that file existed; `grep` on
-a missing file exits 2, which `!` inverts to success, so from the moment
-`PL-WB5K` deleted the README the command passed on a tree where none of its
-work had been done. It was invisible because the replay only covers `ready` and
-`needs-decision` items, and this one was `blocked` — so the rot surfaced on the
-pull request that unblocked it, which is `PL-RC0M`. Two sessions found it
-independently within the hour, and reached byte-identical fixes.
-
-### v0.4.4 — the code is the model, and what that cost the prose around it
-
-**The split hid the equations, and no renaming could reach it (`PL-GS5X`,
-`PL-SPMQ`).** Until v0.4.x each step was the exact analytic solution of five
-*pairwise* exchanges composed in sequence — fresh gas into the circuit, circuit
-against alveoli, each tissue against a held arterial fraction, venous blood
-against the flow-weighted tissue outflow, and the net uptake applied back to
-alveolar gas. Solving each exactly while holding the other flows constant made
-the composition a first-order Lie/Godunov split, whose error was
-$`O(\Delta t)`$ against the true simultaneous solution even though every
-sub-step was itself exact. `PL-SPMQ` measured what that cost a *reader* rather
-than what it cost the numbers: three of the five sub-steps were objects of the
-splitting scheme, the alveolar balance's two terms were computed in different
-sub-steps separated by a third, and the pulmonary uptake term
-$`Q\lambda_{b:g}(F_A-F_v)`$ was never formed at all. The exponential is not a
-tidier spelling of the same thing — assembling $`A`$ *is* writing the balance
-equations down, and the alveolar balance is one row of it with its two terms as
-two entries.
-
-**Two consequences worth stating rather than leaving to be inferred.** The
-system matrix is Metzler — every off-diagonal entry is a transfer rate and so
-nonnegative — which makes $`\exp(A\Delta t)`$ entrywise nonnegative, and
-`core/matrix_exponential.py` shifts before summing so that this holds in
-floating point and not only in exact arithmetic. A step therefore cannot drive
-a compartment negative at any step size, which means the compartment capacity
-guard is now unreachable through the model and survives as cover for a future
-matrix that is not a pure transfer system. And refining the step no longer
-changes the answer, so `test_step_refinement_converges` asserts the stronger
-property instead: that the step does not enter the answer at all.
-
-**The residual changed shape, and the accounting guard noticed.** Conservation
-used to be maintained by moving amounts in equal-and-opposite pairs, which
-cancelled to the last bit — about 2e-15 L absolute. It is now a property of the
-matrix, with the arithmetic done in fractions, so the pairs cancel only to
-floating-point precision *relative to the largest quantity in play*; over an
-hour at desflurane's dial that is about 43 L of delivered agent, which is where
-four orders of magnitude come from. Nothing about it is a loss of accuracy —
-the relative residual is three orders inside the check's own relative tolerance
-— but `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L` is now routinely exceeded on a
-long run with the relative branch alone carrying the check. Whether that is the
-right shape for the guard is `PL-4GN8`, filed rather than resolved in passing.
-
-**Then the re-derivations, which were the larger half (`PL-X9KD`, `PL-88GQ`,
-`PL-7PLY`).** `PL-GS5X` deliberately corrected every statement its own change
-made *false* and left every statement that needed *re-deriving*, so the
-document asserted nothing untrue and nothing replacement either. What that left
-owed was three derivations, and the interesting result is that two of them came
-back with different answers than expected. Displayed precision kept its value
-and lost its reason: the ceiling is now parameter uncertainty, measured by
-perturbing each stored coefficient by one published SD and reading the
-displacement off the six readouts. The supported step kept its value and turned
-out to have *no* reason — no numerical ceiling exists below about $`10^{13}`$ s,
-and control-timing displacement has no threshold to find — so it is recorded as
-a declaration, which is a weaker and more honest thing than the derivation it
-replaced.
-
-**Four figures were wrong in the drafts, and each was caught by re-measuring
-rather than by reading (`PL-X9KD`).** The margin on the new
-`HELD_RUN_ROUNDING_BOUND` was stated as 4.9x and is 3.2x. The claim that
-refining the reference oracle would force re-pinning all nine
-`PINNED_REFERENCE_STATES` is false — they still pass at 0.0125 s and
-0.003125 s. The oracle's share of what the trajectory gate reports was given as
-98.7–99.8% and is 86–99.8%. And a slider was described as quantizing its value
-when it carries no `divisions` at all. None changed a shipped constant; all
-four were the same failure the item existed to correct, which is generalising a
-figure measured in one place to a family.
-
-**What the gate now measures, and what it does not.** The trajectory gates
-compare the shipped step against an RK4 oracle at 0.05 s, and on the transients
-that set their worst case that oracle is *not converged* — 86 to 99.8% of what
-the gate reports is its own truncation error, not the shipped solver's. That
-makes the gate conservative rather than wrong, since it bounds the sum of both
-solutions' errors and any returning method error is orders above either. It is
-recorded in place because the comment previously said the opposite, having
-generalised a "refining the oracle changes nothing" measurement from the one
-trajectory where it is true. Refining it is a CI-cost decision rather than a
-correctness one and is `PL-B1WW`.
-
-**And the domain's own symbol, which the code had been contradicting
-(`PL-3TLK`).** `core/` and `docs/MODEL.md` called the middle gas-phase state
-$`F_C`$ for circuit, where the field's symbol is $`F_I`$ for inspired — and the
-$`F_A/F_I`$ curve is the canonical teaching graph of this entire subject. A
-learner reading the code against a textbook met a different letter for the same
-quantity, in the one place where the notation is load-bearing.
-
-### v0.4.5 — the prerequisite that outlived the decision it was written for
-
-The breach in this release was not caused by anyone forgetting it. It was
-written down, in the right file, in the imperative, as a prerequisite: *"Those
-two must come out before this repository is ever made public"* — and it names
-the mechanism, a `git filter-repo` pass and a force-push rather than a delete
-commit. `docs/references/README.md` said all of that on 2026-09-04. The
-repository went public on 2026-09-06 and the files stayed.
-
-What made that possible is the shape of the trigger rather than any failure to
-read. The prerequisite was attached to an *event*, and the event was not a
-planned publication: v0.4.3 flipped visibility to stop Actions minutes being
-billed, which is a cost decision that happens to change the fact the whole
-paragraph was conditioned on. Nothing in a cost decision routes a session to a
-sentence about redistribution. `PL-XYRN` opened the go-public gate and the
-prose beside it was correct; the prerequisite lived in a different document,
-gated on the same event, and there was no edge between them.
-
-This is the same failure `PL-3V4N` diagnosed for the README freeze one release
-earlier — a rule that fires on a *read* cannot gate a write no read precedes —
-in its second form: a rule that fires on an *event* cannot gate an event nobody
-recognizes as that event. Both were answered the same way, and it is the answer
-`CLAUDE.md`'s routing list already prefers. The freeze became a hard error
-keyed on the file — a standard-library check under `tools/` refusing a root
-README until a deliberate rewrite replaced it, and retired by that rewrite. The
-redistribution prerequisite became a `doc_check` rule keyed on the file and its
-licence rather than on a visibility transition, which matters because the
-transition is not repeatable — nobody will make this repository public
-twice — while the trap is armed for every future upload. A rule keyed to the
-event would have protected exactly one moment, and that moment had passed.
-
-The second lesson is cheaper and came from the cleanup rather than the breach.
-A history rewrite is the one operation that inverts every loss guard this
-project has: `stranded`, the no-prune guard and `flight` all assume the ref
-survives and the commit is what is at risk, and a rewrite replaces the ref
-while leaving it looking healthy and shorter. Two commits were recovered only
-because a session still held them in a live checkout, which is luck. Two more
-items were recovered later in the same release from a remote-tracking ref that
-outlived the branch it named, which is not luck — that is the no-prune guard
-doing precisely the job `PL-HKF4` argued for, on its first real occasion.
-
-### v0.4.6 — a citation nobody has opened is a guess wearing a reference's clothes
-
-For months this project's reference patient named three Mapleson papers as its
-primary lineage. Nobody had opened them. The names were chosen from titles —
-*Circulation-time models of the uptake of inhaled anaesthetics and data for
-quantifying them* reads exactly like the source of a table of tissue volumes
-and blood flows — and once written into a data file, that guess was
-indistinguishable from a reading.
-
-It was wrong twice over. The Workbook the values actually came from attributes
-them to a different work entirely, Lowe and Ernst's 1981 monograph on
-closed-circuit practice. And the Workbook does not supply all eleven values, as
-the file claimed it did: it supplies seven, and one of the four it does not
-supply is a number with no stated origin anywhere in the tree.
-
-What is worth extracting is that the project's existing defence did not catch
-this. `docs/MODEL.md`'s source hierarchy is a good rule and it was being
-followed: it says a reference implementation is not a source, and the file
-correctly labelled Gas Man tier 3 and adopted nothing from it. But the
-hierarchy answers *does this document count*, and the failure here was one
-level earlier — *did anyone look at this document at all*. A tier label on an
-unopened paper is a confident statement about a thing nobody has seen.
-
-`.claude/rules/citing-sources.md` had already named the fix, in the rule that
-every note record which route it came by and how deeply it was read. That rule
-is what made the difference this time: it is why the reconnaissance recorded
-"located but unread" instead of a citation, why the Mapleson entries could be
-removed without argument once the reading proved impossible, and why the Lowe
-and Ernst attribution is written as a quotation from the Workbook rather than
-as an entry of its own. The discipline is cheap and it is the whole mechanism.
-
-The same release contains the same failure in a second form, which is what
-makes it a pattern rather than an anecdote. `PL-GYH2` landed the sentence "the
-exact propagator solves the governing equations for any positive volumes
-whatever" in `docs/MODEL.md`. Nobody was careless: the claim followed from the
-argument being made, and the argument only needed it at the volumes under
-discussion. Run, it is false — the alveolar compartment raises from 1e-9 L
-down, rolls the step back at 1e-100 L, and at 1e-300 L advances and returns
-exactly zero with the conservation accounting passing. A universal quantifier
-had been reached for because it read well, not because anything had been
-measured at the edges it claimed.
-
-Both failures have the same shape and neither is a lapse in care. A citation
-chosen from a title and a claim generalised from an argument are both a
-statement about a region nobody visited, written in the voice of a statement
-about a region somebody did. The defence is not more diligence; it is
-recording, at the moment of writing, which region was actually visited — the
-route and the depth for a citation, the measured range for a claim.
-
-Two smaller things are worth keeping. The first is that a schema caught a
-design error a person had not: giving Lowe and Ernst its own `sources` entry
-required a URL a 1981 book does not have, and the refusal was the correct
-answer to a bad structure rather than an obstacle to route around. The second
-is that the reading only happened because the environment's limits were
-reported rather than worked around. A session cannot reach a paywalled 1973
-paper; saying so plainly, with what was tried, is what produced the PDF that
-settled the question — and the route it came by, a document supplied by the
-project owner, is one `citing-sources.md` still does not describe (`PL-XJ5P`).
 
 ## The plan
 
