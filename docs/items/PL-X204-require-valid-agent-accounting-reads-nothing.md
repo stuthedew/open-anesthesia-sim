@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_agent_simulation_validation.py, tests/unit/test_uptake_system_failure.py
 added: 2026-09-03
 closed: 2026-09-07
+pr: 442
 verify: uv run pytest tests/unit/test_agent_simulation_validation.py && grep -q 'def test_require_valid_agent_accounting_reads_the_validators_own_state' tests/unit/test_agent_simulation_validation.py
 ---
 
