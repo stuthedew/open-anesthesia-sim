@@ -1524,6 +1524,91 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
     )
 
 
+#: Call names whose first literal string argument names a module, so a dynamic
+#: import written out in full is decided rather than waved through.
+_DYNAMIC_IMPORTERS = frozenset({"import_module", "__import__"})
+
+_PACKAGE_UNDER_TEST = "anesthesia_sim"
+
+
+def _reached_by_importing_module(dotted: str) -> frozenset[str]:
+    """What taking the module `dotted` whole reaches inside the package.
+
+    Args:
+        dotted: An absolute module name, as written at the import site.
+
+    Returns:
+        The one name that stands for what was reached, or nothing when
+        `dotted` names some other package. `import anesthesia_sim.core.x`
+        binds `anesthesia_sim` rather than `x`, so the dotted tail is not what
+        the importer got hold of; the subpackage is the coarsest true
+        description of it, and no subpackage is on `ALLOWED_PACKAGE_IMPORTS`,
+        which lists names taken *from* a module. A bare `import
+        anesthesia_sim` reaches all of it and is reported under its own name.
+    """
+    segments = dotted.split(".")
+    if segments[0] != _PACKAGE_UNDER_TEST:
+        return frozenset()
+    return frozenset({segments[1] if len(segments) > 1 else segments[0]})
+
+
+def _dynamic_import_target(node: ast.Call) -> str | None:
+    """The module a dynamic import names, when the source states it literally.
+
+    Args:
+        node: Any call expression.
+
+    Returns:
+        The module name, or `None` for anything reading the source cannot
+        settle: a call to something else, a computed name, or a relative one,
+        which cannot reach out of the tree doing the importing.
+    """
+    function = node.func
+    if isinstance(function, ast.Attribute):
+        called = function.attr
+    elif isinstance(function, ast.Name):
+        called = function.id
+    else:
+        return None
+    if called not in _DYNAMIC_IMPORTERS or not node.args:
+        return None
+    first = node.args[0]
+    if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
+        return None
+    return None if first.value.startswith(".") else first.value
+
+
+def _package_imports(source: str) -> frozenset[str]:
+    """Every name `source` takes from the package under test.
+
+    Args:
+        source: A module's text.
+
+    Returns:
+        One name per import site, in the vocabulary `ALLOWED_PACKAGE_IMPORTS`
+        is written in: `from anesthesia_sim.x import y` contributes `y`, the
+        name it binds, and a form that takes a module whole contributes what
+        `_reached_by_importing_module` describes. Imports of other packages
+        contribute nothing, and so do relative imports, which cannot reach
+        `anesthesia_sim` from `tests/`.
+    """
+    names: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                names |= _reached_by_importing_module(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level or node.module is None:
+                continue
+            if node.module.split(".")[0] == _PACKAGE_UNDER_TEST:
+                names.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.Call):
+            target = _dynamic_import_target(node)
+            if target is not None:
+                names |= _reached_by_importing_module(target)
+    return frozenset(names)
+
+
 def test_oracle_imports_no_solver_from_core() -> None:
     """Keep this file a verification rather than a tautology.
 
@@ -1531,16 +1616,17 @@ def test_oracle_imports_no_solver_from_core() -> None:
     solver from `core/` — a compartment's exact update, the coupled step
     itself — would make this module compare the implementation against
     itself and pass no matter how wrong the dynamics were.
+
+    The check decides the three forms that name their target in the source:
+    `from anesthesia_sim... import x`, `import anesthesia_sim...`, and a
+    dynamic import whose argument is a literal string. It does not decide a
+    name assembled at runtime, which no reading of the AST can settle; that
+    one is held by this docstring and by review. Reading only `ImportFrom`
+    left the second and third forms unchecked (`PL-F5GN`), which is what the
+    second assertion below exists to keep from coming back.
     """
 
-    module = ast.parse(Path(__file__).read_text(encoding="utf-8"))
-    imported_names = {
-        alias.name
-        for node in ast.walk(module)
-        if isinstance(node, ast.ImportFrom)
-        if (node.module or "").startswith("anesthesia_sim")
-        for alias in node.names
-    }
+    imported_names = _package_imports(Path(__file__).read_text(encoding="utf-8"))
 
     assert imported_names <= ALLOWED_PACKAGE_IMPORTS, (
         "this module imports "
@@ -1548,3 +1634,19 @@ def test_oracle_imports_no_solver_from_core() -> None:
         "under test; the independent solution may use the parameter loaders "
         "only"
     )
+
+    # Sources this file must never contain. Asserting on them here rather than
+    # writing one into the module is the way round the fact that the check
+    # reads its own text: a real bypass added to prove the point would be a
+    # real bypass.
+    bypasses = (
+        "import anesthesia_sim.core.uptake_system",
+        "import anesthesia_sim.core.uptake_system as solver",
+        "import anesthesia_sim",
+        "from importlib import import_module\nimport_module('anesthesia_sim.core.uptake_system')\n",
+    )
+    for bypass in bypasses:
+        assert not _package_imports(bypass) <= ALLOWED_PACKAGE_IMPORTS, (
+            f"{bypass!r} reaches a solver in `core/`, but the independence "
+            "check above reports nothing that would fail it"
+        )
