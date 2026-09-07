@@ -3,11 +3,12 @@ id: PL-ZVS7
 title: docs/MODEL.md's control-resolution tolerance table is a measured safety claim with no regression test; re-measuring it 2026-09-06 reproduced it, but nothing would have caught a drift
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, test
 feature: numerical-domain
 touches: tests/reference, docs/MODEL.md, src/anesthesia_sim/core/uptake_system.py
 added: 2026-09-06
+closed: 2026-09-07
 verify: uv run pytest -q tests/reference && grep -rq 'def test_the_control_resolution_tolerance_table' tests/reference
 ---
 
@@ -72,3 +73,20 @@ published value with a stated relative tolerance, and the test names
 `docs/MODEL.md`'s section so the two are found together. The same test pins
 `MAXIMUM_SIMULATION_STEP_S` to the step those figures were measured at, so the
 table and the constant cannot part company.
+
+**Closed 2026-09-07.** `tests/reference/test_control_resolution.py` drives each
+manoeuvre twice from an empty system, in lockstep, differing only in when the
+control change lands, and takes the worst difference over all six displayed
+compartments. Every published figure reproduced: 6.66e-3, 5.03e-2 and 1.43e-1 pp
+at 1x, and 1.43e-1, 6.95e-1, 2.51, 5.83 and 1.04e1 pp down the per-rate column.
+Mutation-checked rather than assumed - a step of 0.2 s, a 2 L/min wider
+ventilation envelope, an 0.42 to 0.50 desflurane blood:gas, and a 2.5 to 2.8 L
+alveolar volume each fail it.
+
+**It found one defect on its first run.** `docs/MODEL.md` read the per-rate
+table with "the case opening is two orders milder at every rate". It is 21x
+milder at 1x and 6.9x at 300x - the binding manoeuvre's displacement saturates
+while the case opening's stays nearly linear in the delay, so the gap narrows as
+the grid coarsens. A reader budgeting an ordinary dial change at 60x would have
+inferred about 0.06 pp against a true 0.375 pp. Corrected in the same commit,
+and the corrected relation is asserted rather than left as prose.

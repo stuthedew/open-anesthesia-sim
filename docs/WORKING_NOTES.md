@@ -1056,8 +1056,19 @@ propagations per simulated second and forcing the tick structure to be revisited
 
 **Why this thread is kept rather than deleted.** The three items ran together and
 `PL-NBCJ` was decided on a measurement made for `PL-NBWP`, which no single item is
-written from the vantage point of. The one live consequence is `PL-ZVS7`: none of
+written from the vantage point of.
+
+`PL-ZVS7` **- closed 2026-09-07, and it was the thread's largest exposure.** None of
 the published figures - the 1x tolerance table, the per-rate grid, or the step they
-were all measured at - is held by a test, so the whole of what these three items
-established rests on prose. `PL-X35V` is the other tail: the disclosure reaches only
-a reader with `docs/MODEL.md` open, and the rate control itself still says nothing.
+were all measured at - was held by a test, so the whole of what these three items
+established rested on prose in two files.
+`tests/reference/test_control_resolution.py` now re-measures every one of them from
+the parameter files at each run and pins the step beside them. It found on its first
+run that `docs/MODEL.md` overstated how much milder an ordinary dial change is than
+the binding manoeuvre - "two orders ... at every rate" against a measured 21x at 1x
+narrowing to 6.9x at 300x, because the binding manoeuvre's displacement saturates
+while an ordinary one stays nearly linear in the delay. Corrected there, and the
+corrected relation is now asserted rather than stated.
+
+`PL-X35V` is the remaining tail: the disclosure reaches only a reader with
+`docs/MODEL.md` open, and the rate control itself still says nothing.
