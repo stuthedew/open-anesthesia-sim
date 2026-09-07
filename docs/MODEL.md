@@ -3809,7 +3809,22 @@ Held **above** AA in two places:
 - **Chart traces are held to pairwise separation, which WCAG does not cover.**
   SC 1.4.11 only asks 3:1 against the *background*; it says nothing about how
   far apart two adjacent series must be, and reading one compartment against
-  another is the whole lesson of this chart. This bar cannot be met on
+  another is the whole lesson of this chart. **Confirmed against the source on
+  2026-09-07** (`PL-JX0Z`), the Understanding document having been supplied by
+  the project owner after five routes to it were refused by the egress proxy.
+  Its line-graph example (Figure 38) is explicit: *"The lines should have 3:1
+  contrast against their background, but as there is little overlap with other
+  lines they do not need to contrast with each other or the graduated lines."*
+  Its "Graphical Objects" section makes each line in a graph a graphical object
+  in its own right, and allows the Gestalt "law of continuity" to ignore
+  **minor** overlaps between them. Note what both carve-outs are conditioned on:
+  an absence of overlap. This chart does not have it — six traces start
+  together, converge toward equilibrium and cross through wash-in and washout —
+  so the exemption that would excuse pairwise separation is one this chart does
+  not qualify for. That makes the bar below a supported exceedance rather than
+  an arbitrary strictness, and it is why `tools/contrast_check.py` reports the
+  pairwise matrix without failing on it while enforcing the panel floor that the
+  criterion does require. This bar cannot be met on
   luminance: contrast ratios compose along a bounded axis — black to white is
   21:1 — so sorting $`n`$ traces by luminance, the smallest adjacent gap is
   largest when the gaps are equal, and no arrangement of six traces gives every

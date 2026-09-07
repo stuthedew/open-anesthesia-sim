@@ -46,12 +46,30 @@ declared pair. What follows is only the half it cannot decide.
    taste.** Contrast composes along a bounded axis, so no arrangement of six
    traces gives every pair more than 21^(1/5) ≈ 1.84 — and once each must also
    clear 3:1 against the white panel, which caps its luminance, no more than
-   **1.48**. Both are below SC 1.4.11's 3:1. Re-picking the palette cannot fix
-   trace separation, and a change that tries to is solving the wrong problem:
-   `PL-GVXP` searched the space with hue and saturation held and reached 1.28
-   across four vision models, at the price of driving four of the six traces to
-   near-black. Run `python3 tools/contrast_check.py --matrix` for both bounds
-   and the measured pairs. That item sets this bar.
+   **1.48**. Re-picking the palette cannot fix trace separation, and a change
+   that tries to is solving the wrong problem: `PL-GVXP` searched the space with
+   hue and saturation held and reached 1.28 across four vision models, at the
+   price of driving four of the six traces to near-black. Run `python3
+   tools/contrast_check.py --matrix` for both bounds and the measured pairs.
+   That item sets this bar.
+
+   **Pairwise separation is this project's bar and not the criterion's, and the
+   distinction is load-bearing** (`PL-JX0Z`). SC 1.4.11 asks each line for 3:1
+   against its *background*, which `tools/contrast_check.py` is what enforces;
+   its pairwise matrix is reported and deliberately fails nothing. The
+   Understanding document's own line-graph example says so in terms — *"The
+   lines should have 3:1 contrast against their background, but as there is
+   little overlap with other lines they do not need to contrast with each other
+   or the graduated lines"* — and elsewhere allows the "law of continuity" to
+   ignore **minor** overlaps. Both carve-outs are conditioned on an absence of
+   overlap this chart does not have: six compartment traces start together,
+   converge toward equilibrium and cross through wash-in and washout, which is
+   the lesson rather than an accident. So the bar is an exceedance that the
+   standard's own condition supports here, rather than either a requirement or
+   an arbitrary strictness — do not relax it by citing the criterion, and do not
+   defend it by misquoting the criterion. `docs/MODEL.md` § "Color contrast, and
+   the standard this interface is held to" carries it, in the list of bars this
+   interface holds itself to above AA.
 
    **The floor against the panel is a different question, and it is worth
    re-picking a color for.** It binds each trace alone rather than pairwise, so
