@@ -63,9 +63,32 @@ def _gloss(title: str, limit: int = 52) -> str:
     return title if len(title) <= limit else title[: limit - 1].rstrip() + "\u2026"
 
 
+def _open_count(report: Report) -> int:
+    """Every open item, the untriaged ones included.
+
+    `Report.open_items` is the set that is a candidate for *work*, so it
+    leaves out untriaged captures - which are candidates for a decision
+    instead. That definition is right for `plan.py` and wrong for a number
+    labelled "open": the two sets partition the open queue, so a count taken
+    from `open_items` alone understates it by exactly the untriaged number
+    printed beside it, and understates it most after a capture-heavy session
+    (`PL-4WQS`).
+    """
+    return len(report.open_items) + len(report.untriaged)
+
+
 def _counts(report: Report) -> str:
+    """The band breakdown, with untriaged as the band-less remainder.
+
+    The bands sum to the triaged count, not to `_open_count`, because an
+    untriaged item carries no priority. Naming untriaged here is what keeps
+    the breakdown summing to the total in front of it: dropped from this
+    list, it reads as a band that does not exist, and printed outside the
+    parentheses it reads as disjoint from the number it is part of.
+    """
     counts = report.counts
-    return ", ".join(f"{n} {p}" for p, n in counts.items())
+    bands = ", ".join(f"{n} {p}" for p, n in counts.items())
+    return f"{bands}, {len(report.untriaged)} untriaged"
 
 
 def format_unread(flight: FlightReport) -> str:
@@ -118,7 +141,7 @@ def format_list(
     if not report.open_items and not report.untriaged:
         return ""
 
-    lines = [f"Docket: {len(report.open_items)} open - {_counts(report)}."]
+    lines = [f"Docket: {_open_count(report)} open - {_counts(report)}."]
     ordered = sorted(report.open_items, key=lambda i: i.sort_key())
     width = max((len(i.identifier) for i in ordered), default=0)
     for item in ordered:
@@ -293,7 +316,7 @@ def format_digest(
     if not report.items:
         return ""
 
-    lines = [f"Docket: {len(report.open_items)} open - {_counts(report)}."]
+    lines = [f"Docket: {_open_count(report)} open - {_counts(report)}."]
     for item in sorted(report.open_items, key=lambda i: i.sort_key()):
         if item.priority != "P0":
             continue
@@ -1015,8 +1038,7 @@ def _gate_lines(items: list[Item]) -> list[str]:
 def format_check(report: Report) -> str:
     """The full report: everything wrong, and everything worth a second look."""
     headline = (
-        f"docket: {len(report.open_items)} open ({_counts(report)}), "
-        f"{len(report.untriaged)} untriaged, "
+        f"docket: {_open_count(report)} open ({_counts(report)}), "
         f"{_plural(len(report.errors), 'error', 'errors')}, "
         f"{_plural(len(report.advisories), 'advisory', 'advisories')}"
     )

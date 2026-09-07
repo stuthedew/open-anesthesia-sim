@@ -9,10 +9,11 @@ from __future__ import annotations
 
 from datetime import date
 
-from docket.checks import analyze
+from docket.checks import Report, analyze
 from docket.config import Config
 from docket.model import Item
 from docket.plan import OfferedReport
+from docket.render import format_check, format_digest, format_list
 from docket.vcs import (
     BaseRecord,
     ClosureReport,
@@ -1787,3 +1788,50 @@ def test_a_whole_store_run_with_nothing_to_run_still_reports_nothing() -> None:
     # Unscoped, the absent line is the honest one: nothing was narrowed, so
     # there is nothing a reader could mistake.
     assert _cost(LandedReport()) == ""
+
+
+# `open_items` deliberately excludes untriaged captures, which is right for the
+# property and wrong for a line labelled "open". These pin the wording rather
+# than the property: `checks.py` is read here, not changed (`PL-4WQS`).
+
+
+def _store_with_untriaged() -> Report:
+    """Two triaged items and one untriaged: 3 open, of which 1 is untriaged."""
+    return Report(
+        items=[
+            _item("PL-AAAA", priority="P1"),
+            _item("PL-BBBB", priority="P2"),
+            _item("PL-CCCC", status="untriaged", priority="", effort=""),
+        ]
+    )
+
+
+def test_open_count_includes_untriaged() -> None:
+    # The bug this pins: the headline read `2 open (...), 1 untriaged` on a
+    # store holding 3, and the comma invited "2 open, of which 1 untriaged"
+    # when the two sets are disjoint. The error is exactly the size of the
+    # second number, so a store with one untriaged item is enough to catch it.
+    report = _store_with_untriaged()
+
+    assert len(report.open_items) == 2
+    assert len(report.untriaged) == 1
+    assert "3 open" in format_check(report)
+    assert "3 open" in format_list(report)
+    assert "3 open" in format_digest(report)
+
+
+def test_untriaged_is_reported_as_part_of_the_open_count() -> None:
+    # The other half: the total is only honest if a reader can see what makes
+    # it up. Untriaged sits inside the breakdown, so the parenthetical sums to
+    # the number in front of it - the bands alone sum to the triaged count,
+    # because an untriaged item carries no band.
+    assert "3 open (0 P0, 1 P1, 1 P2, 0 P3, 1 untriaged)" in format_check(_store_with_untriaged())
+
+
+def test_a_store_with_nothing_untriaged_still_names_the_zero() -> None:
+    # A count omitted for being zero reads as a count that does not exist, and
+    # this is the one a reader needs told about: it is the difference between
+    # the queue and the work.
+    report = Report(items=[_item("PL-AAAA", priority="P1")])
+
+    assert "1 open (0 P0, 1 P1, 0 P2, 0 P3, 0 untriaged)" in format_check(report)
