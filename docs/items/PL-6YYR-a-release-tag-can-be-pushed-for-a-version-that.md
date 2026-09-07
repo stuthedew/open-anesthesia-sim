@@ -1,8 +1,14 @@
 ---
 id: PL-6YYR
 title: A release tag can be pushed for a version that was never cut, and nothing detects it: v0.4.8 tags main at version 0.4.7 with no release notes and no ROADMAP row
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+feature: release-process
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, tools/doc_check.py, .claude/skills/docket/SKILL.md
 added: 2026-09-07
+verify: uv run pytest -q subprojects/docket/tests/test_release.py && grep -q 'def test_release_refuses_a_version_whose_tag_names_a_commit_without_it' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** Observed on `origin` at 2026-09-07 17:35 UTC:
@@ -73,3 +79,13 @@ origin` now stops at `v0.4.7`, and `make doc-check` reads `0 errors, 0
 advisories`. The finding is unaffected - nothing detected the tag while it
 stood, and nothing would detect the next one. `PL-LT77` covers the separate
 half, that a deleted tag survives in checkouts which fetched it first.
+
+**Triage note, 2026-09-07.** Not a duplicate of the four items that captured
+the same `v0.4.8` event. `PL-BKDP` and `PL-KFWL` were the instance and are
+closed; `PL-B1DQ` was dropped as the fifth capture of one symptom, and its drop
+reason parks exactly this idea here so it would not be lost with the item -
+*"`bin/docket release` already refuses to cut while the previous release is
+untagged, and the inverse - a tag naming a version no release cut - is equally
+decidable and currently guarded by nothing at the moment somebody tags."*
+`PL-LT77` is the withdrawal of such a tag and `PL-PNW6` is a later release
+re-using its number; this item is the guard none of them carry.

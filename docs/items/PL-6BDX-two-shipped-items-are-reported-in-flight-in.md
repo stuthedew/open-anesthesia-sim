@@ -1,8 +1,14 @@
 ---
 id: PL-6BDX
 title: "Two shipped items are reported in flight in every session's digest, because their branch refs outlived their merges: PL-GVXP (v0.4.7) and PL-S5LB (v0.4.6)"
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-07
+verify: uv run pytest -q subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closed_item_is_not_reported_in_flight' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** Measured 2026-09-07 after a full fetch:
@@ -41,3 +47,29 @@ because it cannot tell an abandoned branch from a slow session.
 
 **Done when.** A closed item is not reported in flight, and the two refs above
 are gone.
+
+**Triage note, 2026-09-07.** Re-checked against the store rather than carried
+from the capture, and the count is worse than the title says: the digest names
+a third id the capture does not name. Measured twice within the hour, and the
+second reading is the one that matters:
+
+| | `In flight on a branch:` | Closed | Live |
+| --- | --- | --- | --- |
+| 19:12 | `PL-GVXP`, `PL-S5LB`, `PL-Y5WR` | 3 | 0 |
+| 19:24 | the same three, plus `PL-X204` | 3 | 1 |
+
+All three of the first reading are `status: done` with a milestone (`v0.4.7`,
+`v0.4.6`, `v0.4.7`), so the line was briefly 100% false. The second reading is
+the more useful one and the reason this item is worth doing: `PL-X204` is a
+genuinely live session, and it arrives *fourth in a list whose first three
+entries are stale*. That is precisely `CLAUDE.md`'s objection - a check that
+fires every run without changing a decision trains a session to skim the output
+where a real advisory also appears - and here the real entry is the one thing
+the line exists to deliver, namely the warning that stops two sessions starting
+one item.
+
+`PL-CPSY` (v0.2.8) already fixed the containment test that made a squash-merged
+branch's ref report in flight forever, and these three post-date it, so that
+fix is not what is missing. The guard this item proposes - suppress an item the
+base records as closed - is independent of *why* a ref survived, which is why
+it is worth having in addition rather than instead.

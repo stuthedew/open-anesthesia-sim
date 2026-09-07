@@ -1,7 +1,12 @@
 ---
 id: PL-PNW6
 title: A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: release-process
+touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/release.py
 added: 2026-09-07
 ---
 
@@ -35,6 +40,17 @@ container that clones fresh is correct by construction, so remote sessions
 self-heal; what persists is the project owner's own machine, and `git describe`,
 `git log v0.4.8..`, and any release-span question asked there answer from the
 wrong commit.
+
+**Why it matters.** The failure is silent in the one direction that matters.
+The fetch the handover itself prescribes exits zero and prints nothing, so
+nothing distinguishes a checkout holding the right tag from one holding the
+withdrawn one, and there is no moment at which the reader is told to look.
+Every release-span question then answers from the wrong commit while reporting
+no fault - `git describe --contains`, `git log v<version>..`, and
+`bin/docket release`'s own refusal to cut while the previous release is
+untagged, which reads a tag it believes it can trust. `doc_check` is silent
+here by construction, because the ROADMAP row exists and the version matches,
+so unlike `PL-LT77` there is no red check to prompt a diagnosis at all.
 
 **Shape of a fix, not yet chosen.** Either the release handover carries
 `git fetch --tags --force origin` whenever the number being cut is one a tag
@@ -77,3 +93,24 @@ git tag -d v0.4.8          # clears the withdrawn tag if this checkout holds it
 Verified as a whole sequence: delete, resolve the commit by its subject, confirm,
 tag, push - which put the tag on the intended commit from a checkout that had
 been holding the withdrawn one.
+
+**Done when.** Cutting a release at a version number some tag has previously
+named produces a handover that clears the withdrawn tag locally before it
+tags - so the owner never meets `fatal: tag 'v0.4.8' already exists`, and never
+reaches for `-f` to get past it - and a warm checkout that follows the handover
+ends with `v<version>` on the commit the release was actually cut at. Which of
+the two shapes above delivers that is the decision this item is waiting on:
+put the extra commands in the handover the cutting session writes, since that
+session is the one that knows the number was re-used, or have
+`bin/docket release` record the re-use so the handover is generated rather
+than remembered.
+
+**Decision needed.** Where the extra tag commands come from when a version
+number is re-used: (1) the cutting session writes them into the handover it
+already produces, since it is the session that knows the number was previously
+tagged - no new mechanism, but it depends on a session noticing; or (2)
+`bin/docket release` records the re-use and generates the handover, which makes
+it deterministic at the cost of teaching the release tool about tag history it
+does not read today. Answer this and the item is `ready`; a `verify:` command
+cannot be written before it, because the two shapes put the change in different
+files.
