@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.9
 touches: .github/workflows/quality.yml, .claude/hooks, tools/main_ci_status.py, docs/ARCHITECTURE.md
 added: 2026-09-07
 closed: 2026-09-07

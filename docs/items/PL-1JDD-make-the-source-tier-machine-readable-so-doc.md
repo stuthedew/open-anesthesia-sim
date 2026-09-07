@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, science
 feature: model-spec-accuracy
+milestone: v0.4.9
 touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, tools/doc_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/unit/test_parameters.py, tests/unit/test_doc_check.py, tests/reference/test_sevo_patient.py
 blocked-by: PL-6Q8N, PL-D6LX
 added: 2026-09-03

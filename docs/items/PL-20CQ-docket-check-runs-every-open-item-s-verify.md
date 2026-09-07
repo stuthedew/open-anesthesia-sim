@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.9
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, tests/unit/test_ignore_check.py
 added: 2026-09-01
 closed: 2026-09-07
+pr: 450
 verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_verify.py && grep -q 'def test_a_verify_command_that_recurses_into_docket_verify_is_rejected' subprojects/docket/tests/test_checks.py
 ---
 

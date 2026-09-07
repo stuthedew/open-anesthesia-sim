@@ -4,12 +4,14 @@ title: Two citations into docs/WORKING_NOTES.md name sections that no longer exi
 priority: P3
 effort: S
 status: done
-verify: python3 tools/doc_check.py check && ! grep -q 'near-term to-dos' src/anesthesia_sim/core/uptake_system.py && ! grep -q 'Splitting error outside' docs/items/PL-042-bound-the-splitting-error-across-the-settings.md
 classes: docs
 feature: dev-tooling
+milestone: v0.4.9
 touches: src/anesthesia_sim/core/uptake_system.py, docs/items/PL-042-bound-the-splitting-error-across-the-settings.md
 added: 2026-09-01
 closed: 2026-09-07
+pr: 451
+verify: python3 tools/doc_check.py check && ! grep -q 'near-term to-dos' src/anesthesia_sim/core/uptake_system.py && ! grep -q 'Splitting error outside' docs/items/PL-042-bound-the-splitting-error-across-the-settings.md
 ---
 
 **Problem.** Two places cite a `docs/WORKING_NOTES.md` section by name, and

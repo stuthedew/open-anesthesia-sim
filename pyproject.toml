@@ -1,6 +1,6 @@
 [project]
 name = "anesthesia-sim"
-version = "0.4.8"
+version = "0.4.9"
 description = "A deterministic simulator of volatile-anesthetic uptake and distribution, built for teaching. An educational tool, not a medical device: not for clinical prediction, dosing, or monitoring."
 readme = "README.md"
 license = "Apache-2.0"
