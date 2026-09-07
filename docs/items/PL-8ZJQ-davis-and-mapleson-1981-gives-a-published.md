@@ -3,7 +3,7 @@ id: PL-8ZJQ
 title: Davis and Mapleson 1981 gives a published, quantified blood-pool structure, which is the source PL-3YZW's 1.0 L venous pool has never had
 priority: P1
 effort: M
-status: ready
+status: needs-decision
 classes: science
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
@@ -62,3 +62,56 @@ day to wait behind the 1981 monograph, on the reasoning that it was the only
 untried upstream for a stored volume. `#417` established otherwise, and
 this item carries the reachable candidate, so that block was re-pointed here.
 The two are one branch, as the brief above says.
+
+**Read at the source 2026-09-07, and the arterial question is answered against
+the arterial reading.** The project owner supplied the paper. Its standard man
+is 70 kg with a total blood volume of 5189 ml and a cardiac output of
+6480 ml/min (Table I caption, Table III), and page 400 says in terms that **for
+models of inhaled anaesthetics** the two venous pools may be combined, "in which
+case it would be marginally more accurate to make the arterial pool 799 ml
+(15.4% of the total blood volume) and the combined venous pool 1222 ml (23.6%)".
+
+- **The arterial hypothesis does not survive the primary.** It rested on Lerou
+  and Booij's arterial fraction of 0.2 - 0.98 L at their 4.9 L total, within 2%
+  of the stored 1.0 L. Davis and Mapleson's own arterial pool for this model
+  class is 799 ml, 15.4% rather than 20%, so the coincidence is with a secondary
+  rendering rather than with anything the primary states. Their **venous** pool
+  is the structurally correct comparison: one well-stirred pool carrying tissue
+  return, which is exactly what `V_v` is here.
+- **The time constants nearly agree, and that is the interesting number.**
+  1222/6480 = 11.3 s against this model's 1.0/5.0 = 12.0 s - the closest any
+  source has come to this parameter. It is a property of the time constant
+  rather than of the volume, and it is not evidence of a lineage: nothing
+  documents Gas Man as having taken anything from this paper.
+- **Tier 2, not tier 1.** The Appendix (pages 402-404) derives the pool volumes
+  from ICRP (1975) blood distribution to reproduce circulation times - 25.9% or
+  1344 ml of the total is of arterial composition, of which 17.2% or 623 ml sits
+  in the 3621 ml of local systemic pools, leaving 721 ml central arterial and
+  847 ml central venous in the exact scheme. Derived, not measured, so
+  `docs/MODEL.md` § "Source hierarchy" does not admit it as the authority for a
+  stored value on its own.
+- **Recorded, not adopted.** The reading is written into the data file's
+  `sources` and into `docs/MODEL.md` § "Parameter provenance", which is the half
+  that holds under either answer below. `PL-3YZW` is closed on it: the stored
+  1.0 L is now on record as untraceable to any cited source.
+
+**Decision needed.** Does `venous_blood_volume_l` stay at 1.0 L, or move to
+1.222 L with Davis and Mapleson's provenance?
+
+- **Keeping it** preserves comparability with the Gas Man parameter set the rest
+  of this file exists to reproduce, and leaves one stored value with no lineage -
+  which is now documented rather than silent.
+- **Adopting 1.222 L** gives the parameter its first published provenance, and
+  moves the mixed-venous time constant from 12.0 s to 14.7 s at the stored
+  5.0 L/min. That changes the mixed-venous trace through the first minute of
+  every simulation, so it is a displayed-value change under `CLAUDE.md`'s
+  safety-critical standard and wants the project owner's call rather than a
+  session's. It would also be the first parameter in this file to leave the Gas
+  Man set, which is a precedent as much as a value.
+- **A third option exists and is worse than either**: scaling their 23.6% onto
+  the Workbook's own 5.00 L blood row gives 1.18 L, which is neither source's
+  number and would have to be defended as this project's own synthesis.
+
+Adopting would also want `PL-BD94` (the key's name reads as the physiologic
+venous blood volume) decided in the same pass, since a rename and a revalue on
+one key is one edit rather than two.
