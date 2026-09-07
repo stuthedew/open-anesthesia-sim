@@ -517,6 +517,69 @@ $$
 
 A positive value represents net uptake from alveolar gas into blood. A negative value represents net return from blood to alveolar gas during washout.
 
+**The alveolar volume is held constant, and that is what excludes nitrous
+oxide** (`PL-L2F2`). The substitution $`M_A = V_AF_A`$ above treats $`V_A`$ as
+a constant and divides through by it, and `core/alveolar.py` implements
+exactly that: `apply_blood_uptake` subtracts the transferred volume from the
+compartment's agent amount and leaves its gas volume untouched, with nothing
+augmenting inspired flow to replace what left. For the agents this model ships
+that is correct rather than merely convenient. For nitrous oxide it is not,
+and the difference is arithmetic rather than a matter of degree.
+
+Compare the pulmonary uptake rate above against alveolar ventilation at the
+early induction gradient, where $`F_v \approx 0`$, for the reference adult at
+$`Q = 5`$ L/min, $`V_A = 2.5`$ L and $`\dot V_A = 4`$ L/min:
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5, alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
+
+| Gas | $`\lambda_{b:g}`$ | $`F_A - F_v`$ | $`\dot M_{\mathrm{pulmonary}}`$ | Of $`\dot V_A`$ |
+| --- | --- | --- | --- | --- |
+| Sevoflurane at 2% | 0.65 | 0.02 | 0.065 L/min | 1.6% |
+| Nitrous oxide at 70% | 0.47 | 0.50 | 1.18 L/min | 29% |
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 1.6 percent from data/patients/reference_adult.json default_cardiac_output_l_min = 5, default_alveolar_ventilation_l_min = 4 -->
+<!-- derived: 1.6 percent from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+
+The last column is the one that decides it. Uptake removes 1.6% of each
+inspired alveolar volume for sevoflurane, which a fixed volume can ignore and
+does. It removes 29% for nitrous oxide — and that removal *is* the
+concentration effect: the gas left behind is concentrated by the volume that
+departed, and replacement inspired gas is drawn in to fill the deficit. A
+fixed-volume compartment represents neither half of it.
+
+**Nitrous oxide's $`\lambda_{b:g} = 0.47`$ above is the conventional textbook
+figure and is not a stored parameter.** This project ships no nitrous oxide
+parameter file at all; the value is used here only to size the comparison,
+and adopting it would need its own entry to the standard "Source hierarchy"
+sets. Nothing in this section should be read as a nitrous oxide parameter set.
+
+**One constraint, not three omissions.** "Known limitations" lists nitrous
+oxide, simultaneous gases, and concentration or second-gas effects as three
+separate absent features. They are one feature: all three are blocked by the
+fixed alveolar volume, and lifting it reaches all three. Two standard
+formulations do so, equivalent to first order, either of which a milestone
+scoping multi-gas support could adopt. The first lets $`V_A`$ be state, with
+the concentration equation picking up a volume term:
+
+$$
+\frac{dV_A}{dt} = \dot V_{A,\mathrm{in}} - \dot V_{A,\mathrm{out}} - \sum_k \dot M_{\mathrm{uptake},k}
+\qquad
+\frac{dF_A}{dt} = \frac{dM_A/dt - F_A\,dV_A/dt}{V_A}
+$$
+
+The second holds $`V_A`$ constant and replaces the volume lost to total uptake
+with inspired gas, so the effective inspired ventilation becomes
+$`\dot V_A + \sum_k \dot M_{\mathrm{uptake},k}`$. That one is the less invasive
+here and is how the classical treatment writes it.
+
+Either way, the second-gas effect follows from the alveolus holding more than
+one gas rather than from machinery of its own. That is what makes
+`ROADMAP.md`'s planned items 6 and 7 non-additive over these equations: item 7
+is nearly free if item 6 is built this way, and unreachable if nitrous oxide is
+bolted on beside a volatile. Item 6 already instructs that the patient be
+modeled as a set of substances rather than as the bolt-on; the alveolar-volume
+coupling is the mechanism behind that instruction, which the roadmap states as
+a conclusion without the reason.
+
 ### Arterial blood
 
 Arterial blood is flow-limited: blood leaving the lungs equilibrates instantaneously with alveolar gas, so $`F_a \equiv F_A`$ at every instant (see "Model boundary"). There is no separate arterial amount balance, capacity, or time constant. Every equation below that references $`F_a`$ uses the current alveolar fraction $`F_A`$ directly.
@@ -4165,6 +4228,11 @@ Version v0.1.0 assumes:
 - partition coefficients are constant;
 - tissue volumes and flow fractions are constant;
 - outgoing pulmonary blood equilibrates with alveolar gas;
+- the alveolar gas volume is constant — uptake removes agent from the
+  compartment without removing volume from it, and no inspired flow replaces
+  what left. This is the assumption that excludes nitrous oxide, simultaneous
+  gases and the concentration and second-gas effects, and "Alveolar gas"
+  measures what it costs and what lifting it would take;
 - inspired gas is circuit gas — one gas-phase state $`F_I`$ between the
   vaporizer and the alveoli, there being one perfectly mixed circuit with no
   dead space and no separate limbs (see "Model boundary");
@@ -4215,6 +4283,18 @@ This model does not model:
 - clinical alarms;
 - dosing recommendations; or
 - patient-specific clinical predictions.
+
+**Three of those bullets are one constraint, not three omissions**
+(`PL-L2F2`). Nitrous oxide, simultaneous gases, and concentration or second-gas
+effects read as three independent features to be added, and are not: all three
+are blocked by the fixed alveolar volume that "Alveolar gas" and "Assumptions"
+declare, and lifting it reaches all three at once. The distinction is worth
+stating because the shortcut it rules out looks reasonable — a session scoping
+nitrous oxide from this list alone would plan it as a second agent object
+beside the volatile, meet the coupling late, and be tempted into a partial fix
+whose $`F_A`$ curve is plausible and wrong by tens of percent through
+induction. "Alveolar gas" carries the arithmetic that separates the two cases
+and the two standard formulations that lift the constraint.
 
 **The MAC divisor is a limitation of the display, and a named one.** The
 second display unit divides by a tier-3 `mac_percent`, and "Delivery-limit

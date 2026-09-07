@@ -3,10 +3,11 @@ id: PL-L2F2
 title: The fixed-volume alveolus blocks nitrous oxide, not just omits it
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science
 touches: docs/MODEL.md
 added: 2026-09-01
+closed: 2026-09-07
 verify: python3 tools/doc_check.py check && grep -qF 'fixed alveolar volume' docs/MODEL.md
 ---
 
@@ -29,7 +30,7 @@ Two of the three are blocked on the same change, and the third is nearly free
 once it is made.
 
 **Why it matters.** The arithmetic is what separates the two cases, computed
-from the shipped defaults in `data/patients/reference_adult_70kg.json`
+from the shipped defaults in `data/patients/reference_adult.json`
 ($`Q = 5`$ L/min, $`V_A = 2.5`$ L, $`\dot V_A = 4`$ L/min) through the
 model's own pulmonary uptake term $`Q\lambda_{b:g}(F_A - F_v)`$ at the early
 induction gradient, where $`F_v \approx 0`$:
@@ -126,3 +127,38 @@ and the concentration and second-gas effects; that this is one structural
 constraint rather than three independent omissions; and which of the two
 formulations above would lift it. `python3 tools/doc_check.py check` still
 passes.
+
+**Closed 2026-09-07.** `docs/MODEL.md` states it in three places, one of them
+substantive and two of them routes into it.
+
+- **§ "Alveolar gas"**, immediately after the pulmonary uptake rate the
+  argument is about, because that is where the constraint is created: the
+  $`M_A = V_AF_A`$ substitution divides through by a constant $`V_A`$, and
+  `apply_blood_uptake` does the same thing in code. It carries the comparison
+  table (1.6% of alveolar ventilation for sevoflurane against 29% for nitrous
+  oxide), the statement that the removal *is* the concentration effect, both
+  formulations that lift it, and why planned items 6 and 7 are not additive.
+- **§ "Assumptions"** gained a bullet. The constant alveolar volume was not in
+  that list at all, which was its own small gap: every other structural
+  assumption of the alveolar compartment is there.
+- **§ "Known limitations"** gained a paragraph saying the three bullets are one
+  constraint, so a reader scoping nitrous oxide from that list meets it there
+  rather than only if they happen to read the governing equations.
+
+**The arithmetic was recomputed rather than transcribed**, all six columns,
+from the shipped defaults: sevoflurane $`5 \times 0.65 \times 0.02 = 0.065`$
+L/min, which is 1.6% of $`\dot V_A = 4`$ L/min; nitrous oxide
+$`5 \times 0.47 \times 0.50 = 1.175`$ L/min, 29%. Both reproduce the brief.
+
+**Two corrections to the brief itself.** It cited
+`data/patients/reference_adult_70kg.json`, which does not exist under that name
+— the file is `reference_adult.json`, and the path is corrected above.
+And 0.47 is written into `docs/MODEL.md` explicitly as an unstored,
+conventional figure used only to size the comparison, with a sentence saying
+nothing in the section is a nitrous oxide parameter set, per the brief's own
+warning.
+
+**Nothing under `src/` changed**, deliberately: no code path can produce an
+uptake large enough for the fixed volume to matter, so a runtime guard would be
+dead code carrying a safety-shaped name. The constraint is a fact about the
+model, and `docs/MODEL.md` is where a fact about the model goes.
