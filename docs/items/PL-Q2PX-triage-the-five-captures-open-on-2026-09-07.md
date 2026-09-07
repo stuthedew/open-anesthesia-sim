@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: docs/items
 added: 2026-09-07
 closed: 2026-09-07
+pr: 429
 not-delegable: a triage pass is proven by the store's state at the moment it ran, and that state moves - captures arrive untriaged by design - so no command run afterwards separates 'the pass happened' from 'nothing has been captured since'. `bin/docket check`, already on `make check`, is the standing proof that what the pass wrote is valid (same argument as PL-LYX2)
 ---
 

@@ -1,13 +1,15 @@
 ---
 id: PL-0GTC
 title: docs/MODEL.md's step-atomicity section still calls the class RespiratorySystem, renamed four releases ago
-status: ready
+status: done
 priority: P3
 effort: S
 classes: docs
 touches: docs/MODEL.md
 verify: python3 tools/doc_check.py check && ! grep -q 'RespiratorySystem' docs/MODEL.md
 added: 2026-09-03
+pr: 376
+closed: 2026-09-07
 ---
 
 **Problem.** `docs/MODEL.md` § "Step atomicity" opens
@@ -53,3 +55,15 @@ old name instead, and was watched exiting 1 against the unfixed document.
 This is the failure mode `.claude/skills/docket/SKILL.md` describes for
 unrun commands, met in practice: the paired-grep shape assumes the work
 *adds* a string, and this work removes one.
+
+**Closed 2026-09-07 as already done, under `PL-CL8J`.** The work landed in
+`d8deea5` (#376, the exact-matrix-exponential change), which rewrote § "Step
+atomicity" and removed the stale class name as a side effect of rewriting the
+prose around it. The item was never closed, so `bin/docket check --verify` has
+reported it as "open but its `verify:` command already passes" ever since.
+
+Established by replaying every one of the 80 commits that touch `docs/MODEL.md`
+and testing each revision under the *same whitespace normalisation this item's
+own `verify:` command uses*. A line-based `grep` is not sufficient here and gave
+a false reading first time: this document is hard-wrapped, so a phrase can span
+a newline and `git log -S` misses it.

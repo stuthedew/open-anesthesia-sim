@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: ROADMAP.md, docs/items/
 added: 2026-09-07
 closed: 2026-09-07
+pr: 427
 verify: grep -qF 'the run on line width, and at most two compartments drawn while two' ROADMAP.md && grep -qF 'The encoding, settled 2026-09-07' docs/items/PL-8PSW-overlay-two-branches-on-one-time-axis-with.md
 ---
 
