@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: tests/reference/test_coupled_dynamics.py
 added: 2026-09-03
 closed: 2026-09-07
+pr: 452
 verify: uv run pytest 'tests/reference/test_coupled_dynamics.py::test_oracle_imports_no_solver_from_core' && grep -q 'ast.Import)' tests/reference/test_coupled_dynamics.py
 ---
 

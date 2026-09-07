@@ -4,12 +4,13 @@ title: doc_check's citation check reads neither docs/items/*.md nor source docst
 priority: P2
 effort: M
 status: done
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_citation_in_an_item_brief' tests/unit/test_doc_check.py
 classes: defect, infra
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/items/PL-XF89-readme-s-opening-says-inhaled-anesthetic-where.md
 added: 2026-09-01
 closed: 2026-09-07
+pr: 451
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_citation_in_an_item_brief' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `check_citations` (`tools/doc_check.py:1187`) resolves every path

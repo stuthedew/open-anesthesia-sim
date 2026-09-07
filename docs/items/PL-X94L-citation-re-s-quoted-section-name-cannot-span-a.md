@@ -4,12 +4,13 @@ title: CITATION_RE's quoted section name cannot span a source line, so every cit
 priority: P2
 effort: S
 status: done
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_cited_section_title_that_wraps_across_lines_is_checked' tests/unit/test_doc_check.py
 classes: defect
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-07
 closed: 2026-09-07
+pr: 451
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_cited_section_title_that_wraps_across_lines_is_checked' tests/unit/test_doc_check.py
 ---
 
 **Problem.** CITATION_RE's quoted section name cannot span a source line, so every citation whose section title wraps is invisible to check_citations in the documents it already reads
