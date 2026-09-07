@@ -23,6 +23,14 @@ state of the worst gate number - desflurane, ventilator start, alveolar, 307.4 s
     the oracle's own error  |oracle(0.05) - converged|      7.7562e-13
     the shipped step's own  |shipped(0.1) - converged|      9.1593e-16
 
+Re-measured 2026-09-07 as a maximum over the whole trajectory rather than at
+that one instant, the gate's reported figure falls as the oracle is refined and
+then stops falling, which is where the oracle has stopped being what is
+measured: 7.7377e-13 at 0.05 s, 4.7351e-14 at 0.025 s, 1.3906e-14 at 0.0125 s,
+1.2490e-14 at 0.00625 s. The knee is at 0.0125 s, which is what makes it the
+right target rather than 0.025 s — at 0.025 s the oracle still contributes
+about two thirds of the reported number.
+
 Halving the oracle's step divides its term by 15.94 then 15.38 against 2^4 - the
 signature of RK4 truncation. Across the trajectories that set the tolerance the
 oracle's share is 86 to 99.8 percent. The shipped step's own residual is inside
@@ -49,11 +57,61 @@ orders of magnitude looser than the residual it watches, and say so beside the
 constant. There is no correctness argument on either side; the two costs below
 are the whole of it.
 
-**What it costs.** RK4 time rises fourfold per halving, on a file already
-running about 49 s. That is the whole of the decision: it is a CI-cost question,
-not a correctness one, which is why `PL-X9KD` left it open rather than settling
-it. `HELD_RUN_ROUNDING_BOUND`'s gate already measures the shipped step's own
+**What it costs — measured, 2026-09-07, and it is a fraction of what this
+brief assumed.** The fourfold-per-halving figure is true of the RK4 term in
+isolation and was never measured against the deliverable. Refining
+`ORACLE_STEP_S` to 0.0125 s with `_oracle_step_for` returning `shipped / 8`:
+
+    this file, serially                39.5 s -> 79.2 s     (+39.7 s, 2.0x)
+    whole suite, as CI invokes it      43.0 s -> 55.5 s     (+12.5 s, 1.29x)
+
+The file does not quadruple because about 25 s of it is not oracle work, and
+the suite absorbs even that because CI runs `pytest -n $(cpu_count * 2) --dist
+worksteal` (`.github/workflows/quality.yml`) and this file's 61 tests are
+parametrized across workers, so it was never the critical path alone. Suite
+figures are the mean of two paired runs on a 4-CPU container at `-n 8`; a first
+run of each pair was discarded as cold. **So the price of the decision is about
+12.5 s per CI run, not a file running for three minutes.**
+
+`HELD_RUN_ROUNDING_BOUND`'s gate already measures the shipped step's own
 residual directly and needs no oracle refinement.
+
+**What it buys — measured over everything both trajectory gates drive.** The
+worst residual anywhere falls 13x, and `EXACT_STEP_ORACLE_TOLERANCE` could
+follow it down from `5e-12` to about `4e-13` at the same 6.5x margin:
+
+    oracle at 0.05 s (today)     7.7377e-13   desflurane, ventilator start, 0.1 s step
+    oracle at 0.0125 s           5.8870e-14   desflurane, ventilator start, 0.025 s step
+
+The worst case also *moves*, which is the substantive gain rather than the
+number. Today it sits at the **coarsest** shipped step, where the oracle is
+least converged — the signature of oracle truncation. Refined, it moves to the
+**finest** shipped step, where four times as many steps accumulate four times
+as much rounding. That is the behaviour
+`test_the_disagreement_does_not_shrink_with_the_step`'s own docstring predicts
+and the gate currently cannot show, because oracle truncation swamps it.
+
+Re-pinning is confirmed unnecessary rather than assumed: the whole suite, 2096
+tests, passes unmodified at `ORACLE_STEP_S = 0.0125` with `_oracle_step_for`
+returning `shipped / 8`, `test_lockstep_oracle_step_matches_the_pinned_one`
+included — `0.1 / 8.0 == 0.0125` exactly, division by a power of two being
+exact in binary floating point.
+
+**Richardson extrapolation was measured and is not worth it.** Carrying two RK4
+streams at `h/2` and `h/4` and combining them as `(16*y_fine - y_coarse) / 15`
+is a fifth-order oracle at 3x the current oracle cost against 4x for the plain
+refinement, and it reaches the same floor: worst 1.6029e-14 against 1.5786e-14
+for a plain 0.0125 s oracle, both being the shipped step's own residual rather
+than either oracle's truncation. It buys about a quarter of the oracle term,
+which is roughly 3 s of CI, in exchange for a new mechanism inside the one
+component of this module whose value is that a reviewer can audit it line by
+line against a textbook. Rejected on the measurement, and recorded here so the
+next reader does not re-derive it.
+
+Speeding up `_rk4_step` and the derivative closure was also considered and
+rejected for the same reason: the oracle's readability is what makes it an
+independent check, and `CLAUDE.md` puts auditability above speed on exactly
+this kind of path.
 
 **Why it matters.** The gate's headline number is not a measurement of the thing
 its name implies. It reads as "how far the shipped step is from the truth" and
