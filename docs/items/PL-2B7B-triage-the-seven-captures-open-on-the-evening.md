@@ -39,5 +39,19 @@ files under `src/anesthesia_sim/data/` are still at `schema_version: 1` with no
 `tier` key, and the item's own `verify:` command exits 1 today with both
 healthy halves passing.
 
+**What the pass turned up beyond the seven.** Reading `bin/docket status` at
+feature altitude showed `PL-BKDP` as the `release-process` feature's top entry -
+`P1 - needs-decision`, filed hours earlier the same day for the same `v0.4.8`
+tag event as `PL-KFWL`, and with its stated **Done when** already satisfied.
+That is captured as `PL-YMW8` and triaged with the rest rather than acted on,
+because closing a `P1 - needs-decision` item is a decision and not a field. It
+is also recorded in `PL-5GBV`'s brief as a second live instance, with the note
+that the two titles share no distinctive phrase beyond the version string, which
+is the harder case for the check `PL-5GBV` proposes.
+
+A near-neighbour rather than a duplicate was recorded on `PL-K5PW`: `PL-P757`
+is a different `--items` defect declaring the same two files, so the two want
+sequencing rather than merging.
+
 **Done when.** No item in `docs/items/` carries `status: untriaged`, and
 `bin/docket check` reports no errors.

@@ -33,6 +33,11 @@ and defaults are in force - `docket check` already prints a cost line, so there
 is a place for it. Refusing the run is wrong: the behaviour is correct and
 another project's store is a real use.
 
+**Neighbour.** `PL-P757` (`bin/docket --items` pointed at a nested store makes
+every annotating commit read as work) is a different defect on the same surface
+and declares the same two files. The two are startable independently; land the
+smaller first and expect to resolve against the other.
+
 **Done when.** A run that found no `docket.toml` beside its store says so on
 its own output, so a reader can tell a broken store from a store being read
 under the wrong policy.
