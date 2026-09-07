@@ -105,6 +105,12 @@ SECONDS_PER_MINUTE = 60.0
 # latter is reading it as several hundred times better than it is. The whole
 # per-rate table is in docs/MODEL.md "Supported simulation step" beside this
 # one, and app/playback.py states which grid the interface actually offers.
+#
+# Every figure quoted above, and this constant's own value, is re-measured from
+# the parameter files at each run by tests/reference/test_control_resolution.py.
+# Until PL-ZVS7 they were held by this comment and by docs/MODEL.md and by
+# nothing else, so moving the model would have left both documents asserting a
+# tolerance the code no longer held, with make check passing.
 MAXIMUM_SIMULATION_STEP_S = 0.1
 
 

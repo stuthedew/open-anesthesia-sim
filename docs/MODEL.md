@@ -961,6 +961,19 @@ precision" carries the measurement). So at 0.1 s an ordinary control action is
 timed to about a tenth of one parameter SD, which is the sense in which the
 step is fine enough.
 
+**Both tables in this section are held by a test**, which is not a formality:
+since `PL-X9KD` retired the accuracy derivation these figures are the whole
+content of `MAXIMUM_SIMULATION_STEP_S`, and until `PL-ZVS7` they were asserted
+by prose here and in `core/uptake_system.py` and by nothing else.
+`tests/reference/test_control_resolution.py` re-measures every one of them from
+the parameter files at each run, driving each manoeuvre twice — on time and one
+grid step late — and taking the worst difference over all six displayed
+compartments. So a change to the governing equations, to a partition
+coefficient, to the reference adult's volumes, to the supported input envelope,
+or to the step itself moves the test before it can move what this section tells
+a reader. The same test pins the step the figures were measured at, because the
+table and the constant are one decision.
+
 **What 0.1 s does not buy, stated rather than left to be discovered.** An
 abrupt manoeuvre is not held inside that criterion. A ventilator start at this
 step displaces the alveolar reading by up to $`1.4\times10^{-1}`$ pp — about
@@ -1007,12 +1020,16 @@ are that far apart:
 Every column is in simulated seconds except the last, which is the same
 measurement the table above reports, re-run at each rate over the same three
 manoeuvres and all three agents (2026-09-06, `PL-NBWP`). The binding case is
-the ventilator start with desflurane throughout; the case opening is two orders
-milder at every rate, reaching 1.5 pp at 300×. **The displacement saturates
-rather than scaling with the delay** — the transient has largely run by the time
-a 30 s grid step has passed — so extrapolating the 1× figure linearly
-over-states 300× by about four times, and the measured values are the ones to
-use.
+the ventilator start with desflurane throughout; the case opening is about 21×
+milder at 1×, and **the gap narrows as the grid coarsens** — to 19× at 20×, 16×
+at 60× and about 7× at 300×, where an ordinary dial change reaches 1.5 pp. The
+narrowing is the same effect as the row above it: **the binding manoeuvre's
+displacement saturates rather than scaling with the delay** — its transient has
+largely run by the time a 30 s grid step has passed — so extrapolating the 1×
+figure linearly over-states 300× by about four times, while the case opening's
+displacement is still nearly linear in the delay and so keeps growing. The
+measured values are the ones to use, and the ratio is not one of them to
+extrapolate either.
 
 Three things follow, and the third is why the behaviour was left alone.
 

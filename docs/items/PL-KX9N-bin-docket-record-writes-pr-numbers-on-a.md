@@ -9,6 +9,7 @@ feature: commit-provenance
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-06
 closed: 2026-09-07
+pr: 419
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_record_declines_on_a_checkout_it_cannot_walk' subprojects/docket/tests/test_cli.py
 ---
 
