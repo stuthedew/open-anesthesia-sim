@@ -134,7 +134,7 @@ class ReferenceAdultParameters:
     display_name: str
     weight_kg: float
     alveolar_gas_volume_l: float
-    venous_blood_volume_l: float
+    venous_pool_volume_l: float
     default_alveolar_ventilation_l_min: float
     default_cardiac_output_l_min: float
     vessel_rich_volume_l: float
@@ -394,7 +394,7 @@ class _ReferenceAdultPayload(_StrictPayload):
     display_name: NonEmptyString
     weight_kg: PositiveFinite
     alveolar_gas_volume_l: PositiveFinite
-    venous_blood_volume_l: PositiveFinite
+    venous_pool_volume_l: PositiveFinite
     default_alveolar_ventilation_l_min: PositiveFinite
     default_cardiac_output_l_min: PositiveFinite
     tissue_groups: _TissueGroupsPayload
@@ -469,7 +469,7 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
         display_name=model.display_name,
         weight_kg=model.weight_kg,
         alveolar_gas_volume_l=model.alveolar_gas_volume_l,
-        venous_blood_volume_l=model.venous_blood_volume_l,
+        venous_pool_volume_l=model.venous_pool_volume_l,
         default_alveolar_ventilation_l_min=model.default_alveolar_ventilation_l_min,
         default_cardiac_output_l_min=model.default_cardiac_output_l_min,
         vessel_rich_volume_l=tissue_groups.vessel_rich.volume_l,

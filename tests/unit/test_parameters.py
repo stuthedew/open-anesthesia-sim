@@ -50,7 +50,7 @@ def _valid_patient_payload() -> dict[str, object]:
         "display_name": "Test Patient",
         "weight_kg": 70.0,
         "alveolar_gas_volume_l": 2.5,
-        "venous_blood_volume_l": 1.0,
+        "venous_pool_volume_l": 1.222,
         "default_alveolar_ventilation_l_min": 4.0,
         "default_cardiac_output_l_min": 5.0,
         "tissue_groups": {
@@ -195,7 +195,7 @@ def test_loads_reference_adult_parameters() -> None:
     assert patient.id == "reference_adult_70kg"
     assert patient.weight_kg == 70.0
     assert patient.alveolar_gas_volume_l == 2.5
-    assert patient.venous_blood_volume_l == 1.0
+    assert patient.venous_pool_volume_l == 1.222
     assert patient.default_alveolar_ventilation_l_min == 4.0
     assert patient.default_cardiac_output_l_min == 5.0
     assert patient.vessel_rich_volume_l == 6.0

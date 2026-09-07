@@ -1286,11 +1286,25 @@ arterial pool 799 ml (15.4% of the total blood volume) and the combined venous
 pool 1222 ml (23.6%)". That combined pool is the same object as $`V_v`$ here:
 one well-stirred venous pool carrying tissue return. Their Appendix derives it
 from ICRP (1975) blood distribution rather than measuring it, which is what
-keeps it tier 2. It does not supply the stored 1.0 L, which appears nowhere in
-the paper, so that value stays a modelling choice this project cannot trace to
-any cited source; what has changed is that a candidate exists. `PL-8ZJQ` carries
-whether to adopt it — at the stored 5.0 L/min cardiac output, 1.222 L would move
-the mixed-venous time constant from 12.0 s to 14.7 s.
+keeps it tier 2. **It was adopted on 2026-09-07, on the project owner's decision** (`PL-8ZJQ`),
+and is the first value in this file to carry a source other than the Gas Man
+Workbook. `venous_pool_volume_l` is 1.222 L, and the key was renamed from
+`venous_blood_volume_l` in the same edit (`PL-BD94`) because the old name reads
+as the physiologic venous blood volume, which this is not. At the stored
+5.0 L/min cardiac output the mixed-venous time constant moves from 12.0 s to
+14.7 s.
+
+**What that costs, measured rather than argued.** The 30-minute $`F_A/F_I`$
+wash-in distances are unchanged to two decimal places (+0.16, +0.31, +0.79,
++0.38 SD): the pool is long equilibrated by then, so the published wash-in
+comparison cannot discriminate between the two values and is no evidence either
+way. The 5-minute $`F_A/F_{A0}`$ elimination ratios move **0.11 to 0.13
+published SD further from** their cohort means — sevoflurane +3.67 to +3.79,
+isoflurane +4.02 to +4.15, desflurane +1.02 to +1.13 — because a larger pool
+returns more agent to the lungs. That is the same direction § "Published
+wash-in validation test" already attributes to this model's rebreathing circuit
+rather than to tissue return, and it is a tenth of the gap it adds to. The nine
+oracle reference states were re-derived and re-pinned in the same change.
 
 **It also answers the arterial question, against the arterial reading.** The
 suspicion was that the stored 1.0 L might be an arterial compartment under a
@@ -1299,9 +1313,10 @@ venous name, on Lerou and Booij's arterial fraction of 0.2 — 0.98 L at their
 for an inhaled-anaesthetic model is 799 ml, 15.4% rather than 20%, so that
 coincidence does not survive the primary source. Their venous pool is the closer
 structural match, and the time constants nearly agree: 1222/6480 = 11.3 s
-against 1.0/5.0 = 12.0 s here. That is a property of the time constant rather
-than of the volume, and it is not evidence of a shared lineage — nothing
-documents Gas Man as having taken anything from this paper.
+against the 1.0/5.0 = 12.0 s this file held until 2026-09-07. That near
+agreement is a property of the time constant rather than of the volume, and it
+was not evidence of a shared lineage — nothing documents Gas Man as having taken
+anything from this paper.
 
 **Where 1.0 L actually came from is now answerable, and the answer is: from
 here.** The value entered the repository on 2026-08-22 in `875ba08`, "Build
@@ -1411,7 +1426,7 @@ in the places a reader trusts most.
 | Fat tissue:blood coefficient (desflurane) | 30.9524 (= 13.0 / 0.42) | dimensionless | `data/agents/desflurane.json` · `tissue_gas_partition_coefficients.fat` |
 | Reference patient weight | 70.0 | kg | `data/patients/reference_adult.json` · `weight_kg` |
 | Alveolar gas volume | 2.5 | L | `data/patients/reference_adult.json` · `alveolar_gas_volume_l` |
-| Venous blood-pool volume | 1.0 | L | `data/patients/reference_adult.json` · `venous_blood_volume_l` |
+| Venous blood-pool volume | 1.222 | L | `data/patients/reference_adult.json` · `venous_pool_volume_l` |
 | Vessel-rich tissue volume | 6.0 | L | `data/patients/reference_adult.json` · `tissue_groups.vessel_rich.volume_l` |
 | Muscle tissue volume | 33.0 | L | `data/patients/reference_adult.json` · `tissue_groups.muscle.volume_l` |
 | Fat tissue volume | 14.5 | L | `data/patients/reference_adult.json` · `tissue_groups.fat.volume_l` |

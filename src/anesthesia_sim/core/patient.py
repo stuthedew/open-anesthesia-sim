@@ -84,7 +84,7 @@ class PatientCompartments:
                 tissue_gas_partition_coefficient=(agent.fat_tissue_gas_partition_coefficient),
             ),
             venous_blood=VenousBloodCompartment(
-                volume_l=patient.venous_blood_volume_l,
+                volume_l=patient.venous_pool_volume_l,
                 blood_gas_partition_coefficient=blood_gas,
                 blood_flow_l_min=(patient.default_cardiac_output_l_min),
             ),

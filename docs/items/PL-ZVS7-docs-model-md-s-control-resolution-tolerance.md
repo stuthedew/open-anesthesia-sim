@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: tests/reference, docs/MODEL.md, src/anesthesia_sim/core/uptake_system.py
 added: 2026-09-06
 closed: 2026-09-07
+pr: 420
 verify: uv run pytest -q tests/reference && grep -rq 'def test_the_control_resolution_tolerance_table' tests/reference
 ---
 
