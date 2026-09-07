@@ -428,6 +428,39 @@ START_NEW_CASE_TEMPLATE = "Discard and start {agent}"
 NEW_CASE_DIALOG_WIDTH = 420
 NEW_CASE_DIALOG_SPACING = 12
 
+# While a run is going the agent selector is *replaced* rather than greyed.
+# Disabling it is what the run needs - choosing an agent discards the case -
+# but a disabled control is not a neutral rendering of the same information:
+# Flet/Material paints its label in the theme's disabled-content grey, which
+# overrides the `color=` and `text_style=` the agent scheme sets while leaving
+# the saturated ISO 5360 fill behind it. Grey on purple, at the one moment
+# every number beside it - percent, MAC multiple, alveolar and mixed-venous
+# partial pressures - is agent-specific, which is the wrong-context failure
+# `CLAUDE.md`'s presentation clause names rather than a styling complaint
+# (PL-61WW).
+#
+# Two things follow from replacing it rather than restyling it. The colour on
+# screen during a run is `AgentColorScheme.foreground` on `.fill` - a declared
+# pair `tools/contrast_check.py` measures - instead of a Material default that
+# appears in no source file and so cannot be measured at all. And the display
+# gets to say what the greyed control could not: a disabled dropdown reads as
+# "unavailable", where what a reader needs while a run is going is "this is
+# what is running", with why it cannot be changed second.
+#
+# The caption says "running" rather than "this case" because that is what is
+# true: the selector returns on Pause, and a label claiming the agent is fixed
+# for the case would be a mode statement contradicted by the next click.
+RUNNING_AGENT_LOCK_TEXT = "Locked while running"
+# One width for the selector and for the chip that stands in its place, so the
+# transport controls beside them do not move when a run starts. A header that
+# reflows on Start announces a mode change by motion in the wrong place, and
+# the eye it pulls is the one that should be on the readouts.
+AGENT_SELECTOR_WIDTH = 180
+# The chip's inset. Slightly wider than the header badge's 6 because this one
+# carries two lines rather than one and sits among controls rather than under
+# the title.
+RUNNING_AGENT_DISPLAY_PADDING = 8
+
 # The wash-in trace takes the alveolar compartment's own colour, because it
 # is that compartment expressed against the one filling it: the numerator is
 # the alveolar fraction and nothing else on the second chart competes with
@@ -1145,7 +1178,7 @@ class SimulationView:
                 )
                 for agent_id, display_name in AVAILABLE_AGENTS
             ],
-            width=180,
+            width=AGENT_SELECTOR_WIDTH,
             filled=True,
             fill_color=initial_agent_colors.fill,
             bgcolor=initial_agent_colors.fill,
@@ -1153,7 +1186,44 @@ class SimulationView:
             text_style=initial_agent_style.dropdown_text_style,
             border_color=initial_agent_colors.foreground,
             focused_border_color=initial_agent_colors.foreground,
+            visible=not initial_snapshot.is_running,
             on_select=self._handle_agent_change,
+        )
+
+        # The running agent's identity, carried by a control that is never
+        # disabled and so never recoloured by the theme. `RUNNING_AGENT_LOCK_TEXT`
+        # records why this exists rather than a restyled dropdown.
+        #
+        # Bordered in the agent's own foreground for the reason
+        # `_agent_header_badge` is: this row sits on BACKGROUND, and the
+        # sevoflurane fill is 1.27:1 against it, so without an edge the
+        # coloured region a reader is meant to recognise loses its shape.
+        # Both strings take the agent's foreground, so the chip adds no pair
+        # to `tools/contrast_check.py` that the selector did not already
+        # declare - it is the same fill and the same text colour, now
+        # actually rendered.
+        self._running_agent_text = ft.Text(
+            initial_snapshot.agent_display_name,
+            color=initial_agent_colors.foreground,
+            weight=ft.FontWeight.BOLD,
+        )
+        self._running_agent_lock_text = ft.Text(
+            RUNNING_AGENT_LOCK_TEXT,
+            color=initial_agent_colors.foreground,
+            size=METRIC_QUALIFIER_SIZE,
+        )
+        self._running_agent_display = ft.Container(
+            content=ft.Column(
+                controls=[self._running_agent_text, self._running_agent_lock_text],
+                spacing=0,
+                tight=True,
+            ),
+            bgcolor=initial_agent_colors.fill,
+            border=initial_agent_style.badge_border,
+            border_radius=COMPACT_PANEL_RADIUS,
+            padding=RUNNING_AGENT_DISPLAY_PADDING,
+            width=AGENT_SELECTOR_WIDTH,
+            visible=initial_snapshot.is_running,
         )
 
         self._subtitle_text = ft.Text(
@@ -1415,7 +1485,11 @@ class SimulationView:
                                 ),
                                 ft.Row(
                                     controls=[
+                                        # Exactly one of these two is visible;
+                                        # `_refresh_view` is the one writer of
+                                        # which, from `is_running`.
                                         self._agent_dropdown,
+                                        self._running_agent_display,
                                         self._start_button,
                                         self._pause_button,
                                         self._reset_button,
@@ -2190,7 +2264,16 @@ class SimulationView:
             snapshot.agent_display_name
         )
         self._agent_dropdown.value = snapshot.agent_id
+        # Disabled *and* hidden while the run is going, with
+        # `_running_agent_display` in its place. `disabled` alone used to be
+        # the whole of this and is what produced the grey-on-fill the chip
+        # exists to prevent; it stays because a control that is off screen
+        # must not be operable either, and because it is what a keyboard
+        # user reaches the same way.
         self._agent_dropdown.disabled = snapshot.is_running
+        self._agent_dropdown.visible = not snapshot.is_running
+        self._running_agent_display.visible = snapshot.is_running
+        self._running_agent_text.value = snapshot.agent_display_name
 
         self._delivered_concentration_slider.max = snapshot.max_delivered_concentration_percent
         self._delivered_concentration_slider.value = (
@@ -2680,13 +2763,26 @@ class SimulationView:
         self._page.update()
 
     def _apply_agent_color_scheme(self, agent_id: str) -> None:
-        """Apply the verified agent color to the header and selection control."""
+        """Apply the verified agent color to every control that carries identity.
+
+        Three of them: the header badge, the selector, and the chip that
+        stands in the selector's place while a run is going. All three are
+        written on every tick whether or not they are visible, so the one
+        that becomes visible on the next state change is already correct -
+        a chip revealed in the previous agent's colour would be the wrong
+        label over the right numbers for as long as one frame.
+        """
 
         scheme = AGENT_COLOR_SCHEMES[agent_id]
         style = AGENT_RENDER_STYLES[agent_id]
         self._agent_header_badge.bgcolor = scheme.fill
         self._agent_header_badge.border = style.badge_border
         self._subtitle_text.color = scheme.foreground
+
+        self._running_agent_display.bgcolor = scheme.fill
+        self._running_agent_display.border = style.badge_border
+        self._running_agent_text.color = scheme.foreground
+        self._running_agent_lock_text.color = scheme.foreground
 
         self._agent_dropdown.fill_color = scheme.fill
         self._agent_dropdown.bgcolor = scheme.fill

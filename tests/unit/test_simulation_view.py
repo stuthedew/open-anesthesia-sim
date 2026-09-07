@@ -68,6 +68,7 @@ from anesthesia_sim.app.playback import (
 )
 from anesthesia_sim.app.simulation_view import (
     AGENT_RENDER_STYLES,
+    AGENT_SELECTOR_WIDTH,
     AVAILABLE_AGENTS,
     KEEP_CURRENT_CASE_TEMPLATE,
     MAC_AWAKE_BAND_COLOR,
@@ -82,6 +83,7 @@ from anesthesia_sim.app.simulation_view import (
     NO_TRACES_SHOWN_TEXT,
     ONE_MAC_LINE_DASH_PATTERN,
     RENDER_INTERVAL_S,
+    RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_NEW_CASE_TEMPLATE,
@@ -1081,6 +1083,97 @@ def test_refresh_view_disables_agent_dropdown_while_running() -> None:
     view, _ = _build_view(is_running=True)
 
     assert view._agent_dropdown.disabled is True
+
+
+@pytest.mark.parametrize(
+    ("agent_id", "display_name"),
+    [("sevoflurane", "Sevoflurane"), ("isoflurane", "Isoflurane"), ("desflurane", "Desflurane")],
+)
+def test_the_agent_name_stays_legible_while_the_run_disables_the_selector(
+    agent_id: str, display_name: str
+) -> None:
+    """Regression test: the running agent's name went grey on its own fill.
+
+    `disabled` was the whole of what a run did to the selector, and
+    Flet/Material paints a disabled label in the theme's disabled-content
+    grey - overriding the `color=` and `text_style=` the agent scheme sets
+    while leaving the saturated ISO 5360 fill behind it. The name was least
+    readable exactly while the agent-specific readouts beside it were live,
+    which `CLAUDE.md`'s presentation clause treats as a safety failure and
+    not a styling one (PL-61WW).
+
+    What this pins is the property rather than the mechanism: whatever
+    carries agent identity during a run is drawn in the declared
+    foreground/fill pair - the one `tools/contrast_check.py` measures - and
+    is not in a widget state entitled to substitute a colour of its own.
+    Every agent is checked because every fill in `AGENT_COLOR_SCHEMES` is
+    saturated, so this was never one palette's problem.
+    """
+
+    view, _ = _build_view(agent_id=agent_id, agent_display_name=display_name, is_running=True)
+    scheme = AGENT_COLOR_SCHEMES[agent_id]
+
+    assert view._running_agent_display.visible is True
+    assert view._running_agent_display.disabled in (False, None)
+    assert view._running_agent_display.bgcolor == scheme.fill
+    assert view._running_agent_text.value == display_name
+    assert view._running_agent_text.color == scheme.foreground
+    assert view._running_agent_lock_text.color == scheme.foreground
+
+    # The control that *is* recoloured when disabled carries no identity
+    # while the run is going, because it is not on screen.
+    assert view._agent_dropdown.visible is False
+
+
+def test_exactly_one_of_the_selector_and_the_running_agent_display_is_shown() -> None:
+    """Both at once would be two agent identities in one header row.
+
+    They would agree today, since one snapshot writes both - but the
+    failure mode this interface guards against everywhere is a stale label
+    beside a live number, and two controls able to disagree is the shape
+    that produces one.
+    """
+
+    for is_running in (False, True):
+        view, _ = _build_view(is_running=is_running)
+
+        assert view._agent_dropdown.visible is not view._running_agent_display.visible
+        assert view._running_agent_display.visible is is_running
+
+
+def test_the_running_agent_display_says_why_the_selector_is_gone() -> None:
+    """A control that vanishes is a mode change, and modes are announced.
+
+    The greyed dropdown read as "unavailable"; the chip that replaced it
+    has to read as "this is what is running", with the reason it cannot be
+    changed second. The caption says "running" rather than "this case"
+    because the selector returns on Pause.
+    """
+
+    view, _ = _build_view(agent_id="desflurane", agent_display_name="Desflurane", is_running=True)
+
+    assert view._running_agent_text.value == "Desflurane"
+    assert view._running_agent_lock_text.value == RUNNING_AGENT_LOCK_TEXT
+    assert view._running_agent_display.width == AGENT_SELECTOR_WIDTH
+    assert view._agent_dropdown.width == AGENT_SELECTOR_WIDTH
+
+
+def test_the_running_agent_display_is_already_correct_before_it_is_shown() -> None:
+    """It is coloured and named on every tick, visible or not.
+
+    A chip revealed in the previous agent's colour would be the wrong
+    label over the right numbers for as long as one frame, and one frame is
+    all a reader glancing up at Start needs.
+    """
+
+    view, _ = _build_view(agent_id="isoflurane", agent_display_name="Isoflurane")
+    scheme = AGENT_COLOR_SCHEMES["isoflurane"]
+
+    assert view._running_agent_display.visible is False
+    assert view._running_agent_display.bgcolor == scheme.fill
+    assert view._running_agent_display.border == AGENT_RENDER_STYLES["isoflurane"].badge_border
+    assert view._running_agent_text.value == "Isoflurane"
+    assert view._running_agent_text.color == scheme.foreground
 
 
 def test_refresh_view_updates_delivered_concentration_label_for_current_agent() -> None:
