@@ -1,0 +1,56 @@
+---
+id: PL-69JZ
+title: docket verify's 'the checks themselves are unedited' audit REJECTs every item whose declared work is editing a .claude rules file, since gate_paths includes .claude and touches is not consulted
+status: untriaged
+added: 2026-09-07
+---
+
+**Problem.** docket verify's 'the checks themselves are unedited' audit REJECTs every item whose declared work is editing a .claude rules file, since gate_paths includes .claude and touches is not consulted
+
+**Observed.** `bin/docket verify PL-X19T` on 2026-09-07, against a branch
+whose whole job was rewriting three sentences in two `.claude/rules/*.md`
+files and one brief - all four paths declared in the item's `touches`:
+
+```
+FAIL  the checks themselves are unedited - .claude/rules/expert-review.md, .claude/rules/sources-and-docstrings.md
+REJECT
+```
+
+**Mechanism.** `subprojects/docket/src/docket/verify.py` collects the diff's
+paths that fall inside `config.gate_paths` and fails the check if any do.
+`gate_paths` defaults to `Makefile`, `pyproject.toml`, `.github`, `.claude`
+and `docket.toml`, and this repository does not override it. The audit never
+consults `touches`, so an item *assigned* to edit a rules file fails it by
+construction. `feature: worker-instructions` holds 32 items and most of them
+are that shape.
+
+**Not the same bug as `PL-66PR`, though it lands on the same command.** That
+one is the `touches` audit refusing a branch that carries a capture, and the
+fix it proposes - exempt a new untriaged item file, which is mechanically
+distinguishable - does nothing here. This branch failed both audits, for
+unrelated reasons.
+
+**The audit is right about the case it was built for**, which is what makes
+this a design question rather than a bug to patch out. Its sentence in
+`config.py` is exact: "a delegated diff that edits one has changed the thing
+measuring it, so the measurement means nothing." For a delegated worker that
+holds. A session working an instruction-writing item is not being measured by
+the file it is editing - the rule it rewrites governs *replies*, not the
+diff - but `verify` cannot see that difference, and "the paths are declared in
+`touches`" is not the distinction either: `touches` is written by whoever
+triaged the item, which on a delegated item is the same hand that would want
+the exemption.
+
+**Three routes, and the second is probably right.** (1) Exempt a gate path
+that appears in the item's own `touches`, and say in the output that the audit
+was voided for it - cheapest, and weakest. (2) Mark such items
+`not-delegable:` with the reason, which is the field that already exists for
+work no delegated check can prove, and leave the audit absolute - the REJECT
+then never fires because the item never enters the lane. (3) Leave it, and
+treat a REJECT on an instruction item as expected - which trains a reader to
+skim a REJECT, and `CLAUDE.md` names that as the failure mode a check must not
+have. Recommend (2), and note it costs a triage step per item rather than a
+code change.
+
+**Found.** `PL-X19T` (align the tier-3 absolute in the instruction files with
+the practice), 2026-09-07, running the close-out audit on its own branch.
