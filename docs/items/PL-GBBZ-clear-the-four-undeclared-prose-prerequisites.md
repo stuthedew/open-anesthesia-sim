@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: docs/items/PL-88GQ-state-every-displayed-decimal-count-as-a.md, docs/items/PL-SSBP-add-the-chart-time-base-selector-with-15-30-and.md, docs/items/PL-W8DQ-the-four-slider-active-tracks-use-accent-and.md, docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
 added: 2026-09-05
 closed: 2026-09-07
+pr: 434
 verify: bin/docket show PL-WZVZ >/dev/null && grep -q '^blocked-by: PL-FG9D, PL-4DCG$' docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
 ---
 
