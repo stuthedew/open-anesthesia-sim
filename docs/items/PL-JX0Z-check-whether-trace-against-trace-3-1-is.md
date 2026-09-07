@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: .claude/rules/ui-color.md, docs/MODEL.md
 added: 2026-09-07
 closed: 2026-09-07
+pr: 433
 verify: python3 tools/rules_paths_check.py && python3 -c "import pathlib,sys; q='little overlap with other lines they do not need to contrast with each other'; sys.exit(0 if all(q in ' '.join(pathlib.Path(f).read_text().split()) for f in ('.claude/rules/ui-color.md','docs/MODEL.md')) else 1)"
 ---
 

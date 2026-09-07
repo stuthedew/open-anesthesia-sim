@@ -194,6 +194,7 @@ workflow_paths = [
   "tests/unit/test_docket_branch_guard.py",
   "tests/unit/test_docket_digest_hook.py",
   "tests/unit/test_ignore_check.py",
+  "tests/unit/test_main_ci_status.py",
   "tests/unit/test_import_boundary_check.py",
   "tests/unit/test_no_prune_guard.py",
   "tests/unit/test_pr_title_check.py",

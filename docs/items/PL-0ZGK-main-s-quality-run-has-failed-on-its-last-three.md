@@ -3,11 +3,13 @@ id: PL-0ZGK
 title: main's quality run has failed on its last three merges and nothing surfaces it: the whole-store verify replay runs only on push to main, so a green pull request turns main red after it lands
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: .github/workflows/quality.yml, .claude/hooks, subprojects/docket/src/docket/checks.py
+touches: .github/workflows/quality.yml, .claude/hooks, tools/main_ci_status.py, docs/ARCHITECTURE.md
 added: 2026-09-07
+closed: 2026-09-07
+verify: uv run pytest tests/unit/test_main_ci_status.py && grep -q 'main_ci_status' .claude/hooks/docket-digest.sh
 ---
 
 **Problem.** `main`'s `quality` workflow has concluded `failure` on its last
@@ -81,3 +83,59 @@ recorded here with why the other two were declined.
 
 **Note.** Closing `PL-0GTC` and `PL-SR8F` is the immediate repair and is not this
 item. Do that first; this item exists so the next occurrence is seen.
+
+**Decided 2026-09-07 (project owner): candidate 1.** The session-start digest
+reads `main`'s last `quality` conclusion, in `tools/main_ci_status.py`, called
+from `.claude/hooks/docket-digest.sh`. It prints one line when that verdict was
+not a success and nothing otherwise.
+
+**Why the other two were declined.**
+
+*Candidate 2 — run the whole-store sweep on pull requests too* — was recommended
+first and withdrawn on reading `.github/workflows/quality.yml`. It reverses
+`PL-SDHR` (the verify replay is 87 s of the checks job's 152 s), a `done`
+decision from v0.4.3 that moved the sweep off pull requests deliberately and
+with measurements. The cost has grown since: 177 s against PR runs of 110-130 s,
+so it roughly doubles to triples every run, on every push to the 9 branches then
+in flight, and `PL-SDHR` established that the bill grows with the size of the
+queue rather than of the change.
+
+The decisive objection is not cost, though. It makes every pull request
+answerable for the whole store, so one session finishing work without closing
+its item turns *every* open pull request red — a failure those authors did not
+cause and cannot fix. That is `CLAUDE.md`'s "being routed around" test, and it
+reproduces this item's own failure mode, a red that trains readers to stop
+looking, at nine times the frequency.
+
+*Candidate 3 — a scheduled run that opens an issue* — declined as the most
+mechanism for the least reach: it adds a moving part to maintain and delivers
+the signal to a place sessions do not read, when the digest is already the one
+text every session sees.
+
+**The recorded objection to candidate 1 was wrong**, which is why it was
+reconsidered. "Needs network in the hook, which nothing there currently
+assumes" is false: `.claude/hooks/docket-digest.sh` already runs `git fetch
+--quiet --unshallow origin` (`PL-K2ZK`). Reading a *run conclusion* needs the
+API rather than git, so that was tested rather than assumed — the repository is
+public, so an unauthenticated call answers with no token.
+
+**Verified against real data rather than fixtures alone.** Replayed over the
+API's own history, the tool reproduces this item's incident exactly —
+`main's quality run #1533 on 2c73fe9b concluded failure` — and stays silent on
+today's `main`. The run that proved the design necessary is #1559 and #1555,
+both `cancelled`: the two newest completed runs on `main` at the time of
+writing, so a naive "read the latest completed run" would have reported a
+non-verdict and said nothing useful. `pick_run` passes over those to the newest
+run that actually concluded.
+
+**Where it deliberately does not live.** Not in `docket`: that package answers
+from a bare offline checkout and knows nothing about GitHub, and
+`subprojects/docket/README.md` states the rule this would have broken. Not in
+`.claude/hooks/` either, beyond the one line that calls it — the logic is
+testable and the hook is not, and `docs/ARCHITECTURE.md` records why hooks stay
+thin.
+
+**Not fixed here.** `PL-T7VS` (a red `doc_check` voids the whole-store replay
+for the 29 items gated behind it) is the adjacent finding: this item makes a
+*failing* replay visible, and that one is about a replay that reports green
+without having answered.

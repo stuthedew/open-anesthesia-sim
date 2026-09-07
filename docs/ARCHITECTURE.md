@@ -297,6 +297,7 @@ tools/
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
+├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; the session-start hook calls it, it gates nothing, and it is the one tool here that reads the network
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
 ├── rules_paths_check.py  # refuses a `.claude/rules/*.md` `paths:` entry that does not begin with `/`, or whose literal prefix resolves to nothing, because an unanchored glob also matches its name at any depth while `./` and a typo'd prefix match nothing at all — so a rule's real scope can differ silently from the one it declares, in either direction
 ├── workflow_paths_check.py  # holds `docket.toml`'s `workflow_paths` to what each file under `tests/` imports — apparatus when it does not import `anesthesia_sim`, the simulator's when it does — because the apparatus tests living in the simulator's test tree were listed by hand and drifted, and an item declaring one alongside the script it tests is set aside from both lanes and offered to nobody
@@ -414,6 +415,30 @@ guarantee they defend explicitly allows the interface its wall clock — what it
 forbids is a tick's real duration reaching the run. A test pins that asymmetry
 end-to-end, so widening the tree to the whole package would fail on an import
 the design permits rather than passing quietly (`PL-J833`).
+
+`tools/main_ci_status.py` is the one tool here that gates nothing, and the only
+one that reads the network. `.github/workflows/quality.yml` runs the whole-store
+`verify:` replay only on push to `main` — `PL-SDHR`'s decision, because a pull
+request cannot have changed whether some *other* item's work merged, and
+replaying the store on every branch costs more than it buys. The consequence is
+that when that replay fails it fails on a run no pull request shows, and `main`
+was red across three consecutive merges with every session believing the tree
+was clean (`PL-0ZGK`). So the loop is closed from the reading end rather than by
+making every branch pay to prevent it: `.claude/hooks/docket-digest.sh` calls
+this at session start, and it prints one line when `main`'s last verdict was not
+a success.
+
+Two properties are what make it safe to run unconditionally, and both are held
+by tests. **It is silent unless there is something to act on** — a green `main`,
+no network, a non-GitHub remote and a malformed response all print nothing and
+exit 0, because a line that appears every session trains a reader to skim the
+region a real advisory occupies. And **a `cancelled` run is not a verdict**: the
+workflow cancels superseded runs, so the newest completed run on `main` is
+routinely one that judged nothing, and the tool reports the newest run that
+actually reached a conclusion. It is unauthenticated — the repository is public,
+so no token is read and none is needed, which keeps a credential off a
+session-start path. The GitHub read deliberately does not live in `docket`,
+whose rule is that a read must work from a bare offline tree.
 
 `tools/ignore_check.py` covers what the type-check gate cannot. `[tool.mypy]
 files` names `src`, `tools`, `.claude/hooks` and `subprojects/docket/src`, and every
