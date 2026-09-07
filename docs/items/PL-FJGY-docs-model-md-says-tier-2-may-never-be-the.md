@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md, src/anesthesia_sim/data
 added: 2026-09-07
 closed: 2026-09-07
+pr: 447
 verify: python3 tools/doc_check.py check && grep -qF 'A lower tier may be adopted, but never silently.' docs/MODEL.md && ! grep -rqF 'does not admit tier 2 as the authority' src/anesthesia_sim/data
 ---
 

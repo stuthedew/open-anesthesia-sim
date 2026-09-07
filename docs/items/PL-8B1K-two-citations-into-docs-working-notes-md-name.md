@@ -3,12 +3,13 @@ id: PL-8B1K
 title: Two citations into docs/WORKING_NOTES.md name sections that no longer exist
 priority: P3
 effort: S
-status: ready
+status: done
 verify: python3 tools/doc_check.py check && ! grep -q 'near-term to-dos' src/anesthesia_sim/core/uptake_system.py && ! grep -q 'Splitting error outside' docs/items/PL-042-bound-the-splitting-error-across-the-settings.md
 classes: docs
 feature: dev-tooling
 touches: src/anesthesia_sim/core/uptake_system.py, docs/items/PL-042-bound-the-splitting-error-across-the-settings.md
 added: 2026-09-01
+closed: 2026-09-07
 ---
 
 **Problem.** Two places cite a `docs/WORKING_NOTES.md` section by name, and
@@ -21,9 +22,16 @@ by section title decays silently.
   boundaries". No such heading exists; `grep -n 'near-term to-dos'
   docs/WORKING_NOTES.md` returns nothing.
 - `docs/items/PL-042-bound-the-splitting-error-across-the-settings.md:37`
-  ends its brief with **Context.** `docs/WORKING_NOTES.md`, "Splitting error
-  outside the gate's operating point". No such heading exists, and no line of
-  the file contains the word "splitting".
+  ended its brief with
+
+  ```text
+  **Context.** `docs/WORKING_NOTES.md`, "Splitting error outside the gate's
+  operating point".
+  ```
+
+  No such heading exists, and no line of the file contains the word
+  "splitting". Shown fenced because `check_quoted_sources` reads an unfenced
+  one as this item's own citation.
 
 **Why it matters.** The `uptake_system.py` one is the live half: it is a
 module docstring on a `core/` class, so a contributor reading the class is
