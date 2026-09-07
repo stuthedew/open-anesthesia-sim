@@ -32,16 +32,49 @@ from pydantic import ValidationError as PydanticValidationError
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
-SUPPORTED_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSION = 2
 FLOW_FRACTION_TOLERANCE = 1e-12
+
+#: The closed vocabulary a `sources` entry's `tier` is drawn from, in the
+#: order `docs/MODEL.md` § "Source hierarchy" defines them: a study that
+#: measured the quantity, a review that collected such measurements without
+#: making one, and another simulator's parameter set. The tier says what kind
+#: of document the source is; `adopted` says whether this file takes it as the
+#: authority for a value it stores. The two are independent, and separating
+#: them is the whole point of recording either: every agent file cites primary
+#: measurements it has *not* adopted, so a check reading tier alone would
+#: report each of them as primary-sourced while its stored coefficients came
+#: from Gas Man - which is the second of that section's three rules, stated as
+#: the failure it exists to prevent.
+#:
+#: Where a file adopts no primary source at all, it says so in a top-level
+#: `provenance_gap` instead of leaving the silence to be read as an oversight.
+#: That is the third of the same three rules, and `check_source_tiers` in
+#: `tools/doc_check.py` is what requires it.
+#:
+#: `tools/doc_check.py` holds a second copy of this vocabulary, because it must
+#: run in a checkout with no virtualenv and cannot import this package;
+#: `tests/unit/test_parameters.py` fails if the two ever disagree.
+SOURCE_TIERS: tuple[str, ...] = ("primary", "secondary", "reference-implementation")
 
 
 @dataclass(frozen=True, slots=True)
 class SourceReference:
-    """Provenance for one scientific or physiologic parameter set."""
+    """Provenance for one scientific or physiologic parameter set.
+
+    `tier` and `adopted` answer two different questions and neither implies
+    the other. `tier` classifies the *document* against `docs/MODEL.md`
+    § "Source hierarchy"; `adopted` says whether this file names it as the
+    authority for a value it stores. A primary measurement cited beside a
+    stored number it did not produce is `("primary", False)`, and reading it
+    as provenance for that number is the specific error the source hierarchy
+    exists to prevent.
+    """
 
     citation: str
     url: str
+    tier: str
+    adopted: bool
     note: str
 
 
@@ -98,6 +131,9 @@ class AgentParameters:
     mac_percent: float
     mac_awake: MacAwakeReference
     sources: tuple[SourceReference, ...]
+    # Why no primary source is adopted, where none is; `None` where one is.
+    # See `SOURCE_TIERS` above for what the pair of fields is separating.
+    provenance_gap: str | None
 
     @property
     def vessel_rich_tissue_blood_partition_coefficient(self) -> float:
@@ -144,6 +180,9 @@ class ReferenceAdultParameters:
     fat_volume_l: float
     fat_perfusion_fraction: float
     sources: tuple[SourceReference, ...]
+    # Why no primary source is adopted, where none is; `None` where one is.
+    # See `SOURCE_TIERS` above for what the pair of fields is separating.
+    provenance_gap: str | None
 
     @property
     def total_perfusion_fraction(self) -> float:
@@ -161,6 +200,36 @@ def _validate_nonempty_string(value: object) -> str:
         raise ValueError("must be a nonempty string")
 
     return value
+
+
+def _validate_source_tier(value: object) -> str:
+    text = _validate_nonempty_string(value)
+
+    if text not in SOURCE_TIERS:
+        raise ValueError(f"tier must be one of {list(SOURCE_TIERS)}, not {text!r}")
+
+    return text
+
+
+def _validate_bool(value: object) -> bool:
+    """Reject anything but a JSON boolean, including 0, 1 and \"true\".
+
+    Pydantic would coerce all three. A source entry that declares
+    `"adopted": "false"` and loads as *true* would invert a provenance claim
+    silently, which is the class of failure `_StrictPayload` exists for.
+    """
+
+    if not isinstance(value, bool):
+        raise ValueError("must be true or false")
+
+    return value
+
+
+def _validate_optional_nonempty_string(value: object) -> str | None:
+    if value is None:
+        return None
+
+    return _validate_nonempty_string(value)
 
 
 def _validate_schema_version(value: object) -> int:
@@ -206,6 +275,9 @@ def _validate_positive_percent(value: object) -> float:
 
 
 NonEmptyString = Annotated[str, BeforeValidator(_validate_nonempty_string)]
+OptionalNonEmptyString = Annotated[str | None, BeforeValidator(_validate_optional_nonempty_string)]
+SourceTier = Annotated[str, BeforeValidator(_validate_source_tier)]
+DeclaredBool = Annotated[bool, BeforeValidator(_validate_bool)]
 SchemaVersion = Annotated[int, BeforeValidator(_validate_schema_version)]
 PositiveFinite = Annotated[float, BeforeValidator(_validate_positive_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
@@ -270,10 +342,20 @@ class _StrictPayload(BaseModel):
 
 
 class _SourcePayload(_StrictPayload):
-    """Load-time schema for one `sources` entry, discarded into `SourceReference`."""
+    """Load-time schema for one `sources` entry, discarded into `SourceReference`.
+
+    `tier` and `adopted` are required rather than defaulted. A default would
+    let a source added later be silently classified by whoever wrote this
+    line rather than by whoever read the paper, and the value it would have
+    to pick - "primary", or "not adopted" - is wrong in one direction or the
+    other. Both are cheap to state and neither is guessable, so the schema
+    asks.
+    """
 
     citation: NonEmptyString
     url: NonEmptyString
+    tier: SourceTier
+    adopted: DeclaredBool
     note: NonEmptyString
 
 
@@ -347,6 +429,7 @@ class _AgentPayload(_StrictPayload):
     mac_percent: PositivePercent
     mac_awake: _MacAwakePayload
     sources: Sources
+    provenance_gap: OptionalNonEmptyString = None
 
     @model_validator(mode="after")
     def _mac_percent_must_not_exceed_vaporizer_max(self) -> _AgentPayload:
@@ -399,6 +482,7 @@ class _ReferenceAdultPayload(_StrictPayload):
     default_cardiac_output_l_min: PositiveFinite
     tissue_groups: _TissueGroupsPayload
     sources: Sources
+    provenance_gap: OptionalNonEmptyString = None
 
     @field_validator("tissue_groups")
     @classmethod
@@ -419,7 +503,13 @@ class _ReferenceAdultPayload(_StrictPayload):
 
 def _sources_to_tuple(sources: list[_SourcePayload]) -> tuple[SourceReference, ...]:
     return tuple(
-        SourceReference(citation=source.citation, url=source.url, note=source.note)
+        SourceReference(
+            citation=source.citation,
+            url=source.url,
+            tier=source.tier,
+            adopted=source.adopted,
+            note=source.note,
+        )
         for source in sources
     )
 
@@ -450,6 +540,7 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
             mac_reference_basis=model.mac_awake.mac_reference_basis,
         ),
         sources=_sources_to_tuple(model.sources),
+        provenance_gap=model.provenance_gap,
     )
 
 
@@ -479,6 +570,7 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
         fat_volume_l=tissue_groups.fat.volume_l,
         fat_perfusion_fraction=tissue_groups.fat.perfusion_fraction,
         sources=_sources_to_tuple(model.sources),
+        provenance_gap=model.provenance_gap,
     )
 
 

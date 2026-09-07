@@ -220,7 +220,13 @@ PATH_ROOTS = ("", str(PACKAGE_ROOT))
 # Top-level keys in a data file that are not scientific parameters and so are
 # not expected in the provenance table. `sources` is the citation array the
 # table points *at*; `schema_version` is a file-format number.
-NON_PARAMETER_KEYS = frozenset({"schema_version", "sources"})
+NON_PARAMETER_KEYS = frozenset({"schema_version", "sources", "provenance_gap"})
+
+# The closed vocabulary a `sources` entry's `tier` is drawn from, and a second
+# copy of `core.parameters.SOURCE_TIERS`. This tool runs in a checkout with no
+# virtualenv, so it cannot import the package; the duplication is deliberate
+# and `tests/unit/test_parameters.py` fails if the two ever disagree.
+SOURCE_TIERS = ("primary", "secondary", "reference-implementation")
 
 FENCE_RE = re.compile(r"^```")
 TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
@@ -745,6 +751,108 @@ def check_provenance(root: Path, report: Report) -> None:
                     f"{MODEL}: no provenance row for {relative} {key_path} = {value:g}; "
                     "every constant a clinician could read belongs in the table"
                 )
+
+
+def _short_citation(entry: object) -> str:
+    """Enough of a citation to find the entry by eye, or a placeholder."""
+    if isinstance(entry, dict):
+        citation = entry.get("citation")
+        if isinstance(citation, str) and citation.strip():
+            trimmed = citation.strip()
+            return trimmed if len(trimmed) <= 60 else trimmed[:57] + "..."
+    return "(no citation)"
+
+
+def check_source_tiers(root: Path, report: Report) -> None:
+    """Hold every data file's `sources` to `docs/MODEL.md` § "Source hierarchy".
+
+    Two rules, both exact, and both about what a file *declares* rather than
+    about whether the declaration is true:
+
+    1. Every `sources` entry names a `tier` from the closed vocabulary and
+       says whether it is `adopted` - whether this file takes it as the
+       authority for a value it stores.
+    2. A file with no entry that is both `primary` and `adopted` records a
+       `provenance_gap` saying so. That is the third of the section's three
+       rules: where no primary source has been adopted, the absence is
+       recorded rather than left to be read as an oversight.
+
+    **The tier and the adoption are separate fields because rule 2 is
+    otherwise vacuous.** Every agent file cites primary measurements it has
+    explicitly *not* adopted, and so does the reference patient - so a check
+    reading tier alone passes all four of this project's data files today
+    while every stored coefficient in them came from Gas Man, which is the
+    second of the same three rules stated as the failure it exists to
+    prevent.
+
+    **What this deliberately does not decide** is whether a citation declared
+    `primary` really is a primary measurement of the quantity, which needs
+    somebody who has read the paper. A tool guessing at that - by author, by
+    journal, by a denylist on a product name - would be authoritative and
+    wrong, which `CLAUDE.md` names as worse than no tool at all. This is the
+    same split `check_provenance` already runs on: it decides that a
+    documented key exists and holds the stated value, never that the value is
+    right.
+    """
+    data_root = root / PACKAGE_ROOT / "data"
+    if not data_root.is_dir():
+        return
+
+    for data_path in _walk(data_root):
+        if data_path.suffix != ".json":
+            continue
+        relative = data_path.relative_to(root / PACKAGE_ROOT).as_posix()
+        document = json.loads(data_path.read_text(encoding="utf-8"))
+        if not isinstance(document, dict):
+            report.errors.append(f"{relative}: is not a JSON object")
+            continue
+
+        sources = document.get("sources")
+        if not isinstance(sources, list) or not sources:
+            report.errors.append(
+                f"{relative}: declares no `sources` array; every data file names where its "
+                "values came from"
+            )
+            continue
+
+        adopted_primary = False
+        for index, entry in enumerate(sources):
+            where = f"{relative} sources[{index}] ({_short_citation(entry)})"
+            if not isinstance(entry, dict):
+                report.errors.append(f"{where}: is not an object")
+                continue
+
+            tier = entry.get("tier")
+            if tier not in SOURCE_TIERS:
+                report.errors.append(
+                    f"{where}: declares tier {tier!r}; expected one of {list(SOURCE_TIERS)} "
+                    "(docs/MODEL.md, 'Source hierarchy')"
+                )
+
+            adopted = entry.get("adopted")
+            if not isinstance(adopted, bool):
+                report.errors.append(
+                    f"{where}: declares adopted {adopted!r}; expected true or false - whether "
+                    "this file names the source as the authority for a value it stores, which "
+                    "is a different question from what tier the source is"
+                )
+
+            if tier == "primary" and adopted is True:
+                adopted_primary = True
+
+        gap = document.get("provenance_gap")
+        if gap is not None and not (isinstance(gap, str) and gap.strip()):
+            report.errors.append(
+                f"{relative}: provenance_gap is present but is not a nonempty string; state the "
+                "gap or remove the key"
+            )
+        elif not adopted_primary and gap is None:
+            report.errors.append(
+                f"{relative}: no `sources` entry is both tier 'primary' and adopted, and the "
+                "file records no `provenance_gap`. docs/MODEL.md, 'Source hierarchy', third "
+                "rule: where no primary source has been adopted, record that as an open gap "
+                "rather than leaving the silence to be read as a settled citation"
+            )
 
 
 def _marked_block(lines: list[str], index: int) -> str:
@@ -2014,6 +2122,7 @@ def analyze(root: Path) -> Report:
         return report
     check_package_maps(root, report)
     check_provenance(root, report)
+    check_source_tiers(root, report)
     check_prose_provenance(root, report)
     check_citations(root, documents, report)
     check_timeline(root, report)
