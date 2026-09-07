@@ -3,7 +3,7 @@ id: PL-1JDD
 title: Make the source tier machine-readable so doc_check can decide it
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: infra, science
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, tools/doc_check.py, docs/MODEL.md, tests/unit/test_parameters.py

@@ -1,10 +1,14 @@
 ---
 id: PL-5GBV
 title: Two items were filed three days apart for one defect and both reached ready and entered the frozen v0.5.0 gate, which counted the same work twice
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-07
+verify: uv run pytest -q subprojects/docket/tests/test_cli.py && grep -q 'def test_triage_names_an_open_item_with_a_near_identical_title' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** Two items were filed three days apart for one defect and both reached ready and entered the frozen v0.5.0 gate, which counted the same work twice
