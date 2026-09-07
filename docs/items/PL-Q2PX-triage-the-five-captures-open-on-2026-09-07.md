@@ -31,7 +31,15 @@ specifies a chart channel assignment already measured as unreachable.
 **Where.** `docs/items/`, the five files carrying `status: untriaged` on
 2026-09-07: `PL-CZFY`, `PL-H2K2`, `PL-HLD5`, `PL-THXF`, `PL-WT07`.
 
-**Done when.** Each of the five carries `priority`, `effort`, `classes`,
+**PL-HLD5 is not triaged here; it was yielded.** `PL-GVXP`'s session took it
+on `origin/claude/gate-items-al6kr2` and answered it as `#427` (compartment
+keeps line style, the run takes width), closing it rather than parking it.
+`bin/docket show PL-HLD5` names that branch as the holder, so this pass
+restored the file to `origin/main`'s copy and touches it no further: a
+`needs-decision` triage would have been a second, worse resolution of a
+question already settled.
+
+**Done when.** Each of the remaining four carries `priority`, `effort`, `classes`,
 `touches` and a `feature`; each holds a full brief; each `ready` item names a
 `verify:` command that was run and watched fail before it was written down; and
 each item whose next step is a decision is at `needs-decision` with a

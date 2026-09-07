@@ -1,12 +1,7 @@
 ---
 id: PL-HLD5
 title: ROADMAP v0.5.0 branch comparison assigns line style to the run, which leaves the compartment on colour alone
-priority: P2
-effort: S
-status: needs-decision
-classes: ux, planning
-feature: scenario-branching
-touches: ROADMAP.md
+status: untriaged
 added: 2026-09-07
 ---
 
@@ -52,18 +47,6 @@ costed yet:
    curve's end. Position survives every colour-vision deficiency and greyscale,
    and is the strongest channel available; an offset falsifies the value axis
    and is therefore out, but direct labelling does not.
-
-**Decision needed.** Which channel carries the run and which carries the
-compartment, now that colour provably cannot carry six compartments at 3:1. The
-three candidates above are the field and none is costed; the goal behind the
-roadmap sentence — that a reader can tell which run a curve belongs to — is not
-in question, only the channel assignment that delivers it.
-
-Answer this before `PL-8PSW` (overlay two branches on one time axis) is
-unblocked. `PL-8PSW` is `blocked` on `PL-TFX5` and `PL-B9PY` today, so there is
-time; what must not happen is that it starts and builds the sentence as written,
-because `PL-GVXP` (separate the six chart traces by line style) has already
-measured that assignment and found it unreachable.
 
 **Where.** `ROADMAP.md` (the v0.5.0 "two branches are overlaid" bullet);
 `docs/items/PL-8PSW-*.md` is the item that would build it;

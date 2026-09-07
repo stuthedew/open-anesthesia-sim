@@ -21,18 +21,29 @@ holds.
 **Measured 2026-09-07.** A triage pass on the five open captures was told to
 skip four of them:
 
-| Item | Reported against | `git diff origin/main origin/<branch> -- <file>` |
+| Item | Reported against | Branch copy vs `origin/main` |
 | --- | --- | --- |
 | `PL-CZFY` | `origin/claude/gate-items-al6kr2` | identical |
 | `PL-H2K2` | `origin/claude/gate-items-al6kr2` | identical |
 | `PL-HLD5` | `origin/claude/chart-traces-contrast-59clod` | identical |
 | `PL-THXF` | `origin/claude/chart-traces-contrast-59clod` | identical |
 
-Every one is a false positive. Both branches had squash-merged — `#421` and
-`#422` — and each branch's copy of the item file is byte-identical to the copy
-on `origin/main`. There is no second answer pending anywhere; the refs are
-simply stale, and nothing prunes them because `.claude/hooks/no-prune-guard.sh`
-correctly refuses `git fetch --prune`.
+Every mark is evidentially wrong: each branch's copy of the item file is
+byte-identical to the copy on `origin/main`, both branches having squash-merged
+as `#421` and `#422`. There was no unmerged edit on either. Nothing prunes the
+refs, because `.claude/hooks/no-prune-guard.sh` correctly refuses `git fetch
+--prune`.
+
+**One of the four was nonetheless a real collision, on a branch the mark did
+not name.** `PL-HLD5` was picked up on `origin/claude/gate-items-al6kr2` about
+an hour later and answered there as `#427`. So skipping it was right, and the
+mark's evidence was still wrong: it pointed at
+`origin/claude/chart-traces-contrast-59clod`, which held nothing then and holds
+nothing now. That is the shape of the defect rather than an exception to it — a
+mark that fires on merged history cannot be read as evidence of anything, so a
+session cannot tell the one case that mattered from the three that did not, and
+in this pass the two were separated only by fetching every ref and diffing each
+file by hand.
 
 **Why it matters.** `.claude/skills/docket/SKILL.md` tells a triage pass to obey
 this mark: "a second answer here is a second resolution of the same file, so
