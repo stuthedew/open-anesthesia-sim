@@ -111,11 +111,29 @@ class AgentSimulationValidator:
             passes_validation=passes_validation,
         )
 
-    def require_valid_agent_accounting(self, check: AgentSimulationValidationResult) -> None:
-        """Raise a specific numerical error if validation fails."""
+    def require_valid_agent_accounting(
+        self, currently_stored_agent_l: float
+    ) -> AgentSimulationValidationResult:
+        """Halt the run if this validator's own accounting no longer balances.
+
+        Raises `AgentSimulationValidationError` when the identity above misses
+        by more than both tolerances, and `SimulationConfigurationError` when
+        `currently_stored_agent_l` is negative or not finite. Returns the
+        passing check, which `AgentUptakeSystem.advance()` reports in
+        `UptakeStepResult`; `check_agent_accounting()` is the same arithmetic
+        without the halt, for the display path.
+
+        It takes the store rather than a completed
+        `AgentSimulationValidationResult` so that the period it rules on is
+        necessarily this validator's own: the earlier signature accepted
+        another validator's result, passed on it silently, and would have
+        named that period's totals in the halt message (`PL-X204`).
+        """
+
+        check = self.check_agent_accounting(currently_stored_agent_l)
 
         if check.passes_validation:
-            return
+            return check
 
         raise AgentSimulationValidationError(
             "Agent accounting validation failed: "

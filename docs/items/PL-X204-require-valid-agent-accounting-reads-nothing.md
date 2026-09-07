@@ -3,11 +3,12 @@ id: PL-X204
 title: require_valid_agent_accounting() reads nothing from self, so it will judge a result from another accounting period
 priority: P2
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: numerical-domain
-touches: src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_agent_simulation_validation.py
+touches: src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_agent_simulation_validation.py, tests/unit/test_uptake_system_failure.py
 added: 2026-09-03
+closed: 2026-09-07
 verify: uv run pytest tests/unit/test_agent_simulation_validation.py && grep -q 'def test_require_valid_agent_accounting_reads_the_validators_own_state' tests/unit/test_agent_simulation_validation.py
 ---
 
@@ -64,6 +65,26 @@ the validator's state, no caller can hand it a foreign result,
 `tests/unit/test_agent_simulation_validation.py` carries
 `test_require_valid_agent_accounting_reads_the_validators_own_state`, and the
 existing display path and its seventeen assertions are untouched.
+
+**Resolution.** Built as the approach above describes.
+`require_valid_agent_accounting(currently_stored_agent_l)` now computes the
+check from `self` and returns it, and `AgentUptakeSystem.advance()` keeps that
+result for `UptakeStepResult` in one call where it made two. No number moved:
+the call it replaces was `check_agent_accounting()` on the same validator with
+the same store, via the `agent_simulation_validation` property, so the
+arithmetic and its order are unchanged. The read-only half is untouched, and
+the whole suite is green at 100% statement-and-branch coverage of `core/`.
+
+The pre-change behavior was confirmed rather than assumed: a validator two
+litres delivered and a quarter exhausted, handed a balanced validator's result
+for a 0.75 L store, returned `None` — passing — while being short by exactly
+1.0 L.
+
+One correction to this item's own front matter: `touches` named three files
+and there were four. `tests/unit/test_uptake_system_failure.py` subclasses
+`AgentSimulationValidator` to inject a failing accounting check, so it
+overrides the method and its signature had to move with it. It is declared
+now, which is what makes the next `docket concurrent` answer true.
 
 **Found.** Reading the guard while writing `PL-B7ZV`'s boundary tests, which
 call `require_valid_agent_accounting()` on a result they build themselves and
