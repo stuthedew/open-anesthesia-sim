@@ -1286,6 +1286,27 @@ against 1.0/5.0 = 12.0 s here. That is a property of the time constant rather
 than of the volume, and it is not evidence of a shared lineage — nothing
 documents Gas Man as having taken anything from this paper.
 
+**Where 1.0 L actually came from is now answerable, and the answer is: from
+here.** The value entered the repository on 2026-08-22 in `875ba08`, "Build
+v0.1.0 sevo patient simulation", the tenth commit — written into the data file
+alongside the rest of the reference patient and carrying the citation "Gas Man
+Workbook and Laboratory Manual. Default Options: Patient Defaults", whose note
+read "The default 70 kg patient uses alveolar volume 2.5 L, venous volume 1.0 L,
+alveolar ventilation 4 L/min, cardiac output 5 L/min, tissue volumes
+6/33/14.5 L, and flow percentages 76/18/6". `PL-XTMB` later read that section at
+the source: it is Appendix E, page 183, and it describes the interface controls
+without carrying a number. The table that does carry numbers, Appendix B page
+168, has a `Blood` row of 5.00 L and nothing at 1.0.
+
+**So the citation belonged to its neighbours.** Every other value in that
+sentence is in the Appendix B table or is an interface default; 1.0 L is the one
+that is in neither, and it inherited the reference the others had earned. All
+four sources ever cited for it have since been read — the Workbook at the source
+(`PL-XTMB`), Meybohm et al. at full text, Lowe and Ernst at one remove
+(`PL-7HDS`), and Davis and Mapleson at the source — and **none of them contains
+it**. It is this project's own modelling choice, and the only round number in
+the file with no counterpart anywhere.
+
 **So, three rules for a `sources` entry.**
 
 - Name the tier. Where the stored value is not a primary measurement, say

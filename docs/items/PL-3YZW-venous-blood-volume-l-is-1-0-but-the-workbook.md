@@ -90,3 +90,24 @@ and the first is the one that closes this item.
   came from, and the answer is still nowhere anybody can name.
 - **The related question, whether the key's name misleads, is still `PL-BD94`'s**
   and is untouched by this.
+
+**And the positive answer, asked for by the project owner the same day: it came
+from here.** The value entered the repository on 2026-08-22 in `875ba08`, "Build
+v0.1.0 sevo patient simulation", the tenth commit, written into the data file
+under the citation "Gas Man Workbook and Laboratory Manual. Default Options:
+Patient Defaults" - whose note read "The default 70 kg patient uses alveolar
+volume 2.5 L, venous volume 1.0 L, alveolar ventilation 4 L/min, cardiac output
+5 L/min, tissue volumes 6/33/14.5 L, and flow percentages 76/18/6". `PL-XTMB`
+read that section at the source: Appendix E, page 183, which describes the
+interface controls and carries no number. Every other value in that sentence is
+in the Appendix B table or is an interface default. **1.0 L inherited a citation
+its neighbours had earned.**
+
+All four sources ever cited for it have now been read and none contains it: the
+Workbook at the source (`PL-XTMB`), Meybohm et al. 2021 at full text from PMC
+(2026-09-07 - it states no venous volume and describes Gas Man as a
+four-compartment model with no blood compartment in the list, though its tables
+could not be retrieved), Lowe and Ernst at one remove (`PL-7HDS`), and Davis and
+Mapleson 1981 at the source. So the item closes on a stronger finding than its
+Done-when asked for: not "we cannot trace it", but "we have read everything it
+was ever traced to, and it is ours".
