@@ -3,11 +3,13 @@ id: PL-GBBZ
 title: Clear the four undeclared prose prerequisites the new advisory names
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: planning
 feature: planning-cadence
 touches: docs/items/PL-88GQ-state-every-displayed-decimal-count-as-a.md, docs/items/PL-SSBP-add-the-chart-time-base-selector-with-15-30-and.md, docs/items/PL-W8DQ-the-four-slider-active-tracks-use-accent-and.md, docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
 added: 2026-09-05
+closed: 2026-09-07
+verify: bin/docket show PL-WZVZ >/dev/null && grep -q '^blocked-by: PL-FG9D, PL-4DCG$' docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
 ---
 
 **Problem.** `PL-ZBRB` made `docket check` notice a prerequisite stated in a
@@ -62,3 +64,49 @@ the other.
 `status: blocked` together — or has the sentence reworded because it was not
 claiming a prerequisite, and `bin/docket check` raises no prose-dependency
 advisory.
+
+**Done 2026-09-07, and the decision the brief asked for had been overtaken by
+events: three of the four pairs cleared themselves between 2026-09-05 and
+today, and the one left carried no ranking consequence to decide.**
+`bin/docket check` fired on one pair, not four. The check skips a closed item
+and a closed blocker by design - `_check_prose_dependencies` takes only
+`item.is_open` and `blocker.is_open`, because "most in-body mentions name work
+that has since closed, which is history rather than a defect" - so a pair
+leaves the advisory when either end closes, whether or not anybody edited the
+sentence. That is what happened to three of them:
+
+| Pair | Why it no longer fires | Was the sentence answered? |
+| --- | --- | --- |
+| `PL-88GQ` -> `PL-X9KD` | both closed (item 2026-09-06, blocker 2026-09-06) | No. `PL-88GQ` was done *inside* `PL-X9KD`, which is the two being worked together as both briefs said to. The prerequisite was satisfied rather than declared. |
+| `PL-SSBP` -> `PL-011` | item closed 2026-09-05; blocker `dropped` 2026-09-05 | Yes, and before this item was written. The brief already says the sentence is "recorded here as history" and that the cost "was decimation's rather than the history buffer's", so it was never claiming a prerequisite. |
+| `PL-W8DQ` -> `PL-GVXP` | blocker closed 2026-09-07; item still open (`ready`) | Yes. The brief now reads "**Depends on.** Nothing" and "no longer conditional", and the surviving mention is "sequenced after `PL-GVXP`" - `after` is deliberately not a cue. It would stay silent even if `PL-GVXP` reopened. |
+| `PL-WZVZ` -> `PL-4DCG` | still fired: both open, edge undeclared | This item's actual work. |
+
+**The one real pair, and why declaring it needed no decision.** `PL-WZVZ`
+(make an inter-machine difference attributable) states a genuine prerequisite
+on `PL-4DCG` (survey the anesthesia machines in current clinical use): the
+comparison table's rows "come straight from PL-4DCG's survey document, which
+is the single source for them", and its **Done when** requires that "no
+per-machine value appears anywhere that is not traceable to PL-4DCG's survey
+document". So the edge is declared rather than the sentence reworded.
+
+The brief expected this to reshape the current milestone's ranking, which is
+why it was filed `needs-decision`. It does not, on two independent grounds.
+`PL-WZVZ` already carried `status: blocked` on `PL-FG9D`, so it was already
+out of `bin/docket next` - the declaration adds no exclusion. And `PL-FG9D` is
+itself `blocked-by: PL-4DCG`, so `PL-WZVZ` could not have become unblocked
+ahead of `PL-4DCG` anyway: the edge was already there transitively and this
+writes down what the ranking was already doing. Front matter only; no
+`status` change was needed.
+
+**`_outranks_its_blocker` did not fire**, which the **Watch for** section
+flagged as the likely second problem: `PL-WZVZ` is `P3` and `PL-4DCG` is `P2`,
+so the blocked item does not rank above its blocker and no band had to move.
+
+**What this leaves for the check.** The prose-dependency advisory is at zero
+and the store's only remaining grooming advisory is `PL-1JDD` (make the source
+tier machine-readable), unrelated. Three of the four pairs having left by
+closure rather than by an answer is the expected shape rather than a gap -
+rewriting a closed item's brief would be rewriting a record - but it does mean
+the standing backlog this item was filed against was smaller than four by the
+time anyone reached it.

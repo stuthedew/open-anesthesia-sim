@@ -4,7 +4,7 @@ title: 'Make an inter-machine difference attributable: which parameter differs, 
 priority: P3
 effort: M
 classes: safety, anticipated, ux
-blocked-by: PL-FG9D
+blocked-by: PL-FG9D, PL-4DCG
 status: blocked
 feature: anesthesia-machine
 touches: docs/MODEL.md
