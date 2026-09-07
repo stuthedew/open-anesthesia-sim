@@ -1703,6 +1703,17 @@ appropriate for a patient.
 <!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
+**The three maxima come from two different classes of vaporizer, and that
+distinction matters nowhere in this model except away from sea level.**
+Sevoflurane's 8% and isoflurane's 5% are variable-bypass dials; desflurane's
+18% is the upper end of the Tec 6's range, and a Tec 6 is a heated gas–vapour
+blender rather than a variable bypass. This is the one place in the document
+where both classes are present, implicitly, in the same list. At the 760 mmHg
+fixed under "Assumptions" a dial position on either class means the same
+partial pressure, so nothing in the core has to know which device a given
+limit came from; the two classes come apart only under reduced ambient
+pressure, which is not modelled — see "Known limitations".
+
 `mac_percent` is 1 MAC for a 40-year-old adult. It is used for two things,
 both of them presentation: choosing the starting position of the
 delivered-concentration control when a run begins, so that a new run starts
@@ -4583,13 +4594,39 @@ Version v0.1.0 assumes:
 - tissue venous blood equilibrates with its tissue group;
 - carrier gases do not affect sevoflurane kinetics;
 - temperature is constant;
-- pressure is constant;
+- ambient pressure is constant, and it is one atmosphere — 760 mmHg. Every
+  concentration in this model is a fraction of that pressure, so the model is
+  specified at sea level and nowhere else; the note below this list is what
+  that buys and what it costs;
 - there is no metabolism;
 - there is no chemical degradation;
 - there is no anesthetic reaction with circuit materials;
 - there is no vaporizer or machine delivery delay beyond the modeled circuit;
 - settings remain constant within each numerical step; and
 - the selected reference patient does not change physiologically during a run.
+
+**What one atmosphere buys, and why nothing in the model is wrong today.** A
+gas-phase fraction and a partial pressure are the same quantity up to the
+ambient pressure, so fixing that pressure at 760 mmHg makes the two
+interchangeable: $`F_A = 0.02`$ is 15.2 mmHg, and no statement in this
+document has to say which of them it means. That identity is what the rest of
+the specification is built on — "Concentrations" stores every state as a
+dimensionless fraction on its strength, the interface displays each one as a
+percent of one atmosphere, and $`\mathrm{MAC}_\%`$ divides one sea-level
+percent by another.
+
+**The delivered-concentration control is where that assumption does the most
+work.** It is a vaporizer dial rather than a modeled gas state
+(`app/controller.py`'s `ControlInput.DELIVERED`, whose recorded changes carry
+the unit *fraction of 1 atm*), and a dial position means a partial pressure
+— the quantity that produces the anesthetic effect — only once the ambient
+pressure is known. At 760 mmHg it means the *same* partial pressure whichever
+class of vaporizer the dial belongs to, which is why this model needs no
+device-class parameter and why no equation, stored value or displayed number
+here is wrong. Away from 760 mmHg the two classes diverge, and in opposite
+directions: that is a limit on where this model applies rather than a defect
+in it, and "Known limitations" below records it. A later reader should not
+"fix" this.
 
 ## Known limitations
 
@@ -4616,6 +4653,7 @@ This model does not model:
 - cardiopulmonary bypass;
 - ECMO;
 - hypothermia;
+- altitude, or any ambient pressure other than the 760 mmHg fixed under "Assumptions" — the notes below this list are what that excludes;
 - age-dependent MAC;
 - individual variation in awakening concentration (the chart's MAC-awake band is a population value at one standard deviation, never a threshold for the simulated patient — see "MAC-awake as a chart reference");
 - anesthetic potency;
@@ -4679,6 +4717,98 @@ trace as a physiologic prediction rather than as this parameter set's
 behaviour would over-estimate fat loading. The measurement does not settle it
 — one depot in six subjects against a whole-body lumped compartment — which is
 why nothing was changed and the gap is recorded instead.
+
+**Ambient pressure is not modelled, and away from one atmosphere the
+delivered-concentration dial stops meaning one partial pressure.**
+"Assumptions" above fixes ambient pressure at 760 mmHg and says what that
+identity buys. What it costs is stated here: this model is specified for sea
+level. A user in Denver (about 630 mmHg) or Mexico City (about 585 mmHg) who
+sets 6% desflurane in this simulator and 6% on the corresponding real device
+is not delivering the same anesthetic, and nothing else in the simulator says
+so. The reason is that the delivered-concentration control is a vaporizer
+dial, and the two classes of vaporizer this project's three agents are drawn
+from respond to falling ambient pressure in opposite directions.
+
+**Variable bypass — sevoflurane and isoflurane here.** The class of the
+Dräger Vapor 2000, Sevotec 5, Isotec 5 and Penlon Sigma Delta. Fresh gas is
+split between a bypass channel and a vaporizing chamber whose effluent leaves
+saturated at the agent's saturated vapour pressure, which is set by
+temperature and not by ambient pressure. The dial sets the splitting ratio, so
+as ambient pressure falls the output rises in volumes percent while the
+delivered *partial pressure* is approximately preserved, and the dial needs no
+altitude correction. Boumphrey and Marshall give the approximation as
+$`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$, worked as isoflurane
+dialled 2% at 101.3 kPa delivering 4.05% at 50 kPa — 2.026 kPa of isoflurane
+either way.
+
+**Gas–vapour blender — desflurane here.** The class of the Tec 6 and Tec 6
+Plus, which desflurane needs at all because it boils at 22.8 °C. The sump is
+held at about 39 °C, where desflurane's vapour pressure is close to two
+atmospheres (about 1460 mmHg), and pure vapour is injected into the fresh gas
+stream; a differential pressure transducer holds the vapour circuit at the
+fresh-gas circuit's pressure, so the two flows stay in the fixed *ratio* the
+dial sets — "The pressure in the vapor circuit is electronically regulated to
+equal the pressure in the fresh gas circuit… vaporizer output is constant
+because the amount of flow through each circuit is proportional" (Andrews and
+Johnston). Output is therefore a constant volumes percent and the delivered
+partial pressure falls with ambient pressure. Datex-Ohmeda states the
+consequence for the operator directly: "Decreased atmospheric pressure, with
+altitude, does not significantly affect the concentration of agent delivered
+(V/V), but decreases the partial pressure of the agent in the ratio of the
+atmospheric pressure to the calibrated pressure of 760 mm Hg. To compensate
+for the reduction of vapor pressure output at altitude, the rotary valve must
+be advanced to maintain the required agent partial pressure."
+
+**The MAC divisor is a sea-level percent for the same reason.** 1 MAC is a
+partial pressure that convention quotes as a percentage of one atmosphere, so
+at reduced ambient pressure the percentage needed to reach it rises while the
+partial pressure does not. James and White proposed MAPP — minimum alveolar
+*partial pressure* — in place of MAC on exactly this ground, which is a
+further sense in which the unit described under "MAC multiples as a display
+unit" is a sea-level unit rather than a universal one.
+
+**No correction factor is stored, and the $`1/P`$ form above must not become
+one.** $`\%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$ is the dilute-vapour
+limit of the flow-splitting physics, whose fuller form is
+$`F \approx k\,\mathrm{SVP}/(P - \mathrm{SVP})`$ and which reduces to
+$`k\,\mathrm{SVP}/P`$ only where $`\mathrm{SVP} \ll P`$. Isoflurane's
+saturated vapour pressure is about 240 mmHg at 20 °C, which is not small
+against 760: carrying the denominator through gives a delivered partial
+pressure that *overshoots* rather than holds — about 16% high at 585 mmHg on
+that arithmetic alone, against the flat line the $`1/P`$ form predicts. The
+direction of each class's response, and the contrast between the two, are not
+in doubt; the magnitude of the variable-bypass compensation is approximate,
+which is why this section says *approximately* preserved and why no number is
+stored anywhere for it. An implementation of ambient pressure should derive
+the variable-bypass case from the agent's saturated vapour pressure rather
+than from the $`1/P`$ shortcut, and would owe each agent's SVP a source of its
+own; none is stored today.
+
+**Sources for the notes above**, none of which is the authority for any
+stored value, there being none:
+
+- Weiskopf RB, Sampson D, Moore MA. The desflurane (Tec 6) vaporizer: design,
+  design considerations and performance evaluation. *Br J Anaesth*
+  1994;72:474–479. Primary; the 39 °C sump and the ±15% output accuracy in
+  oxygen. Supplied by the project owner and read at the source 2026-09-06.
+- Andrews JJ, Johnston RV. The new Tec6 desflurane vaporizer. *Anesth Analg*
+  1993;76:1338–1341. Primary; the flow-ratio mechanism quoted above, which is
+  in the abstract.
+- James MF, White JF. Anesthetic considerations at moderate altitude. *Anesth
+  Analg* 1984;63:1097–1105. Primary; the case for reasoning in partial
+  pressures rather than percentages at altitude, and the MAPP proposal. It
+  predates desflurane, so it covers the variable-bypass class only.
+- Datex-Ohmeda. *Tec 6 Plus Vaporizer* specification sheet AN3307-A/1100,
+  © 2000 Datex-Ohmeda Division, Instrumentarium Corp. Manufacturer statement,
+  quoted above; it also gives the 1–18% concentration range that
+  `max_delivered_concentration_percent` carries for desflurane. Supplied by
+  the project owner and read in full 2026-09-06.
+- Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
+  Crit Care Pain* 2011;11:199–203. **Tier 2** under "Source hierarchy": a
+  secondary synthesis, taken here for the shape of the explanation and the
+  worked example and never as the authority for a number. Its § "Altitude"
+  carries both classes side by side. Supplied by the project owner and read in
+  full 2026-09-06.
 
 ## Release gate
 

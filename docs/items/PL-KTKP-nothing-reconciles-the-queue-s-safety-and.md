@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: ROADMAP.md, docs/ARCHITECTURE.md, tools/doc_check.py, tests/unit/test_doc_check.py, docs/items
 added: 2026-09-07
 closed: 2026-09-07
+pr: 457
 verify: python3 tools/doc_check.py check && grep -q 'def check_gate_reentries' tools/doc_check.py
 ---
 
