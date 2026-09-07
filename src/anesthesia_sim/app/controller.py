@@ -18,6 +18,7 @@ from anesthesia_sim.app.chart_downsampling import M4AggregateCache, first_index_
 from anesthesia_sim.app.wash_in import is_wash_in, wash_in_ratio
 from anesthesia_sim.core.exceptions import SimulationDomainLimitError, SimulationExecutionError
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
+from anesthesia_sim.core.run_score import RunScore, SampledWindow, ScoreSegment
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -823,6 +824,7 @@ class SimulationController:
         # produced by.
         self._history = RunHistory((agent_id,))
         self._history.record(self._build_history_sample())
+        self._score = RunScore(uptake_system.equation_settings(), uptake_system.state_vector())
         self._clear_control_timeline()
 
         # Every compartment above is newly constructed, so no state survives
@@ -1019,6 +1021,53 @@ class SimulationController:
 
         return self._history.window_from(start_s)
 
+    @property
+    def score_segments(self) -> tuple[ScoreSegment, ...]:
+        """The stretches of constant settings this run has had, oldest first.
+
+        The run's own record, as against `snapshot().control_timeline`, which
+        is the record of what a *reader* is shown: one carries the settings
+        the equations were assembled from, the other the acts a user made, in
+        the units the interface displays. They agree about when the run
+        changed and about nothing else, deliberately.
+
+        Handed out as the frozen segments rather than as the score itself, so
+        a caller can read the run without being able to advance it: a score
+        whose reach moved independently of the run would answer for instants
+        the run never reached. Save, replay and forking read this;
+        `ROADMAP.md` items 9 to 12 are what they are.
+        """
+
+        return self._score.segments
+
+    def evaluate_window(self, start_s: float, stop_s: float, columns: int) -> SampledWindow:
+        """`columns` states evenly spaced across `[start_s, stop_s]`, from the score.
+
+        The closed-form read, and the one that does not grow with the run.
+        `history_window` answers the same question from recorded samples, at a
+        cost that follows the run's length rather than the window's;
+        `PL-2FM6` retires it and moves the chart onto this.
+
+        What comes back is the display path: fit for drawing, and not for a
+        keyframe, an export or a fork's starting state, which are taken
+        canonically. `core/run_score.py`'s module docstring states the
+        separation and `PL-P1Z3` gates it.
+
+        Args:
+            start_s: The window's first instant, in seconds.
+            stop_s: The window's last instant, in seconds.
+            columns: How many instants to sample, at least one.
+
+        Raises:
+            SimulationConfigurationError: `columns` is below one, either bound
+                is outside `[0, elapsed_s]`, or `stop_s` precedes `start_s`.
+                A bound past the run is refused rather than answered, because
+                the score can be evaluated arbitrarily far ahead and what came
+                back would be a prediction drawn on the run's own axis.
+        """
+
+        return self._score.evaluate(start_s, stop_s, columns)
+
     def start(self) -> None:
         """Start or resume the run, refusing a session that cannot continue.
 
@@ -1066,6 +1115,8 @@ class SimulationController:
         self._state.reset()
         self._history = RunHistory((self._agent_id,))
         self._history.record(self._build_history_sample())
+        uptake_system = self._state.uptake_system
+        self._score = RunScore(uptake_system.equation_settings(), uptake_system.state_vector())
         self._clear_control_timeline()
 
     # No `set_circuit_volume` here, deliberately (`PL-GYH2`). The circuit
@@ -1169,6 +1220,13 @@ class SimulationController:
         if new_value == previous_value:
             return
 
+        # The score first, because it is the run: the timeline below records
+        # the acts a reader sees, and every branch under it is about how those
+        # acts are grouped and displayed. Both are fed from here rather than
+        # from the four setters, because this is the one place that means "the
+        # core accepted a setting change".
+        self._score.record_change(self._state.uptake_system.equation_settings())
+
         if control is not self._open_adjustment_control:
             self._adjustment_count += 1
             self._open_adjustment_control = control
@@ -1204,13 +1262,21 @@ class SimulationController:
         )
 
     def advance(self, simulation_step_s: float) -> None:
-        """No-op while paused; otherwise advance state and record history."""
+        """No-op while paused; otherwise advance state and record history.
+
+        The score's reach is moved after the step rather than before it, so a
+        step the core refuses - a domain limit, a numerical failure - leaves
+        the score describing a run that stopped where the state did. Its
+        `advance_to` records no state: the states are already implied by the
+        settings, and are recovered from them on demand.
+        """
 
         if not self._is_running:
             return
 
         self._state.advance(simulation_step_s)
         self._history.record(self._build_history_sample())
+        self._score.advance_to(self._state.elapsed_s)
 
     def _build_history_sample(self) -> SimulationHistorySample:
         """Read the core's compartments into one recorded row.

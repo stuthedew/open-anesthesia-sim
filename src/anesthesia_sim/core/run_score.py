@@ -224,14 +224,21 @@ class RunScore:
         "Now" is `duration_s`, the time the run has reached; see the class
         docstring for why that is not an argument.
 
-        Two calls change nothing and are dropped rather than recorded, each
+        Three calls change nothing and are dropped rather than recorded, each
         for a reason about the run rather than about tidiness. Settings equal
         to the ones in force describe no change the model would integrate
-        differently. And a second change at an instant already opened - two
+        differently. A second change at an instant already opened - two
         controls moved between one step and the next - belongs to the same
         stretch, so it replaces that stretch's settings instead of opening a
         zero-length one: the run was computed under whatever stood when the
-        step ran, which is the last value written.
+        step ran, which is the last value written. And where that replacement
+        lands back on the settings the previous stretch already had - a dial
+        moved and moved back before a step ran - the stretch goes entirely,
+        because nothing about the run differs.
+
+        The third is what keeps a score a record of the run rather than of the
+        mouse, and it is the same rule the interface's own control timeline
+        applies to the entries a reader sees.
         """
 
         open_segment = self._segments[-1]
@@ -240,6 +247,10 @@ class RunScore:
             return
 
         if self._duration_s == open_segment.opening.elapsed_s:
+            if len(self._segments) > 1 and settings == self._segments[-2].settings:
+                self._segments = self._segments[:-1]
+                return
+
             self._segments = (*self._segments[:-1], ScoreSegment(settings, open_segment.opening))
             return
 
