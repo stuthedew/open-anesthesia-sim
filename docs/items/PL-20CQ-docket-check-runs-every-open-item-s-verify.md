@@ -6,7 +6,7 @@ effort: S
 status: needs-decision
 classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, tests/unit/test_ignore_check.py
 added: 2026-09-01
 verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_verify.py && grep -q 'def test_a_verify_command_that_recurses_into_docket_verify_is_rejected' subprojects/docket/tests/test_checks.py
 ---
@@ -76,6 +76,15 @@ where it is reached anyway. No open item records such a command, so nothing in
 the store had to change. `reenters_verify` strips quoted spans before matching,
 which is what keeps `grep -q 'docket verify' docs/items/` - reading the store,
 one of the two shapes this item asked to leave allowed - from tripping it.
+
+**Also repaired.** Adding one import line to `test_verify.py` turned
+`tests/unit/test_ignore_check.py` red, and the test was wrong rather than the
+change. It pinned a line number with `startswith("...test_verify.py:1")`,
+meaning "the directive written inside a string literal, at 19x, is not
+counted" - but a leading-digit prefix matches every line sharing it, so it
+began matching the real directive at line 100 as soon as the file grew by a
+line. It now locates the string-literal occurrence and asserts that one is
+absent, which is what it meant to say.
 
 **Decision needed.** Whether anything should fire on a `verify:` that re-enters
 `docket check`. The literal **Done when.** above asks for an error, and it must
