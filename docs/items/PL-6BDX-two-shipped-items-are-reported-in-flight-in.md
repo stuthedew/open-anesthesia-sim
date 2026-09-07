@@ -50,12 +50,23 @@ are gone.
 
 **Triage note, 2026-09-07.** Re-checked against the store rather than carried
 from the capture, and the count is worse than the title says: the digest names
-*three* ids on its `In flight on a branch:` line today - `PL-GVXP`, `PL-S5LB`
-and `PL-Y5WR` - and all three are `status: done` with a milestone (`v0.4.7`,
-`v0.4.6`, `v0.4.7`). The line is therefore 100% false positives right now,
-which is the strongest form of the argument above: there is no true entry
-beside the stale ones for a reader to be trained past, so the only thing the
-line teaches this week is to skip it.
+a third id the capture does not name. Measured twice within the hour, and the
+second reading is the one that matters:
+
+| | `In flight on a branch:` | Closed | Live |
+| --- | --- | --- | --- |
+| 19:12 | `PL-GVXP`, `PL-S5LB`, `PL-Y5WR` | 3 | 0 |
+| 19:24 | the same three, plus `PL-X204` | 3 | 1 |
+
+All three of the first reading are `status: done` with a milestone (`v0.4.7`,
+`v0.4.6`, `v0.4.7`), so the line was briefly 100% false. The second reading is
+the more useful one and the reason this item is worth doing: `PL-X204` is a
+genuinely live session, and it arrives *fourth in a list whose first three
+entries are stale*. That is precisely `CLAUDE.md`'s objection - a check that
+fires every run without changing a decision trains a session to skim the output
+where a real advisory also appears - and here the real entry is the one thing
+the line exists to deliver, namely the warning that stops two sessions starting
+one item.
 
 `PL-CPSY` (v0.2.8) already fixed the containment test that made a squash-merged
 branch's ref report in flight forever, and these three post-date it, so that
