@@ -99,3 +99,89 @@ alongside the other supported-input ranges. Regression test for the boundary.
 **Found 2026-09-05** while reviewing the `PL-011` drop on
 `origin/claude/simulation-architecture-review-qjlg4q`, which is correct about
 memory and silent on this.
+
+**Decision round 2026-09-07 — the fat time constant is the wrong yardstick.**
+
+Part 1 above offers the fat group's roughly 42 h time constant as the scale a
+cap should be "many multiples of", and reads 30 days as about 17 of them. That
+inverts the relationship, and it is the sentence that would otherwise anchor the
+answer near 30 days.
+
+Many multiples of the slowest mode is the regime this document already declines
+to stand behind. § "Published wash-in validation test" limitation 4 says it
+outright — *"This model has no metabolism, which is why five minutes is the
+limit"* — and rejects the two Yasuda papers' own multi-day elimination curves as
+a comparison, because "over days the missing metabolism is no longer negligible,
+and neither is the fat group's flow", which "Known limitations" records as about
+twice the reachable resting measurement. So the further a run goes past the fat
+time constant, the larger the share of the displayed trace that is the two
+omissions rather than the model.
+
+The fat time constant is therefore a **floor** on a useful cap — below about one
+of them the fat trace stops showing what it exists to show — and not a
+multiplier for one.
+
+**What bounds it instead is the omitted metabolism.** Sevoflurane's is 2% to 5%
+of the absorbed dose, and it is not a late effect: fluoride and HFIP appear in
+plasma within minutes of the start of administration (Kharasch ED.
+*Biotransformation of sevoflurane.* Anesth Analg 1995;81(6 Suppl):S27-38.
+PMID 7486145, doi:10.1097/00000539-199512001-00005). What makes omitting it safe
+over a case is the same review's finding that "metabolism of sevoflurane does not
+contribute to the termination of clinical drug effect" — which holds while the
+trace is dominated by ventilation and perfusion, and fails progressively once the
+only thing still moving is the slow tail this model gives no sink to. That
+review's dose-proportionality covers exposures of 0.35 to 9.5 MAC-hours; past
+roughly ten MAC-hours even the size of the omission is unmeasured. Isoflurane and
+desflurane are metabolized far less, so sevoflurane is the binding case and the
+cap should be argued on it.
+
+**Recommended answer to part 1: 24 hours**, declared as a supported-domain limit
+on elapsed simulated time and argued as the clinical envelope checked against the
+omission — not as a multiple of any time constant. Four supports:
+
+- it clears every anesthetic this simulator exists to teach by a wide margin;
+- it is about 0.6 of the fat time constant, so the fat compartment is still
+  visibly loading and the slow-compartment teaching point survives intact, which
+  a cap of a few hours would truncate;
+- it sits inside the regime the primary source calls clinically negligible for
+  metabolism, and near the outer edge of the exposure range over which that
+  omission's size has been measured at all;
+- it reads as a designed boundary in the interface, where "30 days" reads as a
+  resource cap — which is what it was.
+
+Like the four flow intervals, this is a declared envelope rather than a
+discovered cliff: § "What a setting outside the range costs" already records that
+the error did not explode at the boundary, and the same is true here.
+
+**Recommended answer to part 2: halt, with three specifics the brief does not
+yet state.**
+
+1. **Compare step counts, not accumulated seconds.** § "Simulated time is a count
+   of steps, not a running total" is what the reproducibility guarantee rests on;
+   a float comparison would put the halt at a different step on different
+   platforms and break deterministic replay at exactly the boundary a regression
+   test pins.
+2. **The halt must not present as a failure.** `PL-VM40`'s failure path exists
+   and reusing it would tell a learner the simulator broke when it did the right
+   thing. Reaching a declared limit is the model declining to extrapolate — the
+   same act as `core/supported_ranges.py` refusing a cardiac output of
+   1000 L/min — and it must read that way.
+3. **Frozen, not terminated.** State stays inspectable and the chart stays
+   readable; reset is the way out. A learner who has just watched a 24-hour
+   washout has to be able to read the trace at the moment it stopped.
+
+**Why not continue-with-a-caveat.** A flow refusal has a moment where the user
+chose to leave the domain and can be told so. A run-time cap has none — nobody
+opts in to hour 25 — so a caveat would sit beside a curve the learner is already
+reading, which is the "polished graphics implying more certainty than the model
+supports" failure rather than a guard against it.
+
+**Out of scope, and named so it is not mistaken for a reason to raise the
+number.** Volatile sedation in intensive care runs for days through an
+anesthetic-conserving device (Al Aseri Z, et al. *The advantages of inhalational
+sedation using an anesthetic-conserving device versus intravenous sedatives in an
+intensive care unit setting: a systematic review.* Ann Thorac Med
+2023;18(4):182-9. PMID 38058786, doi:10.4103/atm.atm_89_23). That is a real
+teaching target and it is precisely the regime this model is wrong in. Reaching
+it is a model extension — metabolism first — and belongs on `ROADMAP.md`, not in
+this cap.
