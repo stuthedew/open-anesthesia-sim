@@ -42,6 +42,7 @@ from math import isfinite
 from typing import Final
 
 from anesthesia_sim.app_metadata import APP_VERSION
+from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 __all__ = [
     "CHART_AXIS_TOP_MAC",
@@ -648,6 +649,21 @@ def format_elapsed(elapsed_s: float) -> str:
     """
 
     return f"{elapsed_s:.1f} s"
+
+
+def format_supported_run_length() -> str:
+    """State the supported run length the way a reader thinks about a case.
+
+    Hours, from `core.supported_ranges.MAXIMUM_ELAPSED_SIMULATION_TIME_S`
+    rather than from a number written here, so the interface cannot state a
+    limit the model does not enforce. `format_elapsed` above is deliberately
+    not reused: it renders an instant to a tenth of a second, which is right
+    for a clock beside a control change and reads as false precision on a
+    boundary declared in hours - "86400.0 s" also asks a reader to divide
+    before they can tell whether it is a plausible case length.
+    """
+
+    return f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} hours"
 
 
 def format_playback_rate(multiplier: int) -> str:

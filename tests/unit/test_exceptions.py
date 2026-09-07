@@ -12,6 +12,7 @@ from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     AnesthesiaSimulationError,
     SimulationConfigurationError,
+    SimulationDomainLimitError,
     SimulationExecutionError,
     SimulationNumericalError,
 )
@@ -22,6 +23,7 @@ from anesthesia_sim.core.exceptions import (
     [
         SimulationConfigurationError,
         SimulationExecutionError,
+        SimulationDomainLimitError,
         SimulationNumericalError,
         AgentSimulationValidationError,
     ],
@@ -70,3 +72,22 @@ def test_core_errors_are_not_value_errors() -> None:
         AgentSimulationValidationError,
     ):
         assert not issubclass(error_type, ValueError)
+
+
+def test_reaching_the_supported_domain_stops_the_run_but_is_not_a_failure() -> None:
+    """`SimulationDomainLimitError` sits under the branch that stops a run.
+
+    Both halves matter, and they pull in opposite directions. It must be a
+    `SimulationExecutionError` so that a caller which knows only the base
+    classes stops the run - the safe default, since continuing past the
+    supported domain is what `PL-Y5WR` exists to prevent. And it must be
+    distinguishable, because the interface decides from the type whether to
+    tell a reader the simulator broke, and saying so about a model that
+    stopped exactly where `docs/MODEL.md` says it must is a misreading of a
+    correct result (`docs/MODEL.md`, "Supported run length").
+    """
+
+    assert issubclass(SimulationDomainLimitError, SimulationExecutionError)
+    assert not issubclass(SimulationDomainLimitError, SimulationConfigurationError)
+    assert not issubclass(SimulationDomainLimitError, SimulationNumericalError)
+    assert not issubclass(SimulationNumericalError, SimulationDomainLimitError)

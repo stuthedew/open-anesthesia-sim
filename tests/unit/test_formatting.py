@@ -37,6 +37,7 @@ from anesthesia_sim.app.formatting import (
     format_percent,
     format_playback_rate,
     format_subtitle,
+    format_supported_run_length,
     format_time_base,
     mac_awake_band_percent,
     mac_axis_ticks,
@@ -44,6 +45,7 @@ from anesthesia_sim.app.formatting import (
 )
 from anesthesia_sim.app_metadata import APP_VERSION
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
+from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 
 def test_format_percent_uses_the_documented_display_resolution() -> None:
@@ -849,3 +851,17 @@ def test_a_time_base_name_agrees_with_its_own_count() -> None:
 
     assert format_time_base(3_600.0) == "1 hour"
     assert format_time_base(60.0) == "1 minute"
+
+
+def test_the_supported_run_length_is_stated_from_the_model_s_own_constant() -> None:
+    """The interface may not state a limit the model does not enforce.
+
+    Derived rather than written out, so the two cannot drift: a change to
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S` that left a hardcoded "24 hours" in
+    the banner would tell a reader the run stopped somewhere it did not,
+    which is the correct-number-wrong-label failure `CLAUDE.md` treats as a
+    safety defect rather than a typo.
+    """
+
+    assert format_supported_run_length() == "24 hours"
+    assert format_supported_run_length() == (f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} hours")

@@ -2362,6 +2362,104 @@ displayed-resolution claims it refers to have not yet been re-derived for the
 exact step. That is queue item `PL-X9KD`, together with "Displayed precision"
 and the supported step bound.
 
+#### Supported run length
+
+A run is supported up to **24 hours of elapsed simulated time**, declared as
+`MAXIMUM_ELAPSED_SIMULATION_TIME_S` in `core/supported_ranges.py`. The step
+that would carry a run past it is refused by `SimulationState.advance()`,
+which raises `SimulationDomainLimitError` before anything advances.
+
+| Quantity | Limit | Declared and refused by |
+| --- | --- | --- |
+| Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`, enforced on `SimulationState` |
+
+**It is the same kind of statement as the four ranges above, and it is
+reached rather than set.** A flow is a setting, refused when a caller offers
+one outside its interval; a run length is a property of how far the run has
+gone, so it can only be checked as each step is taken. Everything else about
+it is the same: the interval is closed, so a run may complete the step that
+lands on 24 hours; and outside it the equations still solve exactly, as
+"What a setting outside the range costs" says of the flows. What stops at the
+boundary is the claim that the solution stands for a patient.
+
+**What bounds it is what this model omits.** Metabolism, first of all. "Known
+limitations" records that this model has none, and "Published wash-in
+validation test" already draws the consequence: it compares against five
+minutes of elimination and explicitly refuses the two Yasuda papers' own
+multi-day curves, because *over days the missing metabolism is no longer
+negligible, and neither is the fat group's flow* — which the same section
+records as about twice the reachable resting measurement, acting directly on
+the slow tail of washout. A run beyond this boundary is therefore displaying
+a trace whose slow component is increasingly the two omissions rather than
+the model.
+
+Sevoflurane is the binding agent: 2% to 5% of the absorbed dose is
+metabolized, against far less for isoflurane and desflurane, and metabolism
+begins immediately rather than late — fluoride and HFIP appear in plasma
+within minutes of the start of administration. What makes omitting it safe
+over a case is the same review's finding that metabolism "does not contribute
+to the termination of clinical drug effect": true while ventilation and
+perfusion dominate the trace, and progressively false once the only thing
+still moving is the slow tail this model gives no sink to. That review's
+dose-proportionality covers exposures of 0.35 to 9.5 MAC-hours, so past
+roughly ten MAC-hours even the size of the omission is unmeasured.
+
+- Kharasch ED. *Biotransformation of sevoflurane.* Anesth Analg
+  1995;81(6 Suppl):S27-38. PMID 7486145,
+  doi:10.1097/00000539-199512001-00005.
+
+**That citation is tier 2, and nothing here is stored from it.** It is a
+review, so under "Source hierarchy" it may not be the authority for a stored
+value — and it is not one: 24 hours is not computed from 2% to 5%, and no
+parameter in this model descends from that paper. What it supplies is the
+magnitude and the timing of the omission this boundary is argued against,
+which is exactly what tier 2 is legitimate for. A cap derived arithmetically
+from a metabolic rate would need the primary measurements instead, and would
+be a different and better limit than this one; it is not what is claimed
+here.
+
+**Why 24 hours, and not a multiple of the slowest time constant.** The fat
+group's time constant is about 42 h, and a cap argued as several multiples of
+it would select for precisely the regime described above — the part of the
+trace that is most nearly all omission. The fat time constant bounds this
+number from *below* rather than above: shorter than about one of them and the
+fat trace stops showing what it exists to show. 24 hours is about 0.6 of it,
+so the fat compartment is still visibly loading; it clears every anesthetic
+this simulator is built to teach by a wide margin; and it sits inside the
+regime the source above calls clinically negligible for metabolism, near the
+outer edge of the exposure range over which that omission has been measured
+at all.
+
+**This replaces a memory limit that was never a modelling one.** The figure
+carried before this section existed was 30 days, set on 2026-08-25 to size a
+concentration history that no longer exists, and enforced nowhere at all: a
+run could reach day 45 and go on displaying two-decimal concentrations. The
+question a run length answers is a supported-domain question and not a
+resource one, which is why the number moved by more than an order of
+magnitude when it was asked properly (`PL-Y5WR`).
+
+**Reaching it is not a failure, and the interface may not present it as one.**
+The step is refused before it begins, so a run stopped here stands on a
+completed step at a simulated time inside the supported span, and every
+displayed value is a real solution of the model. `SimulationDomainLimitError`
+is a distinct exception type for exactly this reason, and `app/` reads it to
+choose its wording: the run stops, the reader is told which limit was reached
+and why it is where it is, and reset starts a new run. Describing a correct
+model as a broken one misleads a reader as surely as the reverse — it spends
+the interface's one signal for a real fault, and teaches a reader to discount
+it. What the interface must equally not do is present the stop as a pause:
+Start is refused, because a resumed run's first step would be refused again.
+
+**Volatile sedation in intensive care is out of scope, deliberately.** It runs
+for days through an anesthetic-conserving device, and is exactly the regime
+this model is wrong in. Reaching it is a model extension — metabolism first —
+rather than a raise of this number, and raising the number without it would
+produce the plausible-looking wrong values this document exists to prevent.
+
+Widening this limit is a safety-critical change on the same terms as widening
+a flow interval: argue the longer span against what the model omits, extend
+the validation that covers it, and revise this section with the result.
+
 #### What is not bounded this way
 
 The two gas volumes — the breathing circuit's and the alveolar
@@ -3975,6 +4073,13 @@ either source's own confidence limits, and a reader comparing two agents at
 equipotent to that precision. The interface displays the divisor for exactly
 this reason. Moving all parameters to primary sources is `ROADMAP.md`'s
 planned-milestone item 31.
+
+**The two omissions above are what bound the supported run length.** Metabolism
+and the fat group's flow are both negligible over a case and neither is
+negligible over days, which is why a run is supported to 24 hours and the step
+past it is refused rather than taken. "Supported run length" argues the number
+and gives the measured extent of sevoflurane's metabolism; a longer run is not
+merely unvalidated but increasingly a display of what this model leaves out.
 
 **The fat group is perfused about twice as fast as the reachable resting
 measurement, and that acts on the shape of a curve.** The fat flow fraction is

@@ -16,7 +16,7 @@ from typing import Final, Self
 
 from anesthesia_sim.app.chart_downsampling import M4AggregateCache, first_index_at_or_after
 from anesthesia_sim.app.wash_in import is_wash_in, wash_in_ratio
-from anesthesia_sim.core.exceptions import SimulationExecutionError
+from anesthesia_sim.core.exceptions import SimulationDomainLimitError, SimulationExecutionError
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -683,6 +683,23 @@ class SimulationSnapshot:
     run by `reset()` and by a change of agent. A setting the core refused
     is absent: it never took effect, so it is not part of the run.
     """
+    supported_limit_reason: str | None
+    """Why the run stopped at a declared limit of the model's domain, or
+    `None` if it did not.
+
+    A non-`None` value means the run reached the supported run length and
+    the core refused the next step. `is_running` is `False`, and this is
+    neither a pause nor a failure: nothing was miscalculated, no step was
+    rolled back, and every value in this snapshot is a completed step's at
+    a simulated time inside the supported span. What ended is the claim
+    that a further step would stand for a patient.
+
+    It is separate from `failure_reason` because the interface must not
+    present the two alike. Telling a reader the simulator broke, when it
+    stopped exactly where `docs/MODEL.md` says it should, misrepresents a
+    correct model as a defective one - and the reverse would be worse.
+    Both are `None` for a run that is merely paused.
+    """
     failure_reason: str | None
     """Why the run stopped abnormally, or `None` if it did not.
 
@@ -745,6 +762,7 @@ class SimulationController:
 
         self._is_running = False
         self._failure_reason: str | None = None
+        self._supported_limit_reason: str | None = None
         self._build_state(
             agent_id=agent_id,
             circuit_volume_l=circuit_volume_l,
@@ -809,8 +827,10 @@ class SimulationController:
 
         # Every compartment above is newly constructed, so no state survives
         # from a run that failed: a stale failure reason would halt a
-        # session that has nothing wrong with it.
+        # session that has nothing wrong with it. A stale limit reason would
+        # do the same to a run that has taken no steps at all.
         self._failure_reason = None
+        self._supported_limit_reason = None
 
     def _clear_control_timeline(self) -> None:
         """Drop the recorded timeline, for a run that is starting over."""
@@ -850,6 +870,38 @@ class SimulationController:
         # state) must not overwrite it.
         if self._failure_reason is None:
             self._failure_reason = reason
+
+    @property
+    def has_reached_supported_limit(self) -> bool:
+        """Whether the run stopped at a declared limit of the model's domain."""
+
+        return self._supported_limit_reason is not None
+
+    def halt_at_supported_limit(self, reason: str) -> None:
+        """Stop the run because it reached the end of the supported domain.
+
+        Distinct from `fail()`, which records that something went wrong,
+        and from `pause()`, which the run resumes from. Here nothing went
+        wrong and there is nothing to resume *to*: the core refused the
+        next step before taking it, so the run stands on a completed step
+        at a simulated time the model is claimed to represent a patient at,
+        and the step after it would be refused identically.
+
+        Resuming is therefore not offered, for the reason `fail()` gives -
+        a Start that does nothing is a control presenting itself as
+        working - and `reset()` or `set_agent()` is the way to a new run.
+        What differs is only what the interface says about it, and that
+        difference is required rather than cosmetic: see
+        `SimulationSnapshot.supported_limit_reason`.
+
+        The first reason is kept, like `fail()`'s, so a later tick reaching
+        the same boundary cannot overwrite the one that explains it.
+        """
+
+        self._is_running = False
+
+        if self._supported_limit_reason is None:
+            self._supported_limit_reason = reason
 
     def set_agent(self, agent_id: str) -> None:
         """Start fresh with a different agent at that agent's own 1 MAC.
@@ -924,6 +976,7 @@ class SimulationController:
             agent_accounting_absolute_error_l=(accounting.absolute_error_l),
             agent_accounting_passes_validation=(accounting.passes_validation),
             control_timeline=self._control_timeline,
+            supported_limit_reason=self._supported_limit_reason,
             failure_reason=self._failure_reason,
         )
 
@@ -967,17 +1020,29 @@ class SimulationController:
         return self._history.window_from(start_s)
 
     def start(self) -> None:
-        """Start or resume the run, refusing to resume a failed session.
+        """Start or resume the run, refusing a session that cannot continue.
 
         Raising rather than quietly declining is deliberate: silently
         ignoring a start would leave the interface showing a stopped run
         with no indication that starting it did nothing, which is the
         hidden mode `CLAUDE.md` forbids.
+
+        Two states refuse, for the same reason and with different meanings.
+        A failed session would raise again on its first tick; a session
+        standing at the supported run length would have its first step
+        refused by the core. Neither can be resumed, and each says which it
+        is, so a caller reporting the refusal does not have to guess.
         """
 
         if self._failure_reason is not None:
             raise SimulationExecutionError(
                 f"cannot resume a failed simulation ({self._failure_reason}); reset it first"
+            )
+
+        if self._supported_limit_reason is not None:
+            raise SimulationDomainLimitError(
+                f"this run has reached the supported run length "
+                f"({self._supported_limit_reason}); reset it to start a new run"
             )
 
         self._is_running = True
@@ -986,15 +1051,18 @@ class SimulationController:
         self._is_running = False
 
     def reset(self) -> None:
-        """Stop the run, clear any failure, and clear dynamic state.
+        """Stop the run, clear any failure or limit, and clear dynamic state.
 
         Settings are preserved. This is the only way out of a failed
-        session: every compartment goes back to its initial state, so
-        nothing carries over from the run that could not continue.
+        session, and out of one standing at the supported run length: every
+        compartment goes back to its initial state and the step count goes
+        back to zero, so nothing carries over from the run that could not
+        continue.
         """
 
         self.pause()
         self._failure_reason = None
+        self._supported_limit_reason = None
         self._state.reset()
         self._history = RunHistory((self._agent_id,))
         self._history.record(self._build_history_sample())

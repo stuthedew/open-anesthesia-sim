@@ -71,6 +71,7 @@ from anesthesia_sim.app.formatting import (
     format_percent,
     format_playback_rate,
     format_subtitle,
+    format_supported_run_length,
     format_time_base,
     format_wash_in_ratio,
     mac_awake_band_percent,
@@ -94,7 +95,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, WashInDomain, read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
-from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
+from anesthesia_sim.core.exceptions import AnesthesiaSimulationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -2152,14 +2153,26 @@ class SimulationView:
 
         has_failed = snapshot.failure_reason is not None
 
-        # Three states, not two. A halted run must never render as a pause.
-        # The core rolls a failed step back, so the numbers beside this word
-        # are a completed step's - but the run cannot go on from them, and a
-        # reader who sees "Paused" expects Start to resume it and reads a
-        # stopped trajectory as one still in progress.
+        # Four states, not two. A stopped run must never render as a pause:
+        # the numbers beside this word are a completed step's, but the run
+        # cannot go on from them, and a reader who sees "Paused" expects
+        # Start to resume it and reads a stopped trajectory as one still in
+        # progress.
+        #
+        # The two stopped states are also not each other, which is why this
+        # is four and not three. A failure says the model reached a state it
+        # could not step from; the supported run length says it reached the
+        # end of what it is claimed to represent, having done everything
+        # right. WARNING is the failure's, deliberately not shared: colouring
+        # a correct model's declared boundary as a fault teaches a reader to
+        # distrust a number that is sound, and would spend the one signal
+        # this interface has for a real one.
         if has_failed:
             self._status_text.value = "Stopped — simulation error"
             self._status_text.color = WARNING
+        elif snapshot.supported_limit_reason is not None:
+            self._status_text.value = "Stopped — supported run length reached"
+            self._status_text.color = MUTED
         elif snapshot.is_running:
             self._status_text.value = "Running"
             self._status_text.color = ACCENT_TEXT
@@ -2167,7 +2180,7 @@ class SimulationView:
             self._status_text.value = "Paused"
             self._status_text.color = MUTED
 
-        self._refresh_notice(snapshot.failure_reason)
+        self._refresh_notice(snapshot.failure_reason, snapshot.supported_limit_reason)
         self._elapsed_time_text.value = format_elapsed(snapshot.elapsed_s)
         self._circuit_concentration_text.value = format_percent(
             snapshot.circuit_concentration_fraction
@@ -2227,10 +2240,14 @@ class SimulationView:
         self._alveolar_ventilation_slider.value = snapshot.alveolar_ventilation_l_min
         self._cardiac_output_slider.value = snapshot.cardiac_output_l_min
 
-        # A failed run cannot be resumed — only reset — so Start must not
-        # invite it. `is_running` alone would leave Start enabled here,
-        # since a failed session is stopped.
-        self._start_button.disabled = snapshot.is_running or has_failed
+        # Neither a failed run nor one standing at the supported run length
+        # can be resumed — only reset — so Start must not invite it.
+        # `is_running` alone would leave Start enabled for both, since each
+        # is a stopped session; and a Start the controller would refuse is a
+        # control presenting itself as working.
+        self._start_button.disabled = (
+            snapshot.is_running or has_failed or snapshot.supported_limit_reason is not None
+        )
         self._pause_button.disabled = not snapshot.is_running
 
         if snapshot.agent_accounting_passes_validation:
@@ -2637,19 +2654,35 @@ class SimulationView:
 
         self._refresh_and_render()
 
-    def _refresh_notice(self, failure_reason: str | None) -> None:
-        """Show the halted-run banner, or a refused setting, or nothing.
+    def _refresh_notice(
+        self, failure_reason: str | None, supported_limit_reason: str | None
+    ) -> None:
+        """Show a stopped-run banner, or a refused setting, or nothing.
 
-        A halted run outranks a refused setting: it describes the state of
+        A stopped run outranks a refused setting: it describes the state of
         everything else on screen, where a refusal describes only one
-        control.
+        control. A failure outranks the supported run length in turn, on the
+        same reasoning - the two cannot both arise from one run, and where a
+        failure is somehow recorded it is the more serious statement.
 
-        The halted-run wording says what the values *are* rather than
+        The stopped-run wording says what the values *are* rather than
         warning about them, which is what rolling the failed step back
         bought. The core leaves the last completed step, so the numbers are
         a real solution of the model at a real simulation time; what the
         reader needs to know is that they have stopped advancing and that
         the run cannot be resumed, not that they are untrustworthy.
+
+        **The run-length wording does not borrow the failure's**, and the
+        difference is required rather than stylistic. Nothing failed and
+        nothing was rolled back: the step was refused before it began, and
+        the values on screen are the model's last supported state. Saying
+        "the step that failed was rolled back" there would describe an event
+        that did not happen, and describe a correct model as a broken one -
+        which `CLAUDE.md`'s standard treats as a safety defect, since a
+        reader who distrusts a sound number is misled exactly as a reader who
+        trusts an unsound one is. It says why the limit exists, because a
+        boundary with no reason reads as an arbitrary restriction rather than
+        as the edge of what the model represents.
         """
 
         if failure_reason is not None:
@@ -2658,6 +2691,18 @@ class SimulationView:
                 "The values shown are the last completed step; the step that "
                 "failed was rolled back and changed nothing. "
                 "Reset to start a new run."
+            )
+            self._notice_text.visible = True
+            return
+
+        if supported_limit_reason is not None:
+            self._notice_text.value = (
+                "Simulation stopped — this run reached the supported run "
+                f"length of {format_supported_run_length()}. Beyond it this "
+                "model's omitted metabolism and its fat perfusion dominate "
+                "the trace, so it is not claimed to represent a patient. "
+                "The values shown are the last completed step, inside the "
+                "supported span. Reset to start a new run."
             )
             self._notice_text.visible = True
             return
@@ -2959,16 +3004,32 @@ class SimulationView:
         self._apply_setting(lambda: self._controller.set_cardiac_output(cardiac_output_l_min))
 
     def _halt_run(self, error: Exception) -> None:
-        """Stop the run and put the failure on screen.
+        """Stop the run and say on screen why it stopped.
 
-        The exception type is recorded alongside its message rather than
-        being used to decide whether to stop: a `TypeError` from a future
-        refactor kills the loop exactly as silently as a modelling failure
-        does, and both leave a display that would otherwise keep reading
-        "Running" over numbers that stopped advancing.
+        The type still does not decide **whether** to stop - every exception
+        stops the run, because a `TypeError` from a future refactor kills the
+        loop exactly as silently as a modelling failure does, and both leave
+        a display that would otherwise keep reading "Running" over numbers
+        that stopped advancing.
+
+        It decides **what the reader is told**, for exactly one type.
+        `SimulationDomainLimitError` is the run reaching the end of the
+        supported domain: the core refused the next step before taking it,
+        nothing was miscalculated, and nothing was rolled back. Reporting it
+        through `fail` would put "simulation error" over a correct model that
+        stopped where `docs/MODEL.md` says it must, which is a misreading in
+        the direction this interface can least afford - it spends the signal
+        reserved for a real fault and teaches a reader to discount it.
+
+        Everything else, known or not, is a failure. That asymmetry is
+        deliberate: the narrow case is the one named, so an unrecognised
+        exception falls through to the more cautious of the two.
         """
 
-        self._controller.fail(f"{type(error).__name__}: {error}")
+        if isinstance(error, SimulationDomainLimitError):
+            self._controller.halt_at_supported_limit(str(error))
+        else:
+            self._controller.fail(f"{type(error).__name__}: {error}")
 
         try:
             self._refresh_and_render()

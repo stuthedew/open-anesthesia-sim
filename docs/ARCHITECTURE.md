@@ -38,7 +38,7 @@ src/anesthesia_sim/
 ├── app_metadata.py      # app name, version (from package metadata), bundle id
 ├── core/                # scientific simulation — no Flet dependency
 │   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError)
-│   ├── supported_ranges.py        # the declared input domain; refuses a setting outside it
+│   ├── supported_ranges.py        # the declared domain; refuses a setting, or a run, outside it
 │   ├── exceptions.py              # exception hierarchy; every core failure is inside it
 │   ├── parameters.py              # load + validate agent/patient JSON data
 │   ├── circuit.py                 # breathing circuit compartment
@@ -50,7 +50,7 @@ src/anesthesia_sim/
 │   ├── matrix_exponential.py      # exp(A dt) for a compartment system; no physiology in it
 │   ├── uptake_system.py      # couples circuit + alveoli + patient; advances one step
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
-│   └── simulation.py              # SimulationState: explicit elapsed time + AgentUptakeSystem
+│   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem
 ├── app/                  # Flet user interface
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic

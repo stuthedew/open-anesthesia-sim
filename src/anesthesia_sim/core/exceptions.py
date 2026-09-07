@@ -21,13 +21,18 @@ difference is what the interface acts on:
 - `SimulationConfigurationError` — a value was rejected before it could be
   simulated. Nothing has been miscalculated; the requested setting simply
   did not take effect, and the run (if any) is still trustworthy.
-- `SimulationExecutionError` — a step that had already begun could not be
-  completed, and the run must stop rather than continue. What the model
-  holds is the last completed step: `AgentUptakeSystem.advance()` rolls
-  the failed step back before raising, so the values are a real solution
-  of the model rather than an artifact of how far into the step the
-  operators got. Stopping is required all the same — the model reached a
-  state it could not step from, so the same step would fail again.
+- `SimulationExecutionError` — the run must stop rather than continue,
+  and what the model holds either way is the last completed step. Usually
+  a step that had already begun could not be completed;
+  `AgentUptakeSystem.advance()` rolls that step back before raising, so
+  the values are a real solution of the model rather than an artifact of
+  how far into the step the operators got, and stopping is required all
+  the same because the same step would fail again.
+- `SimulationDomainLimitError`, a subclass of the above, is the one case
+  where nothing went wrong: the run reached the end of what the model is
+  claimed to represent, and the step that would have crossed the boundary
+  was refused before it began. The run stops for a different reason and
+  the interface must say so differently.
 """
 
 
@@ -53,6 +58,34 @@ class SimulationExecutionError(AnesthesiaSimulationError):
     `AgentUptakeSystem.advance()` rolls it back before raising, so the
     state left behind is the last completed step rather than a partly
     applied one; the run still has to stop.
+    """
+
+
+class SimulationDomainLimitError(SimulationExecutionError):
+    """Raised when a run reaches a declared limit of the supported domain.
+
+    Today that is the supported run length: `core/supported_ranges.py`
+    refuses the step that would take elapsed simulated time past
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+
+    **Nothing failed, and the distinction is the point of the class.** The
+    inputs were valid, the step was never attempted, and every value the
+    model holds is a completed step's at a simulated time inside the
+    supported span. What ended is the claim that a further step would stand
+    for a patient - the same act as `require_supported_cardiac_output`
+    refusing 1000 L/min, arriving mid-run because a run length is reached
+    rather than set.
+
+    It is a `SimulationExecutionError` all the same, because the run must
+    stop: there is no value to correct and the next step would be refused
+    identically, so `SimulationConfigurationError`'s "the requested setting
+    did not take effect and the run carries on" does not describe it.
+    Sitting under the execution branch also makes the default safe - a
+    caller that knows only the base classes stops the run, which is right,
+    and only a caller that catches this type specifically needs to know
+    that stopping here is not a fault. One that presents it as a fault has
+    a defect: `docs/MODEL.md` § "Supported run length" requires the two be
+    told apart on screen.
     """
 
 
