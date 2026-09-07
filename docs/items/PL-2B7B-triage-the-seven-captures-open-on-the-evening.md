@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: docs/items
 added: 2026-09-07
 closed: 2026-09-07
+pr: 439
 not-delegable: a triage pass is proven by the store's state at the moment it ran, and that state moves - captures arrive untriaged by design - so no command run afterwards separates 'the pass happened' from 'nothing has been captured since'. `bin/docket check`, already on `make check`, is the standing proof that what the pass wrote is valid (same argument as PL-Q2PX and PL-LYX2)
 ---
 
@@ -43,11 +44,20 @@ healthy halves passing.
 feature altitude showed `PL-BKDP` as the `release-process` feature's top entry -
 `P1 - needs-decision`, filed hours earlier the same day for the same `v0.4.8`
 tag event as `PL-KFWL`, and with its stated **Done when** already satisfied.
-That is captured as `PL-YMW8` and triaged with the rest rather than acted on,
-because closing a `P1 - needs-decision` item is a decision and not a field. It
-is also recorded in `PL-5GBV`'s brief as a second live instance, with the note
-that the two titles share no distinctive phrase beyond the version string, which
-is the harder case for the check `PL-5GBV` proposes.
+That was captured as `PL-YMW8` and put to the project owner rather than acted
+on, because closing a `P1 - needs-decision` item is a decision and not a field.
+The owner answered "drop bkdp"; the fetch and `bin/docket show PL-BKDP` that the
+skill requires before editing an item then marked it **IN FLIGHT** on
+`origin/claude/missing-release-v0.4.8-hwhs25`, which had cut v0.4.8 and closed
+`PL-BKDP` as `done` - open as `#440`. So `PL-BKDP` was left untouched and
+`PL-YMW8` was dropped instead, its reason carrying what happened.
+
+What survives is the duplicate-filing evidence, moved into `PL-5GBV`'s brief:
+six items from at least four sessions inside one day for the single `v0.4.8`
+tag event, three of them filings of one condition, and no session filing the
+second or third able to see the first. That is the case the check `PL-5GBV`
+proposes has to answer, and it is harder than a phrase comparison - the titles
+share nothing distinctive beyond the version string.
 
 A near-neighbour rather than a duplicate was recorded on `PL-K5PW`: `PL-P757`
 is a different `--items` defect declaring the same two files, so the two want
