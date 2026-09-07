@@ -144,6 +144,12 @@ questions, rather than letting a good conversation evaporate.
 Triggered by the owner raising a passing thought they are not developing, or
 by a finding this session makes that it will not fix.
 
+**Whether a finding this session made is one it may fix instead is decided in
+`CLAUDE.md`, not here.** Its capture bullet holds the three tests that all have
+to pass and the cap of two per branch; the door is deliberately narrow, and a
+second copy of it here is how the two drift apart. Read it there, and treat
+everything below as being about a finding that is being recorded.
+
 **This is the opposite case to the one above, and the difference is whether a
 design conversation is happening.** A thought dropped in passing — "the
 induction curve looks wrong at low flows" — is captured immediately, because
@@ -265,8 +271,11 @@ it again.
 the work gets a commit of its own.** A rule demanding an item for a one-line
 typo fix would convert the queue into a log, which is worse than the collisions
 it prevents — so a fix riding inside a commit already led by an item's id is
-filed by that id and needs nothing more. File it when it is the reason this
-session exists, or when it will take a branch of its own.
+filed by that id and needs nothing more. A fix `CLAUDE.md`'s fix-now rule
+admits needs nothing more either, even though it takes a commit of its own:
+that commit leads with the current item's id, so every id-matcher still sees
+it. File it when it is the reason this session exists, or when it will take a
+branch of its own.
 
 `tools/branch_id_check.py` catches the case where none of this happened: `make
 check` and CI fail a branch ahead of `main` that carries no id in its name and

@@ -66,3 +66,35 @@ candidates outside this repository are `PL-90CJ`'s to carry rather than this
 item's.
 
 **Found by** `PL-GYH2`.
+
+**Observed again 2026-09-07, with no restart involved, which widens this
+item's trigger and makes its `Done when` too narrow.** A session that cloned
+fresh (`git clone --depth 1`, per the harness's own `add_repo` instruction),
+created `claude/pl-gbbz-prose-prerequisites` from `main`, committed twice,
+pushed with `git push -u` and opened `#434` was told at the stop hook:
+"Branch has 2 unpushed commit(s) and no remote branch."
+
+`git ls-remote origin refs/heads/claude/pl-gbbz-prose-prerequisites` returned
+the same sha as `HEAD` - the work was fully pushed. So the second clause above
+is not a compounding factor on the restart path; it is a sufficient cause on
+its own, and `git push -u` reports "set up to track" while silently storing no
+tracking ref, because the single-branch refspec does not cover the destination.
+The repair this brief already names is what worked:
+
+    git fetch origin <branch>:refs/remotes/origin/<branch>
+    git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+    git branch --set-upstream-to=origin/<branch>
+
+The order matters - `--set-upstream-to` still refuses with "not a branch" until
+the refspec is widened, even once the tracking ref exists.
+
+**So the `Done when` below is satisfiable while the defect still fires.** It
+asks only that a session restarting its branch by the merged-pull-request
+recovery not be told to push again; on this evidence the condition should be
+that *no* session is told to push work `git ls-remote` shows is pushed,
+whatever shape its branch has. Candidate 3 (fetch the `claude/*` refspec) now
+looks like the one that covers both paths, since it removes the cause rather
+than teaching the comparison to tolerate it.
+
+**Found again by** `PL-GBBZ`.
+

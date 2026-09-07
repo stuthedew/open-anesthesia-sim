@@ -1050,8 +1050,10 @@ class SimulationController:
 
         What comes back is the display path: fit for drawing, and not for a
         keyframe, an export or a fork's starting state, which are taken
-        canonically. `core/run_score.py`'s module docstring states the
-        separation and `PL-P1Z3` gates it.
+        canonically. Its states are `DisplayState` rather than state vectors
+        for that reason, so the separation is refused at the canonical entry
+        points rather than left to a reader; `docs/MODEL.md` § "The canonical
+        evaluation rule" is the guarantee.
 
         Args:
             start_s: The window's first instant, in seconds.
