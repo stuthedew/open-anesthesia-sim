@@ -1183,8 +1183,10 @@ No scientific parameter may be added without:
 ### Source hierarchy: what may be cited as the authority for a value
 
 A citation records where a number was found. It does not, on its own, say
-whether anything was measured there. Three tiers are distinguished, and only
-the first may be named as the authority for a stored value.
+whether anything was measured there. Three tiers are distinguished. Only the
+first may be named as the authority for a stored value on its own strength; a
+lower tier may be adopted only on a recorded decision, under the rule stated
+below the three.
 
 1. **Primary measurement.** A study that measured the quantity, in the
    species, population and conditions the model claims to represent, and
@@ -1197,8 +1199,9 @@ the first may be named as the authority for a stored value.
    for finding the primary source, and for recording what the field
    conventionally quotes — which is a real fact about the reader's
    expectations, and the reason isoflurane's textbook 1.4 is worth naming.
-   Never the authority for a stored value: the rounding and the selection
-   between disagreeing measurements happened somewhere the reader cannot see.
+   Not the authority for a stored value on its own strength: the rounding and
+   the selection between disagreeing measurements happened somewhere the
+   reader cannot see. Adoptable only on the recorded decision below.
 3. **Reference implementation.** Another simulator's parameter set — the
    numbers some working program was built to run on. Gas Man is this
    project's reference implementation, and that is why it is named throughout
@@ -1211,6 +1214,32 @@ the first may be named as the authority for a stored value.
    a program behave; which measurement any individual number descends from,
    and what was adjusted to make the set cohere, are not recoverable from the
    program.
+
+**A lower tier may be adopted, but never silently.** The ranking above says
+which tier a reader may trust unexamined. It does not say that a tier-2 or
+tier-3 number may never be stored, because this project's provenance table is
+mostly made of them and says so a few paragraphs down. What it forbids is an
+adoption the reader cannot see. So a stored value whose authority is not a
+primary measurement owes three things, and carries all three today:
+
+- **The tier, on the entry itself.** The `tier` field in the data file,
+  checked by `make check` against the closed vocabulary — not a claim in prose
+  that a reader has to reconstruct.
+- **Why no tier-1 source was adopted.** On the entry, or in the file's
+  `provenance_gap` where the whole file is in that state.
+- **The date and whose decision it was**, where a lower tier is adopted in
+  preference to an available primary source rather than for want of one.
+  `venous_pool_volume_l` is the worked example: Davis and Mapleson 1981 is
+  tier 2, adopted on the project owner's decision of 2026-09-07, replacing a
+  round number no source ever contained.
+
+That is a higher bar than a tier-1 citation clears, not a lower one, and it is
+deliberately not a licence to prefer the convenient number. The reason has to
+be that no primary measurement of *this quantity, in this population* exists
+or is reachable — never that finding one is work. Where a primary measurement
+*is* available and simply has not been adopted, the entry says so in those
+words and the value stays unsourced, which is what all twelve partition
+coefficients do.
 
 **Full texts held on hand are in `docs/references/`, and holding one changes
 nothing about its tier.** The directory exists so that a session checking a
@@ -1343,10 +1372,11 @@ the figures and the per-value detail.
 
 **Nothing is promoted by any of it, and the stake is narrower than the chain's
 length suggests.** A second-hand report of a book's table is not the book, so
-all seven stay tier 3 and unadopted. And the hierarchy above admits only tier 1
-as the authority for a stored value, so opening the book changes what this
-document may claim **only if it turns out to have measured these volumes and
-flows rather than collected them**. It could not be reached from a session
+all seven stay tier 3 and unadopted. And the hierarchy above admits a lower
+tier only on a recorded decision, so opening the book changes what this
+document may claim **without one only if it turns out to have measured these
+volumes and flows rather than collected them**; a book that collected them
+could still be adopted on the record, the way Davis and Mapleson was. It could not be reached from a session
 container — the egress proxy refuses the Internet Archive, HathiTrust, Open
 Library and Google Books alike, and PubMed does not index monographs — so it
 still needs the project owner's institutional or library access, as the Workbook
@@ -1704,8 +1734,10 @@ confidence limits and is a real limitation of the display, recorded in
 2026-09-04, on the recommendation below). Three reasons,
 and the first is this document's own rule. Mapleson 1996 is a meta-analysis:
 it regresses a literature survey and measures nothing, which is **tier 2**
-under "Source hierarchy", and tier 2 may never be the authority for a stored
-value. Second, every other parameter in this model is the Gas Man set, so a
+under "Source hierarchy". That does not forbid adopting it outright — a lower
+tier may be adopted on a recorded decision — but it does mean adopting it
+would take one, and the two reasons below are why this decision went the other
+way. Second, every other parameter in this model is the Gas Man set, so a
 Mapleson divisor over a Gas Man trajectory would make each displayed multiple
 a ratio between two different parameter lineages; dividing this model's
 output by this model's own MAC is at least internally consistent. Third,

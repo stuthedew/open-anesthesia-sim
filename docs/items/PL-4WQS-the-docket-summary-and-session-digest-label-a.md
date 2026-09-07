@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-02
 closed: 2026-09-07
+pr: 445
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -rq 'def test_open_count_includes_untriaged' subprojects/docket/tests
 ---
 

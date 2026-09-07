@@ -1,8 +1,15 @@
 ---
 id: PL-FJGY
 title: docs/MODEL.md says tier 2 may never be the authority for a stored value, and venous_pool_volume_l adopts a tier-2 source
-status: untriaged
+priority: P1
+effort: S
+status: done
+classes: science, docs
+feature: model-spec-accuracy
+touches: docs/MODEL.md, src/anesthesia_sim/data
 added: 2026-09-07
+closed: 2026-09-07
+verify: python3 tools/doc_check.py check && grep -qF 'A lower tier may be adopted, but never silently.' docs/MODEL.md && ! grep -rqF 'does not admit tier 2 as the authority' src/anesthesia_sim/data
 ---
 
 **Problem.** docs/MODEL.md says tier 2 may never be the authority for a stored value, and venous_pool_volume_l adopts a tier-2 source
@@ -57,3 +64,70 @@ otherwise have to contradict again.
 
 **Found.** `PL-1JDD`, 2026-09-07, on making the tier and the adoption
 machine-readable.
+
+
+**Decided 2026-09-07 by the project owner: reading (2), fix the wording rather
+than the practice.** Built in the same session.
+
+`docs/MODEL.md` § "Source hierarchy" now carries a fourth block, **"A lower
+tier may be adopted, but never silently"**, which states what a stored value
+whose authority is not a primary measurement owes a reader: the tier on the
+entry itself, why no tier-1 source was adopted, and — where a lower tier is
+adopted *in preference to* an available primary rather than for want of one —
+the date and whose decision it was. `venous_pool_volume_l` is named as the
+worked example. The block says in terms that this is a higher bar than a
+tier-1 citation clears and is not a licence to prefer the convenient number:
+the reason has to be that no primary measurement of the quantity in the
+population exists or is reachable, never that finding one is work.
+
+The three absolutes that the practice contradicted were rewritten rather than
+deleted, so the preference for tier 1 survives:
+
+- the section's opening sentence, which said only tier 1 may be named as the
+  authority, now says only tier 1 may be named *on its own strength*;
+- the tier-2 bullet's "never the authority for a stored value" is now "not the
+  authority on its own strength ... adoptable only on the recorded decision
+  below";
+- the Lowe and Ernst paragraph, which said opening the book could change
+  nothing unless it turned out to have measured, now adds that a book that
+  collected could still be adopted on the record.
+
+**The Mapleson passage needed the most care and its answer did not change.**
+§ "Why the Mapleson values are nonetheless not adopted here" opened "Three
+reasons, and the first is this document's own rule" — a rule that no longer
+forbids the adoption outright. It now says that adopting Mapleson would take a
+recorded decision, and that the two remaining reasons are why this one went the
+other way: the lineage-mixing that a Mapleson divisor over a Gas Man trajectory
+would produce, and confidence limits wide enough that no MAC source makes the
+cross-agent comparison exact. Both were always the load-bearing reasons; the
+first was the one doing no work.
+
+**Seven restatements in the data files went with it**, because a note asserting
+a rule the document no longer states is the same defect one step out: four
+instances of "does not admit tier 2 as the authority for a stored value" (the
+three agents' Nickalls and Mapleson entries and the reference patient's Wahba
+entry) and three of "admits only tier 1 as the authority for a stored value"
+(the three agents' Mapleson entries). Each now says the hierarchy admits a
+tier-2 source only on a recorded decision, and that none has been taken for
+that parameter — or, for the three MAC entries, that it was decided the other
+way on 2026-09-04.
+
+**Two restatements were deliberately left standing.** `ROADMAP.md`'s v0.3.2
+row says that release's hierarchy admitted "only the first" tier as the
+authority, which was true of v0.3.2; a release note is a record of what
+shipped, and editing one to match a later decision falsifies it. And the
+tier-**3** counterpart of this same absolute is stated in
+`.claude/rules/expert-review.md`, `.claude/rules/sources-and-docstrings.md` and
+`docs/consultant-brief.md` — all outside this item's `touches`, two of them
+resident instructions — and is the wider problem, since tier 3 is the tier this
+project actually adopts. `PL-X19T` carries it.
+
+**No stored value changed and nothing was promoted.** The four data files
+declare exactly the tiers and adoptions they declared before this item;
+`venous_pool_volume_l` was already `"tier": "secondary", "adopted": true`. What
+changed is that the standard now describes what the files do.
+
+**Found.** `PL-1JDD` (make the source tier machine-readable so doc_check can
+decide it), 2026-09-07. Making the tier and the adoption machine-readable is
+what put the rule and the practice on one line; `PL-8ZJQ` is the adoption the
+rule contradicted.
