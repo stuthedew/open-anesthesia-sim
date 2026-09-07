@@ -51,7 +51,7 @@ def test_builds_reference_patient_from_parameters() -> None:
     assert patient.vessel_rich.volume_l == 6.0
     assert patient.muscle.volume_l == 33.0
     assert patient.fat.volume_l == 14.5
-    assert patient.venous_blood.volume_l == 1.0
+    assert patient.venous_blood.volume_l == 1.222
     assert patient.total_perfusion_fraction == pytest.approx(1.0)
 
 

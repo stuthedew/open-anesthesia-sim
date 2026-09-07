@@ -89,13 +89,22 @@ fraction at or near zero, which this model cannot be set to at any supported
 flow. Confirming it against the papers' own methods sections needs the full
 texts, which are not in PubMed Central and are not held in `docs/references/`.
 
-Measured 2026-09-06, in each cohort's own standard deviations:
+Measured 2026-09-06 and re-measured 2026-09-07, in each cohort's own
+standard deviations. The shipped column moved when `venous_pool_volume_l` went
+from 1.0 L to Davis and Mapleson's 1.222 L (`PL-8ZJQ`); the middle column was
+measured at 1.0 L and is not restated here, because that run has not been made
+again:
 
-| Agent | Shipped, 10 L/min | No rebreathing at all | Published |
+| Agent | Shipped, 10 L/min | No rebreathing, at 1.0 L | Published |
 | --- | --- | --- | --- |
-| Sevoflurane | +3.67 SD | -0.25 SD | 0.157 +/- 0.020 |
-| Isoflurane | +4.02 SD | +0.54 SD | 0.223 +/- 0.024 |
-| Desflurane | +1.02 SD | -2.40 SD | 0.14 +/- 0.02 |
+| Sevoflurane | +3.79 SD | -0.25 SD | 0.157 +/- 0.020 |
+| Isoflurane | +4.15 SD | +0.54 SD | 0.223 +/- 0.024 |
+| Desflurane | +1.13 SD | -2.40 SD | 0.14 +/- 0.02 |
+
+A larger venous pool returns more agent to the lungs, so every shipped row
+moved further above its published mean, by 0.11 to 0.13 SD. That is the same
+direction this module already attributes to the rebreathing circuit rather
+than to tissue return, and it is a tenth of the gap it adds to.
 
 The middle column is a diagnostic and not a configuration: the circuit
 fraction was held at zero through the elimination by writing it, which no
@@ -335,7 +344,7 @@ ELIMINATION_REGRESSION_TOLERANCE_SD = 1.0
 # outputs and are deliberately not fields of `PublishedMeasurement`: nothing
 # here was published, and a measured value sitting in a row of published ones
 # is how a later reader comes to cite a model output as a human measurement.
-MODELLED_ELIMINATION_RATIOS = {"sevoflurane": 0.2303, "isoflurane": 0.3195, "desflurane": 0.1603}
+MODELLED_ELIMINATION_RATIOS = {"sevoflurane": 0.2328, "isoflurane": 0.3227, "desflurane": 0.1626}
 
 
 @dataclass(frozen=True, slots=True)
@@ -601,7 +610,7 @@ def test_thirty_minute_ratio_matches_published_human_measurement(
 
     | Agent | Cohort | Model | Published | Distance |
     | --- | --- | --- | --- | --- |
-    | Sevoflurane | n=7 | 0.8528 | 0.850 +/- 0.018 | +0.15 SD |
+    | Sevoflurane | n=7 | 0.8528 | 0.850 +/- 0.018 | +0.16 SD |
     | Isoflurane | n=7 | 0.7413 | 0.733 +/- 0.027 | +0.31 SD |
     | Desflurane | n=8 | 0.9079 | 0.900 +/- 0.010 | +0.79 SD |
     | Isoflurane | n=8 | 0.7413 | 0.730 +/- 0.030 | +0.38 SD |
@@ -831,10 +840,13 @@ def test_five_minute_elimination_ratio_against_published_human_measurement(
 
     | Agent | Cohort | Model | Published | Distance |
     | --- | --- | --- | --- | --- |
-    | Sevoflurane | n=7 | 0.2303 | 0.157 +/- 0.020 | +3.67 SD |
-    | Isoflurane | n=7 | 0.3195 | 0.223 +/- 0.024 | +4.02 SD |
-    | Desflurane | n=8 | 0.1603 | 0.140 +/- 0.020 | +1.02 SD |
-    | Isoflurane | n=8 | 0.3195 | 0.220 +/- 0.020 | +4.98 SD |
+    | Sevoflurane | n=7 | 0.2328 | 0.157 +/- 0.020 | +3.79 SD |
+    | Isoflurane | n=7 | 0.3227 | 0.223 +/- 0.024 | +4.15 SD |
+    | Desflurane | n=8 | 0.1626 | 0.140 +/- 0.020 | +1.13 SD |
+    | Isoflurane | n=8 | 0.3227 | 0.220 +/- 0.020 | +5.13 SD |
+
+    Re-measured 2026-09-07 at `venous_pool_volume_l` = 1.222 L, which moved
+    every row 0.11 to 0.13 SD further above its mean (`PL-8ZJQ`).
 
     Every row is *above* its published mean, which is the model retaining
     more alveolar agent at five minutes than the volunteers did. The module

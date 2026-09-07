@@ -596,7 +596,13 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     # assertions below check is conservation *of this amount*, so a run that
     # silently stopped reaching it would make them compare a number against
     # itself.
-    assert circuit_agent_before_l == pytest.approx(0.048305015)
+    #
+    # Re-measured 2026-09-07 to 0.048301285 L (`PL-8ZJQ`), when
+    # `venous_pool_volume_l` moved from 1.0 L to 1.222 L. A larger venous pool
+    # returns slightly less agent to the circuit over the first 60 s, so this
+    # number is expected to move with that parameter and the 3.7e-6 L drop is
+    # in the direction it should be.
+    assert circuit_agent_before_l == pytest.approx(0.048301285)
 
     system.circuit.set_circuit_volume(3.0)
 

@@ -3,11 +3,12 @@ id: PL-8ZJQ
 title: Davis and Mapleson 1981 gives a published, quantified blood-pool structure, which is the source PL-3YZW's 1.0 L venous pool has never had
 priority: P1
 effort: M
-status: needs-decision
+status: done
 classes: science
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-06
+closed: 2026-09-07
 not-delegable: No command can prove that a person read Davis and Mapleson 1981, and the outcome is a provenance judgment either way - adopt a volume with that lineage, or record why the 1.0 L mixing volume is kept and what it is not. A `verify:` could only check that some sentence had been written into the data file, which is exactly the thing that must not be gameable on a provenance item (the same argument PL-7HDS records).
 ---
 
@@ -115,3 +116,46 @@ case it would be marginally more accurate to make the arterial pool 799 ml
 Adopting would also want `PL-BD94` (the key's name reads as the physiologic
 venous blood volume) decided in the same pass, since a rename and a revalue on
 one key is one edit rather than two.
+
+**Decided 2026-09-07 by the project owner: adopt.** `venous_pool_volume_l` is
+1.222 L, from Davis and Mapleson's combined venous pool for inhaled-anaesthetic
+models, and it is the first value in this file to carry a source other than the
+Gas Man Workbook.
+
+**What tipped it was `PL-3YZW`'s answer, not this reading.** The case for
+keeping 1.0 L had rested on preserving Gas Man comparability. Tracing the value
+through the repository's own history showed it was never part of the Gas Man
+set: it entered at v0.1.0 under a Workbook citation belonging to its
+neighbours, and all four sources ever cited for it have now been read without
+finding it. So keeping it preserved nothing, and the choice was between a value
+with tier-2 published provenance and a value with none.
+
+**Measured before the change was made, not asserted after it.**
+
+| Comparison | At 1.0 L | At 1.222 L |
+| --- | --- | --- |
+| Wash-in `F_A/F_I` at 30 min, four cohorts | +0.15, +0.31, +0.79, +0.38 SD | +0.16, +0.31, +0.79, +0.38 SD |
+| Elimination `F_A/F_A0` at 5 min | +3.67, +4.02, +1.02 SD | +3.79, +4.15, +1.13 SD |
+
+The wash-in comparison cannot discriminate between the two values - the pool is
+long equilibrated by 30 minutes - so it is no evidence either way, and that is
+worth knowing about the gate as much as about the parameter. The elimination
+comparison moves 0.11 to 0.13 SD **further from** its cohort means, because a
+larger pool returns more agent, which is the same direction the module already
+attributes to the rebreathing circuit rather than to tissue return. That cost
+is recorded in `docs/MODEL.md` and in the module rather than buried: it is a
+tenth of a gap that is already 1 to 5 SD wide for apparatus reasons.
+
+**Re-pinned, from the oracle and not from the shipped solver.** All nine
+`PINNED_REFERENCE_STATES` failed, which is exactly what that pin is for, and
+were re-derived through `_reference_state`; the largest movement is 8.3e-4
+relative and sits in the mixed-venous state, which is where a venous-pool
+change should show and nowhere else. `MODELLED_ELIMINATION_RATIOS`, the two
+measured tables in `test_published_wash_in.py`, and a pinned 60 s circuit load
+in `test_uptake_system_failure.py` were re-measured with the reason recorded
+beside each.
+
+**`not-delegable` stands as the record of what could not be proven by command.**
+No command can prove a person read the paper. The adoption half *is* checkable
+and is pinned by `PL-BD94`'s `verify:`, which was run against `HEAD` before the
+work (exit 1) and against the finished tree (exit 0).

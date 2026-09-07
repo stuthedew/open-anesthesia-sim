@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-07
+pr: 418
 not-delegable: The outcome is a provenance judgment recorded in prose - whether 1.0 L was traced, or recorded as untraceable to its cited source - and a command could only check that some sentence exists in the data file, which is the thing that must not be gameable on a provenance item. Same argument as PL-7HDS and PL-8ZJQ.
 ---
 

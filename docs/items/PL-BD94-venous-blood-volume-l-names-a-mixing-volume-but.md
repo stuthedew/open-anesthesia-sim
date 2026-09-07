@@ -3,11 +3,13 @@ id: PL-BD94
 title: venous_blood_volume_l names a mixing volume but reads as the physiologic venous blood volume
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: refactor, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md
 added: 2026-09-06
+closed: 2026-09-07
+verify: uv run pytest tests/unit/test_parameters.py && python3 -c "import json,pathlib; d=json.loads(pathlib.Path('src/anesthesia_sim/data/patients/reference_adult.json').read_text()); raise SystemExit(0 if 'venous_blood_volume_l' not in d and d['venous_pool_volume_l'] == 1.222 else 1)"
 ---
 
 **Problem.** `venous_blood_volume_l` is 1.0 L. The physiologic venous blood
@@ -66,3 +68,32 @@ correction in the same file, and nothing is displayed under this name. If the
 key itself counts as a label under `CLAUDE.md`'s "the correct number with the
 wrong label is still a safety failure", the class becomes `science` and the
 band with it.
+
+**Decided 2026-09-07: renamed, in the same edit as the revalue.** The key is
+`venous_pool_volume_l`, which is the name `docs/MODEL.md`'s provenance table had
+already been using for it - noted in this brief as evidence the ambiguity had
+been felt before, and taken as the answer. `mixed_venous_mixing_volume_l` was
+the alternative and was not taken: it is more explicit and less readable, and
+the provenance table's existing wording is what a reader of the specification
+will already have met.
+
+**One edit rather than two, which is why this closes with `PL-8ZJQ`.** That item
+moved the value to Davis and Mapleson's 1.222 L on the project owner's decision,
+and a rename and a revalue on one key touching a protected path, the loader, the
+balance, the provenance table and the test fixtures is one review rather than
+two.
+
+**What the rename reached**, each changed in the same commit:
+`src/anesthesia_sim/data/patients/reference_adult.json` (the key and three
+`sources` notes that named it), `src/anesthesia_sim/core/parameters.py` (the
+dataclass field, the validated model and the loader), `src/anesthesia_sim/core/patient.py`,
+`tests/unit/test_parameters.py`, `tests/reference/test_coupled_dynamics.py`, and
+`docs/MODEL.md`'s provenance-table row. `ROADMAP.md`'s v0.4.6 baseline still
+names the old key and was deliberately left alone: it records what that release
+established, and editing it would falsify the release history rather than fix a
+stale statement.
+
+**The `verify:` command was run before the work and watched fail.** Against
+`HEAD` it exits 1; against the finished tree it exits 0. It checks the stored key
+and value directly rather than grepping prose, because the old name survives
+correctly in a historical sentence in the Meybohm `sources` note.

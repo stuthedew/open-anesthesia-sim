@@ -715,78 +715,85 @@ STATE_LABELS = ("circuit", "alveolar", "mixed venous", "vessel rich", "muscle", 
 # is measured against. A failure here is not a failure of the core: it says
 # the oracle or its inputs changed, and the new values must be re-derived
 # and reviewed before they are pinned again.
+#
+# Re-derived 2026-09-07 (`PL-8ZJQ`), from the oracle and not from the shipped
+# solver, after `venous_pool_volume_l` moved from 1.0 L to Davis and Mapleson's
+# 1.222 L. That is the case this pin exists for: a deliberate parameter change
+# fails all nine here first, which is the review it is meant to force. The
+# largest movement is 8.3e-4 relative, in the mixed-venous state, which is where
+# a venous-pool change should show and nowhere else.
 PINNED_REFERENCE_STATES: dict[tuple[str, float], tuple[float, ...]] = {
-    ("sevoflurane", 60.0): (
-        2.012708952804e-02,
-        8.338562820476e-03,
-        6.195570404808e-04,
-        1.235733944889e-03,
-        2.709125178553e-05,
-        1.453719164539e-06,
-    ),
-    ("sevoflurane", 600.0): (
-        4.025760559915e-02,
-        3.123874611989e-02,
-        2.079197729425e-02,
-        2.729299644645e-02,
-        1.577328503137e-03,
-        8.683198239241e-05,
-    ),
-    ("sevoflurane", 3600.0): (
-        4.422039687838e-02,
-        3.847294104360e-02,
-        3.143196126019e-02,
-        3.835681352007e-02,
-        1.247902658888e-02,
-        8.045341692331e-04,
-    ),
-    ("isoflurane", 60.0): (
-        1.979275146964e-02,
-        6.441936303286e-03,
-        5.335500872761e-04,
-        1.045457731264e-03,
-        2.353350586342e-05,
-        1.150313301100e-06,
-    ),
-    ("isoflurane", 600.0): (
-        3.621765712693e-02,
-        2.308068766848e-02,
-        1.529469912545e-02,
-        2.008177817553e-02,
-        1.215446550205e-03,
-        6.105232823475e-05,
-    ),
-    ("isoflurane", 3600.0): (
-        4.060474208595e-02,
-        3.125284339208e-02,
-        2.551995533573e-02,
-        3.110339539171e-02,
-        1.033137432265e-02,
-        6.121306232910e-04,
-    ),
     ("desflurane", 60.0): (
-        2.028550884796e-02,
-        9.292959011639e-03,
-        8.572600142666e-04,
-        1.714238180046e-03,
-        4.700857162940e-05,
-        2.669526827988e-06,
+        2.028404136125e-02,
+        9.281420915853e-03,
+        7.876663535405e-04,
+        1.712991053952e-03,
+        4.697597715896e-05,
+        2.667678019825e-06,
     ),
     ("desflurane", 600.0): (
-        4.319496696587e-02,
-        3.708234760364e-02,
-        2.635985307152e-02,
-        3.427474978569e-02,
-        2.972407088435e-03,
-        1.757698256264e-04,
+        4.315734014009e-02,
+        3.701331546615e-02,
+        2.624076126831e-02,
+        3.419351995732e-02,
+        2.964053373816e-03,
+        1.752741904675e-04,
     ),
     ("desflurane", 3600.0): (
-        4.644343377577e-02,
-        4.291955929134e-02,
-        3.625893454198e-02,
-        4.282995338758e-02,
-        2.018382284900e-02,
-        1.530341647925e-03,
+        4.644102032938e-02,
+        4.291476330144e-02,
+        3.624964893542e-02,
+        4.282507191783e-02,
+        2.017390576721e-02,
+        1.529418023790e-03,
+    ),
+    ("isoflurane", 60.0): (
+        1.979040100781e-02,
+        6.424722270858e-03,
+        4.911457693498e-04,
+        1.043825468899e-03,
+        2.349820689350e-05,
+        1.148589299382e-06,
+    ),
+    ("isoflurane", 600.0): (
+        3.617208687621e-02,
+        2.299235500822e-02,
+        1.518165093660e-02,
+        1.999176551660e-02,
+        1.209506966652e-03,
+        6.075357967569e-05,
+    ),
+    ("isoflurane", 3600.0): (
+        4.059930022549e-02,
+        3.124202237121e-02,
+        2.550585450351e-02,
+        3.109232234677e-02,
+        1.031870464760e-02,
+        6.112932730743e-04,
+    ),
+    ("sevoflurane", 60.0): (
+        2.012553561074e-02,
+        8.326553885664e-03,
+        5.694784215021e-04,
+        1.234707386216e-03,
+        2.706958058365e-05,
+        1.452557155924e-06,
+    ),
+    ("sevoflurane", 600.0): (
+        4.021622895670e-02,
+        3.116010711424e-02,
+        2.067189318209e-02,
+        2.720937451485e-02,
+        1.572056775422e-03,
+        8.654143975784e-05,
+    ),
+    ("sevoflurane", 3600.0): (
+        4.421751882173e-02,
+        3.846721653957e-02,
+        3.142276440079e-02,
+        3.835095586380e-02,
+        1.246988460300e-02,
+        8.038704080644e-04,
     ),
 }
 
@@ -824,7 +831,7 @@ def _build_derivative(agent_id: str, point: OperatingPoint) -> Derivative:
     )
 
     alveolar_volume_l = patient.alveolar_gas_volume_l
-    venous_volume_l = patient.venous_blood_volume_l
+    venous_volume_l = patient.venous_pool_volume_l
 
     fresh_gas_l_s = point.fresh_gas_flow_l_min / SECONDS_PER_MINUTE
     ventilation_l_s = point.alveolar_ventilation_l_min / SECONDS_PER_MINUTE
