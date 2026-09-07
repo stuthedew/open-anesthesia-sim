@@ -24,10 +24,15 @@ instant perform the identical sequence of operations and agree bit for bit.
 `evaluate` is the display path: inside one segment it reuses a single
 propagator across uniformly spaced columns, which is what makes a frame cheap
 and which composes those operations in a different order. The two therefore
-agree to floating-point composition rather than exactly. `PL-P1Z3` states that
-separation as a guarantee in `docs/MODEL.md` and gates it; until it lands,
-treat a value from `evaluate` as fit for drawing and not for storing, forking
-or exporting.
+agree to floating-point composition rather than exactly.
+
+`docs/MODEL.md` § "The canonical evaluation rule" states that separation as a
+guarantee: every stored, exported, replayed or forked value is taken
+canonically, and a display value may be drawn and nothing else. **This module
+enforces the rule rather than describing it.** `evaluate` returns its states
+wrapped in `DisplayState`, which is not a state vector and which the canonical
+entry points refuse by name, so a display value cannot reach a keyframe, an
+export or a fork's opening state by being the same shape as one.
 
 This module carries no compartment names, no units and no interface concepts:
 it composes the propagators `matrix_exponential` produces from the matrices
@@ -98,6 +103,31 @@ class ScoreSegment:
 
 
 @dataclass(frozen=True, slots=True)
+class DisplayState:
+    """A state the display path produced, which the canonical path will not take back.
+
+    A wrapper rather than a bare tuple, and deliberately not a tuple subclass:
+    the separation `docs/MODEL.md` § "The canonical evaluation rule" states has
+    to hold at sinks that have never heard of this class - an exporter, a save
+    format, a fork - and only a value that is structurally not a state vector
+    is refused by all of them. A subclass would pass every one of those
+    silently and be caught by exactly the checks somebody remembered to write.
+
+    Unwrapping is therefore explicit, and that is the point: `values` is the
+    line where a reader can see a drawing value being taken out of the one
+    container that says what it is.
+
+    Attributes:
+        values: The trajectory in `governing_equations`' own state order,
+            `STATE_SIZE` entries long. Equal to the canonical state at the
+            same instant to floating-point composition, not exactly; the
+            measured separation is in `docs/MODEL.md`.
+    """
+
+    values: tuple[float, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class SampledWindow:
     """The states at a run of uniformly spaced instants, for drawing.
 
@@ -110,15 +140,15 @@ class SampledWindow:
 
     Attributes:
         times_s: The instants sampled, ascending, in seconds.
-        states: One entry per instant, each `STATE_SIZE` long, in
-            `governing_equations`' state order.
+        states: One entry per instant, each a `DisplayState` carrying
+            `STATE_SIZE` values in `governing_equations`' state order.
 
     Raises:
         SimulationConfigurationError: If the two are not the same length.
     """
 
     times_s: tuple[float, ...]
-    states: tuple[tuple[float, ...], ...]
+    states: tuple[DisplayState, ...]
 
     def __post_init__(self) -> None:
         if len(self.times_s) != len(self.states):
@@ -164,9 +194,12 @@ class RunScore:
                 which is zero for a run that has delivered nothing.
 
         Raises:
-            SimulationConfigurationError: `initial_state` is not `STATE_SIZE`
-                long, holds a non-finite value, or does not carry exactly one
-                in `UNIT_STATE`. The last is what makes every forcing term in
+            SimulationConfigurationError: `initial_state` came from the
+                display path, is not `STATE_SIZE` long, holds a non-finite
+                value, or does not carry exactly one in `UNIT_STATE`. The
+                first is a fork opening from a drawing value, which
+                `docs/MODEL.md` § "The canonical evaluation rule" refuses;
+                the last is what makes every forcing term in
                 `build_system_matrix` mean what it says; a state that carried
                 anything else there would scale the whole of the delivery term
                 without changing any setting a reader can see.
@@ -268,7 +301,14 @@ class RunScore:
         `elapsed_s` falls in, over the interval between them. Two calls with
         the same argument on the same score perform the identical sequence of
         operations, so they return bit-identical values; this is the path a
-        keyframe, an export or a fork's starting state is taken from.
+        keyframe, an export or a fork's starting state is taken from, and
+        `docs/MODEL.md` § "The canonical evaluation rule" is the guarantee it
+        carries.
+
+        It is a function of the score and of nothing else - no cache, no
+        memory of what was asked before - so a run queried at arbitrary
+        instants as it goes answers identically to the same run never queried
+        at all. `tests/reference/test_canonical_evaluation.py` gates that.
 
         Raises:
             SimulationConfigurationError: `elapsed_s` is not finite, is
@@ -293,7 +333,9 @@ class RunScore:
 
         What that buys costs bit-identity: chaining composes the same
         operations in a different order from `state_at`. Values from here are
-        for drawing; see the module docstring.
+        for drawing, and come back as `DisplayState` so that they cannot be
+        stored, exported or forked from by being the same shape as a canonical
+        state; see the module docstring.
 
         Args:
             start_s: The window's first instant, in seconds.
@@ -344,7 +386,7 @@ class RunScore:
 
             column = last + 1
 
-        return SampledWindow(times_s=times_s, states=tuple(states))
+        return SampledWindow(times_s=times_s, states=tuple(DisplayState(state) for state in states))
 
     def _canonical_state_at(self, elapsed_s: float) -> tuple[float, ...]:
         """`state_at` without the bounds check, for the keyframe path.
@@ -489,13 +531,27 @@ def _advanced(propagator: Matrix | None, state: tuple[float, ...]) -> tuple[floa
     return tuple(advanced)
 
 
-def _require_state(state: tuple[float, ...]) -> None:
+def _require_state(state: tuple[float, ...] | DisplayState) -> None:
     """Refuse a state vector the equations could not be read against.
 
+    The display value is refused first and by name. It would otherwise fail on
+    the length check with a message about the equations, which is true and
+    tells the reader nothing about what they did wrong - and the error a
+    safety-critical path raises is part of what makes it auditable.
+
     Raises:
-        SimulationConfigurationError: `state` is not `STATE_SIZE` long, holds
-            a non-finite value, or does not carry exactly one in `UNIT_STATE`.
+        SimulationConfigurationError: `state` came from the display path, or is
+            not `STATE_SIZE` long, holds a non-finite value, or does not carry
+            exactly one in `UNIT_STATE`.
     """
+
+    if isinstance(state, DisplayState):
+        raise SimulationConfigurationError(
+            "this state came from the display path, which composes its arithmetic in a "
+            "different order and so does not reproduce the canonical value bit for bit; "
+            "a state that is stored, exported, replayed or forked from is taken from "
+            "state_at"
+        )
 
     if len(state) != STATE_SIZE:
         raise SimulationConfigurationError(
