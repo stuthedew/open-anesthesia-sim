@@ -3,11 +3,12 @@ id: PL-D188
 title: A brief written into an untriaged item is appended below docket new's template rather than replacing it, so the dead stub survives to triage
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-05
+closed: 2026-09-07
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -rq 'def test_a_brief_written_into_a_captured_item_leaves_no_template_above_it' subprojects/docket/tests
 ---
 

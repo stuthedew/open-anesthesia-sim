@@ -864,11 +864,15 @@ def format_triage(report: Report, config: Config, flight: FlightReport | None = 
             )
             lines.append("  here is a second resolution of the same file, so skip it.")
         lines.append(f"  unset: {_unset(item)}")
-        missing, empty = brief_gaps(item.body)
+        missing, empty, stub = brief_gaps(item.body)
         if missing:
             lines.append(f"  brief still missing: {', '.join(missing)}")
         if empty:
             lines.append(f"  brief has nothing under: {', '.join(empty)}")
+        if stub:
+            lines.append(f"  the capture template is still above the brief: {stub} is empty")
+            lines.append("  and a second **Problem.** starts below it - delete the template's")
+            lines.append("  headings, and the brief beneath them is the item.")
         declared = _declared(item)
         if declared:
             lines.append(f"  declared: {declared}")

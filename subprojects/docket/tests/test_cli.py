@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from docket.checks import brief_gaps
 from docket.cli import build_parser, main, merge_shared
 from docket.vcs import lost, records_on_base
 from docket.verify import LANDED_GUARD
@@ -73,6 +74,100 @@ def test_a_captured_idea_needs_no_priority(tmp_path: Path) -> None:
     _run("new", "Half an idea", "--items", str(store))
 
     assert _run("check", "--items", str(store)) == 0
+
+
+def test_a_brief_written_into_a_captured_item_leaves_no_template_above_it(tmp_path: Path) -> None:
+    """`PL-D188`: capture writes the one line that is true, so appending composes.
+
+    A session holding the brief appends it below what capture wrote. That is
+    the operation it was performing when it stranded the four-heading template,
+    and it is now the correct one - what is left is a well-formed brief rather
+    than a dead stub above one, with nothing to delete before `check` reads the
+    item the way its author wrote it.
+    """
+    store = _store(tmp_path)
+    assert _run("new", "The induction curve looks wrong at low flows", "--items", str(store)) == 0
+
+    captured = next(store.glob("*.md"))
+    body = captured.read_text(encoding="utf-8")
+    assert body.rstrip().endswith("**Problem.** The induction curve looks wrong at low flows")
+    assert "**Why it matters.**" not in body
+
+    captured.write_text(
+        body
+        + "\n**Why it matters.** It is the first curve a resident is shown.\n"
+        + "\n**Where.** The uptake model.\n"
+        + "\n**Done when.** It matches the published case.\n",
+        encoding="utf-8",
+    )
+
+    assert _run("check", "--items", str(store)) == 0
+    assert captured.read_text(encoding="utf-8").count("**Problem.**") == 1
+
+
+def test_new_seed_is_not_double_written(tmp_path: Path) -> None:
+    """`PL-JL2M`: a seed carrying no empty heading is one no brief can be stranded above.
+
+    Two candidates were on the table - a seed that cannot be double-written,
+    and a checker tolerating the double write by accepting any occurrence with
+    text under it. The first is preferred because it removes the failure rather
+    than detecting it afterwards, and because the second would pass a stub
+    whose real brief was never written. What holds it is this: the seed carries
+    no heading with nothing under it, so an appended brief has nothing to
+    strand, and the sections it has yet to supply report as honestly missing.
+    """
+    store = _store(tmp_path)
+    assert _run("new", "A seed that cannot strand a brief", "--items", str(store)) == 0
+
+    body = next(store.glob("*.md")).read_text(encoding="utf-8").split("---\n")[2]
+    missing, empty, stub = brief_gaps(body)
+
+    assert empty == []
+    assert stub is None
+    assert missing == ["**Why it matters.**", "**Done when.**"]
+
+
+CAPTURED_OVER_A_TEMPLATE = """---
+id: PL-U3U3
+title: An idea briefed underneath the headings capture used to write
+status: untriaged
+added: 2026-08-20
+---
+
+**Problem.** An idea briefed underneath the headings capture used to write
+
+**Why it matters.**
+
+**Where.**
+
+**Done when.**
+
+**Problem.** The real brief, written below the template rather than over it.
+
+**Why it matters.** The stub is what the checker reads.
+
+**Done when.** The stub is gone.
+"""
+
+
+def test_a_stub_left_above_a_brief_fails_the_check_while_the_item_is_untriaged(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-D188`: caught in the session that wrote it, not at a triage pass weeks on.
+
+    The brief checks exempt an untriaged capture, and rightly - demanding a
+    brief at the moment an idea occurs is how ideas stop being written down.
+    This one is exempt from that exemption because it demands nothing: writing
+    less can never trigger it, only writing a brief and leaving a template
+    above it. `make docket` is what a session runs after editing the store, so
+    the shape is reported to the session that created it.
+    """
+    store = _store(tmp_path, CAPTURED_OVER_A_TEMPLATE)
+
+    assert _run("check", "--items", str(store)) == 1
+    output = capsys.readouterr().out
+    assert "the capture template is still above the brief" in output
+    assert "brief has nothing under" not in output
 
 
 def test_check_exits_nonzero_on_a_broken_store(tmp_path: Path) -> None:
@@ -849,6 +944,17 @@ def test_triage_reads_the_brief_exactly_as_the_checker_will(
 
     assert "brief has nothing under: **Why it matters.**, **Done when.**" in output
     assert "brief still missing" not in output
+
+
+def test_triage_names_the_stub_rather_than_reporting_an_empty_section(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """One author for the rule, so `triage` and `check` cannot disagree about it."""
+    _triage(tmp_path, CAPTURED_OVER_A_TEMPLATE)
+    output = capsys.readouterr().out
+
+    assert "the capture template is still above the brief" in output
+    assert "brief has nothing under:" not in output
 
 
 def test_triage_states_the_rules_the_answers_must_satisfy(

@@ -75,20 +75,72 @@ def _section_text(body: str, marker: str) -> str | None:
     return body[start : end.start() if end else len(body)].strip()
 
 
-def brief_gaps(body: str, *, blocked: bool = False) -> tuple[list[str], list[str]]:
-    """The required sections a brief lacks, as absent ones and empty ones.
+def _stub_above_brief(body: str) -> str | None:
+    """The empty template heading a real brief was written underneath, if there is one.
+
+    `docket new` used to write four empty headings for a session to write over,
+    and a session holding the brief appended it *below* them instead - eighteen
+    of the thirty-two items at the triage pass of 2026-09-05, fifteen of those
+    carrying a full brief under a dead stub. `_section_text` judges the first
+    matching heading, so the stub wins and the item reads as having nothing
+    under two required sections however good the brief beneath it is
+    (queue item `PL-D188`).
+
+    The shape is decidable: a required heading left empty, with a `**Problem.**`
+    starting again below it, which is what a second brief begins with. Measured
+    over all 657 items in the store it selected the six carrying the stub and
+    nothing else. An elaborated heading is not a false positive - `**Why it
+    matters more than a normal benchmark.**` opens a section of its own and
+    leaves the plain one above it non-empty.
+
+    It may fire on an `untriaged` item, where the brief checks deliberately do
+    not, because it demands nothing that capture chose not to write: writing
+    less can never trigger it. Only writing a brief and leaving the template
+    above it can.
+    """
+    for marker in (*REQUIRED_BRIEF, DONE_WHEN):
+        heading = re.search(rf"^{re.escape(marker.removesuffix('.**'))}", body, re.MULTILINE)
+        if heading is None or _section_text(body, marker) != "":
+            continue
+        if re.search(r"^\*\*Problem", body[heading.end() :], re.MULTILINE):
+            return marker
+    return None
+
+
+def stub_error(where: str, marker: str) -> str:
+    """One wording for the shape, wherever it is reported."""
+    return (
+        f"{where}: the capture template is still above the brief written under it - "
+        f"{marker} is empty and a second **Problem.** starts below it. Delete the "
+        "template's headings; the brief beneath them is the item. Left in place, the "
+        "empty heading is the one the checker reads, so an item with a full brief "
+        "reports as having none"
+    )
+
+
+def brief_gaps(body: str, *, blocked: bool = False) -> tuple[list[str], list[str], str | None]:
+    """The required sections a brief lacks: absent, empty, and a stub left above it.
 
     One author for the rule, because two had already drifted: `check` errored
     on the sections an item was missing while `triage` printed its own reading
     of the same three markers, and the README promises a reader those two
     cannot disagree. A blocked item is not asked for `**Done when.**` - it
     cannot state its closing condition until its blocker resolves.
+
+    A stub replaces the empty-heading list rather than adding to it. Both
+    describe the same defect and only one of them describes it correctly:
+    "brief has nothing under **Why it matters.**" is false of an item whose
+    brief is two pages, and a reader who learns that line can be wrong stops
+    reading it. Reporting one at a time loses nothing - delete the stub, and a
+    section the brief genuinely omits is reported on the next run as missing.
     """
     required = list(REQUIRED_BRIEF) + ([] if blocked else [DONE_WHEN])
     found = {marker: _section_text(body, marker) for marker in required}
+    stub = _stub_above_brief(body)
     return (
         [marker for marker, text in found.items() if text is None],
-        [marker for marker, text in found.items() if text == ""],
+        [] if stub else [marker for marker, text in found.items() if text == ""],
+        stub,
     )
 
 
@@ -196,6 +248,8 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 f"{where}: no body; a title alone cannot be triaged by someone "
                 "who was not there when it was captured"
             )
+        elif stub := _stub_above_brief(item.body):
+            report.errors.append(stub_error(where, stub))
         return
 
     if item.status in OPEN_STATUSES:
@@ -203,7 +257,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             report.errors.append(f"{where}: no priority; expected one of {', '.join(PRIORITIES)}")
         if item.effort not in EFFORTS:
             report.errors.append(f"{where}: no effort; expected one of {', '.join(EFFORTS)}")
-        missing, empty = brief_gaps(item.body, blocked=item.status == "blocked")
+        missing, empty, stub = brief_gaps(item.body, blocked=item.status == "blocked")
         if missing:
             report.errors.append(f"{where}: brief is missing {', '.join(missing)}")
         if empty:
@@ -212,6 +266,8 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 "is there and the section is not, which is what the brief exists "
                 "to prevent"
             )
+        if stub:
+            report.errors.append(stub_error(where, stub))
 
     # The `verify:` gate sits at `ready` rather than at capture, and the
     # placement is the whole of the rule. Demanding a command at the moment an

@@ -162,6 +162,14 @@ if the context is live and worth keeping — it is expensive to reconstruct
 later and cheap to write now — but never let a missing brief stop the
 capture.
 
+**Append the brief below what capture wrote, rather than writing a second
+problem statement above or around it.** Capture writes one line — the title
+under a `**Problem.**` — precisely so that appending is the correct operation,
+and the fuller sections elaborate the statement already there. `docket check`
+errors where a required heading is left empty with a `**Problem.**` starting
+again below it, which is the shape an older four-heading template produced and
+which reads as an item with no brief at all (`PL-D188`).
+
 **A finding that completes a frozen or in-progress item is not a new item.**
 When work turns up something such an item needs in order to be properly
 finished, the two are worked together - one branch, closed together - rather

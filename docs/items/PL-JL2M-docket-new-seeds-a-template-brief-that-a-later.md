@@ -3,11 +3,12 @@ id: PL-JL2M
 title: docket new seeds a template brief that a later-written brief appends to rather than replaces, leaving empty required headings that block triage
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/checks.py
 added: 2026-09-02
+closed: 2026-09-07
 verify: uv run pytest subprojects/docket/tests/test_store.py && grep -rq 'def test_new_seed_is_not_double_written' subprojects/docket/tests
 ---
 
