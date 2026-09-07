@@ -1,8 +1,25 @@
 ---
 id: PL-B1DQ
 title: A v0.4.8 tag exists on a commit whose pyproject says 0.4.7 and whose ROADMAP has no v0.4.8 row, so doc_check errors in every clone that holds the tag
-status: untriaged
+status: dropped
 added: 2026-09-07
+closed: 2026-09-07
+reason: >-
+  Duplicate of PL-LT77, which is the same condition diagnosed one layer down
+  and correctly. The premise below is wrong: `main` is not red. `v0.4.8` was
+  pushed onto b03a7d03 and then deleted from origin, and `git fetch --tags`
+  does not prune, so the tag survives in every checkout that fetched it before
+  the deletion - this one included - while `git ls-remote` shows it gone.
+  `doc_check` reads local tags, so it reports "git holds v0.4.8" of the
+  checkout in wording that reads as a claim about the repository, which is the
+  defect PL-LT77 names. Four items had already captured the same symptom
+  independently (PL-LT77, and PL-6YYR, PL-BKDP and PL-KFWL, each stranded on
+  an unmerged branch); this was the fifth, and a fifth is queue noise rather
+  than coverage. The one idea here PL-LT77 does not carry, recorded so it is
+  not lost with the item: `bin/docket release` already refuses to cut while
+  the previous release is untagged, and the inverse - a tag naming a version
+  no release cut - is equally decidable and currently guarded by nothing at
+  the moment somebody tags.
 ---
 
 **Problem.** A v0.4.8 tag exists on a commit whose pyproject says 0.4.7 and whose ROADMAP has no v0.4.8 row, so doc_check errors in every clone that holds the tag
