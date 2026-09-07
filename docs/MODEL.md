@@ -1435,6 +1435,49 @@ Answering "where does this constant come from?" with Gas Man, or with a paper
 that reports Gas Man's table, states a tier-3 provenance as though it were a
 measurement, and is the same error made in conversation instead of in a file.
 
+**The first and third of those rules are now schema, and `make check` decides
+them.** Data files moved to `schema_version` 2 on 2026-09-07 (`PL-1JDD`).
+Every `sources` entry carries two new required fields, and a data file may
+carry one new optional top-level string. They are written as a list rather
+than a table because the provenance table below is found as the first table in
+this section, and a second one above it would be read in its place:
+
+- `tier`, on each `sources` entry: `primary`, `secondary` or
+  `reference-implementation` — which of the three tiers above the *document*
+  is.
+- `adopted`, on each `sources` entry: whether this file names that source as
+  the authority for a value it stores.
+- `provenance_gap`, optional and top level: why no primary source has been
+  adopted, where none has been.
+
+`tools/doc_check.py`'s `check_source_tiers` holds two exact rules: every entry
+declares a tier from the closed vocabulary and an `adopted` flag, and a file
+with no entry that is both `primary` and `adopted` records a non-empty
+`provenance_gap`. Both fail the build rather than raising an advisory, because
+neither needs any context to decide. `src/anesthesia_sim/core/parameters.py`
+validates the same vocabulary at load, so a bad tier fails when the file is
+read rather than when the checker next runs.
+
+**`tier` and `adopted` are two fields because one would decide nothing.** Every
+agent file cites primary measurements it has explicitly *not* adopted, and so
+does the reference patient — it cites five. A check reading the tier alone
+would therefore report all four of this project's data files as
+primary-sourced, on the same day this document records that 26 of its 29 rows
+are tier 3. That is the second rule above, arriving as the exact failure it
+exists to prevent, so the check has to read the adoption rather than the
+citation list. As it stands, the three agent files each declare two adopted
+primary sources — `mac_awake` and the vaporizer maximum — and
+`src/anesthesia_sim/data/patients/reference_adult.json` declares none and
+carries the gap.
+
+**What the check does not decide is whether a citation labelled `primary`
+really is one.** That needs somebody who has read the paper, and a tool
+guessing at it — by author, by journal, by a keyword denylist on a product
+name — would be authoritative and wrong. The tool checks that a claim was made
+and is well-formed; a reviewer checks that it is true. It is the same split the
+provenance table below already runs on: the checker decides that a documented
+key exists and holds the stated value, never that the value is right.
+
 The following table records the values selected for v0.1.0. Each value is
 loaded and schema-validated from a versioned data file rather than
 hardcoded; full citations, definitions, and reference conditions are

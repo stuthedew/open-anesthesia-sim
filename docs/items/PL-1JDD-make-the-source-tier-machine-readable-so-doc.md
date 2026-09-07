@@ -3,13 +3,14 @@ id: PL-1JDD
 title: Make the source tier machine-readable so doc_check can decide it
 priority: P1
 effort: M
-status: ready
+status: done
 classes: infra, science
 feature: model-spec-accuracy
-touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, tools/doc_check.py, docs/MODEL.md, tests/unit/test_parameters.py
+touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, tools/doc_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/unit/test_parameters.py, tests/unit/test_doc_check.py, tests/reference/test_sevo_patient.py
 blocked-by: PL-6Q8N, PL-D6LX
 added: 2026-09-03
-verify: uv run pytest tests/unit/test_parameters.py && python3 tools/doc_check.py check && grep -q source_tiers tools/doc_check.py && python3 -c "import json,glob,sys; t={'primary','secondary','reference-implementation'}; f=glob.glob('src/anesthesia_sim/data/**/*.json',recursive=True); d=[json.load(open(p)) for p in f]; sys.exit(0 if d and all(x['schema_version']==2 and all(s.get('tier') in t for s in x['sources']) for x in d) else 1)"
+closed: 2026-09-07
+verify: uv run pytest tests/unit/test_parameters.py tests/unit/test_doc_check.py && python3 tools/doc_check.py check && grep -q check_source_tiers tools/doc_check.py && python3 -c "import json,glob,sys; t={'primary','secondary','reference-implementation'}; f=sorted(glob.glob('src/anesthesia_sim/data/**/*.json',recursive=True)); d=[json.load(open(p)) for p in f]; sys.exit(0 if d and all(x['schema_version']==2 and all(s.get('tier') in t and isinstance(s.get('adopted'),bool) for s in x['sources']) and (any(s['tier']=='primary' and s['adopted'] for s in x['sources']) or (x.get('provenance_gap') or '').strip()) for x in d) else 1)"
 ---
 
 **Problem.** `docs/MODEL.md` § "Source hierarchy" now states which sources may
@@ -98,3 +99,60 @@ tier from the closed vocabulary; every data file declares a `primary` source
 or a `provenance_gap`; `check_source_tiers` fails on a missing or unknown
 tier and on a file with neither; `schema_version` is 2 and the change is
 recorded in `docs/MODEL.md`; and `make check` passes.
+
+
+**Built 2026-09-07, with rule 2 tightened from what this brief specified, and
+the tightening is the finding.** The rule as written above — *does this data
+file have at least one source declared `primary`, or an explicit recorded
+gap?* — is satisfied by all four of this project's data files today, with no
+gap statement written anywhere, including by
+`src/anesthesia_sim/data/patients/reference_adult.json`, whose absent
+provenance is the reason this item exists. Every agent file cites primary
+measurements it has explicitly *not* adopted (Strum and Eger, Yasuda, Lerman),
+and the reference patient cites five of them (Hudgel, Cattermole, Janssen,
+Heinonen, Couto da Silva). A check reading the tier alone would have gone green
+on all four on its first run and reported them as primary-sourced, which is
+`docs/MODEL.md`'s **second** rule arriving as the exact failure it exists to
+prevent — a file that looks sourced while the number in it came from somewhere
+else.
+
+The brief's rule 2 is a paraphrase of that document's **third** rule, and the
+word it drops is the load-bearing one: *"Where no primary source has been
+adopted, record that as an open gap."* Adoption is declared data exactly as
+the tier is, and just as mechanical to check, so the fix is a second required
+field rather than any judgment moving into the tool:
+
+- `tier` on each `sources` entry classifies the **document** — the closed
+  vocabulary this brief names.
+- `adopted` on each entry says whether this file names that source as the
+  **authority for a value it stores**.
+
+Two orthogonal facts, which is what the prose notes in the data files were
+already carrying in the phrase "Tier 1, primary measurement, cited but not
+adopted". `check_source_tiers` then reads: every entry declares a tier in the
+vocabulary and a boolean `adopted`, and a file with no entry that is both
+`primary` and `adopted` carries a non-empty `provenance_gap`. Under that rule
+the three agent files pass on two genuinely adopted primary sources each
+(`mac_awake` and the vaporizer maximum) and `reference_adult.json` requires
+the gap, which is the outcome the brief's "Done when" describes and its rule 2
+would not have produced.
+
+Nothing else in the approach changed, and the tool still decides nothing about
+whether a citation labelled `primary` really is one — item 3 of "the decidable
+half" above stands as written. Reverting to the brief's literal rule 2 is one
+line in `check_source_tiers` and the `adopted` field can stay; the gap
+statements would then be unenforced rather than wrong.
+
+**Three findings captured rather than fixed here**, all surfaced by this work:
+`PL-K997` (a second markdown table under `## Parameter provenance` is read as
+the provenance table), `PL-FJGY` (the source hierarchy says tier 2 may never
+be the authority for a stored value, and `venous_pool_volume_l` adopts one),
+and `PL-LM8P` (`.claude/rules/citing-sources.md` counts twenty-six `sources`
+entries where there are thirty-five).
+
+One correction rode the data-file edit rather than being filed: the Davis and
+Mapleson entry in `reference_adult.json` opened "Tier 2, published model
+quantification, CITED BUT NOT ADOPTED" and then said "ADOPTED 2026-09-07 ON
+THE PROJECT OWNER'S DECISION" four sentences later. Writing `adopted: true`
+onto an entry whose prose says the opposite is the correct-number-wrong-label
+failure, so the stale opener went with it.

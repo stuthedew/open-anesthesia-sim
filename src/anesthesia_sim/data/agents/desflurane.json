@@ -1,5 +1,5 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "id": "desflurane",
     "display_name": "Desflurane",
     "blood_gas_partition_coefficient": 0.42,
@@ -19,47 +19,66 @@
         {
             "citation": "De Wolf AM, Van Zundert TC, De Cooman S, Hendrickx JF. Theoretical effect of hyperventilation on speed of recovery and risk of rehypnotization following recovery - a Gas Man simulation. BMC Anesthesiology. 2012;12:22.",
             "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3502091/",
+            "tier": "reference-implementation",
+            "adopted": true,
             "note": "Tier 3, reference implementation (see docs/MODEL.md, 'Source hierarchy'). Table 1 reports the Gas Man desflurane blood:gas and tissue:gas coefficients used here, in the same table already cited for sevoflurane. De Wolf et al. ran Gas Man simulations and measured no coefficient: Table 1 is the parameter set they supplied to it, so this is the Gas Man set carrying a journal's name rather than a measurement. It is the source of the stored values."
         },
         {
             "citation": "Eger EI II. Partition coefficients of I-653 in human blood, saline, and olive oil. Anesthesia & Analgesia. 1987;66(10):971-973.",
             "url": "https://pubmed.ncbi.nlm.nih.gov/3631593/",
+            "tier": "primary",
+            "adopted": false,
             "note": "Tier 1, primary measurement, cited but not adopted. Human study reporting a blood:gas coefficient of 0.424 +/- 0.024 (mean +/- SD) at 37 degrees C in 11 ASA I-III patients aged 25-76, for I-653 (desflurane's development code name). The stored value 0.42 is the Gas Man figure and is 0.9 percent lower - the closest agreement of the three agents. PL-D6LX carries the decision."
         },
         {
             "citation": "Yasuda N, Targ AG, Eger EI II. Solubility of I-653, sevoflurane, isoflurane, and halothane in human tissues. Anesthesia & Analgesia. 1989;69(3):370-373.",
             "url": "https://pubmed.ncbi.nlm.nih.gov/2774233/",
+            "tier": "primary",
+            "adopted": false,
             "note": "Tier 1, primary measurement, cited but not adopted. Human tissue study reporting an I-653 (desflurane) brain:blood partition coefficient of 1.29 +/- 0.05 at 37 degrees C. The stored tissue:gas values are Gas Man's; dividing vessel_rich by blood:gas gives an implied brain:blood of 0.54/0.42 = 1.286, 0.3 percent below Yasuda's measurement. Same paper already cited for sevoflurane's and isoflurane's tissue-solubility models, where the group-weighting obstacle to adopting it is recorded."
         },
         {
             "citation": "Johnston RV, Andrews JJ, Deyo DJ, Trahan LA, Savrick MD, Grady JJ, Prough DS. The effects of carrier gas composition on the performance of the Tec 6 desflurane vaporizer. Anesthesia & Analgesia. 1994;79(3):548-552.",
             "url": "https://pubmed.ncbi.nlm.nih.gov/8067562/",
+            "tier": "primary",
+            "adopted": true,
             "note": "Primary source for a device capability: docs/MODEL.md's source hierarchy concerns measured physiologic quantities, and a calibrated dial maximum is not one. Tec 6 vaporizer output was analyzed at all integer dial settings from 1% to 18%, confirming 18% as the device's calibrated maximum. Used here as max_delivered_concentration_percent. This is a device-capability limit on the delivered-concentration control, not a scientific model parameter; it does not affect the governing equations."
         },
         {
             "citation": "Nickalls RWD, Mapleson WW. Age-related iso-MAC charts for isoflurane, sevoflurane and desflurane in man. British Journal of Anaesthesia. 2003;91(2):170-174.",
             "url": "https://doi.org/10.1093/bja/aeg132",
+            "tier": "secondary",
+            "adopted": false,
             "note": "The stored mac_percent is tier 3: it is the flat adult MAC De Wolf et al. state they used in their Gas Man simulations, not a value taken from this paper. Nickalls and Mapleson is cited but not adopted. It is tier 2, not tier 1 - its own abstract states the charts \"are based on Mapleson's meta-analysis (1996) of the available MAC data\", so it synthesises measurements rather than making one, and docs/MODEL.md's source hierarchy does not admit tier 2 as the authority for a stored value. It is also age-related, and this project's reference-adult model has no age parameter, so mac_percent uses the flat adult value from De Wolf et al. above (same paper already cited for partition coefficients: 'MAC values that we used in our Gas Man simulations are: desflurane 6%, sevoflurane 2%, isoflurane 1.2%'). Used as the controller's starting delivered-concentration default (1 MAC) and as the divisor of the interface's MAC-multiple display unit; it is not a governing-equation parameter and no equation in core/ reads it. See docs/MODEL.md, 'MAC multiples as a display unit' and 'Delivery-limit and MAC parameters'."
         },
         {
             "citation": "Mapleson WW. Effect of age on MAC in humans: a meta-analysis. British Journal of Anaesthesia. 1996;76(2):179-185.",
             "url": "https://doi.org/10.1093/bja/76.2.179",
+            "tier": "secondary",
+            "adopted": false,
             "note": "Tier 2, secondary synthesis, cited but not adopted; the source of the age-40 MAC this project's stored value is measured against. Regression of a comprehensive literature survey, reporting MAC at age 40 as 6.6 percent for desflurane (95% confidence limits about plus or minus 7 percent for isoflurane and sevoflurane and 10 percent for desflurane), and MAC falling about 6 percent per decade of age. The stored mac_percent of 6 percent is 9.1 percent lower. Not adopted for two reasons: a meta-analysis measures nothing and is tier 2 under docs/MODEL.md's source hierarchy, which admits only tier 1 as the authority for a stored value; and every other parameter in this model is the Gas Man set, so a Mapleson divisor over a Gas Man trajectory would make each displayed MAC multiple a ratio between two parameter lineages. The consequence is displayed and disclosed rather than silently absorbed: against this source the interface's MAC multiples for desflurane read 10 percent high, and because the sevoflurane and desflurane errors run in opposite directions a cross-agent comparison at '1 MAC' is displaced by about 22 percent. docs/MODEL.md, 'Known limitations', carries that; ROADMAP.md's planned-milestone item 31 is the route to primary values."
         },
         {
             "citation": "Chortkoff BS, Eger EI II, Crankshaw DP, Gonsowski CT, Dutton RC, Ionescu P. Concentrations of desflurane and propofol that suppress response to command in humans. Anesthesia & Analgesia. 1995;81(4):737-743.",
             "url": "https://doi.org/10.1097/00000539-199510000-00014",
+            "tier": "primary",
+            "adopted": true,
             "note": "Tier 1, primary measurement, and the source of the stored mac_awake. 22 male volunteers studied twice; MAC-awake for desflurane 2.60 +/- 0.46 percent, which the paper itself expresses as \"36% of MAC\". The stored value is that published *fraction*, 0.36, not the absolute 2.60 percent: Chortkoff's percent is anchored to a MAC of about 7.25 percent (Rampil 1991, 18-30 yr), while this project's mac_percent is Rampil's 31-65 yr figure of 6.0, so dividing the absolute value by the stored MAC would give 0.433 - 20 percent high, and in the direction that draws the band too high and teaches a later wake-up than the literature supports. Storing the fraction is what removes that trap. The standard deviation is derived rather than published as a fraction: 0.46 / 7.25 = 0.063. Song 2005's control arm gives 0.25 / 6.0 = 0.042; the wider figure is stored so the band does not understate the population spread. MAC-awake was determined by ascending stepwise equilibration, where Katoh's sevoflurane and isoflurane values are descending; both are equilibrated determinations rather than fast-washout ones, which is why all three belong against the vessel-rich trace, but the methods are not interchangeable and no descending-washout desflurane MAC-awake was found. This paper is also the source of the reason both references are drawn: \"along with pharmacokinetics, the ratio of the awakening concentration to the anesthetizing concentration (MAC-awake/MAC) determines time to awakening\". Retrieved from PubMed (PMID 7574003) and verified against the abstract 2026-09-04."
         },
         {
             "citation": "Song J-G, Cao Y-F, Yang L-Q, Yu W-F, Li Q, Song J-C, Fu X-Y, Fu Q. Awakening concentration of desflurane is decreased in patients with obstructive jaundice. Anesthesiology. 2005;102(3):562-565.",
             "url": "https://doi.org/10.1097/00000542-200503000-00014",
+            "tier": "primary",
+            "adopted": false,
             "note": "Tier 1, primary measurement, cited as corroboration and not adopted. The non-jaundiced control arm gave a desflurane MAC-awake of 2.17 +/- 0.25 percent in middle-aged and elderly surgical patients - a different population, country and decade from Chortkoff 1995, and not derived from it. Against Rampil's 31-65 yr MAC of 6.0 percent that is 0.36, the same fraction Chortkoff reports, which is the reason to trust the stored value. It also corroborates the stored fraction end to end: 0.36 x the stored mac_percent of 6.0 is 2.16 percent, against this paper's measured 2.17 percent in the population the 6.0 percent divisor describes. Not adopted because Chortkoff is the study whose object was MAC-awake itself, states the fraction directly, and reports the wider standard deviation. Retrieved from PubMed (PMID 15731594) and verified against the abstract 2026-09-04."
         },
         {
             "citation": "Rampil IJ, Lockhart SH, Zwass MS, Peterson N, Yasuda N, Eger EI II, Weiskopf RB, Damask MC. Clinical characteristics of desflurane in surgical patients: minimum alveolar concentration. Anesthesiology. 1991;74(3):429-433.",
             "url": "https://doi.org/10.1097/00000542-199103000-00007",
+            "tier": "primary",
+            "adopted": false,
             "note": "Tier 1, primary measurement, cited but not adopted; the denominator both desflurane MAC-awake sources are anchored to, recorded because a fraction with no stated denominator is meaningless. 44 unpremedicated ASA 1-2 patients, MAC by Dixon up-and-down: desflurane in oxygen 7.25 +/- 0.0 percent at 18-30 yr and 6.0 +/- 0.29 percent at 31-65 yr. Chortkoff 1995's \"36% of MAC\" is against the 18-30 yr figure; Song 2005's control arm matches the 31-65 yr figure, which is also the value this project stores as mac_percent - though the project stores it as the Gas Man flat adult MAC rather than from this paper, so the agreement is a coincidence of value and not of provenance. Not adopted for mac_percent for the reason recorded in the Nickalls and Mapleson entry above: every other parameter here is the Gas Man set. Retrieved from PubMed (PMID 2001020) and verified against the abstract 2026-09-04."
         }
-    ]
+    ],
+    "provenance_gap": "No primary measurement is adopted for this agent's blood:gas coefficient, its three tissue:gas coefficients, or mac_percent. All four coefficients are the Gas Man parameter set as published in De Wolf et al. 2012 - tier 3, reference implementation - and mac_percent is the flat adult MAC that paper states it used in its Gas Man simulations. The primary measurements are cited above and explicitly not adopted; each of those notes records the measured value, its reference conditions, and how far the stored number sits from it. Two parameters in this file DO carry an adopted primary source - mac_awake (Chortkoff 1995) and max_delivered_concentration_percent (the vaporizer's calibrated maximum) - so this gap is specific to the coefficients and the MAC divisor rather than to the file as a whole. The decision to keep the Gas Man values and label them, rather than move to the primary figures, was taken by the project owner on 2026-09-03 (PL-D6LX); ROADMAP.md's planned-milestone item 31 is the route to a primary-literature coefficient set. See docs/MODEL.md, 'Source hierarchy'."
 }

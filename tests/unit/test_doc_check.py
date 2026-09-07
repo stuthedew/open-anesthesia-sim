@@ -114,13 +114,21 @@ The simulation lives in `core/thing.py` and its parameters in
 `data/agents/demo.json`. See "Known limitations" for what it omits.
 """
 
+SOURCE = {
+    "citation": "Nobody. A paper.",
+    "url": "https://example.invalid/",
+    "tier": "primary",
+    "adopted": True,
+    "note": "n",
+}
+
 DATA = {
-    "schema_version": 1,
+    "schema_version": 2,
     "id": "demo",
     "display_name": "Demo",
     "blood_gas_partition_coefficient": 0.5,
     "tissue_gas_partition_coefficients": {"fat": 2.0},
-    "sources": [{"citation": "Nobody. A paper.", "url": "https://example.invalid/", "note": "n"}],
+    "sources": [SOURCE],
 }
 
 
@@ -265,6 +273,90 @@ def test_schema_version_is_not_treated_as_a_parameter(tmp_path: Path) -> None:
 def test_a_model_with_no_table_at_all_fails_rather_than_passing_silently(tmp_path: Path) -> None:
     root = _repo(tmp_path, model="# Model\n\n## Parameter provenance\n\nNone yet.\n")
     assert any("no provenance table found" in e for e in _errors(root))
+
+
+# --- source tiers -----------------------------------------------------------
+
+
+def _sourced(*entries: dict[str, object]) -> dict[str, object]:
+    """The clean data file with its `sources` array replaced."""
+    return dict(DATA) | {"sources": list(entries)}
+
+
+def test_clean_data_file_declares_its_tiers_quietly(tmp_path: Path) -> None:
+    assert not any("tier" in e for e in _errors(_repo(tmp_path)))
+
+
+def test_source_with_no_tier_is_an_error(tmp_path: Path) -> None:
+    entry = {key: value for key, value in SOURCE.items() if key != "tier"}
+    root = _repo(tmp_path, data=_sourced(entry))
+    assert any("declares tier None" in e for e in _errors(root))
+
+
+def test_source_tier_outside_the_vocabulary_is_an_error(tmp_path: Path) -> None:
+    root = _repo(tmp_path, data=_sourced(dict(SOURCE) | {"tier": "tier 1"}))
+    errors = _errors(root)
+    assert any("declares tier 'tier 1'" in e for e in errors)
+    assert any("Source hierarchy" in e for e in errors)
+
+
+def test_the_error_names_the_entry_by_its_citation(tmp_path: Path) -> None:
+    """An index alone does not find the entry in a file of eleven citations."""
+    root = _repo(tmp_path, data=_sourced(dict(SOURCE) | {"tier": "made up"}))
+    assert any("sources[0] (Nobody. A paper.)" in e for e in _errors(root))
+
+
+def test_source_with_no_adopted_flag_is_an_error(tmp_path: Path) -> None:
+    entry = {key: value for key, value in SOURCE.items() if key != "adopted"}
+    root = _repo(tmp_path, data=_sourced(entry))
+    assert any("declares adopted None" in e for e in _errors(root))
+
+
+def test_a_string_adopted_flag_is_an_error(tmp_path: Path) -> None:
+    """`"adopted": "false"` is truthy, so reading it loosely inverts the claim."""
+    root = _repo(tmp_path, data=_sourced(dict(SOURCE) | {"adopted": "false"}))
+    assert any("declares adopted 'false'" in e for e in _errors(root))
+
+
+def test_an_unadopted_primary_does_not_source_the_file(tmp_path: Path) -> None:
+    """The whole reason the tier is not enough on its own.
+
+    Every agent file in this repository cites primary measurements it has
+    explicitly not adopted. A rule reading the tier alone would call all four
+    data files primary-sourced while every stored coefficient in them came
+    from Gas Man - `docs/MODEL.md` § "Source hierarchy", second rule.
+    """
+    root = _repo(tmp_path, data=_sourced(dict(SOURCE) | {"adopted": False}))
+    assert any("no `sources` entry is both tier 'primary' and adopted" in e for e in _errors(root))
+
+
+def test_a_tier_three_only_file_with_no_gap_is_an_error(tmp_path: Path) -> None:
+    entry = dict(SOURCE) | {"tier": "reference-implementation", "adopted": True}
+    root = _repo(tmp_path, data=_sourced(entry))
+    assert any("records no `provenance_gap`" in e for e in _errors(root))
+
+
+def test_a_recorded_gap_satisfies_the_rule(tmp_path: Path) -> None:
+    entry = dict(SOURCE) | {"tier": "reference-implementation", "adopted": True}
+    data = _sourced(entry) | {"provenance_gap": "No primary source has been adopted."}
+    assert not any("provenance_gap" in e for e in _errors(_repo(tmp_path, data=data)))
+
+
+def test_an_empty_gap_is_an_error(tmp_path: Path) -> None:
+    entry = dict(SOURCE) | {"tier": "reference-implementation", "adopted": True}
+    data = _sourced(entry) | {"provenance_gap": "   "}
+    assert any("is not a nonempty string" in e for e in _errors(_repo(tmp_path, data=data)))
+
+
+def test_a_file_with_no_sources_at_all_is_an_error(tmp_path: Path) -> None:
+    root = _repo(tmp_path, data=dict(DATA) | {"sources": []})
+    assert any("declares no `sources` array" in e for e in _errors(root))
+
+
+def test_provenance_gap_is_not_treated_as_a_parameter(tmp_path: Path) -> None:
+    """It is prose beside the citations, so the provenance table owes it no row."""
+    data = dict(DATA) | {"provenance_gap": "Recorded here, documented nowhere else."}
+    assert not any("no provenance row" in e for e in _errors(_repo(tmp_path, data=data)))
 
 
 # --- prose provenance -------------------------------------------------------
