@@ -2813,10 +2813,13 @@ specified in that same row and is what this application uses.
 
 A known limitation of the standard, reproduced here deliberately: isoflurane's
 purple and desflurane's blue are not distinguishable by a user with a color
-vision deficiency. Under simulated protanopia, deuteranopia, and tritanopia the
-two fills fall to a luminance contrast of 1.1-1.4 against each other, and they
-already differ by only 1.09 for normal color vision — they are separated by hue
-alone. Choosing more separable colors would break the correspondence to real
+vision deficiency. They differ by only 1.09 in luminance for normal color
+vision — they are separated by hue alone — and simulating the three
+dichromacies removes the hue without supplying the luminance: 1.48 for
+protanopia, 1.06 for deuteranopia, 1.11 for tritanopia. Measured by
+`tools/contrast_check.py` with the Brettel 1997 projection recorded under "The
+six compartment traces" below, and pinned by `tests/unit/test_contrast_check.py`
+so this paragraph cannot go stale behind a color edit. Choosing more separable colors would break the correspondence to real
 vaporizers and is therefore the worse option; the mitigation is that the agent
 name is always rendered alongside the color, which `tests/unit/` asserts for
 both the dropdown options and the header badge. Color must never be the only
@@ -3444,7 +3447,7 @@ Two criteria carry most of the weight:
 one.** The two minima differ by half again, so a single constant serving both
 roles fails one of them. This interface has one such case, and it is recorded
 here because the roles are not obvious from the constant's name: `ACCENT` is
-graphical — the alveolar chart trace and the sliders' active track — while
+graphical — the sliders' active track — while
 `ACCENT_TEXT` is the same hue darkened until it is legible as text, and it
 carries the affirmative status words "Running" and "Valid" whose counterpart is
 the warning color. Distinguishing a running from a halted run is safety-critical
@@ -3468,9 +3471,19 @@ Held **above** AA in two places:
   luminance: contrast ratios compose along a bounded axis — black to white is
   21:1 — so sorting $`n`$ traces by luminance, the smallest adjacent gap is
   largest when the gaps are equal, and no arrangement of six traces gives every
-  pair more than $`21^{1/5}\approx1.84`$. That is below SC 1.4.11's 3:1, so a
-  redundant non-color channel (line style or marker) is a **requirement** for
-  this chart rather than an embellishment, and no palette choice can remove it.
+  pair more than $`21^{1/5}\approx1.84`$. The floor in the bullet below tightens
+  it further, to 1.48. Both are under SC 1.4.11's 3:1, so a redundant non-color
+  channel (line style or marker) is a **requirement** for this chart rather than
+  an embellishment, and no palette choice can remove it. The next section is
+  what that requirement is discharged by.
+- **Each chart trace clears 3:1 against the panel under simulated dichromacy as
+  well as as displayed.** SC 1.4.11 is defined on the color the display emits,
+  so this is the project's bar rather than the criterion's; the reason is that
+  the criterion's *purpose* — that a graphical object be findable against its
+  background — is not served by measuring one observer. It is not a
+  hypothetical strictness: the muscle trace passed at 3.19:1 as displayed and
+  failed at 2.98:1 simulated for deuteranopia, a shortfall no normal-vision
+  check could see.
 
 **Deferred, and named so the deferral is visible** rather than silently
 unlisted: SC 2.4.11 (Focus Not Obscured), 2.5.8 (Target Size), 1.4.10 (Reflow)
@@ -3493,6 +3506,134 @@ measuring one channel at a time misreports it. Requirements that do not meet
 their minimum today are listed there against the item that closes each one,
 and a listed shortfall that starts passing is reported as an error, so a fix
 cannot leave its excuse behind.
+
+### The six compartment traces: what separates them
+
+Six curves share one plot, and taking a value off the wrong one is a misreading
+of a clinical quantity rather than an aesthetic complaint. What separates them
+is **line style**, with color as a second cue and never the first. This section
+records why that ordering is forced, and what the colors are held to instead.
+
+**Line style is the separating channel.**
+
+| Compartment | Line style | Dash pattern (px) | Width (px) |
+| --- | --- | --- | --- |
+| Circuit | solid | — | 3 |
+| Alveolar | long dash | 10 on, 4 off | 3 |
+| Mixed venous | short dash | 4 on, 3 off | 2 |
+| Vessel-rich | even dash | 6 on, 6 off | 2 |
+| Muscle | dotted | 2 on, 3 off | 2 |
+| Fat | dash-dot | 12 on, 4 off, 2 on, 4 off | 2 |
+
+All six differ, and the legend entry beside each checkbox names its style in
+words, so the style is legible without reference to the plot. Circuit and
+vessel-rich were both solid until `PL-GVXP`: for that one pair the redundant
+channel was redundant in name only.
+
+**Which style goes on which compartment is decided by the colors.** The two
+traces hardest to separate by color get the two marks easiest to separate by
+shape, and so on outward. The closest pairs in the matrix below — vessel-rich
+against fat, and mixed venous against fat — are an even dash against an
+alternating dash-dot and a short uniform dash against that same dash-dot, each
+differing from its partner in mark length, gap length and rhythm at once. The
+one genuinely confusable pair in the set, the 2 px dots against the 4 px short
+dash, is spent on mixed venous against muscle, which is the widest separation
+any pair of these six has.
+
+**Color is a second cue, and the arithmetic says it cannot be the first.**
+Every trace clears SC 1.4.11's 3:1 against the panel, as displayed and as
+simulated for each dichromacy:
+
+| Trace | sRGB | Normal | Protanopia | Deuteranopia | Tritanopia |
+| --- | --- | --- | --- | --- | --- |
+| Circuit | `#176B87` | 6.02 | 5.67 | 6.21 | 6.02 |
+| Alveolar | `#159789` | 3.61 | 3.23 | 3.84 | 3.63 |
+| Mixed venous | `#7C3AED` | 5.70 | 5.96 | 4.68 | 5.55 |
+| Vessel-rich | `#DC2626` | 4.83 | 7.18 | 4.14 | 4.84 |
+| Muscle | `#D17206` | 3.43 | 3.96 | 3.22 | 3.46 |
+| Fat | `#64748B` | 4.76 | 4.74 | 4.76 | 4.77 |
+
+Trace against trace, it is a different picture, and this is the table the
+design rests on:
+
+| Pair | Normal | Protanopia | Deuteranopia | Tritanopia | Worst |
+| --- | --- | --- | --- | --- | --- |
+| Vessel-rich / Fat | 1.01 | 1.51 | 1.15 | 1.02 | **1.01** |
+| Mixed venous / Fat | 1.20 | 1.26 | 1.02 | 1.16 | **1.02** |
+| Alveolar / Muscle | 1.05 | 1.23 | 1.19 | 1.05 | **1.05** |
+| Circuit / Mixed venous | 1.06 | 1.05 | 1.33 | 1.08 | **1.05** |
+| Alveolar / Vessel-rich | 1.34 | 2.22 | 1.08 | 1.33 | **1.08** |
+| Mixed venous / Vessel-rich | 1.18 | 1.20 | 1.13 | 1.15 | **1.13** |
+| Circuit / Fat | 1.26 | 1.19 | 1.31 | 1.26 | **1.19** |
+| Muscle / Fat | 1.39 | 1.20 | 1.48 | 1.38 | **1.20** |
+| Alveolar / Mixed venous | 1.58 | 1.84 | 1.22 | 1.53 | **1.22** |
+| Alveolar / Fat | 1.32 | 1.47 | 1.24 | 1.31 | **1.24** |
+| Circuit / Vessel-rich | 1.25 | 1.27 | 1.50 | 1.24 | **1.24** |
+| Vessel-rich / Muscle | 1.41 | 1.81 | 1.28 | 1.40 | **1.28** |
+| Circuit / Muscle | 1.75 | 1.43 | 1.93 | 1.74 | **1.43** |
+| Mixed venous / Muscle | 1.66 | 1.50 | 1.45 | 1.61 | **1.45** |
+| Circuit / Alveolar | 1.67 | 1.75 | 1.62 | 1.66 | **1.62** |
+
+**Re-picking the palette does not fix this, and the search was run rather than
+assumed.** The ceiling above is $`21^{1/5}\approx1.84`$; requiring 3:1 against
+a white panel caps every trace's luminance at 0.30, which shortens the axis and
+brings the ceiling to **1.48**. Searching lightness with each hue and
+saturation held fixed reaches **1.28** as the best worst-pair across the four
+vision models, and gets there only by driving four of the six traces to
+near-black — losing the hue identity that makes a trace nameable, to buy a
+number still less than half of 3:1. So the colors here are chosen to name their
+compartment and to clear the floor against the panel, and the line style does
+the separating. `.claude/rules/ui-color.md` carries this as a standing
+judgment so the search is not re-run every time a color is touched.
+
+**Two colors were re-picked, for the floor and not for separation.** The
+alveolar trace was `#18A999` (2.93:1 as displayed, 2.61:1 simulated for
+protanopia) and the muscle trace `#D97706` (3.19:1 as displayed, 2.98:1
+simulated for deuteranopia). Each keeps its hue and saturation exactly and is
+darkened to the lightest shade clearing 3.2:1 in all four models — 3:1 plus two
+tenths, so the shipped value is not itself a boundary case. The alveolar trace
+also draws the $`F_A/F_I`$ wash-in plot, which carries a single line and never
+had a separation problem; it inherited the shortfall from the shared constant
+and is fixed by the same change.
+
+**The dichromacy simulation.** Brettel, Viénot and Mollon's projection onto the
+reduced stimulus surface each dichromacy leaves — the surface defined by the
+neutral axis and the monochromatic stimuli a dichromat and a normal trichromat
+see as the same hue.[^brettel1997] The two-half-plane form is used rather than
+the single-matrix simplification of Viénot, Brettel and Mollon (1999), because
+that simplification is not accurate for tritanopia and all three are reported
+here.[^vienot1999] The coefficients are the precomputed sRGB-space forms
+published by libDaltonLens, derived from Brettel's construction over the Smith
+and Pokorny (1975) cone fundamentals.[^daltonlens]
+
+Three limits on how far these numbers may be read. The simulation renders, for
+a normal observer, an approximation of a dichromat's *appearance*; it is not a
+measurement of dichromatic perception, and it models the three dichromacies
+rather than the far commoner anomalous trichromacies, whose milder losses it
+does not represent. WCAG's relative-luminance formula is then applied to that
+simulated output, which is a use the formula was not defined for — SC 1.4.11 is
+defined on the color the display emits. And the whole calculation is about
+luminance, so it says nothing about the hue difference a reader with normal
+color vision actually uses. What the numbers are good for is the comparative
+claim they are used for here: that no arrangement of these six colors separates
+them, whichever observer is assumed.
+
+`tools/contrast_check.py` computes every figure in this section, `make check`
+runs it, and `tests/unit/test_contrast_check.py` pins them; run it with
+`--matrix` to print the pairwise table above.
+
+[^brettel1997]: Brettel H, Viénot F, Mollon JD. Computerized simulation of
+    color appearance for dichromats. J Opt Soc Am A. 1997;14(10):2647-2655.
+    doi:10.1364/JOSAA.14.002647
+
+[^vienot1999]: Viénot F, Brettel H, Mollon JD. Digital video colourmaps for
+    checking the legibility of displays by dichromats. Color Res Appl.
+    1999;24(4):243-252.
+    doi:10.1002/(SICI)1520-6378(199908)24:4<243::AID-COL5>3.0.CO;2-3
+
+[^daltonlens]: libDaltonLens, public domain, https://github.com/DaltonLens/libDaltonLens
+    — coefficients and derivation, the latter written out at
+    https://daltonlens.org/understanding-cvd-simulation/
 
 ### Displayed precision
 

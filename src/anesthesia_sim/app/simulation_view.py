@@ -231,11 +231,40 @@ EMPTY_METRIC_SECONDARY_VALUE = "\u00a0"
 # percent where the core's own guard is a fraction.
 MIN_DELIVERED_CONCENTRATION_PERCENT = 0.0
 
+# The six compartment traces. Two things decide these values, and only one of
+# them is a colour question.
+#
+# **Against the panel, each trace is held to 3:1 - and under simulated
+# dichromacy as well as under normal vision.** SC 1.4.11 asks it of the
+# displayed colour; this interface asks it of the Brettel 1997 simulation of
+# that colour too, because a trace a protanope cannot find against white is not
+# separable from the panel whatever the criterion measures. `ALVEOLAR_COLOR`
+# and `MUSCLE_COLOR` were re-picked for that and nothing else (PL-GVXP): both
+# keep their own hue and saturation exactly, darkened to the lightest shade
+# clearing 3.2:1 in all four models - 3:1 plus two tenths, so the shipped value
+# is not itself the boundary case the next edit trips over.
+# `tools/contrast_check.py` measures all four and `docs/MODEL.md` records them.
+#
+# **Between traces, colour is not the channel and no palette could make it
+# one.** Contrast composes along a bounded axis, and the 3:1 floor above caps
+# every trace's luminance at 0.30, so six of them cannot all be more than
+# 1.48 apart - and holding hue and saturation fixed, a search over lightness
+# alone reaches 1.28 across the four models while driving four of the six to
+# near-black. Both are far under the 3:1 that would make colour sufficient, so
+# the separating channel is the line style below, and these hues are chosen to
+# name their compartment rather than to win an arithmetic that cannot be won
+# (`.claude/rules/ui-color.md`, judgment 3).
 CIRCUIT_COLOR = PRIMARY
-ALVEOLAR_COLOR = ACCENT
+# Its own value rather than `ACCENT`, which it used to share. The two roles
+# had different constraints the moment this one acquired a four-model floor
+# five other traces also have to clear, and `ACCENT`'s remaining role - the
+# sliders' active track - is bounded by nothing but the panel behind it. That
+# is the question `PL-W8DQ` was waiting on: `ACCENT` is no longer a chart
+# colour, so it is free to be darkened on the sliders' own terms.
+ALVEOLAR_COLOR = "#159789"
 MIXED_VENOUS_COLOR = "#7C3AED"
 VESSEL_RICH_COLOR = "#DC2626"
-MUSCLE_COLOR = "#D97706"
+MUSCLE_COLOR = "#D17206"
 FAT_COLOR = "#64748B"
 
 # The colour swatch every legend entry draws, at one size across all three
@@ -321,8 +350,10 @@ MAC_AWAKE_BAND_FILL_OPACITY = 0.14
 # interpretability defect for a correctness one. Both strokes therefore sit
 # on the true boundaries and the fill between them keeps its true extent.
 MAC_AWAKE_BAND_EDGE_STROKE_WIDTH = 1.5
-# Wider than any trace's dashes ([10, 4], [4, 3], [2, 3], [12, 4, 2, 4]), so
-# the 1 MAC line does not read as a seventh compartment at a glance.
+# Wider than any trace's dashes ([10, 4], [4, 3], [6, 6], [2, 3],
+# [12, 4, 2, 4]), so the 1 MAC line does not read as a seventh compartment at
+# a glance. The longest mark among the six is the alveolar trace's 10 px and
+# the widest gap the vessel-rich trace's 6 px; this exceeds both.
 ONE_MAC_LINE_DASH_PATTERN = [16, 8]
 
 # A control-change mark is furniture like the two references, and takes the
@@ -399,9 +430,15 @@ NEW_CASE_DIALOG_SPACING = 12
 # The wash-in trace takes the alveolar compartment's own colour, because it
 # is that compartment expressed against the one filling it: the numerator is
 # the alveolar fraction and nothing else on the second chart competes with
-# it. Reusing it declares no new pair for `tools/contrast_check.py` - ACCENT
-# on PANEL is already measured - and it is what lets a reader carry the
-# alveolar curve from the chart above into the ratio below.
+# it. Reusing it declares no new pair for `tools/contrast_check.py` -
+# ALVEOLAR_COLOR on PANEL is already measured - and it is what lets a reader
+# carry the alveolar curve from the chart above into the ratio below.
+#
+# This trace carries none of the six-way separation problem the chart above
+# has, so PL-GVXP's arithmetic never bound it; what did bind it was that
+# constant's own 2.93:1 against the panel, which it inherited. That is fixed
+# at the source, so the single trace on this plot now clears 3:1 without the
+# linkage having to be broken to get it.
 WASH_IN_COLOR = ALVEOLAR_COLOR
 # Shorter than the compartment chart. The ratio is one trace on a fixed
 # 0-to-1 axis, so it needs no room to separate six curves, and the two plots
@@ -720,6 +757,27 @@ class SimulationView:
         # One table rather than three: `_CompartmentTrace` records why the
         # series, the compartment it draws, and the legend entry that names
         # it are declared together and never separately.
+        #
+        # **Six patterns, all different, because the line style is what
+        # actually separates these curves.** The colours above cannot: the
+        # closest pair sits at 1.01 for normal colour vision and no palette
+        # reaches 3:1. Circuit and vessel-rich were both solid until PL-GVXP,
+        # which made the second channel redundant in name only for the one
+        # pair - and a reader who takes a value off the wrong curve has
+        # misread a clinical quantity, not a decoration.
+        #
+        # **Which style goes on which trace is decided by the colours, not
+        # chosen freely.** The two traces a reader can least separate by
+        # colour get the two marks they can most separate by shape, and so on
+        # outward. So the closest pairs - vessel-rich against fat at 1.01, and
+        # mixed venous against fat at 1.02 under simulated deuteranopia - are
+        # an even dash against an alternating dash-dot, and a short uniform
+        # dash against that same dash-dot: each differs from its partner in
+        # mark length, in gap length and in rhythm at once. The one genuinely
+        # confusable pair in the set, the 2 px dots against the 4 px short
+        # dash, is spent on mixed venous against muscle, which is the *widest*
+        # separation any pair of these six has (1.45). `docs/MODEL.md` carries
+        # the matrix this was read off.
         self._compartment_traces: tuple[_CompartmentTrace, ...] = (
             self._build_compartment_trace(
                 RecordedQuantity.CIRCUIT, "Circuit", CIRCUIT_COLOR, 3, "solid"
@@ -735,8 +793,19 @@ class SimulationView:
                 "short dash",
                 [4, 3],
             ),
+            # Equal mark and gap, which is the one rhythm no other trace here
+            # has: the other four dashed traces all draw more ink than gap.
+            # Deliberately not a second long dash - at [8, 8] it read as the
+            # alveolar trace's [10, 4] with wider gaps, and those two sit at
+            # 1.08 under simulated deuteranopia, which is no place to put a
+            # pair that has to be told apart by mark length alone.
             self._build_compartment_trace(
-                RecordedQuantity.VESSEL_RICH, "Vessel-rich", VESSEL_RICH_COLOR, 2, "solid"
+                RecordedQuantity.VESSEL_RICH,
+                "Vessel-rich",
+                VESSEL_RICH_COLOR,
+                2,
+                "even dash",
+                [6, 6],
             ),
             self._build_compartment_trace(
                 RecordedQuantity.MUSCLE, "Muscle", MUSCLE_COLOR, 2, "dotted", [2, 3]

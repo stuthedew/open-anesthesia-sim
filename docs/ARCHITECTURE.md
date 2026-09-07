@@ -345,6 +345,20 @@ code, which made the tool's own coverage unauditable while looking audited. Requ
 today are listed against the item that closes each, and a listed shortfall that
 starts passing is an error, so a fix cannot leave its excuse behind.
 
+It measures one thing beyond the `REQUIREMENTS` table, and that one is a hard
+error rather than a listable shortfall. `TRACE_FLOOR` holds each of the six
+chart traces to 3:1 against the panel under **four** vision models — as
+displayed, and simulated for protanopia, deuteranopia and tritanopia by the
+Brettel 1997 projection in `DICHROMACY_TRANSFORMS`. The fourth model is the
+project's own bar rather than the criterion's, since SC 1.4.11 is defined on
+the color a display emits; the reason it is worth the extra arithmetic is that
+`MUSCLE_COLOR` measured 3.19:1 on screen and 2.98:1 for a deuteranope, which no
+normal-vision check could see (`PL-GVXP`). `--matrix` prints the pairwise
+separation across all four, which is the evidence that these six traces cannot
+be separated by color at all and that the line style is doing the work;
+`docs/MODEL.md` § "The six compartment traces" carries the tables and the
+limits on how far a simulated ratio may be read.
+
 `tools/import_boundary_check.py` measures two claims the source makes about
 itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
 dataclass pairs exist so the rest of `core/` never imports Pydantic, and

@@ -102,6 +102,78 @@ AA_TEXT = 4.5
 AA_NON_TEXT = 3.0
 
 
+#: Dichromacy simulation: the linear-sRGB transform for each of the three
+#: dichromacies, from Brettel H, Vienot F, Mollon JD, "Computerized simulation
+#: of color appearance for dichromats", J Opt Soc Am A 1997;14(10):2647-2655,
+#: https://doi.org/10.1364/JOSAA.14.002647.
+#:
+#: **The algorithm.** Brettel projects a stimulus onto the reduced surface a
+#: dichromat can see, which is two half-planes meeting at the neutral axis, so
+#: each deficiency needs two matrices and a rule for which one applies. The
+#: rule is the sign of the dot product with `plane_normal`; both matrices and
+#: the normal are given here already composed into linear sRGB, so no explicit
+#: trip through LMS is needed. The later Vienot F, Brettel H, Mollon JD,
+#: "Digital video colourmaps for checking the legibility of displays by
+#: dichromats", Color Res Appl 1999;24(4):243-252, collapses this to one matrix
+#: per deficiency and is the more widely copied form; it is *not* used here,
+#: because its simplification is inaccurate for tritanopia and this project
+#: reports all three.
+#:
+#: **The coefficients** are the precomputed sRGB-space forms published by
+#: libDaltonLens (public domain, https://github.com/DaltonLens/libDaltonLens),
+#: which derives them from Brettel's construction over the Smith & Pokorny
+#: (1975) cone fundamentals; the derivation is written out at
+#: https://daltonlens.org/understanding-cvd-simulation/. They are a *composed*
+#: form of the paper's algorithm rather than a second method, which is why they
+#: can be cited to it - but they are also one implementation's arithmetic, so
+#: `tests/unit/test_contrast_check.py` holds them to the properties the paper
+#: itself states: a dichromat's confusion lines collapse, and the neutral axis
+#: and the deficiency's own copunctal-free primaries are left alone.
+#:
+#: **What this is not.** A simulation of appearance for a normal observer, not
+#: a measurement of what a dichromat perceives, and not a WCAG measure: SC
+#: 1.4.11 is defined on the color the display actually emits. Ratios computed
+#: on simulated output are this project's own bar, recorded as such in
+#: `docs/MODEL.md`, and are used for exactly two things - the trace floor
+#: below, and the pairwise matrix that shows why line style rather than color
+#: has to separate these curves.
+DICHROMACY_TRANSFORMS: dict[str, tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]] = {
+    "protanopia": (
+        (0.14980, 1.19548, -0.34528, 0.10764, 0.84864, 0.04372, 0.00384, -0.00540, 1.00156),
+        (0.14570, 1.16172, -0.30742, 0.10816, 0.85291, 0.03892, 0.00386, -0.00524, 1.00139),
+        (0.00048, 0.00393, -0.00441),
+    ),
+    "deuteranopia": (
+        (0.36477, 0.86381, -0.22858, 0.26294, 0.64245, 0.09462, -0.02006, 0.02728, 0.99278),
+        (0.37298, 0.88166, -0.25464, 0.25954, 0.63506, 0.10540, -0.01980, 0.02784, 0.99196),
+        (-0.00281, -0.00611, 0.00892),
+    ),
+    "tritanopia": (
+        (1.01277, 0.13548, -0.14826, -0.01243, 0.86812, 0.14431, 0.07589, 0.80500, 0.11911),
+        (0.93678, 0.18979, -0.12657, 0.06154, 0.81526, 0.12320, -0.37562, 1.12767, 0.24796),
+        (0.03901, -0.02788, -0.01113),
+    ),
+}
+
+#: The four ways every trace is measured: as displayed, and as simulated for
+#: each dichromacy. Normal vision is named rather than implied so a report
+#: column and a `docs/MODEL.md` row cannot come to mean different things.
+VISION_MODELS: tuple[str, ...] = ("normal", *DICHROMACY_TRANSFORMS)
+
+#: What every chart trace must clear against the panel in *all four* models.
+#:
+#: The number is SC 1.4.11's; extending it past normal vision is this project's
+#: judgment and not the criterion's. The reason is that the criterion's purpose
+#: - that a graphical object be findable against its background - is not served
+#: by a trace measured only as emitted: `ALVEOLAR_COLOR` was 2.93:1 as
+#: displayed and 2.61:1 simulated for protanopia, and `MUSCLE_COLOR` cleared
+#: the bar as displayed at 3.19:1 and missed it at 2.98:1 simulated for
+#: deuteranopia. The second of those was invisible to a checker that measured
+#: normal vision alone, which is the whole argument for measuring all four
+#: (PL-GVXP).
+TRACE_FLOOR = AA_NON_TEXT
+
+
 @dataclass(frozen=True)
 class Requirement:
     """One pair that must hold, and the judgment behind holding it.
@@ -436,15 +508,12 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
 #: that closes it. Not a suppression list: an entry here that starts passing is
 #: reported as an error, so a fix cannot leave its excuse behind.
 #:
-#: `ACCENT` appears twice below with the same measured value and two different
-#: owners, which is not duplication: the alveolar trace and the slider track are
-#: separate on-screen elements that happen to share one constant. That sharing
-#: is itself the defect each item describes, and listing them separately is what
-#: makes it visible.
-KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {
-    ("ACCENT", "PANEL"): "PL-W8DQ",
-    ("ALVEOLAR_COLOR", "PANEL"): "PL-GVXP",
-}
+#: `ACCENT` was listed twice with the same measured value and two different
+#: owners - the alveolar trace and the slider track, two on-screen elements
+#: sharing one constant, which was itself the defect each item described.
+#: `PL-GVXP` ended the sharing by giving the trace `ALVEOLAR_COLOR` of its own
+#: and clearing it, so one entry remains and it is the slider track's.
+KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {("ACCENT", "PANEL"): "PL-W8DQ"}
 
 #: The six chart traces, in the order `SimulationView._plotted_series` lists them.
 TRACES: tuple[str, ...] = (
@@ -489,6 +558,75 @@ def contrast_ratio(first: str, second: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
+def simulate_dichromacy(hex_color: str, model: str) -> str:
+    """The color a `model` dichromat's reduced gamut renders this one as.
+
+    Brettel 1997's projection, applied in linear sRGB with the composed
+    matrices in `DICHROMACY_TRANSFORMS`. Which of the deficiency's two
+    half-planes a stimulus projects onto is decided by the sign of its dot
+    product with that deficiency's separation-plane normal - the paper's own
+    construction, since the reduced surface is two planes meeting at the
+    neutral axis rather than one.
+
+    Args:
+        hex_color: Six-digit sRGB hex, with or without a leading `#`.
+        model: A key of `DICHROMACY_TRANSFORMS`.
+
+    Returns:
+        Six-digit sRGB hex, upper case and `#`-prefixed. Out-of-gamut results
+        are clamped per channel, which is what the projection can produce for
+        saturated inputs and what every published implementation does.
+
+    Raises:
+        ValueError: If `hex_color` is not six hex digits, or `model` is not
+            one of the three simulated dichromacies.
+    """
+    if model not in DICHROMACY_TRANSFORMS:
+        raise ValueError(f"expected one of {sorted(DICHROMACY_TRANSFORMS)}, got {model!r}")
+    digits = hex_color.lstrip("#")
+    if len(digits) != 6:
+        raise ValueError(f"expected a six-digit sRGB hex color, got {hex_color!r}")
+    channels = [int(digits[index : index + 2], 16) / 255 for index in (0, 2, 4)]
+    linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+
+    plane_one, plane_two, normal = DICHROMACY_TRANSFORMS[model]
+    matrix = (
+        plane_one if sum(v * n for v, n in zip(linear, normal, strict=True)) >= 0 else plane_two
+    )
+    projected = [
+        sum(matrix[3 * row + column] * linear[column] for column in range(3)) for row in range(3)
+    ]
+
+    encoded = []
+    for value in projected:
+        clamped = min(1.0, max(0.0, value))
+        srgb = clamped * 12.92 if clamped <= 0.0031308 else 1.055 * clamped ** (1 / 2.4) - 0.055
+        encoded.append(round(srgb * 255))
+    return "#" + "".join(f"{channel:02X}" for channel in encoded)
+
+
+def as_seen(hex_color: str, model: str) -> str:
+    """This color as `model` renders it, where `"normal"` renders it unchanged.
+
+    The one place the four vision models are treated uniformly, so a caller
+    iterating `VISION_MODELS` needs no special case for the model that is not
+    a simulation.
+
+    Args:
+        hex_color: Six-digit sRGB hex, with or without a leading `#`.
+        model: A member of `VISION_MODELS`.
+
+    Returns:
+        Six-digit sRGB hex.
+
+    Raises:
+        ValueError: If `model` is not one of `VISION_MODELS`.
+    """
+    if model == "normal":
+        return hex_color
+    return simulate_dichromacy(hex_color, model)
+
+
 def separation_ceiling(count: int) -> float:
     """The largest ratio every adjacent pair of `count` traces can share.
 
@@ -504,6 +642,38 @@ def separation_ceiling(count: int) -> float:
     if count < 2:
         raise ValueError("a separation ceiling needs at least two traces")
     return float(21.0 ** (1.0 / (count - 1)))
+
+
+def separation_ceiling_above_floor(count: int, floor: float) -> float:
+    """The same bound, once every trace must also clear `floor` on the panel.
+
+    The bound above spends the whole black-to-white axis; a trace cannot. Being
+    legible against a white panel at `floor`:1 caps its luminance, which
+    shortens the axis the `count` traces have to spread along and lowers the
+    bound with it. At six traces and SC 1.4.11's 3:1 the ceiling falls from
+    1.84 to about 1.48 - so the gap between what luminance can deliver and the
+    3:1 that would make color sufficient is wider than the unconstrained figure
+    suggests, not narrower.
+
+    Args:
+        count: How many traces share the axis.
+        floor: The contrast each must hold against the white panel.
+
+    Returns:
+        The largest ratio every adjacent pair can share.
+
+    Raises:
+        ValueError: If `count` is below two, or `floor` is below 1 - a
+            contrast ratio's own minimum, and below it the cap is not a
+            luminance any color has.
+    """
+    if count < 2:
+        raise ValueError("a separation ceiling needs at least two traces")
+    if floor < 1.0:
+        raise ValueError(f"a contrast floor cannot be below 1:1, got {floor}")
+    # The lightest admissible trace, from the panel's own luminance of 1.0.
+    brightest = 1.05 / floor - 0.05
+    return float(((brightest + 0.05) / 0.05) ** (1.0 / (count - 1)))
 
 
 def _string_value(node: ast.expr, known: dict[str, str]) -> str | None:
@@ -670,11 +840,20 @@ class Report:
     unexpected: tuple[Result, ...]
     repaired: tuple[Result, ...]
     citations: tuple[str, ...]
-    trace_pairs: tuple[tuple[str, str, float], ...]
+    #: `(trace, trace, vision model, ratio)`, every pair in every model.
+    trace_pairs: tuple[tuple[str, str, str, float], ...]
+    #: `(trace, vision model, ratio)` for each trace under `TRACE_FLOOR`.
+    below_trace_floor: tuple[tuple[str, str, float], ...]
 
     @property
     def errors(self) -> bool:
-        return bool(self.missing or self.unexpected or self.repaired or self.citations)
+        return bool(
+            self.missing
+            or self.unexpected
+            or self.repaired
+            or self.citations
+            or self.below_trace_floor
+        )
 
 
 def analyze(root: Path) -> Report:
@@ -708,10 +887,27 @@ def analyze(root: Path) -> Report:
     repaired = tuple(
         result for result in results if result.meets and result.requirement.key in KNOWN_SHORTFALLS
     )
+    drawn = tuple(name for name in TRACES if name in palette)
     trace_pairs = tuple(
-        (first, second, contrast_ratio(palette[first], palette[second]))
-        for first, second in combinations(TRACES, 2)
-        if first in palette and second in palette
+        (
+            first,
+            second,
+            model,
+            contrast_ratio(as_seen(palette[first], model), as_seen(palette[second], model)),
+        )
+        for model in VISION_MODELS
+        for first, second in combinations(drawn, 2)
+    )
+    # The floor is judged at the printed precision, exactly as a declared
+    # requirement is: a verdict disagreeing with the number beside it is the
+    # defect `DISPLAY_DECIMALS` exists to prevent, and it would be no less one
+    # here.
+    below_trace_floor = tuple(
+        (name, model, ratio)
+        for model in VISION_MODELS
+        for name in drawn
+        if (ratio := contrast_ratio(as_seen(palette[name], model), palette["PANEL"]))
+        and round(ratio, DISPLAY_DECIMALS) < TRACE_FLOOR
     )
     return Report(
         results=tuple(results),
@@ -720,6 +916,7 @@ def analyze(root: Path) -> Report:
         repaired=repaired,
         citations=check_citations(root),
         trace_pairs=trace_pairs,
+        below_trace_floor=below_trace_floor,
     )
 
 
@@ -778,16 +975,28 @@ def format_report(report: Report, *, matrix: bool) -> str:
                 f"{requirement.minimum} - {KNOWN_SHORTFALLS.get(requirement.key, '?')}"
             )
 
+    if report.below_trace_floor:
+        lines.append("")
+        lines.append(f"Chart traces below {TRACE_FLOOR}:1 against PANEL:")
+        for name, model, ratio in report.below_trace_floor:
+            lines.append(f"  {name:<20} {model:<13} {ratio:.2f}")
+        lines.append(
+            "  Every trace clears this as displayed and as simulated for each "
+            "dichromacy - see TRACE_FLOOR for why all four."
+        )
+
     if matrix and report.trace_pairs:
-        ceiling = separation_ceiling(len(TRACES))
         lines.append("")
         lines.append(
             f"Chart-trace pairwise separation (not decided here; PL-GVXP sets the bar). "
-            f"No arrangement of six traces gives every pair more than {ceiling:.2f} on "
-            f"luminance alone, so a non-color channel is required, not optional."
+            f"No arrangement of six traces gives every pair more than "
+            f"{separation_ceiling(len(TRACES)):.2f} on luminance alone, and no more than "
+            f"{separation_ceiling_above_floor(len(TRACES), TRACE_FLOOR):.2f} once each "
+            f"also clears {TRACE_FLOOR}:1 on the panel. Both are under SC 1.4.11's 3:1, "
+            f"so a non-color channel is required, not optional."
         )
-        for first, second, ratio in sorted(report.trace_pairs, key=lambda pair: pair[2]):
-            lines.append(f"  {first:<20} {second:<20} {ratio:.2f}")
+        for first, second, model, ratio in sorted(report.trace_pairs, key=lambda pair: pair[3]):
+            lines.append(f"  {first:<20} {second:<20} {model:<13} {ratio:.2f}")
 
     return "\n".join(lines)
 
