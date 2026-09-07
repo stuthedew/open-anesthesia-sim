@@ -8,7 +8,7 @@ classes: refactor, perf
 feature: numerical-domain
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-05
-verify: uv run pytest -q tests/unit tests/integration && ! grep -rq 'class RunHistory' src/anesthesia_sim/
+verify: uv run pytest -q tests/unit tests/integration && grep -q 'def test_evaluate_matches_a_stepped_run' tests/unit/test_run_score.py
 ---
 
 **Problem.** The controller records one sample per solver step, so what a run
@@ -55,8 +55,15 @@ The canonical evaluation rule and its invariant test are `PL-P1Z3`. Save/load
 and export are `ROADMAP.md` items 9 and 10, which this unblocks but does not
 deliver.
 
-**Done when.** The controller holds a score and its keyframes rather than a
-sample history; a public `evaluate`-shaped entry point answers a window of
-`(t0, t1, n)` with exact states and is the only thing the view calls for trace
-data; `docs/MODEL.md` and `docs/ARCHITECTURE.md` state that a run is its inputs
-and what is derived from them; and no test asserts on a recorded sample series.
+**Done when.** The controller holds a score and its keyframes; a public
+`evaluate`-shaped entry point answers a window of `(t0, t1, n)` with exact
+states; and `docs/MODEL.md` and `docs/ARCHITECTURE.md` state that a run is its
+inputs and what is derived from them.
+
+Two clauses stood here and contradicted **Out of scope** above directly: that
+the entry point is *the only thing the view calls* for trace data, and that
+*no test asserts on a recorded sample series*. Both describe deleting
+`RunHistory` and re-pointing the chart, which **Out of scope** assigns to
+`PL-2FM6`, and the `verify:` command written against them could not pass while
+this item's own scope held (`PL-LLDB`). They are struck rather than reconciled:
+`PL-2FM6` already carries them, and it is unblocked the moment this lands.

@@ -413,7 +413,7 @@ class AgentUptakeSystem:
         alveolar_agent_before_l = self.alveoli.agent_amount_l
         patient_agent_before_l = self.patient.total_agent_amount_l
 
-        advanced = propagate(self._propagator_for(simulation_step_s), self._state_vector())
+        advanced = propagate(self._propagator_for(simulation_step_s), self.state_vector())
 
         self._write_state_vector(advanced)
 
@@ -443,8 +443,13 @@ class AgentUptakeSystem:
             agent_accounting=accounting_check,
         )
 
-    def _equation_settings(self) -> UptakeEquationSettings:
+    def equation_settings(self) -> UptakeEquationSettings:
         """Read the governing equations' parameters out of the compartments.
+
+        Public because it is what a run's score is written in: `core/run_score.py`
+        records one of these per setting change and rebuilds the same matrix from
+        it, so a stretch of a run is replayed from the settings the compartments
+        actually held rather than from a second copy kept alongside them.
 
         Flows are converted to litres per second here, once, because that is
         the unit `docs/MODEL.md`'s "Governing equations" are written in and
@@ -490,7 +495,7 @@ class AgentUptakeSystem:
         constant for all but a few steps of a run.
         """
 
-        settings = self._equation_settings()
+        settings = self.equation_settings()
         key = (settings, simulation_step_s)
 
         if self._propagator is None or self._propagator_key != key:
@@ -502,8 +507,11 @@ class AgentUptakeSystem:
 
         return self._propagator
 
-    def _state_vector(self) -> tuple[float, ...]:
+    def state_vector(self) -> tuple[float, ...]:
         """Read the trajectory out of the compartments, in equation order.
+
+        Public alongside `equation_settings` and for the same reason: it is the
+        state a `core/run_score.py` score opens from.
 
         The two accumulator states start each step at zero, so after one
         propagation they hold that step's own delivered and exhausted agent
