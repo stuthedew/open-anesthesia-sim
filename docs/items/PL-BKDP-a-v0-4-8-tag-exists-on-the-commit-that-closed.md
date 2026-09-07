@@ -111,6 +111,16 @@ errors, 0 advisories` before any of this release's edits - the "Done when"
 condition was already half satisfied by the withdrawal, and cutting 0.4.8 under
 its own number satisfies the rest.
 
+**What is left of this item lives elsewhere, and is not closed with it.**
+`PL-KFWL` (the v0.4.8 tag is pushed onto a commit where the release was never
+cut) holds the residue neither this item nor the release addresses: that
+nothing refuses, or even names, a tag standing at a version no release cut.
+`bin/docket release` guards the inverse - it refuses to cut while the previous
+release is untagged - and this direction is equally decidable from the tree and
+currently guarded by nothing at the moment somebody tags. `PL-YMW8` is the
+close-out that pairs the two, filed by the triage pass that found this item and
+`PL-KFWL` had been written hours apart for one event.
+
 **The durable fix the Problem statement guessed at still stands, and is not
 done here.** The tag step should name the commit the release was cut at rather
 than `origin/main`, whose meaning moves. That is what produced a tag one commit
