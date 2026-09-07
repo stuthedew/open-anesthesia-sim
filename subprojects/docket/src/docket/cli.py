@@ -1380,6 +1380,15 @@ def _record_owed(
     the command that decides whether that is provenance lost, a decline, or a
     truncated checkout. Writing nothing there is what makes this safe to run
     unattended.
+
+    Which leaves the one case a session can act on itself, and it is the common
+    one: an agent container clones `--depth 1`, so the commit that would name
+    the number is usually outside the checkout entirely. That is a fetch away
+    rather than lost, and saying only that no number was found sends a session
+    to `check` for an answer it already has. So the depth is named, with the
+    fetch that settles it. It is named whether or not anything was written,
+    because a partially deepened clone answers for its newest closures and not
+    for the rest (`PL-KX9N`).
     """
     owed = {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path}
     if not owed:
@@ -1402,6 +1411,13 @@ def _record_owed(
         _write_pr(directory, item, str(number), args.dry_run)
         print(f"{identifier}: {verb} `pr: {number}`")
         written += 1
+    unnamed = sorted(identifier for identifier in report.landed if identifier not in numbers)
+    if unnamed and report.shallow:
+        print(
+            f"record: this checkout is a shallow clone, so a closure's own merge commit - "
+            f"or the parent that would prove it is one - can lie outside it. `git fetch "
+            f"--unshallow origin` is what lets the remaining {len(unnamed)} be read"
+        )
     if written:
         return 0
     if not report.landed:

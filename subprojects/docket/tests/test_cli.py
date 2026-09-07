@@ -2328,6 +2328,110 @@ def test_bare_record_dry_run_writes_nothing(tmp_path: Path) -> None:
     assert _work_pr(work) == ""
 
 
+def _shallow_clone(tmp_path: Path) -> tuple[Path, Path]:
+    """A `--depth 1` clone of a remote whose last three commits each closed one item.
+
+    The container an agent session runs in has no checkout, so it clones
+    `--depth 1` - which is shallow *and* single-branch. Every item is `done` in
+    the tree it lands in and none records a `pr`, which is the state every
+    merge leaves and the one `record` exists to clear.
+
+    Built against real git rather than a fake, because the defect was a wrong
+    belief about what git does at a graft boundary: it reports every file in
+    the boundary commit's tree as *added*, so each of the three items looks
+    closed by that one commit. No fake would have been written with that shape
+    unless somebody already knew.
+
+    Returns the origin and the clone, because the test deepens the clone from
+    the origin to show the decline lifting.
+    """
+    origin = tmp_path / "origin"
+    items = origin / "items"
+    items.mkdir(parents=True)
+
+    def git(*args: str, cwd: Path = origin) -> None:
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(origin)],
+        check=True,
+        capture_output=True,
+    )
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", key, value)
+    for identifier in ("PL-6Q8N", "PL-GJDW", "PL-VRMK"):
+        (items / f"{identifier}-a-closed-item.md").write_text(
+            RECORD_ITEM.format(id=identifier, status="ready", extra=""), encoding="utf-8"
+        )
+    git("add", "-A")
+    git("commit", "-qm", "capture three items")
+    for identifier, number in (("PL-6Q8N", 399), ("PL-GJDW", 400), ("PL-VRMK", 401)):
+        (items / f"{identifier}-a-closed-item.md").write_text(
+            RECORD_ITEM.format(id=identifier, status="done", extra=""), encoding="utf-8"
+        )
+        git("add", "-A")
+        git("commit", "-qm", f"{identifier}: do the thing (#{number})")
+
+    work = tmp_path / "work"
+    subprocess.run(
+        ["git", "clone", "-q", "--depth", "1", origin.as_uri(), str(work)],
+        check=True,
+        capture_output=True,
+    )
+    return origin, work
+
+
+def _pr_fields(work: Path) -> dict[str, str]:
+    fields = {}
+    for identifier in ("PL-6Q8N", "PL-GJDW", "PL-VRMK"):
+        text = (work / "items" / f"{identifier}-a-closed-item.md").read_text(encoding="utf-8")
+        fields[identifier] = next(
+            (line for line in text.splitlines() if line.startswith("pr:")), ""
+        )
+    return fields
+
+
+def test_record_declines_on_a_checkout_it_cannot_walk(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """It wrote one merge's number onto every closure in the tree (`PL-KX9N`).
+
+    Observed 2026-09-06 in a session whose container had cloned `--depth 1`:
+    `record` wrote `#401` onto five items, of which four had merged in `#399`,
+    `#400` and `#402`. The clone holds one commit, so the walk that recovers a
+    number reached only that commit, and at a graft boundary every file reads
+    as added and every closed item as closed right there.
+
+    The silent half is what made it worth an item rather than a fix. `check`
+    declines to *verify* a recorded number on this same clone - it says so,
+    under `Not checked` - and then `record` wrote one anyway, after which
+    `check` reports no error at all: the field is present and well formed, and
+    the one check that could have contradicted it had already excused itself.
+
+    Deepening is the other half of the assertion. A decline that a fetch cannot
+    lift would be a refusal to work in the only checkout these sessions have.
+    """
+    origin, work = _shallow_clone(tmp_path)
+
+    assert main(["record", "--items", str(work / "items")]) == 0
+
+    assert _pr_fields(work) == {"PL-6Q8N": "", "PL-GJDW": "", "PL-VRMK": ""}
+    out = capsys.readouterr().out
+    assert "401" not in out
+    assert "git fetch --unshallow origin" in out
+
+    subprocess.run(
+        ["git", "fetch", "-q", "--unshallow", origin.as_uri()],
+        cwd=work,
+        check=True,
+        capture_output=True,
+    )
+
+    assert main(["record", "--items", str(work / "items")]) == 0
+
+    assert _pr_fields(work) == {"PL-6Q8N": "pr: 399", "PL-GJDW": "pr: 400", "PL-VRMK": "pr: 401"}
+
+
 def test_record_refuses_a_merge_without_the_number_it_is(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

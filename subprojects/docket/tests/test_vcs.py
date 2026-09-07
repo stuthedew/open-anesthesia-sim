@@ -1591,6 +1591,7 @@ def _closure_runner(
     shallow: str = "",
     closed_from: int = 0,
     file_history: tuple[str, ...] = (),
+    depth: int | None = None,
 ):
     """A git holding `on_base` (file name to text) and a default branch of `subjects`.
 
@@ -1607,6 +1608,13 @@ def _closure_runner(
     "false", or the empty string for a git that will not say, which is the
     default because most cases here are about reading the base rather than
     about depth.
+
+    `depth` is how many commits from the tip this checkout holds, which decides
+    whether `c<i>^` resolves. The default of `None` means it always does - the
+    revisions are a window on a history that continues below them, which is
+    what every test here meant before a depth could be expressed. A number
+    makes `c<depth-1>` the graft boundary of a shallow clone, whose parent git
+    does not hold and which therefore cannot be compared against anything.
 
     `file_history` is the item file's own log, which the fallback reads when
     the subject scan cannot answer. It defaults to empty rather than to
@@ -1631,7 +1639,14 @@ def _closure_runner(
         if args[0] == "rev-parse":
             if args[-1] == "--is-shallow-repository":
                 return f"{shallow}\n" if shallow else ""
-            return f"{BASE}\n" if args[-1] == BASE else ""
+            if args[-1] == BASE:
+                return f"{BASE}\n"
+            if args[-1].endswith("^^{commit}"):  # is this revision's parent in reach?
+                index = index_of(args[-1].removesuffix("^{commit}"))
+                if index is None or (depth is not None and index >= depth):
+                    return ""
+                return f"c{index}\n"
+            return ""
         if args[0] == "for-each-ref":
             return f"{BASE}\n"
         if args[0] == "show":
@@ -1899,8 +1914,80 @@ def test_a_closure_report_records_whether_the_checkout_is_truncated() -> None:
         report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
 
         assert report.shallow is expected, answer
-        # Depth qualifies an absence, never a hit: the number is still derived.
+        # `shallow` describes the checkout, not this commit: the parent here is
+        # in reach at every one of the three, so the number is derived at every
+        # one of them. What a truncated history costs is the test below.
         assert report.numbers == {"PL-K7QX": 148}
+
+
+def test_a_number_is_not_derived_where_the_parent_is_out_of_reach() -> None:
+    """The defect `PL-KX9N` reports, in the reading that produced it.
+
+    A commit is the closure only if the item reads `done` in its tree and not
+    in its parent's, and `_run_git` answers a failed `git show` with empty
+    output - so a parent outside the checkout reads as "not done there" and the
+    oldest commit held becomes the closure of everything in it. At a graft
+    boundary git reports every file as added, which is exactly that shape.
+
+    Measured on a `--depth 1` clone of this repository: `record` wrote `#401`
+    onto `PL-6Q8N`, `PL-GJDW`, `PL-N2X4` and `PL-VRMK`, whose true numbers were
+    `#399`, `#400`, `#400` and `#402`. Four wrong provenances written by the
+    one command the skill forbids hand-editing the field in favour of.
+    """
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+        ("PL-B1C2 The newest thing held (#401)",),
+        shallow="true",
+        depth=1,
+        file_history=("PL-B1C2 The newest thing held (#401)",),
+    )
+
+    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
+
+    assert report.landed == frozenset({"PL-K7QX"})
+    assert report.numbers == {}
+    assert report.shallow is True
+
+
+def test_a_subject_scan_hit_is_not_confirmed_where_the_parent_is_out_of_reach() -> None:
+    """The other reading, which asks the same question of the same commit.
+
+    The scan finds a subject leading with the id and then confirms it against
+    the parent, so it is unguarded in the same way. It answered correctly on
+    the clone above only because the boundary commit happened to be that item's
+    real closure - luck, not a property.
+    """
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+        ("PL-K7QX Do the thing (#148)",),
+        shallow="true",
+        depth=1,
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
+
+
+def test_a_partly_deepened_clone_answers_for_what_it_holds() -> None:
+    """Declining is per commit, not per checkout, and this is why that matters.
+
+    `is_shallow` is true of a clone deepened to any bounded depth, so a rule
+    keyed on it would refuse the numbers a bounded fetch had just made provable
+    - including the `git fetch --depth=200` that recovered the four wrong ones.
+    Keying on the parent instead answers wherever the comparison can be made.
+
+    Measured against real git on a 12-commit history fetched to depth 4: the
+    three newest closures resolve, the nine at or below the boundary do not.
+    """
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+        ("PL-K7QX Do the thing (#148)", "PL-B1C2 Something earlier (#140)"),
+        shallow="true",
+        depth=2,
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
+        "PL-K7QX": 148
+    }
 
 
 def _lost_runner(tree: list[str], history: list[str], *, shallow: str = "false"):
