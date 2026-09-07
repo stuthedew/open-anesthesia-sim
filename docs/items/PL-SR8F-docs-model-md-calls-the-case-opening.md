@@ -6,10 +6,11 @@ effort: S
 status: done
 classes: safety, docs
 feature: presentation-safety
+milestone: v0.4.8
 touches: docs/MODEL.md
 added: 2026-09-06
-pr: 420
 closed: 2026-09-07
+pr: 420
 verify: python3 tools/doc_check.py check && python3 -c "import pathlib; t=' '.join(pathlib.Path('docs/MODEL.md').read_text().split()); raise SystemExit(1 if 'two orders milder' in t else 0)"
 ---
 

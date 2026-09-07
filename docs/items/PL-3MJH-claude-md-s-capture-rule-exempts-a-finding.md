@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs, session-cost
 feature: worker-instructions
+milestone: v0.4.8
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md, ROADMAP.md, docs/WORKING_NOTES.md
 added: 2026-09-01
 closed: 2026-09-07

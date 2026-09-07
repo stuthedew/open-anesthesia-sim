@@ -1,15 +1,16 @@
 ---
 id: PL-0GTC
 title: docs/MODEL.md's step-atomicity section still calls the class RespiratorySystem, renamed four releases ago
-status: done
 priority: P3
 effort: S
+status: done
 classes: docs
+milestone: v0.4.8
 touches: docs/MODEL.md
-verify: python3 tools/doc_check.py check && ! grep -q 'RespiratorySystem' docs/MODEL.md
 added: 2026-09-03
-pr: 376
 closed: 2026-09-07
+pr: 376
+verify: python3 tools/doc_check.py check && ! grep -q 'RespiratorySystem' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md` § "Step atomicity" opens

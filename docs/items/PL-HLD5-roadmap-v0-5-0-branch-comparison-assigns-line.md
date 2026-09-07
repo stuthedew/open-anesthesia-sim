@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, docs
 feature: scenario-branching
+milestone: v0.4.8
 touches: ROADMAP.md, docs/items/
 added: 2026-09-07
 closed: 2026-09-07

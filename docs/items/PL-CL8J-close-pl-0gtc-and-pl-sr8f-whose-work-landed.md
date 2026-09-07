@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: dev-tooling
+milestone: v0.4.8
 touches: docs/items
 added: 2026-09-07
 closed: 2026-09-07

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: numerical-domain
+milestone: v0.4.8
 touches: tests/reference/test_coupled_dynamics.py, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-07

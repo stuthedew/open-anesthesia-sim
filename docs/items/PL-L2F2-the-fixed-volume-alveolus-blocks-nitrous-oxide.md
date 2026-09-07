@@ -5,6 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: science
+milestone: v0.4.8
 touches: docs/MODEL.md
 added: 2026-09-01
 closed: 2026-09-07

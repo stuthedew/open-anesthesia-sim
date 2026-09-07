@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, science
 feature: numerical-domain
+milestone: v0.4.8
 touches: docs/MODEL.md, src/anesthesia_sim/core, tests/reference, docs/ARCHITECTURE.md
 added: 2026-09-05
 closed: 2026-09-07

@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.4.8
 touches: docs/items
 added: 2026-09-07
 closed: 2026-09-07
+pr: 437
 verify: bin/docket check && bin/docket show PL-6BDX >/dev/null && bin/docket show PL-6YYR >/dev/null
 ---
 
