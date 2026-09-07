@@ -45,10 +45,22 @@ red is seen by nobody, and this item says its green cannot be trusted.
 The window is not exotic. A red `doc_check` is exactly what a half-cut release
 looks like — `bin/docket release` writes the version and leaves the ROADMAP
 prose to a person, and `doc_check` going red is the intended alarm that the
-prose is owed. That is the state `main` is in as this is written. So the
-interval in which the replay stops answering for a quarter of the queue
-coincides with release time, which is when items have most recently landed and
-the replay is most load-bearing.
+prose is owed. So the interval in which the replay stops answering for a quarter
+of the queue coincides with release time, which is when items have most recently
+landed and the replay is most load-bearing.
+
+**Correction, 2026-09-07, later the same day.** The measurement above was taken
+while `main` was red; it no longer is, and the way it stopped being red widens
+this item rather than narrowing it. The `v0.4.8` tag was **deleted from origin**,
+which returns `doc_check` to green — but `git fetch --tags` does not prune, so
+this checkout went on failing on a tag the remote no longer had, with nothing in
+the output to say the fault was stale local state rather than a repository one.
+Deleting the local tag returned `doc_check` to `0 errors, 0 advisories` with no
+other change. So the void window has a **second trigger** that outlives the
+condition that opened it, and is per-checkout rather than shared: a session can
+sit inside it while `main` is provably fine. That trigger is its own finding and
+is `PL-LT77` (`git fetch --tags` does not prune, so a tag deleted on origin keeps
+failing `doc_check` in every checkout that already fetched it).
 
 **Where.** The verify runner in `subprojects/docket/src/docket/verify.py`, and
 the reporting in `subprojects/docket/src/docket/checks.py` /
