@@ -1234,12 +1234,45 @@ primary measurement owes three things, and carries all three today:
   round number no source ever contained.
 
 That is a higher bar than a tier-1 citation clears, not a lower one, and it is
-deliberately not a licence to prefer the convenient number. The reason has to
-be that no primary measurement of *this quantity, in this population* exists
-or is reachable — never that finding one is work. Where a primary measurement
-*is* available and simply has not been adopted, the entry says so in those
-words and the value stays unsourced, which is what all twelve partition
-coefficients do.
+deliberately not a licence to prefer the convenient number. Two reasons are
+admissible, and finding a primary source being work is not one of them:
+
+1. **No primary measurement of *this quantity, in this population* exists or
+   is reachable.** The reference patient is wholly in this state, including
+   the parameters that carry a primary citation beside them: Hudgel and
+   Devadatta measured awake functional residual capacity where the stored
+   volume is an anaesthetised lung, Cattermole et al. measured a different
+   population, and Janssen et al. report a muscle mass where this model holds
+   a volume. Each note says which of those it is, and that is what makes the
+   citation a comparison rather than a source.
+2. **The value belongs to a set whose internal consistency is part of what is
+   being modelled**, and the reachable primaries would have to be mixed across
+   laboratories and cohorts to replace it. This is tier 3's own argument
+   above: a reference implementation supplies a complete, internally
+   consistent set where the primary literature supplies scattered measurements
+   made in different laboratories on different cohorts. The twelve partition
+   coefficients are the worked example. Eger, Strum and Eger, and Lerman et
+   al. did measure these quantities in this population, so the first reason
+   does not cover them — but a single laboratory's blood:gas figure dropped
+   into a Gas Man tissue set makes the trajectory a hybrid of two parameter
+   lineages — the same objection this document makes below against dividing a
+   Gas Man trajectory by a Mapleson MAC, applied one level down.
+
+The second reason is the narrower of the two and is not a way around the
+first. It is available only where the primaries are cited on the entry with
+the measured value and the difference from the stored one recorded, so that
+the cost of the choice is visible to the reader rather than argued away:
+desflurane −0.9%, sevoflurane −5.2%, isoflurane −11.0% against the measured
+blood:gas coefficients, and the decision itself dated to 2026-09-03
+(`PL-D6LX`). `ROADMAP.md`'s planned-milestone item 31 is the route to a
+primary coefficient set, which would retire this reason for these twelve.
+
+Where a primary measurement *is* available and simply has not been adopted,
+the entry says so in those words and the value **carries no adopted primary**.
+That is a statement about the `adopted` field rather than about the citation:
+a stored value can name a source and declare its tier while no measurement of
+that quantity stands behind it, which is the ordinary case here and the reason
+the field exists.
 
 **Full texts held on hand are in `docs/references/`, and holding one changes
 nothing about its tier.** The directory exists so that a session checking a

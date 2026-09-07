@@ -4,12 +4,13 @@ title: Cut v0.4.9 - the release where the checks were found to be checking less 
 priority: P2
 effort: S
 status: done
-not-delegable: Proving a release cut means cutting the release; there is no command that can run beforehand and fail.
 classes: planning
 feature: planning-cadence
 touches: ROADMAP.md, pyproject.toml, uv.lock, docs/releases/v0.4.9.md, docs/items
 added: 2026-09-07
 closed: 2026-09-07
+pr: 453
+not-delegable: Proving a release cut means cutting the release; there is no command that can run beforehand and fail.
 ---
 
 **Problem.** Cut v0.4.9 - the release where the checks were found to be checking less than they claimed
