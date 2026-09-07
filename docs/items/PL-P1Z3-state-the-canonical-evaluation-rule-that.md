@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: docs/MODEL.md, src/anesthesia_sim/core, tests/reference, docs/ARCHITECTURE.md
 added: 2026-09-05
 closed: 2026-09-07
+pr: 435
 verify: uv run pytest -q tests/reference && grep -q 'canonical evaluation' docs/MODEL.md
 ---
 
