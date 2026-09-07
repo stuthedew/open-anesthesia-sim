@@ -109,6 +109,13 @@ class Config:
     #: the failure the split exists to prevent, wearing the flag that was
     #: supposed to prevent it.
     workflow_paths: tuple[str, ...] = ()
+    #: Paths holding the product's own source and its tests, as against the
+    #: prose written about it. `docket trend` splits product work on this, so
+    #: that a period spent rewriting the roadmap is not read as a period spent
+    #: building the thing - two very different answers to "what was the work".
+    #: Unlike `workflow_paths` this fails *open*: with nothing declared, every
+    #: product path is prose, which understates code and never invents it.
+    code_paths: tuple[str, ...] = ("src", "tests")
     version_file: str = "pyproject.toml"
     #: The plan `docket wave` reads: the release train, the milestone
     #: sections, and the debt list each one records when it is scoped.
@@ -202,6 +209,7 @@ def load(root: Path) -> Config:
         workflow_paths=_tuple(section.get("workflow_paths"), defaults.workflow_paths),
         gate_paths=_tuple(section.get("gate_paths"), defaults.gate_paths),
         check_command=str(section.get("check_command", defaults.check_command)),
+        code_paths=_tuple(section.get("code_paths"), defaults.code_paths),
         version_file=str(section.get("version_file", defaults.version_file)),
         roadmap_file=str(section.get("roadmap_file", defaults.roadmap_file)),
         version_policy=str(section.get("version_policy", defaults.version_policy)),

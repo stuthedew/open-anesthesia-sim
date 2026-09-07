@@ -2722,3 +2722,89 @@ def test_a_retitled_item_is_still_found_in_a_real_checkout(tmp_path: Path) -> No
     assert records_on_base(root, {"PL-K7QX": "PL-K7QX-b.md"}).commands == {
         "PL-K7QX": "pytest recorded"
     }
+
+
+def _trend_store(tmp_path: Path, *, lanes: bool = True) -> Path:
+    """A store with closures on both sides of the boundary, a week apart."""
+    items = tmp_path / "docs" / "items"
+    items.mkdir(parents=True)
+    declared = 'workflow_paths = ["tools"]\n' if lanes else ""
+    (items.parent / "docket.toml").write_text(f"[docket]\n{declared}", encoding="utf-8")
+    brief = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
+    for ident, touches, closed, effort in (
+        ("PL-AA01", "src/core.py", "2026-08-25", "M"),
+        ("PL-AA02", "tools/x.py", "2026-08-25", "S"),
+        ("PL-AA03", "tools/y.py", "2026-09-02", "S"),
+        ("PL-AA04", "tools/x.py, src/core.py", "2026-09-02", "S"),
+    ):
+        (items / f"{ident}-x.md").write_text(
+            f"---\nid: {ident}\ntitle: Item {ident}\npriority: P2\neffort: {effort}\n"
+            f"status: done\nclasses: perf\ntouches: {touches}\nadded: 2026-08-01\n"
+            f"closed: {closed}\n---\n\n{brief}",
+            encoding="utf-8",
+        )
+    return items
+
+
+def test_trend_reports_each_measure_and_names_the_work_no_lane_could_place(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Three columns, and the crossing item visible rather than folded into a side."""
+    store = str(_trend_store(tmp_path))
+
+    assert main(["trend", "--items", store, "--no-git", "--today", "2026-09-05"]) == 0
+    out = capsys.readouterr().out
+
+    assert "closed items" in out and "weighted" in out
+    rows = {line.split()[0]: line.split()[1:] for line in out.splitlines() if line[:2] == "20"}
+    # Week one: one product `M` against one workflow `S`. Half the items and a
+    # quarter of the weight - the correction the second column exists to make.
+    assert rows["2026-08-25..08-31"] == ["1/1", "0", "0", "50%", "1/3", "25%"]
+    # Week two: the crossing item counted in its own column, and left out of
+    # the share rather than folded into either side.
+    assert rows["2026-09-01..09-05"] == ["1/0", "1", "0", "100%", "1/0", "100%"]
+
+
+def test_trend_omits_the_churn_columns_when_git_cannot_be_read(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Absent rather than zero: a zero would read as a week nobody wrote code in."""
+    store = str(_trend_store(tmp_path))
+
+    assert main(["trend", "--items", store, "--no-git", "--today", "2026-09-05"]) == 0
+    out = capsys.readouterr().out
+
+    assert "churn" in out  # the legend still explains why it is missing
+    assert "appar./product" not in out
+
+
+def test_trend_refuses_a_project_that_has_not_drawn_the_boundary(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Fails closed like the lane arguments: with no boundary there are no halves."""
+    store = str(_trend_store(tmp_path, lanes=False))
+
+    assert main(["trend", "--items", store, "--no-git", "--today", "2026-09-05"]) == 1
+    out = capsys.readouterr().out
+
+    assert "no `workflow_paths` are declared" in out
+    assert "closed items" not in out
+
+
+def test_trend_takes_a_day_at_a_time_when_asked(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = str(_trend_store(tmp_path))
+
+    assert (
+        main(["trend", "--items", store, "--no-git", "--by", "day", "--today", "2026-09-05"]) == 0
+    )
+    out = capsys.readouterr().out
+
+    labels = [line.split()[0] for line in out.splitlines() if line[:2] == "20"]
+    assert labels == ["2026-08-25", "2026-09-02"]
+
+
+def test_trend_rejects_a_window_it_does_not_have(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit):
+        main(["trend", "--items", str(_trend_store(tmp_path)), "--by", "fortnight"])

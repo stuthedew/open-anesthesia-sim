@@ -598,6 +598,55 @@ where no boundary is declared or neither lane has anything startable. The
 spanning count rides the same line: two picks read as the whole queue without
 it.
 
+### The one command that looks backwards: `docket trend`
+
+Every other command describes the project as it stands. `docket trend` asks
+how the balance between the two halves has *moved*, which is a question the
+store answers and nothing was reading:
+
+    docket trend            # 7-day periods
+    docket trend --by day
+
+It reports three measures side by side, and the reason it does not reduce them
+to one is that each is wrong in a way the others are not.
+
+**Closed items** is the obvious count and the most misleading of the three.
+Apparatus work arrives in many small pieces; measured against this repository's
+own store, workflow items average well under the size of product ones, so
+counting them overstates the apparatus by roughly half. **Effort-weighted
+closures** correct for that, at the price of leaning on a size ladder — `S=1,
+M=3, L=8` — that is a convention rather than a measurement, which is why the
+ladder is printed under the column that uses it. **Churn**, lines added plus
+deleted, is the only measure read from what actually changed rather than from
+what an item declared, so it is the one that still answers where `touches` is
+missing or wrong.
+
+The lane columns use exactly the boundary `docket next product` uses, so the
+two commands cannot drift apart, and `crossing` and `unplaced` keep their own
+columns here for the same reason `next` names them: neither is a side, and
+folding either into one would be a verdict the data does not support.
+
+Churn splits finer than the lanes do, because two of its categories would
+otherwise say the wrong thing. The **queue store** is inside `workflow_paths`
+and belongs there — editing it is apparatus work — but it is also written by
+every session that captures a finding while doing something else, so counting
+it makes a product session read as a workflow one; it is reported and left out
+of the share. The **roadmap** is deliberately *outside* `workflow_paths`,
+since product direction is product work, but a period spent rewriting it is
+not a period spent building anything, so it is separated from `code`. What
+counts as code is `code_paths`, which defaults to `src` and `tests`.
+
+Periods are anchored at the first day the report has anything to say about,
+never counted back from today: two runs a day apart have to agree about what
+happened in August. A period with nothing in it is dropped rather than printed
+as a row of zeroes, and a period where neither side moved shows a dash rather
+than `0%`, which would read as a period of pure product work.
+
+Like `docket wave`, it computes and decides nothing. Whether the balance it
+prints is the right one is a judgment about the project, and a tool that
+answered it would re-open the same question every run without being able to
+see what the run was for.
+
 ### The digest and the ranking cannot disagree
 
 The session digest's `Top:` line is that same answer, from the same ranking
@@ -1581,6 +1630,7 @@ untriaged_stale_days = 14
 verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
 minor_classes = ["feature"]
 protected_paths = []
+code_paths = ["src", "tests"]      # what `docket trend` counts as code
 version_file = "pyproject.toml"
 roadmap_file = "ROADMAP.md"
 ```

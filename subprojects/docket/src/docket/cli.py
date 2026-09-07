@@ -43,9 +43,12 @@ from .release import (
 )
 from .roadmap import Wave, wave
 from .store import find_item, new_id, read_items, write_item
+from .trend import BY_DAY, BY_WEEK
+from .trend import analyze as analyze_trend
 from .vcs import (
     CURRENT,
     BranchCut,
+    Churn,
     CutsInFlight,
     FlightReport,
     OrphanedReport,
@@ -53,6 +56,7 @@ from .vcs import (
     branch_state,
     branches_in_flight,
     changed_items,
+    churn,
     closed_by,
     closures_on_base,
     cuts_in_flight,
@@ -1188,6 +1192,40 @@ def cmd_wave(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_trend(args: argparse.Namespace) -> int:
+    """How the balance between the two halves of the project has moved.
+
+    The one command here that looks backwards. Everything else describes the
+    project as it stands, so "is the apparatus taking more of the work than it
+    used to" had no answer short of a session reading the store and the history
+    and classifying both by hand.
+
+    Refuses without `workflow_paths`, exactly as the lane arguments to `next`
+    do and for the same reason: with no boundary declared there are no halves,
+    and answering anyway would mean drawing the line on the project's behalf
+    and presenting the result as its own.
+
+    It reads git without fetching. Every question here is about this
+    repository's own history, which a fetch does not change - unlike `branch`
+    and `stranded`, whose findings are claims about what the *base* does not
+    hold.
+    """
+    _, items, config = _load(args)
+    if not config.workflow_paths:
+        print(
+            f"Cannot answer: no `workflow_paths` are declared in {CONFIG_NAME}, so "
+            "nothing separates the apparatus from the product. Declaring them is "
+            "what makes this - and `docket next product` / `docket next workflow` - "
+            "answerable."
+        )
+        return 1
+    root = args.items.parent if args.items else find_root()
+    history = Churn() if args.no_git else churn(root)
+    report = analyze_trend(items, history, config, by=args.by, today=args.today or date.today())
+    print(render.format_trend(report))
+    return 0
+
+
 def cmd_stranded(args: argparse.Namespace) -> int:
     """Work that exists on a branch and nowhere this checkout can otherwise see.
 
@@ -1628,6 +1666,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     add("status", "the project at feature altitude").set_defaults(func=cmd_status)
     add("wave", "which beat of the planning cadence is due").set_defaults(func=cmd_wave)
+    trend_cmd = add("trend", "how the workflow-to-product balance has moved over time")
+    trend_cmd.add_argument(
+        "--by",
+        choices=(BY_WEEK, BY_DAY),
+        default=BY_WEEK,
+        help="period length (default: %(default)s)",
+    )
+    trend_cmd.set_defaults(func=cmd_trend)
     return parser
 
 
