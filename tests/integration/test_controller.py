@@ -1226,7 +1226,7 @@ def test_the_closed_form_window_matches_the_recorded_one() -> None:
             (RecordedQuantity.MUSCLE, FIRST_TISSUE_FRACTION + 1),
             (RecordedQuantity.FAT, FIRST_TISSUE_FRACTION + 2),
         ):
-            assert abs(state[index] - values[quantity]) < CLOSED_FORM_AGREEMENT
+            assert abs(state.values[index] - values[quantity]) < CLOSED_FORM_AGREEMENT
 
 
 def test_a_setting_change_opens_a_segment_where_the_run_saw_it() -> None:
