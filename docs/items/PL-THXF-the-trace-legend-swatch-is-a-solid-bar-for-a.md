@@ -1,7 +1,13 @@
 ---
 id: PL-THXF
 title: The trace legend swatch is a solid bar for a trace that is dashed, so the legend's own redundant channel is words only
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, ux
+feature: presentation-safety
+touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
+verify: uv run pytest -q tests/unit/test_simulation_view.py && grep -q 'def test_each_legend_swatch_is_drawn_in_its_traces_dash_pattern' tests/unit/test_simulation_view.py
 added: 2026-09-07
 ---
 
