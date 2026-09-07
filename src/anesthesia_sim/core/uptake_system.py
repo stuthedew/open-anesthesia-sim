@@ -432,9 +432,9 @@ class AgentUptakeSystem:
             exhausted_agent_l=(fresh_gas_exchange.exhausted_agent_l),
         )
 
-        accounting_check = self.agent_simulation_validation
-
-        self.agent_simulation_validator.require_valid_agent_accounting(accounting_check)
+        accounting_check = self.agent_simulation_validator.require_valid_agent_accounting(
+            currently_stored_agent_l=(self.total_stored_agent_l)
+        )
 
         return UptakeStepResult(
             fresh_gas_exchange=fresh_gas_exchange,

@@ -169,12 +169,14 @@ class _AccountingCheckThatFailsOnce(AgentSimulationValidator):
 
     pending_error: Exception | None = None
 
-    def require_valid_agent_accounting(self, check: AgentSimulationValidationResult) -> None:
+    def require_valid_agent_accounting(
+        self, currently_stored_agent_l: float
+    ) -> AgentSimulationValidationResult:
         if self.pending_error is not None:
             error, self.pending_error = self.pending_error, None
             raise error
 
-        super().require_valid_agent_accounting(check)
+        return super().require_valid_agent_accounting(currently_stored_agent_l)
 
 
 def _sevoflurane_with(validator: AgentSimulationValidator) -> AgentUptakeSystem:

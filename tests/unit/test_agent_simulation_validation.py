@@ -62,8 +62,11 @@ def _period_short_by(
     """A completed accounting period whose store is short by `residual_l`.
 
     The validator is returned alongside its result so that a case can put the
-    result back through `require_valid_agent_accounting()`, which is what
-    actually halts a run and therefore what these cases are about.
+    same store — `check.currently_stored_agent_l` — back through
+    `require_valid_agent_accounting()`, which is what actually halts a run and
+    therefore what these cases are about. That guard recomputes the check from
+    the validator it is called on, so reading the store back off the result is
+    what keeps the two calls measuring one accounting period.
 
     The residual is built by subtraction, so the value the check sees is the
     one asked for only to a rounding. That is asserted here rather than
@@ -132,10 +135,45 @@ def test_initial_agent_is_included_in_accounting() -> None:
 def test_require_valid_raises_specific_project_exception() -> None:
     validator = AgentSimulationValidator()
     validator.record_external_agent_transfer(delivered_agent_l=1.0, exhausted_agent_l=0.25)
-    check = validator.check_agent_accounting(currently_stored_agent_l=0.70)
 
     with pytest.raises(AgentSimulationValidationError, match="Agent accounting validation failed"):
-        validator.require_valid_agent_accounting(check)
+        validator.require_valid_agent_accounting(currently_stored_agent_l=0.70)
+
+
+def test_require_valid_agent_accounting_reads_the_validators_own_state() -> None:
+    """The verdict and the halt message describe the validator that was asked.
+
+    The guard used to take a completed `AgentSimulationValidationResult` and
+    read only that, never `self`. So one validator would rule on another's
+    accounting period silently, and the halt message — the only account a
+    reader gets of why a run stopped — would have named that other period's
+    totals (`PL-X204`). Taking the store instead makes the mismatch
+    unrepresentable rather than merely unreached: there is no result to hand
+    in.
+
+    Two periods and one store show it. Both validators are asked about the
+    same 0.75 L: it balances the first period exactly and leaves the second a
+    litre short, so the store alone decides nothing and the validator's own
+    state decides everything.
+    """
+
+    balanced = AgentSimulationValidator()
+    balanced.record_external_agent_transfer(delivered_agent_l=1.0, exhausted_agent_l=0.25)
+
+    short = AgentSimulationValidator()
+    short.record_external_agent_transfer(delivered_agent_l=2.0, exhausted_agent_l=0.25)
+
+    passing = balanced.require_valid_agent_accounting(currently_stored_agent_l=0.75)
+
+    assert passing.passes_validation is True
+    assert passing.delivered_agent_l == 1.0
+    assert passing.currently_stored_agent_l == 0.75
+
+    with pytest.raises(AgentSimulationValidationError) as raised:
+        short.require_valid_agent_accounting(currently_stored_agent_l=0.75)
+
+    assert "delivered=2.000000e+00 L" in str(raised.value)
+    assert "unaccounted=1.000000e+00 L" in str(raised.value)
 
 
 def test_accounting_exception_inherits_project_hierarchy() -> None:
@@ -207,7 +245,7 @@ def test_a_residual_inside_the_relative_tolerance_passes_on_the_relative_branch(
     assert check.absolute_error_l > DOCUMENTED_ABSOLUTE_TOLERANCE_L
     assert check.relative_error < DOCUMENTED_RELATIVE_TOLERANCE
     assert check.passes_validation is True
-    validator.require_valid_agent_accounting(check)  # Does not raise.
+    validator.require_valid_agent_accounting(check.currently_stored_agent_l)  # Does not raise.
 
 
 def test_a_residual_outside_the_relative_tolerance_halts_the_run() -> None:
@@ -221,7 +259,7 @@ def test_a_residual_outside_the_relative_tolerance_halts_the_run() -> None:
     assert check.relative_error > DOCUMENTED_RELATIVE_TOLERANCE
     assert check.passes_validation is False
     with pytest.raises(AgentSimulationValidationError, match="Agent accounting validation failed"):
-        validator.require_valid_agent_accounting(check)
+        validator.require_valid_agent_accounting(check.currently_stored_agent_l)
 
 
 def test_a_residual_inside_the_absolute_tolerance_passes_on_the_absolute_branch() -> None:
@@ -240,7 +278,7 @@ def test_a_residual_inside_the_absolute_tolerance_passes_on_the_absolute_branch(
     assert check.relative_error > DOCUMENTED_RELATIVE_TOLERANCE
     assert check.absolute_error_l < DOCUMENTED_ABSOLUTE_TOLERANCE_L
     assert check.passes_validation is True
-    validator.require_valid_agent_accounting(check)  # Does not raise.
+    validator.require_valid_agent_accounting(check.currently_stored_agent_l)  # Does not raise.
 
 
 def test_a_residual_outside_the_absolute_tolerance_halts_the_run() -> None:
@@ -254,7 +292,7 @@ def test_a_residual_outside_the_absolute_tolerance_halts_the_run() -> None:
     assert check.absolute_error_l > DOCUMENTED_ABSOLUTE_TOLERANCE_L
     assert check.passes_validation is False
     with pytest.raises(AgentSimulationValidationError, match="Agent accounting validation failed"):
-        validator.require_valid_agent_accounting(check)
+        validator.require_valid_agent_accounting(check.currently_stored_agent_l)
 
 
 def test_the_absolute_tolerance_admits_a_residual_exactly_at_the_threshold() -> None:
@@ -284,7 +322,7 @@ def test_the_absolute_tolerance_admits_a_residual_exactly_at_the_threshold() -> 
     assert check.absolute_error_l == DOCUMENTED_ABSOLUTE_TOLERANCE_L
     assert check.relative_error > DOCUMENTED_RELATIVE_TOLERANCE
     assert check.passes_validation is True
-    validator.require_valid_agent_accounting(check)  # Does not raise.
+    validator.require_valid_agent_accounting(check.currently_stored_agent_l)  # Does not raise.
 
 
 def test_the_relative_tolerance_admits_a_residual_exactly_at_the_threshold() -> None:
@@ -316,7 +354,7 @@ def test_the_relative_tolerance_admits_a_residual_exactly_at_the_threshold() -> 
     assert check.relative_error == DOCUMENTED_RELATIVE_TOLERANCE
     assert check.absolute_error_l > DOCUMENTED_ABSOLUTE_TOLERANCE_L
     assert check.passes_validation is True
-    validator.require_valid_agent_accounting(check)  # Does not raise.
+    validator.require_valid_agent_accounting(check.currently_stored_agent_l)  # Does not raise.
 
 
 def test_the_scale_floor_carries_the_relative_error_before_anything_is_delivered() -> None:
