@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, test
 feature: model-spec-accuracy
+milestone: v0.4.9
 touches: tests/unit/test_tissue.py, tests/reference/test_sevo_patient.py
 added: 2026-09-03
 closed: 2026-09-07

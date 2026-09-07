@@ -34,8 +34,8 @@ flow, alveolar ventilation, and cardiac output, then measure the corners
 before choosing the new bound — the bound follows the measurement.
 **Done when.** The gate bounds the coefficient over the settings the
 interface can produce, and `docs/MODEL.md` states the domain it covers.
-**Context.** `docs/WORKING_NOTES.md`, "Splitting error outside the gate's
-operating point".
+**Context.** The splitting-error thread this line cited was rewritten out of
+`docs/WORKING_NOTES.md` as it resolved. `PL-X9KD` carries what became of it.
 
 **Worked.** The bound follows the measurement, as the brief required, but two
 things the brief did not specify were decided here.

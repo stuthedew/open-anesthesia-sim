@@ -3,12 +3,15 @@ id: PL-X2XX
 title: doc_check's citation check reads neither docs/items/*.md nor source docstrings, so nothing holds the queue's or the code's citations to the docs they name
 priority: P2
 effort: M
-status: ready
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_citation_in_an_item_brief' tests/unit/test_doc_check.py
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+milestone: v0.4.9
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/items/PL-XF89-readme-s-opening-says-inhaled-anesthetic-where.md
 added: 2026-09-01
+closed: 2026-09-07
+pr: 451
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_citation_in_an_item_brief' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `check_citations` (`tools/doc_check.py:1187`) resolves every path
@@ -30,9 +33,13 @@ both present.
 A second, smaller hole is in the pattern rather than the globs:
 `CITATION_RE` (`tools/doc_check.py:221-225`) recognises `see "…"`, `under
 "…"` and `"…" above|below`. The `PL-042` instance writes the bare form
-`` `docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating
-point" ``, which no branch of that pattern matches, so widening the globs
-alone catches one of the two.
+
+```text
+`docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating point"
+```
+
+which no branch of that pattern matches, so widening the globs alone catches
+one of the two.
 
 **Why it matters.** `CLAUDE.md` treats stale documentation as a safety issue
 rather than tidiness, and holds that the decidable half of a documentation
@@ -59,3 +66,66 @@ a heading no document has is a `make check` error, the two instances in
 `PL-8B1K` are among the errors it reports before they are fixed, and each new
 check reached by the widened set was deliberately included or excluded rather
 than inherited.
+
+**Measured, 2026-09-07.** The brief above was written on 2026-09-01 and its
+premise does not survive contact with the tree. Everything below is counted,
+not estimated; the probes are reproducible from `read_docs`, `CITATION_RE`,
+`_cites_heading` and `_resolves` as they stand.
+
+- **The store is 687 item files, not 222** - 231 open, 456 closed.
+- **Neither `PL-8B1K` instance becomes an error under the widening this brief
+  describes.** The `src/anesthesia_sim/core/uptake_system.py` one no longer
+  exists: `PL-006` rewrote that docstring, and `grep -n 'near-term to-dos'`
+  over the tree now finds it only inside item prose *about* the defect. The
+  `PL-042` one survives, and it is missed for two reasons that are both in
+  `CITATION_RE` rather than in `DOC_GLOBS` - see the pattern finding below.
+- **Widening `DOC_GLOBS` to `docs/items/*.md` yields 16 section-citation
+  errors and 143 unresolved path citations, and close to all of them are
+  noise.** The section ones are quoted program output (`"do not start these
+  again"` from the digest, `"Cannot run alongside"` from `docket concurrent`,
+  `"not checked"` from `_check_landed`), a GitHub settings label (`"Require
+  status checks to pass"`), ordinary English read as a direction (`ranks
+  "irreversible architectural problems" above code style`), this item's own
+  `"…"` placeholders, and headings that `ROADMAP.md` genuinely had when a
+  closed item cited them. The path ones are removed tools
+  (`tools/punch_list.py`), renamed documents (`docs/PLANNING.md`), glob
+  patterns (`subprojects/*/uv.lock`), git refs (`origin/`) and illustrative
+  filenames; 111 of the 143 are in closed items.
+- **Item briefs have no `#` headings at all**, so `_headings` returns `[]` for
+  every one of them and each `"X" above|below` written inside an item fails
+  automatically. They mark their sections with `**Bold.**` instead.
+- **The widened set reaches two latent crashes in `_resolves`**: `ValueError:
+  '**' can only be an entire path component`, and `NotImplementedError:
+  Non-relative patterns are unsupported`. Either aborts `doc_check` rather
+  than reporting anything. Captured as `PL-0M7L`.
+- **`check_math_delimiters` is not affected either way.** Its docstring says
+  it walks every markdown file rather than `DOC_GLOBS`, and it does, so the
+  **Watch for** paragraph's worked example is already answered. The two real
+  consumers of `read_docs` are `check_citations` and `check_make_targets`,
+  plus `cmd_candidates`; only the first wants items.
+
+**The decidable defect is in the pattern, not the globs.** `CITATION_RE` has
+two gaps, and together they are what hides the surviving `PL-8B1K` instance:
+
+1. No branch matches the **document-qualified** form this project actually
+   writes - a path in a code span, then the section:
+
+   ```text
+   `docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating point"
+   ```
+2. Both existing branches quote as `[^"\n]+`, so a section name that wraps
+   across a source line cannot match. This repository hard-wraps prose at
+   about 78 characters, so a long section title is invisible to the check
+   **in the documents it already reads**, not only in the ones it does not.
+   Captured as `PL-X94L`; it is the more serious of the two, because it is a
+   live check reporting success over text it never examined.
+
+**Counted alternative.** A document-qualified branch, made newline-tolerant,
+run over `DOC_GLOBS` + `docs/items/*.md` + every `.py` module, class and
+function docstring, and applied to **section citations only**, yields **9**
+hits across the whole tree. Three are the same `PL-042` citation quoted by
+`PL-8B1K` and by this item as the example of the defect, which needs an
+exemption or a fenced block; one is a pattern artifact to tighten. The rest
+are genuine. That is the shape `CLAUDE.md` asks for - the decidable half in
+code, and a signal a reader acts on - against roughly 160 findings of which
+five are real if the globs are widened instead.

@@ -66,6 +66,7 @@ the same reason.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import subprocess
@@ -229,6 +230,8 @@ NON_PARAMETER_KEYS = frozenset({"schema_version", "sources", "provenance_gap"})
 SOURCE_TIERS = ("primary", "secondary", "reference-implementation")
 
 FENCE_RE = re.compile(r"^```")
+#: The same fence, allowed to sit inside a list item.
+INDENTED_FENCE_RE = re.compile(r"^[ \t]*```")
 TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
 #: A source file named in the reference index, as inline code: `name.pdf`.
 REFERENCE_FILE_RE = re.compile(r"`(?P<name>[\w][\w.-]*\.(?:pdf|txt|csv|json))`")
@@ -267,12 +270,42 @@ BRACE_RE = re.compile(r"\{([^{}]*)\}")
 # A quoted phrase is read as a section citation only in the two forms this
 # repository actually writes: after `see`/`under`, or immediately before
 # `above`/`below`. Bare `in "..."` is ordinary English and is left alone.
+#
+# The quotation may span a source line. Prose here hard-wraps at about 78
+# characters, so a section title long enough to wrap was unmatchable while
+# both branches quoted as `[^"\n]+` - and unmatchable means unchecked, not
+# reported: `check_citations` passed over 18 citations in the documents it
+# already reads without examining one of them. The bound replaces the newline
+# as the thing that stops a runaway match, and `_normalized` puts the term
+# back on one line before it is compared.
 CITATION_RE = re.compile(
-    r'(?:\b(?:see|under)\s+"(?P<named>[^"\n]+)")'
-    r'|(?:"(?P<directed>[^"\n]+)"[ ]+(?:above|below)\b)',
-    re.IGNORECASE,
+    r'(?:\b(?:see|under)\s+"(?P<named>[^"]{1,160}?)")'
+    r'|(?:"(?P<directed>[^"]{1,160}?)"[ \n]+(?:above|below)\b)',
+    re.IGNORECASE | re.DOTALL,
 )
-DIRECTION_RE = re.compile(r"^[ ]*(?:above|below)\b", re.IGNORECASE)
+DIRECTION_RE = re.compile(r"^[ \n]*(?:above|below)\b", re.IGNORECASE)
+
+# A `**Bold.**` run opening a line, with or without a list bullet in front of
+# it. This repository subdivides long documents with these rather than with
+# deeper `#` levels, and then cites them by name exactly as it cites headings
+# - `docs/MODEL.md` alone carries 513 of them against 269 headings. Reading
+# only `#` lines therefore made a correct citation look stale, which is the
+# worse failure of the two: a reader sent to repair prose that was right.
+MARKER_RE = re.compile(r"^(?:[-*+]\s+)?\*\*(?P<title>[^*\n]+?)\.?\*\*", re.M)
+
+# A citation that names its target document and then quotes it:
+# `` `docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating
+# point" ``. The document is explicit, so nothing has to be inferred about
+# which file the quotation belongs to - which is what lets this run over the
+# queue and the docstrings without the guesswork that reading a bare quoted
+# phrase there would need. The quotation must open on a word character, so a
+# stray `")"` in prose is not read as one, and it may span source lines.
+QUOTED_SOURCE_RE = re.compile(
+    r"(?:\b(?:see|under|in)\s+)?"
+    r"`(?P<document>[\w./-]+\.md)`[ \n]*[,:]?[ \n]*"
+    r'"(?P<quoted>\w[^"]{2,200}?)"',
+    re.DOTALL,
+)
 
 # The `**Tags.**` statement. What it claims is deliberately not a list: the
 # version table above it already says which releases exist, so restating them
@@ -1530,12 +1563,37 @@ def _resolves(root: Path, basenames: frozenset[str], token: str) -> bool:
     return "/" not in token and token in basenames
 
 
+def _normalized(text: str) -> str:
+    """`text` on one line, so a quotation that wrapped compares as written."""
+    return " ".join(text.split())
+
+
+#: Typography that differs between a passage and an honest quotation of it.
+#: This project writes both `-` and `—` for the same dash, and a quotation
+#: copied by hand settles on one of them; the passage is still there, so a
+#: mismatch here is a false error rather than a stale citation.
+TYPOGRAPHY = str.maketrans({"—": "-", "–": "-", "’": "'", "‘": "'", "“": '"', "”": '"'})
+
+
+def _comparable(text: str) -> str:
+    """`text` reduced to what a faithful quotation must still match."""
+    return _normalized(text).translate(TYPOGRAPHY).casefold()
+
+
 def _headings(text: str) -> list[str]:
+    """Every title a citation may name: `#` headings and `**Bold.**` markers.
+
+    Both are section titles here, and the documents cite them the same way.
+    Restricting this to `#` lines did not narrow the check, it made it wrong
+    in one direction only - `docs/MODEL.md` cites its own `**The chart's
+    vertical range is denominated in MAC, and fixed.**` marker, and that
+    citation is correct.
+    """
     return [
         match.group("title")
         for line in text.splitlines()
         if (match := HEADING_RE.match(line)) is not None
-    ]
+    ] + MARKER_RE.findall(text)
 
 
 def _cites_heading(term: str, headings: Iterable[str]) -> bool:
@@ -1593,7 +1651,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                     )
 
         for match in CITATION_RE.finditer(text):
-            term = match.group("named") or match.group("directed")
+            term = _normalized(match.group("named") or match.group("directed"))
             line = _line_of(text, match.start())
             same_file = match.group("directed") is not None or DIRECTION_RE.match(
                 text[match.end() : match.end() + 24]
@@ -1607,6 +1665,113 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
             elif not _cites_heading(term, every_heading):
                 report.errors.append(
                     f'{path}:{line}: cites section "{term}", which no documentation file has'
+                )
+
+
+def _without_fences(text: str) -> str:
+    """`text` with fenced blocks blanked, offsets and line numbers preserved.
+
+    A fence holds a literal - a command, an example, a quotation shown as
+    broken. Reading one as a claim is how an item that documents a stale
+    citation becomes an error for containing the citation it reports.
+
+    Indented fences count. `FENCE_RE` anchors at column 0, which is right for
+    the top-level blocks it was written for and wrong here: an example given
+    under a list item is indented to sit inside it, and that is exactly where
+    an item shows the citation it is reporting.
+    """
+    out, fenced = [], False
+    for line in text.splitlines(keepends=True):
+        if INDENTED_FENCE_RE.match(line):
+            fenced = not fenced
+            out.append(" " * (len(line) - 1) + "\n")
+        else:
+            out.append(" " * (len(line) - 1) + "\n" if fenced else line)
+    return "".join(out)
+
+
+def _docstrings(text: str) -> Iterator[tuple[int, str]]:
+    """Every module, class and function docstring, with the line it starts on."""
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):  # pragma: no cover - not this tool's question
+        return
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if (docstring := ast.get_docstring(node, clean=False)) is not None:
+            yield node.body[0].lineno, docstring
+
+
+def _quoting_sources(root: Path, documents: dict[Path, str]) -> Iterator[tuple[Path, int, str]]:
+    """Every text that may quote a document, as (file, first line, text).
+
+    Three sets, and the two `DOC_GLOBS` misses are where this project actually
+    writes its citations: the queue, which is most of its prose, and the
+    docstrings, which are where a contributor reading the code is sent
+    somewhere else. `DOC_GLOBS` itself is left alone - widening it would hand
+    687 item files to `check_make_targets` and to `candidates`, neither of
+    which wants them.
+    """
+    for path, text in documents.items():
+        yield path, 1, text
+    for path in sorted(root.glob("docs/items/*.md")):
+        yield path.relative_to(root), 1, path.read_text(encoding="utf-8")
+    for path in sorted(_walk(root)):
+        if path.suffix != ".py":
+            continue
+        try:
+            source = path.read_text(encoding="utf-8")
+        except UNREADABLE:  # pragma: no cover - unreadable is not a citation
+            continue
+        for line, docstring in _docstrings(source):
+            yield path.relative_to(root), line, docstring
+
+
+def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report) -> None:
+    """Hold a citation that names a markdown file and then quotes it to that file.
+
+    This is the form the existing branches in `CITATION_RE` do not reach, and
+    the one that decays worst. `docs/WORKING_NOTES.md` rewrites and deletes
+    threads as they resolve - the file's own header asks for that - so a
+    citation into it by section title is stale the moment the thread is
+    rewritten, and nothing said so.
+
+    **The test is containment, not headings, and that is what makes it
+    exact.** A citation names a document and then quotes it; whether the
+    quotation is a section title or a sentence is a distinction this tool
+    would have to guess at, and guessing produced six false errors against
+    prose that was quoted correctly. Whether the named document contains the
+    words is decidable, it is the same question in both cases, and a
+    quotation that has drifted is as stale as a title that has - `PL-XF89`
+    cites a `WORKING_NOTES` thread renamed from "Open:" to "Mostly settled:",
+    which a heading test and a containment test both catch.
+
+    Case, dash style and quote style are folded, because a passage copied by
+    hand settles on one of the forms this project writes and the passage is
+    still there either way. An elided quotation is skipped outright: one
+    written with an ellipsis cannot be found verbatim, and declining to
+    answer beats a false error.
+    """
+    bodies: dict[str, str | None] = {}
+
+    for path, offset, text in _quoting_sources(root, documents):
+        for match in QUOTED_SOURCE_RE.finditer(_without_fences(text)):
+            cited, quoted = match.group("document"), _normalized(match.group("quoted"))
+            if "..." in quoted or "…" in quoted:
+                continue
+            line = offset + _line_of(text, match.start()) - 1
+            if cited not in bodies:
+                target = root / cited
+                bodies[cited] = (
+                    _comparable(target.read_text(encoding="utf-8")) if target.is_file() else None
+                )
+            body = bodies[cited]
+            if body is None:
+                report.errors.append(f"{path}:{line}: quotes {cited}, which does not exist")
+            elif _comparable(quoted).rstrip(" .,;:") not in body:
+                report.errors.append(
+                    f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
                 )
 
 
@@ -2125,6 +2290,7 @@ def analyze(root: Path) -> Report:
     check_source_tiers(root, report)
     check_prose_provenance(root, report)
     check_citations(root, documents, report)
+    check_quoted_sources(root, documents, report)
     check_timeline(root, report)
     check_baseline(root, report)
     check_gate_counts(root, report)
@@ -2187,7 +2353,8 @@ def format_check(report: Report) -> str:
     if not report.errors and not report.advisories and not report.declined:
         lines.append(
             "Package map, provenance table, citations, release train, current "
-            "baseline, release tags, documented make targets and CI paths all resolve."
+            "baseline, release tags, documented make targets and CI paths all resolve, as do "
+            "the citations in the documentation, the queue and the source docstrings."
         )
     return "\n".join(lines)
 

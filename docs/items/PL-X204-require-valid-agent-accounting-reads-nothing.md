@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: numerical-domain
+milestone: v0.4.9
 touches: src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_agent_simulation_validation.py, tests/unit/test_uptake_system_failure.py
 added: 2026-09-03
 closed: 2026-09-07

@@ -30,7 +30,7 @@ from .plan import OfferedReport
 from .release import SEMVER_RE, version_key
 from .store import ID_PATTERN, ID_RE
 from .vcs import ClosureReport, LostReport, PullRequestHistory, RecordReport
-from .verify import LandedReport, reenters_verify
+from .verify import LandedReport, reads_check_output, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
 DONE_WHEN = "**Done when.**"
@@ -380,6 +380,18 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"out. Prove the item another way: read the store (`grep` over "
             f"{config.items_dir}), or pair a command that passes today with a "
             "`grep` for what the work adds."
+        )
+    # An advisory rather than an error, unlike the refusal above: whether a
+    # shell line reads a command's output is a judgment, and the exit-status
+    # form beside it is the shape this project recommends.
+    if item.verify and (shape := reads_check_output(item.verify)):
+        report.advisories.append(
+            f"{_where(item)}: its `verify:` command runs `docket check` and {shape}. "
+            "A nested run is told not to replay the open items' commands, so it never "
+            "prints the landed advisory - a `grep` for that answer matches nothing "
+            "whether the work is done or not, and an inverted one passes on the "
+            "strength of it. Read the exit status instead, paired with a `grep` for "
+            "what the work adds."
         )
     if item.not_delegable and item.not_delegable.lower() in ("no", "yes", "true", "false"):
         report.errors.append(
