@@ -1259,6 +1259,33 @@ still needs the project owner's institutional or library access, as the Workbook
 did; `PL-XJ5P` carries that gap. What changed is the size of the ask: page 57,
 with page 83 next.
 
+**The venous pool now has a published counterpart, and it is not the stored
+1.0 L.** Davis and Mapleson (*Br J Anaesth* 1981;53:399–405), supplied by the
+project owner and read at the source 2026-09-07, quantify a standard man of
+70 kg with a total blood volume of 5189 ml and a cardiac output of 6480 ml/min.
+Page 400 states that **for models of inhaled anaesthetics** the two venous pools
+may be combined, "in which case it would be marginally more accurate to make the
+arterial pool 799 ml (15.4% of the total blood volume) and the combined venous
+pool 1222 ml (23.6%)". That combined pool is the same object as $`V_v`$ here:
+one well-stirred venous pool carrying tissue return. Their Appendix derives it
+from ICRP (1975) blood distribution rather than measuring it, which is what
+keeps it tier 2. It does not supply the stored 1.0 L, which appears nowhere in
+the paper, so that value stays a modelling choice this project cannot trace to
+any cited source; what has changed is that a candidate exists. `PL-8ZJQ` carries
+whether to adopt it — at the stored 5.0 L/min cardiac output, 1.222 L would move
+the mixed-venous time constant from 12.0 s to 14.7 s.
+
+**It also answers the arterial question, against the arterial reading.** The
+suspicion was that the stored 1.0 L might be an arterial compartment under a
+venous name, on Lerou and Booij's arterial fraction of 0.2 — 0.98 L at their
+4.9 L total, within 2% of what is stored. Davis and Mapleson's own arterial pool
+for an inhaled-anaesthetic model is 799 ml, 15.4% rather than 20%, so that
+coincidence does not survive the primary source. Their venous pool is the closer
+structural match, and the time constants nearly agree: 1222/6480 = 11.3 s
+against 1.0/5.0 = 12.0 s here. That is a property of the time constant rather
+than of the volume, and it is not evidence of a shared lineage — nothing
+documents Gas Man as having taken anything from this paper.
+
 **So, three rules for a `sources` entry.**
 
 - Name the tier. Where the stored value is not a primary measurement, say
