@@ -3,11 +3,12 @@ id: PL-20CQ
 title: "docket check runs every open item's verify: command, so a verify: that invokes docket check recurses without bound"
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, tests/unit/test_ignore_check.py
 added: 2026-09-01
+closed: 2026-09-07
 verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_verify.py && grep -q 'def test_a_verify_command_that_recurses_into_docket_verify_is_rejected' subprojects/docket/tests/test_checks.py
 ---
 
@@ -86,20 +87,26 @@ began matching the real directive at line 100 as soon as the file grew by a
 line. It now locates the string-literal occurrence and asserts that one is
 absent, which is what it meant to say.
 
-**Decision needed.** Whether anything should fire on a `verify:` that re-enters
-`docket check`. The literal **Done when.** above asks for an error, and it must
-not be built as written: ten open items record `bin/docket check && grep -q
-...`, which is the paired shape `.claude/skills/docket/SKILL.md` recommends,
-and erroring on it would fail `make check` on the store the rule exists to
-protect. The narrower target is a command reading the nested run's *output*
-rather than its exit status, which is the only shape that can pass vacuously.
-Three answers, and the recommendation is the second:
+**Decided (2026-09-07, project owner).** Option 2 of the three below: an
+advisory, not an error, and scoped to the shape that can actually pass
+vacuously rather than to `docket check` re-entry at large.
 
-1. Nothing. The vacuity is real but has never been written.
-2. An advisory naming a `verify:` that pipes or captures `docket check`'s
-   output, saying the nested run declines the landed question so the command
-   cannot observe it. An advisory rather than an error because "reads the
-   output" is a judgment about a shell line, and `CLAUDE.md` reserves hard
-   failure for exact rules.
-3. An error on that same shape, which has to be exact enough never to fire on
-   the ten items above.
+The options were (1) do nothing, since the vacuous shape has never been
+written; (2) an advisory naming a `verify:` that pipes or captures `docket
+check`'s output; (3) an error on that same shape. Two was taken because the
+discriminator - whether a shell line reads a command's *output* or its *exit
+status* - is a judgment rather than an exact rule, and `CLAUDE.md` reserves
+hard failure for the exact ones.
+
+`reads_check_output` implements it. A run of `docket check` followed by a pipe
+before the pipeline ends, or one inside a command substitution, is reported;
+the exit-status form is silent. The pipeline-end test is what keeps
+`PL-39B7`'s recorded command correct - `bin/docket check && ! bin/docket
+stranded | grep -qE ...` pipes `stranded`, not `check`, and the segment stops
+at the `&&`.
+
+Writing it also corrected the quoting model both predicates share. Blanking
+every quoted span hid `test -z "$(bin/docket check)"`, because `$(...)` still
+runs inside double quotes. `_outside_quotes` now blanks single-quoted spans
+always and double-quoted ones only where they carry neither `$(` nor a
+backtick, so reading the store stays allowed and a substitution stays visible.
