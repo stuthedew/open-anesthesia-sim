@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: safety
 feature: numerical-domain
+milestone: v0.4.7
 touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation.py, tests/unit/test_supported_ranges.py, docs/MODEL.md
 added: 2026-09-05
 closed: 2026-09-07
+pr: 421
 verify: uv run pytest tests/unit/test_supported_ranges.py tests/unit/test_simulation.py tests/unit/test_exceptions.py tests/unit/test_formatting.py tests/unit/test_simulation_view.py tests/integration/test_controller.py && grep -q 'MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86_400.0' src/anesthesia_sim/core/supported_ranges.py && grep -qF '#### Supported run length' docs/MODEL.md
 ---
 

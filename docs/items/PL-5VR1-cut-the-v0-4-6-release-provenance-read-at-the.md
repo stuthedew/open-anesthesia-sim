@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: release-process
+milestone: v0.4.7
 touches: ROADMAP.md, pyproject.toml, uv.lock, docs/releases
 added: 2026-09-06
 closed: 2026-09-06

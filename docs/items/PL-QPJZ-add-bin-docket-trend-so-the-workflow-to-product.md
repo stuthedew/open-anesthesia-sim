@@ -1,15 +1,17 @@
 ---
 id: PL-QPJZ
 title: Add `bin/docket trend` so the workflow-to-product balance over time is a command rather than a session's derivation
-status: done
 priority: P2
 effort: M
+status: done
 classes: infra, session-cost
 feature: dev-tooling
+milestone: v0.4.7
 touches: subprojects/docket/src/docket/trend.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_trend.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
-verify: uv run pytest subprojects/docket/tests/ && grep -q 'def test_trend' subprojects/docket/tests/test_cli.py
 added: 2026-09-07
 closed: 2026-09-07
+pr: 424
+verify: uv run pytest subprojects/docket/tests/ && grep -q 'def test_trend' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** Asked how the balance of workflow work to product work had moved

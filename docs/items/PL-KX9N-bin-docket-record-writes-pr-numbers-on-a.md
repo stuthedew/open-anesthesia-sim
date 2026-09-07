@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: commit-provenance
+milestone: v0.4.7
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-06
 closed: 2026-09-07
