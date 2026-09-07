@@ -63,6 +63,20 @@ case-opening ratios are stated. `tests/reference/test_control_resolution.py:481`
 holds the test that would fail if the ordering reversed; no change is owed
 there.
 
+**`PL-SR8F` is this paragraph's predecessor, and it is still open.** `PL-SR8F`
+(MODEL.md calls the case-opening displacement 'two orders milder') is P1
+`safety` against the same sentence, and its work has landed: the phrase it
+names was present through `a6da69e` (2026-09-06) and gone by `67b279b`,
+`PL-ZVS7`'s own commit, which replaced it with the explicit per-rate ratios the
+paragraph carries today. `bin/docket check --verify` reports `PL-SR8F` as open
+with a passing command for that reason.
+
+So this item is about the sentence `PL-SR8F`'s fix produced, not the one it
+found: the ratios are now stated per rate and are correct, and what is still
+wrong is *which manoeuvre* they are stated against. Close `PL-SR8F` before
+starting here, or work the two together — a second edit to one paragraph from a
+session that has not read the first is how a corrected figure gets re-broken.
+
 **Decision needed.** Which of the three options below the spec takes. All three
 are edits to `docs/MODEL.md` alone.
 
