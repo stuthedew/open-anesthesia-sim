@@ -536,6 +536,157 @@ def test_ordinary_quoted_prose_is_not_read_as_a_citation(tmp_path: Path) -> None
     assert not any("cites section" in e for e in _errors(_repo(tmp_path, readme=readme)))
 
 
+# --- wrapped citations and bold markers -------------------------------------
+
+
+def _wrapped(readme_line: str) -> str:
+    return "# Demo\n\n" + readme_line + "\n"
+
+
+def test_a_cited_section_title_that_wraps_across_lines_is_checked(tmp_path: Path) -> None:
+    """Prose hard-wraps, so a long title breaks across a source line.
+
+    While the pattern quoted as `[^"\n]+` such a citation matched nothing and
+    was silently unexamined - the check reported success over text it had not
+    read, which is worse than reporting a gap.
+    """
+    model = MODEL.replace("## Known limitations", "## Known limitations of the coupled model")
+    readme = _wrapped('See "Renamed limitations of the coupled\nmodel" for what it omits.')
+    root = _repo(tmp_path, model=model, readme=readme)
+    assert any(
+        'cites section "Renamed limitations of the coupled model"' in e for e in _errors(root)
+    )
+
+
+def test_a_wrapped_citation_that_resolves_is_not_an_error(tmp_path: Path) -> None:
+    model = MODEL.replace("## Known limitations", "## Known limitations of the coupled model")
+    readme = _wrapped('See "Known limitations of the coupled\nmodel" for what it omits.')
+    assert not any(
+        "cites section" in e for e in _errors(_repo(tmp_path, model=model, readme=readme))
+    )
+
+
+def test_a_bold_marker_is_a_citable_section_title(tmp_path: Path) -> None:
+    """This project subdivides documents with `**Bold.**`, and cites them by name."""
+    model = MODEL + "\n**What the model omits.** Everything else.\n"
+    readme = _wrapped('See "What the model omits" for what it leaves out.')
+    assert not any(
+        "cites section" in e for e in _errors(_repo(tmp_path, model=model, readme=readme))
+    )
+
+
+def test_a_bullet_led_bold_marker_is_a_citable_section_title(tmp_path: Path) -> None:
+    model = MODEL + "\n- **What the model omits.** Everything else.\n"
+    readme = _wrapped('See "What the model omits" for what it leaves out.')
+    assert not any(
+        "cites section" in e for e in _errors(_repo(tmp_path, model=model, readme=readme))
+    )
+
+
+# --- quoted sources: item briefs and docstrings ------------------------------
+
+
+def _item(root: Path, name: str, body: str) -> None:
+    items = root / "docs" / "items"
+    items.mkdir(parents=True, exist_ok=True)
+    (items / f"{name}.md").write_text(body, encoding="utf-8")
+
+
+def _docstringed(root: Path, body: str) -> None:
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text(f'''"""{body}"""\n''', encoding="utf-8")
+
+
+def test_citation_in_an_item_brief_is_held_to_the_document_it_names(tmp_path: Path) -> None:
+    """The queue is where most of this project's prose is, and it was unread."""
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`, "A thread that was deleted".\n')
+    assert any(
+        'PL-0000-demo.md:1: quotes docs/MODEL.md as "A thread that was deleted"' in e
+        for e in _errors(root)
+    )
+
+
+def test_citation_in_an_item_brief_that_resolves_is_not_an_error(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`, "Known limitations".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_citation_in_a_source_docstring_is_held_to_the_document_it_names(tmp_path: Path) -> None:
+    """A contributor reading the class is sent somewhere; it has to still answer."""
+    root = _repo(tmp_path)
+    _docstringed(root, 'See `docs/MODEL.md`, "A thread that was deleted".')
+    assert any("thing.py:1: quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_docstring_citation_is_reported_on_its_own_line(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text(
+        '''X = 1\n\n\ndef f() -> None:\n    """See `docs/MODEL.md`, "A deleted thread"."""\n''',
+        encoding="utf-8",
+    )
+    assert any("thing.py:5: quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_quoted_source_inside_a_fence_is_not_a_citation(tmp_path: Path) -> None:
+    """An item showing a broken citation must not be an error for showing it."""
+    root = _repo(tmp_path)
+    _item(
+        root,
+        "PL-0000-demo",
+        'It ended with\n\n```text\n`docs/MODEL.md`, "A thread that was deleted"\n```\n',
+    )
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_an_indented_fence_hides_a_quoted_source_too(tmp_path: Path) -> None:
+    """A fence under a list item is indented to sit inside it."""
+    root = _repo(tmp_path)
+    _item(
+        root,
+        "PL-0000-demo",
+        '- It ended with\n\n  ```text\n  `docs/MODEL.md`, "A thread that was deleted"\n  ```\n',
+    )
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_an_elided_quotation_is_not_checked(tmp_path: Path) -> None:
+    """`"a ... b"` cannot be found verbatim; declining beats a false error."""
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '`docs/MODEL.md`, "Known ... limitations".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_quotation_differing_only_in_dash_style_resolves(tmp_path: Path) -> None:
+    """This project writes both `-` and an em dash for the same dash."""
+    model = MODEL + "\nThe step is fixed - and stated once.\n"
+    root = _repo(tmp_path, model=model)
+    _item(root, "PL-0000-demo", '`docs/MODEL.md`, "The step is fixed \u2014 and stated once".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_quotation_recapitalised_to_open_a_sentence_resolves(tmp_path: Path) -> None:
+    model = MODEL + "\nthe step is fixed and stated once.\n"
+    root = _repo(tmp_path, model=model)
+    _item(root, "PL-0000-demo", '`docs/MODEL.md`, "The step is fixed and stated once".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_quoted_sentence_that_is_not_a_heading_still_resolves(tmp_path: Path) -> None:
+    """Whether the quotation is a title is a question this check does not ask."""
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '`docs/MODEL.md`, "blood:gas coefficient is 0.5".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_citation_naming_a_document_that_does_not_exist_is_an_error(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '`docs/GONE.md`, "Anything at all".\n')
+    assert any("quotes docs/GONE.md, which does not exist" in e for e in _errors(root))
+
+
 def test_broken_relative_link_is_an_error(tmp_path: Path) -> None:
     readme = "# Demo\n\nSee [the model](docs/GONE.md).\n"
     root = _repo(tmp_path, readme=readme)

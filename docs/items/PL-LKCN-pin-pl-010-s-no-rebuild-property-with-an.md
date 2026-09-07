@@ -9,6 +9,7 @@ feature: chart-readout
 touches: tests/unit/test_simulation_view.py, src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-02
 closed: 2026-09-07
+pr: 449
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_refresh_allocates_no_chart_points_when_drawn_count_unchanged' tests/unit/test_simulation_view.py
 ---
 

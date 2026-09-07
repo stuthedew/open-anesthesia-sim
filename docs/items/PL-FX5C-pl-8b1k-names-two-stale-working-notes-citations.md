@@ -1,8 +1,15 @@
 ---
 id: PL-FX5C
 title: PL-8B1K names two stale WORKING_NOTES citations but PL-006 already fixed the uptake_system.py one, so the item overstates what is left
-status: untriaged
+priority: P3
+effort: S
+status: dropped
+reason: PL-8B1K closes in the same branch as PL-X2XX, against the one instance that survived. There is no longer an overstated brief for a later session to read - the item records both instances and its closure records that PL-006 had already taken one of them.
+classes: docs
+feature: dev-tooling
+touches: docs/items/PL-8B1K-two-citations-into-docs-working-notes-md-name.md
 added: 2026-09-07
+closed: 2026-09-07
 ---
 
 **Problem.** PL-8B1K names two stale WORKING_NOTES citations but PL-006 already fixed the uptake_system.py one, so the item overstates what is left

@@ -29,7 +29,8 @@ words are defensible and they are answering different questions.
   is going. It is also the register the owner asked for: a 2026-09-01 draft
   was rejected for framing the project as a volatile-agent simulator when
   "that is the current build rather than the goal"
-  (`docs/WORKING_NOTES.md`, "Open: the project's one-line self-description").
+  (`docs/WORKING_NOTES.md`, "Mostly settled: the project's one-line
+  self-description").
 - **"Volatile" names what version 0.4.4 actually does.** Only sevoflurane,
   isoflurane and desflurane are modeled, and `README.md`'s own "What it does
   not simulate" leads with "Nitrous oxide, any second gas, and concentration

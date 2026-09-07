@@ -3,12 +3,13 @@ id: PL-X2XX
 title: doc_check's citation check reads neither docs/items/*.md nor source docstrings, so nothing holds the queue's or the code's citations to the docs they name
 priority: P2
 effort: M
-status: ready
+status: done
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_citation_in_an_item_brief' tests/unit/test_doc_check.py
 classes: defect, infra
 feature: dev-tooling
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/items/PL-XF89-readme-s-opening-says-inhaled-anesthetic-where.md
 added: 2026-09-01
+closed: 2026-09-07
 ---
 
 **Problem.** `check_citations` (`tools/doc_check.py:1187`) resolves every path
@@ -30,9 +31,13 @@ both present.
 A second, smaller hole is in the pattern rather than the globs:
 `CITATION_RE` (`tools/doc_check.py:221-225`) recognises `see "…"`, `under
 "…"` and `"…" above|below`. The `PL-042` instance writes the bare form
-`` `docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating
-point" ``, which no branch of that pattern matches, so widening the globs
-alone catches one of the two.
+
+```text
+`docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating point"
+```
+
+which no branch of that pattern matches, so widening the globs alone catches
+one of the two.
 
 **Why it matters.** `CLAUDE.md` treats stale documentation as a safety issue
 rather than tidiness, and holds that the decidable half of a documentation
@@ -101,8 +106,11 @@ not estimated; the probes are reproducible from `read_docs`, `CITATION_RE`,
 two gaps, and together they are what hides the surviving `PL-8B1K` instance:
 
 1. No branch matches the **document-qualified** form this project actually
-   writes - a path in a code span, then the section: `` `docs/WORKING_NOTES.md`,
-   "Splitting error outside the gate's operating point" ``.
+   writes - a path in a code span, then the section:
+
+   ```text
+   `docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating point"
+   ```
 2. Both existing branches quote as `[^"\n]+`, so a section name that wraps
    across a source line cannot match. This repository hard-wraps prose at
    about 78 characters, so a long section title is invisible to the check
