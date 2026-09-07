@@ -1495,6 +1495,19 @@ def _all_series(view: SimulationView) -> tuple[fch.LineChartData, ...]:
     )
 
 
+def _drawn_series(view: SimulationView) -> tuple[fch.LineChartData, ...]:
+    """Every trace a frame redraws through `chart_series.redraw_points`.
+
+    `_all_series` above is the concentration chart's six. The wash-in pool
+    is the rest of what a frame writes points into - filled, or emptied by
+    `park_series`, which is the same call with no coordinates - so a test
+    making a statement about the render tick rather than about one chart
+    has to include it.
+    """
+
+    return (*_all_series(view), *view._wash_in_segment_series)
+
+
 def test_a_frame_never_materializes_the_window_as_rows(monkeypatch: pytest.MonkeyPatch) -> None:
     """`PL-D9WD`: nothing on the render path may walk the visible window.
 
@@ -2453,6 +2466,109 @@ def test_chart_points_are_moved_rather_than_rebuilt_each_frame() -> None:
         assert len(series.points) == len(points_held)
         assert all(new is old for new, old in zip(series.points, points_held, strict=True))
         assert [(point.x, point.y) for point in series.points] != before
+
+
+def test_refresh_allocates_no_chart_points_when_drawn_count_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`PL-LKCN`: a frame that draws the same number of points builds none.
+
+    This is the property `PL-010` bought, stated as something the ordinary
+    suite holds a later change to. `PL-010`'s own evidence was a wall-clock
+    figure - 16.6 ms to 2.6 ms at the saturated window - measured with a
+    harness written in a scratch directory and thrown away with the session,
+    so nothing in the repository could re-measure it. What regressed, and
+    what would regress again, is allocation rather than milliseconds; and
+    allocation is deterministic, so it cannot flake on a shared runner the
+    way a wall-clock ceiling would.
+
+    Stated as a conditional, because the unconditional form is false. The
+    drawn count is not fixed frame to frame even at a saturated window: M4
+    contributes up to four points per column and two on the monotone
+    stretches a real run is mostly made of, so a sliding window crosses
+    column boundaries where the total moves by a point or two per trace. A
+    frame that grows a trace *must* build the difference. What must never
+    happen is building points for a trace whose drawn count is exactly what
+    it already was - that is the per-sample rebuild returning by another
+    door.
+
+    The history advances every frame, which is not incidental. Flet's
+    `Prop.__set__` early-returns when the new value equals the old one, so a
+    replay of one fixed snapshot exercises a cheaper write than the running
+    app ever performs; `PL-010`'s per-part harness was caught by exactly
+    that. A fixed snapshot would also pin the drawn count and leave every
+    frame below vacuously unchanged. Both are guarded at the end.
+
+    Companion to `test_chart_points_are_moved_rather_than_rebuilt_each_frame`
+    above, which asserts the surviving points are the same objects. That one
+    would miss a frame that built points and then discarded them; this one
+    counts construction itself, and over every trace the tick redraws rather
+    than the concentration chart's six.
+    """
+
+    built = 0
+    build_point = fch.LineChartDataPoint
+
+    def counted(*args: Any, **kwargs: Any) -> fch.LineChartDataPoint:
+        nonlocal built
+        built += 1
+
+        return build_point(*args, **kwargs)
+
+    # Patched on the module `chart_series` reads the name from, rather than
+    # on one call site, so a construction anywhere on the render path counts.
+    monkeypatch.setattr(fch, "LineChartDataPoint", counted)
+
+    controller = _fake_controller(history=_run_history(12_000))
+    view = SimulationView(page=_FakePage(), controller=controller)
+    # A selected time base, so the window slides at its saturated width
+    # rather than widening: under "Fit run" a run this length is drawn whole,
+    # the older points never move, and the ceiling this defends is never
+    # reached. Building the view fills the traces from one point each, which
+    # is a change of drawn count and legitimately allocates - `built` is
+    # zeroed per frame below, after all of that.
+    _select_time_base(view, 900.0)
+    # One render tick's worth of new samples, so the window slides at the
+    # rate the running app slides it.
+    steps_per_render_tick = round(RENDER_INTERVAL_S / SIMULATION_STEP_S)
+
+    def drawn_counts() -> tuple[int, ...]:
+        return tuple(len(series.points) for series in _drawn_series(view))
+
+    def drawn_coordinates() -> list[list[tuple[float, float]]]:
+        return [[(point.x, point.y) for point in series.points] for series in _drawn_series(view)]
+
+    frames = 60
+    frames_at_unchanged_count = 0
+    frames_that_moved = 0
+    previous_counts = drawn_counts()
+    previous_coordinates = drawn_coordinates()
+
+    for step in range(1, frames + 1):
+        controller.advance_to(_run_history(12_000 + step * steps_per_render_tick))
+        built = 0
+        view._refresh_view()
+        counts = drawn_counts()
+        coordinates = drawn_coordinates()
+
+        if counts == previous_counts:
+            frames_at_unchanged_count += 1
+            assert built == 0, (
+                f"frame {step} built {built} chart points while drawing the same "
+                f"{sum(counts)} across the tick as the frame before it"
+            )
+
+        if coordinates != previous_coordinates:
+            frames_that_moved += 1
+
+        previous_counts = counts
+        previous_coordinates = coordinates
+
+    # Not vacuous: the run has to have produced frames of the kind the
+    # assertion applies to, and each has to have been a real redraw rather
+    # than a snapshot replayed against itself.
+    assert frames_at_unchanged_count > 0, "no frame drew an unchanged count, so nothing was tested"
+    assert frames_that_moved == frames, "a frame redrew its own coordinates, so the history stalled"
 
 
 def _run_briefly(coroutine_function, ticks: int, interval_s: float) -> None:

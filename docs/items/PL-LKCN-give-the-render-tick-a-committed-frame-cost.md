@@ -3,11 +3,12 @@ id: PL-LKCN
 title: Pin PL-010's no-rebuild property with an allocation test on the render tick
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test, perf
 feature: chart-readout
 touches: tests/unit/test_simulation_view.py, src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-02
+closed: 2026-09-07
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_refresh_allocates_no_chart_points_when_drawn_count_unchanged' tests/unit/test_simulation_view.py
 ---
 
@@ -68,3 +69,27 @@ per-part one had not.
 if a refresh allocates chart points when the drawn count has not changed,
 so the property PL-010 bought is defended by the ordinary suite rather than
 by a number in a closed item.
+
+**Built** as `test_refresh_allocates_no_chart_points_when_drawn_count_unchanged`
+in `tests/unit/test_simulation_view.py`, counting `fch.LineChartDataPoint`
+construction across sixty render ticks at a saturated 900 s window. The timing
+harness is not built, per the triage decision above.
+
+**Stated as a conditional, because the unconditional form is false.** The drawn
+count is not fixed frame to frame even at a saturated window: M4 contributes up
+to four points per column and two on the monotone stretches, so a sliding window
+crosses column boundaries where the total moves by a point or two per trace.
+Measured over the sixty frames: 278 points per trace, dropping to 276 and back
+as boundaries pass, and the frames that grow a trace allocate the difference -
+correctly. Fifty-odd of the sixty draw an unchanged count and allocate nothing,
+and those are the ones asserted on. Both guards against a vacuous pass are
+asserted too: that such frames occurred at all, and that every frame's drawn
+coordinates moved.
+
+**It catches what its companion misses.** Injecting the pre-PL-010 rebuild -
+`redraw_points` discarding its points and building the frame fresh - fails it on
+frame 1 (1946 points built while drawing the same 1946). So does the subtler
+regression that allocates a throwaway point per drawn sample while preserving
+the identity of every point the series keeps, which
+`test_chart_points_are_moved_rather_than_rebuilt_each_frame` passes: that test
+compares surviving references, and this one counts construction.
