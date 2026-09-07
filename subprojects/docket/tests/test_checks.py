@@ -173,6 +173,16 @@ def test_a_required_heading_with_nothing_under_it_is_not_a_brief() -> None:
     assert not _has(messages, "brief is missing")
 
 
+STUB_ABOVE_BRIEF = (
+    "**Problem.** x\n\n"
+    "**Why it matters.**\n\n"
+    "**Done when.**\n\n"
+    "**Problem.** the real one\n\n"
+    "**Why it matters.** because\n\n"
+    "**Done when.** it holds\n"
+)
+
+
 def test_a_stub_above_a_real_brief_does_not_satisfy_the_check() -> None:
     """`PL-RWZV`'s own shape, and why the *first* heading is the one judged.
 
@@ -180,20 +190,45 @@ def test_a_stub_above_a_real_brief_does_not_satisfy_the_check() -> None:
     a second set below them. Judging any occurrence with text under it would
     pass exactly this, which is the hole rather than the fix.
     """
-    messages = _errors(
-        _item(
-            body=(
-                "**Problem.** x\n\n"
-                "**Why it matters.**\n\n"
-                "**Done when.**\n\n"
-                "**Problem.** the real one\n\n"
-                "**Why it matters.** because\n\n"
-                "**Done when.** it holds\n"
-            )
+    assert _errors(_item(body=STUB_ABOVE_BRIEF)) != []
+
+
+def test_a_stub_above_a_real_brief_is_named_rather_than_called_an_empty_section() -> None:
+    """`PL-D188`: the shape was reported, and reported as the opposite of itself.
+
+    "Brief has nothing under **Why it matters.**" is false of an item whose
+    brief is two pages, and it was the only thing said about eighteen of the
+    thirty-two items at one triage pass. A reader who learns that a line can be
+    wrong stops reading it, so the accurate diagnosis replaces it rather than
+    joining it.
+    """
+    messages = _errors(_item(body=STUB_ABOVE_BRIEF))
+
+    assert _has(messages, "the capture template is still above the brief")
+    assert _has(messages, "**Why it matters.** is empty and a second **Problem.**")
+    assert not _has(messages, "brief has nothing under")
+    assert not _has(messages, "brief is missing")
+
+
+def test_an_elaborated_second_heading_is_not_a_stub() -> None:
+    """The false positive the rule has to avoid, and the reason it reads the first.
+
+    `**Why it matters more than a normal benchmark.**` opens a section of its
+    own rather than restating the one above it, so the plain heading above is
+    non-empty and nothing is stranded. `PL-LKCN` is written that way, and a
+    rule counting repeated headings would have failed it.
+    """
+    briefed = _item(
+        body=(
+            "**Problem.** x\n\n"
+            "**Why it matters.** the consequence\n\n"
+            "**Why it matters more than a normal benchmark.** the second half\n\n"
+            "**Problem.** restated later for emphasis\n\n"
+            "**Done when.** it holds\n"
         )
     )
 
-    assert _has(messages, "brief has nothing under **Why it matters.**, **Done when.**")
+    assert _errors(briefed) == []
 
 
 def test_an_empty_section_is_reported_as_empty_rather_than_missing() -> None:

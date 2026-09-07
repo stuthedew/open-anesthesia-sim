@@ -49,6 +49,24 @@ band — those are triage, and demanding them at the moment an idea occurs is
 how ideas stop being written down. Several titles in one call, because
 interruptions rarely carry exactly one thought.
 
+**It writes one line into the body and no headings to fill in:** the title,
+under a `**Problem.**` of its own. A brief appended below it composes — the
+title is the terse problem statement the fuller sections elaborate — and
+appending is what sessions do. Capture used to write the other three headings
+empty, which is a form rather than a statement, and a session holding the
+brief wrote it *below* the form instead of over it. That leaves a dead stub
+above a real brief; the first matching heading is the one judged, so the stub
+is the one read, and an item with a two-page brief reports as having nothing
+under two required sections. Eighteen of the thirty-two items at one triage
+pass carried it.
+
+`docket check` and `docket triage` name that shape wherever it survives — an
+empty required heading with a `**Problem.**` starting again below it — and
+they do so on an untriaged item too, where the brief requirements deliberately
+do not reach. The exemption is not weakened by it: the rule demands nothing
+capture chose to leave out, and writing less can never trigger it. Only
+writing a brief and leaving a template above it can.
+
 ### Capture is only unloseable if a lost branch is noticed
 
 An item is committed on whatever branch the capturing session was on. If that

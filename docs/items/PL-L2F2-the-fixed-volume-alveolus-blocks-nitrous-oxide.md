@@ -8,6 +8,7 @@ classes: science
 touches: docs/MODEL.md
 added: 2026-09-01
 closed: 2026-09-07
+pr: 426
 verify: python3 tools/doc_check.py check && grep -qF 'fixed alveolar volume' docs/MODEL.md
 ---
 

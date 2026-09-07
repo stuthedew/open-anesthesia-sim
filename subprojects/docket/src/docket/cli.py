@@ -74,13 +74,16 @@ from .vcs import (
 )
 from .verify import already_passing, verify_batch
 
+# The one thing that is true at capture, and nothing else. Empty headings for a
+# session to write over were indistinguishable from headings a session had left
+# empty, and a session holding the brief appended it below them rather than
+# replacing them, which left a dead stub that `checks.py` then read in
+# preference to the brief (queue item `PL-D188`). One line inverts that: a brief
+# appended below it composes into a well-formed one, which is the operation
+# sessions were performing anyway. The format itself is documented in the
+# README, printed by `docket triage`, and required by `docket check` at `ready`
+# - three statements of it, where the fourth was the one that misread.
 CAPTURE_TEMPLATE = """**Problem.** {title}
-
-**Why it matters.**
-
-**Where.**
-
-**Done when.**
 """
 
 
