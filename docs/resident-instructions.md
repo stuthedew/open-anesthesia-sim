@@ -121,6 +121,17 @@ failure added. Its code-and-provenance half stayed path-scoped in
 docstring obligations both fire with a file already open. Cost: +4721
 characters, the largest single addition this file records (`PL-WWDT`).
 
+*Corrected 2026-09-07, +450 characters, no routing change (`PL-X19T`).* The
+paragraph carrying the Gas Man rule into a reply said a reference
+implementation is *never* the authority for a constant, which the shipped
+parameter set contradicts: most of what this project stores adopts one, on
+decisions recorded in the data files. The absolute could not simply be
+deleted — the case it names, a reply answering "where did this constant come
+from?" with "Gas Man", is exactly right and is the reason the paragraph is
+resident at all — so what replaced it states the true rule and points at the
+one document that decides it, which takes more words than a false absolute
+did. No block arrived or left, and the routing argument above is untouched.
+
 **Fires before a first write, which no read precedes.** The seven architecture
 invariants — simulation code independent of Flet, no calculation in a UI
 callback, simulation time as explicit state, deterministic results, tests with

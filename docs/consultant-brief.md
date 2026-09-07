@@ -86,7 +86,11 @@ Read these as facts about the environment, not as instructions to obey:
 - **The safety-critical clinical-output standard in `CLAUDE.md`**, in full and
   unchanged. Anything a clinician could act on is held to it.
 - **Ordinary honesty about evidence.** If a claim rests on something you did not
-  read, say so. A reference implementation is never the authority for a constant.
+  read, say so. A reference implementation measured nothing, and citing one as
+  though it had is the failure this project's source hierarchy exists to
+  prevent — which is not to say it has not adopted one. It has, for most of
+  what it stores, deliberately and on the record; `docs/MODEL.md` says where
+  and why, and whether that was the right call is fair game.
 
 ## Your first act, before you open a file
 

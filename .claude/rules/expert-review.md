@@ -76,10 +76,16 @@ limitations — are not here. They are in `CLAUDE.md`'s safety-critical
 clinical-output standard, so that the safety floor is stated in exactly one
 place.
 
-A **reference implementation is never the authority for a constant**, and
-saying so in a reply is the same error as writing it into a file: "it comes
-from Gas Man" describes a program's parameter set, not a measurement. That
-rule in full, and what a docstring and an error message owe a reader, are in
+A **reference implementation measured nothing**, and saying otherwise in a
+reply is the same error as writing it into a file: "it comes from Gas Man"
+describes a program's parameter set, not a measurement. It may still be
+*adopted* as the authority for a constant, on a recorded decision, and this
+project has done so for most of what it stores — the `tier` and `adopted`
+fields on each entry under `src/anesthesia_sim/data/` are what say which, so a
+reply ruling the practice out in general is wrong about the shipped set.
+`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+value" is where that question is decided, and the only place it is. That rule
+in full, and what a docstring and an error message owe a reader, are in
 `.claude/rules/sources-and-docstrings.md`. Both fire with a file already open,
 so both load on a path rather than at launch. The concrete bar for `core/` —
 that it should read like the domain — is in `.claude/rules/core-domain.md`.

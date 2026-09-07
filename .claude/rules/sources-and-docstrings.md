@@ -22,12 +22,25 @@ before writing or reviewing a provenance note; this is only what a session
 needs at the moment it names where a number came from.
 
 Gas Man is this project's **reference implementation**: the working example
-its starting values were taken from, and a behavior to compare against. It is
-never the authority for a constant, and neither is a paper whose table simply
-reprints its parameter set — De Wolf et al. 2012 and Meybohm et al. 2021 are
-both Gas Man simulation studies, and neither measured a coefficient. Where a
-stored value is one of theirs, say so, name what the primary literature
-reports instead, and give the difference.
+its starting values were taken from, and a behavior to compare against. It
+measured nothing, and neither did a paper whose table simply reprints its
+parameter set — De Wolf et al. 2012 and Meybohm et al. 2021 are both Gas Man
+simulation studies, and neither measured a coefficient. Where a stored value
+is one of theirs, say so, name what the primary literature reports instead,
+and give the difference.
+
+**Which is not to say one may not be adopted, and here most are.** The twelve
+partition coefficients are De Wolf et al.'s table, kept in preference to the
+primary measurements cited beside them on the project owner's decision of
+2026-09-03 (`PL-D6LX`); ten of the reference patient's eleven parameters are
+the Gas Man Workbook's, for want of a primary source any session can reach.
+Both declare it in the file — `"tier": "reference-implementation"`,
+`"adopted": true` — so what a provenance note has to answer is not whether the
+adoption was allowed but whether the entry says what it owes: the tier, why no
+primary was adopted, and, where one was available, whose decision it was and
+when. Those three obligations are stated in `docs/MODEL.md` § "Source
+hierarchy: what may be cited as the authority for a value", with the rest of
+the rule.
 
 This binds replies as well as files. "It comes from Gas Man" is a statement
 about a program's parameter set, not about a measurement, and offering it as
