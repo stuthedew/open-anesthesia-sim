@@ -84,7 +84,15 @@ from pathlib import Path, PurePosixPath
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "subprojects" / "docket" / "src"))
 
 try:
-    # This import and the one below follow the path insertion above.
+    # Every import in this block follows the path insertion above, and each is
+    # borrowed rather than reimplemented. `roadmap` carries the release-train
+    # grammar and the frozen-list reader; `config`, `model` and `store` carry
+    # the queue, which `check_gate_reentries` reads an item's `classes` and
+    # `status` from. A second copy of either grammar would drift from the one
+    # `bin/docket check` enforces, and the drift would be in the documents that
+    # say which milestone is current and what it still owes.
+    from docket.config import load as load_docket_config
+    from docket.model import CLOSED_STATUSES
     from docket.roadmap import (
         BASELINE_MARK,
         HEADING_RE,
@@ -96,7 +104,9 @@ try:
         parse_timeline,
         parse_version_table,
         table_rows,
+        version_tuple,
     )
+    from docket.store import read_items
 
     # Reading `git tag` is a second borrowing, for the same reason as the first.
     # `vcs` collapses every way git can fail to answer - not installed, not a
@@ -108,7 +118,8 @@ try:
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
-        "grammar and docket/vcs.py for the tag read and the default-branch list, "
+        "grammar, docket/vcs.py for the tag read and the default-branch list, and "
+        "docket/{config,model,store}.py for the queue, "
         f"and could not import them: {error}"
     ) from error
 
@@ -1325,6 +1336,105 @@ def check_gate_counts(root: Path, report: Report) -> None:
                 )
 
 
+def check_gate_reentries(root: Path, report: Report) -> None:
+    """Name every open `safety`/`science` item the current gate does not place.
+
+    `ROADMAP.md` states one unconditional rule twice - step 4 of "The cadence"
+    and "The gate is a snapshot, not a moving target" - and `PL-9PMV` settled
+    that the two passages are the same rule rather than two readings of it: a
+    finding classed `safety` or `science`, or one at `P0`, re-enters the
+    *current* gate regardless of when it was found. Every other class defers to
+    the next gate unless its problem predates the freeze, which is a judgment
+    call. This one is not.
+
+    Nothing reconciled the two sides of it, so the rule ran only when a session
+    happened to think of it. Between the 2026-09-06 freeze and 2026-09-07,
+    eleven qualifying items were filed and none reached the list, while
+    `bin/docket wave` reported the written list correctly throughout - 84 open
+    of 121, omitting every open `P1` the project had, because `docket check`
+    pins both classes to the top band and the list held none of them
+    (`PL-KTKP`). A count that is right about the document and wrong about the
+    project is the silent-wrong-answer shape `CLAUDE.md` asks to be caught in
+    code.
+
+    **What is decidable here, and what is deliberately not.** Whether an item
+    is *placed* is: `MilestoneSection.scope_ids` names the ids a section places
+    - its frozen list, then the ids under `Required scope` - and excludes an id
+    the section merely mentions, which is the distinction `PL-NBCS` records.
+    What an unplaced one should *become* is not: it may join the frozen list,
+    be placed in `Required scope` so the milestone clears it, or be deferred
+    with a recorded reason. So this reports and does not decide, which is why
+    it is an advisory rather than an error.
+
+    The gate it reads is the one `docket.roadmap` reads: the first *unreleased*
+    section recording a gate, rather than the newest recorded one, so that an
+    open item is never measured against a shipped milestone's closed list.
+    """
+    roadmap = root / ROADMAP
+    if not roadmap.is_file():
+        return
+    text = roadmap.read_text(encoding="utf-8")
+
+    baseline = [row for row in parse_version_table(text) if row.is_baseline]
+    if len(baseline) != 1:
+        # Which gate is current cannot be read, so nothing is checked - and
+        # this is the one place where silence is safe rather than a check
+        # reported as passing. `check_baseline` makes exactly this condition a
+        # hard error and names the rows, so the run cannot be green while it
+        # holds; a decline here would be a second voice on one fault.
+        return
+
+    current = version_tuple(baseline[0].version)
+    gate = next(
+        (
+            section
+            for section in parse_milestones(text)
+            if (current is None or section.version > current) and section.records_a_gate
+        ),
+        None,
+    )
+    if gate is None:
+        return
+
+    try:
+        config = load_docket_config(root)
+        items = read_items(root / config.items_dir)
+    except (OSError, ValueError) as error:  # pragma: no cover - a store that will not parse
+        report.declined.append(
+            f"{ROADMAP}: the gate's re-entry rule, because the item store would not "
+            f"read ({error}); `bin/docket check` is what reports why"
+        )
+        return
+
+    placed = set(gate.scope_ids)
+    owed = [
+        item
+        for item in items
+        if item.status not in CLOSED_STATUSES
+        and item.identifier not in placed
+        and any(name in config.safety_classes for name in item.classes)
+    ]
+    if not owed:
+        return
+
+    rendered = "v{}.{}.{}".format(*gate.version)
+    listed = ", ".join(
+        "{} ({})".format(
+            item.identifier,
+            "/".join(name for name in item.classes if name in config.safety_classes),
+        )
+        for item in owed
+    )
+    report.advisories.append(
+        f"{ROADMAP}:{gate.gate_line}: {rendered}'s frozen list does not place "
+        f"{_plural(len(owed), 'open item', 'open items')} classed "
+        f"{' or '.join(config.safety_classes)}, which re-enter the current gate "
+        f"regardless of presence: {listed}. Record each on the list, place it in "
+        "Required scope, or defer it with a reason - the gate rule grants that "
+        "discretion and requires the reason to be written down"
+    )
+
+
 def _tags_region(text: str) -> tuple[int, str] | None:
     """The `**Tags.**` statement, and everything up to the next section heading.
 
@@ -2294,6 +2404,7 @@ def analyze(root: Path) -> Report:
     check_timeline(root, report)
     check_baseline(root, report)
     check_gate_counts(root, report)
+    check_gate_reentries(root, report)
     check_tags(root, report)
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)
