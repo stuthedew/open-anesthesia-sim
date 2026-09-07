@@ -22,6 +22,7 @@ about. The real palette is checked once, at the end, by the same entry point
 
 from __future__ import annotations
 
+from itertools import combinations
 from pathlib import Path
 
 import contrast_check
@@ -461,3 +462,228 @@ def test_every_known_shortfall_names_an_item_that_exists() -> None:
 
     for pair, item in contrast_check.KNOWN_SHORTFALLS.items():
         assert item in filed, f"{pair[0]} on {pair[1]} is excused by {item}, which is not filed"
+
+
+# --- dichromacy simulation, and the trace separation it is there for ---------
+
+
+def test_the_neutral_axis_survives_every_dichromacy_simulation() -> None:
+    """Brettel's reduced surface contains the neutral axis, so greys are fixed.
+
+    The one property of the projection that is exact rather than approximate,
+    which makes it the right thing to hold the transcribed coefficients to: a
+    mistyped digit anywhere in the nine of a matrix, or a swapped row, moves a
+    grey off itself. Asserted across the range rather than at one value
+    because the two half-planes meet at this axis, so a grey also exercises
+    the plane-selection branch on its boundary.
+    """
+    for level in range(0, 256, 5):
+        grey = f"#{level:02X}{level:02X}{level:02X}"
+        for model in contrast_check.DICHROMACY_TRANSFORMS:
+            assert contrast_check.simulate_dichromacy(grey, model) == grey, (
+                f"{model} moved the neutral grey {grey}"
+            )
+
+
+@pytest.mark.parametrize("model", ["protanopia", "deuteranopia"])
+@pytest.mark.parametrize("primary", ["#FF0000", "#00FF00"])
+def test_the_red_green_axis_collapses_for_a_protanope_and_a_deuteranope(
+    model: str, primary: str
+) -> None:
+    """Both primaries land in the yellow region, which is the deficiency itself.
+
+    A protanope and a deuteranope are missing one of the two long-wavelength
+    pigments, so the red-green opponent signal is gone and both primaries
+    project onto the yellow-blue axis the remaining pigments still carry. In
+    sRGB that reads as a near-equal red and green channel over a much smaller
+    blue one. This is the behaviour the simulation exists to model, so a
+    transform that left red red would be wrong in the way that matters here
+    even if it were arithmetically self-consistent.
+    """
+    simulated = contrast_check.simulate_dichromacy(primary, model)
+    red, green, blue = (int(simulated[index : index + 2], 16) for index in (1, 3, 5))
+
+    assert abs(red - green) < 0.25 * max(red, green), f"{primary} kept a red-green difference"
+    assert blue < 0.25 * max(red, green), f"{primary} did not lose its blue channel"
+
+
+@pytest.mark.parametrize("bad", ["", "#12345", "not a color", "#GGGGGG"])
+def test_a_malformed_color_is_refused_by_the_simulation_too(bad: str) -> None:
+    """Same contract as `relative_luminance`: refuse rather than guess."""
+    with pytest.raises(ValueError):
+        contrast_check.simulate_dichromacy(bad, "protanopia")
+
+
+def test_an_unknown_vision_model_is_refused() -> None:
+    """A typo would otherwise silently pick one deficiency and report another."""
+    with pytest.raises(ValueError, match="protanopia"):
+        contrast_check.simulate_dichromacy("#DC2626", "protanomaly")
+
+
+def test_as_seen_leaves_a_color_alone_under_normal_vision() -> None:
+    """The uniform path over `VISION_MODELS` needs the identity to be one of them."""
+    assert contrast_check.as_seen("#DC2626", "normal") == "#DC2626"
+    assert contrast_check.VISION_MODELS[0] == "normal"
+
+
+def test_every_trace_contrast_clears_the_floor_in_all_four_vision_models() -> None:
+    """PL-GVXP. The floor a normal-vision check cannot see all of.
+
+    `ALVEOLAR_COLOR` failed as displayed, at 2.93:1. `MUSCLE_COLOR` passed as
+    displayed, at 3.19:1, and failed at 2.98:1 simulated for deuteranopia -
+    which is the case that argues for measuring four models rather than one,
+    because nothing about the shipped colour said it was close.
+    """
+    palette = contrast_check.read_palette(REPO_ROOT)
+
+    for name in contrast_check.TRACES:
+        for model in contrast_check.VISION_MODELS:
+            ratio = contrast_check.contrast_ratio(
+                contrast_check.as_seen(palette[name], model), palette["PANEL"]
+            )
+            assert round(ratio, contrast_check.DISPLAY_DECIMALS) >= contrast_check.TRACE_FLOOR, (
+                f"{name} is {ratio:.2f} against the panel under {model}"
+            )
+
+
+def test_a_trace_below_the_floor_in_one_model_alone_is_an_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, declare
+) -> None:
+    """The regression guard for the case that motivated the check.
+
+    A trace that clears the floor as displayed and misses it under one
+    simulated dichromacy has to fail, or the extra three models are decoration.
+    `#D97706` is the muscle colour this item replaced, at 3.19:1 as displayed
+    and 2.98:1 for a deuteranope.
+    """
+    declare(())
+    root = _repo(tmp_path, view=VIEW_SOURCE + '\nMUSCLE_COLOR = "#D97706"\n')
+    monkeypatch.setattr(contrast_check, "TRACES", ("MUSCLE_COLOR",))
+
+    report = contrast_check.analyze(root)
+
+    assert report.errors
+    assert [(name, model) for name, model, _ in report.below_trace_floor] == [
+        ("MUSCLE_COLOR", "deuteranopia")
+    ]
+
+
+def test_a_trace_clearing_the_floor_everywhere_is_quiet(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, declare
+) -> None:
+    """The shipped replacement, so the guard above is not passing by accident."""
+    declare(())
+    root = _repo(tmp_path, view=VIEW_SOURCE + '\nMUSCLE_COLOR = "#D17206"\n')
+    monkeypatch.setattr(contrast_check, "TRACES", ("MUSCLE_COLOR",))
+
+    assert contrast_check.analyze(root).below_trace_floor == ()
+
+
+def test_no_two_trace_contrasts_reach_the_non_text_minimum() -> None:
+    """The finding the line styles exist for, pinned so it cannot quietly change.
+
+    Not an aspiration that failed: it is unreachable. The 3:1 floor above caps
+    every trace's luminance, and six traces cannot then be more than
+    `separation_ceiling_above_floor` apart pairwise. A future palette that
+    appeared to clear 3:1 here would mean the arithmetic had been broken rather
+    than the problem solved, so this asserts the ceiling holds as well as the
+    measured worst pair.
+    """
+    palette = contrast_check.read_palette(REPO_ROOT)
+    ceiling = contrast_check.separation_ceiling_above_floor(
+        len(contrast_check.TRACES), contrast_check.TRACE_FLOOR
+    )
+
+    assert ceiling < contrast_check.AA_NON_TEXT
+    for first, second in combinations(contrast_check.TRACES, 2):
+        for model in contrast_check.VISION_MODELS:
+            ratio = contrast_check.contrast_ratio(
+                contrast_check.as_seen(palette[first], model),
+                contrast_check.as_seen(palette[second], model),
+            )
+            assert ratio < contrast_check.AA_NON_TEXT, (
+                f"{first}/{second} reads {ratio:.2f} under {model}, which the bounded "
+                "luminance axis does not admit"
+            )
+
+
+def test_the_worst_trace_contrast_pair_is_the_one_docs_model_records() -> None:
+    """`docs/MODEL.md` prints this matrix, and a stale table there misleads.
+
+    The whole section argues from the closest pair. Pinning it here means a
+    colour edit that changes which pair is closest fails the suite instead of
+    leaving the document asserting a pair that is no longer the worst.
+    """
+    palette = contrast_check.read_palette(REPO_ROOT)
+    worst = min(
+        (
+            contrast_check.contrast_ratio(
+                contrast_check.as_seen(palette[first], model),
+                contrast_check.as_seen(palette[second], model),
+            ),
+            first,
+            second,
+        )
+        for first, second in combinations(contrast_check.TRACES, 2)
+        for model in contrast_check.VISION_MODELS
+    )
+
+    assert round(worst[0], 2) == 1.01
+    assert (worst[1], worst[2]) == ("VESSEL_RICH_COLOR", "FAT_COLOR")
+
+
+def test_the_separation_ceiling_falls_once_every_trace_must_clear_the_panel() -> None:
+    """The bound `docs/MODEL.md` and `.claude/rules/ui-color.md` both quote.
+
+    Holding a trace to 3:1 against a white panel caps its luminance at 0.30,
+    which shortens the axis six traces spread along: 1.84 unconstrained, 1.48
+    with the floor. The direction is the point - the floor makes colour a
+    *weaker* channel, not a stronger one.
+    """
+    unconstrained = contrast_check.separation_ceiling(6)
+    constrained = contrast_check.separation_ceiling_above_floor(6, contrast_check.AA_NON_TEXT)
+
+    assert round(unconstrained, 2) == 1.84
+    assert round(constrained, 2) == 1.48
+    assert constrained < unconstrained
+    # A floor of 1:1 admits every color, so the two definitions must agree.
+    assert contrast_check.separation_ceiling_above_floor(6, 1.0) == pytest.approx(unconstrained)
+
+
+@pytest.mark.parametrize("count, floor", [(1, 3.0), (6, 0.5)])
+def test_a_constrained_ceiling_refuses_arguments_it_cannot_answer(count: int, floor: float) -> None:
+    """One trace has no pair, and a contrast ratio has no value below 1:1."""
+    with pytest.raises(ValueError):
+        contrast_check.separation_ceiling_above_floor(count, floor)
+
+
+def test_the_two_agent_fills_iso_5360_makes_inseparable_stay_measured() -> None:
+    """`docs/MODEL.md` prints these four numbers, and once printed them wrongly.
+
+    ISO 5360 fixes isoflurane's purple and desflurane's blue, so the pair is
+    not this project's to re-pick and the mitigation is that the agent name is
+    always drawn alongside. What is this project's to keep honest is the claim
+    about how bad the pair is: the document said the simulated ratios fell to
+    1.1-1.4, and measured they run 1.06 to 1.48 - wrong at both ends, and wrong
+    in direction for protanopia, where the pair separates rather than
+    collapsing. The conclusion did not change, which is exactly why nobody
+    re-measured it for a year.
+    """
+    palette = contrast_check.read_palette(REPO_ROOT)
+    measured = {
+        model: round(
+            contrast_check.contrast_ratio(
+                contrast_check.as_seen(palette["isoflurane.fill"], model),
+                contrast_check.as_seen(palette["desflurane.fill"], model),
+            ),
+            2,
+        )
+        for model in contrast_check.VISION_MODELS
+    }
+
+    assert measured == {
+        "normal": 1.09,
+        "protanopia": 1.48,
+        "deuteranopia": 1.06,
+        "tritanopia": 1.11,
+    }

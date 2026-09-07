@@ -80,6 +80,7 @@ from anesthesia_sim.app.simulation_view import (
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
     NO_CONTROL_CHANGES_TEXT,
     NO_TRACES_SHOWN_TEXT,
+    ONE_MAC_LINE_DASH_PATTERN,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
@@ -1921,6 +1922,75 @@ def test_the_legend_says_exactly_which_traces_are_drawn() -> None:
         # whether or not its curve is on the plot.
         assert trace.checkbox.label is not None
         assert trace.label in trace.checkbox.label
+
+
+def test_no_two_chart_traces_are_separated_by_colour_alone() -> None:
+    """PL-GVXP. Circuit and vessel-rich were both solid, and are the same weight.
+
+    Colour cannot carry this on its own and no palette makes it: holding each
+    trace to 3:1 against the panel caps its luminance, and six traces under
+    that cap cannot be more than about 1.48 apart pairwise, against SC
+    1.4.11's 3:1. `tools/contrast_check.py` measures the palette; what is
+    asserted here is the channel that does the separating, which is the dash
+    pattern - and it separates nothing for a pair that shares one.
+
+    Both halves are checked because they fail apart: two traces could carry
+    distinct patterns while the legend called them the same thing, which
+    leaves a reader matching a word to the wrong curve.
+    """
+
+    view, _ = _build_view()
+    traces = view._compartment_traces
+
+    assert len(traces) == 6
+    patterns = [
+        tuple(trace.series.dash_pattern) if trace.series.dash_pattern else None for trace in traces
+    ]
+    assert len(set(patterns)) == len(traces), f"a dash pattern is drawn twice: {patterns}"
+    styles = [trace.line_style for trace in traces]
+    assert len(set(styles)) == len(traces), f"a legend style word is claimed twice: {styles}"
+
+
+def test_every_trace_legend_entry_names_the_pattern_it_is_drawn_with() -> None:
+    """The words are the redundant channel, so a wrong word is the whole defect.
+
+    The pattern a reader is told to look for has to be the one on the plot.
+    Held as a mapping in both directions: one word may not name two patterns,
+    and the solid trace - the only one with no dash pattern at all - has to be
+    the one the legend calls solid.
+    """
+
+    view, _ = _build_view()
+    by_style = {}
+
+    for trace in view._compartment_traces:
+        assert trace.checkbox.label is not None
+        assert f"({trace.line_style})" in trace.checkbox.label
+        pattern = tuple(trace.series.dash_pattern) if trace.series.dash_pattern else None
+        assert by_style.setdefault(trace.line_style, pattern) == pattern
+
+    assert by_style["solid"] is None
+    assert [style for style, pattern in by_style.items() if pattern is None] == ["solid"]
+
+
+def test_no_trace_dash_is_as_wide_as_the_one_mac_reference_line() -> None:
+    """The reference line must not read as a seventh compartment.
+
+    `ONE_MAC_LINE_DASH_PATTERN`'s comment claims it is wider than every
+    trace's dashes, and PL-GVXP added a pattern with a wider *gap* than any
+    that comment was written against. Both halves are asserted, because a
+    dash is found by its mark and its gap together.
+    """
+
+    view, _ = _build_view()
+    mark, gap = ONE_MAC_LINE_DASH_PATTERN
+
+    for trace in view._compartment_traces:
+        pattern = trace.series.dash_pattern
+        if pattern is None:
+            continue
+        assert max(pattern[::2]) < mark, f"{trace.label} has a mark as long as the 1 MAC line"
+        assert max(pattern[1::2]) < gap, f"{trace.label} has a gap as wide as the 1 MAC line"
 
 
 def test_the_chart_says_so_when_no_compartment_is_drawn() -> None:

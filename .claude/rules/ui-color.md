@@ -44,9 +44,21 @@ declared pair. What follows is only the half it cannot decide.
 
 3. **Chart traces need a non-color channel as a matter of arithmetic, not
    taste.** Contrast composes along a bounded axis, so no arrangement of six
-   traces gives every pair more than 21^(1/5) ≈ 1.84 — below SC 1.4.11's 3:1.
-   Re-picking the palette cannot fix trace separation, and a change that tries
-   to is solving the wrong problem. `PL-GVXP` is the item that sets this bar.
+   traces gives every pair more than 21^(1/5) ≈ 1.84 — and once each must also
+   clear 3:1 against the white panel, which caps its luminance, no more than
+   **1.48**. Both are below SC 1.4.11's 3:1. Re-picking the palette cannot fix
+   trace separation, and a change that tries to is solving the wrong problem:
+   `PL-GVXP` searched the space with hue and saturation held and reached 1.28
+   across four vision models, at the price of driving four of the six traces to
+   near-black. Run `python3 tools/contrast_check.py --matrix` for both bounds
+   and the measured pairs. That item sets this bar.
+
+   **The floor against the panel is a different question, and it is worth
+   re-picking a color for.** It binds each trace alone rather than pairwise, so
+   it is reachable — and it is checked under simulated dichromacy as well as as
+   displayed, which is how `MUSCLE_COLOR` was caught passing at 3.19:1 on screen
+   and failing at 2.98:1 for a deuteranope. Failing traces are an error rather
+   than a `KNOWN_SHORTFALLS` entry.
 
 4. **A standard-fixed color is not yours to change.** The three agent
    identification colors are fixed by ISO 5360:2016 Table 2, and

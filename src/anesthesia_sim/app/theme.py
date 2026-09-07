@@ -6,12 +6,20 @@ from typing import Final
 BACKGROUND = "#F4F7FA"
 PANEL = "#FFFFFF"
 PRIMARY = "#176B87"
-# ACCENT is a *graphical* color: the alveolar chart trace and the sliders'
-# active track. It is not legible as text - 2.93:1 on the panel - so text that
-# wants to look like the accent uses ACCENT_TEXT below. One constant serving
-# both roles is what PL-30P6 found: the two roles carry different WCAG minima
-# (4.5:1 for text under SC 1.4.3, 3:1 for graphical objects under SC 1.4.11)
-# and no single value can be chosen against both without one of them losing.
+# ACCENT is a *graphical* color: the sliders' active track. It is not legible
+# as text - 2.93:1 on the panel - so text that wants to look like the accent
+# uses ACCENT_TEXT below. One constant serving both roles is what PL-30P6
+# found: the two roles carry different WCAG minima (4.5:1 for text under SC
+# 1.4.3, 3:1 for graphical objects under SC 1.4.11) and no single value can be
+# chosen against both without one of them losing.
+#
+# It was also the alveolar chart trace until PL-GVXP, which is the other half
+# of that same split. A chart trace has to clear 3:1 against the panel under
+# simulated dichromacy as well as under normal vision, and has five sibling
+# traces to stay separable from; a slider track has neither constraint. The
+# trace now carries its own value in `simulation_view.py`, so this one is
+# bounded by nothing but the panel behind it - which is what PL-W8DQ needs to
+# know before it darkens it, and why that item deferred to this one.
 ACCENT = "#18A999"
 # The accent, dark enough to be read as text: 5.00:1 on PANEL and 4.65:1 on
 # BACKGROUND. A uniform darkening of ACCENT, so hue and saturation are
