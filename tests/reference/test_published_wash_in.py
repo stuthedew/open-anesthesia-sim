@@ -1084,8 +1084,12 @@ def test_five_minute_elimination_ratio_against_published_human_measurement(
     more alveolar agent at five minutes than the volunteers did. The module
     docstring carries the measured attribution and it is largely the
     breathing system rather than the tissue return: this model rebreathes and
-    the published protocol did not, and holding the inspired fraction at zero
-    instead moves the same three agents to -0.25, +0.54 and -2.40 SD.
+    the published protocol did not, and running the same five minutes through
+    `_eliminate_without_rebreathing()` instead moves the same three agents to
+    -0.15, +0.66 and -2.33 SD.
+    `test_five_minute_elimination_ratio_without_rebreathing_against_published_human_measurement`
+    is that comparison, and the condition it runs in is a diagnostic no
+    setting of this simulator reaches.
 
     What is asserted here is therefore that the model still produces the
     ratios in `MODELLED_ELIMINATION_RATIOS`, to within one published standard
@@ -1153,8 +1157,8 @@ def test_eliminated_agents_are_ordered_by_solubility() -> None:
     leaves fastest, then sevoflurane, then isoflurane - and it is the
     prediction they were run to test, in the opposite direction from the
     wash-in ordering that `test_published_agents_are_ordered_by_solubility`
-    checks. Published: 0.14, 0.157, 0.22-0.223. Modelled: 0.1603, 0.2303,
-    0.3195.
+    checks. Published: 0.14, 0.157, 0.22-0.223. Modelled 2026-09-07: 0.1626,
+    0.2328, 0.3227.
 
     An ordering is what survives the apparatus mismatch the module docstring
     measures, because the rebreathing that displaces every ratio upward
@@ -1200,14 +1204,19 @@ def test_elimination_is_dominated_by_the_rebreathing_circuit(agent_id: str) -> N
     `test_agreement_survives_every_fresh_gas_flow`. That test shows fresh gas
     flow is *not* carrying the wash-in result: every agent stays inside its
     published spread from 1 to 10 L/min. Here the same sweep moves the
-    elimination ratio across many published standard deviations, measured
-    2026-09-06 as distance from the first cohort's mean:
+    elimination ratio across many published standard deviations, re-measured
+    2026-09-07 as distance from the first cohort's mean:
 
     | Agent | 1 | 2 | 4 | 6 | 8 | 10 L/min |
     | --- | --- | --- | --- | --- | --- | --- |
-    | Sevoflurane | +21.91 | +15.68 | +9.22 | +6.25 | +4.64 | +3.67 |
-    | Isoflurane | +15.60 | +11.93 | +7.94 | +5.94 | +4.77 | +4.02 |
-    | Desflurane | +22.66 | +14.93 | +7.14 | +3.74 | +2.01 | +1.02 |
+    | Sevoflurane | +21.99 | +15.78 | +9.35 | +6.38 | +4.77 | +3.79 |
+    | Isoflurane | +15.69 | +12.04 | +8.07 | +6.07 | +4.91 | +4.15 |
+    | Desflurane | +22.73 | +15.03 | +7.26 | +3.86 | +2.13 | +1.13 |
+
+    End to end that is a movement of 11.5 to 21.6 published SD, which
+    `test_the_open_circuit_elimination_does_not_depend_on_fresh_gas_flow` is
+    the counterpart of: with the circuit discarded each step the same sweep
+    moves by 4e-6 SD.
 
     The mechanism is in `docs/MODEL.md` § "Model boundary": inspired gas is
     circuit gas, and the circuit is a closed recirculating path except for
@@ -1469,13 +1478,13 @@ def test_the_open_circuit_elimination_does_not_depend_on_fresh_gas_flow(
 ) -> None:
     """The mirror of `test_elimination_is_dominated_by_the_rebreathing_circuit`.
 
-    That test measures the shipped elimination moving across 10 to 23 published
-    standard deviations between 1 and 10 L/min, because F_I settles at
+    That test measures the shipped elimination moving across 11.5 to 21.6
+    published standard deviations between 1 and 10 L/min, because F_I settles at
     `V_A/(V_A + fresh gas flow)` of F_A and the published ratio has no term to
     divide it out. This one measures the same sweep with the circuit
     discarded each step, over the whole supported flow range including zero,
-    and finds a spread of 4e-6 published SD (2026-09-07) - about a millionth
-    of the shipped condition's.
+    and finds a spread of 4e-6 published SD (2026-09-07), against the 11.5 to
+    21.6 SD the shipped condition moves over the narrower 1 to 10 L/min.
 
     That is the strongest single piece of evidence that the driver removes the
     apparatus term rather than shrinking it, and it is stronger than the
