@@ -1,10 +1,14 @@
 ---
 id: PL-T7VS
 title: A red doc_check voids the whole-store verify replay for the 29 open items gated behind it, and the replay reports green rather than declining to answer
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-07
+verify: uv run pytest -q subprojects/docket/tests/test_verify.py && grep -q 'def test_a_command_whose_prerequisite_failed_is_not_checked' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** 29 open items carry a `verify:` command beginning
@@ -96,3 +100,14 @@ this item would rather carry none than carry one that proves nothing.
 **Found.** 2026-09-07, closing out `PL-SR8F` and `PL-0GTC` — both already landed
 under `PL-CL8J` (#432) — when their `verify:` commands were run by hand and
 failed on the shared `doc_check` prefix rather than on either item's own claim.
+
+**Triage note, 2026-09-07.** Set `ready` with a command, against the item's own
+note declining one. The objection there is specific and it stands: a command
+asserting on `docket check`'s *output* under an artificially red `doc_check`
+has not been watched failing, and would be a bet. The paired shape
+`.claude/skills/docket/SKILL.md` recommends is not that command - it names the
+test the work owes rather than asserting on behavior nobody has reproduced, and
+it was run before being written here: the suite passes (70 tests, 21 s) and the
+`grep` fails, so it exits 1 today for the reason it should. The approach is not
+what is open - the item picks the general form over prefix-matching and gives
+the reason - so `needs-decision` would misdescribe it.

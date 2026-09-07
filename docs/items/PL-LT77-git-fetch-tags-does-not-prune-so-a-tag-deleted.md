@@ -1,7 +1,10 @@
 ---
 id: PL-LT77
 title: git fetch --tags does not prune, so a tag deleted on origin keeps failing doc_check in every checkout that already fetched it, and nothing distinguishes stale local state from a real repository fault
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
 feature: dev-tooling
 touches: tools/doc_check.py, .claude/hooks
 added: 2026-09-07
@@ -83,3 +86,23 @@ assert.
 **Found.** 2026-09-07, refreshing `main` while closing out `PL-SR8F` and
 `PL-0GTC`, when a fetch that reported no changes left `doc_check` red on a tag
 `origin` no longer had.
+
+**Triage note, 2026-09-07.** Left at `needs-decision` rather than `ready`
+because the item's three shapes are a live choice and it declines a `verify:`
+command for that reason - any command written now would presume one of them.
+The open question, for whoever answers it: widen the error message (the item's
+own recommendation, one string and no new mechanism), prune tags in the
+session-start hook, or give `doc_check` a network read. The condition is not
+firing in this checkout today - `python3 tools/doc_check.py check` reports
+`0 errors, 0 advisories` - so the decision can be taken unhurried.
+
+**Decision needed.** Which of the three shapes above closes this: (1) widen
+`doc_check`'s release-tag error to name stale local state and the
+`git fetch --prune-tags origin` that clears it - the item's own recommendation,
+one string and no new mechanism; (2) prune tags in the session-start hook,
+which fixes it before anything reads it but makes every session pay a network
+round-trip for a rare condition and silently discards a locally created tag; or
+(3) have `doc_check` verify the tag against `origin`, which trades the tool's
+stated offline property and the item rejects unless the other two fail. Answer
+this and the item is `ready`; a `verify:` command cannot be written before it,
+because each shape asserts something different.

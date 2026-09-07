@@ -1,8 +1,14 @@
 ---
 id: PL-6BDX
 title: "Two shipped items are reported in flight in every session's digest, because their branch refs outlived their merges: PL-GVXP (v0.4.7) and PL-S5LB (v0.4.6)"
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-07
+verify: uv run pytest -q subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closed_item_is_not_reported_in_flight' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** Measured 2026-09-07 after a full fetch:
@@ -41,3 +47,18 @@ because it cannot tell an abandoned branch from a slow session.
 
 **Done when.** A closed item is not reported in flight, and the two refs above
 are gone.
+
+**Triage note, 2026-09-07.** Re-checked against the store rather than carried
+from the capture, and the count is worse than the title says: the digest names
+*three* ids on its `In flight on a branch:` line today - `PL-GVXP`, `PL-S5LB`
+and `PL-Y5WR` - and all three are `status: done` with a milestone (`v0.4.7`,
+`v0.4.6`, `v0.4.7`). The line is therefore 100% false positives right now,
+which is the strongest form of the argument above: there is no true entry
+beside the stale ones for a reader to be trained past, so the only thing the
+line teaches this week is to skip it.
+
+`PL-CPSY` (v0.2.8) already fixed the containment test that made a squash-merged
+branch's ref report in flight forever, and these three post-date it, so that
+fix is not what is missing. The guard this item proposes - suppress an item the
+base records as closed - is independent of *why* a ref survived, which is why
+it is worth having in addition rather than instead.

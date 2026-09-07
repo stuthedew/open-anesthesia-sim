@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: .github/workflows/quality.yml, .claude/hooks, tools/main_ci_status.py, docs/ARCHITECTURE.md
 added: 2026-09-07
 closed: 2026-09-07
+pr: 438
 verify: uv run pytest tests/unit/test_main_ci_status.py && grep -q 'main_ci_status' .claude/hooks/docket-digest.sh
 ---
 

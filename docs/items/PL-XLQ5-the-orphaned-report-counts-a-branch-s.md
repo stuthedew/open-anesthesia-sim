@@ -77,3 +77,33 @@ report which blobs are superseded on the branch itself.
 **Done when.** A branch that revised a file before merging, and whose content
 the default branch then holds in full, is reported as carrying nothing; a
 branch with a genuine post-merge commit is still reported.
+
+**A second trigger, observed 2026-09-07: the *base* can supersede the blob
+too.** `PL-1VFK` (#437) recovered `PL-6BDX` and `PL-6YYR` off
+`origin/claude/gate-items-8yep0k` by re-applying them, and appended a recovery
+note to `PL-6YYR` in the same commit. So the blob the branch introduced for
+that file is one `main` has never held, and a `bin/docket stranded` run *after*
+`git fetch origin` still reports:
+
+```
+1 branch carries work the default branch does not hold, having already taken the rest of it:
+origin/claude/gate-items-8yep0k  (1 file of its work already landed)
+  e2a7ea7e7  PL-6YYR: capture the release tag pushed for a version that was never cut
+  recover: git checkout origin/claude/gate-items-8yep0k -- docs/items/PL-6YYR-....md
+```
+
+`main`'s copy is a strict superset of the branch's - `git diff origin/main
+origin/claude/gate-items-8yep0k -- <that file>` is the recovery note and
+nothing else - so running the `recover:` line **deletes `PL-1VFK`'s note**. That
+is the `git checkout` overwriting the merged copy with the older one, which is
+the cost `.claude/skills/docket/SKILL.md` already attributes to this item.
+
+Two things follow for whoever fixes it. First, `PL-Y31G` states in its **Why it
+matters** that the report itself is safe because its recovery *"copies rather
+than deletes"*; that holds only where the base has never held the file at all,
+and it is false here - the hazard is not confined to the branch-deletion recipe
+downstream of it. Second, this is not the staleness `PL-KBFN` and `PL-39B7`
+addressed: the run above was made against a freshly fetched `origin`, so
+refreshing first does not help. A fix that only handles a blob superseded on
+the branch will leave this case reporting, so the `verify:` command's single
+test likely needs a sibling covering supersession on the base.
