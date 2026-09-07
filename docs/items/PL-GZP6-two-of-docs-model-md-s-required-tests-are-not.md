@@ -3,11 +3,12 @@ id: PL-GZP6
 title: Two of docs/MODEL.md's required tests are not implemented
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, test
 feature: model-spec-accuracy
 touches: tests/unit/test_tissue.py, tests/reference/test_sevo_patient.py
 added: 2026-09-03
+closed: 2026-09-07
 verify: uv run pytest tests/unit/test_tissue.py tests/reference/test_sevo_patient.py && grep -q 'def test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant' tests/unit/test_tissue.py && grep -q 'def test_washout_never_increases_total_system_mass' tests/reference/test_sevo_patient.py
 ---
 

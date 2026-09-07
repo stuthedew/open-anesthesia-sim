@@ -76,6 +76,55 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
     assert tissue.partial_pressure_fraction == pytest.approx(1.0 - exp(-1.0))
 
 
+def test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant() -> None:
+    """`docs/MODEL.md` § "Directional tissue-capacity test".
+
+    Increasing either $V_i$ or $\\lambda_{i:b}$, with flow held constant, must
+    lengthen the tissue time constant.
+
+    Three otherwise identical groups at one blood flow isolate the two
+    factors: the second raises the volume alone, and the third raises the
+    tissue:gas coefficient alone, which raises $\\lambda_{i:b}$ because the
+    blood:gas coefficient is held fixed. The intermediate assertions state
+    that each variant moved only its own factor and that flow really is held
+    constant, so a change to the fixture cannot leave the directional claims
+    below passing for the wrong reason.
+    """
+
+    baseline = _build_tissue()
+    larger = TissueGroup(
+        name="larger",
+        volume_l=3.0,
+        perfusion_fraction=0.2,
+        blood_gas_partition_coefficient=0.5,
+        tissue_gas_partition_coefficient=2.0,
+        blood_flow_l_min=1.0,
+    )
+    more_soluble = TissueGroup(
+        name="more soluble",
+        volume_l=2.0,
+        perfusion_fraction=0.2,
+        blood_gas_partition_coefficient=0.5,
+        tissue_gas_partition_coefficient=3.0,
+        blood_flow_l_min=1.0,
+    )
+
+    assert baseline.blood_flow_l_min == larger.blood_flow_l_min == more_soluble.blood_flow_l_min
+
+    assert larger.volume_l > baseline.volume_l
+    assert larger.tissue_blood_partition_coefficient == (
+        baseline.tissue_blood_partition_coefficient
+    )
+
+    assert more_soluble.volume_l == baseline.volume_l
+    assert more_soluble.tissue_blood_partition_coefficient > (
+        baseline.tissue_blood_partition_coefficient
+    )
+
+    assert larger.time_constant_s > baseline.time_constant_s
+    assert more_soluble.time_constant_s > baseline.time_constant_s
+
+
 def test_zero_flow_preserves_tissue_state() -> None:
     tissue = _build_tissue(blood_flow_l_min=0.0)
     tissue.set_partial_pressure_fraction(0.25)
