@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: refactor, perf
 feature: numerical-domain
+milestone: v0.4.8
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-05
 closed: 2026-09-07

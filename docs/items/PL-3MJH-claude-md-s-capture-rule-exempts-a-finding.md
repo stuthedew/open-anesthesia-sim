@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, docs, session-cost
 feature: worker-instructions
+milestone: v0.4.8
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md, ROADMAP.md, docs/WORKING_NOTES.md
 added: 2026-09-01
 closed: 2026-09-07
+pr: 436
 verify: python3 tools/doc_check.py check && grep -qF 'at most two per branch' CLAUDE.md
 not-delegable: the deliverable is the wording of a rule every session reads before it acts. A shade too loose and it licenses the queue-bypass it exists to bound; a shade too tight and no session ever uses it. The brief also records two widenings deliberately set aside - both of which the cited source argues *for* - so a worker reading the same article is being asked to hold a line against it.
 ---

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.8
 touches: subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/checks.py
 added: 2026-09-02
 closed: 2026-09-07

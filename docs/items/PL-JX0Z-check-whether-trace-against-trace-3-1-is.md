@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, ux
 feature: presentation-safety
+milestone: v0.4.8
 touches: .claude/rules/ui-color.md, docs/MODEL.md
 added: 2026-09-07
 closed: 2026-09-07
