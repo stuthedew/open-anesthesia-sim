@@ -75,6 +75,16 @@ figures are the mean of two paired runs on a 4-CPU container at `-n 8`; a first
 run of each pair was discarded as cold. **So the price of the decision is about
 12.5 s per CI run, not a file running for three minutes.**
 
+Measured on CI itself once the change landed (#431), which is the figure that
+actually matters and is smaller again: the `pytest` step of `quality.yml` took
+**89 s** on this branch against **82 s** on `main`'s previous run — **+7 s**,
+about 8%. Single samples on different hosted runners, so the noise is real, but
+it brackets the local +12.5 s from below rather than above. The local figure is
+kept as the controlled measurement; this is the one a future reader should
+quote. Extrapolating the local percentage to CI predicted +20 to +25 s and was
+high by a factor of three — worth recording, since the whole of this item is
+about a cost that was estimated instead of measured.
+
 `HELD_RUN_ROUNDING_BOUND`'s gate already measures the shipped step's own
 residual directly and needs no oracle refinement.
 
