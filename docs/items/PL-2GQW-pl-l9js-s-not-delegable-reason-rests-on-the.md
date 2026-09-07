@@ -1,8 +1,14 @@
 ---
 id: PL-2GQW
 title: PL-L9JS's not-delegable reason rests on the recursion claim PL-20CQ disproved, so the item may be delegable after all
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: docs/items/PL-L9JS-eight-open-items-carry-a-verify-command-that.md
 added: 2026-09-07
+verify: bin/docket check && ! grep -qF 'it would recurse' docs/items/PL-L9JS-eight-open-items-carry-a-verify-command-that.md
 ---
 
 **Problem.** PL-L9JS's not-delegable reason rests on the recursion claim PL-20CQ disproved, so the item may be delegable after all

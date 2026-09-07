@@ -1,8 +1,14 @@
 ---
 id: PL-SHTR
 title: docket verify does not set LANDED_GUARD, so an item whose verify: runs docket check --verify replays the whole store one level down
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-07
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_nested_docket_check_from_verify_declines' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** docket verify does not set LANDED_GUARD, so an item whose verify: runs docket check --verify replays the whole store one level down
