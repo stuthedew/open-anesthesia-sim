@@ -3,8 +3,7 @@ id: PL-VZL0
 title: Cite MODEL.md from every core/ function implementing a governing equation, and restate the solved form the spec lacks
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-GS5X, PL-X2XX
+status: ready
 classes: docs, refactor
 feature: core-domain-language
 touches: src/anesthesia_sim/core
