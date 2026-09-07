@@ -42,19 +42,31 @@ a reader of a delegated `core/` change actually needs to see.
 **Where.** `bin/docket verify`'s `touches` audit, against the `docket` skill's
 close-out step 1 (`.claude/skills/docket/SKILL.md`).
 
-**Decision needed.** Which of the two moves. Three candidates, unranked
-because the trade is real:
+**Decision needed.** Which of the two moves.
 
-- Exempt a `pr:`-only edit to another item's front matter from the `touches`
-  audit. Narrow and mechanical — the write is tool-dictated and `record`
-  refuses to overwrite a differing number — but it puts a second reading of
-  what `record` may write into `verify`.
-- Have `record` report which paths it wrote so `verify` can subtract exactly
-  those, rather than pattern-matching the shape of the edit.
-- Change the close-out to give `record` its own commit, and teach `verify` to
-  ignore commits whose whole diff is `docs/items/`. This reverses an
-  instruction that was written deliberately, so it needs the reasoning behind
-  "do not compose one for it" checked before it is taken.
+**Recommended: exempt a `pr:`-only front-matter addition from the `touches`
+audit.** `verify` already reads the diff, so the exemption is decidable from
+the diff alone — an out-of-`touches` path under `docs/items/` whose only
+change is one added `pr:` line — with nothing to plumb between two commands
+that run at different times. It is narrow enough that anything else written
+into another item still fails, which is the property the audit exists for. Its
+cost is a second reading of what `record` may write, held in `verify`; that is
+worth accepting because the shape being matched is one line that `record`
+itself refuses to write twice differently.
+
+The two rejected alternatives, and why:
+
+- **Have `record` report which paths it wrote, so `verify` subtracts exactly
+  those.** Stronger in principle — no pattern to keep in step — but `record`
+  and `verify` run at different times with a commit in between, so it needs
+  somewhere to leave that list. Every candidate for that is state the store
+  does not currently keep, to remove an ambiguity the diff does not actually
+  have.
+- **Give `record` its own commit, and teach `verify` to ignore a commit whose
+  whole diff is `docs/items/`.** Reverses "do not compose one for it", which
+  was written deliberately, and `PL-X3WZ` records what reading a queue-only
+  commit as a claim already cost. Not to be taken without checking that
+  reasoning first.
 
 **Found.** Closing `PL-X204` and running `bin/docket verify` on the result, as
 that item's close-out calls for.
