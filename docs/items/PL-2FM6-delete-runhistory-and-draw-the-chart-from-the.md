@@ -3,8 +3,7 @@ id: PL-2FM6
 title: Delete RunHistory and draw the chart from the closed-form sampler instead of from recorded samples
 priority: P2
 effort: M
-status: blocked
-blocked-by: PL-T691
+status: ready
 classes: refactor, perf
 feature: numerical-domain
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration

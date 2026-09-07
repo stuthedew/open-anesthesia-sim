@@ -463,3 +463,44 @@ def test_a_segment_carries_the_state_its_settings_start_from() -> None:
     assert segment.opening.elapsed_s == 30.0
     assert len(segment.opening.state) == STATE_SIZE
     assert segment.opening.state[UNIT_STATE] == 1.0
+
+
+def test_a_change_undone_before_a_step_runs_leaves_no_segment() -> None:
+    """A dial moved and moved back between two steps describes no change at all.
+
+    The stretch it opened is dropped rather than left standing with the
+    settings it started from, which would put a keyframe in the score for an
+    instant the run passed through unremarkably. The interface's own control
+    timeline drops the matching entry for the same reason.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    score = RunScore(system.equation_settings(), system.state_vector())
+    score.advance_to(10.0)
+    system.set_delivered_concentration(0.03)
+    score.record_change(system.equation_settings())
+
+    assert len(score.segments) == 2
+
+    system.set_delivered_concentration(0.02)
+    score.record_change(system.equation_settings())
+
+    assert len(score.segments) == 1
+    assert score.segments[0].opening.elapsed_s == 0.0
+
+
+def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
+    """There is no earlier stretch to fold the opening one back into.
+
+    The run's first segment opens at zero and carries the settings the run
+    began under, so a change recorded at zero replaces those settings rather
+    than dropping a stretch that nothing precedes.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    score = RunScore(system.equation_settings(), system.state_vector())
+    system.set_delivered_concentration(0.05)
+    score.record_change(system.equation_settings())
+
+    assert len(score.segments) == 1
+    assert score.segments[0].settings.delivered_concentration_fraction == pytest.approx(0.05)

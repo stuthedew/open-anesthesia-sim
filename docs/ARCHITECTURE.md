@@ -145,6 +145,28 @@ per setting the model was actually stepped under, so re-applying the
 timeline reproduces the run rather than approximating it, and a timeline is
 bounded by how often a user touches a control rather than by how long they
 watch.
+
+**A run is its inputs, and its states are derived from them** (PL-T691).
+Beside the recorded history the controller holds a `core/run_score.py`
+`RunScore`: the settings in force at each moment, plus one keyframe — the
+state at that instant — per change. Because the equations are linear and
+time-invariant while the settings hold, the propagator is exact over any
+horizon and not only over a step, so every state the run passed through is
+one propagation from the keyframe bracketing it and none of them has to have
+been recorded. `evaluate_window(start_s, stop_s, columns)` is that read, and
+`score_segments` hands the record itself out as frozen segments — readable
+without being advanceable, so nothing above the controller can move the
+score's reach past where the run actually got to and have a prediction come
+back drawn on the run's own axis. `docs/MODEL.md` § "The run is that record,
+and every state is derived from it" carries the measurements and what the
+two evaluation paths may each be used for.
+
+Both records are live in this release and the chart still draws from the
+recorded one; § "Closed-form agreement test" is what holds them to each
+other while that is true. Which representation the interface reads is not a
+question the layering leaves open — the score is the run and the samples are
+a second copy of it — so this is a transition rather than a choice, and
+PL-2FM6 is what finishes it.
 `app/simulation_view.py` reads only those two — it builds the
 controls, drives the chart, and wires slider/button callbacks through
 `_apply_setting` to controller setters. It performs no physiological or

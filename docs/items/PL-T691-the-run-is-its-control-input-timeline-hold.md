@@ -3,11 +3,12 @@ id: PL-T691
 title: The run is its control-input timeline: hold keyframes at every event and answer any window in closed form
 priority: P1
 effort: L
-status: ready
+status: done
 classes: refactor, perf
 feature: numerical-domain
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-05
+closed: 2026-09-07
 verify: uv run pytest -q tests/unit tests/integration && grep -q 'def test_evaluate_matches_a_stepped_run' tests/unit/test_run_score.py
 ---
 
@@ -27,6 +28,28 @@ propagator application from the bracketing keyframe. Nothing is recorded.
 Sizing, same measurement session: a busy 30-day ICU case at 50 changes per day
 is ~1 500 events, so ~70 KiB of score and ~70 KiB of keyframes against 3.16 GB
 today. A 2 h teaching case is ~4 KiB.
+
+**Re-measured on the shipped implementation, 2026-09-07**, with `tracemalloc`
+rather than by counting floats: the recorded history costs 130.8 B per sample
+(over 20 000 samples of a live run), so 30 days at the 0.1 s step is 25 920 000
+samples and 3.16 GiB — the estimate above holds. The score of the same case,
+1 501 stretches, is **1.6 MiB rather than ~140 KiB**: a stretch carries a whole
+`UptakeEquationSettings`, which is a frozen dataclass holding a tuple of three
+more, and Python object overhead is about 1.1 kB per stretch against the ~240 B
+its floats occupy. The ratio is still about 2 000x, so the change is worth
+making for exactly the reason stated; the absolute figure was an order of
+magnitude optimistic and is corrected here rather than left to be discovered.
+
+**The frame-cost figures are also worth restating**, because the prototype's
+were measured on a different arrangement. On the shipped implementation a
+600-column window costs 10.6 ms over 1 h of a 2 h run and 13.0 ms over 1 h of a
+30-day run, which is the run-length independence the item is for. What the
+prototype's 3.6 ms for a 30-day *span* does not capture is that each stretch in
+view needs its own propagator: a full 30-day span at 600 columns costs 14.2 ms
+with two changes in view, 231 ms with sixty, and about 1.1 s with six hundred.
+That regime — more setting changes than columns — is one where sampling 600
+instants aliases the run in any case, so what to draw there is a question for
+`PL-2FM6` rather than a defect here.
 
 **The control-input timeline already exists** (v0.3.7, `PL-DR1Z`), in
 `app/control_timeline.py` and the controller's `ControlChange` record. It is

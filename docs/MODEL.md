@@ -2188,6 +2188,31 @@ $$
 
 using the release tolerances documented above.
 
+### Closed-form agreement test
+
+A run driven through its own controls must be answered identically by both of
+its records: the states derived from the score, at the instants the run
+recorded, must equal the recorded samples.
+
+The comparison is over every compartment of every sample rather than
+endpoints, for the reason "Deterministic replay test" gives, and it must cross
+at least two setting changes, because a stretch of constant settings is the
+easy case — what a score has to get right is the boundary between two of them.
+The tolerance is absolute rather than relative and is stated in fractions of
+one atmosphere, since that is what the compartments hold and what a readout
+converts: a relative tolerance would tighten without limit on the near-zero
+tissue fractions of an induction and say nothing about a displayed digit.
+
+The agreement required is far below the two-decimal percent under "Displayed
+precision" and far above floating-point noise, so a real divergence fails and
+a rounding difference does not; `tests/integration/test_controller.py` records
+the figure measured and the headroom left above it.
+
+While both records are live this test is what says they describe one run.
+Once the recorded half is retired it becomes the record of what the closed
+form replaced, and the stepped comparison in `tests/unit/test_run_score.py`
+is what carries the claim forward.
+
 ### Deterministic replay test
 
 Two runs with identical:
@@ -2272,6 +2297,63 @@ concentration history, and cleared with it. What that record is for, what
 it does and does not assert, and why it is shaped the way it is are under
 "The control-input timeline" below, with the display rules the rest of the
 interface section carries.
+
+#### The run is that record, and every state is derived from it
+
+**What is held.** A run is the settings in force at each moment — the four
+controls above, together with the patient and agent parameters the equations
+read — plus one *keyframe* per change: the state at the instant that change
+took effect. Nothing else is stored. `core/run_score.py` is where this lives.
+
+**What is derived.** The equations are linear and time-invariant while every
+setting is held constant, so between two changes the propagator under
+"Selected method (as implemented)" is exact over any horizon, not only over a
+simulation step. The state at any instant is therefore one propagation from
+the keyframe that opens the stretch containing it, and no value has to have
+been recorded for it to be recoverable. A keyframe is itself computed that
+way, one propagation per stretch, composed in order from the start of the run.
+
+**Two paths, and they differ in composition order rather than in method.**
+Answering a single instant applies one propagator to the keyframe that
+brackets it. Drawing a window of evenly spaced columns instead reuses one
+propagator across the columns inside a stretch, chaining from the first, which
+is what makes a frame cheap. Both solve the same equations exactly; what
+separates them is the order the floating-point operations are composed in.
+Measured 2026-09-07 against a stepped 600 s sevoflurane run with two setting
+changes, reaching a fraction of 0.0316: the single-instant path sits within
+1.8e-14 of the stepped run and the window path within 3.7e-15, as absolute
+differences in a fraction of one atmosphere. Both are eleven orders below the
+1e-4 that the two-decimal percent readout under "Displayed precision" can
+show, so neither can move a displayed digit. Which of the two a stored,
+exported or branched value may be taken from is not yet stated here as a
+guarantee; until it is, the derived values this section describes are the
+ones drawn and read, and the keyframes are computed by the single-instant
+path.
+
+**What this is for, measured rather than argued.** Recording one sample per
+step costs 130.8 bytes per sample, measured over 20 000 samples of a live
+run; a 30-day case at the fixed 0.1 s step is 25 920 000 samples, or 3.16 GiB.
+The same case as a score — a busy ICU day at 50 setting changes, so 1 501
+stretches — is 1.6 MiB, a factor of about two thousand. The second gain is
+that answering a window stops depending on how long the run has been going: a
+one-hour window at 600 columns costs 10.6 ms on a two-hour run and 13.0 ms on
+a thirty-day one, against the 62.6 ms at four hours and 207.7 ms at twelve
+that the recorded path costs.
+
+**Where the cost does still move is the number of changes inside the window**,
+because each stretch in view needs its own propagator. Measured on the same
+thirty-day run, a full-span window at 600 columns costs 14.2 ms with two
+changes in view, 231 ms with sixty, and about 1.1 s with six hundred. That is
+the regime where the columns are sparser than the changes, in which sampling
+600 instants is the wrong way to draw the run in any case; what to draw
+instead is an interface question rather than a model one.
+
+**Both records are live in this release.** The recorded history remains, and
+the chart is still drawn from it; the score is built and maintained beside it,
+and the two are held to each other by "Closed-form agreement test" below.
+Retiring the recorded half is a separate change, and until it lands the
+agreement is what stands in for it: a divergence in either record fails that
+test.
 
 ### Supported input ranges
 
