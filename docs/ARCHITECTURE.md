@@ -302,7 +302,7 @@ Outside the packaged application, and not imported by it:
 tools/
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
-├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, citations - in the documentation, in every `docs/items/` brief and in every source docstring, since those last two are where this project writes most of them - markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
+├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, citations - in the documentation, in every `docs/items/` brief and in every source docstring, since those last two are where this project writes most of them - markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline, and the current gate's membership against the queue's `safety`- and `science`-classed items; reports resident instruction size
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; the session-start hook calls it, it gates nothing, and it is the one tool here that reads the network
@@ -516,6 +516,23 @@ deliberately not read, because a checker cannot tell a claim about today's
 list from a dated fact about the day it was frozen — so the prose states no
 count, and the number lives only where its meaning is fixed by where it sits.
 
+A frozen list can be internally consistent and still be missing entries, so
+membership is read too, against the queue rather than against the file. The
+gate rule makes one class of finding unconditional: an item classed `safety`
+or `science`, or one at `P0`, re-enters the *current* gate however long after
+the freeze it was noticed. Every other class turns on whether its problem
+predates the freeze, which is a judgment. Only the unconditional half is
+checked, and only in the direction that is decidable — an open item of that
+class whose id the current milestone's section does not place, either on its
+frozen list or under `Required scope`. What such an item should *become* is
+left alone, so this reports as an advisory and names the three dispositions
+rather than choosing one. It exists because the rule ran only when a session
+thought of it: eleven qualifying items were filed in the two days after Gate
+1 froze and none reached the list, while every count in the file agreed and
+`docket wave` reported the written list correctly the whole time — 84 open of
+121, holding no `P1` at all, since both classes are pinned to the top band
+(`PL-KTKP`).
+
 The same module reads `ROADMAP.md`'s *version* table, and `doc_check` holds
 the three statements of the current version to each other: one row per
 released version, exactly one marked the current baseline, a "Current
@@ -542,8 +559,10 @@ under whatever bare `python3` is on PATH: `make check` invokes `python3
 tools/doc_check.py check` directly, CI does the same, and both have to work in
 a checkout with no virtualenv. That is why the floor these tools are held to is
 **Python 3.11** — not the version `pyproject.toml` requires. The floor is not a
-number chosen here: `doc_check.py` imports `docket.roadmap`, so it is whatever
-`subprojects/docket/pyproject.toml` declares in `requires-python`.
+number chosen here: `doc_check.py` imports `docket.roadmap` for the release
+train and `docket.config`, `docket.model` and `docket.store` for the queue, so
+it is whatever `subprojects/docket/pyproject.toml` declares in
+`requires-python`.
 
 `.claude/hooks/` is held to the same floor for the same reason, and its
 `ruff.toml` inherits the pin from `tools/ruff.toml` rather than restating it.

@@ -2150,3 +2150,107 @@ def test_a_gate_count_written_in_digits_is_read(tmp_path: Path) -> None:
     errors = _gate_errors(tmp_path, roadmap)
 
     assert any("says 4 entries, but 3 follow it" in error for error in errors)
+
+
+# --- gate re-entries, the queue read against the frozen list -----------------
+#
+# `check_gate_counts` above holds a frozen list's arithmetic to itself. These
+# hold its *membership* to the queue: an open `safety`- or `science`-classed
+# item re-enters the current gate regardless of when it was found, and until
+# `PL-KTKP` nothing reconciled the two, so eleven qualifying items sat unlisted
+# while every count in the file agreed.
+
+
+def _queue_item(root: Path, identifier: str, *, classes: str, status: str = "ready") -> None:
+    """Write one item into the fixture repository's store."""
+    store = root / "docs" / "items"
+    store.mkdir(parents=True, exist_ok=True)
+    (store / f"{identifier}-demo.md").write_text(
+        "---\n"
+        f"id: {identifier}\n"
+        "title: A thing\n"
+        "priority: P1\n"
+        "effort: S\n"
+        f"status: {status}\n"
+        f"classes: {classes}\n"
+        "added: 2026-09-07\n"
+        "---\n\n"
+        "**Problem.** A thing.\n",
+        encoding="utf-8",
+    )
+
+
+def _reentry_advisories(root: Path) -> list[str]:
+    return [
+        advisory
+        for advisory in doc_check.analyze(root).advisories
+        if "re-enter the current gate" in advisory
+    ]
+
+
+def test_a_safety_item_the_frozen_list_does_not_place_is_an_advisory(tmp_path: Path) -> None:
+    """The failure `PL-KTKP` records, in its smallest form."""
+    root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
+    _queue_item(root, "PL-ZZZZ", classes="safety, ux")
+
+    advisories = _reentry_advisories(root)
+
+    assert len(advisories) == 1
+    assert "PL-ZZZZ (safety)" in advisories[0]
+    assert "v0.4.0" in advisories[0]
+
+
+def test_a_science_item_the_frozen_list_places_is_quiet(tmp_path: Path) -> None:
+    root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
+    _queue_item(root, "PL-BBBB", classes="science")
+
+    assert _reentry_advisories(root) == []
+
+
+def test_a_safety_item_in_required_scope_is_quiet(tmp_path: Path) -> None:
+    """An item the milestone clears itself is placed, and clears *with* it.
+
+    This is the case the four `safety`/`science` items excluded from Gate 1's
+    2026-09-07 group are in: named under `Required scope` rather than on the
+    frozen list, which `scope_ids` reads as placement either way.
+    """
+    roadmap = VERSIONED_GATE_ROADMAP.replace("- Something.", "- Something (queue item PL-ZZZZ).")
+    root = _repo(tmp_path, roadmap=roadmap)
+    _queue_item(root, "PL-ZZZZ", classes="safety")
+
+    assert _reentry_advisories(root) == []
+
+
+def test_a_closed_safety_item_the_list_does_not_place_is_quiet(tmp_path: Path) -> None:
+    """The rule is about open debt; a finished finding owes the gate nothing."""
+    root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
+    _queue_item(root, "PL-ZZZZ", classes="safety", status="done")
+
+    assert _reentry_advisories(root) == []
+
+
+def test_an_unplaced_item_of_another_class_is_quiet(tmp_path: Path) -> None:
+    """Only `safety` and `science` re-enter unconditionally.
+
+    Every other class defers to the next gate unless its problem predates the
+    freeze, which is a judgment this check must not make on a session's behalf.
+    """
+    root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
+    _queue_item(root, "PL-ZZZZ", classes="defect, infra")
+
+    assert _reentry_advisories(root) == []
+
+
+def test_the_advisory_names_every_unplaced_item_in_one_line(tmp_path: Path) -> None:
+    """One advisory, not one per item: the eleven arrived as a group and are
+    recorded as a group, and eleven lines would bury the rest of the report."""
+    root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
+    _queue_item(root, "PL-ZZZZ", classes="safety")
+    _queue_item(root, "PL-YYYY", classes="science, docs")
+
+    advisories = _reentry_advisories(root)
+
+    assert len(advisories) == 1
+    assert "PL-ZZZZ (safety)" in advisories[0]
+    assert "PL-YYYY (science)" in advisories[0]
+    assert "2 open items" in advisories[0]

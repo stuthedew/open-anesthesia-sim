@@ -3,11 +3,12 @@ id: PL-KTKP
 title: Nothing reconciles the queue's safety- and science-classed items against the frozen gate list, so eleven owed re-entries sat unrecorded
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: planning-cadence
-touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py, docs/items
+touches: ROADMAP.md, docs/ARCHITECTURE.md, tools/doc_check.py, tests/unit/test_doc_check.py, docs/items
 added: 2026-09-07
+closed: 2026-09-07
 verify: python3 tools/doc_check.py check && grep -q 'def check_gate_reentries' tools/doc_check.py
 ---
 

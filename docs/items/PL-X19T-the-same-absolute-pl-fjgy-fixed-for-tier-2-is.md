@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: .claude/rules/expert-review.md, .claude/rules/sources-and-docstrings.md, docs/consultant-brief.md, docs/resident-instructions.md
 added: 2026-09-07
 closed: 2026-09-07
+pr: 454
 verify: python3 tools/doc_check.py check && ! grep -rqF 'never the authority for a constant' .claude/rules docs/consultant-brief.md
 ---
 
