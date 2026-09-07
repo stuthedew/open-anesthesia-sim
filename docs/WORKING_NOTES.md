@@ -674,17 +674,28 @@ correctness standard above - exported figures should carry the model
 name/version, parameter provenance, and units they were generated from,
 not just the plotted curve. Aspirational only; not scoped.
 
-## Open: when a session may fix a small finding instead of filing it (PL-3MJH)
+## Settled: when a session may fix a small finding instead of filing it (PL-3MJH)
 
-`CLAUDE.md`'s capture bullet exempts a finding "identified in a session **and
-not fixed in that same session**", but no instruction anywhere says when a
-session may enter that exemption. It is therefore dead text, and every session
-captures - so a two-line typo fix costs a `docket new`, a five-field triage
-slot, a hand edit to close, and a queue line read past until it closes. The
-design that closes this is worked out in full in `PL-3MJH` (three mechanical
-tests, a two-per-branch cap, the fix recorded as its own commit under the
-current item's id). It is not built: the project owner judged it too
-complicated to land now and deferred it.
+**Built on 2026-09-07, as designed.** `CLAUDE.md`'s capture bullet had exempted
+a finding "identified in a session **and not fixed in that same session**"
+while no instruction anywhere said when a session might enter that exemption.
+It was dead text, and every session captured - so a two-line typo fix cost a
+`docket new`, a five-field triage slot, a hand edit to close, and a queue line
+read past until it closed. `CLAUDE.md` now carries the three mechanical tests,
+the two-per-branch cap and the recording mechanic (the fix's own commit under
+the current item's id), and the `docket` skill's capture mode routes to them
+rather than restating them. The design was not widened on the way in.
+
+Two things the build had to settle that the design did not name. The
+**housekeeping bullet immediately below** demanded an item for any work taking
+a commit of its own, which is the exact shape the new rule prescribes, so both
+it and the skill's housekeeping mode carve the admitted fix out on the ground
+that rule rests on - the commit still leads with the current item's id, so
+every id-matcher still sees it. And **a session holding no item cannot use the
+rule at all**, having no `touches` for test 2 and no id to lead a commit;
+stated as a consequence rather than as a fourth test. `docs/worker.md` needed
+nothing: "Do not start anything not on your list" already denies a delegated
+worker this rule.
 
 Two things from that discussion are worth having here rather than in the item,
 because they bear on decisions beyond it.

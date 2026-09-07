@@ -3,11 +3,12 @@ id: PL-3MJH
 title: CLAUDE.md's capture rule exempts a finding fixed in the same session but gives no session a way to enter that exemption, so every trivial fix becomes a queue item
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs, session-cost
 feature: worker-instructions
-touches: CLAUDE.md, .claude/skills/docket/SKILL.md, ROADMAP.md
+touches: CLAUDE.md, .claude/skills/docket/SKILL.md, ROADMAP.md, docs/WORKING_NOTES.md
 added: 2026-09-01
+closed: 2026-09-07
 verify: python3 tools/doc_check.py check && grep -qF 'at most two per branch' CLAUDE.md
 not-delegable: the deliverable is the wording of a rule every session reads before it acts. A shade too loose and it licenses the queue-bypass it exists to bound; a shade too tight and no session ever uses it. The brief also records two widenings deliberately set aside - both of which the cited source argues *for* - so a worker reading the same article is being asked to hold a line against it.
 ---
@@ -145,3 +146,47 @@ restating it.
   falls from roughly 87% under 100 changed lines to roughly 28% over 1,000.
   Supports the two-per-branch cap. Primary source not reached; verify before
   citing it as fact.
+
+**What landed.** `CLAUDE.md` gains one bullet directly under the capture rule -
+"Or fix it now, through a door this narrow" - carrying the three tests
+verbatim, the two-per-branch cap, and the recording mechanic (its own commit
+led by the current item's id, one line in the reply, no item file and no
+triage). The `docket` skill's "Mode: capture" routes to it in four lines and
+restates none of it, per **Done when**.
+
+Two reconciliations the design implied but did not name, both inside the
+declared `touches`:
+
+- The **housekeeping bullet immediately below it** made the new rule
+  unreachable as written: it requires an item for any work taking "a commit of
+  its own", which is exactly the shape the fix-now rule prescribes. Both
+  `CLAUDE.md` and the skill's "Mode: housekeeping nobody filed" now carve the
+  admitted fix out, on the ground the housekeeping rule actually rests on -
+  visibility - since the fix's own commit still leads with the current item's
+  id and every id-matcher still sees it. Two cross-references in that bullet
+  reading "the rule above" now say "the capture rule" and "the fix-now rule",
+  because the new bullet sits between them and their referent.
+- **A session holding no item cannot use the rule at all**, stated in the
+  bullet as a consequence rather than as a fourth test: there is no `touches`
+  for test 2 to read and no id to lead the commit. This is the case that
+  otherwise reads as an unstated gap, being the same shape of hole the item was
+  filed against.
+
+`docs/WORKING_NOTES.md`'s "Open: when a session may fix a small finding" thread
+said in as many words that this design "is not built", which the change makes
+false, so it is retitled and rewritten to what now stands - the two durable
+lessons it carries about gate placement and about beating the cited source are
+kept, being the reason that section exists. `docs/WORKING_NOTES.md` was added to
+`touches` for it rather than the edit being made outside the declaration.
+
+`docs/worker.md` needed nothing and was deliberately left alone. It is outside
+`touches`, and its standing "Do not start anything not on your list, however
+obvious the fix looks" already denies a delegated worker this rule - which is
+the right answer, not an omission.
+
+Resident cost: `CLAUDE.md` grows about 1.5k characters, which `doc_check`'s
+resident advisory reports. Disposition 4 is the right one on `CLAUDE.md`'s own
+four-way test - the rule fires when a session notices a small problem mid-work,
+which no read precedes, so a `paths:`-scoped rule cannot carry it; test 3 is a
+judgment, so no check can; and the whole point is that the decision happens
+without reaching for the queue skill.

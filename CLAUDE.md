@@ -256,14 +256,41 @@ correction rather than handing the question back.
   a thread is still open when the session ends, update `docs/WORKING_NOTES.md`
   too — but only for a thread spanning more than one item, outliving its item,
   or having none. One item's own reasoning goes in that item, at any length.
+- **Or fix it now, through a door this narrow.** The exemption the capture rule
+  states — "not fixed in that same session" — opens only when all three of these
+  hold, and any one of them failing means file the item instead:
+
+  1. **It needs no new test.** Absolute, everywhere. A safety-critical bug owes
+     a regression test, so `safety`- and `science`-classed work fails this test
+     automatically and the clinical paths need no carve-out of their own.
+  2. **It touches no file outside what the current item's work already
+     touches.** `bin/docket verify` reads the diff for files outside an item's
+     declared `touches`, so a wider fix either fails that audit honestly or
+     tempts the single edit that defeats it.
+  3. **No reasonable person could prefer the current state.** A typo, a stale
+     doc line, a dead import, a wrong error string. Not a rename, an extracted
+     helper, or anything where what is there is a defensible choice — that is a
+     decision, and decisions are items.
+
+  **Fix at most two per branch**, and the third means stop and file. A hard
+  count rather than a judgement call, because knowing when to call it a day is
+  the judgement a session is likeliest to rationalise past. Record each as its
+  own commit led by the *current* item's id, and one line in your reply: no
+  item file, no triage. That separate commit is what makes this safe to grant —
+  the owner can drop it in a rebase without touching the item's work — and it
+  is also why a session holding no item cannot use this rule at all, having no
+  `touches` for test 2 to read and no id to lead the commit. `PL-3MJH` carries
+  the design, and the two widenings that were considered and refused.
 - **Housekeeping you are about to do yourself is filed before you do it.** The
-  rule above records what a session will *not* fix; this one covers repository
+  capture rule records what a session will *not* fix; this one covers repository
   work no item names — resolving a merge, clearing a stale ref, a docs sweep, a
   lint fix, recovering a stranded item. Every in-flight guard matches a `PL-`
   id, so unfiled work reads as nobody's to all of them and keeps reading that
   way after both sessions have pushed. So file the item first, then work under
   its id. Not for a fix riding inside a commit an id already leads: the line is
-  whether the work takes a commit of its own (`PL-CP74`).
+  whether the work takes a commit of its own (`PL-CP74`) — and not for one the
+  fix-now rule admits, whose own commit still leads with the current item's id,
+  so every guard that matches a `PL-` id still sees it.
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and
