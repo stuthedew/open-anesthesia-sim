@@ -1816,15 +1816,24 @@ class ClosureReport:
     that declined there would decline in exactly the case this exists to cover.
 
     Reading *which pull request* landed it is the other kind of question, and
-    `shallow` is what keeps the two apart. A derived number is trustworthy at
-    any depth - the commit was found, and finding it is proof enough. Its
-    absence is not: at `fetch-depth: 1` there is one commit to search, so
-    every closure but the newest yields nothing, and a caller that read that
-    as "no commit names a number" would call correct provenance lost. It did:
-    `main` was red on 97573ae and 3b37a75 for a `pr` recoverable from a commit
-    the clone no longer held (`PL-99Y4`). So the emptiness is reported with
-    the depth that produced it, and the caller decides - the rule `PL-J295`
-    already set for `tags`, applied to the question beside it.
+    `shallow` is what qualifies the *absence* of a number here. At
+    `fetch-depth: 1` there is one commit to search, so every closure but the
+    newest yields nothing, and a caller that read that as "no commit names a
+    number" would call correct provenance lost. It did: `main` was red on
+    97573ae and 3b37a75 for a `pr` recoverable from a commit the clone no
+    longer held (`PL-99Y4`). So the emptiness is reported with the depth that
+    produced it, and the caller decides - the rule `PL-J295` already set for
+    `tags`, applied to the question beside it.
+
+    A number that *is* derived was once held to be trustworthy at any depth, on
+    the reasoning that the commit was found and finding it is proof enough. It
+    is not, and `shallow` was never what would have caught it: what a truncated
+    history breaks is the parent comparison that tells a closure from every
+    later commit touching the same file, and `_closed_at` now refuses that
+    question rather than answering it. Until it did, `record` wrote `#401` onto
+    five items on a `--depth 1` clone and four of them had merged in `#399`,
+    `#400` and `#402` (`PL-KX9N`). So a derived number means the parent was
+    there to compare against, at whatever depth.
     """
 
     base: str = ""
@@ -1936,6 +1945,12 @@ def _merges_naming(
     Over the same 122 it agreed with the file reading in every case where both
     could answer, and disagreed in none.
 
+    A checkout that does not hold the parent cannot run that test at all, and
+    `_closed_at` says so rather than answering. An unconfirmable candidate
+    falls through to the file reading below exactly as an unanswered one does,
+    and declines again there - which is the point, because the file reading is
+    the half that stamped one number across four items (`PL-KX9N`).
+
     Whatever the subjects do not answer - or answer unconfirmably - falls back
     to the item's own file, per `PL-2XTF`. A squash merge takes its subject from
     the pull request title, which is written by whoever opened it and need not
@@ -1969,11 +1984,8 @@ def _merges_naming(
             if identifier in identifiers:
                 candidates.setdefault(identifier, (revision.strip(), number))
     for identifier, (revision, number) in candidates.items():
-        name = closures[identifier]
-        path = f"{items_dir}/{name}"
-        if _done_at(revision, path, name, root, run) and not _done_at(
-            f"{revision}^", path, name, root, run
-        ):
+        path = f"{items_dir}/{closures[identifier]}"
+        if _closed_at(revision, path, path, root, run):
             found[identifier] = number
     for identifier in sorted(identifiers - set(found)):
         recovered = _number_closing(closures[identifier], items_dir, base, root, run)
@@ -2000,21 +2012,27 @@ def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runne
     was attributed to whichever pull request happened to rename it, and one
     whose renaming commit named no number was declined instead (`PL-S5LB`).
 
-    A commit whose parent this checkout does not hold reads as "not done
-    there", because `_run_git` answers a failed `show` with empty output. That
-    is the safe direction on a truncated clone: it can only make the walk
-    accept an older commit it should have skipped, never invent a number for an
-    item that has none, and `ClosureReport.shallow` already tells the caller
-    the history was not whole.
+    A commit whose parent this checkout does not hold ends the walk with no
+    answer, per `_closed_at`. That reasoning used to run the other way: a
+    failed `git show` collapses to "not done there", which was called the safe
+    direction because it could only make the walk accept an older commit than
+    it should have. It is not safe. At a graft boundary git reports every file
+    in the tree as added, so the oldest commit held reads as "done here and not
+    in the parent" for every closed item there is, and its number is stamped
+    across all of them - `#401` onto five items on a `--depth 1` clone of this
+    repository, four of which had merged in `#399`, `#400` and `#402`
+    (`PL-KX9N`). Nothing older than that commit is in the walk either, so
+    stopping loses nothing that a deeper fetch would not restore.
     """
     path = f"{items_dir}/{name}"
     for revision, subject, here, there in _walk_following_renames(path, base, root, run):
         match = PR_SUBJECT_RE.search(subject.strip())
         if match is None:
             continue
-        if _done_at(revision, here, _basename(here), root, run) and not _done_at(
-            f"{revision}^", there, _basename(there), root, run
-        ):
+        closed = _closed_at(revision, here, there, root, run)
+        if closed is None:  # its parent is outside this checkout, and so is everything older
+            return None
+        if closed:
             return int(match.group(1) or match.group(2))
     return None
 
@@ -2086,6 +2104,46 @@ def _done_at(revision: str, path: str, name: str, root: Path, run: Runner) -> bo
     """Whether the item at `path` reads `status: done` in that revision's tree."""
     text = run(["show", f"{revision}:{path}"], root)
     return bool(text) and parse_item(text, name).status == "done"
+
+
+def _parent_in_reach(revision: str, root: Path, run: Runner) -> bool:
+    """Whether this checkout holds the parent `revision` would be compared against.
+
+    False for a true root commit and for the graft boundary of a shallow clone
+    alike, which is right: neither has a parent tree here to be read, and the
+    callers' question is answerable only against one.
+    """
+    return bool(run(["rev-parse", "--verify", "--quiet", f"{revision}^^{{commit}}"], root).strip())
+
+
+def _closed_at(revision: str, here: str, there: str, root: Path, run: Runner) -> bool | None:
+    """Whether `revision` is the commit that closed one item, or `None` if unanswerable.
+
+    The test both readings above apply: the item reads `status: done` in this
+    commit's tree and not in its parent's. `here` and `there` are the names the
+    file carried in each, which differ exactly where the commit renamed it.
+
+    Three answers rather than two, for the reason `is_shallow` has three. The
+    parent is the whole of what separates the closure from every later commit
+    that touches a closed item - a `pr` written back, a retitle, a follow-up
+    fix - so a checkout that does not hold it cannot make the comparison at
+    all. Saying so costs one `rev-parse`; the alternative is not `False` but a
+    confident wrong answer, because `_run_git` collapses a failed `git show`
+    into "not done there". At a graft boundary git reports every file in the
+    tree as added, so that collapse made the oldest commit held look like the
+    closure of every closed item in the store, and `record` wrote its number
+    onto all of them - `#401` onto five items on a `--depth 1` clone, four of
+    which had merged in `#399`, `#400` and `#402` (`PL-KX9N`).
+
+    `closed_by` has refused exactly this since it was written, asking the same
+    question of one commit rather than of one file. These two readings never
+    got the guard, which is the whole of that defect.
+    """
+    if not _done_at(revision, here, _basename(here), root, run):
+        return False
+    if not _parent_in_reach(revision, root, run):
+        return None
+    return not _done_at(f"{revision}^", there, _basename(there), root, run)
 
 
 @dataclass(frozen=True)
@@ -2358,12 +2416,15 @@ def closed_by(
     answering. At `fetch-depth: 1` there is nothing to compare against, and
     "no parent" would otherwise read as "everything done here was closed here"
     - the confident wrong answer this module refuses to give, and here it would
-    stamp one pull request number across the whole store.
+    stamp one pull request number across the whole store. It did, through the
+    two readings behind `closures_on_base`, which asked the same question
+    without this guard until `PL-KX9N`. `_parent_in_reach` is shared with them
+    now, so the three cannot drift apart again.
     """
     run = runner or _run_git
     if not run(["rev-parse", "--verify", "--quiet", f"{revision}^{{commit}}"], root).strip():
         return ClosedByReport(declined=f"what `{revision}` closed: it names no commit here")
-    if not run(["rev-parse", "--verify", "--quiet", f"{revision}^^{{commit}}"], root).strip():
+    if not _parent_in_reach(revision, root, run):
         return ClosedByReport(
             declined=(
                 f"what `{revision}` closed: its parent is outside this checkout, so its tree "

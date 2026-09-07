@@ -1195,9 +1195,27 @@ predating that rule.
 
 - **The number is recoverable** → an advisory naming it, and the command that
   writes it. Nothing is lost; the way back exists in git, and the field is a
-  transcription still owed so the item file carries it too. True at any
-  depth: finding the commit is proof it was there to find. This should be a
+  transcription still owed so the item file carries it too. This should be a
   rare sight rather than a routine one — see below.
+- **The commit that would name it has no parent in this checkout** → a decline,
+  like the truncated case below. Finding a commit that names a number was once
+  taken as proof it was the closure, at any depth. It is not: the closure is
+  told from every later commit touching the same file *only* by its parent's
+  tree, and at a graft boundary git reports every file as added, so the oldest
+  commit a shallow clone holds reads as the closure of every item in it.
+  `record` wrote `#401` onto five items that way, of which four had merged in
+  `#399`, `#400` and `#402`, and `check` then reported no error at all — the
+  field was present and well formed, and the one check that could have
+  contradicted it is the shallow decline two paragraphs up (`PL-KX9N`).
+  `closed_by` had refused this since it was written; the two readings here had
+  not, and `_parent_in_reach` is shared by all three now.
+
+  The refusal is per closure rather than per checkout, which `is_shallow`
+  cannot express: it is equally true of `--depth 1` and of the `--depth 200`
+  that recovered the four wrong numbers. Measured against real git on a
+  12-commit history fetched to depth 4, the three closures whose commit and
+  parent are both held resolve and the nine at or below the boundary decline.
+  So a bounded fetch buys back exactly what it reaches.
 - **No commit names one, in a checkout that says it is complete** → the error
   it always was. That is provenance genuinely lost.
 - **No commit names one, in a truncated checkout** → a decline naming the
@@ -1232,7 +1250,14 @@ the number had to be read off a web page by hand.
 `docket record` is the other half, and bare is its normal form: it asks the
 same question `check` asks — which landed closures owe a number, and which
 number does the base name for each — and writes the answer instead of printing
-it. There is one reading, so the two cannot disagree. Crucially it takes no
+it. There is one reading, so the two cannot disagree, which is why the fix for
+the graft-boundary case above went into the reading rather than into this
+command: a `record` that declined while `check` went on printing `#401` as
+recoverable would have left the wrong number on screen and the instruction to
+write it pointing at that. Where the checkout is shallow and some landed
+closure went unnamed, it names `git fetch --unshallow origin` — the one thing a
+session can do about it, and cheaper than sending it to `check` for an answer
+it already has. Crucially it takes no
 merge, because a session may be owed numbers from several, and because taking
 them from the base is what lets the write ride whatever commit the session was
 about to make. That is the cost being removed: not the typing, but the commit
