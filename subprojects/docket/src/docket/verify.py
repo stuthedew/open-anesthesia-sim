@@ -108,6 +108,45 @@ def selects_no_test(command: str, status: int) -> bool:
     return status == NO_TESTS_COLLECTED and bool(PYTEST_RE.search(command))
 
 
+# The one `docket` subcommand a `verify:` command must never name. Matched as
+# text for the same reason as `PYTEST_RE` above - a `verify:` line is a shell
+# command rather than a parsed argv, so `bin/docket verify`, `uv run docket
+# verify` and a compound command whose third clause is one of those all arrive
+# here as a string. `docket` takes no options before its subcommand, so the two
+# words are adjacent in every spelling of it.
+#
+# Quoted spans are removed before the match, which is what keeps the shape this
+# rule leaves allowed from tripping it: `grep -q 'docket verify' docs/items/`
+# reads the store rather than running it, and the pattern is the only place the
+# words appear.
+DOCKET_VERIFY_RE = re.compile(r"\bdocket\s+verify\b")
+QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+def reenters_verify(command: str) -> bool:
+    """Whether this `verify:` command runs the command that would be running it.
+
+    `docket verify` executes an item's own `verify:` field, so an item whose
+    command names it re-enters `verify_item` once per level and never stops.
+    Unlike the landed replay, which asks its question once and can be told not
+    to ask again, there is no level at which this one is finished: the command
+    *is* the deliverable, so every level has the same work to do. Each level
+    also gets a fresh timeout rather than a share of one, so what ends the
+    recursion is the process table rather than the clock.
+
+    Refused on the item rather than at the run, because the run is where it
+    cannot be reported: the outer command hangs, and nothing in its output
+    names the item that caused it.
+
+    `docket check` is deliberately not matched, and the asymmetry is the whole
+    of the rule. It executes a `verify:` only under `--verify`, and a nested run
+    is told not to ask, so `bin/docket check && grep -q ...` - the paired shape
+    this project recommends, and what ten open items record - is bounded at one
+    level and proves what it claims.
+    """
+    return bool(DOCKET_VERIFY_RE.search(QUOTED_RE.sub(" ", command)))
+
+
 @dataclass(frozen=True)
 class Check:
     """One thing that was looked at, and what was found."""
@@ -403,7 +442,22 @@ def verify_item(
         )
     )
 
-    status, output = _run([item.verify], root, shell=True)
+    if os.environ.get(VERIFY_GUARD):
+        report.checks.append(
+            Check(
+                "`verify:` command passes",
+                False,
+                item.verify,
+                (
+                    "not run: this command re-enters `docket verify`, which is what is "
+                    "running it. Each level would run the command again, so the "
+                    "recursion ends at the process table rather than at an answer.",
+                ),
+            )
+        )
+        return report
+
+    status, output = _run([item.verify], root, shell=True, env={**os.environ, VERIFY_GUARD: "1"})
     lines = () if status == 0 else tuple(output.strip().splitlines()[-4:])
     # A rejection either way, and for opposite reasons, so the report says
     # which. "The command failed" sends a reviewer to look for the missing
@@ -468,6 +522,17 @@ def verify_batch(
 # again. The child is told not to ask, which is the whole fix: it still
 # validates the store, it just does not recurse into this one question.
 LANDED_GUARD = "DOCKET_SKIP_LANDED"
+
+# The same problem for the other command that executes a `verify:`, and it
+# cannot take the same answer. `already_passing` declines its question and is
+# still useful, because the question is about the store; `verify_item` cannot
+# decline, because the command is the thing being asked about. So a nested run
+# reports the re-entry as a failed check, which is the honest reading: the
+# command was not run, and the item is therefore not verified.
+#
+# `checks.py` refuses such a command outright, so this is what stands between a
+# store nobody has checked yet and a recursion the process table ends.
+VERIFY_GUARD = "DOCKET_IN_VERIFY"
 
 # Long enough for a project's own suite, short enough that one wedged command
 # cannot hang `make check`. The timeout bounds a single command, so the figure
@@ -755,7 +820,7 @@ def already_passing(
     if not candidates:
         return LandedReport(scope=scope)
 
-    child = {**os.environ, LANDED_GUARD: "1"}
+    child = {**os.environ, LANDED_GUARD: "1", VERIFY_GUARD: "1"}
 
     with tempfile.TemporaryDirectory(prefix="docket-landed-") as scratch:
 

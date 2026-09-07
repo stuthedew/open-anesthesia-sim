@@ -685,6 +685,46 @@ def test_a_verify_command_with_touches_is_accepted() -> None:
     assert analyze([item], TODAY).errors == []
 
 
+def test_a_verify_command_that_recurses_into_docket_verify_is_rejected() -> None:
+    """`docket verify` runs the field, so an item naming it runs itself forever.
+
+    The refusal lands here rather than at the run because the run cannot report
+    it: the outer command hangs, and nothing in its output names the item.
+    """
+    report = analyze([_item(verify="bin/docket verify PL-K7QX")], TODAY)
+    assert any("runs `docket verify`" in e for e in report.errors)
+
+
+def test_the_recursion_rule_reads_past_a_wrapper_and_a_first_clause() -> None:
+    """The command is a shell line, so the runner is not always the first word."""
+    for command in (
+        "uv run docket verify PL-K7QX",
+        "python3 -m docket verify PL-K7QX",
+        "bin/docket check && bin/docket verify PL-K7QX",
+    ):
+        report = analyze([_item(verify=command)], TODAY)
+        assert any("runs `docket verify`" in e for e in report.errors), command
+
+
+def test_the_paired_check_and_grep_shape_is_not_mistaken_for_recursion() -> None:
+    """The shape this project recommends, and what ten open items record.
+
+    `docket check` executes a `verify:` only under `--verify`, and a nested run
+    is told not to ask, so this is bounded at one level. Refusing it would have
+    broken the store it was written to protect.
+    """
+    item = _item(
+        verify="bin/docket check && grep -q 'def test_x' subprojects/docket/tests/test_checks.py"
+    )
+    assert not _has(analyze([item], TODAY).errors, "runs `docket verify`")
+
+
+def test_reading_the_store_for_the_words_is_not_running_the_command() -> None:
+    """A quoted pattern is the store being read, which is the allowed shape."""
+    item = _item(verify="grep -q 'docket verify' .claude/skills/docket/SKILL.md")
+    assert not _has(analyze([item], TODAY).errors, "runs `docket verify`")
+
+
 CUTOVER = Config(verify_required_from=date(2026, 8, 1))
 
 

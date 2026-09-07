@@ -24,6 +24,7 @@ from docket.model import Item
 from docket.verify import (
     LANDED_GUARD,
     TIMED_OUT,
+    VERIFY_GUARD,
     already_passing,
     changed_paths,
     item_commits,
@@ -116,6 +117,45 @@ def test_work_inside_the_declared_scope_is_accepted(tmp_path: Path) -> None:
         KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
     )
     assert verify(root, _item(), _config(), "HEAD~1").passed
+
+
+def test_a_nested_docket_verify_refuses_to_run_the_command_again(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The level below the first reports the re-entry instead of recursing.
+
+    `already_passing` can decline its question and stay useful. This one
+    cannot: the command is what is being asked about, so the honest answer is
+    that it was not run and the item is therefore not verified.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 1\n",
+    )
+    monkeypatch.setenv(VERIFY_GUARD, "1")
+
+    report = verify(root, _item(verify="bin/docket verify PL-K7QX"), _config(), "HEAD~1")
+
+    assert not report.passed
+    command = [c for c in report.checks if c.name == "`verify:` command passes"]
+    assert command and not command[0].passed
+    assert any("re-enters `docket verify`" in line for line in command[0].lines)
+
+
+def test_the_command_is_told_it_is_running_underneath_docket_verify(tmp_path: Path) -> None:
+    """The marker the check above reads is set on the child, not merely expected."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 1\n",
+    )
+    probe = f'test -n "${VERIFY_GUARD}"'
+    assert verify(root, _item(verify=probe), _config(), "HEAD~1").passed
 
 
 def test_a_file_outside_touches_is_rejected(tmp_path: Path) -> None:

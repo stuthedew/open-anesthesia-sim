@@ -30,7 +30,7 @@ from .plan import OfferedReport
 from .release import SEMVER_RE, version_key
 from .store import ID_PATTERN, ID_RE
 from .vcs import ClosureReport, LostReport, PullRequestHistory, RecordReport
-from .verify import LandedReport
+from .verify import LandedReport, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
 DONE_WHEN = "**Done when.**"
@@ -367,6 +367,20 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         )
     if item.verify and "\n" in item.verify:
         report.errors.append(f"{where}: `verify` must be a single-line command")
+    # An error rather than an advisory because nothing here needs judgment:
+    # whether the command names `docket verify` is decidable, and there is no
+    # reading of it that is worth keeping. Running another item's command
+    # proves nothing about this one, and running this one's re-enters the
+    # command doing the running.
+    if item.verify and reenters_verify(item.verify):
+        report.errors.append(
+            f"{where}: its `verify:` command runs `docket verify`, which is the "
+            "command that executes an item's `verify:` field - so running it would "
+            "run this line again, one level per run, until the process table gives "
+            f"out. Prove the item another way: read the store (`grep` over "
+            f"{config.items_dir}), or pair a command that passes today with a "
+            "`grep` for what the work adds."
+        )
     if item.not_delegable and item.not_delegable.lower() in ("no", "yes", "true", "false"):
         report.errors.append(
             f"{where}: `not-delegable` holds the reason the item is withheld, not a "
