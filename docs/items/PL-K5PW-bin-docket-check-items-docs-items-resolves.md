@@ -1,10 +1,14 @@
 ---
 id: PL-K5PW
 title: bin/docket check --items docs/items resolves config from docs/ rather than the repo root, so it reports a clean store as 112 errors
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-07
+verify: uv run pytest -q subprojects/docket/tests/test_cli.py && grep -q 'def test_check_names_the_config_file_it_loaded' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket check --items docs/items resolves config from docs/ rather than the repo root, so it reports a clean store as 112 errors
@@ -28,6 +32,11 @@ line on the output naming which config file was loaded, or that none was found
 and defaults are in force - `docket check` already prints a cost line, so there
 is a place for it. Refusing the run is wrong: the behaviour is correct and
 another project's store is a real use.
+
+**Neighbour.** `PL-P757` (`bin/docket --items` pointed at a nested store makes
+every annotating commit read as work) is a different defect on the same surface
+and declares the same two files. The two are startable independently; land the
+smaller first and expect to resolve against the other.
 
 **Done when.** A run that found no `docket.toml` beside its store says so on
 its own output, so a reader can tell a broken store from a store being read

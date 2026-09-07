@@ -1,10 +1,14 @@
 ---
 id: PL-6G8T
 title: _section_text reads a required heading quoted at a line break as the section itself, so a wrapped quotation above an empty real heading masks the empty one
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-07
+verify: uv run pytest -q subprojects/docket/tests/test_checks.py && grep -q 'def test_a_required_heading_quoted_mid_paragraph_is_not_the_section' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** _section_text reads a required heading quoted at a line break as the section itself, so a wrapped quotation above an empty real heading masks the empty one

@@ -1,8 +1,15 @@
 ---
 id: PL-LLDB
 title: PL-T691's verify command requires class RunHistory to be gone from src/, which the item's own Out of scope assigns to PL-2FM6, so PL-T691 can never satisfy it
-status: untriaged
+priority: P2
+effort: S
+status: dropped
+classes: defect, infra
+feature: dev-tooling
+touches: docs/items
 added: 2026-09-07
+closed: 2026-09-07
+reason: PL-T691 closed 2026-09-07 (pr 430) already carrying the paired-shape command this item asked for - a grep for `def test_evaluate_matches_a_stepped_run` in tests/unit/test_run_score.py, which names a test PL-T691 itself adds and does not depend on PL-2FM6's deletion of RunHistory (PL-2FM6 is still open and the class is live at controller.py line 260). The Done when is met, and a closed item's verify is a record docket check refuses to rewrite.
 ---
 
 **Problem.** `PL-T691` (hold the run as a score plus keyframes) carries

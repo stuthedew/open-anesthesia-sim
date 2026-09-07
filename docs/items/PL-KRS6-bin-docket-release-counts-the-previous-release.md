@@ -1,8 +1,14 @@
 ---
 id: PL-KRS6
 title: bin/docket release counts the previous release's own cut item as releasable work, so every session after a release is offered an empty one
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: release-process
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-07
+verify: uv run pytest -q subprojects/docket/tests/test_release.py && grep -q 'def test_a_release_cut_item_belongs_to_the_version_it_cut' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** `bin/docket release --dry-run`, run 2026-09-07 immediately after

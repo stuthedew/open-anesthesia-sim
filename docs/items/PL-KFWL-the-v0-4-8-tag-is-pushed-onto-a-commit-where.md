@@ -1,8 +1,14 @@
 ---
 id: PL-KFWL
 title: The v0.4.8 tag is pushed onto a commit where the release was never cut, so doc_check errors on main for every session
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: release-process
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-07
+verify: python3 tools/doc_check.py check && grep -q 'def test_a_tag_ahead_of_its_own_cut_is_named' tests/unit/test_doc_check.py
 ---
 
 **Problem.** The v0.4.8 tag is pushed onto a commit where the release was never cut, so doc_check errors on main for every session
