@@ -27,7 +27,7 @@ import re
 import subprocess
 from collections import Counter
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -2893,3 +2893,80 @@ def orphaned(
         refs_read=len(refs.candidates),
         unreadable=tuple(sorted(refs.unreadable)),
     )
+
+
+# One record per commit, then its `--numstat` block. `%x01` opens the header
+# so it cannot be confused with a numstat line, which always begins with a
+# count or a `-`. `%as` is the *author* date: it says when the change was
+# written, where the committer date says when it was last applied and moves
+# under a rebase or a squash merge.
+CHURN_FORMAT = "--format=%x01%as"
+
+
+@dataclass(frozen=True)
+class Churn:
+    """Lines written and removed, by the day of the commit and by the file.
+
+    Added and deleted are summed rather than kept apart. The question this
+    serves is where effort went, and a deleted line was written by somebody
+    too - keeping the two apart invites reading a large deletion as negative
+    work, which is the opposite of what it usually is.
+    """
+
+    by_day: Mapping[date, Mapping[str, int]] = field(default_factory=dict)
+
+    def __bool__(self) -> bool:
+        return bool(self.by_day)
+
+
+def _numstat_path(text: str) -> str:
+    """The path a numstat line names, after any rename notation.
+
+    Rename detection is left on, so a file moved without being edited costs
+    nothing rather than counting its whole length twice. The price is that
+    git writes the pair in one field, in either of two shapes - `old => new`
+    and `dir/{old => new}/file` - and the second is not a prefix of the path
+    it describes, so a moved file would be bucketed by a name beginning `{`.
+    """
+    if "=>" not in text:
+        return text
+    if "{" in text and "}" in text:
+        before, rest = text.split("{", 1)
+        inner, after = rest.split("}", 1)
+        text = before + inner.split("=>")[-1].strip() + after
+    else:
+        text = text.split("=>")[-1].strip()
+    return text.replace("//", "/")
+
+
+def churn(root: Path, *, runner: Runner | None = None) -> Churn:
+    """Every commit's line counts, by day and by path.
+
+    Merges are excluded. A merge commit's `--numstat` against its first
+    parent repeats the lines its branch already accounted for, so counting
+    both doubles every change that arrived through a pull request - which is
+    all of them here.
+
+    Binary files are skipped rather than counted as zero: git reports them as
+    `-`, and a repository's images have no line count to attribute.
+    """
+    run = runner or _run_git
+    out = run(["log", "--no-merges", "--numstat", CHURN_FORMAT], root)
+    by_day: dict[date, Counter[str]] = {}
+    when: date | None = None
+    for line in out.splitlines():
+        if line.startswith("\x01"):
+            try:
+                when = date.fromisoformat(line[1:].strip())
+            except ValueError:
+                when = None
+            continue
+        parts = line.split("\t", 2)
+        if when is None or len(parts) != 3 or parts[0] == "-" or parts[1] == "-":
+            continue
+        try:
+            lines = int(parts[0]) + int(parts[1])
+        except ValueError:
+            continue
+        by_day.setdefault(when, Counter())[_numstat_path(parts[2])] += lines
+    return Churn({day: dict(counts) for day, counts in by_day.items()})

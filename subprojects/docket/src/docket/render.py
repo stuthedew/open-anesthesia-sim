@@ -11,16 +11,25 @@ here and the one that compounds.
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from datetime import UTC, date
 
 from .checks import DONE_WHEN, REQUIRED_BRIEF, Report, brief_gaps
 from .concurrency import undeclared
 from .config import Config
-from .model import PRIORITIES, SELECTABLE_LANES, Item
+from .model import (
+    LANE_CROSSING,
+    LANE_PRODUCT,
+    LANE_UNPLACED,
+    LANE_WORKFLOW,
+    PRIORITIES,
+    SELECTABLE_LANES,
+    Item,
+)
 from .plan import Feature, Gate, effort_total, recommend, set_aside
 from .release import PLANNED, RESERVED, Readiness, release_offer
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
+from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
 from .vcs import (
     CURRENT,
     PULL,
@@ -1224,3 +1233,93 @@ def _beat_line(plan: Wave) -> str:
     if plan.subject:
         return f"scope {plan.subject} here, which freezes its gate"
     return "scope the next milestone; the timeline names none after this version"
+
+
+# One set of widths for the header and for every row, so the two cannot drift
+# apart. A misaligned column here is not cosmetic: the reader is comparing
+# three measures across three periods, which is exactly the reading a shifted
+# column breaks.
+_LABEL, _PAIR, _CROSS, _UNPLACED, _PCT, _WEIGHTED, _CHURN = 19, 9, 4, 4, 5, 9, 16
+
+
+def _pct(share: float | None) -> str:
+    """A share as whole percent, or a dash where there was nothing to divide."""
+    return "-" if share is None else f"{share * 100:.0f}%"
+
+
+def _lane_counts(counts: Mapping[str, int]) -> str:
+    """Every lane named, including the ones at zero.
+
+    A lane omitted for having nothing in it reads as a lane that does not
+    exist, and the two easiest to drop - `crossing` and `unplaced` - are the
+    ones a reader most needs told about, since neither `docket next product`
+    nor `docket next workflow` will offer them.
+    """
+    return ", ".join(f"{counts.get(lane, 0)} {lane}" for lane in LANES)
+
+
+def format_trend(report: Trend) -> str:
+    """How the balance has moved, on three measures at once and with no verdict.
+
+    The three are printed side by side rather than reduced to a headline,
+    because each is wrong in a way the others are not - `trend.py`'s module
+    docstring carries which. A single number here would be the tool guessing at
+    the judgment half, which is the one thing it must not do.
+    """
+    if not report.periods:
+        return "Nothing closed and no history to read: there is no trend yet."
+
+    churn_width = _CHURN + _PCT if report.has_churn else 0
+    lines = [
+        f"{'':{_LABEL}}{'closed items':>{_PAIR + _CROSS + _UNPLACED + _PCT}}"
+        f"{'weighted':>{_WEIGHTED + _PCT}}"
+        + (f"{'churn (no queue)':>{churn_width}}" if report.has_churn else ""),
+        f"{'period':<{_LABEL}}{'wf/prod':>{_PAIR}}{'+x':>{_CROSS}}{'+u':>{_UNPLACED}}"
+        f"{'wf%':>{_PCT}}{'wf/prod':>{_WEIGHTED}}{'wf%':>{_PCT}}"
+        + (f"{'appar./product':>{_CHURN}}{'wf%':>{_PCT}}" if report.has_churn else ""),
+    ]
+    for period in report.periods:
+        closed, weighted = period.closed, period.weighted
+        row = (
+            f"{period.label:<{_LABEL}}"
+            f"{f'{closed.get(LANE_WORKFLOW, 0)}/{closed.get(LANE_PRODUCT, 0)}':>{_PAIR}}"
+            f"{closed.get(LANE_CROSSING, 0):>{_CROSS}}{closed.get(LANE_UNPLACED, 0):>{_UNPLACED}}"
+            f"{_pct(period.closed_share):>{_PCT}}"
+            f"{f'{weighted.get(LANE_WORKFLOW, 0)}/{weighted.get(LANE_PRODUCT, 0)}':>{_WEIGHTED}}"
+            f"{_pct(period.weighted_share):>{_PCT}}"
+        )
+        if report.has_churn:
+            pair = f"{period.apparatus_lines}/{period.product_lines}"
+            row += f"{pair:>{_CHURN}}{_pct(period.churn_share):>{_PCT}}"
+        lines.append(row)
+
+    window = "day" if report.by == BY_DAY else "7-day period"
+    ladder = ", ".join(f"{size}={points}" for size, points in EFFORT_POINTS.items())
+    lines += [
+        "",
+        f"One row per {window}, anchored at the first day of the history. Three measures,",
+        "because no one of them is honest alone:",
+        "  wf/prod  items closed, by the lane their `touches` place them in.",
+        "  +x       crossing: reaches both halves, so neither lane offers it.",
+        "  +u       unplaced: declares no `touches`, so nothing can place it.",
+        f"  weighted the same closures at {ladder} - a convention for reading past item",
+        "           counts, not a measurement; an unsized item counts as one.",
+    ]
+    if report.has_churn:
+        lines += [
+            "  churn    lines added plus deleted, merges excluded. Read from what changed",
+            "           rather than from what an item declared, so it still answers where",
+            f"           `touches` is missing. {QUEUE.capitalize()} churn is left out of the",
+            "           share: the store is inside workflow_paths, so every capture made",
+            f"           while doing something else would count as {APPARATUS} work.",
+            f"           Product churn is {', '.join(PRODUCT_BUCKETS)} together.",
+        ]
+    else:
+        lines.append("  churn    not shown: git could not be read in this checkout.")
+
+    lines += [
+        "",
+        f"{'Open now':<{_LABEL}}{_lane_counts(report.open_lanes)}",
+        f"{report.top_band_name + ' band':<{_LABEL}}{_lane_counts(report.top_band)}",
+    ]
+    return "\n".join(lines)
