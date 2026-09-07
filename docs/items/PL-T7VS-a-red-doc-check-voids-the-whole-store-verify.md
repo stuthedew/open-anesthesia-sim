@@ -34,6 +34,13 @@ own condition decided the exit: **all 29 still fail**. Nothing is masked right
 now. The defect is not that the replay is currently wrong — it is that the
 replay cannot tell whether it is, and reports green either way.
 
+That stripped-prefix run was an approximation, and it has since been confirmed
+by the real thing: with `doc_check` restored to green (see the correction
+below), a full `bin/docket check --verify` reports **0 errors across 114
+commands in 177 s**, naming no item as open with a command that already passes.
+So the green reported while `doc_check` was red was correct — but it was correct
+by luck, and the replay had no way to know that.
+
 **Why it matters.** This is the same class of error as `PL-SR8F` and `PL-0GTC`
 (two items open with a `verify:` command that already passed), which sat
 undetected long enough to turn `main`'s whole-store replay red across three
