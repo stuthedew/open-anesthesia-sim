@@ -1831,7 +1831,7 @@ The comparison covers every shipped agent, and its tolerance is **absolute**:
 $$
 \max_k \left| F_k^{\mathrm{shipped}} - F_k^{\mathrm{reference}} \right|
 \leq
-5\times10^{-12}
+4\times10^{-13}
 $$
 
 over every state $`k`$, every horizon and every trajectory below.
@@ -1846,25 +1846,44 @@ steps rather than with their size, so it is slightly worse at a finer step —
 the opposite of the split — and a per-step coefficient would state the reverse
 of what is true.
 
-**Derived from the exact step's own error, not inherited.** Measured
-2026-09-06 across all three agents, the horizons above and every trajectory
-below, taking the maximum over the whole trajectory: 5.2e-14 at the endpoint
-of a 3600 s default run, 1.9e-13 at the envelope corner, 3.2e-13 on the
-*unperfused load, then dial off* trajectory, and 7.7e-13 — the worst — on a
-*ventilator start*. The bound allows 6.5 times that. Against the operator
+**Derived from the exact step's own error, not inherited.** Re-measured
+2026-09-07 across all three agents, the horizons above and every trajectory
+below, taking the maximum over the whole trajectory rather than at endpoints.
+At the shipped 0.1 s step the five trajectories give 1.58e-14, 1.54e-14,
+1.39e-14, 1.34e-14 and 8.80e-15 — within a factor of 1.8 of one another,
+because what is being measured is accumulated rounding and every trajectory
+takes the same number of steps. Driving the same trajectories at 0.05 s and
+0.025 s, which the gate also does, gives the worst figure anywhere: **5.89e-14**,
+desflurane on a *ventilator start* at the finest step. Against the operator
 split, whose worst over the same domain was 2.29e-4 at this step, the exact
-step is eight orders of magnitude closer to the independent solution.
+step is nine orders of magnitude closer to the independent solution.
+
+**Until 2026-09-07 this bound was 5e-12 and measured the wrong thing.** The
+oracle ran at half the shipped step, which is converged at held settings but
+not through a transient, so 86% to 99.8% of what the gate reported on the
+trajectories that set it was the oracle's own RK4 truncation rather than the
+shipped step's error. The bound therefore sat about 320 times above the
+residual it was watching, and a regression making the exact step a hundred
+times worse would have passed it. The oracle now runs at an eighth of the step
+under test, which is where refining it stops changing the answer.
 
 **The residual is rounding, not truncation, and that is checked rather than
-asserted.** Refining the oracle's own step eightfold — 0.05 s to 0.00625 s —
-leaves it unchanged to three figures for every agent. RK4 is fourth order, so
-a residual dominated by the oracle's truncation would have fallen by about
-four thousand; one that does not move is the floating-point floor.
+asserted — by the absence of a direction.** Refining the oracle a further
+eightfold, to 0.0015625 s, moves the five figures above by at most 11% and
+moves them both ways. RK4 is fourth order, so a residual still carrying the
+oracle's truncation would fall by about four thousand and never rise; one that
+reshuffles by a few percent in either direction is two independently
+accumulated rounding paths being differenced.
 
 The margin is wider than the 1.22 the splitting bound carried, deliberately: a
 systematic coefficient reproduces between machines and accumulated rounding
 does not, since a different `exp` implementation or a contracted multiply-add
-moves the last bits of both solutions. Six and a half times is still eight
+moves the last bits of both solutions. The margin is sized on that, not on the
+residual: solving the identical trajectories at 0.1, 0.05 and 0.025 s with no
+oracle involved — the same exact propagator, differently subdivided, so every
+difference is the shipped side's own accumulation — moves the answer by up to
+1.07e-13, which is larger than the residual itself. The bound clears that
+spread by 3.7 times and the worst residual by 6.8. It remains nearly nine
 orders below the error of any method that is not exact, so the gate fails the
 moment method error returns — which is the only thing it is there to catch.
 

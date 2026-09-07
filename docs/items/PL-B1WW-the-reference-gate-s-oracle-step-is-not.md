@@ -3,11 +3,13 @@ id: PL-B1WW
 title: The reference gate's oracle step is not converged during a transient, so 86-99.8 percent of what it reports is the oracle's own RK4 truncation rather than the shipped step's error
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: test
 feature: numerical-domain
-touches: tests/reference/test_coupled_dynamics.py
+touches: tests/reference/test_coupled_dynamics.py, docs/MODEL.md
+verify: uv run pytest tests/reference/test_coupled_dynamics.py::test_lockstep_oracle_step_matches_the_pinned_one -q && grep -q "^ORACLE_STEP_S = 0.0125$" tests/reference/test_coupled_dynamics.py && grep -q "^EXACT_STEP_ORACLE_TOLERANCE = 4e-13$" tests/reference/test_coupled_dynamics.py
 added: 2026-09-06
+closed: 2026-09-07
 ---
 
 **Problem.** `tests/reference/test_coupled_dynamics.py`'s trajectory gates
@@ -157,3 +159,32 @@ the gate is therefore conservative, and that `HELD_RUN_ROUNDING_BOUND` is where
 the shipped step's own residual is measured.
 
 **Found.** `PL-X9KD`, 2026-09-06.
+
+**Decided and done, 2026-09-07** (project owner: refine, on the measured cost
+above). `ORACLE_STEP_S` is 0.0125 s, `_oracle_step_for` returns `shipped / 8`,
+and `EXACT_STEP_ORACLE_TOLERANCE` came down from `5e-12` to `4e-13` — the
+oracle refinement alone would have bought no sensitivity with the tolerance
+left where it was.
+
+The new bound is sized on the **subdivision spread**, not on the residual, and
+that is the one thing the brief did not anticipate. Solving the gate
+trajectories at 0.1, 0.05 and 0.025 s with no oracle involved moves the shipped
+answer by up to 1.0691e-13 — larger than the 5.8870e-14 worst residual it
+accompanies — so platform variation and not the measurement sets the floor.
+`4e-13` clears the spread by 3.7x and the residual by 6.8x, which is the rule
+`HELD_RUN_ROUNDING_BOUND` was already sized by (3.2x on its own spread).
+
+Sensitivity measured rather than asserted: scaling every shipped state by
+(1 + 1e-11) takes the worst gate figure to 1.8084e-12, which the old `5e-12`
+passed silently and the new bound fails. A 2e-12 relative degradation still
+passes — the floor above is why.
+
+Verified: `make check` green, 2096 tests, 100% core coverage, 57.1 s for the
+whole suite with `--cov` at `-n 8` against about 43 s before. Swept
+`docs/MODEL.md` § "Independent-solution test", which carried the same figures
+and the same superseded convergence claim, and `README.md` and
+`docs/WORKING_NOTES.md`, which carry neither.
+
+Filed on the way: `PL-D3XX` — v0.4.7's venous-pool change had moved every
+measured residual in this file and none of the tables had been re-derived,
+which is fixed in the same commit.
