@@ -16,6 +16,12 @@ from anesthesia_sim.core.exceptions import (
     SimulationExecutionError,
     SimulationNumericalError,
 )
+from anesthesia_sim.core.governing_equations import (
+    ALVEOLAR_FRACTION,
+    FIRST_TISSUE_FRACTION,
+    INSPIRED_FRACTION,
+    VENOUS_FRACTION,
+)
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
@@ -1157,3 +1163,161 @@ def test_switching_agent_clears_the_supported_limit() -> None:
 
     assert controller.has_reached_supported_limit is False
     assert controller.snapshot().supported_limit_reason is None
+
+
+# `PL-T691`: the controller holds the run as its settings over time as well as
+# as recorded samples, and the two must describe the same run. The tests below
+# hold the closed form to the recorded path it is meant to replace, end to end
+# through the controller's own setters rather than against the core directly.
+# `PL-2FM6` is what removes the recorded half; until it lands, this agreement
+# is the strongest check available, because a divergence in either path fails
+# it.
+
+CLOSED_FORM_AGREEMENT = 1e-13
+"""How far the closed form may sit from the recorded run, as a fraction of 1 atm.
+
+Measured 2026-09-07 over the 120 s run below - 1 201 samples, six
+compartments each, largest fraction reached 0.0205 - the worst disagreement
+is 6.7e-16, which is about three units in the last place of the values being
+compared. Pinned two orders above that so an ordinary floating-point wobble
+does not fail the suite, and nine orders below the 1e-4 a two-decimal percent
+readout can show so a real divergence still does.
+"""
+
+
+def _run_with_two_changes(controller: SimulationController) -> None:
+    """Drive 120 s through the controller, moving two controls on the way."""
+
+    controller.start()
+    _advance_for(controller, duration_s=30.0)
+    controller.set_delivered_concentration(0.04)
+    _advance_for(controller, duration_s=30.0)
+    controller.set_alveolar_ventilation(6.0)
+    _advance_for(controller, duration_s=60.0)
+
+
+def test_the_closed_form_window_matches_the_recorded_one() -> None:
+    """The two reads of one run agree at every sample the run recorded.
+
+    `PL-T691`'s whole claim, checked where it has to hold: the controller's
+    recorded samples and its closed-form window are the same run, across two
+    setting changes, at the sample spacing the run was computed at.
+    """
+
+    controller = SimulationController()
+    _run_with_two_changes(controller)
+
+    recorded = controller.history_window(0.0).samples
+    agent_id = controller.snapshot().agent_id
+    evaluated = controller.evaluate_window(
+        recorded[0].elapsed_s, recorded[-1].elapsed_s, len(recorded)
+    )
+
+    assert len(evaluated.states) == len(recorded)
+
+    for sample, state in zip(recorded, evaluated.states, strict=True):
+        values = sample.substances[agent_id]
+
+        for quantity, index in (
+            (RecordedQuantity.CIRCUIT, INSPIRED_FRACTION),
+            (RecordedQuantity.ALVEOLAR, ALVEOLAR_FRACTION),
+            (RecordedQuantity.MIXED_VENOUS, VENOUS_FRACTION),
+            (RecordedQuantity.VESSEL_RICH, FIRST_TISSUE_FRACTION),
+            (RecordedQuantity.MUSCLE, FIRST_TISSUE_FRACTION + 1),
+            (RecordedQuantity.FAT, FIRST_TISSUE_FRACTION + 2),
+        ):
+            assert abs(state[index] - values[quantity]) < CLOSED_FORM_AGREEMENT
+
+
+def test_a_setting_change_opens_a_segment_where_the_run_saw_it() -> None:
+    """The score's segments and the timeline's entries describe one run.
+
+    They are separate records on purpose - one is what the model integrated,
+    the other is what a reader is shown - so what has to be checked is that
+    they agree about when the run changed.
+    """
+
+    controller = SimulationController()
+    _run_with_two_changes(controller)
+
+    timeline = controller.snapshot().control_timeline
+    openings = [segment.opening.elapsed_s for segment in controller.score_segments]
+
+    assert [change.elapsed_s for change in timeline] == openings[1:]
+    assert openings[0] == 0.0
+
+
+def test_a_refused_setting_leaves_the_score_describing_the_run() -> None:
+    """A setting the core rejects never took effect, so it opens no segment.
+
+    The same property the control timeline has, for the same reason: the core
+    raises before anything is recorded, and the run it left untouched is the
+    one both records describe.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+
+    with pytest.raises(SimulationConfigurationError):
+        controller.set_delivered_concentration(0.5)
+
+    assert len(controller.score_segments) == 1
+    assert controller.snapshot().control_timeline == ()
+
+
+def test_resetting_starts_the_score_over() -> None:
+    """`reset()` destroys the run, so nothing of its score may survive it."""
+
+    controller = SimulationController()
+    _run_with_two_changes(controller)
+    controller.reset()
+
+    assert len(controller.score_segments) == 1
+    assert controller.evaluate_window(0.0, 0.0, 1).times_s == (0.0,)
+
+    with pytest.raises(SimulationConfigurationError, match="rather than the run"):
+        controller.evaluate_window(0.0, 1.0, 2)
+
+
+def test_changing_agent_starts_the_score_over() -> None:
+    """`set_agent` begins a new run, and a score is of one run only."""
+
+    controller = SimulationController()
+    _run_with_two_changes(controller)
+    controller.set_agent("desflurane")
+
+    assert len(controller.score_segments) == 1
+
+    with pytest.raises(SimulationConfigurationError, match="rather than the run"):
+        controller.evaluate_window(0.0, 1.0, 2)
+
+
+def test_the_closed_form_refuses_a_window_past_the_run() -> None:
+    """A window reaching past the run would draw a prediction on the run's axis."""
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+
+    elapsed_s = controller.snapshot().elapsed_s
+
+    with pytest.raises(SimulationConfigurationError, match="rather than the run"):
+        controller.evaluate_window(0.0, elapsed_s + 1.0, 10)
+
+
+def test_a_paused_run_s_score_stops_where_the_run_did() -> None:
+    """Pausing stops the run, so it stops what the score will answer for."""
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+    controller.pause()
+    _advance_for(controller, duration_s=10.0)
+
+    elapsed_s = controller.snapshot().elapsed_s
+
+    assert len(controller.evaluate_window(0.0, elapsed_s, 3).states) == 3
+
+    with pytest.raises(SimulationConfigurationError, match="rather than the run"):
+        controller.evaluate_window(0.0, elapsed_s + MAXIMUM_SIMULATION_STEP_S, 3)

@@ -30,12 +30,12 @@ is indeed cheap; what it does not cover is everything around it.
 
 ```text
 propagate()                 11.6 us   the 9x9 product itself
-_propagator_for(0.1)         6.9 us   of which _equation_settings() is 6.2
-_state_vector()              0.8 us
+_propagator_for(0.1)         6.9 us   of which equation_settings() is 6.2
+state_vector()               0.8 us
 the rest                     ~7 us    capture_state, write-back, the result
 ```
 
-`_equation_settings()` builds four frozen dataclasses and runs about twenty
+`equation_settings()` builds four frozen dataclasses and runs about twenty
 validation guards on every step, to produce the key the propagator cache is
 compared against. That key exists for a good reason - keyed by value, a stale
 propagator is unrepresentable rather than merely unlikely - but it is being

@@ -3,8 +3,7 @@ id: PL-P1Z3
 title: State the canonical evaluation rule that carries determinism once the step is no longer fixed, and gate it
 priority: P1
 effort: M
-status: blocked
-blocked-by: PL-T691
+status: ready
 classes: safety, science
 feature: numerical-domain
 touches: docs/MODEL.md, src/anesthesia_sim/core, tests/reference
