@@ -47,3 +47,33 @@ surviving copy of a stranded item (`PL-HKF4`).
 
 **Concrete instance.** v0.4.8, cut 2026-09-07 under `PL-BKDP`, is exactly this
 case: the number was previously tagged on `b03a7d03` and withdrawn.
+
+**The sharper failure, measured 2026-09-07 after the above.** A warm checkout
+does not merely read the old commit - it cannot make the new tag at all. While
+the number is withdrawn on origin, no fetch of any kind clears the local copy:
+`--tags --force` has nothing to overwrite it with, because origin holds no
+`v0.4.8` to force. So the stale tag survives every safe fetch, and the tag
+command the release handover prints then fails outright:
+
+```
+$ git tag -a v0.4.8 "$COMMIT" -m "v0.4.8"
+fatal: tag 'v0.4.8' already exists
+```
+
+That is the good case, in the sense that it is loud and stops. The bad case is
+the reader who reaches for `-f` to get past it, because `git tag -f -a` will
+happily re-point the local tag and the subsequent `git push origin v0.4.8`
+succeeds - leaving the release correctly tagged on origin and the *reason* it
+failed unexamined, which is the same warm checkout that will misreport
+`git describe` for every earlier tag it also holds stale.
+
+**So the handover for a re-used number owes an explicit local delete**, before
+the tag and after the fetch:
+
+```bash
+git tag -d v0.4.8          # clears the withdrawn tag if this checkout holds it
+```
+
+Verified as a whole sequence: delete, resolve the commit by its subject, confirm,
+tag, push - which put the tag on the intended commit from a checkout that had
+been holding the withdrawn one.
