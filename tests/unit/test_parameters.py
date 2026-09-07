@@ -3,6 +3,7 @@ import json
 from copy import deepcopy
 from typing import Any
 
+import doc_check
 import pytest
 from pydantic import BaseModel, model_validator
 from pydantic import ValidationError as PydanticValidationError
@@ -11,6 +12,7 @@ from anesthesia_sim.core import parameters as parameters_module
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
+    SOURCE_TIERS,
     load_agent_parameters,
     load_reference_adult_parameters,
     load_sevoflurane_parameters,
@@ -21,7 +23,7 @@ from anesthesia_sim.core.parameters import (
 
 def _valid_agent_payload() -> dict[str, object]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "id": "test-agent",
         "display_name": "Test Agent",
         "blood_gas_partition_coefficient": 0.5,
@@ -37,6 +39,8 @@ def _valid_agent_payload() -> dict[str, object]:
             {
                 "citation": "Test citation",
                 "url": "https://example.com/source",
+                "tier": "primary",
+                "adopted": True,
                 "note": "Test source only",
             }
         ],
@@ -45,7 +49,7 @@ def _valid_agent_payload() -> dict[str, object]:
 
 def _valid_patient_payload() -> dict[str, object]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "id": "test-patient",
         "display_name": "Test Patient",
         "weight_kg": 70.0,
@@ -62,6 +66,8 @@ def _valid_patient_payload() -> dict[str, object]:
             {
                 "citation": "Test citation",
                 "url": "https://example.com/source",
+                "tier": "primary",
+                "adopted": True,
                 "note": "Test source only",
             }
         ],
@@ -207,7 +213,7 @@ def test_loads_reference_adult_parameters() -> None:
 
 def test_rejects_unknown_schema_version() -> None:
     payload = _valid_agent_payload()
-    payload["schema_version"] = 2
+    payload["schema_version"] = 3
 
     with pytest.raises(SimulationConfigurationError, match="unsupported schema_version"):
         parse_agent_parameters(payload)
@@ -600,3 +606,131 @@ def test_no_agent_file_stores_mac_awake_as_a_percent() -> None:
             "standard_deviation_fraction_of_mac",
             "mac_reference_basis",
         }, agent_id
+
+
+def test_rejects_a_source_tier_outside_the_vocabulary() -> None:
+    payload = _valid_agent_payload()
+    sources = deepcopy(payload["sources"])
+
+    assert isinstance(sources, list)
+    first = sources[0]
+    assert isinstance(first, dict)
+    first["tier"] = "tier 1"
+    payload["sources"] = sources
+
+    with pytest.raises(SimulationConfigurationError, match="tier must be one of"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_a_source_entry_that_declares_no_tier() -> None:
+    payload = _valid_agent_payload()
+    sources = deepcopy(payload["sources"])
+
+    assert isinstance(sources, list)
+    first = sources[0]
+    assert isinstance(first, dict)
+    del first["tier"]
+    payload["sources"] = sources
+
+    with pytest.raises(SimulationConfigurationError, match="tier"):
+        parse_agent_parameters(payload)
+
+
+@pytest.mark.parametrize("adopted", ["true", "false", 1, 0, None])
+def test_rejects_a_nonboolean_adopted_flag(adopted: object) -> None:
+    """`"adopted": "false"` is truthy, so a coercing loader would invert it.
+
+    The field is a provenance claim about a safety-critical value, and the
+    two wrong readings are not symmetric: reading an unadopted primary as
+    adopted is the failure `docs/MODEL.md` § "Source hierarchy" exists to
+    prevent, and it is the one a loose truthiness test produces.
+    """
+
+    payload = _valid_agent_payload()
+    sources = deepcopy(payload["sources"])
+
+    assert isinstance(sources, list)
+    first = sources[0]
+    assert isinstance(first, dict)
+    first["adopted"] = adopted
+    payload["sources"] = sources
+
+    with pytest.raises(SimulationConfigurationError, match="must be true or false"):
+        parse_agent_parameters(payload)
+
+
+def test_provenance_gap_is_absent_by_default() -> None:
+    assert parse_agent_parameters(_valid_agent_payload()).provenance_gap is None
+    assert parse_reference_adult_parameters(_valid_patient_payload()).provenance_gap is None
+
+
+def test_an_explicit_null_provenance_gap_reads_the_same_as_an_absent_one() -> None:
+    """A data file may write the key out as `null`, which is not an empty gap.
+
+    The omitted key never reaches the validator at all - Pydantic applies the
+    default instead - so the two spellings take different paths to the same
+    answer, and only this one exercises the validator's `None` branch.
+    """
+
+    payload = _valid_patient_payload()
+    payload["provenance_gap"] = None
+
+    assert parse_reference_adult_parameters(payload).provenance_gap is None
+
+
+def test_carries_a_recorded_provenance_gap_through_to_the_public_type() -> None:
+    payload = _valid_patient_payload()
+    payload["provenance_gap"] = "No primary source has been adopted for any of these."
+
+    parsed = parse_reference_adult_parameters(payload)
+
+    assert parsed.provenance_gap == "No primary source has been adopted for any of these."
+
+
+@pytest.mark.parametrize("gap", ["", "   "])
+def test_rejects_an_empty_provenance_gap(gap: str) -> None:
+    """An empty string is a gap recorded in form and not in substance."""
+
+    payload = _valid_patient_payload()
+    payload["provenance_gap"] = gap
+
+    with pytest.raises(SimulationConfigurationError, match="must be a nonempty string"):
+        parse_reference_adult_parameters(payload)
+
+
+def test_doc_check_holds_the_same_source_tier_vocabulary() -> None:
+    """The two copies exist because `doc_check.py` runs without the virtualenv.
+
+    It cannot import this package, so the vocabulary is written twice on
+    purpose; this is what stops the two drifting apart silently, which would
+    let a tier the loader rejects pass `make check` or the reverse.
+    """
+
+    assert tuple(doc_check.SOURCE_TIERS) == tuple(SOURCE_TIERS)
+
+
+def test_every_shipped_source_declares_a_tier_and_an_adoption() -> None:
+    loaded = [load_agent_parameters(agent_id) for agent_id in AGENT_DATA_FILENAMES]
+    parameter_sets: list[Any] = [*loaded, load_reference_adult_parameters()]
+
+    for parameters in parameter_sets:
+        assert parameters.sources
+        for source in parameters.sources:
+            assert source.tier in SOURCE_TIERS, (parameters.id, source.citation)
+            assert isinstance(source.adopted, bool), (parameters.id, source.citation)
+
+
+def test_the_reference_patient_records_its_provenance_gap() -> None:
+    """It adopts no primary measurement for any of its eleven parameters.
+
+    `PL-6Q8N` established that, and the gap is the reason the tier alone
+    cannot carry this rule: the file cites five primary measurements, every
+    one of them explicitly not adopted, so a check reading tiers would report
+    it as primary-sourced.
+    """
+
+    patient = load_reference_adult_parameters()
+
+    assert not any(source.tier == "primary" and source.adopted for source in patient.sources)
+    assert patient.provenance_gap is not None
+    assert patient.provenance_gap.strip()

@@ -276,9 +276,17 @@ frame took.
 ## Data files (`data/`)
 
 Each JSON file carries a `schema_version`, an `id`, the parameter values, and
-a `sources` array of citations (`citation`, `url`, `note` per entry — see
-`core.parameters.SourceReference`). `core/parameters.py` rejects a file that
-is missing required fields, uses an unsupported schema version, contains a
+a `sources` array of citations (`citation`, `url`, `tier`, `adopted`, `note`
+per entry — see `core.parameters.SourceReference`). `tier` is drawn from the
+closed vocabulary `core.parameters.SOURCE_TIERS`, which is the three tiers
+`docs/MODEL.md` § "Source hierarchy" defines; `adopted` says whether the file
+names that source as the authority for a value it stores, which is a separate
+question from what tier the source is. A file that adopts no primary source at
+all carries a top-level `provenance_gap` saying so. `core/parameters.py`
+rejects a file that
+is missing required fields, uses an unsupported schema version, declares a
+tier outside the vocabulary or an `adopted` flag that is not a JSON boolean,
+contains a
 value outside its validated range (e.g. non-positive volumes, tissue
 perfusion fractions that don't sum to 1), or carries a key the schema does
 not declare — including inside a nested object such as
@@ -294,7 +302,7 @@ Outside the packaged application, and not imported by it:
 tools/
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
-├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
+├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, doc citations, markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline; reports resident instruction size
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; the session-start hook calls it, it gates nothing, and it is the one tool here that reads the network
@@ -313,6 +321,17 @@ is not expanded — no tree draws one today — and `__init__.py` is excluded
 throughout. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
+
+Its `check_source_tiers` holds the same data files to `docs/MODEL.md`
+§ "Source hierarchy": every `sources` entry declares a `tier` from the closed
+vocabulary and an `adopted` flag, and a file with no entry that is both
+`primary` and `adopted` records a `provenance_gap`. It decides only what a
+file *declares*. Whether a citation labelled `primary` really is a primary
+measurement of the quantity needs somebody who has read the paper, and a tool
+guessing at that — by author, by journal, by a denylist on a product name —
+would be authoritative and wrong. That is the same split the provenance table
+check already runs on: it decides that a documented key exists and holds the
+stated value, never that the value is right.
 
 `tools/pr_title_check.py` is the prevention half of `PL-2XTF`. A squash merge
 takes its subject from the pull request title, so a title naming none of the
