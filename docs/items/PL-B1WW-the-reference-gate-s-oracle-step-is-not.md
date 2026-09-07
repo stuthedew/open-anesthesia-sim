@@ -7,9 +7,10 @@ status: done
 classes: test
 feature: numerical-domain
 touches: tests/reference/test_coupled_dynamics.py, docs/MODEL.md
-verify: uv run pytest tests/reference/test_coupled_dynamics.py::test_lockstep_oracle_step_matches_the_pinned_one -q && grep -q "^ORACLE_STEP_S = 0.0125$" tests/reference/test_coupled_dynamics.py && grep -q "^EXACT_STEP_ORACLE_TOLERANCE = 4e-13$" tests/reference/test_coupled_dynamics.py
 added: 2026-09-06
 closed: 2026-09-07
+pr: 431
+verify: uv run pytest tests/reference/test_coupled_dynamics.py::test_lockstep_oracle_step_matches_the_pinned_one -q && grep -q "^ORACLE_STEP_S = 0.0125$" tests/reference/test_coupled_dynamics.py && grep -q "^EXACT_STEP_ORACLE_TOLERANCE = 4e-13$" tests/reference/test_coupled_dynamics.py
 ---
 
 **Problem.** `tests/reference/test_coupled_dynamics.py`'s trajectory gates

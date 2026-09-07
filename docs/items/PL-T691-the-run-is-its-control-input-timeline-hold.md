@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-05
 closed: 2026-09-07
+pr: 430
 verify: uv run pytest -q tests/unit tests/integration && grep -q 'def test_evaluate_matches_a_stepped_run' tests/unit/test_run_score.py
 ---
 

@@ -7,9 +7,10 @@ status: done
 classes: test, docs
 feature: numerical-domain
 touches: tests/reference/test_coupled_dynamics.py
-verify: grep -q "7.1637e-14 muscle" tests/reference/test_coupled_dynamics.py && ! grep -q "5.1919e-14 muscle" tests/reference/test_coupled_dynamics.py && ! grep -q "nine to sixty-seven fold" tests/reference/test_coupled_dynamics.py
 added: 2026-09-07
 closed: 2026-09-07
+pr: 431
+verify: grep -q "7.1637e-14 muscle" tests/reference/test_coupled_dynamics.py && ! grep -q "5.1919e-14 muscle" tests/reference/test_coupled_dynamics.py && ! grep -q "nine to sixty-seven fold" tests/reference/test_coupled_dynamics.py
 ---
 
 **Problem.** `PL-8ZJQ`/`PL-BD94` (#423, in v0.4.7) replaced

@@ -3,11 +3,13 @@ id: PL-SR8F
 title: docs/MODEL.md calls the case-opening displacement 'two orders milder at every rate' but the figures in the same sentence are 0.8 to 1.3 orders apart, so a reader sizing the ordinary manoeuvre against the binding one is told the wrong ratio
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, docs
 feature: presentation-safety
 touches: docs/MODEL.md
 added: 2026-09-06
+pr: 420
+closed: 2026-09-07
 verify: python3 tools/doc_check.py check && python3 -c "import pathlib; t=' '.join(pathlib.Path('docs/MODEL.md').read_text().split()); raise SystemExit(1 if 'two orders milder' in t else 0)"
 ---
 
@@ -54,3 +56,21 @@ item only makes it true now.
 **The `verify:` command normalizes whitespace before looking for the claim**, so
 rewrapping the paragraph does not satisfy it. Run 2026-09-06 before the work:
 exit 1, `doc_check` passing and the phrase present.
+
+**Closed 2026-09-07 as already done, under `PL-CL8J`.** The work landed in
+`67b279b` (#420, `PL-ZVS7`, which pinned the control-resolution tolerance table
+with a reference test). That gate's first run found this same wrong claim, so
+the correction rode it rather than this item.
+
+Substance verified rather than inferred from the phrase's absence, this being
+`classes: safety`. `docs/MODEL.md` § "Supported simulation step" now reads: "the
+case opening is about 21x milder at 1x, and **the gap narrows as the grid
+coarsens** - to 19x at 20x, 16x at 60x and about 7x at 300x". That is the
+per-rate relation this item asked for, in place of the "two orders milder at
+every rate" that held at no rate.
+
+Established by replaying all 80 commits touching `docs/MODEL.md` under the same
+whitespace normalisation this item's own `verify:` command uses. That
+normalisation is load-bearing: the phrase was hard-wrapped in the source, so
+`grep` and `git log -S` both report it absent from every revision. `PL-0ZGK`
+independently named `67b279b`, and the replay agrees.
