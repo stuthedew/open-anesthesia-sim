@@ -3,11 +3,12 @@ id: PL-CXYT
 title: docs/MODEL.md does not say whether fresh gas flow includes the vapor the vaporizer adds
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, science
 feature: model-spec-accuracy
 touches: docs/MODEL.md, src/anesthesia_sim/core/circuit.py
 added: 2026-09-06
+closed: 2026-09-07
 verify: python3 tools/doc_check.py check && grep -q 'common gas outlet' docs/MODEL.md
 ---
 
