@@ -3,11 +3,13 @@ id: PL-YMW8
 title: PL-BKDP and PL-KFWL were filed for the same v0.4.8 tag event, and PL-BKDP's Done when is already met, so a moot P1 needs-decision entry sits in the queue and in the next gate's count
 priority: P2
 effort: S
-status: needs-decision
+status: dropped
 classes: planning
 feature: release-process
 touches: docs/items
 added: 2026-09-07
+closed: 2026-09-07
+reason: void on the facts, and the premise was already false when it was written. PL-BKDP is not moot but finished: `origin/claude/missing-release-v0.4.8-hwhs25` carries `6cf503e9 PL-BKDP: cut v0.4.8` and closes it `done` with a verify naming the version bump, docs/releases/v0.4.8.md and the two ROADMAP rows, and that branch is open as #440. It took route 1 of the two the item itself set out - the route it recommended. This item read the tag deletion alone as satisfying PL-BKDP's Done when; the deletion was only route 1's first half, and the cut followed within the hour on a branch that had not been pushed when the triage pass fetched. The duplicate-filing observation it recorded is kept, and moved into PL-5GBV's brief where the check that would catch it is designed
 ---
 
 **Problem.** PL-BKDP and PL-KFWL were filed for the same v0.4.8 tag event, and PL-BKDP's Done when is already met, so a moot P1 needs-decision entry sits in the queue and in the next gate's count
@@ -55,3 +57,20 @@ not become the fix.
 **Done when.** `PL-BKDP` is closed with a reason naming the tag deletion and
 pointing at `PL-KFWL` for the guard, or its brief says why it stays open with
 `doc_check` already green.
+
+**Correction, 2026-09-07, same day.** Everything above was written against a
+checkout whose most recent fetch predated
+`origin/claude/missing-release-v0.4.8-hwhs25` being pushed. On the next fetch
+that branch appeared, `bin/docket show PL-BKDP` marked the item **IN FLIGHT**,
+and the branch turned out to have cut v0.4.8 and closed `PL-BKDP` as `done` -
+route 1 in full, not merely its first half. So the recommendation in **Decision
+needed** is withdrawn: `PL-BKDP` is finished work awaiting the merge of `#440`,
+not a moot entry to drop. The reading that produced this item - "the tag is gone
+and `doc_check` is green, therefore the Done when is satisfied" - was wrong
+because route 1 has two halves and only one had happened.
+
+The transferable lesson is not about this item. It is that `bin/docket status`
+and `bin/docket gate` read the checkout, so an entry can be stale by an hour
+without anything saying so, and the guard that catches it is the fetch plus
+`bin/docket show <id>` that the `docket` skill already requires before starting
+an item. This pass ran that guard before editing `PL-BKDP` and it did its job.

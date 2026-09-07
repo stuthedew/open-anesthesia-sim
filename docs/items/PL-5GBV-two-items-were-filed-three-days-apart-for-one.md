@@ -41,17 +41,33 @@ Note the shape this pair had that a title comparison would have caught: both
 titles name `docket new` and a template that is appended to rather than
 replaced.
 
-**A second live instance, found 2026-09-07 by the `PL-2B7B` triage pass.**
-`PL-BKDP` and `PL-KFWL` were filed hours apart the same day, from two sessions,
-for one event - the `v0.4.8` tag pushed onto a commit where no release was cut.
-`PL-BKDP` reached `P1 - needs-decision` and `PL-KFWL` arrived untriaged, so the
-pair was invisible until a `bin/docket status` read happened to print both
-features. `PL-YMW8` carries that close-out.
+**A second live instance, found 2026-09-07 by the `PL-2B7B` triage pass, and
+much larger than a pair.** One event - the `v0.4.8` tag pushed onto a commit
+where no release was cut - produced six items from at least four sessions
+inside a day:
+
+| id | what it holds | status when found |
+| --- | --- | --- |
+| `PL-B1DQ` | the tag against `pyproject.toml` and the ROADMAP row | dropped |
+| `PL-BKDP` | the tag, and which of two routes to take | needs-decision, then done in `#440` |
+| `PL-KFWL` | the tag, and the guard that nothing names one | untriaged, then ready |
+| `PL-6YYR` | that a tag can be pushed for a version never cut | untriaged |
+| `PL-VYK1` | the handover tagging `origin/main`, a moving reference | untriaged |
+| `PL-PNW6` | a re-used number leaving warm checkouts stale | untriaged |
+
+Not all six are duplicates - `PL-VYK1` is the cause, `PL-PNW6` a distinct
+downstream effect, and `PL-KFWL` holds a guard none of the others carry. But
+`PL-B1DQ`, `PL-BKDP` and `PL-KFWL` are three filings of one condition, and no
+session filing the second or third could see the first. The pass that found it
+had to read `bin/docket status` at feature altitude and notice two entries
+about the same version string; nothing in `docket new`, `docket check` or
+`docket triage` said a word.
 
 It is the harder case for the check proposed here, and worth designing against
-rather than around: the two titles share no distinctive run of words at all
-beyond the version string `v0.4.8`. One leads with the tag and the commit, the
-other with the tag and `doc_check`. A comparison over unusual word runs would
+rather than around: the titles share no distinctive run of words at all beyond
+the version string `v0.4.8`. One leads with the tag and the commit, one with
+the tag and `doc_check`, one with the handover. A comparison over unusual word
+runs would
 have found this only on `v0.4.8` itself - which argues for treating a shared
 rare token (a version, an id, a file path) as a candidate signal in its own
 right, not only a shared phrase.
