@@ -158,8 +158,17 @@ been recorded. `evaluate_window(start_s, stop_s, columns)` is that read, and
 without being advanceable, so nothing above the controller can move the
 score's reach past where the run actually got to and have a prediction come
 back drawn on the run's own axis. `docs/MODEL.md` § "The run is that record,
-and every state is derived from it" carries the measurements and what the
-two evaluation paths may each be used for.
+and every state is derived from it" carries the measurements, and § "The
+canonical evaluation rule" states which of the two evaluation paths a stored,
+exported, replayed or branched value may be taken from.
+
+**That boundary is a type rather than a convention.** `evaluate_window` hands
+back `DisplayState` values, which are not state vectors, so a drawn column
+cannot become a keyframe, an exported figure or a branch's opening state by
+being the same nine numbers in the same order; `RunScore` refuses one as an
+opening state by name. A layer above the controller therefore cannot cross
+that boundary by forgetting it is there, which is the only way a boundary
+stated in prose is ever crossed.
 
 Both records are live in this release and the chart still draws from the
 recorded one; § "Closed-form agreement test" is what holds them to each

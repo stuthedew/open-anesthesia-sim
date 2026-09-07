@@ -213,6 +213,20 @@ the step in both. This is the property a comparison of one run against
 another rests on, including the planned comparison of a branched run against
 the run it branched from at every sample they share.
 
+**What carries this once a state is derived rather than recorded.** The
+paragraph above is a claim about recorded samples, and it rests on every
+caller taking the same width: with the step fixed, there is only one sequence
+of arithmetic that reaches step *n*. A run held as its score records no
+samples and fixes no width — a state is computed when it is asked for, and the
+same instant can be reached by more than one sequence. "The canonical
+evaluation rule" under "Runtime controls" is what carries the guarantee there.
+It is stronger than this paragraph in one respect and narrower in another: two
+evaluations of one score at one instant are bit-identical rather than merely
+reproducible across runs, and only values from the canonical path may be
+stored, exported or branched from. Both records are live in this release, so
+both halves are: the step count carries the recorded history, and the
+canonical rule carries the score.
+
 **Playing a run faster does not make it a different run.** The interface
 offers a playback rate — how much simulated time advances per second of real
 time — and it is implemented as the number of *whole steps* a tick takes,
@@ -2325,6 +2339,30 @@ one, against the rates the interface actually offers rather than against
 invented burst sizes, so that a rate added to that ladder is covered on the
 day it is added.
 
+### Canonical evaluation test
+
+A run queried as it is built must answer identically to the same run never
+queried: element for element, across the whole state vector, at every instant
+probed and in every keyframe stored. That is what says the canonical answer
+belongs to the score rather than to the caller, and it is the property a
+cache, a memoised propagator or a reused buffer would take away while looking
+like an optimisation.
+
+Two further things are held with it. A branch opening from one of its parent's
+keyframes must reproduce the parent element-wise at every instant they share,
+which is what "The canonical evaluation rule" owes `ROADMAP.md` item 12. And a
+value from the display path must be refused where a canonical one is required,
+which is what makes that rule a property of the program rather than of the
+reader.
+
+The measured separation between the two paths is published under "The
+canonical evaluation rule" and held to per-quantity bounds by the same module,
+so a change to the equations, to the propagator or to how a window is walked
+fails there rather than silently moving a figure this document prints. The
+bounds are separate for the compartment fractions and for the cumulative
+accumulators because their displays resolve four orders apart, and a single
+bound covering both would have to be the looser one.
+
 ## Runtime controls
 
 The following settings may change during a run without resetting state:
@@ -2407,10 +2445,8 @@ changes, reaching a fraction of 0.0316: the single-instant path sits within
 differences in a fraction of one atmosphere. Both are eleven orders below the
 1e-4 that the two-decimal percent readout under "Displayed precision" can
 show, so neither can move a displayed digit. Which of the two a stored,
-exported or branched value may be taken from is not yet stated here as a
-guarantee; until it is, the derived values this section describes are the
-ones drawn and read, and the keyframes are computed by the single-instant
-path.
+exported or branched value may be taken from is stated as a guarantee under
+"The canonical evaluation rule" below.
 
 **What this is for, measured rather than argued.** Recording one sample per
 step costs 130.8 bytes per sample, measured over 20 000 samples of a live
@@ -2436,6 +2472,90 @@ and the two are held to each other by "Closed-form agreement test" below.
 Retiring the recorded half is a separate change, and until it lands the
 agreement is what stands in for it: a divergence in either record fails that
 test.
+
+#### The canonical evaluation rule
+
+**One instant, one answer, whatever route the caller took.** A run's states are
+derived rather than recorded, and a derived value can be reached by more than
+one sequence of arithmetic. The fixed 0.1 s step used to make that impossible
+by leaving every caller the same width to take; a propagator exact over any
+horizon takes that away. This is the rule that replaces it.
+
+- **Canonical.** The state at an instant is one propagation from the keyframe
+  opening the stretch that contains it, over the interval between the two.
+  Each keyframe is itself computed that way, one propagation per stretch,
+  composed in recording order from the start of the run. Two evaluations of
+  one score at one instant therefore perform the identical sequence of
+  floating-point operations, and are **bit-identical** rather than equal to
+  within a tolerance. `RunScore.state_at` in `core/run_score.py` is this path.
+- **Display.** Drawing a window of evenly spaced columns reuses one propagator
+  across the columns inside a stretch, chaining from the first, which is what
+  makes a frame cost the window rather than the run. It solves the same
+  equations exactly and composes the operations in a different order.
+  `RunScore.evaluate` is this path.
+
+**What each may be used for.** Every value that is stored, exported, replayed,
+compared against another run, or taken as the state a branch opens from is
+taken canonically. A value from the display path may be drawn, and may be
+nothing else: not a keyframe, not an exported figure, not a branch's opening
+state.
+
+**The program enforces this; the paragraph above does not.** The display path
+returns its states wrapped in `DisplayState`, which is not a state vector, so
+it cannot be passed where one is expected — and `RunScore` refuses one as an
+opening state by name, saying which path the value came from rather than
+failing on a length. The wrapper is deliberately not a subclass of the state
+tuple: the sinks this has to hold at include ones that have not been written
+yet, and only a value that is structurally not a state is refused by a sink
+that thought to check nothing.
+
+**How far apart the two paths are, measured.** Worst absolute difference
+between the canonical and the display answer at the same instant, over the
+600-column window a chart draws, on a sevoflurane run with four setting
+changes, measured 2026-09-07 on the run in
+`tests/reference/test_canonical_evaluation.py`, which holds both quantities to
+bounds an order above what is printed here:
+
+| Span | Six compartment fractions | Two cumulative accumulators |
+| --- | --- | --- |
+| 1800 s | 1.0e-14, of 0.0301 | 3.1e-12 L, of 2.06 L |
+| 24 h | 8.0e-13, of 0.0300 | 3.1e-09 L, of 30.26 L |
+
+The wider span is the worse case, because its columns are further apart and
+each chained propagation covers more ground; 24 h is the longest supported run
+under "Supported run length", so the second row is the worst a supported run
+reaches at this column count.
+
+**The headroom differs by four orders between those two columns, which is why
+the rule is enforced rather than trusted.** A fraction is displayed as a
+two-decimal percent, so "Displayed precision" resolves 1e-4 and the
+measurement sits eight orders below it — a margin that would make the
+separation academic if the fractions were all a run held. The accumulators are
+displayed as six decimals of a litre, resolving 1e-6 L, and the measurement
+sits under three orders below that. Three orders is ample and it is not
+fourteen; a display value that reached the mass-balance readout would be
+wrong in a place a reader could eventually see, and it would look exactly like
+the right answer.
+
+**What this requires of a branch.** `ROADMAP.md` item 12 asks a branched run
+to reproduce its parent element-wise rather than within a tolerance, and this
+rule supplies that under two conditions, both measured rather than assumed:
+
+- **A branch opens at a keyframe.** Restarting from the canonical state at an
+  instant the parent has no keyframe for replaces one propagation over an
+  interval with two over its halves, which is a different rounding of the same
+  exact solution: measured at up to 5.3e-13 in an accumulator. Opening at a
+  stretch boundary reproduces the parent bit for bit.
+- **The child's clock is re-based by subtracting the fork instant**, rather
+  than by the caller naming an offset, because that subtraction does not
+  always round-trip. With a fork at 900 s, `(900.0 + 1e-6) - 900.0` is
+  9.999999974752427e-07 and not 1e-6, so a child asked for its own `1e-6`
+  propagates over a different interval from its parent and lands one unit in
+  the last place away.
+
+Neither is a defect in the rule. They are the two places a plausible branch
+implementation would lose the guarantee silently, so they are gated where the
+rule is.
 
 ### Supported input ranges
 

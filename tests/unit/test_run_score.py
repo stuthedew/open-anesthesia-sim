@@ -17,8 +17,10 @@ setting changes, against a run whose largest fraction reaches 0.0316:
 
 Both are eleven orders below the 1e-4 the two-decimal percent readout can
 show, so neither path can move a displayed digit. The difference between the
-two paths is composition order rather than method error; `PL-P1Z3` states that
-separation as a guarantee and gates it.
+two paths is composition order rather than method error, and `docs/MODEL.md`
+§ "The canonical evaluation rule" states which of them a stored value may come
+from. `tests/reference/test_canonical_evaluation.py` holds that guarantee; what
+is tested here is that the display path is refused where the rule says it is.
 """
 
 from math import inf, nan
@@ -38,7 +40,13 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
 )
 from anesthesia_sim.core.matrix_exponential import Matrix
-from anesthesia_sim.core.run_score import Keyframe, RunScore, SampledWindow, ScoreSegment
+from anesthesia_sim.core.run_score import (
+    DisplayState,
+    Keyframe,
+    RunScore,
+    SampledWindow,
+    ScoreSegment,
+)
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 SIMULATION_STEP_S = 0.1
@@ -126,7 +134,7 @@ def test_evaluate_matches_a_stepped_run() -> None:
         expected = stepped[round(elapsed_s, 6)]
 
         for compartment, want in zip(COMPARTMENT_STATES, expected, strict=True):
-            assert abs(state[compartment] - want) < WORST_DISPLAY_DIFFERENCE
+            assert abs(state.values[compartment] - want) < WORST_DISPLAY_DIFFERENCE
 
 
 def test_state_at_matches_a_stepped_run() -> None:
@@ -296,7 +304,7 @@ def test_a_one_column_window_is_the_instant_asked_for() -> None:
     assert len(window.states) == 1
 
     for compartment, want in zip(COMPARTMENT_STATES, stepped[4.0], strict=True):
-        assert abs(window.states[0][compartment] - want) < WORST_DISPLAY_DIFFERENCE
+        assert abs(window.states[0].values[compartment] - want) < WORST_DISPLAY_DIFFERENCE
 
 
 def test_a_window_of_no_width_repeats_one_instant() -> None:
@@ -306,7 +314,7 @@ def test_a_window_of_no_width_repeats_one_instant() -> None:
     window = score.evaluate(6.0, 6.0, 5)
 
     assert window.times_s == (6.0,) * 5
-    assert set(window.states) == {score.state_at(6.0)}
+    assert set(window.states) == {DisplayState(score.state_at(6.0))}
 
 
 def test_a_window_opening_on_a_keyframe_needs_no_propagation() -> None:
@@ -315,7 +323,7 @@ def test_a_window_opening_on_a_keyframe_needs_no_propagation() -> None:
     _, score, _ = _stepped_run(steps=600)
     window = score.evaluate(30.0, 60.0, 4)
 
-    assert window.states[0] == score.segments[1].opening.state
+    assert window.states[0].values == score.segments[1].opening.state
 
 
 def test_a_segment_too_short_to_hold_a_column_is_skipped() -> None:
@@ -344,7 +352,42 @@ def test_a_segment_too_short_to_hold_a_column_is_skipped() -> None:
         canonical = score.state_at(elapsed_s)
 
         for compartment in COMPARTMENT_STATES:
-            assert abs(state[compartment] - canonical[compartment]) < WORST_DISPLAY_DIFFERENCE
+            difference = abs(state.values[compartment] - canonical[compartment])
+
+            assert difference < WORST_DISPLAY_DIFFERENCE
+
+
+def test_a_score_refuses_a_display_state_as_its_opening_state() -> None:
+    """A fork opening from a drawing value is the failure the wrapper exists to stop.
+
+    `RunScore.__init__` is the canonical sink a display value is likeliest to
+    reach by accident, because a fork's opening state and a drawn column are
+    the same nine numbers in the same order. The refusal is what makes them
+    different things rather than the same thing described differently.
+    """
+
+    _, score, _ = _stepped_run(steps=100)
+    drawn = score.evaluate(0.0, 10.0, 5).states[0]
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    with pytest.raises(SimulationConfigurationError, match="came from the display path"):
+        RunScore(system.equation_settings(), drawn)  # type: ignore[arg-type]
+
+
+def test_a_display_state_is_not_a_state_vector() -> None:
+    """The structural half of the guarantee, which is what protects a sink that has no check.
+
+    A tuple subclass would have satisfied every test above while flowing
+    silently into an exporter or a save format that indexes a state and asks
+    nothing. What stops that is the value not being a sequence at all.
+    """
+
+    _, score, _ = _stepped_run(steps=100)
+    drawn = score.evaluate(0.0, 10.0, 5).states[0]
+
+    assert not isinstance(drawn, tuple)
+    assert isinstance(drawn.values, tuple)
+    assert len(drawn.values) == STATE_SIZE
 
 
 def test_a_score_refuses_a_state_of_the_wrong_length() -> None:
@@ -449,7 +492,7 @@ def test_a_sampled_window_pairs_each_state_with_one_instant() -> None:
     """Times and states of different lengths would draw a trace off its own axis."""
 
     with pytest.raises(SimulationConfigurationError, match="belongs to one instant"):
-        SampledWindow(times_s=(0.0, 1.0), states=((0.0,) * STATE_SIZE,))
+        SampledWindow(times_s=(0.0, 1.0), states=(DisplayState((0.0,) * STATE_SIZE),))
 
 
 def test_a_segment_carries_the_state_its_settings_start_from() -> None:

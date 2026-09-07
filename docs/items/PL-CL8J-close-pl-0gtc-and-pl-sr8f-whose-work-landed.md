@@ -7,9 +7,10 @@ status: done
 classes: defect, docs
 feature: dev-tooling
 touches: docs/items
-verify: python3 tools/doc_check.py check && bin/docket check
 added: 2026-09-07
 closed: 2026-09-07
+pr: 432
+verify: python3 tools/doc_check.py check && bin/docket check
 ---
 
 **Problem.** `main`'s `quality` run has concluded `failure` on its last four
