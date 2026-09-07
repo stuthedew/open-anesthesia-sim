@@ -55,3 +55,33 @@ than surfacing as a version-table error.
 VERSION=0.4.8`" - so the release half of this belongs to that session. What is
 this item's own is the guard: nothing stopped the tag going first.
 
+**Resolved on the tag side, 2026-09-07, by the second disposition rather than
+the first: `v0.4.8` was deleted from the remote, not cut.** `git ls-remote
+--tags origin` no longer returns it, `origin/main` is unmoved at `b03a7d0`,
+`pyproject.toml` still reads `0.4.7`, and `python3 tools/doc_check.py check`
+is back to 0 errors and 0 advisories. So the release was never cut and no
+longer claims to have been; the version table is consistent again because the
+tag withdrew, not because a row was added.
+
+**One consequence worth knowing, because it costs a session an hour
+otherwise.** A clone that fetched while the tag existed keeps it: `git fetch`
+does not delete a local tag whose remote is gone, so `doc_check` went on
+reporting the error here after the remote was already clean - the same shape
+as `PL-YGF3` and `PL-F48B`, arrived at by a deleted tag instead of a rewritten
+history. The repair is to delete that one tag by name, never a prune:
+
+    git tag -d v0.4.8
+
+`git fetch --tags --force` does not do it either; `--force` updates a tag, it
+does not remove one the remote dropped, and `--prune-tags` implies `--prune`,
+which `.claude/hooks/no-prune-guard.sh` refuses for good reason.
+
+**What is left of this item is the guard, and it is the whole of it now.**
+Nothing refused the tag going first, and nothing would refuse the next one.
+`bin/docket release` checks that the *previous* release is tagged; no check
+runs the other way, so a tag ahead of its cut passes every guard the project
+has and lands as a version-table error in `doc_check` - a true error naming
+the wrong cause, since the table was not wrong, the tag was. **Done when** is
+therefore the second clause only: a tag with no release behind it is refused
+or reported by name.
+
