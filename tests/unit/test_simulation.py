@@ -1,7 +1,11 @@
 import pytest
 
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.simulation import SimulationState
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    maximum_step_count,
+)
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
 
 
@@ -186,3 +190,78 @@ def test_rejects_an_initial_step_above_the_largest_supported_one() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="largest supported step"):
         SimulationState(step_count=1, simulation_step_s=MAXIMUM_SIMULATION_STEP_S * 10.0)
+
+
+# --- The supported run length (PL-Y5WR) -------------------------------------
+#
+# `core/supported_ranges.py` owns the number and the refusal; these are the
+# tests for enforcing it *here*, which is the only place a run length exists.
+# They run at the boundary rather than to it: 864 000 steps is a real run and
+# an unusable test, so the state is constructed part-way through - which
+# `SimulationState` supports explicitly - and stepped across the edge.
+
+
+def test_a_run_may_be_advanced_up_to_the_supported_run_length() -> None:
+    """The last supported step completes and lands on the declared boundary."""
+
+    state = SimulationState(
+        step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S) - 1,
+        simulation_step_s=MAXIMUM_SIMULATION_STEP_S,
+    )
+
+    state.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    assert state.step_count == maximum_step_count(MAXIMUM_SIMULATION_STEP_S)
+    assert state.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+
+
+def test_the_step_past_the_supported_run_length_is_refused() -> None:
+    """Beyond the boundary the model is not claimed to represent a patient."""
+
+    state = SimulationState(
+        step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S),
+        simulation_step_s=MAXIMUM_SIMULATION_STEP_S,
+    )
+
+    with pytest.raises(SimulationDomainLimitError, match="supported run length"):
+        state.advance(MAXIMUM_SIMULATION_STEP_S)
+
+
+def test_a_refused_step_leaves_the_run_exactly_where_it_was() -> None:
+    """Refused before anything advances, so the run is still readable.
+
+    The property the interface rests on: a run stopped at the limit is
+    displaying a completed step at a simulated time inside the supported
+    span, not a partial one and not an extrapolated one. Compartment state
+    is compared as well as the clock, because a step that ran and was then
+    rejected would leave the second unchanged and the first moved.
+    """
+
+    state = SimulationState(
+        step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S),
+        simulation_step_s=MAXIMUM_SIMULATION_STEP_S,
+    )
+    stored_before = state.uptake_system.total_stored_agent_l
+    alveolar_before = state.uptake_system.alveoli.concentration_fraction
+
+    with pytest.raises(SimulationDomainLimitError):
+        state.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    assert state.step_count == maximum_step_count(MAXIMUM_SIMULATION_STEP_S)
+    assert state.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+    assert state.uptake_system.total_stored_agent_l == stored_before
+    assert state.uptake_system.alveoli.concentration_fraction == alveolar_before
+
+
+def test_reset_returns_a_run_stopped_at_the_limit_to_a_startable_one() -> None:
+    """Reset is the way out, and it has to actually clear the count."""
+
+    state = SimulationState(
+        step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S),
+        simulation_step_s=MAXIMUM_SIMULATION_STEP_S,
+    )
+
+    state.reset()
+    state.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    assert state.step_count == 1

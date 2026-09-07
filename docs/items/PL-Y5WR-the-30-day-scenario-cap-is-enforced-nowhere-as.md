@@ -3,11 +3,13 @@ id: PL-Y5WR
 title: The 30-day scenario cap is enforced nowhere as an explicit halt, and dropping PL-011 removes the only item that required it
 priority: P1
 effort: M
-status: needs-decision
+status: done
 classes: safety
 feature: numerical-domain
 touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation.py, tests/unit/test_supported_ranges.py, docs/MODEL.md
 added: 2026-09-05
+closed: 2026-09-07
+verify: uv run pytest tests/unit/test_supported_ranges.py tests/unit/test_simulation.py tests/unit/test_exceptions.py tests/unit/test_formatting.py tests/unit/test_simulation_view.py tests/integration/test_controller.py && grep -q 'MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86_400.0' src/anesthesia_sim/core/supported_ranges.py && grep -qF '#### Supported run length' docs/MODEL.md
 ---
 
 **Problem.** The project owner set a scenario run-time cap on 2026-08-25 — 30
@@ -185,3 +187,41 @@ intensive care unit setting: a systematic review.* Ann Thorac Med
 teaching target and it is precisely the regime this model is wrong in. Reaching
 it is a model extension — metabolism first — and belongs on `ROADMAP.md`, not in
 this cap.
+
+**Resolved 2026-09-07. Both parts answered by the project owner, who agreed
+with the recommendations above.**
+
+**The cap is 24 hours of elapsed simulated time**, declared as
+`MAXIMUM_ELAPSED_SIMULATION_TIME_S` in `core/supported_ranges.py` beside the
+three flow intervals, and argued there and in `docs/MODEL.md`
+§ "Supported run length" against what the model omits rather than as a
+multiple of the fat time constant. The citation is marked tier 2 in both
+places: 24 hours is not computed from a metabolic rate, and saying so is what
+keeps a review from reading as the authority for a stored value.
+
+**Reaching it halts the run**, on an integer step-count comparison derived
+once per step size, so the boundary falls at the same step on every machine
+and deterministic replay still holds at it. The interval is closed like the
+other four: at the shipped 0.1 s step a run completes exactly 864 000 steps
+and lands on 86 400.0 s, and the 864 001st is refused before anything
+advances.
+
+**A new exception type carries the distinction the interface needs.**
+`SimulationDomainLimitError` subclasses `SimulationExecutionError`, so a
+caller that knows only the base classes stops the run - the safe default -
+while one that catches it specifically knows nothing failed. `app/` reads it:
+the status line says "Stopped - supported run length reached" rather than
+"simulation error", the notice says which limit was reached and why it is
+where it is instead of describing a rollback that did not happen, the colour
+is not the failure's WARNING, and Start is disabled because the controller
+would refuse it. `SimulationSnapshot.supported_limit_reason` is the field
+that carries it, separate from `failure_reason` for the same reason.
+
+**Regression cover.** The boundary is pinned from both sides in
+`tests/unit/test_supported_ranges.py` and `tests/unit/test_simulation.py`,
+including that a refused step leaves compartment state and the clock exactly
+where they were; the exception's place in the hierarchy in
+`tests/unit/test_exceptions.py`; the three stopped states in
+`tests/integration/test_controller.py`; and the presentation in
+`tests/unit/test_simulation_view.py`, which asserts the notice does *not* say
+"error", "failed" or "rolled back".

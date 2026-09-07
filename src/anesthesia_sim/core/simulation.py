@@ -32,6 +32,7 @@ a name rather than expressing an intention. Callers reach
 from dataclasses import dataclass, field
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.supported_ranges import require_supported_run_length
 from anesthesia_sim.core.uptake_system import (
     AgentUptakeSystem,
     UptakeStepResult,
@@ -104,6 +105,19 @@ class SimulationState:
         The count and the step are recorded after the system has advanced,
         so a step that could not be completed leaves simulated time exactly
         where the last completed step left it.
+
+        The run length is checked here too, and it is the one guard this
+        class could not delegate: the supported span is a limit on elapsed
+        simulated time, and `step_count` is the only record of that anywhere
+        in `core/`. A compartment advanced on its own has no run length to
+        be past the end of, which is why the three flow ranges are enforced
+        on the compartments and this is not.
+
+        Raises `SimulationDomainLimitError` when the run has reached the
+        supported length. That is not a failure - see
+        `core/supported_ranges.py` § `require_supported_run_length` - and
+        the step is refused before anything advances, so the state left
+        behind is a completed step inside the supported span.
         """
 
         require_supported_simulation_step(simulation_step_s)
@@ -113,6 +127,8 @@ class SimulationState:
                 f"this run is being taken at {self.simulation_step_s} s per step and cannot "
                 f"switch to {simulation_step_s} s; reset it to run at a different step"
             )
+
+        require_supported_run_length(self.step_count, simulation_step_s)
 
         result = self.uptake_system.advance(simulation_step_s)
 

@@ -164,6 +164,7 @@ class _ReplayController:
             agent_accounting_absolute_error_l=1.5e-13,
             agent_accounting_passes_validation=True,
             control_timeline=self._control_timeline,
+            supported_limit_reason=None,
             failure_reason=None,
         )
 

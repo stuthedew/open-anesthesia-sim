@@ -91,7 +91,7 @@ from anesthesia_sim.app.simulation_view import (
 from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, INK, MUTED, WARNING
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, read_wash_in, wash_in_ratio
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
-from anesthesia_sim.core.exceptions import SimulationNumericalError
+from anesthesia_sim.core.exceptions import SimulationDomainLimitError, SimulationNumericalError
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
     MacAwakeReference,
@@ -301,6 +301,7 @@ def _snapshot(
     agent_mac_awake: MacAwakeReference | None = None,
     control_timeline: tuple[ControlChange, ...] = (),
     failure_reason: str | None = None,
+    supported_limit_reason: str | None = None,
 ) -> SimulationSnapshot:
     """Build a snapshot for the view, defaulting MAC from the named agent.
 
@@ -357,6 +358,7 @@ def _snapshot(
         agent_accounting_absolute_error_l=1.5e-13,
         agent_accounting_passes_validation=passes_validation,
         control_timeline=control_timeline,
+        supported_limit_reason=supported_limit_reason,
         failure_reason=failure_reason,
     )
 
@@ -3102,11 +3104,13 @@ def test_every_slider_handler_refuses_without_escaping_into_flet(
 
 
 class _RecordingController(_FakeController):
-    """A controller that records `fail()` instead of running a simulation.
+    """A controller recording how it was stopped, instead of running.
 
     `_halt_run` is the path that turns a raised exception into a stopped run
     and a visible banner. What matters is that it stops the run and records
-    the reason, so that is what is recorded here.
+    the reason *on the right channel*, so both are recorded here and kept
+    apart: routing a domain limit into `fail` would still stop the run, and
+    would put "simulation error" over a model that behaved correctly.
     """
 
     def __init__(
@@ -3116,9 +3120,14 @@ class _RecordingController(_FakeController):
     ) -> None:
         super().__init__(snapshot, history)
         self.failures: list[str] = []
+        self.supported_limits: list[str] = []
 
     def fail(self, reason: str) -> None:
         self.failures.append(reason)
+        self.is_running = False
+
+    def halt_at_supported_limit(self, reason: str) -> None:
+        self.supported_limits.append(reason)
         self.is_running = False
 
 
@@ -4252,3 +4261,109 @@ def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments() -> None:
         pytest.approx(snapshot.elapsed_s),
         pytest.approx(reading.plotted_ratio),
     )
+
+
+# --- Stopping at the supported run length (PL-Y5WR) --------------------------
+
+
+def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -> None:
+    """The whole point of the separate field: a correct stop reads as one.
+
+    A run that reaches 24 hours has done everything right - the core refused
+    the next step before taking it, nothing was miscalculated, nothing was
+    rolled back. Presenting that as "simulation error" would spend the one
+    signal this interface has for a real fault on a model that is working,
+    and teach a reader to discount it when it matters.
+    """
+
+    view, _ = _build_view(
+        is_running=False, supported_limit_reason="this run has reached 86400 s of simulated time"
+    )
+
+    assert view._status_text.value == "Stopped — supported run length reached"
+    assert view._status_text.color != WARNING
+    assert view._notice_text.visible is True
+    assert view._notice_text.value is not None
+    assert "supported run length of 24 hours" in view._notice_text.value
+
+
+def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
+    """No step failed and none was rolled back, so neither may be claimed.
+
+    The failure banner's wording is right for a failure and false here. A
+    notice describing an event that did not happen is the presentation half
+    of the safety-critical standard - the correct number under the wrong
+    label - and it points the reader at the model's own limits rather than
+    at an imagined defect.
+    """
+
+    view, _ = _build_view(
+        is_running=False, supported_limit_reason="this run has reached 86400 s of simulated time"
+    )
+
+    notice = view._notice_text.value
+
+    assert notice is not None
+    assert "rolled back" not in notice
+    assert "error" not in notice.lower()
+    assert "failed" not in notice.lower()
+    # It says *why* the limit is where it is: a boundary with no reason reads
+    # as an arbitrary restriction rather than as the edge of the model.
+    assert "metabolism" in notice
+    assert "last completed step" in notice
+
+
+def test_refresh_view_does_not_offer_to_resume_a_run_at_the_supported_limit() -> None:
+    """The controller would refuse this Start, so the button must not offer it."""
+
+    view, _ = _build_view(
+        is_running=False, supported_limit_reason="this run has reached 86400 s of simulated time"
+    )
+
+    assert view._start_button.disabled is True
+
+
+def test_a_failure_outranks_the_supported_run_length_in_the_notice() -> None:
+    """Where both are somehow recorded, the more serious statement wins."""
+
+    view, _ = _build_view(
+        is_running=False,
+        failure_reason="SimulationNumericalError: boom",
+        supported_limit_reason="this run has reached 86400 s of simulated time",
+    )
+
+    assert view._status_text.value == "Stopped — simulation error"
+    assert view._notice_text.value is not None
+    assert "boom" in view._notice_text.value
+
+
+def test_halt_run_routes_the_supported_run_length_away_from_failure() -> None:
+    """`_halt_run` stops the run for every exception and mislabels none.
+
+    The routing is the whole of the change, and a regression in it would not
+    break the halt - the run still stops - it would only put "simulation
+    error" over a model that stopped exactly where `docs/MODEL.md` says it
+    must. Nothing but a test notices that.
+    """
+
+    controller = _recording_controller()
+    view = SimulationView(page=_FakePage(), controller=controller)
+    error = SimulationDomainLimitError("this run has reached 86400 s of simulated time")
+
+    view._halt_run(error)
+
+    assert controller.supported_limits == ["this run has reached 86400 s of simulated time"]
+    assert controller.failures == []
+    assert controller.is_running is False
+
+
+def test_halt_run_still_treats_an_unrecognised_exception_as_a_failure() -> None:
+    """The narrow case is the named one, so anything else falls through safely."""
+
+    controller = _recording_controller()
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    view._halt_run(ValueError("mass balance violated"))
+
+    assert controller.failures == ["ValueError: mass balance violated"]
+    assert controller.supported_limits == []

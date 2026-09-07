@@ -12,6 +12,7 @@ from anesthesia_sim.app.controller import (
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
+    SimulationDomainLimitError,
     SimulationExecutionError,
     SimulationNumericalError,
 )
@@ -1069,3 +1070,90 @@ def test_set_agent_leaves_a_new_run_holding_nothing_to_discard() -> None:
     controller.set_agent("desflurane")
 
     assert controller.snapshot().has_recorded_run is False
+
+
+# --- Stopping at the supported run length (PL-Y5WR) --------------------------
+
+
+def test_stopping_at_the_supported_run_length_is_not_a_failure() -> None:
+    """Three stopped states, and the snapshot has to tell them apart.
+
+    A pause, a failure and the supported run length all leave `is_running`
+    false, and only the middle one means anything on screen is untrustworthy.
+    The interface reads these two fields to decide what to say, so a run that
+    stopped correctly reporting `failure_reason` would put "simulation error"
+    over a sound model (`docs/MODEL.md`, "Supported run length").
+    """
+
+    controller = SimulationController()
+    controller.start()
+    controller.advance(0.1)
+    controller.halt_at_supported_limit("reached 86400 s of simulated time")
+
+    snapshot = controller.snapshot()
+
+    assert snapshot.is_running is False
+    assert controller.has_reached_supported_limit is True
+    assert snapshot.supported_limit_reason == "reached 86400 s of simulated time"
+    assert controller.has_failed is False
+    assert snapshot.failure_reason is None
+
+
+def test_a_session_at_the_supported_run_length_cannot_be_resumed() -> None:
+    """Start would be refused by the core on its first tick.
+
+    Raising rather than quietly declining, for the reason a failed session
+    does: a Start that silently does nothing is a control presenting itself
+    as working. The message says which of the two states it is, so the
+    refusal a caller reports is not a guess.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    controller.halt_at_supported_limit("reached 86400 s of simulated time")
+
+    with pytest.raises(SimulationDomainLimitError, match="supported run length"):
+        controller.start()
+
+    assert controller.snapshot().is_running is False
+
+
+def test_the_first_supported_limit_reason_is_the_one_kept() -> None:
+    """A later tick reaching the same boundary must not overwrite it."""
+
+    controller = SimulationController()
+    controller.halt_at_supported_limit("reached 86400 s of simulated time")
+    controller.halt_at_supported_limit("reached 86400 s again")
+
+    assert controller.snapshot().supported_limit_reason == "reached 86400 s of simulated time"
+
+
+def test_reset_clears_the_supported_limit_and_restores_a_startable_session() -> None:
+    """Reset is the only way out, so it has to actually be one."""
+
+    controller = SimulationController()
+    controller.start()
+    controller.advance(0.1)
+    controller.halt_at_supported_limit("reached 86400 s of simulated time")
+
+    controller.reset()
+
+    assert controller.has_reached_supported_limit is False
+    assert controller.snapshot().supported_limit_reason is None
+
+    controller.start()
+
+    assert controller.snapshot().is_running is True
+
+
+def test_switching_agent_clears_the_supported_limit() -> None:
+    """A new agent is a new run, and a new run has no run length behind it."""
+
+    controller = SimulationController()
+    controller.start()
+    controller.halt_at_supported_limit("reached 86400 s of simulated time")
+
+    controller.set_agent("isoflurane")
+
+    assert controller.has_reached_supported_limit is False
+    assert controller.snapshot().supported_limit_reason is None
