@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, tools/d
 blocked-by: PL-6Q8N, PL-D6LX
 added: 2026-09-03
 closed: 2026-09-07
+pr: 446
 verify: uv run pytest tests/unit/test_parameters.py tests/unit/test_doc_check.py && python3 tools/doc_check.py check && grep -q check_source_tiers tools/doc_check.py && python3 -c "import json,glob,sys; t={'primary','secondary','reference-implementation'}; f=sorted(glob.glob('src/anesthesia_sim/data/**/*.json',recursive=True)); d=[json.load(open(p)) for p in f]; sys.exit(0 if d and all(x['schema_version']==2 and all(s.get('tier') in t and isinstance(s.get('adopted'),bool) for s in x['sources']) and (any(s['tier']=='primary' and s['adopted'] for s in x['sources']) or (x.get('provenance_gap') or '').strip()) for x in d) else 1)"
 ---
 
