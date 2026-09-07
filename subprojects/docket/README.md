@@ -1004,6 +1004,15 @@ run is told not to ask, so `docket check && grep -q ...` — a command that
 passes today paired with a grep for what the work adds — is bounded at one
 level and is the shape to reach for.
 
+What `check` does say about that command is an advisory, and only for the one
+shape that can pass without meaning anything: a `docket check` whose *output*
+is piped or captured, rather than whose exit status is read. A nested run is
+told not to replay the open items' commands, so it never prints the landed
+advisory - a `grep` for that answer matches nothing whether the work is done or
+not, and an inverted one passes on the strength of it. An advisory rather than
+an error because "reads the output" is a judgment about a shell line, and hard
+failure is reserved for exact rules.
+
 ### A closed item's command is a record, and it is not rewritten
 
 Once the item is `done`, `verify` stops being a command and becomes the record

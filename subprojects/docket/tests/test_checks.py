@@ -725,6 +725,40 @@ def test_reading_the_store_for_the_words_is_not_running_the_command() -> None:
     assert not _has(analyze([item], TODAY).errors, "runs `docket verify`")
 
 
+def test_piping_docket_checks_output_raises_an_advisory() -> None:
+    """The one shape that can pass vacuously, and it is a judgment, so it warns.
+
+    A nested run declines the landed replay, so the advisory such a command
+    greps for is never printed. It matches nothing whether the work is done or
+    not, and the leading `!` passes on the strength of that.
+    """
+    item = _item(verify="! bin/docket check 2>&1 | grep -q 'already passes'")
+    report = analyze([item], TODAY)
+    assert _has(report.advisories, "pipes its output")
+    assert not _has(report.errors, "docket check")
+
+
+def test_capturing_docket_checks_output_raises_the_same_advisory() -> None:
+    item = _item(verify='test -z "$(bin/docket check)"')
+    assert _has(analyze([item], TODAY).advisories, "captures its output")
+
+
+def test_using_docket_checks_exit_status_is_silent() -> None:
+    """The recommended shape, and what ten open items record."""
+    item = _item(verify="bin/docket check && grep -q 'def test_x' subprojects/docket/tests/x.py")
+    assert not _has(analyze([item], TODAY).advisories, "docket check")
+
+
+def test_a_pipe_belonging_to_a_later_command_is_not_read_as_reading_check() -> None:
+    """`PL-39B7`'s recorded command: the `grep` reads `stranded`, not `check`.
+
+    The pipeline ends at the `&&`, so what follows is a different command's
+    output. Firing here would have put an advisory on a correct item.
+    """
+    item = _item(verify='bin/docket check && ! bin/docket stranded | grep -qE "^PL-(39B7) "')
+    assert not _has(analyze([item], TODAY).advisories, "docket check")
+
+
 CUTOVER = Config(verify_required_from=date(2026, 8, 1))
 
 

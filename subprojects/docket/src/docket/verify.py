@@ -115,12 +115,29 @@ def selects_no_test(command: str, status: int) -> bool:
 # here as a string. `docket` takes no options before its subcommand, so the two
 # words are adjacent in every spelling of it.
 #
-# Quoted spans are removed before the match, which is what keeps the shape this
-# rule leaves allowed from tripping it: `grep -q 'docket verify' docs/items/`
-# reads the store rather than running it, and the pattern is the only place the
-# words appear.
+# Matched against `_outside_quotes` rather than the raw line, which is what
+# keeps the shape this rule leaves allowed from tripping it: `grep -q 'docket
+# verify' docs/items/` reads the store rather than running it, and the pattern
+# is the only place the words appear.
 DOCKET_VERIFY_RE = re.compile(r"\bdocket\s+verify\b")
-QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
+SINGLE_QUOTED_RE = re.compile(r"'[^']*'")
+DOUBLE_QUOTED_RE = re.compile(r'"[^"]*"')
+
+
+def _outside_quotes(command: str) -> str:
+    """The command with quoted literals blanked, leaving what the shell would run.
+
+    Single quotes suppress every expansion, so their contents are always
+    literal text - `grep -q 'docket verify'` reads the store rather than
+    running it. Double quotes do not: `$(...)` and backticks still run inside
+    them, so a double-quoted span is blanked only when it carries neither.
+    Blanking it unconditionally hid `test -z "$(bin/docket check)"`, which is a
+    command being run rather than a string being matched.
+    """
+    text = SINGLE_QUOTED_RE.sub(" ", command)
+    return DOUBLE_QUOTED_RE.sub(
+        lambda m: m.group() if ("$(" in m.group() or "`" in m.group()) else " ", text
+    )
 
 
 def reenters_verify(command: str) -> bool:
@@ -144,7 +161,47 @@ def reenters_verify(command: str) -> bool:
     this project recommends, and what ten open items record - is bounded at one
     level and proves what it claims.
     """
-    return bool(DOCKET_VERIFY_RE.search(QUOTED_RE.sub(" ", command)))
+    return bool(DOCKET_VERIFY_RE.search(_outside_quotes(command)))
+
+
+# The other subcommand that executes a `verify:`, and the reason it is treated
+# differently. Re-entering it is bounded, so it is not refused; what is worth
+# saying is that a nested run cannot answer the one question such a command is
+# usually written to ask.
+DOCKET_CHECK_RE = re.compile(r"\bdocket\s+check\b")
+
+# What ends the pipeline a command sits in. A single `|` inside the span before
+# one of these is a pipe reading the command's output; `&&`, `||` and `;` all
+# start a new command, so a `|` after one of them belongs to something else.
+PIPELINE_END_RE = re.compile(r"&&|\|\||;")
+
+
+def reads_check_output(command: str) -> str:
+    """How this command consumes `docket check`'s output, or "" if it does not.
+
+    The distinction is between reading the exit status and reading the text.
+    `docket check && grep -q ...` asks whether the store validates, which a
+    nested run answers correctly and which ten open items rely on. Piping the
+    output into a `grep` asks what the run *said*, and that is the question a
+    nested run is specifically unable to answer: it is told not to replay the
+    open items' commands, so the landed advisory it would be grepped for is
+    never printed. Such a command matches nothing whether the work is done or
+    not, and an inverted grep passes on the strength of it.
+
+    An advisory rather than an error, because "reads the output" is a judgment
+    about a shell line rather than an exact rule, and `CLAUDE.md` reserves hard
+    failure for the exact ones. The returned string is the shape found, so the
+    advisory can name it.
+    """
+    bare = _outside_quotes(command)
+    for match in DOCKET_CHECK_RE.finditer(bare):
+        before, after = bare[: match.start()], bare[match.end() :]
+        if before.count("$(") > before.count(")") or before.count("`") % 2:
+            return "captures its output in a command substitution"
+        end = PIPELINE_END_RE.search(after)
+        if "|" in (after[: end.start()] if end else after):
+            return "pipes its output into another command"
+    return ""
 
 
 @dataclass(frozen=True)
