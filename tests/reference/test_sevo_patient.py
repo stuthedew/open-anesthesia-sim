@@ -1,3 +1,5 @@
+from math import isfinite
+
 import pytest
 
 from anesthesia_sim.core.alveolar import AlveolarCompartment
@@ -51,6 +53,17 @@ STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
 # room for another machine's rounding and still four orders below the 1.4e-11
 # a genuinely first-order method would show at these steps.
 STEP_REFINEMENT_SETTLED_GAP = 1e-14
+
+
+# The washout gate's run, matching the wash-in and washout legs of
+# `test_long_wash_in_and_washout_validate_agent_simulation` so the two gates
+# describe the same trajectory: 600 s at the default dial to load the
+# compartments, then 600 s at zero. `WASHOUT_STEP_S` is
+# `MAXIMUM_SIMULATION_STEP_S`, the coarsest supported step, which is the
+# hardest case for a per-step monotonicity claim.
+WASHOUT_LOAD_DURATION_S = 600.0
+WASHOUT_DURATION_S = 600.0
+WASHOUT_STEP_S = 0.1
 
 
 def _run_for(system: AgentUptakeSystem, duration_s: float, simulation_step_s: float) -> None:
@@ -272,6 +285,75 @@ def test_long_wash_in_and_washout_validate_agent_simulation() -> None:
     assert validation.relative_error <= MASS_BALANCE_RELATIVE_GATE
     assert validation.delivered_agent_l > 0.0
     assert validation.exhausted_agent_l > 0.0
+
+
+def test_washout_never_increases_total_system_mass() -> None:
+    """`docs/MODEL.md` § "Washout test".
+
+    After loading the compartments, setting $F_D=0$ must produce finite,
+    nonnegative washout without spontaneous increases in total system mass.
+
+    Sampled at every step rather than at the endpoints, because the claim is
+    about *spontaneous* increases: a rise and a matching fall inside the run
+    leave the endpoints ordered correctly and are exactly what this is meant
+    to catch.
+
+    Total stored mass only. MODEL.md states in the same section that
+    individual tissue concentrations may temporarily rise through
+    redistribution, so this test must not require every compartment to fall,
+    and deliberately asserts nothing about any compartment on its own.
+
+    This is the gate the mass-balance identity cannot be: that identity holds
+    by construction whatever the transfer rates are, because every internal
+    transfer is applied as an equal-and-opposite pair. Confirmed by mutation
+    2026-09-07 rather than argued: dropping the write-back in
+    `AgentUptakeSystem.set_delivered_concentration`, so that the dial never
+    actually reaches zero, fails this test at the first washout step while
+    `test_long_wash_in_and_washout_validate_agent_simulation` still passes.
+
+    A reversed exhaust term is not the example to reach for here, though the
+    item that asked for this test used it. Both forms of it stop before this
+    gate: reversing the accumulator alone trips the mass-balance validator
+    during load, and reversing the circuit's own exhaust drain in
+    `build_system_matrix` is refused by the propagator's Metzler
+    precondition, which requires every off-diagonal entry to be nonnegative.
+
+    The comparison is exact rather than toleranced. Measured 2026-09-07 on
+    this run, no step rose at all, and the smallest single-step fall was
+    6.69e-06 L - about 2.4e11 ulps, eleven orders of magnitude above
+    rounding. An exact assertion is therefore not at risk of floating-point
+    flake, and a tolerance would only blind the gate to a real reversal.
+    """
+
+    system = AgentUptakeSystem.default()
+
+    _run_for(system, duration_s=WASHOUT_LOAD_DURATION_S, simulation_step_s=WASHOUT_STEP_S)
+
+    loaded_agent_l = system.total_stored_agent_l
+
+    assert loaded_agent_l > 0.0
+
+    system.set_delivered_concentration(0.0)
+
+    previous_agent_l = loaded_agent_l
+    step_count = round(WASHOUT_DURATION_S / WASHOUT_STEP_S)
+
+    for step_index in range(step_count):
+        system.advance(WASHOUT_STEP_S)
+
+        current_agent_l = system.total_stored_agent_l
+
+        assert isfinite(current_agent_l), f"step {step_index} left total mass non-finite"
+        assert current_agent_l >= 0.0, f"step {step_index} drove total mass negative"
+        assert current_agent_l <= previous_agent_l, (
+            f"step {step_index} raised total stored mass with the vaporizer off: "
+            f"{previous_agent_l!r} -> {current_agent_l!r}"
+        )
+
+        previous_agent_l = current_agent_l
+
+    # Not vacuous: the run has to have actually washed out.
+    assert previous_agent_l < loaded_agent_l
 
 
 def test_reset_clears_system_and_validation_accounting() -> None:
