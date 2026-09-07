@@ -305,8 +305,18 @@ def test_washout_never_increases_total_system_mass() -> None:
 
     This is the gate the mass-balance identity cannot be: that identity holds
     by construction whatever the transfer rates are, because every internal
-    transfer is applied as an equal-and-opposite pair. An exhaust term that
-    reversed sign during washout would satisfy it and fail here.
+    transfer is applied as an equal-and-opposite pair. Confirmed by mutation
+    2026-09-07 rather than argued: dropping the write-back in
+    `AgentUptakeSystem.set_delivered_concentration`, so that the dial never
+    actually reaches zero, fails this test at the first washout step while
+    `test_long_wash_in_and_washout_validate_agent_simulation` still passes.
+
+    A reversed exhaust term is not the example to reach for here, though the
+    item that asked for this test used it. Both forms of it stop before this
+    gate: reversing the accumulator alone trips the mass-balance validator
+    during load, and reversing the circuit's own exhaust drain in
+    `build_system_matrix` is refused by the propagator's Metzler
+    precondition, which requires every off-diagonal entry to be nonnegative.
 
     The comparison is exact rather than toleranced. Measured 2026-09-07 on
     this run, no step rose at all, and the smallest single-step fall was
