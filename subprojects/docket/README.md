@@ -993,6 +993,17 @@ the project this grew in was wrong and none had been executed — a check nobody
 ran is a specification nobody tested, and it fails after a worker has done the
 work rather than before.
 
+The command must not name `docket verify`. That subcommand runs an item's own
+`verify` field, so an item recording one re-enters it once per level, and each
+level takes a fresh timeout rather than a share of one — the recursion ends at
+the process table rather than at an answer. `check` refuses such an item by
+name, and `verify` itself reports the re-entry as a failed check where it is
+reached on a store nobody has validated yet. `check` is deliberately not
+refused the same way: it replays a `verify` only under `--verify`, and a nested
+run is told not to ask, so `docket check && grep -q ...` — a command that
+passes today paired with a grep for what the work adds — is bounded at one
+level and is the shape to reach for.
+
 ### A closed item's command is a record, and it is not rewritten
 
 Once the item is `done`, `verify` stops being a command and becomes the record
