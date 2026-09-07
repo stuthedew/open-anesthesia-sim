@@ -65,3 +65,21 @@ fi
 "$root/bin/docket" branch --brief 2>/dev/null || true
 
 "$root/bin/docket" digest 2>/dev/null || true
+
+# Last, and usually silent. The whole-store `verify:` replay runs only on push
+# to `main` (`PL-SDHR`: a pull request cannot have changed whether some *other*
+# item's work merged, and replaying the store on every branch costs more than
+# it buys), so when that replay fails it fails on a run no pull request shows.
+# `main` was red across three consecutive merges with every session believing
+# the tree was clean (`PL-0ZGK`).
+#
+# This reads that verdict and prints a line only when it is a failure - nothing
+# when `main` is green, and nothing when the read itself fails, so an offline
+# container starts exactly as it did before. It is deliberately not `bin/docket
+# digest`'s job: `docket` answers from a bare checkout without a network and
+# knows nothing about GitHub, and it should stay that way.
+#
+# Placed after the digest rather than before it because it is the exception
+# line: on a normal session start it contributes nothing at all, and on a bad
+# one it is the last thing read before the conversation.
+python3 "$root/tools/main_ci_status.py" 2>/dev/null || true
