@@ -6,9 +6,9 @@ effort: M
 status: ready
 classes: refactor, perf
 feature: numerical-domain
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/MODEL.md
 added: 2026-09-05
-verify: uv run pytest -q tests/unit tests/integration && ! grep -rq 'history_window\|RunHistory' src/anesthesia_sim/
+verify: uv run pytest -q tests/unit tests/integration && ! grep -rq 'history_window\|RunHistory' src/anesthesia_sim/ && grep -qF 'the drawn chart reproduces every control change' docs/MODEL.md
 ---
 
 **Problem.** With `PL-T691` landed, `RunHistory`, `history_window`,
@@ -74,7 +74,49 @@ working them. `PL-1PSX` (the control-input timeline is unbounded and regrouped
 in full on every frame) survives but changes character — the timeline is now
 the run, so its bound is a bound on the score itself.
 
+**The chart-fidelity requirement, transplanted from `PL-C4PH` (project owner,
+2026-09-05; moved here 2026-09-08 when that item was dropped).** The decision
+is **chart-faithful only**: *the drawn chart* must reproduce a control change to
+the last displayed digit; *the stored record* need not. It was recorded nowhere
+but in `PL-C4PH`'s brief, and `PL-C4PH` was opened to describe a recorded-sample
+cadence this item deletes - so the requirement is restated here, as a property of
+the drawn chart rather than of a store, and it outlives both mechanisms.
+
+Why it binds *this* item specifically: the measurements under `PL-C4PH` (dropped,
+file retained, table preserved there) found the worst interpolation error at every
+cadence sits at `t` = the instant the dial moves, scaling as O(h) rather than
+O(h^2) - the signature of a kink, since the derivative of the circuit fraction is
+discontinuous at a control change. Away from one the trajectory is faithful to
+about 1e-3 pp even at a 2 s cadence, a tenth of the display resolution. So the
+fidelity question is entirely a question about control events, which is exactly
+what this item's "a control event inside the visible window always gets its own
+column" answers - and after this lands the drawn line is the *whole* guarantee,
+because there is no stored record behind it to appeal to.
+
+`PL-4RBD` (the drawn chart smooths through a control change that leaves the trace
+monotone) is the live defect against this requirement in the M4 path, and is
+deliberately kept rather than dropped with `PL-C4PH`: it ships today, and its test
+is written against the drawn set so this item inherits it.
+
+**"To the last displayed digit" is deliberately coupled to display resolution
+(project owner, 2026-09-08), and that does not cross the line `docs/MODEL.md`
+draws.** The question raised was whether pinning the guarantee to the readout
+means a later precision change moves it. It does, and that is correct here.
+`docs/MODEL.md` § "Supported simulation step" forbids the traffic in the *other*
+direction - "the readout's decimal count is a presentation decision (§ 'Displayed
+precision') and must not reach back into the model" - which is why the step
+tolerance and the supported ranges are stated in absolute percentage points
+rather than in counts of the readout. This requirement is a statement about the
+*chart*, expressed in the units a reader actually reads it in, so it is the
+permitted direction rather than the forbidden one. Nor is the peg arbitrary: the
+two-decimal readout is itself derived from model fidelity (§ "Displayed
+precision"), one published SD of a partition coefficient displacing a compartment
+by 8.7e-4 to 6.8e-2 pp. An absolute tolerance was considered and refused: it
+would invent a number nobody measured, where this one inherits a derivation.
+
 **Done when.** `RunHistory` and `history_window` are gone; the chart is drawn
 from evaluated columns; a control event inside the visible window always gets
-its own column; and `tests/unit/test_run_history.py` is deleted rather than
+its own column; `docs/MODEL.md` states, in those words, that **the drawn chart
+reproduces every control change** to the last displayed digit while the stored
+record need not; and `tests/unit/test_run_history.py` is deleted rather than
 adapted.

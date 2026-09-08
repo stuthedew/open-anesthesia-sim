@@ -3,12 +3,13 @@ id: PL-C4PH
 title: Record the history sampling cadence as a decision of its own, separate from the integration step
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: docs, refactor
 feature: teachable-case
 touches: docs/MODEL.md, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-05
-verify: python3 tools/doc_check.py check && grep -qF 'recorded-sample cadence' docs/MODEL.md
+closed: 2026-09-08
+reason: Superseded by PL-2FM6 (delete RunHistory and draw the chart from the closed-form sampler). This item exists to document a recorded-sample cadence, and PL-2FM6 deletes the store that has one: after it lands there is no recording cadence to state, and SIMULATION_STEP_S plays one role again rather than two, which is the first two clauses of the Done when below. The third clause was already void - PL-011 was dropped 2026-09-05, so nothing waits on this requirement to pick a retention horizon. What was durable is the project owner's 2026-09-05 chart-faithful-only decision - the drawn chart must reproduce a control change to the last displayed digit, the stored record need not - which was written down nowhere but in this brief; it is transplanted into PL-2FM6's Done when as a property of the drawn chart, with a verify: grep holding docs/MODEL.md to it, and PL-2FM6's touches now names docs/MODEL.md so the commission covers it. This file is retained rather than deleted: the 2026-09-05 cadence measurements below are cited from PL-2FM6 and PL-4RBD. PL-4RBD (the drawn chart smooths through a control change that leaves the trace monotone) is deliberately NOT dropped with this - it is a live presentation defect in the shipped M4 path and its magnitude at the shipped 12-hour time base is unmeasured (project owner, 2026-09-08).
 ---
 
 **Problem.** One number, `app.simulation_view.SIMULATION_STEP_S = 0.1`, answers
