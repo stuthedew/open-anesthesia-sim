@@ -270,14 +270,14 @@ is worth more than the blood:gas column suggests.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cache
 
 import pytest
 
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
-from anesthesia_sim.core.parameters import load_reference_adult_parameters
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.uptake_system import (
     MAXIMUM_SIMULATION_STEP_S,
     SECONDS_PER_MINUTE,
@@ -391,6 +391,60 @@ OPEN_CIRCUIT_ELIMINATION_RATIOS = {
 # pinned is that the apparatus term is the large one, not its fourth digit,
 # which the regression bands above and below already hold.
 MINIMUM_APPARATUS_MOVEMENT_SD = 3.0
+
+
+@dataclass(frozen=True, slots=True)
+class TissueSolubilityCeiling:
+    """One published human brain:blood coefficient, used as an upper bound.
+
+    `test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination`
+    runs desflurane's elimination with its vessel-rich coefficient raised to
+    each of these and asks whether the published five-minute ratio comes
+    within reach. They are ceilings rather than candidate parameters: nothing
+    here is proposed as a replacement for what
+    `data/agents/desflurane.json` holds, and the test asserts that the
+    comparison still misses rather than that it improves.
+
+    Attributes:
+        tissue_blood_partition_coefficient: the ceiling itself, as a
+            tissue:blood ratio. It is multiplied by desflurane's own stored
+            blood:gas coefficient to get the tissue:gas coefficient the model
+            takes, so the run changes one number and keeps the agent's
+            solubility in blood where its own primary measurement puts it.
+        minimum_shortfall_sd: how far below the published elimination mean
+            the run must still land, in that cohort's published standard
+            deviations.
+        what_it_is: the measurement, for the failure message. These are
+            read from the abstract of Yasuda N, Targ AG, Eger EI II.
+            *Solubility of I-653, sevoflurane, isoflurane, and halothane in
+            human tissues.* Anesth Analg 1989;69(3):370-3, PMID 2774233,
+            which reports brain:blood as 1.29 +/- 0.05 for I-653
+            (desflurane), 1.57 +/- 0.10 for isoflurane and 1.70 +/- 0.09 for
+            sevoflurane, mean +/- SD; checked against PubMed on 2026-09-08.
+    """
+
+    tissue_blood_partition_coefficient: float
+    minimum_shortfall_sd: float
+    what_it_is: str
+
+
+# Two ceilings, and the second is deliberately absurd for this agent. The
+# first is what desflurane's own measurement will bear; the second is the
+# highest brain:blood any of the three shipped agents was measured at, which
+# desflurane cannot have without inverting the ordering the source paper was
+# written to report. Both still miss, which is the finding (`PL-73G7`).
+DESFLURANE_TISSUE_SOLUBILITY_CEILINGS = (
+    TissueSolubilityCeiling(
+        tissue_blood_partition_coefficient=1.39,
+        minimum_shortfall_sd=1.5,
+        what_it_is="desflurane's own measured brain:blood of 1.29 +/- 0.05, at mean + 2 SD",
+    ),
+    TissueSolubilityCeiling(
+        tissue_blood_partition_coefficient=1.70,
+        minimum_shortfall_sd=0.75,
+        what_it_is="sevoflurane's measured brain:blood of 1.70, the highest of the three agents",
+    ),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -561,6 +615,7 @@ def _private_washed_in_system(
     cardiac_output_l_min: float | None,
     fresh_gas_flow_l_min: float,
     delivered_fraction: float,
+    vessel_rich_tissue_gas_partition_coefficient: float | None = None,
 ) -> AgentUptakeSystem:
     """Return an unshared system after the published 30 minutes of wash-in.
 
@@ -576,10 +631,28 @@ def _private_washed_in_system(
     the one the wash-in comparisons were made at. Three copies of a
     safety-critical setup that must agree is three chances for one of them to
     stop agreeing silently.
+
+    `vessel_rich_tissue_gas_partition_coefficient` is the module's only
+    parameter override and exists for one test:
+    `test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination`
+    asks what the *published human tissue measurements* would produce here,
+    which cannot be asked without running a coefficient the data files do not
+    hold. It is applied to a system that has not been stepped, where the
+    group's stored amount is zero and no propagator has been built for the old
+    value, and it goes through `dataclasses.replace` rather than an attribute
+    write so that `TissueGroup.__post_init__` validates the new coefficient
+    exactly as it validates a shipped one. Every other caller leaves it `None`
+    and gets the shipped parameter set.
     """
 
     patient_parameters = load_reference_adult_parameters()
     system = AgentUptakeSystem.for_agent(agent_id)
+
+    if vessel_rich_tissue_gas_partition_coefficient is not None:
+        system.patient.vessel_rich = replace(
+            system.patient.vessel_rich,
+            tissue_gas_partition_coefficient=(vessel_rich_tissue_gas_partition_coefficient),
+        )
 
     system.set_fresh_gas_flow(fresh_gas_flow_l_min)
     system.set_delivered_concentration(delivered_fraction)
@@ -753,6 +826,7 @@ def _eliminate_without_rebreathing(
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
     delivered_fraction: float = DELIVERED_FRACTION,
     elimination_fresh_gas_flow_l_min: float | None = None,
+    vessel_rich_tissue_gas_partition_coefficient: float | None = None,
 ) -> OpenCircuitEliminationReading:
     """Wash in as shipped, then eliminate into an open circuit.
 
@@ -794,6 +868,11 @@ def _eliminate_without_rebreathing(
     `test_the_open_circuit_elimination_does_not_depend_on_fresh_gas_flow`
     passes it, to separate what the flow does to the elimination limb from
     what it does to the state the elimination starts from.
+
+    `vessel_rich_tissue_gas_partition_coefficient` is forwarded to
+    `_private_washed_in_system()`, which documents it; it replaces a shipped
+    coefficient and so changes both limbs of the run, which is what the one
+    test that passes it wants.
     """
 
     system = _private_washed_in_system(
@@ -802,6 +881,7 @@ def _eliminate_without_rebreathing(
         cardiac_output_l_min,
         fresh_gas_flow_l_min,
         delivered_fraction,
+        vessel_rich_tissue_gas_partition_coefficient,
     )
     alveolar_fraction_at_discontinuation = system.alveoli.concentration_fraction
 
@@ -1394,6 +1474,94 @@ def test_removing_the_rebreathing_circuit_is_what_moves_the_elimination_comparis
         f"{open_circuit_distance:+.2f} SD against {measurement.source}; this module and "
         f"docs/MODEL.md attribute most of the elimination disagreement to the breathing "
         f"system, and that attribution is what has changed"
+    )
+
+
+@pytest.mark.parametrize(
+    "ceiling",
+    DESFLURANE_TISSUE_SOLUBILITY_CEILINGS,
+    ids=[f"{c.tissue_blood_partition_coefficient}" for c in DESFLURANE_TISSUE_SOLUBILITY_CEILINGS],
+)
+def test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination(
+    ceiling: TissueSolubilityCeiling,
+) -> None:
+    """Desflurane's open-circuit residual is not a solubility this file could hold.
+
+    The test above leaves desflurane 2.33 published SD *below* its cohort's
+    mean once the rebreathing circuit is gone - washing out faster than the
+    volunteers did, and on the opposite side from every other row. The
+    module's own sensitivity table says that ratio is a vessel-rich
+    tissue:gas measurement (+0.45 to +0.55 published SD per +10%), so the
+    obvious reading is that desflurane's vessel-rich coefficient is too low.
+    This test is what closes that reading off, and it is the reason
+    `data/agents/desflurane.json` was not changed (`PL-73G7`).
+
+    Raising the coefficient alone does reach the published mean: at
+    lambda_(vrg:b) = 2.24, against the shipped 1.286, the ratio lands on 0.140
+    and the wash-in row stays inside its spread at +0.55 SD, because the
+    vessel-rich group is fully equilibrated after 30 minutes and its capacity
+    is nearly invisible in F_A/F_I (measured 2026-09-08). What rules the
+    change out is not this model but the tissue measurement. Run the same
+    solve against each cohort's published ratio and the coefficients it
+    demands are:
+
+    | Agent | Demanded | Yasuda 1989 measured brain:blood | Distance |
+    | --- | --- | --- | --- |
+    | Sevoflurane | 1.74 | 1.70 +/- 0.09 | +0.42 SD |
+    | Isoflurane | 1.45 | 1.57 +/- 0.10 | -1.24 SD |
+    | Desflurane | 2.24 | 1.29 +/- 0.05 | +19 SD |
+
+    Two of the three land on the measurement. Desflurane's demand is nineteen
+    standard deviations above its own and above what either other agent
+    demands - it would make desflurane the *most* tissue-soluble of the three,
+    inverting the ordering the source paper exists to report. So the
+    residual cannot be this coefficient, and the assertion below is the
+    contrapositive: give desflurane a vessel-rich coefficient the published
+    human tissue data will bear and its elimination still misses on the same
+    side. Measured 2026-09-08:
+
+    | Coefficient given | F_A/F_A0 at 5 min | Against 0.14 +/- 0.02 |
+    | --- | --- | --- |
+    | 1.286, shipped | 0.0935 | -2.33 SD |
+    | 1.39, its own mean + 2 SD | 0.0998 | -2.01 SD |
+    | 1.70, sevoflurane's | 0.1167 | -1.17 SD |
+
+    **The two thresholds differ because the two ceilings claim different
+    things.** At desflurane's own measurement the residual is asserted to
+    exceed 1.5 SD, which still leaves 0.5 SD of margin under the measured
+    2.01 and says the published ratio is nowhere near reachable. At
+    sevoflurane's coefficient it is asserted only to exceed 0.75 SD, because
+    the measured 1.17 is genuinely close to the published spread's edge: a
+    reader should take from this that no admissible value reaches the
+    published *mean*, and not that the gap survives every conceivable value.
+    Asserting 1.0 at both would have hidden that difference behind a margin
+    of 0.17 SD.
+
+    This runs the diagnostic open circuit, so the caveat every other use of
+    it carries applies here too: no setting of the shipped simulator reaches
+    the condition, and nothing here is a statement about what a user sees.
+    """
+
+    measurement = next(m for m in PUBLISHED_MEASUREMENTS if m.agent_id == "desflurane")
+    blood_gas = load_agent_parameters("desflurane").blood_gas_partition_coefficient
+    ratio = _eliminate_without_rebreathing(
+        "desflurane",
+        vessel_rich_tissue_gas_partition_coefficient=(
+            ceiling.tissue_blood_partition_coefficient * blood_gas
+        ),
+    ).ratio
+    shortfall_sd = -measurement.elimination_distance_in_standard_deviations(ratio)
+
+    assert shortfall_sd > ceiling.minimum_shortfall_sd, (
+        f"desflurane given a vessel-rich tissue:blood coefficient of "
+        f"{ceiling.tissue_blood_partition_coefficient} ({ceiling.what_it_is}) eliminates "
+        f"into an open circuit to F_A/F_A0 {ratio:.4f} at 5 min, only {shortfall_sd:.2f} "
+        f"published SD below the {measurement.elimination_mean} +/- "
+        f"{measurement.elimination_standard_deviation} measured in "
+        f"{measurement.cohort_size} volunteers ({measurement.source}). This module and "
+        f"docs/MODEL.md say the residual is out of reach of any vessel-rich solubility "
+        f"the human tissue measurements support, and that is what has changed - re-open "
+        f"the question rather than raising the shipped coefficient to meet it"
     )
 
 
