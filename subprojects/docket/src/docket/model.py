@@ -266,7 +266,9 @@ class Item:
             return "open design decision"
         return None
 
-    def delegability(self, protected_paths: tuple[str, ...]) -> str | None:
+    def delegability(
+        self, protected_paths: tuple[str, ...], gate_paths: tuple[str, ...]
+    ) -> str | None:
         """Why this item may *not* be handed to a cheaper model, or None if it may.
 
         Derived, never stored, and that asymmetry is the whole safeguard. There
@@ -288,7 +290,18 @@ class Item:
           judgment and there is nothing for a reviewer to trust instead;
         - `touches` is declared and wholly outside the protected paths, so the
           diff's blast radius is known before the work starts;
+        - `touches` is also outside the gate paths, because `verify` fails any
+          diff that edits them and an item offered here would be refused
+          after the work was done rather than before it was started;
         - the effort is one a precise brief can actually cover.
+
+        The two path lists are read differently when *empty*, and the
+        difference is not an oversight. `protected_paths` has no default, so
+        empty means a project has never said which of its files produce
+        consequential output, and the safe reading of silence is to offer
+        nothing. `gate_paths` ships with a real default, so empty can only be
+        a project that cleared it deliberately - and one that has told
+        `verify` to stop auditing its checks has not asked this to start.
         """
         if self.not_delegable:
             return f"withheld: {self.not_delegable}"
@@ -306,6 +319,13 @@ class Item:
         protected = [path for path in self.touches if is_under(path, protected_paths)]
         if protected:
             return f"touches protected path(s) {', '.join(protected)}"
+        # Reported after the protected paths and phrased differently, because
+        # the two prohibitions differ in kind: one guards a clinical value and
+        # the other guards the measurement. A reader who cannot tell them
+        # apart learns to read neither.
+        gates = [path for path in self.touches if is_under(path, gate_paths)]
+        if gates:
+            return f"touches the checks themselves: {', '.join(gates)}"
         if self.effort not in DELEGABLE_EFFORTS:
             return f"effort {self.effort or 'unset'} is not {' or '.join(DELEGABLE_EFFORTS)}"
         return None

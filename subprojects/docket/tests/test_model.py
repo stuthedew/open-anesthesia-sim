@@ -152,12 +152,18 @@ def test_untriaged_items_sort_after_everything_triaged() -> None:
 
 # Delegability: whether an item may be handed to a cheaper model.
 #
-# Every test below asserts a *refusal* except one. That ratio is deliberate and
+# Every test below asserts a *refusal* except the few pinning where a refusal
+# stops. That ratio is deliberate and
 # it is the property worth protecting: the rule is a gate, and a gate is tested
 # by what it turns away. A regression that made everything delegable would pass
 # a suite written the other way round.
 
 PROTECTED = ("src/anesthesia_sim/core", "docs/MODEL.md")
+# A second list, and a second kind of prohibition: the files that measure the
+# work rather than the files that produce a clinical value. Kept short and
+# unlike the real one, so a test asserting a reason string is asserting the
+# rule rather than this repository's configuration.
+GATES = ("Makefile", ".claude", "docket.toml")
 
 
 def _delegable(**overrides: object) -> Item:
@@ -174,38 +180,38 @@ def _delegable(**overrides: object) -> Item:
 
 
 def test_an_item_meeting_every_condition_is_delegable() -> None:
-    assert _delegable().delegability(PROTECTED) is None
+    assert _delegable().delegability(PROTECTED, GATES) is None
 
 
 def test_a_safety_classed_item_is_never_delegable() -> None:
     item = _delegable(classes=("safety",))
-    assert item.delegability(PROTECTED) == "safety-tagged"
+    assert item.delegability(PROTECTED, GATES) == "safety-tagged"
 
 
 def test_a_science_classed_item_is_never_delegable() -> None:
-    assert _delegable(classes=("science",)).delegability(PROTECTED) == "science-tagged"
+    assert _delegable(classes=("science",)).delegability(PROTECTED, GATES) == "science-tagged"
 
 
 def test_an_open_decision_is_never_delegable() -> None:
     item = _delegable(status="needs-decision")
-    assert item.delegability(PROTECTED) == "status is needs-decision, not ready"
+    assert item.delegability(PROTECTED, GATES) == "status is needs-decision, not ready"
 
 
 def test_an_item_touching_a_protected_directory_is_not_delegable() -> None:
     item = _delegable(touches=("src/anesthesia_sim/core/blood.py",))
-    assert item.delegability(PROTECTED) == (
+    assert item.delegability(PROTECTED, GATES) == (
         "touches protected path(s) src/anesthesia_sim/core/blood.py"
     )
 
 
 def test_an_item_touching_a_protected_file_is_not_delegable() -> None:
     item = _delegable(touches=("docs/MODEL.md",))
-    assert item.delegability(PROTECTED) == "touches protected path(s) docs/MODEL.md"
+    assert item.delegability(PROTECTED, GATES) == "touches protected path(s) docs/MODEL.md"
 
 
 def test_one_protected_path_among_several_is_enough_to_refuse() -> None:
     item = _delegable(touches=("tests/unit/test_blood.py", "src/anesthesia_sim/core/blood.py"))
-    assert item.delegability(PROTECTED) is not None
+    assert item.delegability(PROTECTED, GATES) is not None
 
 
 def test_a_protected_prefix_does_not_match_a_merely_similar_path() -> None:
@@ -215,32 +221,80 @@ def test_a_protected_prefix_does_not_match_a_merely_similar_path() -> None:
     whose protected list happened to be a suffix of a real path, under-protect.
     """
     assert (
-        _delegable(touches=("src/anesthesia_sim/core_helpers.py",)).delegability(PROTECTED) is None
+        _delegable(touches=("src/anesthesia_sim/core_helpers.py",)).delegability(PROTECTED, GATES)
+        is None
     )
-    assert _delegable(touches=("docs/MODEL.md.bak",)).delegability(PROTECTED) is None
+    assert _delegable(touches=("docs/MODEL.md.bak",)).delegability(PROTECTED, GATES) is None
+
+
+def test_an_item_touching_the_checks_themselves_is_not_delegable() -> None:
+    """`docket verify` refuses such a diff, so offering the work refuses it later.
+
+    The two commands disagreed until `PL-S2L4`: `delegable` read only the
+    protected paths while `verify`'s "the checks themselves are unedited"
+    audit read the gate paths, so fifteen of the eighty-six items offered on
+    2026-09-08 were work that would have been REJECTed once a worker finished
+    it.
+    """
+    item = _delegable(touches=("docket.toml",))
+    assert item.delegability(PROTECTED, GATES) == "touches the checks themselves: docket.toml"
+
+
+def test_a_gate_directory_covers_the_files_beneath_it() -> None:
+    """Seven of the fifteen declared a file under `.claude/`, not `.claude` itself."""
+    item = _delegable(touches=(".claude/skills/docket/SKILL.md",))
+    assert item.delegability(PROTECTED, GATES) == (
+        "touches the checks themselves: .claude/skills/docket/SKILL.md"
+    )
+
+
+def test_a_protected_path_is_reported_ahead_of_a_gate_path() -> None:
+    """Both refuse, and the clinical one is the reason worth reading first."""
+    item = _delegable(touches=("docket.toml", "docs/MODEL.md"))
+    assert item.delegability(PROTECTED, GATES) == "touches protected path(s) docs/MODEL.md"
+
+
+def test_a_gate_prefix_does_not_match_a_merely_similar_path() -> None:
+    """`.claude` must not cover `.claudeignore`, nor `Makefile` cover `Makefile.bak`."""
+    assert _delegable(touches=(".claudeignore",)).delegability(PROTECTED, GATES) is None
+    assert _delegable(touches=("Makefile.bak",)).delegability(PROTECTED, GATES) is None
+
+
+def test_an_empty_gate_list_does_not_withhold_the_way_an_empty_protected_list_does() -> None:
+    """The asymmetry is deliberate, and it turns on which list has a default.
+
+    An empty `protected_paths` means a project never said which files produce
+    consequential output, and silence there is read as "offer nothing". An
+    empty `gate_paths` can only be a project that cleared a real default -
+    telling `verify` to stop auditing its checks, which is not a request for
+    this to start.
+    """
+    assert _delegable(touches=("docket.toml",)).delegability(PROTECTED, ()) is None
 
 
 def test_an_item_without_a_verify_command_is_not_delegable() -> None:
-    assert _delegable(verify="").delegability(PROTECTED) == "no `verify:` command"
+    assert _delegable(verify="").delegability(PROTECTED, GATES) == "no `verify:` command"
 
 
 def test_an_item_declaring_no_touches_is_not_delegable() -> None:
     """No declared scope means no bound on the diff, so nothing to verify against."""
-    assert _delegable(touches=()).delegability(PROTECTED) == "declares no `touches`"
+    assert _delegable(touches=()).delegability(PROTECTED, GATES) == "declares no `touches`"
 
 
 def test_an_l_effort_item_is_not_delegable() -> None:
-    assert _delegable(effort="L").delegability(PROTECTED) == "effort L is not S or M"
+    assert _delegable(effort="L").delegability(PROTECTED, GATES) == "effort L is not S or M"
 
 
 def test_not_delegable_withholds_an_otherwise_qualifying_item() -> None:
     item = _delegable(not_delegable="the message wording needs a judgement call")
-    assert item.delegability(PROTECTED) == ("withheld: the message wording needs a judgement call")
+    assert item.delegability(PROTECTED, GATES) == (
+        "withheld: the message wording needs a judgement call"
+    )
 
 
 def test_nothing_is_delegable_when_no_protected_paths_are_configured() -> None:
     """Fail closed: an unconfigured project gets no lane rather than an unguarded one."""
-    assert _delegable().delegability(()) == "no protected paths configured"
+    assert _delegable().delegability((), GATES) == "no protected paths configured"
 
 
 def test_there_is_no_field_that_grants_delegability() -> None:

@@ -120,7 +120,12 @@ def format_unread(flight: FlightReport) -> str:
     )
 
 
-def _marks(item: Item, in_flight: Collection[str], protected: tuple[str, ...] = ()) -> str:
+def _marks(
+    item: Item,
+    in_flight: Collection[str],
+    protected: tuple[str, ...] = (),
+    gates: tuple[str, ...] = (),
+) -> str:
     marks = [m for m in (item.effort, item.status) if m]
     if item.milestone:
         marks.append(item.milestone)
@@ -128,13 +133,16 @@ def _marks(item: Item, in_flight: Collection[str], protected: tuple[str, ...] = 
         marks.append("IN FLIGHT")
     if item.model_guidance is not None:
         marks.append(f"{item.model_guidance}, strongest model")
-    elif item.delegability(protected) is None:
+    elif item.delegability(protected, gates) is None:
         marks.append("delegable")
     return ", ".join(marks)
 
 
 def format_list(
-    report: Report, in_flight: FlightReport | None = None, protected_paths: tuple[str, ...] = ()
+    report: Report,
+    in_flight: FlightReport | None = None,
+    protected_paths: tuple[str, ...] = (),
+    gate_paths: tuple[str, ...] = (),
 ) -> str:
     """One line per open item: the queue without the briefs."""
     flight = in_flight or FlightReport()
@@ -147,7 +155,7 @@ def format_list(
     for item in ordered:
         lines.append(
             f"{item.priority} {item.identifier:<{width}} {item.title} "
-            f"({_marks(item, flight.ids, protected_paths)})"
+            f"({_marks(item, flight.ids, protected_paths, gate_paths)})"
         )
 
     if report.untriaged:
@@ -162,7 +170,10 @@ def format_list(
 
 
 def format_delegable(
-    report: Report, in_flight: FlightReport, protected_paths: tuple[str, ...]
+    report: Report,
+    in_flight: FlightReport,
+    protected_paths: tuple[str, ...],
+    gate_paths: tuple[str, ...],
 ) -> str:
     """The worker's whole reading list: what may be worked, and what proves it.
 
@@ -175,7 +186,8 @@ def format_delegable(
     candidates = [
         item
         for item in sorted(report.open_items, key=lambda i: i.sort_key())
-        if item.delegability(protected_paths) is None and item.identifier not in in_flight.ids
+        if item.delegability(protected_paths, gate_paths) is None
+        and item.identifier not in in_flight.ids
     ]
     unread = format_unread(in_flight)
     if not candidates:
@@ -186,8 +198,8 @@ def format_delegable(
                     "Nothing is delegable right now.",
                     "An item qualifies when it is ready, is not safety- or science-classed, "
                     "names a `verify:` command,",
-                    "and declares `touches` outside the "
-                    "protected paths. `docket list` shows what is open.",
+                    "and declares `touches` outside both the protected paths and the "
+                    "checks themselves. `docket list` shows what is open.",
                     unread,
                 ),
             )
@@ -961,6 +973,16 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
             f"`touches` naming {', '.join(config.protected_paths)} makes the item "
             "non-delegable whatever proves it, so a cheaper model can never take it."
         )
+        # Nested rather than a rule of its own: with no protected paths
+        # nothing is delegable at all, and a project that has not opened the
+        # lane does not need to be told what would close it again.
+        if config.gate_paths:
+            rules.append(
+                f"`touches` naming {', '.join(config.gate_paths)} makes the item "
+                "non-delegable for a second reason: `docket verify` fails any diff "
+                "that edits the checks, so offering the work would mean refusing it "
+                "once done."
+            )
     if config.verify_required_from is not None:
         rules.append(
             "an item set to `ready` must name a `verify:` command, or record in "

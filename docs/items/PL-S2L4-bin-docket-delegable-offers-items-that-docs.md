@@ -3,12 +3,13 @@ id: PL-S2L4
 title: bin/docket delegable offers items that docs/worker.md forbids a worker to touch
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: docket.toml, docs/worker.md, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
+touches: docket.toml, docs/worker.md, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-08-30
-verify: uv run pytest subprojects/docket/tests/test_model.py -k check_paths
+closed: 2026-09-08
+verify: uv run pytest subprojects/docket/tests/test_model.py subprojects/docket/tests/test_cli.py && grep -q 'def test_an_item_touching_the_checks_themselves_is_not_delegable' subprojects/docket/tests/test_model.py
 ---
 
 **Problem.** Two lists say what a delegated worker may not edit, and they
@@ -58,12 +59,45 @@ edit the checks themselves" bullet), and
   "38 deselected / 0 selected" - the bare-`-k` shape the `docket` skill names.
   It is rewritten in the paired shape as part of the work.
 
-**Approach.** One list has to become the other's source. The cheap version is
-to add the check paths to `protected_paths`, which lets `delegability` decide
-the whole rule and lets `docs/worker.md` cite the config rather than restate
-it. Worth deciding as part of that: whether the wider list should block
-delegation outright or only warn, since "may not edit the Makefile" is a
-different kind of prohibition from "may not edit the physiology".
+**Approach.** One list has to become the other's source, and the source is
+`gate_paths` rather than `protected_paths` (project owner, 2026-09-08). The
+sketch this item was captured with - fold the check paths into
+`protected_paths` - was put aside for three reasons found in the measurement
+above. It would write a third statement of the list rather than removing the
+second. It would make `verify`'s "no protected path modified" check fail for
+a `Makefile` edit, which is a safety signal firing for a non-safety cause and
+the surest way to teach a reader to skim it; `render.py` prints
+`protected_paths` verbatim to a triaging session as the clinical-output rule,
+so the same sentence would come to read `Makefile, docket.toml, ...`. And
+`docket` is a subproject shared with other repositories, so a fix living only
+in this repository's config leaves the defect in the package.
+
+Block rather than warn, and that was not a judgment call in the end: `verify`
+is already an absolute block on these paths, so a warning here would mean
+offering work the acceptance audit is certain to refuse.
+
+**Built.**
+
+1. `Item.delegability` takes `gate_paths` beside `protected_paths` and refuses
+   on either, with its own reason string - `touches the checks themselves: X`
+   against `touches protected path(s) X` - reported second, so the clinical
+   prohibition is the one a reader meets first when both apply. The two lists
+   are read differently when empty, which the docstring and a test both carry:
+   an empty `protected_paths` means a project never declared one and delegation
+   closes, while an empty `gate_paths` can only mean a real default was cleared
+   deliberately.
+2. `docket.toml` writes `gate_paths` out - the five package defaults plus
+   `tools/ruff.toml` and `subprojects/docket/ruff.toml`, which `docs/worker.md`
+   forbade and no configured list covered. `.claude/hooks/ruff.toml` needs no
+   entry, being under `.claude`.
+3. `docs/worker.md` cites that list instead of restating it.
+4. `format_delegable`'s empty answer and `bin/docket triage`'s printed rules
+   name both prohibitions. The triage rule is nested inside the protected-paths
+   one: where delegation is closed entirely there is nothing to qualify.
+5. `subprojects/docket/tests/test_cli.py` carries the end-to-end guard - an
+   item touching `Makefile`, withheld from `bin/docket delegable` through the
+   package default rather than through the store's own config, which is the
+   only thing that can catch a call site that forgets to pass the list.
 
 **Done when.** An item whose `touches` names a path `docs/worker.md` forbids
 is not listed by `bin/docket delegable`, and the prohibition is stated in one

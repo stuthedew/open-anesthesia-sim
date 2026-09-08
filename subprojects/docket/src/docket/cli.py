@@ -332,7 +332,7 @@ def _offered(
 def cmd_list(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    rendered = render.format_list(report, _flight(args), config.protected_paths)
+    rendered = render.format_list(report, _flight(args), config.protected_paths, config.gate_paths)
     if rendered:
         print(rendered)
     return 0
@@ -1128,7 +1128,7 @@ def cmd_delegable(args: argparse.Namespace) -> int:
     """Everything a worker may take, with the command that proves each one."""
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    print(render.format_delegable(report, _flight(args), config.protected_paths))
+    print(render.format_delegable(report, _flight(args), config.protected_paths, config.gate_paths))
     return 0
 
 
