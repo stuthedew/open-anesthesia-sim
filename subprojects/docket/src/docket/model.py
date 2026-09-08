@@ -213,6 +213,12 @@ class Item:
     #: The reason a qualifying item is withheld from delegation. Presence is
     #: the switch; there is deliberately no field that grants delegability.
     not_delegable: str = ""
+    #: The item file's name inside the store directory - `PL-K7QX-do-it.md`,
+    #: never `docs/items/PL-K7QX-do-it.md`. A repository path is that name
+    #: joined to the store directory, which is what `verify.front_matter_check`
+    #: does; built without the join, the `git show` it feeds asks for a path no
+    #: ref holds, and the miss is indistinguishable from a clean comparison
+    #: (`PL-20PT`).
     path: str = ""
     unknown_fields: tuple[str, ...] = field(default_factory=tuple)
     duplicate_fields: tuple[str, ...] = field(default_factory=tuple)

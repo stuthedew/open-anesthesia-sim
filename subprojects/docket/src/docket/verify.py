@@ -361,27 +361,64 @@ def _removed_lines(root: Path, base: str, commits: tuple[str, ...] = ()) -> list
     return [line[1:] for line in diff.splitlines() if line.startswith("-") and line[1:2] != "-"]
 
 
-def _front_matter_changed(root: Path, base: str, item: Item) -> tuple[str, ...]:
-    """Front-matter keys whose value the branch changed.
+def _store_at(root: Path, base: str, items_dir: str) -> tuple[str, ...] | None:
+    """The item filenames the base ref holds, or `None` where its store cannot be read."""
+    status, listing = _run(["git", "ls-tree", "--name-only", f"{base}:{items_dir}"], root)
+    if status != 0:
+        return None
+    return tuple(line.strip() for line in listing.splitlines() if line.strip())
+
+
+def front_matter_check(root: Path, base: str, items_dir: str, item: Item) -> Check:
+    """Whether the branch edited the front matter of its own item.
 
     A worker adds a `**Worked.**` or `**Blocked.**` note to an item's body and
     changes nothing above the fence. Marking work done, re-scoping `touches`,
     or rewriting the `verify:` command it was measured against are the
     reviewer's, and a branch that did any of them is reporting on a commission
     other than the one it was given.
+
+    Returns the `Check` rather than the keys that differ, because what broke
+    this was a third outcome with nowhere to go. `Item.path` is a filename
+    inside the store, so the repository path wanted here is `items_dir` joined
+    to it; built without the join, every `git show` asked for a path no ref has
+    ever held, and the miss came back as the same empty set a clean comparison
+    returns. The check then printed `PASS  item front matter unchanged` on
+    every branch there has ever been, the ones that marked their own item done
+    included (`PL-20PT`). So a comparison that could not be made is a refusal
+    here: "could not look" and "looked, found nothing" are what the rest of
+    this module exists to keep apart.
+
+    A base holding no store at all is refused for that reason too, rather than
+    read as a store of entirely new items - `vcs.stranded` declines the mirror
+    case on the same argument, that an answer identical for every item is a
+    misconfiguration reporting itself as a finding.
+
+    The base copy is found by id rather than by name, because `store.write_item`
+    renames the file when the title changes - and the title is front matter, so
+    looking the current name up would miss the one edit that moves the file out
+    from under the guard watching it.
     """
+    name = "item front matter unchanged"
     if not item.path:
-        return ()
-    status, before = _run(["git", "show", f"{base}:{item.path}"], root)
-    if status != 0:
-        return ()  # a new item file has no previous front matter to differ from
+        return Check(name, False, "the item names no file, so there was nothing to compare")
     try:
-        after = (root / item.path).read_text(encoding="utf-8")
+        after = (root / items_dir / item.path).read_text(encoding="utf-8")
     except OSError:
-        return ()
+        return Check(name, False, f"no item file to read at {items_dir}/{item.path}")
+    held = _store_at(root, base, items_dir)
+    if held is None:
+        return Check(name, False, f"no item store at {base}:{items_dir} to compare against")
+    was = next((held_name for held_name in held if held_name.startswith(f"{item.identifier}-")), "")
+    if not was:
+        return Check(name, True, f"a new item file - {base} holds no copy to differ from")
+    status, before = _run(["git", "show", f"{base}:{items_dir}/{was}"], root)
+    if status != 0:
+        return Check(name, False, f"{base}:{items_dir}/{was} could not be read")
     old, _ = parse_front_matter(before)
     new, _ = parse_front_matter(after)
-    return tuple(sorted(k for k in set(old) | set(new) if old.get(k) != new.get(k)))
+    changed = tuple(sorted(k for k in set(old) | set(new) if old.get(k) != new.get(k)))
+    return Check(name, not changed, ", ".join(changed) if changed else "unchanged")
 
 
 def base_warning(root: Path, base: str) -> str:
@@ -492,12 +529,7 @@ def verify_item(
         )
     )
 
-    fields = _front_matter_changed(root, base, item)
-    report.checks.append(
-        Check(
-            "item front matter unchanged", not fields, ", ".join(fields) if fields else "unchanged"
-        )
-    )
+    report.checks.append(front_matter_check(root, base, config.items_dir, item))
 
     if os.environ.get(VERIFY_GUARD):
         report.checks.append(

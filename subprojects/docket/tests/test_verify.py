@@ -25,6 +25,8 @@ from docket.verify import (
     LANDED_GUARD,
     TIMED_OUT,
     VERIFY_GUARD,
+    Check,
+    Verification,
     already_passing,
     changed_paths,
     item_commits,
@@ -46,6 +48,14 @@ def _git(root: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True)
 
 
+def _stored(identifier: str, title: str, **fields: str) -> str:
+    """One item file as the store holds it: front matter, then the brief."""
+    front = {"id": identifier, "title": title, "status": "ready", "verify": "true", **fields}
+    return (
+        "---\n" + "".join(f"{key}: {value}\n" for key, value in front.items()) + "---\n\n" + BRIEF
+    )
+
+
 def _repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     (root / "docs" / "items").mkdir(parents=True)
@@ -57,9 +67,23 @@ def _repo(tmp_path: Path) -> Path:
     (root / "tests" / "test_thing.py").write_text(KEPT)
     (root / "src" / "core.py").write_text("VALUE = 1\n")
     (root / "Makefile").write_text("check:\n\ttrue\n")
+    # The store the items below are read from in real use. Without it every
+    # front-matter comparison would be against a file the base does not hold,
+    # which is one case rather than the ordinary one.
+    items = root / "docs" / "items"
+    (items / "PL-K7QX-do-the-thing.md").write_text(_stored("PL-K7QX", "Do the thing"))
+    (items / "PL-B2B2-do-the-other.md").write_text(_stored("PL-B2B2", "Do the other"))
     _git(root, "add", "-A")
     _git(root, "commit", "-qm", "base")
     return root
+
+
+def _check(report: Verification, name: str) -> Check:
+    """The one check by that name, so a test can assert on what it said."""
+    return next(check for check in report.checks if check.name == name)
+
+
+FRONT_MATTER = "item front matter unchanged"
 
 
 def _item(**overrides: object) -> Item:
@@ -275,9 +299,141 @@ def test_the_item_s_own_file_is_always_in_scope(tmp_path: Path) -> None:
     """A worker is asked to append a `**Worked.**` note, so its own file counts."""
     root = _repo(tmp_path)
     _work(
-        root, "PL-K7QX note", "docs/items/PL-K7QX-do-the-thing.md", "---\nid: PL-K7QX\n---\n\nx\n"
+        root,
+        "PL-K7QX note",
+        "docs/items/PL-K7QX-do-the-thing.md",
+        _stored("PL-K7QX", "Do the thing") + "\n**Worked.** Added the test.\n",
     )
     assert verify(root, _item(), _config(), "HEAD~1").passed
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("status", "done"), ("touches", "src/core.py"), ("verify", "pytest -k something_else")],
+)
+def test_a_branch_that_edits_its_own_front_matter_is_refused(
+    tmp_path: Path, field: str, value: str
+) -> None:
+    """Marking the work done, re-scoping it, or rewriting what measures it.
+
+    All three are the reviewer's, and all three read as `PASS  item front
+    matter unchanged` for as long as the guard looked the item file up by a
+    path no ref holds (`PL-20PT`).
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    _work(
+        root,
+        "PL-K7QX report on it",
+        "docs/items/PL-K7QX-do-the-thing.md",
+        _stored("PL-K7QX", "Do the thing", **{field: value}),
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~2")
+
+    assert not report.passed
+    assert _check(report, FRONT_MATTER).detail == field
+
+
+def test_an_item_file_the_base_does_not_hold_is_accepted_as_a_new_one(tmp_path: Path) -> None:
+    """An item captured on the branch that works it has no earlier commission."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-N3W1 capture it",
+        "docs/items/PL-N3W1-a-new-one.md",
+        _stored("PL-N3W1", "A new one"),
+    )
+    _work(
+        root,
+        "PL-N3W1 add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(
+        root, _item(identifier="PL-N3W1", path="PL-N3W1-a-new-one.md"), _config(), "HEAD~2"
+    )
+
+    assert report.passed
+    assert "new item file" in _check(report, FRONT_MATTER).detail
+
+
+def test_a_title_edit_that_renames_the_file_is_still_compared_by_id(tmp_path: Path) -> None:
+    """The rename is `store.write_item`'s, and the title is front matter.
+
+    Looked up by its current name, the renamed file has no copy at the base and
+    reads as a new item - so the one edit that moves an item file would be the
+    one edit the guard cannot see.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    (root / "docs" / "items" / "PL-K7QX-do-the-thing.md").unlink()
+    _work(
+        root,
+        "PL-K7QX retitle it",
+        "docs/items/PL-K7QX-do-something-else.md",
+        _stored("PL-K7QX", "Do something else"),
+    )
+
+    report = verify(root, _item(path="PL-K7QX-do-something-else.md"), _config(), "HEAD~2")
+
+    assert not report.passed
+    assert _check(report, FRONT_MATTER).detail == "title"
+
+
+def test_an_item_file_that_resolves_to_nothing_is_refused_rather_than_passed(
+    tmp_path: Path,
+) -> None:
+    """A path that cannot be read is a check that did not run, not one that passed."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(path="PL-K7QX-under-a-name-nothing-holds.md"), _config(), "HEAD~1")
+
+    assert not report.passed
+    assert "no item file to read" in _check(report, FRONT_MATTER).detail
+
+
+def test_a_base_holding_no_store_at_all_is_refused_rather_than_read_as_new(tmp_path: Path) -> None:
+    """Every item on the branch would read as new, which is a misconfiguration.
+
+    `vcs.stranded` declines the mirror case for the same reason: an answer that
+    comes out identical for every item is the configuration reporting itself.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    _work(
+        root,
+        "PL-K7QX move the store",
+        "docs/queue/PL-K7QX-do-the-thing.md",
+        _stored("PL-K7QX", "Do the thing"),
+    )
+
+    report = verify(root, _item(), _config(items_dir="docs/queue"), "HEAD~2")
+
+    assert not report.passed
+    assert "no item store at HEAD~2:docs/queue" in _check(report, FRONT_MATTER).detail
 
 
 def test_a_base_with_nothing_between_it_and_head_is_not_a_pass(tmp_path: Path) -> None:

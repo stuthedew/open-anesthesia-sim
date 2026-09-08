@@ -8,8 +8,9 @@ classes: defect, infra
 feature: planning-cadence
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-09-08
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_reported' tests/unit/test_doc_check.py
 closed: 2026-09-08
+pr: 476
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_reported' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `ROADMAP.md` § "The gate is a snapshot, not a moving target"
