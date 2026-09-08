@@ -98,6 +98,22 @@ monotone) is the live defect against this requirement in the M4 path, and is
 deliberately kept rather than dropped with `PL-C4PH`: it ships today, and its test
 is written against the drawn set so this item inherits it.
 
+**"To the last displayed digit" is deliberately coupled to display resolution
+(project owner, 2026-09-08), and that does not cross the line `docs/MODEL.md`
+draws.** The question raised was whether pinning the guarantee to the readout
+means a later precision change moves it. It does, and that is correct here.
+`docs/MODEL.md` § "Supported simulation step" forbids the traffic in the *other*
+direction - "the readout's decimal count is a presentation decision (§ 'Displayed
+precision') and must not reach back into the model" - which is why the step
+tolerance and the supported ranges are stated in absolute percentage points
+rather than in counts of the readout. This requirement is a statement about the
+*chart*, expressed in the units a reader actually reads it in, so it is the
+permitted direction rather than the forbidden one. Nor is the peg arbitrary: the
+two-decimal readout is itself derived from model fidelity (§ "Displayed
+precision"), one published SD of a partition coefficient displacing a compartment
+by 8.7e-4 to 6.8e-2 pp. An absolute tolerance was considered and refused: it
+would invent a number nobody measured, where this one inherits a derivation.
+
 **Done when.** `RunHistory` and `history_window` are gone; the chart is drawn
 from evaluated columns; a control event inside the visible window always gets
 its own column; `docs/MODEL.md` states, in those words, that **the drawn chart
