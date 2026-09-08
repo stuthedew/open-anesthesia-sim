@@ -30,13 +30,24 @@ disagree." The item still owes the attribution disclosure in `README.md`, the
 trailer scheme in `CONTRIBUTING.md`, and the owner's approval of any statement
 made about him.
 
-**Why it is not local.** `make check` runs `bin/docket check`; only CI runs
-`bin/docket check --verify`, and only the sweep reaches an open item's
-command. So a session runs a clean `make check`, pushes, and finds the base and
-its own branch red for something no local gate reports. This is the
-"routed around" test in `CLAUDE.md`'s compounding-friction rule: a required
-check red on every run, for a reason no branch introduced, trains a reader to
-stop looking at it.
+**Nothing but a push to `main` can see it, and that is the sharper half.**
+`make check` runs `bin/docket check` without `--verify`, so no local gate
+reaches an open item's command. A *pull request* runs
+`bin/docket check --verify --verify-base origin/<base>`, scoped by `PL-P3B6`
+and `PL-L17Q` to the items the branch itself edited - correctly, since a branch
+cannot have changed whether some other item's work merged. The whole-store
+sweep runs only on a push to the default branch.
+
+So the failure is invisible everywhere a session could act on it and visible
+only after the merge, on a run nobody is watching and no pull request shows.
+Measured 2026-09-08: `#490` is green on exactly the tree whose `main` run is
+red. Every merge from here re-reds `main` until this is fixed, and each one
+looks like a fresh break rather than the same one.
+
+That is two of `CLAUDE.md`'s three compounding-friction tests at once - it
+gives a wrong answer silently to every branch, and the advisory that would
+carry it is one nobody is positioned to read - which is why this is worth
+raising rather than filing and moving on.
 
 **The fix is one line**, and it is the shape the `docket` skill prescribes -
 something that runs and passes today, paired with a `grep` for what this item's
