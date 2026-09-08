@@ -84,6 +84,18 @@ class AgentColorScheme:
 # pair exceeds WCAG 2.2's 4.5:1 minimum for normal text; the agent name remains
 # visible everywhere the color appears, so color is never the only cue.
 # https://www.w3.org/TR/WCAG22/#contrast-minimum
+#
+# That claim is about the pair *as rendered*, and it is not self-enforcing: a
+# control drawn in `foreground` over `fill` can still reach the screen in some
+# other colour entirely if a widget state overrides it. The agent selector did,
+# for the whole of every run - Flet/Material paints a disabled control's label
+# in the theme's disabled-content grey, which is a colour this file does not
+# declare and `tools/contrast_check.py` therefore cannot measure, over a fill
+# that stayed saturated (PL-61WW). The fix is in `app/simulation_view.py` and
+# is structural rather than a colour: nothing carrying agent identity is
+# disabled, so the pair measured here is the pair rendered. A new use of these
+# colours owes the same question - is anything between this constant and the
+# screen entitled to substitute its own?
 AGENT_COLOR_SCHEMES: Final[dict[str, AgentColorScheme]] = {
     "sevoflurane": AgentColorScheme(
         fill="#FEDB00",
