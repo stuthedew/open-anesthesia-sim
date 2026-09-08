@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux, infra
 feature: presentation-safety
+milestone: v0.4.11
 touches: src/anesthesia_sim/app_metadata.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py, tests/unit/test_app_metadata.py, tools/import_boundary_check.py, docs/ARCHITECTURE.md
 added: 2026-09-08
 closed: 2026-09-08

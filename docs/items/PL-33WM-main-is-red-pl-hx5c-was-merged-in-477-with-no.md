@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.4.11
 touches: ROADMAP.md
 added: 2026-09-08
 closed: 2026-09-08

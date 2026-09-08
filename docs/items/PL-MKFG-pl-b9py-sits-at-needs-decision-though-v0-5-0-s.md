@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.4.11
 touches: docs/items/PL-B9PY-decompose-simulationview-so-two-runs-can-be.md
 added: 2026-09-08
 closed: 2026-09-08
