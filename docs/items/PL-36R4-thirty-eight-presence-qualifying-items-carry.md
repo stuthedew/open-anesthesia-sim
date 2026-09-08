@@ -3,11 +3,13 @@ id: PL-36R4
 title: "Forty-two presence-qualifying items carry neither a gate placement nor a recorded deferral, which is the one disposition ROADMAP's presence rule forbids"
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: planning-cadence
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-09-08
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_reported' tests/unit/test_doc_check.py
+closed: 2026-09-08
 ---
 
 **Problem.** `ROADMAP.md` § "The gate is a snapshot, not a moving target"
@@ -142,6 +144,24 @@ exactly this kind of triage.
 **Whichever is chosen, the check is the same and is the durable half.** The
 decision above is one afternoon; the mechanism that stops the silence
 recurring is what this item is for.
+
+**Outcome (project owner, 2026-09-08): route 2, on `docket.toml`'s own lane
+boundary.** The recommendation named "the five `presentation-safety` entries"
+against "the twenty `dev-tooling` and `parallel-sessions` entries", which
+accounted for only 25 of the 42 and was a sketch rather than a rule. Applying
+the project's existing `workflow_paths` boundary to each item's `touches`
+instead makes the split decidable and complete: **13 admitted** - the ten in
+the product lane and the three reaching both halves - and **29 declined**, all
+of them wholly in the workflow lane. Gate 1 goes to 145 entries rather than the
+173 the mechanical answer would have given. Both groups are written into
+`ROADMAP.md` under dated headings, the declined one carrying the
+refilling-queue reason the rule requires.
+
+`check_gate_dispositions` in `tools/doc_check.py` is the durable half. It is an
+advisory, it decides nothing, and it is quiet today because every open debt
+item now carries a disposition - which is what stops it becoming the check
+`CLAUDE.md` calls a defect. Six tests cover it, including one against the real
+tree; `PL-PDP6` records that its sibling `check_gate_reentries` has none.
 
 **Done when.** Every one of the 38 either appears in the frozen list under a
 dated group heading, or carries a recorded reason for deferring to Gate 2; and
