@@ -42,3 +42,19 @@ already share so the check and the writer cannot disagree.
 **Done when.** `docket check` fails an item whose filename does not match the
 slug its title generates, and `make check` catches the drift on the tree that
 has it.
+
+**The "unrelated rewrite" that fixes it is not free, observed 2026-09-08.**
+`bin/docket record`, run to write six owed `pr` numbers, re-rendered
+`PL-36R4` and renamed its file from the `thirty-eight` slug to `forty-two`,
+its title having been changed on `main` while the filename was not. That is
+the cure this brief describes, and it arrived attached to a commit about
+something else entirely — while `origin/claude/ui-overhaul-planning-avjx5r`
+was editing that same file, which makes it a rename-against-edit conflict for
+whoever merges second. The rename was backed out of that commit for exactly
+that reason.
+
+So a check here has a second job beyond reporting the drift: whatever fixes
+one should not fix it as a side effect of an unrelated command, because the
+session running that command has no reason to be looking at who else holds the
+file. Reporting the drift and leaving the rename to a session that has checked
+is the safer split.

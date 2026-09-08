@@ -941,7 +941,17 @@ class SimulationView:
         # the two cannot come to disagree about the scale they describe.
         self._mac_axis_basis = initial_snapshot.agent_mac_percent
         self._mac_axis = fch.ChartAxis(
-            title=ft.Text("multiples of 1 MAC", color=MUTED, size=METRIC_QUALIFIER_SIZE),
+            # `×MAC`, the same token every numeric MAC readout on the page
+            # carries (`formatting.MAC_UNIT_SUFFIX`), rather than a second
+            # wording for one unit. The ticks read bare numbers - "0.5",
+            # "1.0" - so this title is the only thing that says what they
+            # are, which is exactly the position `docs/MODEL.md` § "MAC
+            # multiples as a display unit" writes the notation rule for:
+            # "0.80 MAC" is read as a depth of anesthesia and "0.80 ×MAC" as
+            # the partial-pressure ratio it is. The divisor is not repeated
+            # here because `_mac_reference_text` names it in full - "1 MAC
+            # sevoflurane = 2.0%" - a few lines above the plot (PL-6580).
+            title=ft.Text("×MAC", color=MUTED, size=METRIC_QUALIFIER_SIZE),
             labels=self._build_mac_axis_labels(self._mac_axis_basis),
             # The MAC ticks are the whole point of the axis, so the ends of
             # the percent range must not add two more at whatever multiples
@@ -1061,7 +1071,17 @@ class SimulationView:
             # carries why, and why it does not move during a run.
             max_y=chart_axis_top_percent(initial_snapshot.agent_mac_percent),
             left_axis=fch.ChartAxis(
-                title=ft.Text("percent", color=MUTED, size=METRIC_QUALIFIER_SIZE)
+                # "percent of what" has to be on the axis, because after
+                # PL-6580 stripped the caption's axis key this is the only
+                # place the left scale is named. Not "vol %": that is a
+                # gas-phase volume fraction, true of the circuit and
+                # alveolar traces and a category error on the muscle, fat
+                # and vessel-rich ones, which hold a partial pressure that
+                # convention quotes as a percentage of an atmosphere.
+                # `docs/MODEL.md` § "MAC multiples as a display unit" states
+                # the compartments are displayed "as a percent of one
+                # atmosphere", and this is that phrase at axis length.
+                title=ft.Text("% of 1 atm", color=MUTED, size=METRIC_QUALIFIER_SIZE)
             ),
             right_axis=self._mac_axis,
             bottom_axis=self._time_axis,
@@ -1850,32 +1870,21 @@ class SimulationView:
                         run_spacing=6,
                     ),
                     self._time_axis_caption,
-                    # The convention, stated where the numbers that depend on
-                    # it are read. A MAC multiple on the alveolar trace is the
-                    # conventional reading; on the other five it is a
-                    # partial-pressure ratio, and the two are indistinguishable
-                    # on a label unless the label says which. `docs/MODEL.md`
-                    # § "MAC multiples as a display unit" is the specification
-                    # this sentence is the display-side half of, and PL-DHV7
-                    # the item that required both.
-                    ft.Row(
-                        controls=[
-                            self._mac_reference_text,
-                            ft.Text(
-                                (
-                                    "A MAC multiple is a compartment's partial pressure "
-                                    "relative to the alveolar concentration that would be "
-                                    "1 MAC in a 40-year-old — not a depth of anesthesia, "
-                                    "and not adjusted for age or any second agent."
-                                ),
-                                color=MUTED,
-                                italic=True,
-                            ),
-                        ],
-                        wrap=True,
-                        spacing=8,
-                        run_spacing=2,
-                    ),
+                    # The divisor every MAC number on this page was produced
+                    # with - "1 MAC sevoflurane = 2.0%" - which is the
+                    # traceability `CLAUDE.md`'s clinical-output standard
+                    # asks for, in the form it asks for it: a named value
+                    # rather than an explanation of one.
+                    #
+                    # PL-DHV7 also required the convention in prose here -
+                    # that a multiple on a non-alveolar compartment is a
+                    # partial-pressure ratio and not a depth of anesthesia.
+                    # PL-6580 removed that paragraph as tutorial for this
+                    # audience and left the notation to carry it, which is
+                    # what the axis title and the readouts' unit suffix are
+                    # for. `docs/MODEL.md` "MAC multiples as a display unit"
+                    # holds the full statement.
+                    self._mac_reference_text,
                     # The compartment legend, which is also the control that
                     # shows and hides each trace - `_build_trace_legend_item`
                     # records why those are one row and not two. Labelled
@@ -1893,21 +1902,22 @@ class SimulationView:
                         spacing=16,
                         run_spacing=6,
                     ),
-                    # What unchecking one does, and - the part that matters -
-                    # what it does not. A reader looking at two curves has to
-                    # know they are looking at a chosen view of six modelled
-                    # compartments rather than at a model with two, and that
-                    # the run is the same run either way.
-                    ft.Text(
-                        (
-                            "Unchecking a compartment removes its trace from the plot "
-                            "only. Its concentration stays in the readouts above, and "
-                            "the simulation is unchanged — this chooses what is drawn, "
-                            "not what is modelled."
-                        ),
-                        color=MUTED,
-                        italic=True,
-                    ),
+                    # `_hidden_traces_text` names the compartments currently
+                    # unchecked, which is what stops a hidden trace reading
+                    # as a compartment the model does not have. It is state,
+                    # and it stays.
+                    #
+                    # The paragraph above it until PL-6580 said that
+                    # unchecking removes a trace from the plot only and
+                    # leaves the run unchanged. Nothing was lost with it.
+                    # The readouts above the chart go on showing that
+                    # compartment's concentration while its curve is gone,
+                    # which shows the reader the claim rather than asserting
+                    # it - and `NO_TRACES_SHOWN_TEXT` states it in words at
+                    # the one moment it is not self-evident, when every
+                    # trace is off and the panel is blank. A standing
+                    # paragraph was the same sentence charged to every
+                    # reader on every frame.
                     self._hidden_traces_text,
                     self._off_scale_text,
                     # The references get their own legend row rather than
@@ -1916,54 +1926,67 @@ class SimulationView:
                     # eighth trace - which is the misreading PL-F52R exists to
                     # prevent, arriving through the legend instead of the
                     # chart.
+                    #
+                    # Each entry names the compartment it is read against,
+                    # which `docs/MODEL.md` "Interface boundary" requires of
+                    # a reference in the same breath as it exempts one from
+                    # the drawn-trace rule: a published constant may be
+                    # drawn without a sample behind it, and it owes a reader
+                    # the value, the divisor, and the curve to read it
+                    # against in exchange. Both were in the prose PL-6580
+                    # removed, so the labels carry them now. Not a
+                    # restatement of the deleted paragraphs but the part of
+                    # them that was a label all along - and the part with
+                    # clinical consequence, since every way of pairing a
+                    # reference with the wrong trace here shortens the
+                    # apparent time to awakening.
                     ft.Row(
                         controls=[
                             ft.Text("Clinical references:", color=MUTED),
+                            # Vessel-rich, not alveolar. The model has no
+                            # effect-site compartment and defines the
+                            # arterial fraction as the alveolar one, so the
+                            # alveolar trace is the fastest curve on the
+                            # chart and the furthest from where
+                            # responsiveness returns; the stored fractions
+                            # are slow-washout values, which Katoh measured
+                            # against cerebral concentration.
                             self._build_band_legend_item(
-                                "MAC-awake (population, ±1 SD)", MAC_AWAKE_BAND_COLOR
+                                "MAC-awake (population, ±1 SD; read against vessel-rich trace)",
+                                MAC_AWAKE_BAND_COLOR,
                             ),
+                            # Alveolar, because that is what MAC is defined
+                            # for - the end-tidal concentration in a nominal
+                            # 40-year-old - and the other five traces cross
+                            # this line at a partial-pressure ratio rather
+                            # than at a depth of anesthesia.
                             self._build_legend_item(
-                                "1 MAC, reference adult", ONE_MAC_LINE_COLOR, "wide dash"
+                                "1 MAC, reference adult (alveolar)", ONE_MAC_LINE_COLOR, "wide dash"
                             ),
                         ],
                         wrap=True,
                         spacing=16,
                         run_spacing=6,
                     ),
-                    # What the band asserts, what it does not, and which trace
-                    # it is read against - the last being the whole reason the
-                    # sentence is here rather than only in `docs/MODEL.md`.
-                    # The model has no effect-site compartment and defines the
-                    # arterial fraction as the alveolar one, so the alveolar
-                    # trace is the fastest curve on the chart and the furthest
-                    # from where responsiveness actually returns: measured on a
-                    # 3-hour 1 MAC sevoflurane case with the vaporizer turned
-                    # off at 10 L/min, it crosses 0.33 MAC 2.2x earlier than
-                    # the vessel-rich trace. A band read against it therefore
-                    # teaches an early wake-up, which is the direction with
-                    # clinical consequence.
-                    ft.Row(
-                        controls=[
-                            self._mac_awake_reference_text,
-                            ft.Text(
-                                (
-                                    "MAC-awake is the population concentration at which half "
-                                    "of patients respond to command — a different endpoint "
-                                    "from MAC, which is immobility to incision. Read the band "
-                                    "against the vessel-rich trace: it is a brain "
-                                    "concentration, and during washout the alveolar trace "
-                                    "falls first and reaches the band earlier than the patient "
-                                    "would. Not a prediction for any individual patient, and "
-                                    "not a time to wake-up."
-                                ),
-                                color=MUTED,
-                                italic=True,
-                            ),
-                        ],
-                        wrap=True,
-                        spacing=8,
-                        run_spacing=2,
-                    ),
+                    # The band's two free parameters, named: the published
+                    # fraction and the divisor it was applied to, so a
+                    # reader who disagrees with either can see which.
+                    #
+                    # The paragraph that stood beside it until PL-6580 gave
+                    # the endpoint difference from MAC and the reason the
+                    # band belongs against the vessel-rich trace. Both are
+                    # in `docs/MODEL.md` "MAC-awake as a chart reference",
+                    # and the endpoint is fundamental knowledge for this
+                    # display's reader. The trace it is read against is not
+                    # tutorial and did not go with it: `docs/MODEL.md`
+                    # "Interface boundary" requires a reference to name the
+                    # compartment it is read against, so that moved into the
+                    # legend entry above, where a reader learns what a mark
+                    # is. It is load-bearing rather than a caution - the
+                    # alveolar trace crosses the band about 2.3x earlier
+                    # than the vessel-rich one, so a band read against the
+                    # wrong curve teaches an early wake-up.
+                    self._mac_awake_reference_text,
                     # A third legend row, because a control mark is neither
                     # of the two kinds above it. A compartment trace is a
                     # modelled quantity and a clinical reference is a
@@ -1975,16 +1998,6 @@ class SimulationView:
                         controls=[
                             ft.Text("Run record:", color=MUTED),
                             self._build_control_mark_legend_item(),
-                            ft.Text(
-                                (
-                                    "A vertical mark is a setting you changed, at the "
-                                    "simulated time it took effect — an input to the run, "
-                                    "not anything measured from the patient. The panel "
-                                    "beside the chart says which setting and to what."
-                                ),
-                                color=MUTED,
-                                italic=True,
-                            ),
                         ],
                         wrap=True,
                         spacing=8,
@@ -3548,7 +3561,7 @@ class SimulationView:
         )
 
     def _time_axis_caption_text(self) -> str:
-        """State what the compartment chart's horizontal axis is showing.
+        """State the span of run the compartment chart is showing.
 
         The span, not only the unit. `PL-012` required the caption to name
         the span actually drawn because the width is a mode: the same plot
@@ -3560,20 +3573,28 @@ class SimulationView:
         Under "Fit run" it says both - that the whole run is drawn, and how
         wide the plot had to be to draw it - because the width is then
         derived from the run rather than chosen, and the reader has nothing
-        else on the display that says what it came out as.
+        else on the display that says what it came out as. The selector
+        beside it names the *rule*; this names what the rule came out as,
+        which is why the caption is not redundant with it and does not
+        appear only under one of the two modes.
+
+        The span is all that is left of it. Until PL-6580 the line opened
+        with a key naming all three axes and their units, each of which the
+        axis's own title already carried, so the key restated on every frame
+        what the chart states permanently. What no axis title can carry is
+        which slice of the run is under it, because that changes with the
+        mode and with the run's own length; that is this line's whole job
+        now. `docs/MODEL.md` § "The chart's time base" is the requirement it
+        answers.
 
         Returns:
-            The caption line.
+            The caption line: the width in force, and whether the reader
+            chose it or the run did.
         """
 
         span = format_time_base(self._drawn_time_base.span_s)
-        showing = f"whole run so far, {span} shown" if self._time_base is None else f"{span} shown"
 
-        return (
-            "Left axis: percent of one atmosphere | "
-            "Right axis: multiples of 1 MAC | "
-            f"Horizontal axis: simulated time, {showing}"
-        )
+        return f"whole run so far, {span} shown" if self._time_base is None else f"{span} shown"
 
     @staticmethod
     def _build_time_axis_labels(ticks: tuple[float, ...]) -> list[fch.ChartAxisLabel]:

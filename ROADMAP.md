@@ -1814,16 +1814,15 @@ nothing it exists to protect, while the thirteen with a product-lane half are
 admitted above precisely because they can. Where the two standards compete,
 the simulator wins; this is that rule applied to the gate's own membership.
 
-**One of them was not found by that audit** (2026-09-08). `PL-HX5C` was
-filed after the freeze — the first recorded instance of both in-flight guards
-passing while two sessions implemented `PL-W8XP` independently — and it
-qualifies for presence the moment it exists, at `needs-decision`. It is
-declined on exactly the ground above rather than admitted: it touches
-`.claude/skills/docket/SKILL.md` and nothing else, so it sits wholly in the
-workflow lane and can reach no reader of the simulator. Recorded here because
-the presence rule forbids only the silence, and `tools/doc_check.py` fails the
-tree while one exists — which is how this one was found, rather than by anybody
-remembering to look.
+**The thirtieth arrived after the audit, on the same ground** (`PL-33WM`,
+2026-09-08). `PL-HX5C` was captured hours after this subsection was written and
+merged in `#477` against a base whose CI predated `PL-36R4`'s check, so `main`
+went red on the one disposition this rule forbids — silence. It is recorded
+here rather than admitted above because every argument in the four paragraphs
+above applies to it unchanged: found after the 2026-09-06 freeze, `P2` and
+neither `safety` nor `science`, and wholly in the workflow lane. Later
+additions belong in this list for the same reason the first twenty-nine do;
+what the audit found is a provenance note, not the test.
 
 They enter Gate 2 when v0.6.0 is scoped, unless closed before it.
 
