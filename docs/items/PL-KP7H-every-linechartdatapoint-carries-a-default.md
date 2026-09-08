@@ -9,6 +9,7 @@ feature: chart-readout
 touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py
 added: 2026-09-08
 closed: 2026-09-08
+pr: 475
 verify: uv run pytest tests/integration/test_chart_patching.py tests/unit/test_simulation_view.py && grep -q 'def test_pausing_puts_the_hover_back_and_the_client_is_told' tests/integration/test_chart_patching.py
 ---
 
