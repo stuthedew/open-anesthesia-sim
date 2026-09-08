@@ -2253,14 +2253,16 @@ ratios separately — rather than assumes.
 **The elimination comparison does not agree, and the model states the
 disagreement rather than a tolerance around it.** At the shipped defaults and
 the same 10 L/min the wash-in comparison uses, the model holds more alveolar
-agent at five minutes than every cohort did (measured 2026-09-06):
+agent at five minutes than every cohort did (measured 2026-09-06 and
+re-measured 2026-09-07, the rows having moved 0.11 to 0.13 SD further above
+their means when `PL-8ZJQ` raised `venous_pool_volume_l` to 1.222 L):
 
 | Agent | Cohort | Model | Published | Distance |
 | --- | --- | --- | --- | --- |
-| Sevoflurane | n=7 | 0.2303 | 0.157 ± 0.020 | +3.67 SD |
-| Isoflurane | n=7 | 0.3195 | 0.223 ± 0.024 | +4.02 SD |
-| Desflurane | n=8 | 0.1603 | 0.14 ± 0.02 | +1.02 SD |
-| Isoflurane | n=8 | 0.3195 | 0.22 ± 0.02 | +4.98 SD |
+| Sevoflurane | n=7 | 0.2328 | 0.157 ± 0.020 | +3.79 SD |
+| Isoflurane | n=7 | 0.3227 | 0.223 ± 0.024 | +4.15 SD |
+| Desflurane | n=8 | 0.1626 | 0.14 ± 0.02 | +1.13 SD |
+| Isoflurane | n=8 | 0.3227 | 0.22 ± 0.02 | +5.13 SD |
 
 So the assertion on these values is a **regression** band — the published
 standard deviation applied around the model's own measured ratio — which
@@ -2290,11 +2292,53 @@ quantity can be had without collecting the whole expirate rather than
 returning it to the subject. Their elimination therefore ran at an inspired
 fraction at or near zero, which this model cannot be set to at any supported
 flow; confirming it against the methods sections needs full texts that are
-not in PubMed Central and are not held in `docs/references/`. Holding $`F_I`$
-at zero through the elimination — a diagnostic, not a configuration — moves
-the three agents from +3.67, +4.02 and +1.02 SD to −0.25, +0.54 and −2.40 SD,
-so the two conditions bracket the published values and desflurane's residual
-disagreement changes sign.
+not in PubMed Central and are not held in `docs/references/`.
+
+**The open-circuit diagnostic, and why its numbers are not this simulator's.**
+`tests/reference/test_published_wash_in.py` can run the same five minutes with
+the rebreathing taken away: after each step of the elimination it discards
+whatever the patient exhaled into the circuit and records it as exhausted
+agent, which is what collecting the whole expirate does. That holds $`F_I`$ at
+zero to within one step of refilling — at most $`\dot V_A \Delta t / V_C`$ of
+$`F_A`$, or 1.1 × 10⁻³ at the shipped ventilation, step and circuit volume,
+against the 0.30 to 0.32 the same run settles at with rebreathing. **It is a
+test-only driver, and no fresh gas flow, dial position or patient setting of
+the shipped simulator reaches the condition it creates.** `PL-W21J` weighed a
+supported non-rebreathing mode against the driver and the project owner chose
+the driver on 2026-09-06, because a mode changes the model boundary rather
+than a fixture and adds one more thing the interface would have to make
+visible. Nobody running the application sees the numbers below, and a
+restatement of them that drops this sentence has said something about the
+shipped model that is not true of it (measured 2026-09-07):
+
+| Agent | Cohort | Shipped | Open circuit | Published |
+| --- | --- | --- | --- | --- |
+| Sevoflurane | n=7 | +3.79 SD | 0.1541, −0.15 SD | 0.157 ± 0.020 |
+| Isoflurane | n=7 | +4.15 SD | 0.2388, +0.66 SD | 0.223 ± 0.024 |
+| Desflurane | n=8 | +1.13 SD | 0.0935, −2.33 SD | 0.14 ± 0.02 |
+| Isoflurane | n=8 | +5.13 SD | 0.2388, +0.94 SD | 0.22 ± 0.02 |
+
+**Three of the four cohorts land inside the published spread once the
+apparatus is gone, and desflurane misses on the other side.** For sevoflurane
+and for isoflurane in both cohorts the rebreathing circuit accounts for the
+whole of a gap 3.8 to 5.1 published standard deviations wide — so this model's
+vessel-rich return does reproduce a human elimination once the breathing
+systems are matched, which no comparison in this repository could say before.
+For desflurane it over-accounts: the model crosses its published mean and
+settles 2.33 SD below it, washing out *faster* than the volunteers did rather
+than more slowly. That residual is a disagreement about tissue return with the
+circuit no longer available to explain it, and it is what `PL-73G7` is for.
+The movement itself — 3.5 to 4.2 SD per cohort — is asserted rather than
+recorded, so the attribution in the paragraph above cannot go stale in
+silence, as are the driver's residual $`F_I`$, the model's own conservation
+identity across the discards, and the flow independence the diagnostic buys:
+across the whole supported flow range the open-circuit elimination moves by
+4 × 10⁻⁶ published SD, against the 11.5 to 21.6 SD the shipped one moves
+between 1 and 10 L/min.
+
+Neither condition validates the elimination a user watches, and no test claims
+that it does. The elimination this simulator runs is the rebreathing one, and
+what is asserted about it is the regression band above.
 
 **Which question a band of one standard deviation answers**, since this
 section now makes the claim in two places. A deterministic model compared
@@ -2328,9 +2372,10 @@ transfers to whatever `PL-N092` writes in its place.
    that the parameter set is independently right. It is weaker than
    "validated against a human measurement" and must not be described as more.
 3. *The breathing systems differ, and by more than the measurement's own
-   spread.* The paragraphs above measure it. Any statement that this model
-   eliminates more slowly than these volunteers did has to carry it, because
-   most of that difference is a rebreathing circuit rather than a patient.
+   spread.* The paragraphs above measure it, at 3.5 to 4.2 published standard
+   deviations per cohort. Any statement that this model eliminates more slowly
+   than these volunteers did has to carry it, because most of that difference
+   is a rebreathing circuit rather than a patient.
 4. *This model has no metabolism, which is why five minutes is the limit.*
    Over five minutes of elimination metabolism is negligible for all three
    shipped agents, and the papers bound it themselves: recovery — agent
