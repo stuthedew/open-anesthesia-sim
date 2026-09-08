@@ -1670,6 +1670,14 @@ without doing the work — a file outside `touches`, a protected path, an edit
 to the gate itself, an added suppression, a deleted assertion, a rewritten
 front matter.
 
+The front-matter comparison refuses rather than passes when it cannot be made
+— an item file that resolves to nothing, or a base holding no store at all.
+Both were an empty set of changed keys until `PL-20PT`, and an empty set is
+what a clean comparison returns, so the check reported `PASS` on every branch
+it had ever run against. A file the base does not hold *is* a clean answer: an
+item captured on the branch that works it has no earlier commission to differ
+from.
+
 Several ids may be given at once — `docket verify PL-K7QX PL-B2B2` — because
 that is the shape delegated work comes back in: one branch, one
 commit per item. Each item's own command still runs per item, since that is

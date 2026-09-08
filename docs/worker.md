@@ -107,6 +107,11 @@ Breaking one silently is worse than not doing the item.
   because they are how `tools/` and `subprojects/docket/` stay parseable by
   the bare `python3` that runs them, so relaxing one to make a format failure
   go away breaks the thing the check exists to protect.
+- **Never change your item's front matter.** The `**Worked.**` note is
+  appended to the body, below the fence; `status`, `touches` and the `verify:`
+  command you were measured against are the reviewer's. `bin/docket verify`
+  fails a diff that changes one, so marking your own item done rejects the
+  work rather than closing it.
 - **Never add a suppression** — `# type: ignore`, `noqa`, `xfail`, `skip` — to
   make a check pass.
 - **Never delete or weaken an existing assertion.** If an existing test fails
