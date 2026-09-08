@@ -4993,6 +4993,40 @@ behaviour would over-estimate fat loading. The measurement does not settle it
 — one depot in six subjects against a whole-body lumped compartment — which is
 why nothing was changed and the gap is recorded instead.
 
+**Cardiac output does not scale with the patient, and the reference weight is
+a label rather than an input.** `default_cardiac_output_l_min` is a stored
+5.0 L/min and `weight_kg` is read by no equation, so editing the weight changes
+nothing this model computes. Two published figures sit either side of the
+stored value: Lowe and Ernst's own cardiac-output relation — the upstream the
+Gas Man Workbook names, now read at the source — gives $`0.2M^{3/4}`$, which is
+4.84 L/min at 70 kg, and Cattermole et al.'s 686 subjects in the 50–75 kg band
+give a measured median of 5.51 L/min. **The fixed value is kept, on the project
+owner's decision of 2026-09-08** (`PL-YKSM`), and the reason is structural
+rather than a preference between those two numbers.
+
+A time constant is $`V_i \lambda_{i:b} / Q_i`$ and this model stores
+compartment volumes as fixed litres, so scaling only the flow would make
+$`\tau \propto M^{-3/4}`$: a heavier patient would equilibrate *faster* and a
+lighter one more slowly, which is an artifact of scaling one half of a coupled
+pair rather than a physiologic prediction. Measured at the shipped sevoflurane
+coefficients, a 20 kg child under a weight-scaled cardiac output alone would
+equilibrate about 2.6 times more slowly than the reference adult — the opposite
+of the direction paediatric inhalational uptake runs in. (Salanitre and
+Rackow's *Anesthesiology* 1969;30(4):388–94 study of pulmonary exchange in
+infants and children is the classic reference for that direction; its PubMed
+record was retrieved here and its text has not been read, so no figure is taken
+from it.) Doing half of the scaling is therefore worse than doing none of it,
+and adopting the relation on the one patient that exists would have lengthened
+every time constant by 3.32% and changed nothing else.
+
+**What follows from that is narrower than "the weight is unused".** This model
+describes one 70 kg adult. It is not a paediatric, obese, or otherwise
+weight-varying model, and no field in the interface makes it one — a run is
+that adult's run whatever the reference weight reads. Weight-varying physiology
+is `ROADMAP.md`'s planned-milestone item 30, and it is a package: compartment
+volumes, alveolar volume, alveolar ventilation, the perfusion fractions and MAC
+by age move together or none of them should.
+
 **Ambient pressure is not modelled, and away from one atmosphere the
 delivered-concentration dial stops meaning one partial pressure.**
 "Assumptions" above fixes ambient pressure at 760 mmHg and says what that

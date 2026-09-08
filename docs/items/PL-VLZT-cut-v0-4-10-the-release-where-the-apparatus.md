@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: ROADMAP.md, pyproject.toml, uv.lock, docs/releases/v0.4.10.md, docs/items
 added: 2026-09-08
 closed: 2026-09-08
+pr: 467
 not-delegable: Proving a release cut means cutting the release; there is no command that can run beforehand and fail.
 ---
 
