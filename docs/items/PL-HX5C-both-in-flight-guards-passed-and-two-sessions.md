@@ -52,7 +52,7 @@ session-list read and the branch-name cover. Possibly also
 rather than an instruction.
 
 **Decision needed.** Whether anything cheap actually closes this, or whether
-the honest answer is to record the instance and leave the window open. Three
+the honest answer is to record the instance and leave the window open. Four
 candidates, and none is obviously right:
 
 - **Rename on picking up a second item**, not only on starting the first. One
@@ -64,6 +64,15 @@ candidates, and none is obviously right:
   did not, because it was mid-way through `PL-B9PY`'s work. Tightening this
   to "before writing any code for a newly picked-up item" is enforceable by
   nothing.
+- **Widen the session read, and repeat it when work actually starts.** The
+  skill has it scan `title` and `external_metadata.current_branches`.
+  `list_sessions` also returns `task_summary` and `post_turn_summary`, which
+  say what a session is doing *now* rather than what it was named for — the
+  one field that would have carried `PL-W8XP` while the title said
+  `simulation_view.py`. It is a one-line change and it is the only candidate
+  here that does not depend on the other session doing something. Its cost is
+  that the read has to happen again at the moment implementation begins, not
+  only at session start, which is one extra call per item.
 - **Accept it and improve the recovery instead.** The merge is where this was
   caught, and it was caught cleanly — the conflict was loud, the duplicate was
   obvious on inspection, and the loser's unique work (`PL-3Y96`) was
