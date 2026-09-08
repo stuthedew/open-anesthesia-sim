@@ -1,7 +1,8 @@
 ---
 id: PL-YDKJ
 title: Decide whether the chart should keep patching one control per plotted point
-status: needs-decision
+status: blocked
+blocked-by: PL-2FM6
 priority: P3
 effort: S
 classes: perf
@@ -61,6 +62,19 @@ is, and `PL-Q197` plus `PL-CG7J` between them leave enough headroom.
    the chart reads, so it is a design decision rather than an optimization.
 
 **Where.** The decision is the deliverable; no code until it is made.
+
+**Blocked on `PL-2FM6`, and why that is not a demotion (2026-09-08, `PL-YXXG`).**
+The status is `blocked` rather than `needs-decision` so the edge is machine-
+readable; the deliverable is still a decision, and this returns to
+`needs-decision` when `PL-2FM6` (delete `RunHistory` and draw the chart from the
+closed-form sampler) lands. `PL-2FM6`'s brief asks for exactly this ordering -
+"the point-movement rate is its main input, and this item changes it" - and the
+sizing formula below is written in the two quantities `PL-2FM6` replaces: it
+anchors evaluation times to an absolute grid so a following window reuses all
+but its newest column, and it places a column at every control event. Deciding
+now would size the chart against a movement rate that is about to change. The
+debt gate's own entry moved with this edit, from "Cleared before v0.5.0 begins"
+to "Cleared by v0.5.0 itself".
 
 **What the measurement leaves.** With option 2 gone, nothing changes the
 per-point cost, so the only levers are how many points are drawn and how

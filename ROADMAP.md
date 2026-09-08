@@ -1540,7 +1540,7 @@ whole rather than narrowed (project owner, 2026-09-06).
 - PL-X2XX (M) doc_check's citation check reads neither docs/items/*.md nor source docstrings, so nothing holds the queue's or the code's citations to the docs they name
 - PL-VZL0 (S) Cite MODEL.md from every core/ function implementing a governing equation, and restate the solved form the spec lacks
 
-**Cleared by v0.5.0 itself — 9 entries**
+**Cleared by v0.5.0 itself — 10 entries**
 
 - PL-T691 (L) The run is its control-input timeline: hold keyframes at every event and answer any window in closed form
 - PL-P1Z3 (M) State the canonical evaluation rule that carries determinism once the step is no longer fixed, and gate it
@@ -1551,8 +1551,21 @@ whole rather than narrowed (project owner, 2026-09-06).
 - PL-B9PY (M) Decompose SimulationView so two runs can be rendered at once
 - PL-RD3B (M) app/controller.py now holds the run's storage as well as the UI-to-core boundary, and they are separable
 - PL-TCD1 (M) SimulationSnapshot still names six flat compartment floats, so the readouts cannot express a second substance now that the recorded run can
+- PL-YDKJ (S) Decide whether the chart should keep patching one control per plotted point
 
-**Cleared before v0.5.0 begins, the product lane — 40 entries**
+**`PL-YDKJ` is here as a consequence of `PL-2FM6`, not as a nineteenth Required-scope
+entry** (moved 2026-09-08, `PL-YXXG`). It was in the product lane above, which asked for
+the decision *before* v0.5.0 begins, while `PL-2FM6`'s brief says it "should be decided
+after this lands rather than before - the point-movement rate is its main input, and this
+item changes it", and `PL-2FM6` is in this group. `PL-YDKJ` is also a sizing question -
+its own closing note reduces it to `2 * P^2 * T / window_seconds` in the drawn point count
+and how often those points change, both of which `PL-2FM6` replaces - and its own trigger
+condition ("answer it only when a scale, a trace count or a render cadence is actually
+blocked by the ceiling") is unmet. It now carries `blocked-by: PL-2FM6`, so no check has
+to re-derive the edge from prose. Required scope below stays at eighteen items; the gate
+total stays at 132.
+
+**Cleared before v0.5.0 begins, the product lane — 39 entries**
 
 - PL-6Q8N (M) The reference adult's eleven physiologic parameters have no primary source at all
 - PL-HB58 (M) Validate washout against the same published cohorts the wash-in gate already uses
@@ -1592,7 +1605,6 @@ whole rather than narrowed (project owner, 2026-09-06).
 - PL-QM5P (S) README.md's description of doc_check candidates still says it prints lines mentioning anything the diff touched, which PL-B2NS narrowed to code mentions
 - PL-TCW5 (S) FLOW_FRACTION_TOLERANCE is defined twice, so the two perfusion-sum guards can drift apart silently
 - PL-TG60 (S) Stop printing six decimals of an exhaust integral good to three
-- PL-YDKJ (S) Decide whether the chart should keep patching one control per plotted point
 - PL-YTX9 (S) Decide whether a hidden compartment trace should keep its legend entry or vanish from the legend entirely
 
 **Cleared before v0.5.0 begins, the workflow lane — 50 entries**

@@ -1,7 +1,12 @@
 ---
 id: PL-YXXG
 title: PL-YDKJ sits in the debt gate's 'cleared before v0.5.0 begins' group, but PL-2FM6's brief says decide it after PL-2FM6 lands and PL-2FM6 is v0.5.0's own scope
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: planning, docs
+closed: 2026-09-08
+verify: grep -q '^blocked-by: PL-2FM6$' docs/items/PL-YDKJ-*.md && grep -qF 'Cleared by v0.5.0 itself — 10 entries' ROADMAP.md && grep -qF 'product lane — 39 entries' ROADMAP.md
 feature: teachable-case
 touches: ROADMAP.md, docs/items
 added: 2026-09-08
@@ -58,3 +63,14 @@ rather than an edit.
 **Done when.** `ROADMAP.md`'s Gate 1 and `PL-YDKJ`'s frontmatter agree with
 `PL-2FM6`'s brief on when `PL-YDKJ` is answered, and the reasoning is recorded
 wherever the disagreement is resolved.
+
+**Closed 2026-09-08, option 1** (project owner, same day). `PL-YDKJ`'s gate entry
+moved from "Cleared before v0.5.0 begins, the product lane" (now 39 entries) to
+"Cleared by v0.5.0 itself" (now 10), and the item gained `blocked-by: PL-2FM6`
+with `status: blocked`, so the edge is machine-readable rather than prose two
+briefs apart. One departure from the recommendation as written: membership of
+that group otherwise means "appears in v0.5.0's Required scope", and `PL-YDKJ`
+is a `P3` whose own trigger condition is unmet, so it would not survive there as
+a nineteenth Required-scope entry. The group therefore carries a note saying
+`PL-YDKJ` is in it as a consequence of `PL-2FM6` rather than as scope of its
+own; Required scope stays at eighteen items and the gate total at 132.
