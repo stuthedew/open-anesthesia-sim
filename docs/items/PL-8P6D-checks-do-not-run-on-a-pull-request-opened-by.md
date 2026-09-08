@@ -3,11 +3,13 @@ id: PL-8P6D
 title: Checks refuse a pull request whose branch carries no item id, so the owner's own web edits and any contributor's pull request fail CI
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: public-readiness
-touches: tools/branch_id_check.py, .github/workflows/quality.yml, tests/unit/test_branch_id_check.py
+touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, docs/ARCHITECTURE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-06
+closed: 2026-09-08
+verify: uv run pytest tests/unit/test_branch_id_check.py && grep -q 'def test_a_branch_outside_the_agent_namespace_owes_no_id' tests/unit/test_branch_id_check.py
 ---
 
 **Problem.** Reported by the project owner, 2026-09-06, as "current checks only
@@ -90,3 +92,54 @@ annotation on CI while keeping the hard failure in `make check`; or gate on
 author association, which is fragile here because every pull request carries
 the same author. Whichever is chosen, the regression test is a branch ahead of
 the base with no id anywhere, opened as a pull request, passing.
+
+**Decision, by the project owner, 2026-09-08: candidate 1, implemented in the
+script rather than as an `if:` on the CI step.** A branch owes an id only when
+its name is in the `claude/` namespace — the one the web harness gives every
+session it starts, and the one `CLAUDE.md` asks a session naming its own branch
+to use. Candidate 2 was refused on the brief's own ground: an advisory nobody
+acts on is what `CLAUDE.md` calls a defect in the check. Candidate 3 was refused
+because every pull request here carries the same author, which the brief had
+already established.
+
+The refinement on candidate 1 is where the rule lives. Put in the workflow, it
+would have left `make check` refusing what CI passed — two rules wearing one
+name, and the owner's own hand-made local branches still failing. In the script,
+one rule answers identically in both places, which is the same requirement
+`branch_name`'s `GITHUB_HEAD_REF` read exists to meet.
+
+**What it cost, weighed rather than discovered afterwards.** An agent branch
+named outside the namespace is now unchecked, and `origin/chore/docket-record-452`
+is one that exists — `PL-CP74`'s unfiled-housekeeping shape exactly. Its two
+siblings carry an id in the name and pass either way. The trade is one
+demonstrated catch for a route a contributor can walk, and the convention that
+closes it again is one `CLAUDE.md` already states.
+
+**What was done.** `in_agent_namespace` in `tools/branch_id_check.py`, tested
+after `attribution` so that a branch outside the namespace *carrying* an id
+still reports as visible rather than as exempt. A name that cannot be read at
+all — `HEAD`, or nothing — stays in scope, because that direction preserves the
+old verdict and CI never reaches it: `GITHUB_HEAD_REF` is set on every
+`pull_request` event, fork or not. The failure message gained one line naming
+the scope, so a session meeting it learns why it fired.
+
+Four regression tests, and the first is the one the brief asked for: `#394`'s
+shape — branch `stuthedew-patch-1`, two subjects, no id anywhere — now passing.
+The other three are the exemption's own failure modes: a fork pull request as CI
+sees it (detached `HEAD`, the real name only in the environment), an unreadable
+name staying in scope, and the namespace matched case-insensitively so that
+`Claude/x` cannot escape.
+
+Verified end-to-end as well as in the suite, against a reconstructed checkout
+carrying the reported case — a branch named `Review_articles`, one commit adding
+a PDF under `docs/references/`, no id — in both the local and the CI shape. Both
+pass; an agent branch with no id still exits 1.
+
+`.github/workflows/quality.yml` is untouched, which is why it left this item's
+`touches`: the two lines that run this script are unchanged, and moving the rule
+into the script is what made that true.
+
+**Not this item's, deliberately.** `PL-78JQ` writes the `CONTRIBUTING.md` that
+tells a contributor any of this. Removing the refusal and documenting the route
+are one piece of work and landed together, but they are separate findings with
+separate provenance, and this one was filed two days earlier.

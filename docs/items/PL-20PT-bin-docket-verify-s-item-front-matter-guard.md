@@ -10,6 +10,7 @@ milestone: v0.4.11
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, docs/worker.md
 added: 2026-09-08
 closed: 2026-09-08
+pr: 483
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_branch_that_edits_its_own_front_matter_is_refused' subprojects/docket/tests/test_verify.py
 ---
 

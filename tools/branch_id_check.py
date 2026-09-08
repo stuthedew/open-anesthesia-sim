@@ -39,6 +39,32 @@ One exemption, and it is exact: a release commit. `Release v0.3.6: ...` is what
 either, and its provenance is the version table and the tag rather than an
 entry in the queue.
 
+**It binds the agent namespace and nothing else (`PL-8P6D`).** Everything above
+is an argument about agent sessions: they are what `docket flight` serves, and
+an id is what they have. A contributor has no queue, no id and no `bin/docket`,
+so demanding one buys nothing and the remedy printed below asks them for a tool
+they cannot run. This refused `#394` - the project owner's own two-line README
+edit from the GitHub web UI, on branch `stuthedew-patch-1` - nine seconds into
+the required job, which is what the first drive-by pull request would have met.
+
+So a branch owes an id only when its name is in the namespace every session's
+branch sits in: `claude/`, which the web harness gives every session it starts
+and which `CLAUDE.md` asks a session naming its own branch to use. The rule
+lives here rather than in an `if:` on the CI step so that `make check` and CI
+answer identically, which is the same requirement `branch_name` reads
+`GITHUB_HEAD_REF` to meet.
+
+**What that gives up, stated rather than left to be discovered.** An agent
+branch named outside the namespace is now unchecked, and one exists:
+`origin/chore/docket-record-452` is `PL-CP74`'s unfiled-housekeeping shape
+exactly. Its two siblings, `origin/chore/pl-vzl0-promote` and
+`origin/chore/pl-483k-third-observation`, carry an id in the name and pass
+either way. The trade is one demonstrated catch for a route a human can walk,
+and the convention that closes it again is one `CLAUDE.md` already states. A
+name that cannot be read at all stays in scope, because that direction
+preserves the old verdict and no contributor reaches it: `GITHUB_HEAD_REF` is
+set on every `pull_request` event, fork or not.
+
 Standard library only, like every tool here, so it runs in a bare checkout.
 """
 
@@ -59,6 +85,11 @@ from docket.vcs import BRANCH_ID_RE, default_base, leading_ids  # noqa: E402
 #: What `make release` writes and `git tag -a vX.Y.Z` marks. Anchored, so a
 #: subject that merely mentions a release is not one.
 RELEASE_RE = re.compile(r"^Release\s+v\d+\.\d+\.\d+")
+
+#: The namespace an agent session's branch sits in, and the whole of what this
+#: check binds. Not `docket`'s to know - it matches ids, and has no concept of
+#: who made a branch - so unlike `BRANCH_ID_RE` this is declared locally.
+AGENT_BRANCH_PREFIX = "claude/"
 
 #: `%p` is empty only for a commit whose parents this checkout does not hold.
 #: A walk that emits one ran off the end of a truncated history instead of
@@ -115,6 +146,21 @@ def _subjects(base: str) -> tuple[list[str], bool]:
     return subjects, sound
 
 
+def in_agent_namespace(name: str) -> bool:
+    """Whether this branch is one of the agent sessions this rule binds.
+
+    A name that could not be read answers True: it is the direction that keeps
+    the old verdict, and no contributor's pull request lands here, because
+    `branch_name` reads `GITHUB_HEAD_REF` and CI sets it on every
+    `pull_request` event. Compared lowercased, which can only ever widen the
+    scope - git branch names are case-sensitive, so `Claude/x` is a distinct
+    name that no harness produces and no contributor would choose.
+    """
+    if not name or name == "HEAD":
+        return True
+    return name.lower().startswith(AGENT_BRANCH_PREFIX)
+
+
 def attribution(name: str, subjects: list[str]) -> list[str]:
     """What names this branch's work, in the forms a guard actually reads."""
     found: list[str] = []
@@ -155,11 +201,16 @@ def main() -> int:
     if found:
         print(f"branch-id: visible in flight - {found[0]}")
         return 0
+    if not in_agent_namespace(name):
+        print(f"branch-id: {name} is outside `{AGENT_BRANCH_PREFIX}`; no id is owed")
+        return 0
 
     print(
         f"branch-id: {len(subjects)} commit(s) ahead of {base}, and no item id names any of "
         f"them.\n"
         f"  branch: {name or '(detached)'}\n"
+        f"  Only a branch in the `{AGENT_BRANCH_PREFIX}` namespace owes one; a contributor's "
+        f"does not.\n"
         f"  Every in-flight guard - `docket flight`, `show`, `next`, `concurrent`, the "
         f"session-start digest - matches an id in a branch name or at the front of a commit "
         f"subject, so this work is invisible to all of them and to the next session that "
