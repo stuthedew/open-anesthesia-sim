@@ -122,12 +122,15 @@ appropriate, and its entry here should be deleted rather than left stale.
   frame budget. Three separate passes made that up and all three are gone:
   the window copied its samples out, each trace built a list of one field
   per sample, and the wash-in plot reclassified every visible sample against
-  its domain. The run is now stored by quantity with a dyadic ladder of M4
-  aggregates over each, so a frame reads a few hundred completed aggregates
-  and touches raw values only at the two unaligned ends of the window: 1.7
-  to 3.4 ms at every width from five minutes to twelve hours, flat. What
-  keeps it flat is `test_reading_a_window_costs_the_same_however_wide_it_is`
-  and `test_a_frame_never_materializes_the_window_as_rows`; the second is
+  its domain. **Superseded 2026-09-08 (`PL-2FM6`).** The dyadic ladder of M4
+  aggregates this paragraph described is gone with the sample store it
+  summarised: the run is its score, and a frame evaluates the states at the
+  instants it plots, so there is nothing to aggregate and no window to
+  materialise. The measurements below stand as the record of what the
+  aggregate ladder achieved and why the flat cost mattered; the mechanism
+  they describe is not the shipped one. What keeps the cost flat now is that
+  a frame's work is the column budget, which `test_chart_payload_is_bounded_
+  however_long_the_run` holds. Historically it was
   there because rows are the obvious shape to reach for and one use of them
   anywhere in a frame puts the whole cost back.
 
@@ -523,10 +526,12 @@ row by substance.
   run, marginal between 100 000 and 200 000 samples so the fixed overhead is
   out of it. **Half of it is the ladder, not the samples**: 64.0 B is the
   elapsed array plus seven series' `array("d")` of values, and the remaining
-  63.9 B is the M4 aggregates over them. That split is what `PL-011` turns on -
-  evicting raw samples once consolidated removes 64 B of 128 B and leaves a
-  cost still linear in run length, so it is a factor of two rather than a
-  bound.
+  63.9 B is the M4 aggregates over them. That split is what `PL-011` turned
+  on - evicting raw samples once consolidated removes 64 B of 128 B and
+  leaves a cost still linear in run length, so it was a factor of two rather
+  than a bound. **Both are historical as of 2026-09-08 (`PL-2FM6`):** neither
+  the samples nor the aggregates exist, and a run costs one segment per
+  setting change rather than anything per step.
 
 At 127.9 B per sample and the fixed 0.1 s step, one substance: 4.6 MB per
 simulated hour, 0.11 GB per simulated day, 0.77 GB per simulated week, and

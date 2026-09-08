@@ -45,9 +45,11 @@ Three limits decide what a citation may claim:
   and no more, so an assertion that needs the methods section cannot be made
   from it.
 - **Its reach is biomedical.** A venue PubMed does not index cannot be
-  confirmed this way — the M4 paper in `docs/references/` is a database-systems
-  paper, and its entry records the absence rather than filling it from memory.
-  Copy that.
+  confirmed this way. The worked example was `docs/references/`' M4 paper, a
+  database-systems paper whose entry recorded the absence of a DOI rather than
+  filling it from memory; the entry went with the code that cited it
+  (`PL-8LXM`), but the practice is the point — record what could not be
+  confirmed, and never supply it from memory.
 - **It requires attribution.** A reply citing what it returned names PubMed and
   gives the DOI as a link.
 
