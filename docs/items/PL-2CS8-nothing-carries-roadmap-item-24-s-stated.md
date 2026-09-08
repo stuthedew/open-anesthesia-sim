@@ -10,6 +10,7 @@ milestone: v0.4.11
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tools/contrast_check.py, tools/agent_identity_check.py, tests/unit, docs/ARCHITECTURE.md, docs/MODEL.md, .claude/rules/ui-color.md
 added: 2026-09-08
 closed: 2026-09-08
+pr: 484
 verify: uv run pytest tests/unit/test_simulation_view.py && ! grep -q '"#D9E2EC"' src/anesthesia_sim/app/simulation_view.py
 ---
 

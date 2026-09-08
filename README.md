@@ -195,12 +195,10 @@ Questions, bug reports and suggestions belong in
 [GitHub issues](https://github.com/stuthedew/open-anesthesia-sim/issues). The
 project is maintained by [Stuart Feichtinger](https://github.com/stuthedew).
 
-There are no separate contribution guidelines yet. Until there are, the short
-version: read [`CLAUDE.md`](CLAUDE.md) for the standards a change is held to and
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for where it belongs, keep
-simulation code independent of the interface, add or update tests with every
-behavior change, and expect anything that could reach a displayed clinical
-value to be reviewed as safety-critical.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) is the short version: what CI checks, what
+a change is held to, and how to add a source document. You do not need to know
+anything about the development queue to send one — the `PL-XXXX` pull request
+titles are a maintainer's bookkeeping, and nothing checks yours for an id.
 
 Corrections to the science are especially welcome, and the more specific the
 better: `docs/MODEL.md` cites its sources precisely so that a disagreement can

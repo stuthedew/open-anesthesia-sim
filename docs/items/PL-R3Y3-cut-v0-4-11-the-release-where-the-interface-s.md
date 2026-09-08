@@ -7,9 +7,10 @@ status: done
 classes: planning
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases/v0.4.11.md
-closed: 2026-09-08
-verify: python3 tools/doc_check.py check && grep -q 'Current baseline: v0.4.11' ROADMAP.md
 added: 2026-09-08
+closed: 2026-09-08
+pr: 486
+verify: python3 tools/doc_check.py check && grep -q 'Current baseline: v0.4.11' ROADMAP.md
 ---
 
 **Problem.** Cut v0.4.11 - the release where the interface's cost was measured rather than guessed
