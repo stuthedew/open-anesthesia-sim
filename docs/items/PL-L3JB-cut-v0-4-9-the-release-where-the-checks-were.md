@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: planning-cadence
+milestone: v0.4.10
 touches: ROADMAP.md, pyproject.toml, uv.lock, docs/releases/v0.4.9.md, docs/items
 added: 2026-09-07
 closed: 2026-09-07

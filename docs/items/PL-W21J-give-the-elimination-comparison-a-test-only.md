@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: science, test
 feature: numerical-domain
+milestone: v0.4.10
 touches: tests/reference/test_published_wash_in.py, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-07
