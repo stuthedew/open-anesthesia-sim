@@ -1064,12 +1064,60 @@ person who notices it.
 
 ### `blocked` means "not first", and that is the whole of it
 
-`blocked-by` names the items that must close before this one starts, and
-`status: blocked` takes it out of `docket next` until they do. The two are
-checked together: a blocker must exist, an item may not block itself, and a
-`blocked` item may not outrank its own blocker — nothing can start before the
-thing gating it, so a `P1` waiting on a `P2` is an error rather than a
-priority. When the last blocker closes, `docket check` says so.
+`blocked-by` names what must settle before this one starts, and `status:
+blocked` takes it out of `docket next` until it does. The two are checked
+together: a blocker must exist, an item may not block itself, and a `blocked`
+item may not outrank its own blocker — nothing can start before the thing
+gating it, so a `P1` waiting on a `P2` is an error rather than a priority. When
+the last blocker clears, `docket check` says so.
+
+**The field takes two kinds of entry, on one line: an item id, and a milestone
+version.**
+
+```yaml
+blocked-by: PL-K7QX, v0.5.0
+```
+
+An id names work in this queue and clears when that item closes. A version
+names a milestone in `ROADMAP.md` and clears when that milestone is **scoped** —
+when its section carries the four subsections the roadmap's development rules
+require of one — or when it has shipped, which is the same thing recorded
+differently. Scoped rather than released, because what an item waits on there
+is the *decision* the scoping round makes, not the release: `PL-B9PY` could not
+be designed until v0.5.0 settled what a side-by-side comparison renders, and
+could be the moment it did, several releases before v0.5.0 goes out.
+
+The milestone need only be *placed* to be named — a row on the timeline is
+enough, and having a section of its own is not required. That is deliberate,
+because the interval a milestone blocker exists to cover is exactly the one
+between a milestone being planned and being scoped. A version the roadmap
+places nowhere is an error rather than a block: a typo would otherwise be
+indistinguishable from a live dependency and would never fire.
+
+**Why one field rather than two.** An item whose real dependency is a milestone
+being scoped previously had no honest state. `blocked` with the field emptied
+is a store error; `blocked` naming an item that has since closed is false, and
+raises "every blocker has closed" in every session from then on — an advisory
+nobody can act on, which is the failure mode that trains a reader to skim the
+output where a real one also appears; and `ready` invites a session to start a
+refactor against a target shape nobody has decided. `needs-decision` was the
+workaround, and it is debt by the `debt_classes` rule, so every item parked
+that way was counted into the next gate as though somebody could resolve it. A
+`blocked-on-milestone:` field beside the existing one was considered and
+rejected: it keeps id parsing simple at the cost of two fields meaning one
+thing and every reader of `blocked-by` having to know about the second
+(`PL-W8XP`).
+
+The two kinds cannot collide — an id is `PL-`-prefixed, a version is
+`v`-prefixed — and are partitioned fail-closed: a milestone is matched
+positively and *everything else* is treated as an item entry, so an entry of
+neither shape is refused by name rather than falling out of both halves and
+being silently ignored.
+
+Without a readable `ROADMAP.md` the milestone half declines rather than
+guessing, and `docket check` names the items it could not judge. A bare
+checkout must not fail for the roadmap's absence, and must not report the store
+as fully checked either.
 
 **A sequencing dependency is a legitimate use of it, not an abuse.** The word
 invites a narrower reading — that the work is impossible, or waiting on

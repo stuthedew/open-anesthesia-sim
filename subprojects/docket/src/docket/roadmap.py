@@ -85,6 +85,9 @@ def table_rows(text: str, heading: str, level: int = 2) -> Iterator[tuple[int, l
 # copies of it would drift, and the drift would be in the one document that
 # says which release is current.
 VERSION_TABLE_HEADING = "Versioning decision"
+# The status cell marking a release as shipped. Matched as a substring: this
+# project writes "Completed / current baseline" on the row it is standing on.
+COMPLETED = "Completed"
 BASELINE_MARK = "current baseline"
 BASELINE_HEADING_RE = re.compile(r"^Current baseline:\s*v?(?P<version>\d+\.\d+\.\d+)\b")
 
@@ -559,6 +562,70 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
     flush()
 
     return sorted(found, key=lambda section: section.version)
+
+
+# --- milestones an item may wait on -----------------------------------------
+
+
+@dataclass(frozen=True)
+class MilestoneStates:
+    """Which milestone versions the roadmap names, and which of them are scoped.
+
+    The two answers a `blocked-by: v0.5.0` needs and the store cannot give.
+    `known` is what makes a typo an error rather than a permanent block;
+    `scoped` is what makes the edge clear itself.
+    """
+
+    #: Every version the roadmap names as a milestone, written `vX.Y.Z`. Read
+    #: from the timeline *and* from the section headings, because a milestone
+    #: is placed on the timeline long before it has a section - which is
+    #: exactly the interval a milestone blocker exists to cover.
+    known: frozenset[str]
+    #: The subset a milestone blocker is satisfied by. Two ways in, and the
+    #: second is not redundant. Carrying the four subsections scoping requires
+    #: is the intended one - structural, per `MilestoneSection.is_scoped`: it
+    #: says the headings are there, never that what is written under them is
+    #: any good. Having *shipped* is the other, because a released milestone
+    #: was scoped whether or not its section still shows it: v0.2.8 and v0.3.0
+    #: both carry sections that answer `is_scoped` False, v0.2.8 because
+    #: `ROADMAP.md` says its frozen list *is* its content. Without this a
+    #: blocker naming either would never clear and nothing would report it,
+    #: which is the silent-wrong outcome this field exists to remove.
+    cleared: frozenset[str]
+
+    def is_known(self, version: str) -> bool:
+        return version in self.known
+
+    def is_cleared(self, version: str) -> bool:
+        return version in self.cleared
+
+
+def _rendered(version: tuple[int, int, int]) -> str:
+    return "v{}.{}.{}".format(*version)
+
+
+def milestone_states(text: str) -> MilestoneStates:
+    """Read which milestones the roadmap names and which of them are settled.
+
+    Patch tracks are deliberately absent. A `v0.4.x` row carries no patch
+    number by construction, so nothing writable in `blocked-by` names one, and
+    a milestone blocker is about a scoping round rather than about a track that
+    freezes no gate.
+    """
+    steps, _ = parse_timeline(text)
+    known = {
+        _rendered(step.version)
+        for step in steps
+        if step.kind == "milestone" and step.version is not None
+    }
+    sections = parse_milestones(text)
+    known.update(_rendered(section.version) for section in sections)
+
+    cleared = {_rendered(section.version) for section in sections if section.is_scoped}
+    released = {f"v{row.version}" for row in parse_version_table(text) if COMPLETED in row.status}
+    known.update(released)
+    cleared.update(released)
+    return MilestoneStates(known=frozenset(known), cleared=frozenset(cleared))
 
 
 # --- where the project is on the cadence ------------------------------------

@@ -11,9 +11,10 @@ from datetime import date
 
 from docket.checks import Report, analyze
 from docket.config import Config
-from docket.model import Item
+from docket.model import Item, parse_item, render_item
 from docket.plan import OfferedReport
 from docket.render import format_check, format_digest, format_list
+from docket.roadmap import MilestoneStates, milestone_states
 from docket.vcs import (
     BaseRecord,
     ClosureReport,
@@ -599,6 +600,185 @@ def test_a_blocked_item_whose_blocker_closed_is_flagged_for_promotion() -> None:
     )
 
     assert _has(analyze([done, blocked], TODAY).advisories, "every blocker has closed")
+
+
+# --- `blocked-by` naming a milestone (`PL-W8XP`) -----------------------------
+#
+# The case: an item whose real dependency is a milestone being *scoped*. Before
+# this, `blocked-by` took ids only, so such an item had no honest state - which
+# is what these assert, from the side of the store rather than of the roadmap.
+
+BLOCKED_BODY = "**Problem.** x\n**Why it matters.** y\n"
+
+# A roadmap with one scoped milestone, one placed but unscoped, and the version
+# table that makes a shipped release count as settled. Written out rather than
+# fixtured so that what each assertion depends on is on the page.
+ROADMAP = """# Plan
+
+## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.4.0 | Completed | The teachable case |
+
+## The plan
+
+### The timeline
+
+| # | Step | Notes | Effort |
+| --- | --- | --- | --- |
+| 1 | **v0.5.0 — the case you can branch** | scoped below | - |
+| 2 | **v0.6.0 — the machine** | not scoped yet | - |
+
+## v0.5.0 - the case you can branch
+
+### Goal
+
+Make the comparison possible.
+
+### Required scope
+
+Two branches on one axis.
+
+### Definition of done
+
+Both branches read.
+
+### Explicitly out of scope for v0.5.0
+
+Three branches.
+
+## v0.6.0 - the machine
+
+Named on the timeline, and nothing under it yet.
+"""
+
+
+def _milestones() -> MilestoneStates:
+    return milestone_states(ROADMAP)
+
+
+def _blocked_on(version: str, **overrides: object) -> Item:
+    return _item("PL-C2C2", status="blocked", blocked_by=(version,), body=BLOCKED_BODY, **overrides)
+
+
+def test_blocked_by_may_name_a_milestone() -> None:
+    """The whole point: a milestone the roadmap places is a legal blocker.
+
+    Not an error, and - while that milestone is unscoped - not the "ready to
+    promote" advisory either. Both halves matter: an error makes the state
+    unusable, and an advisory nobody can act on is what `CLAUDE.md` says
+    trains a reader to skim the output.
+    """
+    report = analyze([_blocked_on("v0.6.0")], TODAY, milestones=_milestones())
+
+    assert report.errors == []
+    assert not _has(report.advisories, "ready to promote")
+
+
+def test_a_scoped_milestone_clears_its_blocker() -> None:
+    report = analyze([_blocked_on("v0.5.0")], TODAY, milestones=_milestones())
+
+    assert report.errors == []
+    assert _has(report.advisories, "v0.5.0 is scoped and every other blocker has closed")
+
+
+def test_a_released_milestone_clears_its_blocker() -> None:
+    """A shipped milestone was scoped, whatever its section still shows.
+
+    `ROADMAP.md`'s own v0.2.8 section carries no `Required scope` - the file
+    says its frozen debt list *is* its content - so a structural test alone
+    would leave a blocker naming it permanently unresolved and silent.
+    """
+    report = analyze([_blocked_on("v0.4.0")], TODAY, milestones=_milestones())
+
+    assert _has(report.advisories, "v0.4.0 is scoped and every other blocker has closed")
+
+
+def test_a_milestone_the_roadmap_places_nowhere_is_an_error() -> None:
+    """Otherwise a typo is indistinguishable from a live block, forever."""
+    report = analyze([_blocked_on("v9.9.9")], TODAY, milestones=_milestones())
+
+    assert _has(report.errors, "blocked by v9.9.9, which the roadmap places nowhere")
+
+
+def test_an_item_blocker_must_still_close_alongside_the_milestone() -> None:
+    open_item = _item("PL-B1B1")
+    blocked = _item(
+        "PL-C2C2", status="blocked", blocked_by=("PL-B1B1", "v0.5.0"), body=BLOCKED_BODY
+    )
+
+    report = analyze([open_item, blocked], TODAY, milestones=_milestones())
+
+    assert not _has(report.advisories, "ready to promote")
+
+
+def test_a_milestone_blocker_is_not_read_as_a_missing_item() -> None:
+    """The regression the partition exists to prevent.
+
+    `blocked-by` held ids alone, so every reader treated an unknown entry as a
+    dangling reference. A milestone entry must reach the milestone half and
+    nothing else.
+    """
+    report = analyze([_blocked_on("v0.5.0")], TODAY, milestones=_milestones())
+
+    assert not _has(report.errors, "which is not an item")
+
+
+def test_a_milestone_blocker_has_no_band_to_outrank() -> None:
+    """`_outranks_its_blocker` compares priorities, and a milestone has none."""
+    report = analyze([_blocked_on("v0.6.0", priority="P1")], TODAY, milestones=_milestones())
+
+    assert report.errors == []
+
+
+def test_a_near_miss_milestone_is_named_as_one() -> None:
+    """`v0.5` is not a version here, so it stays an item entry - and the error
+    says what the writer plainly meant rather than only that no item matches."""
+    report = analyze([_blocked_on("v0.5")], TODAY, milestones=_milestones())
+
+    assert _has(report.errors, "a milestone blocker is written `vX.Y.Z`, in full")
+
+
+def test_no_roadmap_declines_the_milestone_half_rather_than_judging_it() -> None:
+    """A bare checkout must not fail for the roadmap's absence, and must not
+    quietly report the store as fully checked either."""
+    report = analyze([_blocked_on("v0.5.0")], TODAY)
+
+    assert report.errors == []
+    assert not _has(report.advisories, "ready to promote")
+    assert _has(report.declined, "no roadmap was read")
+
+
+def test_an_item_only_blocker_still_reads_as_closed() -> None:
+    """The original advisory keeps its own wording; only the milestone case is new."""
+    done = _item("PL-B1B1", status="done", commit="abc1234", closed=TODAY, priority="", effort="")
+    blocked = _item("PL-C2C2", status="blocked", blocked_by=("PL-B1B1",), body=BLOCKED_BODY)
+
+    report = analyze([done, blocked], TODAY, milestones=_milestones())
+
+    assert _has(report.advisories, "every blocker has closed")
+
+
+def test_a_milestone_blocker_survives_a_round_trip() -> None:
+    """`render_item` writes `blocked-by` from the raw field, so a partition that
+    dropped the milestone would silently unblock the item on the next write."""
+    written = render_item(_blocked_on("v0.5.0"))
+
+    assert "blocked-by: v0.5.0" in written
+    assert parse_item(written, "x.md").blocking_milestones == ("v0.5.0",)
+
+
+def test_the_two_kinds_of_entry_are_partitioned_fail_closed() -> None:
+    """An entry of neither shape stays an item entry, so it is refused by name
+    rather than falling out of both halves and being ignored."""
+    item = _item(
+        "PL-C2C2", status="blocked", blocked_by=("PL-B1B1", "v0.5.0", "junk"), body=BLOCKED_BODY
+    )
+
+    assert item.blocking_milestones == ("v0.5.0",)
+    assert item.blocking_items == ("PL-B1B1", "junk")
+    assert _has(analyze([item], TODAY, milestones=_milestones()).errors, "junk, which is not")
 
 
 def test_an_overfull_top_band_is_an_advisory() -> None:

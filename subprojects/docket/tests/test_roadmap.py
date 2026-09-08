@@ -27,6 +27,7 @@ from docket.roadmap import (
     UNPLACED,
     baseline_heading,
     milestone_scope,
+    milestone_states,
     parse_milestones,
     parse_timeline,
     parse_version_table,
@@ -665,3 +666,84 @@ def test_a_timeline_that_does_not_parse_says_so_rather_than_stating_a_step() -> 
     stated = next(line for line in _digest(plan).splitlines() if line.startswith("Plan:"))
 
     assert "does not parse cleanly" in stated
+
+
+# --- which milestones an item may be blocked on (`PL-W8XP`) ------------------
+
+MILESTONE_STATES_ROADMAP = """# Plan
+
+## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.4.0 | Completed | The teachable case |
+| v0.5.0 | Planned | The case you can branch |
+
+## The plan
+
+### The timeline
+
+| # | Step | Notes | Effort |
+| --- | --- | --- | --- |
+| 1 | **v0.5.0 — the case you can branch** | scoped below | - |
+| 2 | **v0.4.x — the code is the model** | a patch track | - |
+| 3 | **Gate 1** | not a version at all | - |
+| 4 | **v0.6.0 — the machine** | placed, not scoped | - |
+
+## v0.5.0 - the case you can branch
+
+### Goal
+
+g
+
+### Required scope
+
+r
+
+### Definition of done
+
+d
+
+### Explicitly out of scope for v0.5.0
+
+o
+
+## v0.7.0 - a section with no timeline row
+
+Placed by its section alone.
+"""
+
+
+def test_milestone_states_reads_the_timeline_and_the_sections() -> None:
+    """Both, because a milestone is placed on the timeline long before it has a
+    section - which is exactly the interval a milestone blocker covers."""
+    states = milestone_states(MILESTONE_STATES_ROADMAP)
+
+    assert states.is_known("v0.6.0")  # timeline only
+    assert states.is_known("v0.7.0")  # section only
+    assert not states.is_known("v9.9.9")
+
+
+def test_only_a_milestone_with_the_four_subsections_is_cleared() -> None:
+    states = milestone_states(MILESTONE_STATES_ROADMAP)
+
+    assert states.is_cleared("v0.5.0")
+    assert not states.is_cleared("v0.6.0")
+    assert not states.is_cleared("v0.7.0")
+
+
+def test_a_completed_release_is_cleared_without_a_scoped_section() -> None:
+    """`ROADMAP.md`'s own v0.2.8 and v0.3.0 sections answer `is_scoped` False,
+    so a structural test alone would never clear a blocker naming one."""
+    states = milestone_states(MILESTONE_STATES_ROADMAP)
+
+    assert states.is_known("v0.4.0") and states.is_cleared("v0.4.0")
+
+
+def test_a_patch_track_and_a_gate_are_not_milestones() -> None:
+    """Neither carries a version writable in `blocked-by`: `v0.4.x` has no patch
+    number by construction, and a gate has no version at all."""
+    states = milestone_states(MILESTONE_STATES_ROADMAP)
+
+    assert not any(version.startswith("v0.4.") and version != "v0.4.0" for version in states.known)
+    assert "Gate 1" not in states.known

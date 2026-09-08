@@ -56,6 +56,23 @@ PROCESS_CLASSES = ("session-cost", "docs", "infra")
 
 LIST_FIELDS = ("classes", "touches", "blocked-by")
 
+# The second kind of entry `blocked-by` accepts: a milestone version, written
+# exactly as the roadmap's timeline writes it.
+#
+# One field with two kinds of entry, rather than a `blocked-on-milestone:`
+# beside it. An item whose real dependency is a milestone being *scoped* had no
+# honest state while only ids were accepted: `blocked` with the field emptied
+# is a store error, `blocked` naming a closed item is false, and `ready` invites
+# a session to start against a target shape nobody has decided. The alternative
+# keeps id parsing simple at the cost of two fields meaning one thing and every
+# reader of `blocked-by` having to know about the second; one field with two
+# kinds of entry is the smaller vocabulary (`PL-W8XP`).
+#
+# The two are told apart syntactically, and can never collide: an id is
+# `PL-`-prefixed and a milestone is `v`-prefixed. An entry matching neither is
+# a typo rather than a third kind, and `checks.py` refuses it by name.
+MILESTONE_BLOCKER_RE = re.compile(r"^v\d+\.\d+\.\d+$")
+
 # Efforts a delegated item may carry. An `L` item is a milestone in disguise;
 # nothing that large has a brief precise enough to be worked without judgment.
 DELEGABLE_EFFORTS = ("S", "M")
@@ -207,6 +224,37 @@ class Item:
     @property
     def is_untriaged(self) -> bool:
         return self.status == "untriaged"
+
+    @property
+    def blocking_milestones(self) -> tuple[str, ...]:
+        """The `blocked-by` entries naming a roadmap milestone, as written.
+
+        A milestone blocker clears when the milestone is *scoped* - when it has
+        the four subsections `ROADMAP.md` requires of it - rather than when it
+        ships. What such an item waits on is the decision the scoping round
+        makes, not the release: `PL-B9PY` could not be designed until v0.5.0
+        settled what a side-by-side comparison renders, and could be the moment
+        it did, four releases before v0.5.0 goes out.
+        """
+        return tuple(e for e in self.blocked_by if MILESTONE_BLOCKER_RE.match(e) is not None)
+
+    @property
+    def blocking_items(self) -> tuple[str, ...]:
+        """The `blocked-by` entries naming a queue item.
+
+        Every reader asking "which *items* must close first" wants this rather
+        than the raw field, which may also carry milestones.
+
+        Defined as the complement of `blocking_milestones` rather than by
+        matching the id grammar, so that the partition is fail-closed: an entry
+        of neither shape - a typo, or a syntax a later version invents - stays
+        here and is refused by name in `checks.py`, where an unrecognised
+        blocker is already an error. Recognising ids positively would let such
+        an entry fall out of both halves and be silently ignored, which on a
+        field that decides what may be started is the wrong way to fail.
+        """
+        milestones = set(self.blocking_milestones)
+        return tuple(e for e in self.blocked_by if e not in milestones)
 
     @property
     def is_process_work(self) -> bool:
