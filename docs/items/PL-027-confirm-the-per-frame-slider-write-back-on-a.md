@@ -28,3 +28,17 @@ changed measurably.
 **Done when.** Dragging during a run is confirmed smooth on a live client,
 or the write-back is narrowed to the cases that need it with the reason
 recorded.
+
+**Half of this is answered, without a client** (2026-09-08, `PL-R2YM`).
+"Whether it costs anything" is measured: the write itself is 3-4 ms of
+`_refresh_view` and Flet's diff sends nothing for a same-value write, but the
+`page.update()` each `on_change` triggered walked the whole control tree for
+23-59 ms whether or not anything in it had moved. So the write-back was never
+the cost and stays exactly as `PL-018` left it; what changed is that a
+slider's frame is now coalesced onto the render tick.
+
+What still needs a live client is the other half, and the change makes it
+sharper rather than moot: **does a write-back landing mid-drag snap the
+thumb**, now that it can arrive up to `RENDER_INTERVAL_S` after the pointer
+moved rather than within the same event? `PL-2QMK` is why no session here can
+answer it.

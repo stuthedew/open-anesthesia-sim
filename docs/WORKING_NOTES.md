@@ -1129,3 +1129,94 @@ and the published value itself - and separating them needs the methods sections
 of the two Yasuda 1991 papers, which are not in PubMed Central and not held in
 `docs/references/`. That is a decision for the project owner before any work is
 scheduled, not a task waiting to be picked up.
+
+## Measured and answered: a server-rendered chart is not the way out - PL-YDKJ, PL-2FM6, PL-2QMK, PL-YSZN (2026-09-08)
+
+`PL-YDKJ` option 3 - "render server-side; one image per frame is one patch" -
+said "almost certainly too slow to redraw at 5 Hz in Python, and would lose
+live interaction - worth a measurement before dismissing." Measured, at the
+project owner's request. **The answer is no, and two of the reasons are
+structural rather than a matter of tuning.**
+
+**The transport is better than the item assumed.**
+`flet_charts.MatplotlibChart` does not push a base64 image field through the
+control tree. Frames go over a dedicated `ft.DataChannel` as WebAgg-style
+packets - a full PNG, an incremental diff PNG composited onto a client-side
+backbuffer, or raw premultiplied RGBA - so they skip both the msgpack encode
+*and* the control-tree walk, with backpressure on a Dart-side ack. The chart
+would become one control that never changes. That is the right shape, and it
+is why the measurement was worth taking rather than reasoning about.
+
+**What it costs.** Six traces, 282 points each, 1000x360 logical pixels,
+matplotlib 3.x through `FigureCanvasWebAggCore`, 40 frames each, on the same
+4-vCPU container as `PL-YSZN`:
+
+| Variant | Render | Diff PNG | Total | KiB/frame |
+| --- | ---: | ---: | ---: | ---: |
+| Scrolling window, full redraw @1x | 30.0 ms | 14.4 ms | 44.4 ms | 27.0 |
+| Sweep, blitted lines @1x | 1.3 ms | 8.3 ms | 9.6 ms | 2.3 |
+| Scrolling window, full redraw @2x | 34.7 ms | 47.5 ms | 82.1 ms | 55.4 |
+| Sweep, blitted lines @2x | 2.2 ms | 32.5 ms | 34.8 ms | 7.3 |
+
+Against the shipped path after `PL-KP7H` and `PL-R2YM`: `page.update()` is
+20.3 ms for the whole page at 300x, of which the ~2 080 point controls are
+about half - so **the chart costs about 10 ms a frame today**, on 5 KiB. Every
+row above also still pays the page's own ~10 ms floor, because the rest of the
+control tree is walked either way.
+
+So the best image variant ties at 1x and loses 3.5x at 2x, and the variant
+matching how the chart actually behaves loses 4x to 8x.
+
+**Three structural findings, which outlive the numbers.**
+
+1. **The diff-PNG saving does not exist in the mode this chart is in.** A
+   scrolling window moves every pixel, so the "diff" is the whole frame. The
+   protocol pays only under a sweep display, which is `PL-YDKJ` option 4.
+2. **Blitting requires fixed axes**, so the cheap render also requires option
+   4: a scrolling window invalidates the cached background every frame.
+   Options 3 and 4 are therefore not independent - **3 is only viable on top
+   of 4**, and the item lists them as alternatives.
+3. **Option 4 alone buys the Flet path nothing.** `PL-YSZN` measured
+   `page.update()` on a chart where nothing had changed since the last one at
+   the cost of a full frame, both linear in the number of point *controls* and
+   indifferent to how many moved. A sweep is O(1) in operations *sent*, which
+   was `PL-Q197`'s bottleneck, and O(n) in the walk, which is today's. The
+   item's "domain-native and O(1)" is true of the transport it was written
+   against and false of the cost that now dominates.
+
+**The one argument the measurement supports.** The two paths scale on
+different quantities: Flet's on point count, the image's on pixels. More
+traces, more columns or a second plot are free on the image path and linear on
+this one, which is exactly the ceiling `PL-YDKJ` exists to name. Nothing is
+against that ceiling today.
+
+**Two costs the item does not list.**
+
+- **numpy, and it is already decided.** matplotlib pulls numpy, pillow and
+  pyparsing among others, against this file's "Decided: no numpy" (2026-09-05)
+  - which was settled on fit rather than on dependency avoidance, and whose
+  reasoning does not cover a rendering backend. Option 3 reopens that
+  question rather than being covered by it.
+- **It gives back `PL-KP7H`.** The paused-only hover is Flet controls
+  answering a hover. matplotlib's WebAgg canvas has its own event model, so
+  `PL-KP7H` and `PL-YLKR` would both be rebuilt against it.
+
+**And one benefit that cuts the other way, which is not a performance
+argument.** `PL-2QMK` records that no session in the web container can
+visually confirm a chart change, because Flet's web renderer fetches Flutter
+assets the egress proxy denies - which blocks `PL-90Y6`, `PL-3355`, `PL-W8DQ`,
+`PL-GVXP` and the rest of `presentation-safety`. A matplotlib figure
+rasterizes in any container and can be asserted on in an ordinary test. That
+is the strongest thing option 3 has, it is about testability rather than
+speed, and it should be argued on those terms if it is argued at all.
+
+**Recommendation: option 1.** Accept that the chart patches one control per
+plotted point, document the ceiling, and size the drawn column budget against
+it - `CHART_COLUMN_BUDGET_PER_SERIES` is the lever, and halving it halves the
+chart's share of a frame. Revisit only when a scale the budget cannot absorb
+actually arrives, or when `PL-2QMK` becomes the binding constraint.
+
+**Recorded here rather than in `PL-YDKJ`** because
+`origin/claude/m4-implementation-status-be2syh` is holding that file - it moves
+the item to `blocked-by: PL-2FM6` - and a second edit would collide at merge.
+`PL-18ND` carries the one finding that bears on that block.

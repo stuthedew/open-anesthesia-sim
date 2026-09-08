@@ -25,7 +25,7 @@ interpolates, extrapolates, or synthesizes a value, and the controller's
 own history is read but never modified.
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from math import isnan
 from typing import Final
 
@@ -39,7 +39,9 @@ __all__ = [
     "PARKED_CONTROL_MARK_X",
     "PlottedSeries",
     "WASH_IN_TERMINUS_MARKER",
+    "apply_point_tooltips",
     "build_control_mark",
+    "build_point",
     "build_reference_line",
     "build_series",
     "park_control_mark",
@@ -83,6 +85,70 @@ CHART_COLUMN_BUDGET_PER_SERIES: Final = 150
 type PlottedSeries = tuple[fch.LineChartData, RecordedSeries]
 
 
+def build_point(x: float, y: float) -> fch.LineChartDataPoint:
+    """One chart point, built without the library's default tooltip.
+
+    **The single constructor of a plotted point in this application**, so
+    that what a point carries is decided once. `fch.LineChartDataPoint`
+    defaults `tooltip` to a `LineChartDataPointTooltip`, which itself holds
+    a full seventeen-field `ft.TextStyle`, and Flet's `object_patch`
+    descends into both on every point on every frame. Measured 2026-09-08
+    on a saturated chart at 300x: `page.update()` fell from 42.8 ms to
+    22.5 ms with those objects gone, against a 200 ms frame - roughly half
+    the cost of a frame, for a tooltip nothing here ever writes text into
+    (`PL-KP7H`).
+
+    The cost is the *walk* rather than the patch: the same measurement
+    found `page.update()` on a chart where nothing had changed since the
+    last one costing what a full frame costs, and both linear in the number
+    of point controls on the page at about 24.5 us each. So it is paid on
+    every frame whether or not a trace moved, which is why a point that
+    carries nothing it does not need is worth the constructor
+    (`PL-YSZN`).
+
+    Points are built without one and given one back by
+    `apply_point_tooltips` while the run is paused, which is where the
+    interface offers the hover. Building them the other way round - with a
+    tooltip, stripped while running - would mean every point appended
+    mid-run arrived carrying the cost this exists to remove.
+
+    Args:
+        x: Horizontal coordinate, in the chart's own axis units.
+        y: Vertical coordinate, in the chart's own axis units.
+
+    Returns:
+        A Flet chart point that answers no hover until one is applied.
+    """
+
+    return fch.LineChartDataPoint(x, y, tooltip=None)
+
+
+def apply_point_tooltips(series: Iterable[fch.LineChartData], *, enabled: bool) -> None:
+    """Give every point of these series a hover tooltip, or take it away.
+
+    The mechanical half of the paused-only hover; `SimulationView`'s
+    `_apply_chart_tooltips` is the one caller and decides *when*. Writing
+    the same value a point already holds is free on the wire - Flet's diff
+    compares values rather than trusting an assignment - so this may be
+    called on every frame without the running frames paying for it in
+    traffic.
+
+    A tooltip is built per point rather than shared between them: they are
+    identical today, and one instance behind two thousand points is a
+    footgun the moment `PL-YLKR` gives a point its own text.
+
+    Args:
+        series: The chart series to write across. Every point of each is
+            written, drawn or parked, so a series is never half in one
+            state.
+        enabled: Whether a hover over these points should answer.
+    """
+
+    for one in series:
+        for point in one.points:
+            point.tooltip = fch.LineChartDataPointTooltip() if enabled else None
+
+
 def build_series(
     color: str, stroke_width: float, dash_pattern: list[int] | None = None
 ) -> fch.LineChartData:
@@ -99,7 +165,7 @@ def build_series(
     """
 
     return fch.LineChartData(
-        points=[fch.LineChartDataPoint(0.0, 0.0)],
+        points=[build_point(0.0, 0.0)],
         color=color,
         stroke_width=stroke_width,
         dash_pattern=dash_pattern,
@@ -136,7 +202,7 @@ def build_reference_line(
     """
 
     return fch.LineChartData(
-        points=[fch.LineChartDataPoint(0.0, 0.0), fch.LineChartDataPoint(0.0, 0.0)],
+        points=[build_point(0.0, 0.0), build_point(0.0, 0.0)],
         color=color,
         stroke_width=stroke_width,
         dash_pattern=dash_pattern,
@@ -247,7 +313,7 @@ def build_control_mark(
     """
 
     return fch.LineChartData(
-        points=[fch.LineChartDataPoint(0.0, 0.0), fch.LineChartDataPoint(0.0, 0.0)],
+        points=[build_point(0.0, 0.0), build_point(0.0, 0.0)],
         color=color,
         stroke_width=stroke_width,
         dash_pattern=dash_pattern,
@@ -422,7 +488,7 @@ def redraw_points(series: fch.LineChartData, coordinates: Sequence[tuple[float, 
         point.y = y
 
     if len(coordinates) > reused:
-        points.extend(fch.LineChartDataPoint(x, y) for x, y in coordinates[reused:])
+        points.extend(build_point(x, y) for x, y in coordinates[reused:])
     elif len(points) > reused:
         # Points past the drawn count are the previous frame's samples,
         # carrying their own time and value. Left in place the chart

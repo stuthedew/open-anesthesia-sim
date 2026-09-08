@@ -933,6 +933,99 @@ def test_refresh_view_populates_chart_series_from_history() -> None:
             assert point.y == pytest.approx(_recorded(sample, quantity) * 100.0)
 
 
+def _drawn_points(view: SimulationView) -> list[fch.LineChartDataPoint]:
+    """Every point control on either chart, drawn or parked."""
+
+    return [
+        point
+        for chart in (view._concentration_chart, view._wash_in_chart)
+        for series in chart.data_series
+        for point in series.points
+    ]
+
+
+def test_a_playing_run_draws_points_that_carry_no_tooltip() -> None:
+    """`PL-KP7H`: the hover is what makes a frame cost about twice what it need.
+
+    Stated as a property of the tree rather than as a timing, which would
+    flake: what made `page.update()` expensive is that Flet's diff descends
+    into a tooltip and a `TextStyle` on every point on every frame, so a
+    drawn point carrying neither is the thing to assert.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+    _advance_to(controller, 60.0)
+    view._refresh_view()
+
+    points = _drawn_points(view)
+
+    assert points, "no points were drawn; the test proves nothing"
+    assert all(point.tooltip is None for point in points)
+    assert not view._concentration_chart.interactive
+    assert not view._wash_in_chart.interactive
+
+
+def test_pausing_gives_every_drawn_point_its_tooltip_back() -> None:
+    """The hover returns where it is free and where it can be read.
+
+    `_run_render_timer` takes no frame while the run is stopped, so the
+    per-frame cost the test above pins does not exist while paused - and a
+    value under the cursor only means what it says once the trace has
+    stopped moving.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+    _advance_to(controller, 60.0)
+    view._refresh_view()
+    controller.pause()
+    view._refresh_view()
+
+    points = _drawn_points(view)
+
+    assert points, "no points were drawn; the test proves nothing"
+    assert all(point.tooltip is not None for point in points)
+    assert view._concentration_chart.interactive
+    assert view._wash_in_chart.interactive
+
+
+def test_a_trace_restored_while_paused_answers_a_hover_like_the_others() -> None:
+    """The one path the frame's own pass cannot cover.
+
+    `_handle_trace_visibility_change` redraws *before* putting the trace
+    back on the chart, deliberately, so that no stale curve can reach the
+    client. The frame's tooltip pass therefore runs while the trace is still
+    off the chart, and `_apply_trace_visibility` is what gives it the mode
+    the rest of the chart is in.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    trace = view._compartment_traces[0]
+
+    controller.start()
+    _advance_to(controller, 60.0)
+    trace.checkbox.value = False
+    view._handle_trace_visibility_change(trace, ft.Event(name="change", control=trace.checkbox))
+    controller.pause()
+    view._refresh_view()
+
+    trace.checkbox.value = True
+    view._handle_trace_visibility_change(trace, ft.Event(name="change", control=trace.checkbox))
+
+    restored = [point for point in trace.plotted("sevoflurane")[0].points]
+
+    assert restored, "the restored trace drew nothing; the test proves nothing"
+    assert all(point.tooltip is not None for point in restored)
+    assert all(point.tooltip is not None for point in _drawn_points(view))
+
+
 def test_refresh_view_reports_valid_agent_accounting() -> None:
     view, _ = _build_view(passes_validation=True)
 
@@ -2816,6 +2909,123 @@ def test_neither_loop_does_anything_while_paused() -> None:
 
     assert controller.snapshot().elapsed_s == 0.0
     assert page.update_calls == 0
+
+
+def test_a_dragged_slider_leaves_its_frame_to_the_render_tick() -> None:
+    """`PL-R2YM`: the drag stops paying a whole-page walk per pointer move.
+
+    What must still be immediate is the *view* - the readout beside the dial
+    has to agree with the snapshot the moment the setting is applied, which
+    is `PL-018`'s property. What waits is the submission of that view to the
+    client, which is the expensive half.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+    page.update_calls = 0
+
+    view._fresh_gas_flow_slider.value = 7.0
+    view._handle_fresh_gas_flow_change(ft.Event(name="change", control=view._fresh_gas_flow_slider))
+
+    assert controller.snapshot().fresh_gas_flow_l_min == 7.0
+    assert view._fresh_gas_flow_text.value == "7.0 L/min"
+    assert page.update_calls == 0
+    assert view._render_pending is True
+
+
+def test_a_refused_slider_change_draws_its_own_frame() -> None:
+    """The one state the coalescing rule may not defer.
+
+    A refused setting is the only case where the dial on screen and the
+    simulation disagree, because the reader dragged it somewhere the core
+    would not go. Waiting even a tick there leaves a control stating a
+    setting the run is not using.
+    """
+
+    page = _FakePage()
+    controller = SimulationController(agent_id="isoflurane")
+    view = SimulationView(page=page, controller=controller)
+    page.update_calls = 0
+
+    view._delivered_concentration_slider.value = 50.0
+    view._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view._delivered_concentration_slider)
+    )
+
+    assert view._notice_text.visible is True
+    assert page.update_calls == 1
+    assert view._render_pending is False
+
+
+def test_the_frame_that_clears_a_refusal_is_drawn_too() -> None:
+    """The same fault backwards: a notice left up after it stopped being true."""
+
+    page = _FakePage()
+    controller = SimulationController(agent_id="isoflurane")
+    view = SimulationView(page=page, controller=controller)
+
+    view._delivered_concentration_slider.value = 50.0
+    view._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view._delivered_concentration_slider)
+    )
+    page.update_calls = 0
+
+    view._delivered_concentration_slider.value = 2.0
+    view._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view._delivered_concentration_slider)
+    )
+
+    assert view._notice_text.visible is False
+    assert page.update_calls == 1
+
+
+def test_a_discrete_action_still_draws_its_own_frame() -> None:
+    """Only a control that reports continuously coalesces.
+
+    A button press is one action and one frame; making it wait a tick would
+    spend responsiveness to save nothing.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    page.update_calls = 0
+
+    view._handle_start(ft.Event(name="click", control=view._start_button))
+
+    assert controller.is_running
+    assert page.update_calls == 1
+    assert view._render_pending is False
+
+
+def test_the_render_tick_draws_a_pending_change_while_the_run_is_stopped() -> None:
+    """The bound has to hold on the pause-change-resume route as well.
+
+    `app/playback.py` documents pausing as how a reader times a control
+    change exactly. Paused there is no run to draw, but there is still a
+    dial moving, so the tick has to fire for a change that is owed a frame
+    even though `is_running` is false - and stop firing once it has.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+
+    view._fresh_gas_flow_slider.value = 7.0
+    view._handle_fresh_gas_flow_change(ft.Event(name="change", control=view._fresh_gas_flow_slider))
+    assert view._render_pending is True
+    page.update_calls = 0
+
+    _run_briefly(view._run_render_timer, ticks=1, interval_s=RENDER_INTERVAL_S)
+
+    assert page.update_calls == 1
+    assert view._render_pending is False
+
+    _run_briefly(view._run_render_timer, ticks=1, interval_s=RENDER_INTERVAL_S)
+
+    assert page.update_calls == 1, "the tick kept drawing a paused run with nothing owed"
 
 
 def test_simulation_time_does_not_depend_on_render_cadence() -> None:

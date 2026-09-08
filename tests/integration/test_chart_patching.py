@@ -139,7 +139,7 @@ class _ReplayController:
         recorded = latest.substances[AGENT_ID]
 
         return SimulationSnapshot(
-            is_running=True,
+            is_running=self.is_running,
             elapsed_s=latest.elapsed_s,
             agent_id=AGENT_ID,
             agent_display_name="Sevoflurane",
@@ -597,4 +597,82 @@ def test_a_run_full_of_control_marks_costs_a_frame_nothing_extra() -> None:
     assert median(marked_counts) <= median(unmarked_counts), (
         f"a full mark pool cost the typical frame "
         f"{median(marked_counts) - median(unmarked_counts)} extra operations"
+    )
+
+
+def _tooltip_operations(connection: _RecordingConnection) -> list[list[Any]]:
+    """Only the operations that change what a point answers on hover."""
+
+    return [
+        operation
+        for operation in _patch_operations(connection)
+        if operation[0] is Operation.Replace and operation[2] == "tooltip"
+    ]
+
+
+def test_a_playing_frame_sends_no_tooltip_at_all() -> None:
+    """`PL-KP7H`, stated on the wire rather than as a timing.
+
+    A point built mid-run carries no tooltip (`chart_series.build_point`),
+    so a frame of a playing run has none to send. The saving this states is
+    not the traffic - it was never more than a few KiB - but the Python-side
+    walk that produces it: Flet's diff descends into a tooltip and its
+    `TextStyle` on every point whether or not either changed, which
+    `PL-YSZN` measured at about half the cost of a frame.
+    """
+
+    view, session, connection = _mounted_view()
+
+    for _ in range(4):
+        view._refresh_view()
+        session.page.update()
+
+    assert _patch_operations(connection), "no frame reached the client; the test proves nothing"
+    assert _tooltip_operations(connection) == []
+
+
+def test_pausing_puts_the_hover_back_and_the_client_is_told() -> None:
+    """The mutation Flet's diff has to report for the feature to exist.
+
+    Points are given their tooltips back when the run stops, so that a
+    reader can hover the trace they have just paused to look at. That is
+    only true if the diff notices the assignment - a mutation it missed
+    would leave a chart the interface believes answers a hover and the
+    client believes does not, which is the failure class
+    `test_a_frame_of_moved_points_reaches_the_client` exists for.
+
+    The cost is one frame, on a button press: about 1 870 operations and
+    90 KiB, against a steady frame's handful. `PL-Q197`'s saturation was
+    ~17 900 operations a *second*, sustained; this is a single frame and
+    then the render loop stops, since `_run_render_timer` takes none while
+    the run is stopped.
+    """
+
+    view, session, connection = _mounted_view()
+    view._refresh_view()
+    session.page.update()
+    connection.messages.clear()
+
+    view._controller.is_running = False
+    view._refresh_view()
+    session.page.update()
+
+    restored = _tooltip_operations(connection)
+
+    assert len(restored) == sum(
+        len(series.points)
+        for chart in (view._concentration_chart, view._wash_in_chart)
+        for series in chart.data_series
+    ), "the client was told about some points and not others"
+    assert all(operation[3] is not None for operation in restored)
+
+    interactive = [
+        operation[3]
+        for operation in _patch_operations(connection)
+        if operation[0] is Operation.Replace and operation[2] == "interactive"
+    ]
+
+    assert interactive == [True, True], (
+        "both charts have to be told they are interactive again, or the "
+        "restored tooltips are unreachable on the one that was not"
     )
