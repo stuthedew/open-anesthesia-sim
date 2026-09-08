@@ -5018,15 +5018,17 @@ either way.
 
 **Gas–vapour blender — desflurane here.** The class of the Tec 6 and Tec 6
 Plus, which desflurane needs at all because it boils at 22.8 °C. The sump is
-held at about 39 °C, where desflurane's vapour pressure is close to two
-atmospheres (about 1460 mmHg), and pure vapour is injected into the fresh gas
-stream; a differential pressure transducer holds the vapour circuit at the
-fresh-gas circuit's pressure, so the two flows stay in the fixed *ratio* the
-dial sets — "The pressure in the vapor circuit is electronically regulated to
-equal the pressure in the fresh gas circuit… vaporizer output is constant
-because the amount of flow through each circuit is proportional" (Andrews and
-Johnston). Output is therefore a constant volumes percent and the delivered
-partial pressure falls with ambient pressure. Datex-Ohmeda states the
+held at about 39 °C, which fixes desflurane's vapour pressure at about
+1460 mmHg — a temperature chosen so that the resulting pressure would clear
+the vaporizer's own internal resistances — and pure vapour is injected into
+the fresh gas stream; a differential pressure transducer holds the vapour
+circuit at the fresh-gas circuit's pressure, so the two flows stay in the
+fixed *ratio* the dial sets — "The pressure in the vapor circuit is
+electronically regulated to equal the pressure in the fresh gas circuit…
+vaporizer output is constant because the amount of flow through each circuit
+is proportional" (Andrews and Johnston). Output is therefore a constant
+volumes percent and the delivered partial pressure falls with ambient
+pressure. Datex-Ohmeda states the
 consequence for the operator directly: "Decreased atmospheric pressure, with
 altitude, does not significantly affect the concentration of agent delivered
 (V/V), but decreases the partial pressure of the agent in the ratio of the
@@ -5064,8 +5066,14 @@ stored value, there being none:
 
 - Weiskopf RB, Sampson D, Moore MA. The desflurane (Tec 6) vaporizer: design,
   design considerations and performance evaluation. *Br J Anaesth*
-  1994;72:474–479. Primary; the 39 °C sump and the ±15% output accuracy in
-  oxygen. Supplied by the project owner and read at the source 2026-09-06.
+  1994;72:474–479. Primary, and the authority for every figure attributed to
+  it here: the 22.8 °C boiling point, the 39 °C sump, the 1460 mmHg it fixes
+  and why that pressure was chosen, and the ±15% relative (or ±0.5% absolute)
+  output accuracy. Supplied by the project owner; read at the source
+  2026-09-06 and re-read against the full text 2026-09-08, which is where the
+  1460 mmHg is stated twice — once for the sump and once for the regulator
+  that reduces it to the fresh-gas pressure. The paper says nothing about
+  ambient pressure or altitude, so it is not the source for that behaviour.
 - Andrews JJ, Johnston RV. The new Tec6 desflurane vaporizer. *Anesth Analg*
   1993;76:1338–1341. Primary; the flow-ratio mechanism quoted above, which is
   in the abstract.
@@ -5077,13 +5085,29 @@ stored value, there being none:
   © 2000 Datex-Ohmeda Division, Instrumentarium Corp. Manufacturer statement,
   quoted above; it also gives the 1–18% concentration range that
   `max_delivered_concentration_percent` carries for desflurane. Supplied by
-  the project owner and read in full 2026-09-06.
+  the project owner and read in full 2026-09-06. **Owner-attested**: see the
+  note below.
 - Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
   Crit Care Pain* 2011;11:199–203. **Tier 2** under "Source hierarchy": a
   secondary synthesis, taken here for the shape of the explanation and the
   worked example and never as the authority for a number. Its § "Altitude"
   carries both classes side by side. Supplied by the project owner and read in
-  full 2026-09-06.
+  full 2026-09-06. **Owner-attested**: see the note below.
+
+**Two of those five are owner-attested rather than checkable, and this says
+which.** `docs/references/` cannot hold them: the repository is public, so a
+file placed there is redistributed rather than read privately, and
+`docs/references/README.md` § "Redistribution" is the rule that follows from
+it — two publisher-copyright full texts were removed on 2026-09-06 for exactly
+that reason (`PL-SHG5`). The three journal articles above are reachable by any
+reader through their DOI or PMID, and the Weiskopf figures were re-read
+against the full text on 2026-09-08. The Datex-Ohmeda specification sheet and
+the Boumphrey and Marshall article were not: both were read in a working
+session from copies the project owner supplied, and nothing in this repository
+can re-open either. So the passage quoted from Datex-Ohmeda, the 1–18% range
+beside it, and the worked example attributed to Boumphrey and Marshall rest on
+that reading alone. Nothing stored depends on any of them; a reader wanting to
+verify one has to reach the document itself.
 
 ## Release gate
 
