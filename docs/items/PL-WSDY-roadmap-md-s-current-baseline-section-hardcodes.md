@@ -8,7 +8,7 @@ classes: defect, docs
 feature: planning-cadence
 touches: ROADMAP.md
 added: 2026-09-08
-verify: python3 tools/doc_check.py check
+verify: python3 tools/doc_check.py check && ! grep -q '92 of its 121 entries' ROADMAP.md
 ---
 
 **Problem.** `ROADMAP.md` § "Current baseline: v0.4.10" ends with "Gate 1

@@ -3,11 +3,12 @@ id: PL-0YQX
 title: "Place the interface pass on the plan: a designed theme, type scale and layout have no roadmap item and no timeline row, and WORKING_NOTES shelved the thread pending the owner asking again"
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 touches: ROADMAP.md, docs/WORKING_NOTES.md
 added: 2026-09-08
 verify: python3 tools/doc_check.py check && grep -q 'Run the interface pass' ROADMAP.md
+closed: 2026-09-08
 ---
 
 **Problem.** A designed interface — palette, type scale, spacing rhythm,
