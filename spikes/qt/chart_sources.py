@@ -11,8 +11,18 @@ spike was being written: `RunHistory`, `history_window` and the M4 decimation
 is the whole of what a chart is drawn from. That is a simplification for the
 spike rather than a complication - one evaluation serves all six traces,
 because a state carries every compartment at once - and it removes the reason
-the spike would otherwise have needed a source selector: the shipped path is
-now the faithful one, so measuring it and drawing it are the same act.
+the spike would otherwise have needed a source selector: there is one path, so
+measuring it and drawing it are the same act.
+
+**It is more faithful rather than faithful, and the difference is a live P1.**
+`PL-GS3R`, measured after `PL-2FM6` landed, records that the drawn polyline
+still departs from the run by 0.26 MAC at the 12-hour base - down from M4's
+0.315 MAC, and moved from the control change, which is genuinely fixed, to the
+steep early wash-in, where curvature is highest and a learner watching an
+induction is looking. The cause is that the chart rules a straight line between
+adjacent columns, so a column budget spread across twelve hours chords the same
+width M4's buckets did. The spike inherits that exactly, and the caption below
+says what a segment between two points is.
 
 **What stays a control is the column budget.** `PL-QXSB` argued that Qt's
 array transport would make the drawn point count stop mattering; with M4 gone

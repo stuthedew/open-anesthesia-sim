@@ -1315,3 +1315,45 @@ of the real interface is available, which is what `PL-90Y6`, `PL-3355`,
 `PL-W8DQ`, `PL-GVXP` and the rest of `presentation-safety` are waiting on.
 That is a point for Qt independent of speed, and it is the one `PL-QXSB` said
 would be worth the most.
+
+### The result that bears on a different decision: `PL-GS3R`
+
+`PL-GS3R` is `P1`, `safety` and `needs-decision`: after `PL-2FM6` the drawn
+polyline still departs from the run by **0.26 MAC** at the 12-hour base, moved
+from the control change - genuinely fixed - to the steep early wash-in, because
+the chart rules a straight line between adjacent columns and a fixed budget
+spread across twelve hours chords the same width M4's buckets did. Its first
+route is to buy resolution with more columns, and it prices that route against
+Flet's per-point charge: "`CHART_COLUMN_BUDGET_PER_SERIES` times traces drawn
+times about 24.5 us is the chart's share of a frame ... doubling columns
+roughly doubles that share."
+
+**That charge is the one Qt does not have**, so the route costs something else
+entirely there. Measured on the spike, 1 800 s at 300x, median of 120 frames:
+
+| Columns | Points drawn | `refresh` | `handoff` | Flet's chart share by its own model |
+| ---: | ---: | ---: | ---: | ---: |
+| 150 (shipped) | 900 | 6.20 ms | 1.28 ms | 22 ms |
+| 600 | 3 600 | 9.14 ms | 1.51 ms | 88 ms |
+| 2 400 | 14 400 | 22.22 ms | 2.08 ms | 353 ms |
+
+**`handoff` moves from 1.28 ms to 2.08 ms for sixteen times the points**, which
+is the array transport doing exactly what `PL-QXSB` said it would. The whole
+cost of more columns is the score evaluation, and it is the same cost on either
+toolkit.
+
+So `PL-GS3R`'s route 1 is affordable on Qt and is not on Flet. On `PL-GS3R`'s
+own error model - halving the chord width quarters the error - four times the
+columns takes 0.26 MAC to roughly 0.016 MAC, for 10.7 ms of Python against a
+200 ms frame. The same move on Flet adds about 88 ms of chart share to frames
+`PL-YSZN` already measured at 42.8-51.8 ms saturated. Sixteen times the columns
+is 24.3 ms on Qt and 353 ms on Flet, which is more than the entire frame.
+
+**This is the strongest thing the spike found, and it is not a speed argument.**
+`PL-QXSB` weighs a toolkit against 20x on a frame nobody is waiting on. What
+this says instead is that the toolkit choice decides whether an open
+safety-classed fidelity defect can be closed by the cheap route or has to be
+closed by the expensive one - `PL-GS3R`'s route 2, a curvature-adaptive grid,
+which its own brief calls "the right answer numerically, and the expensive
+one". Neither item currently sees the other; that is what this paragraph is
+for.

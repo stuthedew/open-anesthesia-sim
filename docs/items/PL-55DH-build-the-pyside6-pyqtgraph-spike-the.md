@@ -98,6 +98,17 @@ that no longer exists, so only the `page.update` row is a toolkit comparison)
 and `PL-CNCF` (`drawn_window` is 6.2 ms of a 6.24 ms frame read, and about
 eighty times the simulation at 1x).
 
+**One result bears on a decision this item was not about.** `PL-GS3R` is `P1`,
+`safety` and `needs-decision`, and its first route - buy chart fidelity with
+more columns - is priced against Flet's per-point charge. The spike measures
+what that route costs on a toolkit that transports arrays: `handoff` goes from
+1.28 ms to 2.08 ms for sixteen times the points, so the whole cost is the score
+evaluation and none of it is the toolkit. Four times the columns is 10.7 ms of
+Python on Qt against about 88 ms of chart share on Flet. That makes the toolkit
+choice partly a question of whether an open safety item can be closed by its
+cheap route, which is a stronger argument than the speed one and is recorded in
+`docs/WORKING_NOTES.md` beside the measurements.
+
 **What this item does not settle**, deliberately: paint cost and feel on real
 hardware. `paint` measured 24-34 ms offscreen here and means nothing - no GPU,
 a software rasteriser - and timer lateness is zero because the check drives

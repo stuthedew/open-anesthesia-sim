@@ -880,6 +880,24 @@ class SpikeWindow(QWidget):
         self._step_timer.stop()
         self._render_timer.stop()
 
+    def set_columns(self, columns: int) -> None:
+        """Select a column budget, as the selector does.
+
+        Public for the same reason `set_playback_rate` is: `PL-GS3R` asks what
+        buying chart fidelity with more columns costs, and that question is
+        answered by running the check at more than one budget. A value the
+        selector does not offer is still applied - the ladder is a convenience
+        for a reader, not a constraint on the model.
+        """
+
+        self._columns = columns
+        index = self._columns_box.findData(columns)
+
+        if index >= 0:
+            self._columns_box.setCurrentIndex(index)
+
+        self._cost.reset()
+
     def set_playback_rate(self, rate: PlaybackRate) -> None:
         """Select a playback rate, as the selector does.
 
@@ -961,7 +979,7 @@ class SpikeWindow(QWidget):
         self._controller.set_cardiac_output(self._cardiac_output.value())
 
 
-def run_self_check(seconds: float, rate_multiplier: int) -> int:
+def run_self_check(seconds: float, rate_multiplier: int, columns: int) -> int:
     """Drive the window headlessly and assert what it drew, without a display.
 
     The spike ships no test - it is disposable, and a test of it in `tests/`
@@ -975,6 +993,8 @@ def run_self_check(seconds: float, rate_multiplier: int) -> int:
     Args:
         seconds: How much simulated time to advance.
         rate_multiplier: The playback rate to advance it at.
+        columns: The column budget to draw at. `PL-GS3R` turns on what more
+            columns cost, so the check has to be runnable at more than one.
 
     Returns:
         A process exit code: 0 when every check passed.
@@ -991,6 +1011,7 @@ def run_self_check(seconds: float, rate_multiplier: int) -> int:
         if candidate.multiplier == rate_multiplier
     )
     window.set_playback_rate(rate)
+    window.set_columns(columns)
     controller.start()
     ticks = round(seconds / (rate.multiplier * SIMULATION_TICK_INTERVAL_S))
 
@@ -1009,7 +1030,9 @@ def run_self_check(seconds: float, rate_multiplier: int) -> int:
     if window.point_count == 0:
         failures.append("the chart drew no points after a run")
 
-    print(f"ran {snapshot.elapsed_s:.1f} s of simulated time at {rate.multiplier}x")
+    print(
+        f"ran {snapshot.elapsed_s:.1f} s of simulated time at {rate.multiplier}x, {columns} columns"
+    )
     print(f"chart drew {window.point_count} points over {len(TRACES)} traces")
     print(f"{'stage':<16}{'last ms':>10}{'median ms':>11}{'p90 ms':>10}")
 
@@ -1102,6 +1125,12 @@ def main(argv: list[str] | None = None) -> int:
         "--rate", type=int, default=300, help="playback multiplier for --self-check"
     )
     parser.add_argument(
+        "--columns",
+        type=int,
+        default=CHART_COLUMN_BUDGET_PER_SERIES,
+        help="column budget for --self-check; PL-GS3R turns on what more columns cost",
+    )
+    parser.add_argument(
         "--screenshot",
         metavar="PATH",
         help="render one frame of a short run offscreen and write it to a PNG",
@@ -1119,7 +1148,7 @@ def main(argv: list[str] | None = None) -> int:
     application = QApplication(sys.argv[:1])
 
     if arguments.self_check:
-        return run_self_check(arguments.seconds, arguments.rate)
+        return run_self_check(arguments.seconds, arguments.rate, arguments.columns)
 
     if arguments.screenshot:
         return save_screenshot(arguments.screenshot)
