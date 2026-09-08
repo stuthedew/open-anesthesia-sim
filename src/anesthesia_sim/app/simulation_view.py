@@ -196,6 +196,12 @@ METRIC_GRID_COLUMNS: dict[ft.ResponsiveRowBreakpoint | str, int | float] = {
 # `tools/contrast_check.py`, and it stays normal text at WCAG's 4.5:1.
 METRIC_NAME_SIZE = 14
 METRIC_QUALIFIER_SIZE = 12
+# The same gloss, one panel row up, under a *control* name rather than under a
+# readout name (`_build_parameter_panel`). A reader meets the two as one idiom
+# - the fine print that says what the name above it actually refers to - so
+# they are the same size deliberately, and aliasing rather than writing 12
+# twice is what stops the two drifting apart unnoticed.
+PARAMETER_QUALIFIER_SIZE = METRIC_QUALIFIER_SIZE
 # The MAC line under each reading, in the same relationship to the percent
 # above it as the gloss is to the compartment name: smaller and MUTED, because
 # it is the weaker of the two claims. Percent is what the model computes and
@@ -1547,8 +1553,30 @@ class SimulationView:
 
         return ft.ResponsiveRow(
             controls=[
+                # "common gas outlet", never "Fresh gas flow" alone. The
+                # phrase on its own is what an anesthesia machine's flowmeter
+                # bank is labelled, and a flowmeter reads the carrier gas
+                # only; the model's own mass balance forces this setting to
+                # be the whole post-vaporizer stream, carrier plus the vapour
+                # the vaporizer added, which `docs/MODEL.md` § "Breathing
+                # circuit" states and derives. The two differ by
+                # 1/(1 - F_D) - under a percent at ordinary dial settings,
+                # 22% at desflurane's 18% Tec 6 maximum, where flowmeters at
+                # 2 L/min leave the common gas outlet at about 2.44 L/min -
+                # and the error lands on the circuit time constant
+                # `V_C/V̇_F`, which is the quantity the wash-in curve is
+                # about. Reading the slider as a flowmeter is therefore a
+                # wrong clinical inference from a correct number, which
+                # `CLAUDE.md` counts as a presentation-safety defect rather
+                # than a wording preference (PL-71CF, after PL-CXYT). Do not
+                # shorten it to fit a layout;
+                # `test_the_fresh_gas_flow_control_names_the_common_gas_outlet`
+                # holds the exact pair of strings.
                 self._build_parameter_panel(
-                    "Fresh gas flow", self._fresh_gas_flow_slider, self._fresh_gas_flow_text
+                    "Fresh gas flow",
+                    self._fresh_gas_flow_slider,
+                    self._fresh_gas_flow_text,
+                    qualifier="common gas outlet",
                 ),
                 self._build_parameter_panel(
                     self._delivered_concentration_label,
@@ -1573,6 +1601,7 @@ class SimulationView:
         slider: ft.Slider,
         value_text: ft.Text,
         secondary_value_text: ft.Text | None = None,
+        qualifier: str | None = None,
     ) -> ft.Container:
         """Build one compact simulation-setting panel.
 
@@ -1585,6 +1614,16 @@ class SimulationView:
                 unit, drawn under the slider, or None where the setting
                 has only one. Only the delivered agent has two: the three
                 flow settings are in L/min, which MAC does not convert.
+            qualifier: Where a setting's name alone would be read as a
+                different quantity than the model uses, the words that
+                separate the two, drawn smaller under the name as the
+                clinical gloss is on a readout (`_build_metric_panel`), or
+                None where the name is unambiguous. Unlike that gloss no
+                spacer is drawn in its place, because these four panels
+                are already of unequal height - the delivered agent
+                carries a MAC line the three flow settings have no
+                conversion for - so there is no shared baseline for a
+                blank line to keep.
 
         Returns:
             Responsive setting panel.
@@ -1600,6 +1639,15 @@ class SimulationView:
             content=ft.Column(
                 controls=[
                     label_control,
+                    *(
+                        []
+                        if qualifier is None
+                        else [
+                            ft.Text(
+                                qualifier, color=MUTED, size=PARAMETER_QUALIFIER_SIZE, italic=True
+                            )
+                        ]
+                    ),
                     ft.Row(controls=[slider, value_text]),
                     *([] if secondary_value_text is None else [secondary_value_text]),
                 ],
