@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux, safety
 feature: teachable-case
+milestone: v0.4.12
 touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
 added: 2026-09-05
 closed: 2026-09-08

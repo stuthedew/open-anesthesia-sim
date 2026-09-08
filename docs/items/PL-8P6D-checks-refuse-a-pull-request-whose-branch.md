@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: public-readiness
+milestone: v0.4.12
 touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, docs/ARCHITECTURE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-06
 closed: 2026-09-08

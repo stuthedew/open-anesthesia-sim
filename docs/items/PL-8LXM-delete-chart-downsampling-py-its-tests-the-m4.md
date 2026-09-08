@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor, docs
 feature: numerical-domain
+milestone: v0.4.12
 touches: src/anesthesia_sim/app/chart_downsampling.py, tests/unit/test_chart_downsampling.py, docs/references, docs/MODEL.md, ROADMAP.md, docs/WORKING_NOTES.md, docs/items
 added: 2026-09-05
 closed: 2026-09-08

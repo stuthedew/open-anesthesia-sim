@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: public-readiness
+milestone: v0.4.12
 touches: CONTRIBUTING.md, README.md
 added: 2026-09-08
 closed: 2026-09-08
