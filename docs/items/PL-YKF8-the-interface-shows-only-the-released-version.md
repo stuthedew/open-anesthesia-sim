@@ -1,14 +1,15 @@
 ---
 id: PL-YKF8
 title: The interface shows only the released version, so an owner verifying a fix by eye cannot tell which build drew the screen
-status: done
 priority: P2
 effort: S
+status: done
 classes: ux, infra
 feature: presentation-safety
 touches: src/anesthesia_sim/app_metadata.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py, tests/unit/test_app_metadata.py, tools/import_boundary_check.py, docs/ARCHITECTURE.md
 added: 2026-09-08
 closed: 2026-09-08
+pr: 468
 verify: uv run pytest tests/unit/test_formatting.py && grep -q 'def test_the_subtitle_carries_the_build_identifier_when_there_is_one' tests/unit/test_formatting.py
 ---
 
