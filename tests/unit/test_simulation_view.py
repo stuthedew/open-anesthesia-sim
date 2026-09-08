@@ -33,12 +33,12 @@ from anesthesia_sim.app.chart_time_base import (
 )
 from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import (
+    COMPARTMENT_STATE_INDEX,
     CONTROL_INPUT_UNITS,
     ControlChange,
     ControlInput,
-    HistoryWindow,
+    DrawnWindow,
     RecordedQuantity,
-    RunHistory,
     SimulationController,
     SimulationHistorySample,
     SimulationSnapshot,
@@ -96,11 +96,13 @@ from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, INK, MUTE
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, read_wash_in, wash_in_ratio
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.exceptions import SimulationDomainLimitError, SimulationNumericalError
+from anesthesia_sim.core.governing_equations import STATE_SIZE, UNIT_STATE
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
     MacAwakeReference,
     load_agent_parameters,
 )
+from anesthesia_sim.core.run_score import DisplayState
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -165,7 +167,7 @@ class _FakeController:
 
     The snapshot and the history are held apart because the real controller
     answers for them apart: `snapshot()` is the run's state at one instant,
-    `history_window()` is the part of the run one frame draws. A test with
+    `drawn_window()` is the part of the run one frame draws. A test with
     nothing to say about the chart leaves `history` unset and gets a single
     sample at the snapshot's own simulated time.
     """
@@ -185,7 +187,6 @@ class _FakeController:
                 ),
             )
         )
-        self._run = RunHistory.of(self.history_value)
         self.is_running = snapshot.is_running
         self.requested_window_starts: list[float] = []
 
@@ -204,7 +205,6 @@ class _FakeController:
 
         self.snapshot_value = _snapshot(history=history, **snapshot_fields)
         self.history_value = history
-        self._run = RunHistory.of(history)
 
     def switch_agent(
         self,
@@ -214,8 +214,8 @@ class _FakeController:
     ) -> None:
         """Move the fake to another agent, its run started over as the real one does.
 
-        `SimulationController.set_agent` builds a new `RunHistory` under the
-        new agent's identifier, so a fake that changed only the snapshot
+        `SimulationController.set_agent` starts a new run under the new
+        agent's identifier, so a fake that changed only the snapshot
         would hand the view a state the controller cannot produce: a run
         recorded under one substance, read under another's name.
 
@@ -232,17 +232,60 @@ class _FakeController:
 
         self.advance_to(history, agent_id=agent_id, **snapshot_fields)
 
-    def history_window(self, start_s: float) -> HistoryWindow:
-        """Cut the window the real controller would, by the same search.
+    def drawn_window(self, start_s: float, stop_s: float, columns: int) -> DrawnWindow:
+        """Draw exactly the samples this fake was given, inside the axis.
 
-        Deliberately not a hand-rolled slice: a fake that located the
-        window differently could let a view test pass against a boundary
-        the real controller never produces.
+        The real controller evaluates its score at instants it chooses; a
+        fake has no score, and inventing one would make every view test
+        assert the sampler's column placement rather than the formatting
+        under test. So the fixture's own samples are the drawn instants,
+        which is what these tests set up and assert against.
+
+        The substance is taken from the recorded samples rather than from
+        the snapshot, so a run recorded under one agent and read under
+        another still raises where the real controller raises - in
+        `DrawnWindow.compartment_fractions`, not here.
         """
 
         self.requested_window_starts.append(start_s)
+        inside = [sample for sample in self.history_value if start_s <= sample.elapsed_s <= stop_s]
 
-        return self._run.window_from(start_s)
+        # Bounded the way the real window is. A fixture shorter than the
+        # budget is drawn whole, which is what the formatting tests set up
+        # and assert against; a long one is thinned to the budget, because a
+        # frame's payload not growing with the run is itself under test here
+        # and a fake that handed over every sample would defeat it.
+        if len(inside) > columns:
+            step = (len(inside) - 1) / (columns - 1)
+            inside = [inside[round(column * step)] for column in range(columns)]
+
+        substance_id = next(iter(self.history_value[0].substances))
+
+        return DrawnWindow(
+            substance_id=substance_id,
+            times_s=tuple(sample.elapsed_s for sample in inside),
+            states=tuple(DisplayState(_state_of(sample, substance_id)) for sample in inside),
+        )
+
+
+def _state_of(sample: SimulationHistorySample, substance_id: str) -> tuple[float, ...]:
+    """One recorded sample as a state vector, in `governing_equations`' order.
+
+    The fixtures are written as recorded samples because that is how a run
+    reads; the chart now draws states. This is the one place the two shapes
+    meet, and it uses `COMPARTMENT_STATE_INDEX` rather than a second table so
+    that a swap here cannot disagree with the pairing the application uses.
+    """
+
+    values = sample.substances[substance_id]
+    state = [0.0] * STATE_SIZE
+
+    for quantity, position in COMPARTMENT_STATE_INDEX.items():
+        state[position] = values[quantity]
+
+    state[UNIT_STATE] = 1.0
+
+    return tuple(state)
 
 
 #: The agent every fixture here runs unless it says otherwise.
@@ -1803,40 +1846,6 @@ def _drawn_series(view: SimulationView) -> tuple[fch.LineChartData, ...]:
     """
 
     return (*_all_series(view), *view._wash_in_segment_series)
-
-
-def test_a_frame_never_materializes_the_window_as_rows(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`PL-D9WD`: nothing on the render path may walk the visible window.
-
-    `HistoryWindow.samples` rebuilds one row per sample in the window, so a
-    single use of it anywhere in a frame puts the per-frame cost back in
-    proportion to the width shown - which is the whole defect the M4
-    aggregate cache was built to remove, and the one a later change is most
-    likely to reintroduce, because rows are the obvious shape to reach for.
-
-    Asserted as never rather than as a bound: a frame has no legitimate use
-    for a row, since every trace reads one quantity through
-    `RunHistory.aggregates` and every readout comes from the snapshot.
-    """
-
-    materializations = 0
-    build_rows = HistoryWindow.samples.fget
-    assert build_rows is not None
-
-    def counted(window: HistoryWindow) -> tuple[SimulationHistorySample, ...]:
-        nonlocal materializations
-        materializations += 1
-
-        return build_rows(window)
-
-    monkeypatch.setattr(HistoryWindow, "samples", property(counted))
-
-    view, _ = _build_view(history=_run_history(18_000))
-    materializations = 0
-
-    view._refresh_view()
-
-    assert materializations == 0
 
 
 @pytest.mark.parametrize("sample_count", [3_000, 6_000, 18_000])

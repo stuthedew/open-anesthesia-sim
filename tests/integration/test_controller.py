@@ -12,19 +12,13 @@ from anesthesia_sim.app.controller import (
     SimulationController,
     SimulationHistorySample,
 )
-from anesthesia_sim.app.wash_in import WashInDomain
+from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
     SimulationExecutionError,
     SimulationNumericalError,
-)
-from anesthesia_sim.core.governing_equations import (
-    ALVEOLAR_FRACTION,
-    FIRST_TISSUE_FRACTION,
-    INSPIRED_FRACTION,
-    VENOUS_FRACTION,
 )
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
 from anesthesia_sim.core.tissue import TissueGroup
@@ -288,18 +282,19 @@ def test_a_frame_reads_only_the_window_it_draws() -> None:
     A frame's cost was proportional to how long the simulation had been
     running: `snapshot()` copied every sample ever recorded, five times a
     second, and the chart discarded all but the few hundred inside its
-    axis. Timing is too flaky to assert, so the count of samples crossing
+    axis. Timing is too flaky to assert, so the count of values crossing
     the boundary is asserted instead - it is the quantity the cost was
     proportional to, and it is exact.
 
-    Two runs an order of magnitude apart, read at the same window: a frame
-    of the longer one must not read one sample more than a frame of the
-    shorter.
+    Stronger since `PL-2FM6` than it was written to be: the window is the
+    states at the instants drawn, so it is bounded by the column budget
+    outright rather than by the window's width in samples. Two runs an
+    order of magnitude apart, read at the same axis, hand over the same
+    number of states.
     """
 
     window_s = 30.0
     drawn: list[int] = []
-    recorded: list[int] = []
 
     for run_s in (60.0, 600.0):
         controller = SimulationController()
@@ -307,28 +302,24 @@ def test_a_frame_reads_only_the_window_it_draws() -> None:
         _advance_for(controller, run_s)
 
         elapsed_s = controller.snapshot().elapsed_s
-        start_s = elapsed_s - window_s
-        window = controller.history_window(start_s)
-        whole_run = controller.history_window(0.0)
+        window = controller.drawn_window(elapsed_s - window_s, elapsed_s, 150)
 
         assert _samples_a_snapshot_carries(controller) == 0, (
             "the snapshot is carrying recorded history again"
         )
-        assert len(window.samples) <= round(window_s / MAXIMUM_SIMULATION_STEP_S) + 1
-        # The window is the run's tail, cut within one step of the time
-        # asked for, and ending on the sample the readouts were built from.
-        assert window.index_offset == len(whole_run.samples) - len(window.samples)
-        assert start_s <= window.samples[0].elapsed_s < start_s + MAXIMUM_SIMULATION_STEP_S
-        assert window.samples[-1].elapsed_s == elapsed_s
+        assert len(window.times_s) <= 150 + 2
+        # The window is the run's tail, and it ends on the instant the
+        # readouts were built from.
+        assert window.times_s[0] == pytest.approx(elapsed_s - window_s)
+        assert window.times_s[-1] == pytest.approx(elapsed_s)
 
-        drawn.append(len(window.samples))
-        recorded.append(len(whole_run.samples))
+        drawn.append(len(window.times_s))
 
-    # The run grew ten-fold; what one frame reads did not. The single
-    # sample of slack is the cut landing at a different point within a
-    # step, not growth: simulated time is accumulated by repeated addition,
-    # so it drifts from the nominal grid as the run lengthens (`PL-VM40`).
-    assert recorded[1] > 9 * recorded[0]
+    # The run grew ten-fold; what one frame reads did not grow with it. The
+    # single column of slack is the grid's phase rather than growth: columns
+    # are multiples of the spacing measured from `t = 0`, so two windows of
+    # equal width sitting at different points on that grid fit one more or
+    # one fewer of them.
     assert abs(drawn[1] - drawn[0]) <= 1
 
 
@@ -346,52 +337,17 @@ def test_the_window_ends_on_the_sample_the_readouts_were_built_from() -> None:
     _advance_for(controller, 12.0)
 
     snapshot = controller.snapshot()
-    latest = controller.history_window(snapshot.elapsed_s - 5.0).samples[-1]
+    window = controller.drawn_window(snapshot.elapsed_s - 5.0, snapshot.elapsed_s, 150)
 
-    recorded = latest.substances[snapshot.agent_id]
+    def drawn(quantity: RecordedQuantity) -> float:
+        return window.compartment_fractions(RecordedSeries(snapshot.agent_id, quantity))[-1]
 
-    assert latest.elapsed_s == pytest.approx(snapshot.elapsed_s)
-    assert recorded[RecordedQuantity.CIRCUIT] == snapshot.circuit_concentration_fraction
-    assert recorded[RecordedQuantity.ALVEOLAR] == snapshot.alveolar_concentration_fraction
-    assert recorded[RecordedQuantity.FAT] == snapshot.fat_partial_pressure_fraction
-
-
-def test_each_recorded_quantity_carries_the_compartment_it_names() -> None:
-    """The run's whole pairing, audited against the core's own state.
-
-    `_build_history_sample` is the one place a compartment's value is put
-    under a `RecordedQuantity`, since `RunHistory.record` stores each value
-    under the key the sample already gives it and the chart draws each
-    trace from the key it is bound to. So a swap here would carry all the
-    way to a labelled curve and a labelled readout, both drawn from another
-    compartment's numbers - a presentation-correctness failure that no
-    later check could catch, because every individual value would be one
-    the model really produced.
-
-    Sixty seconds in, the six compartments differ by orders of magnitude -
-    circuit is filling, fat has barely started - so a swapped pair shows up
-    as a wrong number rather than as a coincidence.
-    """
-
-    controller = SimulationController()
-    controller.start()
-    _advance_for(controller, duration_s=60.0)
-
-    system = controller._state.uptake_system
-    recorded = controller.history_window(0.0).samples[-1].substances[controller.snapshot().agent_id]
-
-    assert recorded == {
-        RecordedQuantity.CIRCUIT: system.circuit.circuit_concentration_fraction,
-        RecordedQuantity.ALVEOLAR: system.alveoli.concentration_fraction,
-        RecordedQuantity.MIXED_VENOUS: system.patient.mixed_venous_fraction,
-        RecordedQuantity.VESSEL_RICH: system.patient.vessel_rich.partial_pressure_fraction,
-        RecordedQuantity.MUSCLE: system.patient.muscle.partial_pressure_fraction,
-        RecordedQuantity.FAT: system.patient.fat.partial_pressure_fraction,
-    }
-
-    # ...and they really are far enough apart for that to mean something.
-    assert len(set(recorded.values())) == len(recorded)
-    assert recorded[RecordedQuantity.CIRCUIT] > 100.0 * recorded[RecordedQuantity.FAT]
+    assert window.times_s[-1] == pytest.approx(snapshot.elapsed_s)
+    assert drawn(RecordedQuantity.CIRCUIT) == pytest.approx(snapshot.circuit_concentration_fraction)
+    assert drawn(RecordedQuantity.ALVEOLAR) == pytest.approx(
+        snapshot.alveolar_concentration_fraction
+    )
+    assert drawn(RecordedQuantity.FAT) == pytest.approx(snapshot.fat_partial_pressure_fraction)
 
 
 def test_each_drawn_quantity_reads_the_state_of_the_compartment_it_names() -> None:
@@ -453,12 +409,12 @@ def test_a_run_records_the_agent_it_is_a_run_of() -> None:
     controller.start()
     _advance_for(controller, duration_s=1.0)
 
-    assert controller.history_window(0.0).samples[-1].substances.keys() == {"isoflurane"}
+    assert controller.drawn_window(0.0, 1.0, 150).substance_id == "isoflurane"
 
     controller.set_agent("desflurane")
 
     assert controller.snapshot().agent_id == "desflurane"
-    assert controller.history_window(0.0).samples[-1].substances.keys() == {"desflurane"}
+    assert controller.drawn_window(0.0, 0.0, 150).substance_id == "desflurane"
 
 
 def test_the_window_starts_at_the_time_asked_for_and_never_after_it() -> None:
@@ -475,35 +431,16 @@ def test_the_window_starts_at_the_time_asked_for_and_never_after_it() -> None:
     controller.start()
     _advance_for(controller, 20.0)
 
-    whole_run = controller.history_window(0.0)
+    elapsed_s = controller.snapshot().elapsed_s
 
     for start_s in (0.0, 0.05, 7.3, 19.9, 20.0):
-        window = controller.history_window(start_s)
+        window = controller.drawn_window(start_s, elapsed_s, 150)
 
-        assert window.samples[0].elapsed_s >= start_s
-        assert whole_run.samples[window.index_offset] == window.samples[0]
-        assert window.samples == whole_run.samples[window.index_offset :]
-        assert all(
-            sample.elapsed_s < start_s for sample in whole_run.samples[: window.index_offset]
-        )
-
-
-def test_a_window_beginning_after_the_run_is_empty_rather_than_wrong() -> None:
-    """Asking past the end draws nothing, rather than the newest sample.
-
-    A window clamped to the last sample would put a point on a chart whose
-    axis does not contain it, which is a value drawn outside its own
-    context rather than merely a redundant one.
-    """
-
-    controller = SimulationController()
-    controller.start()
-    _advance_for(controller, 2.0)
-
-    window = controller.history_window(controller.snapshot().elapsed_s + 1.0)
-
-    assert window.samples == ()
-    assert window.index_offset == len(controller.history_window(0.0).samples)
+        # Exactly the edge asked for, rather than the first sample at or
+        # after it: a column is evaluated wherever it is wanted, so there
+        # is no longer a cut that could land inside the drawn window.
+        assert window.times_s[0] == pytest.approx(start_s)
+        assert window.times_s[-1] == pytest.approx(elapsed_s)
 
 
 def test_reset_pauses_and_clears_concentration_history() -> None:
@@ -521,9 +458,8 @@ def test_reset_pauses_and_clears_concentration_history() -> None:
     assert snapshot.alveolar_concentration_fraction == 0.0
     assert snapshot.stored_agent_l == 0.0
 
-    whole_run = controller.history_window(0.0)
-    assert len(whole_run.samples) == 1
-    assert whole_run.samples[0].elapsed_s == 0.0
+    window = controller.drawn_window(0.0, 0.0, 150)
+    assert window.times_s == (0.0,)
 
 
 def test_parameter_changes_do_not_reset_dynamic_state() -> None:
@@ -752,16 +688,17 @@ def test_a_failed_step_adds_nothing_to_the_chart_history() -> None:
     """
 
     controller = _controller_one_setting_from_a_failed_step()
-    before = controller.history_window(0.0)
+    before_s = controller.snapshot().elapsed_s
+    before = controller.drawn_window(0.0, before_s, 150)
 
     with pytest.raises(SimulationNumericalError):
         controller.advance(MAXIMUM_SIMULATION_STEP_S)
 
-    after = controller.history_window(0.0)
+    after = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
 
-    assert len(after.samples) == len(before.samples)
-    assert after.samples[-1] == before.samples[-1]
-    assert controller.snapshot().elapsed_s == before.samples[-1].elapsed_s
+    assert controller.snapshot().elapsed_s == before_s
+    assert after.times_s == before.times_s
+    assert after.states == before.states
 
 
 def test_a_failed_step_leaves_every_displayed_value_bit_identical() -> None:
@@ -1039,11 +976,13 @@ def test_the_constructor_overrides_are_not_recorded_as_changes() -> None:
     assert controller.snapshot().control_timeline == ()
 
 
-def test_a_recorded_change_points_at_the_last_sample_under_the_old_value() -> None:
-    """The mark belongs on the sample the run changed *after*.
+def test_a_recorded_change_is_stamped_with_the_instant_it_took_effect() -> None:
+    """The mark belongs at the instant the run changed, and it is drawn there.
 
-    A chart mark placed from a recomputed index could drift from the sample
-    the model actually changed at; this is why the index is stored.
+    The chart rules its control mark at `elapsed_s`, and `PL-2FM6` makes
+    that instant a column of the drawn window as well - so the mark and the
+    kink in the trace beneath it are the same instant by construction
+    rather than by two reads agreeing.
     """
 
     controller = SimulationController()
@@ -1053,9 +992,12 @@ def test_a_recorded_change_points_at_the_last_sample_under_the_old_value() -> No
     controller.set_cardiac_output(4.0)
 
     (change,) = controller.snapshot().control_timeline
-    whole_run = controller.history_window(0.0)
-    assert change.sample_index == len(whole_run.samples) - 1
-    assert whole_run.samples[change.sample_index].elapsed_s == pytest.approx(change.elapsed_s)
+    elapsed_s = controller.snapshot().elapsed_s
+
+    assert change.elapsed_s == pytest.approx(elapsed_s)
+    _advance_for(controller, 2.0)
+    window = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
+    assert change.elapsed_s in window.times_s
 
 
 def test_a_run_nobody_has_touched_holds_nothing_to_discard() -> None:
@@ -1246,39 +1188,6 @@ def _run_with_two_changes(controller: SimulationController) -> None:
     _advance_for(controller, duration_s=60.0)
 
 
-def test_the_closed_form_window_matches_the_recorded_one() -> None:
-    """The two reads of one run agree at every sample the run recorded.
-
-    `PL-T691`'s whole claim, checked where it has to hold: the controller's
-    recorded samples and its closed-form window are the same run, across two
-    setting changes, at the sample spacing the run was computed at.
-    """
-
-    controller = SimulationController()
-    _run_with_two_changes(controller)
-
-    recorded = controller.history_window(0.0).samples
-    agent_id = controller.snapshot().agent_id
-    evaluated = controller.evaluate_window(
-        recorded[0].elapsed_s, recorded[-1].elapsed_s, len(recorded)
-    )
-
-    assert len(evaluated.states) == len(recorded)
-
-    for sample, state in zip(recorded, evaluated.states, strict=True):
-        values = sample.substances[agent_id]
-
-        for quantity, index in (
-            (RecordedQuantity.CIRCUIT, INSPIRED_FRACTION),
-            (RecordedQuantity.ALVEOLAR, ALVEOLAR_FRACTION),
-            (RecordedQuantity.MIXED_VENOUS, VENOUS_FRACTION),
-            (RecordedQuantity.VESSEL_RICH, FIRST_TISSUE_FRACTION),
-            (RecordedQuantity.MUSCLE, FIRST_TISSUE_FRACTION + 1),
-            (RecordedQuantity.FAT, FIRST_TISSUE_FRACTION + 2),
-        ):
-            assert abs(state.values[index] - values[quantity]) < CLOSED_FORM_AGREEMENT
-
-
 def test_a_setting_change_opens_a_segment_where_the_run_saw_it() -> None:
     """The score's segments and the timeline's entries describe one run.
 
@@ -1324,10 +1233,9 @@ def test_resetting_starts_the_score_over() -> None:
     controller.reset()
 
     assert len(controller.score_segments) == 1
-    assert controller.evaluate_window(0.0, 0.0, 1).times_s == (0.0,)
-
-    with pytest.raises(SimulationConfigurationError, match="rather than the run"):
-        controller.evaluate_window(0.0, 1.0, 2)
+    assert controller.drawn_window(0.0, 0.0, 150).times_s == (0.0,)
+    # The axis outlives the run it was showing, and is clipped to nothing.
+    assert controller.drawn_window(0.0, 60.0, 150).times_s == (0.0,)
 
 
 def test_changing_agent_starts_the_score_over() -> None:
@@ -1338,22 +1246,7 @@ def test_changing_agent_starts_the_score_over() -> None:
     controller.set_agent("desflurane")
 
     assert len(controller.score_segments) == 1
-
-    with pytest.raises(SimulationConfigurationError, match="rather than the run"):
-        controller.evaluate_window(0.0, 1.0, 2)
-
-
-def test_the_closed_form_refuses_a_window_past_the_run() -> None:
-    """A window reaching past the run would draw a prediction on the run's axis."""
-
-    controller = SimulationController()
-    controller.start()
-    _advance_for(controller, duration_s=10.0)
-
-    elapsed_s = controller.snapshot().elapsed_s
-
-    with pytest.raises(SimulationConfigurationError, match="rather than the run"):
-        controller.evaluate_window(0.0, elapsed_s + 1.0, 10)
+    assert controller.drawn_window(0.0, 60.0, 150).times_s == (0.0,)
 
 
 def test_a_paused_run_s_score_stops_where_the_run_did() -> None:
@@ -1367,10 +1260,11 @@ def test_a_paused_run_s_score_stops_where_the_run_did() -> None:
 
     elapsed_s = controller.snapshot().elapsed_s
 
-    assert len(controller.evaluate_window(0.0, elapsed_s, 3).states) == 3
+    # The axis may reach past a paused run; the trace stops where the run
+    # did rather than being extended into a prediction.
+    window = controller.drawn_window(0.0, elapsed_s + MAXIMUM_SIMULATION_STEP_S, 150)
 
-    with pytest.raises(SimulationConfigurationError, match="rather than the run"):
-        controller.evaluate_window(0.0, elapsed_s + MAXIMUM_SIMULATION_STEP_S, 3)
+    assert window.times_s[-1] == pytest.approx(elapsed_s)
 
 
 def test_the_drawn_window_is_clipped_to_the_run_not_to_the_axis() -> None:
@@ -1425,7 +1319,7 @@ def test_a_drawn_window_refuses_another_substance() -> None:
         window.compartment_fractions(RecordedSeries("desflurane", RecordedQuantity.CIRCUIT))
 
     with pytest.raises(SimulationConfigurationError, match="a run is of one agent"):
-        window.wash_in_readings("desflurane")
+        window.wash_in_quotients("desflurane")
 
 
 def test_a_drawn_window_refuses_the_derived_ratio_as_a_compartment() -> None:
@@ -1442,12 +1336,13 @@ def test_a_drawn_window_refuses_the_derived_ratio_as_a_compartment() -> None:
         window.compartment_fractions(RecordedSeries(agent_id, RecordedQuantity.WASH_IN_RATIO))
 
 
-def test_wash_in_is_read_per_drawn_column() -> None:
-    """The domain rules are a property of the instant plotted, not of a sample.
+def test_wash_in_is_formed_per_drawn_column() -> None:
+    """The ratio is a property of the instant plotted, not of a recorded sample.
 
-    Every drawn instant gets a reading, and a run that has just started
-    carries both the undefined opening stretch and the wash-in that follows
-    it - so the boundary between them falls on a column the chart plots.
+    Every drawn instant gets a quotient, and a run that has just started
+    carries both the opening stretch with no quotient at all and the wash-in
+    that follows it - so the boundary between them falls on a column the
+    chart plots rather than on a sample it might not have selected.
     """
 
     controller = SimulationController()
@@ -1455,16 +1350,14 @@ def test_wash_in_is_read_per_drawn_column() -> None:
     _advance_for(controller, duration_s=120.0)
 
     window = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
-    readings = window.wash_in_readings(controller.snapshot().agent_id)
+    quotients = window.wash_in_quotients(controller.snapshot().agent_id)
 
-    assert len(readings) == len(window.times_s)
-    assert {reading.domain for reading in readings} == {
-        WashInDomain.NO_INSPIRED_AGENT,
-        WashInDomain.WASH_IN,
-    }
-    # Inside the domain the ratio is a number; outside it there is none.
-    for reading in readings:
-        assert (reading.plotted_ratio is not None) == (reading.domain is WashInDomain.WASH_IN)
+    assert len(quotients) == len(window.times_s)
+    # The opening stretch has no quotient: no agent has reached the circuit.
+    assert quotients[0] is None
+    assert any(quotient is not None for quotient in quotients)
+    # Every quotient that exists is inside the uptake regime for this run.
+    assert all(is_wash_in(quotient) for quotient in quotients if quotient is not None)
 
 
 def test_an_axis_entirely_ahead_of_the_run_draws_nothing() -> None:

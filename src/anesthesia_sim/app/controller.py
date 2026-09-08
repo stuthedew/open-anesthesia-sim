@@ -16,7 +16,7 @@ from types import MappingProxyType
 from typing import Final, Self
 
 from anesthesia_sim.app.chart_downsampling import M4AggregateCache, first_index_at_or_after
-from anesthesia_sim.app.wash_in import WashInReading, is_wash_in, read_wash_in, wash_in_ratio
+from anesthesia_sim.app.wash_in import is_wash_in, wash_in_ratio
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -734,27 +734,35 @@ class DrawnWindow:
 
         return [state.values[index] for state in self.states]
 
-    def wash_in_readings(self, substance_id: str) -> list[WashInReading]:
-        """F_A/F_I and its domain at every drawn instant.
+    def wash_in_quotients(self, substance_id: str) -> list[float | None]:
+        """F_A/F_I at every drawn instant, or `None` where there is no quotient.
 
-        `app/wash_in.py`'s domain rules ran once per *recorded sample* while
-        the run kept a history, and the stretches they produced were
-        maintained incrementally. With no history to maintain they become a
-        property of the drawn column instead: the rules are pure arithmetic
-        over the two fractions this window already carries, so they are
-        applied to what is being plotted rather than to samples behind it.
+        `app/wash_in.py`'s rules ran once per *recorded sample* while the run
+        kept a history, and the stretches they produced were maintained
+        incrementally. With no history to maintain they become a property of
+        the drawn column instead: the quotient is pure arithmetic over the two
+        fractions this window already carries, so it is formed for what is
+        being plotted rather than for samples behind it.
 
         That is a strengthening rather than a like-for-like move. A stretch
-        boundary can now fall only on a drawn instant, so the point where a
-        trace stops is a point the chart actually plots - where before it was
+        boundary can now fall only on a drawn instant, so the point where the
+        curve stops is a point the chart actually plots - where before it was
         a recorded sample the decimation might not have selected.
+
+        The quotient rather than a `WashInReading` because the chart needs the
+        number *outside* the domain too: a stretch is drawn one column past
+        equilibrium so that it meets the reference line rather than stopping
+        short of it, and choosing that column means comparing its ratio
+        against the axis ceiling. `None` is `wash_in.wash_in_ratio`'s own
+        answer for a denominator below the display floor, and it is the case
+        with nothing to draw at all.
 
         Args:
             substance_id: Whose ratio. The quotient is formed from one
                 substance's own two fractions.
 
         Returns:
-            One reading per entry of `times_s`, in the same order.
+            One entry per entry of `times_s`, in the same order.
 
         Raises:
             SimulationConfigurationError: If `substance_id` is not the one
@@ -766,7 +774,7 @@ class DrawnWindow:
         circuit = COMPARTMENT_STATE_INDEX[RecordedQuantity.CIRCUIT]
 
         return [
-            read_wash_in(state.values[alveolar], state.values[circuit]) for state in self.states
+            wash_in_ratio(state.values[alveolar], state.values[circuit]) for state in self.states
         ]
 
     def _require_substance(self, substance_id: str) -> None:
@@ -1299,13 +1307,18 @@ class SimulationController:
         first_s = max(0.0, start_s)
         last_s = min(stop_s, self._score.duration_s)
 
-        if last_s < first_s or spacing_s <= 0.0:
-            # The axis lies entirely ahead of the run, or has no width. Both
-            # are ordinary states at the very start of a run rather than
-            # errors, and an empty window draws nothing.
+        if last_s < first_s:
+            # The axis lies entirely ahead of the run - an ordinary state at
+            # the very start of one rather than an error - and an empty
+            # window draws nothing, which is not the same as drawing a zero.
             return DrawnWindow(substance_id=self._agent_id, times_s=(), states=())
 
-        window = self._score.evaluate_anchored(first_s, last_s, spacing_s)
+        # An axis of no width is one instant, and it is still drawn: both
+        # bounds coincide, so no grid column can fall strictly between them
+        # and the spacing substituted here cannot place one.
+        window = self._score.evaluate_anchored(
+            first_s, last_s, spacing_s if spacing_s > 0.0 else 1.0
+        )
 
         return DrawnWindow(
             substance_id=self._agent_id, times_s=window.times_s, states=window.states
