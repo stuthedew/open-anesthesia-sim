@@ -117,6 +117,7 @@ class TestAnalyze:
         """
         assert tuple(boundary.package for boundary in BOUNDARIES) == (
             "pydantic",
+            "subprocess",
             "time",
             "datetime",
             "random",
@@ -125,6 +126,7 @@ class TestAnalyze:
         )
         by_package = {boundary.package: boundary for boundary in BOUNDARIES}
         assert by_package["pydantic"].allowed == ("src/anesthesia_sim/core/parameters.py",)
+        assert by_package["subprocess"].allowed == ("src/anesthesia_sim/app_metadata.py",)
         assert all(boundary.why.strip() for boundary in BOUNDARIES)
 
     @pytest.mark.parametrize("package", ["time", "datetime", "random", "secrets", "uuid"])
@@ -305,7 +307,12 @@ class TestMain:
         core = tmp_path / "src" / "anesthesia_sim" / "core"
         core.mkdir(parents=True)
         (core / "parameters.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
-        app = tmp_path / "src" / "anesthesia_sim" / "app"
+        package = tmp_path / "src" / "anesthesia_sim"
+        # The one module allowed to ask the environment which build is running.
+        # Present because an allowance naming a module that is not there is
+        # itself an error, which is what keeps a stale allowance from rotting.
+        (package / "app_metadata.py").write_text("import subprocess\n", encoding="utf-8")
+        app = package / "app"
         app.mkdir()
         (app / "playback.py").write_text(
             "import time\n"
