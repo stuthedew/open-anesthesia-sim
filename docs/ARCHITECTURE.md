@@ -35,7 +35,7 @@ executable code.
 
 ```text
 src/anesthesia_sim/
-├── app_metadata.py      # app name, version (from package metadata), bundle id
+├── app_metadata.py      # app name, bundle id, and the version the header shows: the installed distribution's version, plus the commit where the running code is not a clean checkout of the released tag, because between two releases every build otherwise displays the same string and a fix confirmed by eye cannot be told from the code it replaced
 ├── core/                # scientific simulation — no Flet dependency
 │   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError)
 │   ├── supported_ranges.py        # the declared domain; refuses a setting, or a run, outside it

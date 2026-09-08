@@ -41,7 +41,7 @@ the interface displays.
 from math import isfinite
 from typing import Final
 
-from anesthesia_sim.app_metadata import APP_VERSION
+from anesthesia_sim.app_metadata import APP_BUILD_VERSION
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 __all__ = [
@@ -868,9 +868,23 @@ def format_case_discard_warning(
 
 
 def format_subtitle(agent_display_name: str) -> str:
-    """Build the header subtitle naming the current app version and agent."""
+    """Build the header subtitle naming the current app build and agent.
 
-    return f"Version {APP_VERSION} — {agent_display_name} patient model"
+    The build rather than the version, because between two releases every
+    build carries the same version string - which is what made a merged fix
+    indistinguishable from the code it replaced when the project owner went
+    to confirm it by eye (`PL-QC38`, `PL-YKF8`). `app_metadata.py`'s
+    `APP_BUILD_VERSION` adds the commit on anything that is not a clean
+    checkout of the released tag, and adds nothing on a release.
+
+    Args:
+        agent_display_name: The running agent, as it is named to a reader.
+
+    Returns:
+        The header subtitle.
+    """
+
+    return f"Version {APP_BUILD_VERSION} — {agent_display_name} patient model"
 
 
 def format_delivered_label(agent_display_name: str) -> str:

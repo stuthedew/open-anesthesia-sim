@@ -118,6 +118,23 @@ BOUNDARIES: tuple[Boundary, ...] = (
         ),
     ),
     Boundary(
+        package="subprocess",
+        tree="src/anesthesia_sim",
+        allowed=("src/anesthesia_sim/app_metadata.py",),
+        why=(
+            "`app_metadata.py` asks git which build is running, so that a header that "
+            "would otherwise read the same string for every build between two releases "
+            "can name the commit (PL-YKF8). That is the package's first read of anything "
+            "outside its own inputs, and the habit is what this confines: a module that "
+            "shells out has taken a dependency on the machine, and in `core/` that would "
+            "break the same promise `time` and `datetime` below protect - `docs/MODEL.md` "
+            '"The reproducibility guarantee", that a run is a function of its inputs and '
+            "of the number of steps taken and of nothing else. The one allowance reads no "
+            "simulation state, reaches nothing under `core/`, and fails closed to the "
+            "bare version"
+        ),
+    ),
+    Boundary(
         package="time",
         tree="src/anesthesia_sim/core",
         allowed=(),

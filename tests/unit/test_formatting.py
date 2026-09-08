@@ -43,7 +43,7 @@ from anesthesia_sim.app.formatting import (
     mac_axis_ticks,
     mac_multiple,
 )
-from anesthesia_sim.app_metadata import APP_VERSION
+from anesthesia_sim.app_metadata import APP_BUILD, APP_BUILD_VERSION, APP_VERSION
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
@@ -184,12 +184,36 @@ def test_format_subtitle_names_the_running_model_and_its_version() -> None:
 
     `CLAUDE.md` requires a clinically meaningful value to be traceable to
     the model and version behind it, and this subtitle is where the
-    interface says both. It is asserted against `APP_VERSION` rather than
-    against a literal so that the test cannot pass a stale version.
+    interface says both. It is asserted against `APP_BUILD_VERSION` rather
+    than against a literal so that the test cannot pass a stale version.
     """
 
-    assert format_subtitle("Sevoflurane") == f"Version {APP_VERSION} — Sevoflurane patient model"
-    assert format_subtitle("Desflurane") == f"Version {APP_VERSION} — Desflurane patient model"
+    expected = f"Version {APP_BUILD_VERSION} — Sevoflurane patient model"
+    assert format_subtitle("Sevoflurane") == expected
+    assert (
+        format_subtitle("Desflurane") == f"Version {APP_BUILD_VERSION} — Desflurane patient model"
+    )
+
+
+def test_the_subtitle_carries_the_build_identifier_when_there_is_one() -> None:
+    """Between two releases every build shows the same version string.
+
+    That is what made a merged fix indistinguishable from the code it
+    replaced when the project owner went to confirm it by eye - the symptom
+    was reported still present, and the version on screen would have
+    confirmed the wrong answer (`PL-QC38`, `PL-YKF8`). The subtitle now
+    carries whatever `app_metadata.py` could establish about the running
+    build, and carries the bare version when that is all there is.
+    """
+
+    subtitle = format_subtitle("Isoflurane")
+
+    assert subtitle.startswith(f"Version {APP_VERSION}")
+    if APP_BUILD is None:
+        assert subtitle == f"Version {APP_VERSION} — Isoflurane patient model"
+    else:
+        assert subtitle == f"Version {APP_VERSION}+{APP_BUILD} — Isoflurane patient model"
+        assert APP_BUILD.startswith("g")
 
 
 def test_format_delivered_label_names_the_agent_being_delivered() -> None:
