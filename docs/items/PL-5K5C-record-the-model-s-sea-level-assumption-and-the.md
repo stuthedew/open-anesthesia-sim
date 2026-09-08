@@ -3,11 +3,13 @@ id: PL-5K5C
 title: Record the model's sea-level assumption and the vaporizer-class dependence of the delivered-concentration dial
 priority: P1
 effort: M
-status: ready
+status: done
 classes: docs, science
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-06
+closed: 2026-09-07
+pr: 458
 verify: python3 tools/doc_check.py check && grep -q '760 mmHg' docs/MODEL.md && grep -q 'variable-bypass' docs/MODEL.md
 ---
 

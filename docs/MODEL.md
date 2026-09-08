@@ -323,7 +323,7 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | $`V_A`$ | Modeled alveolar gas volume | L gas |
 | $`V_v`$ | Venous blood-pool volume | L blood |
 | $`V_i`$ | Volume of tissue group $`i`$ | L tissue |
-| $`\dot V_F`$ | Fresh gas flow | L gas/min |
+| $`\dot V_F`$ | Fresh gas flow at the common gas outlet: carrier gas plus the vapour the vaporizer added, not the flowmeter setting (see "Breathing circuit") | L gas/min |
 | $`\dot V_A`$ | Alveolar ventilation | L gas/min |
 | $`Q`$ | Cardiac output | L blood/min |
 | $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min |
@@ -449,6 +449,42 @@ All flow terms below must use liters per second after conversion from user-facin
 ### Breathing circuit
 
 Fresh gas enters at concentration $`F_D`$. An equal fresh-gas volume leaves through the exhaust at the current mixed-circuit concentration $`F_I`$.
+
+**$`\dot V_F`$ is the flow at the common gas outlet, not the flowmeter
+setting.** The balance below carries one $`\dot V_F`$ for both the agent
+arriving and the gas leaving, so the two have to name the same stream: agent
+enters at $`\dot V_F F_D`$, which must be the vapour flow the vaporizer
+actually adds, and mixed circuit gas leaves at that same total volumetric
+rate. $`\dot V_F`$ is therefore the whole gas stream delivered to the
+circuit — carrier gas plus that added vapour — and the balance does not close
+under a carrier-only reading. This settles what the symbol means; it changes
+no equation.
+
+A vaporizer adds vapour to the carrier stream rather than displacing part of
+it. So with carrier flow $`\dot V_c`$, which is what the flowmeters are set
+to, and added vapour flow $`\dot V_v`$, the delivered fraction is
+$`F_D = \dot V_v/(\dot V_c + \dot V_v)`$ and the two flows are related by:
+
+$$
+\dot V_F = \dot V_c + \dot V_v = \frac{\dot V_c}{1-F_D}
+$$
+
+The gap that opens between them is small at ordinary dial settings and is not
+small at the top of a desflurane dial. At 2% delivered the two flows differ by
+2%; at the 18% calibrated maximum of the Tec 6 vaporizer, which this model
+accepts as desflurane's `max_delivered_concentration_percent`, they differ by
+22% — flowmeters set to 2 L/min leave the common gas outlet at about
+2.44 L/min. A reader who takes the interface's fresh-gas-flow control for a
+flowmeter setting is wrong by that factor in the circuit time constant
+$`V_C/\dot V_F`$, which is the quantity the wash-in curve is about. The
+interface therefore names that control "Fresh gas flow" over the gloss
+"common gas outlet", in the same two-line form the alveolar readout uses for
+"end-tidal-equivalent" and for the same reason: the unqualified name is the
+one on a real flowmeter bank, and it must not be shortened back to it to fit
+a layout (`PL-71CF`).
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
 Ventilation transfers gas between the breathing circuit and alveolar compartment.
 
@@ -1375,46 +1411,82 @@ what is stored; cardiac output is there only as the sum of the flow column.
 Reference weight and alveolar ventilation are interface defaults the supplied
 chapters state no number for, and **the venous pool's 1.0 L is not in the table
 at all** — its `Blood` row reads 5.00 L. `PL-3YZW` carries that gap and
-`PL-7HDS` carries reading Lowe and Ernst, which is the link that decides
-whether this chain ends in a measurement or in another compilation. Neither is
-assumed here: a 1981 monograph nobody has opened is recorded as located and
-unread, which is the discipline the Mapleson entries were removed for failing.
+`PL-7HDS` carried reading Lowe and Ernst, the link that decides whether this
+chain ends in a measurement or in another compilation. It ends in neither, and
+the reading is the next four paragraphs.
 
-**Lowe and Ernst has since been read at one remove, and is still not opened.**
-On 2026-09-06 the project owner supplied two peer-reviewed papers that used the
-book — Lerou and Booij's system model (*Br J Anaesth* 2001;86:12–28) and Couto
-da Silva, Mapleson and Vickers' study of Lowe's method (*Br J Anaesth*
-1997;79:103–12) — both read here at full text. The initial is `HJ`; the
-Workbook's `HF` is a misprint. More usefully, the book supplies this material as
-**fractions of body mass and of cardiac output, with cardiac output itself
-allometric** — 0.2 times body mass to the three-quarter power, which is
-4.84 L/min at 70 kg rather than the 5.0 stored here. Lerou and Booij's Table 6
-prints eight such compartments, captioned as data given by Lowe and Ernst and
-cited to **page 57** of the book.
+**Lowe and Ernst has now been read at the source, and the chain does not end
+there.** On 2026-09-08 the project owner supplied pages 55–60 and 82–84 as an
+interlibrary-loan scan — the pages having been narrowed to 57 and 83 by two
+earlier readings at one remove, Lerou and Booij's system model (*Br J Anaesth*
+2001;86:12–28) and Couto da Silva, Mapleson and Vickers' study of Lowe's method
+(*Br J Anaesth* 1997;79:103–12), both supplied on 2026-09-06 and read here at
+full text. This repository does not hold the scan: it is publisher-copyright
+material and the repository is public. The initial is `HJ` — the scan's own
+record prints the author as Lowe, Harry J. — so the Workbook's `HF` is a
+misprint. Interlibrary loan is a third route, neither the one
+`.claude/rules/citing-sources.md` describes nor the personal access the
+Workbook arrived by, and `PL-XJ5P` still carries that gap.
 
-**Checked against that table, the Workbook's attribution holds for two of the
-seven values.** At 70 kg the kidney, heart, brain and liver rows sum to 6.02 kg
-at a flow fraction of 0.760, reproducing the stored vessel-rich pair; muscle
-(29.8 kg at 0.130) and adipose (10.5 kg at 0.050) do not reproduce the stored
-33.0 at 0.18 and 14.5 at 0.06, and no grouping of the eight compartments does.
-Alveolar volume is untouched, Lerou and Booij deriving their alveolar space
-rather than taking it from the book. That arithmetic is this project's, from a
-table read at second hand, and it convicts the Workbook of nothing — Gas Man may
-lump compartments differently, or read a different page. The data file carries
-the figures and the per-value detail.
+**Page 56 answers the tier question against the book, in one sentence.** Of
+figure 4.1b, the table the volumes and flows are printed in, it says: "The
+figure models a 100-kg patient with normal physiologic organ volumes and blood
+flows (9, 19, 20, 26)." The book collects those figures and cites them onward
+to four references, of which chapter 4's own narrative names three — Mapleson,
+Smith et al. and Zwart et al. The reference list is outside the pages supplied,
+so `PL-8SDL` (identify those four references) carries the next link. Lowe and
+Ernst is therefore **tier 2, a secondary synthesis**: the Workbook's upstream
+has an upstream, and the only provenance chain the reference patient has still
+ends in nobody's measurement. It could have gone the other way — the hierarchy
+above admits a lower tier on a recorded decision, and a book that had
+*measured* these volumes would have been adoptable without one.
 
-**Nothing is promoted by any of it, and the stake is narrower than the chain's
-length suggests.** A second-hand report of a book's table is not the book, so
-all seven stay tier 3 and unadopted. And the hierarchy above admits a lower
-tier only on a recorded decision, so opening the book changes what this
-document may claim **without one only if it turns out to have measured these
-volumes and flows rather than collected them**; a book that collected them
-could still be adopted on the record, the way Davis and Mapleson was. It could not be reached from a session
-container — the egress proxy refuses the Internet Archive, HathiTrust, Open
-Library and Google Books alike, and PubMed does not index monographs — so it
-still needs the project owner's institutional or library access, as the Workbook
-did; `PL-XJ5P` carries that gap. What changed is the size of the ask: page 57,
-with page 83 next.
+**The model patient is 100 kg, which is why the material reaches this project
+as fractions.** Page 56 picks that weight so that "the organ weights can also
+be read as per cent of total body weight", so Lerou and Booij's Table 6 of
+fractions is the book's own table divided by 100 rather than a normalization
+they performed, and nothing in the book states a 70 kg parameter set. Cardiac
+output is allometric, and that too is now read rather than reported: page 59
+gives the cardiac output for its worked prime dose as $`2M^{3/4}`$ dl/min, "or
+63.25 dl" for the 100 kg patient —
+0.2 times body mass to the three-quarter power in L/min, **4.84 L/min at
+70 kg** against the 5.0 stored here, which would need 73.1 kg. The book's own
+worked 63.25 dl is what fixes the exponent independently of reading a
+superscript off a scan. `PL-YKSM` (adopt weight-scaled cardiac output, or
+record why the fixed 5.0 stays) carries the discrepancy.
+
+**Checked against the book itself, the Workbook's attribution holds for three
+of the seven values and fails for four.** The vessel-rich pair reproduces
+exactly and *uniquely*: kidney, heart, brain and liver are 8.6% of body weight
+at 76% of cardiac output, which is 6.02 L at 70 kg against the stored 6.0 and
+0.76 against the stored 0.76 — and across all 1023 non-empty groupings of the
+book's ten compartments, at a tolerance of half a percentage point, no other
+grouping matches both. The same exhaustive search returns **zero** groupings
+for the stored muscle pair (33.0 L at 0.18, against the book's muscle row at
+29.8 L and 0.130) and zero for the stored fat pair (14.5 L at 0.06, against
+adipose at 10.5 L and 0.050). Alveolar volume is the third that holds, and it
+holds negatively: the book states no alveolar gas volume at all, lumping the
+circuit and the patient's FRC into a single ventilatory volume of "about
+100 dl", so the Workbook cannot have taken 2.5 L from it.
+
+**What survives for the other four is the split rather than the values.** The
+book's five non-vessel-rich compartments take 13 + 3 + 2 + 1 + 5 = 24% of
+cardiac output, and the stored muscle and fat fractions sum to exactly 0.24;
+their volumes do not follow, 83.6% of body weight being 58.5 L at 70 kg against
+the stored 47.5 L. So Gas Man appears to have kept the book's 76/24 flow split
+and redistributed the 24 across two compartments where the book has five, over
+a smaller tissue volume. That arithmetic is this project's and it convicts the
+Workbook of nothing — Gas Man may lump differently, or work from a page outside
+the range supplied. The data file carries the figures and the per-value detail.
+
+**Nothing is promoted or adopted by any of it.** All seven stay tier 3 and
+unadopted: reading where Gas Man's numbers came from is not evidence that they
+were measured. For the four that do not reproduce there is nothing here to
+adopt, and for the ones that do, adopting would mean naming as the authority a
+compilation whose own four sources are unread. What the reading buys is that
+the attribution has been checked against the document rather than against a
+report of it, and that the tier of the next link is now a known question
+instead of an assumption.
 
 **The venous pool now has a published counterpart, and it is not the stored
 1.0 L.** Davis and Mapleson (*Br J Anaesth* 1981;53:399–405), supplied by the
@@ -1635,7 +1707,10 @@ The reference patient weight identifies which patient the volumes and flows
 describe; no equation in this model consumes it (`PatientParameters.weight_kg`
 is loaded and range-validated, and read by nothing else). Compartment volumes
 and flows are the source's absolute values for a 70 kg adult, not quantities
-scaled from a weight, so changing the weight alone would not rescale them.
+scaled from a weight, so changing the weight alone would not rescale them. The
+litres are Gas Man's form rather than its upstream's: Lowe and Ernst, the book
+the Workbook names, prints the same material as per cent of a 100 kg body with
+cardiac output an allometric function of mass (`PL-YKSM`).
 
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
 and holds no independent state (see "Model boundary"). Tissue:blood
@@ -1673,9 +1748,22 @@ any equation: lower solubility only means faster equilibration through the
 same closed-form solutions, which `tests/reference/test_multi_agent.py`
 checks directly by comparing simulated alveolar/circuit ratios rather than
 only comparing the static coefficient values.
+
 <!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
+
+**Desflurane's tissue coefficients have been questioned against a published
+measurement and kept.** Its five-minute elimination is the one comparison in
+this repository that misses a human measurement in the direction of washing
+out too fast, and the sensitivity of that ratio makes the vessel-rich
+coefficient the obvious suspect. It is not the cause, and the reasoning is in
+"Desflurane's residual, and why the parameter file was not changed" rather
+than here so that it sits beside the comparison that raised it. Read that
+before changing any coefficient in `data/agents/desflurane.json`: the value
+the disagreement demands is nineteen standard deviations above the human
+measurement and would invert the measured solubility ordering of the three
+shipped agents.
 
 ### Delivery-limit and MAC parameters
 
@@ -1702,6 +1790,17 @@ appropriate for a patient.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+
+**The three maxima come from two different classes of vaporizer, and that
+distinction matters nowhere in this model except away from sea level.**
+Sevoflurane's 8% and isoflurane's 5% are variable-bypass dials; desflurane's
+18% is the upper end of the Tec 6's range, and a Tec 6 is a heated gas–vapour
+blender rather than a variable bypass. This is the one place in the document
+where both classes are present, implicitly, in the same list. At the 760 mmHg
+fixed under "Assumptions" a dial position on either class means the same
+partial pressure, so nothing in the core has to know which device a given
+limit came from; the two classes come apart only under reduced ambient
+pressure, which is not modelled — see "Known limitations".
 
 `mac_percent` is 1 MAC for a 40-year-old adult. It is used for two things,
 both of them presentation: choosing the starting position of the
@@ -2211,14 +2310,16 @@ ratios separately — rather than assumes.
 **The elimination comparison does not agree, and the model states the
 disagreement rather than a tolerance around it.** At the shipped defaults and
 the same 10 L/min the wash-in comparison uses, the model holds more alveolar
-agent at five minutes than every cohort did (measured 2026-09-06):
+agent at five minutes than every cohort did (measured 2026-09-06 and
+re-measured 2026-09-07, the rows having moved 0.11 to 0.13 SD further above
+their means when `PL-8ZJQ` raised `venous_pool_volume_l` to 1.222 L):
 
 | Agent | Cohort | Model | Published | Distance |
 | --- | --- | --- | --- | --- |
-| Sevoflurane | n=7 | 0.2303 | 0.157 ± 0.020 | +3.67 SD |
-| Isoflurane | n=7 | 0.3195 | 0.223 ± 0.024 | +4.02 SD |
-| Desflurane | n=8 | 0.1603 | 0.14 ± 0.02 | +1.02 SD |
-| Isoflurane | n=8 | 0.3195 | 0.22 ± 0.02 | +4.98 SD |
+| Sevoflurane | n=7 | 0.2328 | 0.157 ± 0.020 | +3.79 SD |
+| Isoflurane | n=7 | 0.3227 | 0.223 ± 0.024 | +4.15 SD |
+| Desflurane | n=8 | 0.1626 | 0.14 ± 0.02 | +1.13 SD |
+| Isoflurane | n=8 | 0.3227 | 0.22 ± 0.02 | +5.13 SD |
 
 So the assertion on these values is a **regression** band — the published
 standard deviation applied around the model's own measured ratio — which
@@ -2248,11 +2349,179 @@ quantity can be had without collecting the whole expirate rather than
 returning it to the subject. Their elimination therefore ran at an inspired
 fraction at or near zero, which this model cannot be set to at any supported
 flow; confirming it against the methods sections needs full texts that are
-not in PubMed Central and are not held in `docs/references/`. Holding $`F_I`$
-at zero through the elimination — a diagnostic, not a configuration — moves
-the three agents from +3.67, +4.02 and +1.02 SD to −0.25, +0.54 and −2.40 SD,
-so the two conditions bracket the published values and desflurane's residual
-disagreement changes sign.
+not in PubMed Central and are not held in `docs/references/`.
+
+**The open-circuit diagnostic, and why its numbers are not this simulator's.**
+`tests/reference/test_published_wash_in.py` can run the same five minutes with
+the rebreathing taken away: after each step of the elimination it discards
+whatever the patient exhaled into the circuit and records it as exhausted
+agent, which is what collecting the whole expirate does. That holds $`F_I`$ at
+zero to within one step of refilling — at most $`\dot V_A \Delta t / V_C`$ of
+$`F_A`$, or 1.1 × 10⁻³ at the shipped ventilation, step and circuit volume,
+against the 0.30 to 0.32 the same run settles at with rebreathing. **It is a
+test-only driver, and no fresh gas flow, dial position or patient setting of
+the shipped simulator reaches the condition it creates.** `PL-W21J` weighed a
+supported non-rebreathing mode against the driver and the project owner chose
+the driver on 2026-09-06, because a mode changes the model boundary rather
+than a fixture and adds one more thing the interface would have to make
+visible. Nobody running the application sees the numbers below, and a
+restatement of them that drops this sentence has said something about the
+shipped model that is not true of it (measured 2026-09-07):
+
+| Agent | Cohort | Shipped | Open circuit | Published |
+| --- | --- | --- | --- | --- |
+| Sevoflurane | n=7 | +3.79 SD | 0.1541, −0.15 SD | 0.157 ± 0.020 |
+| Isoflurane | n=7 | +4.15 SD | 0.2388, +0.66 SD | 0.223 ± 0.024 |
+| Desflurane | n=8 | +1.13 SD | 0.0935, −2.33 SD | 0.14 ± 0.02 |
+| Isoflurane | n=8 | +5.13 SD | 0.2388, +0.94 SD | 0.22 ± 0.02 |
+
+**Three of the four cohorts land inside the published spread once the
+apparatus is gone, and desflurane misses on the other side.** For sevoflurane
+and for isoflurane in both cohorts the rebreathing circuit accounts for the
+whole of a gap 3.8 to 5.1 published standard deviations wide — so this model's
+vessel-rich return does reproduce a human elimination once the breathing
+systems are matched, which no comparison in this repository could say before.
+For desflurane it over-accounts: the model crosses its published mean and
+settles 2.33 SD below it, washing out *faster* than the volunteers did rather
+than more slowly. That residual is a disagreement about tissue return with the
+circuit no longer available to explain it; what it is not, and what is left of
+it, is "Desflurane's residual" below.
+The movement itself — 3.5 to 4.2 SD per cohort — is asserted rather than
+recorded, so the attribution in the paragraph above cannot go stale in
+silence, as are the driver's residual $`F_I`$, the model's own conservation
+identity across the discards, and the flow independence the diagnostic buys:
+across the whole supported flow range the open-circuit elimination moves by
+4 × 10⁻⁶ published SD, against the 11.5 to 21.6 SD the shipped one moves
+between 1 and 10 L/min.
+
+Neither condition validates the elimination a user watches, and no test claims
+that it does. The elimination this simulator runs is the rebreathing one, and
+what is asserted about it is the regression band above.
+
+#### Desflurane's residual, and why the parameter file was not changed
+
+The obvious reading of that residual is that desflurane's vessel-rich
+coefficient is too low. The sensitivity measured under "Parameter provenance"
+makes the five-minute ratio a vessel-rich tissue:gas measurement and barely a
+blood:gas one, and a tissue group with too little capacity is a tissue group
+that empties too fast. The reading is arithmetically right and physically
+wrong, and the difference is what this section records.
+
+**Raising the coefficient does close the gap, and it costs almost nothing in
+the wash-in row.** Desflurane's stored vessel-rich tissue:gas coefficient is
+0.54 against a blood:gas of 0.42, an implied tissue:blood of 1.286. Solving
+instead for the coefficient that reproduces each cohort's published
+five-minute ratio, at the shipped operating point and with the apparatus
+removed (measured 2026-09-08):
+
+<!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 1.286 from data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
+
+| Agent | Tissue:blood demanded | Measured human brain:blood | Distance |
+| --- | --- | --- | --- |
+| Sevoflurane | 1.74 | 1.70 ± 0.09 | +0.4 SD |
+| Isoflurane | 1.45 | 1.57 ± 0.10 | −1.2 SD |
+| Desflurane | 2.24 | 1.29 ± 0.05 | +19 SD |
+
+At 2.24 desflurane's elimination lands on the published 0.140 and its wash-in
+row stays inside its published spread at +0.55 SD. That is not luck: the
+vessel-rich group is fully equilibrated after a 30-minute administration — its
+time constant is 2.0 to 2.7 minutes across the three agents — so its capacity
+is nearly invisible in $`F_A/F_I`$ and shows up almost entirely in the
+elimination. The two published rows are therefore not in conflict with each
+other, and a single coefficient satisfies both.
+
+**What rules the change out is the tissue measurement rather than this
+model.** The measured column above is Yasuda's human tissue study, the same
+group's, three years before the kinetic pair:
+
+- Yasuda N, Targ AG, Eger EI 2nd. *Solubility of I-653, sevoflurane,
+  isoflurane, and halothane in human tissues.* Anesth Analg 1989;69(3):370-3.
+  PMID 2774233. Brain:blood, mean ± SD: I-653 (desflurane) 1.29 ± 0.05,
+  isoflurane 1.57 ± 0.10, sevoflurane 1.70 ± 0.09, halothane 1.94 ± 0.17.
+  Read from the abstract and checked against PubMed on 2026-09-08.
+
+Two of the three demanded values land on that measurement. Desflurane's is
+nineteen standard deviations above its own, and above what either other agent
+demands: adopting it would make desflurane the *most* tissue-soluble of the
+three, inverting the ordering the source paper was written to report. The
+stored Gas Man coefficients are that paper's brain:blood values to within 3%
+— 1.692 against 1.70, 1.615 against 1.57, 1.286 against 1.29 — so this is not
+a case of a reference implementation having wandered from the primary
+literature, and there is no better value to move to.
+`test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination`
+asserts the contrapositive: given a vessel-rich coefficient the published
+human tissue data will bear, desflurane's elimination still misses on the same
+side.
+
+| Coefficient given | $`F_A/F_{A0}`$ at 5 min | Against 0.14 ± 0.02 |
+| --- | --- | --- |
+| 1.286, shipped | 0.0935 | −2.33 SD |
+| 1.39, its own measured mean + 2 SD | 0.0998 | −2.01 SD |
+| 1.70, sevoflurane's, the highest of the three | 0.1167 | −1.17 SD |
+
+**Five other candidates were tested, and each fails the same way**: it moves
+sevoflurane and isoflurane as much as desflurane or more, and the published
+rows have no room for that, or it moves desflurane the wrong way. Measured
+2026-09-08; the last three on an independent forward-Euler integration of
+these equations, which reproduces the shipped driver to within 0.8% and whose
+own zero-shunt baseline for desflurane is −2.29 SD rather than −2.33.
+
+| Candidate | What reaching 0.140 takes | What it costs the other rows |
+| --- | --- | --- |
+| Blood:gas too low | ×1.63, to 0.687 | 10.9 SD above Eger 1987's measured 0.424 ± 0.024, and the wash-in row falls to −4.35 SD |
+| Alveolar ventilation too high | between 2.5 and 3.0 L/min | at 3.0, sevoflurane +2.1 and isoflurane +2.7 SD, and all three wash-in rows at −2.0 SD |
+| Cardiac output | out of reach | 3 to 7 L/min moves desflurane only from −2.6 to −2.1 SD |
+| Fast capacity this model omits — lung tissue, pulmonary and arterial blood | about 3 L of blood-equivalent | worth 20.1% of desflurane's fast pool against 19.7% of sevoflurane's and 23.4% of isoflurane's: flat, where desflurane needs +2.41 gas-equivalent litres and isoflurane −1.32 |
+| A non-ideal lung — shunt or ventilation-perfusion dispersion, both excluded by $`F_a \equiv F_A`$ | moves the wrong way | a 20% shunt takes desflurane from −2.29 to −2.66 SD; a log-normal V/Q distribution at log SD 1.0 takes it to −2.91 |
+| Residual rebreathing in the published apparatus | $`F_I/F_A`$ = 0.30 | sevoflurane +2.72 SD, isoflurane +3.29 and +4.10 |
+
+The fourth row's volumes are round physiologic figures — 1 kg of lung tissue
+at a tissue:blood ratio of 1.2, and 1.8 L of pulmonary and arterial blood —
+used to size the term and not proposed as parameters; none of them is a stored
+value and none should be read as one. What it establishes does not depend on
+their precision: any capacity that scales with blood solubility is worth the
+same *fraction* of every agent's fast pool, so adding it moves all three rows
+together and cannot produce a residual in one of them.
+
+**So the cause is not identified. This is a recorded disagreement, and the
+sign and the size are what is recorded.** What survives the eliminations above
+is a mechanism acting on the least soluble agent alone, in the direction of
+holding its alveolar fraction up. Two candidates, neither demonstrated:
+
+1. *End-tidal sampling in a lung with ventilation-perfusion dispersion.* The
+   published $`F_A`$ is end-tidal gas from an anaesthetized volunteer; this
+   model's is one perfectly mixed compartment. In a dispersed lung, a unit
+   with ventilation-perfusion ratio $`r`$ sits at
+   $`P_A/P_{\bar v} = \lambda_{b:g}/(\lambda_{b:g} + r)`$ through an
+   elimination, so the last units to empty carry the highest partial pressure
+   during washout and the lowest during wash-in, and a ratio of the two is
+   biased upward at both ends by an amount that grows as solubility falls. On
+   a log-normal perfusion distribution at log SD 1.0 with a 5% shunt, the
+   arterial retention this model fixes at
+   $`\lambda_{b:g}/(\lambda_{b:g} + \dot V_A/Q)`$ is understated by 44% for
+   desflurane, 30% for sevoflurane and 15% for isoflurane — the rank order the
+   residuals have. What stops it being the answer is the fifth row of the
+   table above: the flow-weighted alveolar reading of that same calculation
+   moves every agent the wrong way, so the hypothesis rests entirely on the
+   end-tidal weighting, and neither abstract says how end-tidal gas was
+   sampled.
+2. *The published value.* Desflurane's recovery — agent recovered over agent
+   taken up — was 105 ± 25% in those eight volunteers, against 102 ± 13% for
+   isoflurane measured in the same sitting: the wider spread of the two, and
+   centred above complete recovery.
+
+Whatever the explanation is, it has to fit the whole published set and not
+desflurane alone. The same eight volunteers gave halothane 0.25 ± 0.02, so
+across a solubility range of roughly six-fold — halothane's blood:gas is
+conventionally about 2.4, a textbook figure and not a parameter this project
+stores — the published five-minute ratios span only 0.14 to 0.25, which is a
+narrower spread than a perfusion-limited model produces.
+
+**What would settle it** is the methods sections of the two papers: the
+breathing system, how end-tidal gas was sampled, and the alveolar ventilation
+measured through the elimination. Neither is in PubMed Central, and neither is
+held in `docs/references/`.
 
 **Which question a band of one standard deviation answers**, since this
 section now makes the claim in two places. A deterministic model compared
@@ -2286,9 +2555,10 @@ transfers to whatever `PL-N092` writes in its place.
    that the parameter set is independently right. It is weaker than
    "validated against a human measurement" and must not be described as more.
 3. *The breathing systems differ, and by more than the measurement's own
-   spread.* The paragraphs above measure it. Any statement that this model
-   eliminates more slowly than these volunteers did has to carry it, because
-   most of that difference is a rebreathing circuit rather than a patient.
+   spread.* The paragraphs above measure it, at 3.5 to 4.2 published standard
+   deviations per cohort. Any statement that this model eliminates more slowly
+   than these volunteers did has to carry it, because most of that difference
+   is a rebreathing circuit rather than a patient.
 4. *This model has no metabolism, which is why five minutes is the limit.*
    Over five minutes of elimination metabolism is negligible for all three
    shipped agents, and the papers bound it themselves: recovery — agent
@@ -4583,13 +4853,39 @@ Version v0.1.0 assumes:
 - tissue venous blood equilibrates with its tissue group;
 - carrier gases do not affect sevoflurane kinetics;
 - temperature is constant;
-- pressure is constant;
+- ambient pressure is constant, and it is one atmosphere — 760 mmHg. Every
+  concentration in this model is a fraction of that pressure, so the model is
+  specified at sea level and nowhere else; the note below this list is what
+  that buys and what it costs;
 - there is no metabolism;
 - there is no chemical degradation;
 - there is no anesthetic reaction with circuit materials;
 - there is no vaporizer or machine delivery delay beyond the modeled circuit;
 - settings remain constant within each numerical step; and
 - the selected reference patient does not change physiologically during a run.
+
+**What one atmosphere buys, and why nothing in the model is wrong today.** A
+gas-phase fraction and a partial pressure are the same quantity up to the
+ambient pressure, so fixing that pressure at 760 mmHg makes the two
+interchangeable: $`F_A = 0.02`$ is 15.2 mmHg, and no statement in this
+document has to say which of them it means. That identity is what the rest of
+the specification is built on — "Concentrations" stores every state as a
+dimensionless fraction on its strength, the interface displays each one as a
+percent of one atmosphere, and $`\mathrm{MAC}_\%`$ divides one sea-level
+percent by another.
+
+**The delivered-concentration control is where that assumption does the most
+work.** It is a vaporizer dial rather than a modeled gas state
+(`app/controller.py`'s `ControlInput.DELIVERED`, whose recorded changes carry
+the unit *fraction of 1 atm*), and a dial position means a partial pressure
+— the quantity that produces the anesthetic effect — only once the ambient
+pressure is known. At 760 mmHg it means the *same* partial pressure whichever
+class of vaporizer the dial belongs to, which is why this model needs no
+device-class parameter and why no equation, stored value or displayed number
+here is wrong. Away from 760 mmHg the two classes diverge, and in opposite
+directions: that is a limit on where this model applies rather than a defect
+in it, and "Known limitations" below records it. A later reader should not
+"fix" this.
 
 ## Known limitations
 
@@ -4616,6 +4912,7 @@ This model does not model:
 - cardiopulmonary bypass;
 - ECMO;
 - hypothermia;
+- altitude, or any ambient pressure other than the 760 mmHg fixed under "Assumptions" — the notes below this list are what that excludes;
 - age-dependent MAC;
 - individual variation in awakening concentration (the chart's MAC-awake band is a population value at one standard deviation, never a threshold for the simulated patient — see "MAC-awake as a chart reference");
 - anesthetic potency;
@@ -4639,6 +4936,22 @@ beside the volatile, meet the coupling late, and be tempted into a partial fix
 whose $`F_A`$ curve is plausible and wrong by tens of percent through
 induction. "Alveolar gas" carries the arithmetic that separates the two cases
 and the two standard formulations that lift the constraint.
+
+**Desflurane's five-minute washout disagrees with the published human
+measurement, and no admissible parameter closes it.** With the rebreathing
+circuit removed as a diagnostic, this model reproduces sevoflurane's and both
+isoflurane cohorts' published $`F_A/F_{A0}`$ at five minutes and washes
+desflurane out 2.33 published standard deviations too *fast*. It is the one
+place in this repository where a comparison against a human measurement fails
+in the direction that overstates recovery, and a learner reading desflurane's
+early washout as a physiologic prediction would expect a faster fall than
+Yasuda's volunteers showed. "Desflurane's residual, and why the parameter file
+was not changed" carries what was ruled out — the tissue and blood
+solubilities, the operating point, the fast capacity this model omits, a
+non-ideal lung, and residual rebreathing in the published apparatus — and
+which of this section's omissions the two surviving hypotheses rest on. It is
+recorded rather than corrected because every value that would close it is
+outside what the human measurements support.
 
 **The MAC divisor is a limitation of the display, and a named one.** The
 second display unit divides by a tier-3 `mac_percent`, and "Delivery-limit
@@ -4679,6 +4992,98 @@ trace as a physiologic prediction rather than as this parameter set's
 behaviour would over-estimate fat loading. The measurement does not settle it
 — one depot in six subjects against a whole-body lumped compartment — which is
 why nothing was changed and the gap is recorded instead.
+
+**Ambient pressure is not modelled, and away from one atmosphere the
+delivered-concentration dial stops meaning one partial pressure.**
+"Assumptions" above fixes ambient pressure at 760 mmHg and says what that
+identity buys. What it costs is stated here: this model is specified for sea
+level. A user in Denver (about 630 mmHg) or Mexico City (about 585 mmHg) who
+sets 6% desflurane in this simulator and 6% on the corresponding real device
+is not delivering the same anesthetic, and nothing else in the simulator says
+so. The reason is that the delivered-concentration control is a vaporizer
+dial, and the two classes of vaporizer this project's three agents are drawn
+from respond to falling ambient pressure in opposite directions.
+
+**Variable bypass — sevoflurane and isoflurane here.** The class of the
+Dräger Vapor 2000, Sevotec 5, Isotec 5 and Penlon Sigma Delta. Fresh gas is
+split between a bypass channel and a vaporizing chamber whose effluent leaves
+saturated at the agent's saturated vapour pressure, which is set by
+temperature and not by ambient pressure. The dial sets the splitting ratio, so
+as ambient pressure falls the output rises in volumes percent while the
+delivered *partial pressure* is approximately preserved, and the dial needs no
+altitude correction. Boumphrey and Marshall give the approximation as
+$`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$, worked as isoflurane
+dialled 2% at 101.3 kPa delivering 4.05% at 50 kPa — 2.026 kPa of isoflurane
+either way.
+
+**Gas–vapour blender — desflurane here.** The class of the Tec 6 and Tec 6
+Plus, which desflurane needs at all because it boils at 22.8 °C. The sump is
+held at about 39 °C, where desflurane's vapour pressure is close to two
+atmospheres (about 1460 mmHg), and pure vapour is injected into the fresh gas
+stream; a differential pressure transducer holds the vapour circuit at the
+fresh-gas circuit's pressure, so the two flows stay in the fixed *ratio* the
+dial sets — "The pressure in the vapor circuit is electronically regulated to
+equal the pressure in the fresh gas circuit… vaporizer output is constant
+because the amount of flow through each circuit is proportional" (Andrews and
+Johnston). Output is therefore a constant volumes percent and the delivered
+partial pressure falls with ambient pressure. Datex-Ohmeda states the
+consequence for the operator directly: "Decreased atmospheric pressure, with
+altitude, does not significantly affect the concentration of agent delivered
+(V/V), but decreases the partial pressure of the agent in the ratio of the
+atmospheric pressure to the calibrated pressure of 760 mm Hg. To compensate
+for the reduction of vapor pressure output at altitude, the rotary valve must
+be advanced to maintain the required agent partial pressure."
+
+**The MAC divisor is a sea-level percent for the same reason.** 1 MAC is a
+partial pressure that convention quotes as a percentage of one atmosphere, so
+at reduced ambient pressure the percentage needed to reach it rises while the
+partial pressure does not. James and White proposed MAPP — minimum alveolar
+*partial pressure* — in place of MAC on exactly this ground, which is a
+further sense in which the unit described under "MAC multiples as a display
+unit" is a sea-level unit rather than a universal one.
+
+**No correction factor is stored, and the $`1/P`$ form above must not become
+one.** $`\%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$ is the dilute-vapour
+limit of the flow-splitting physics, whose fuller form is
+$`F \approx k\,\mathrm{SVP}/(P - \mathrm{SVP})`$ and which reduces to
+$`k\,\mathrm{SVP}/P`$ only where $`\mathrm{SVP} \ll P`$. Isoflurane's
+saturated vapour pressure is about 240 mmHg at 20 °C, which is not small
+against 760: carrying the denominator through gives a delivered partial
+pressure that *overshoots* rather than holds — about 16% high at 585 mmHg on
+that arithmetic alone, against the flat line the $`1/P`$ form predicts. The
+direction of each class's response, and the contrast between the two, are not
+in doubt; the magnitude of the variable-bypass compensation is approximate,
+which is why this section says *approximately* preserved and why no number is
+stored anywhere for it. An implementation of ambient pressure should derive
+the variable-bypass case from the agent's saturated vapour pressure rather
+than from the $`1/P`$ shortcut, and would owe each agent's SVP a source of its
+own; none is stored today.
+
+**Sources for the notes above**, none of which is the authority for any
+stored value, there being none:
+
+- Weiskopf RB, Sampson D, Moore MA. The desflurane (Tec 6) vaporizer: design,
+  design considerations and performance evaluation. *Br J Anaesth*
+  1994;72:474–479. Primary; the 39 °C sump and the ±15% output accuracy in
+  oxygen. Supplied by the project owner and read at the source 2026-09-06.
+- Andrews JJ, Johnston RV. The new Tec6 desflurane vaporizer. *Anesth Analg*
+  1993;76:1338–1341. Primary; the flow-ratio mechanism quoted above, which is
+  in the abstract.
+- James MF, White JF. Anesthetic considerations at moderate altitude. *Anesth
+  Analg* 1984;63:1097–1105. Primary; the case for reasoning in partial
+  pressures rather than percentages at altitude, and the MAPP proposal. It
+  predates desflurane, so it covers the variable-bypass class only.
+- Datex-Ohmeda. *Tec 6 Plus Vaporizer* specification sheet AN3307-A/1100,
+  © 2000 Datex-Ohmeda Division, Instrumentarium Corp. Manufacturer statement,
+  quoted above; it also gives the 1–18% concentration range that
+  `max_delivered_concentration_percent` carries for desflurane. Supplied by
+  the project owner and read in full 2026-09-06.
+- Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
+  Crit Care Pain* 2011;11:199–203. **Tier 2** under "Source hierarchy": a
+  secondary synthesis, taken here for the shape of the explanation and the
+  worked example and never as the authority for a number. Its § "Altitude"
+  carries both classes side by side. Supplied by the project owner and read in
+  full 2026-09-06.
 
 ## Release gate
 

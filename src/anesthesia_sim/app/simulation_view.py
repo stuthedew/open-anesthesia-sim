@@ -196,6 +196,12 @@ METRIC_GRID_COLUMNS: dict[ft.ResponsiveRowBreakpoint | str, int | float] = {
 # `tools/contrast_check.py`, and it stays normal text at WCAG's 4.5:1.
 METRIC_NAME_SIZE = 14
 METRIC_QUALIFIER_SIZE = 12
+# The same gloss, one panel row up, under a *control* name rather than under a
+# readout name (`_build_parameter_panel`). A reader meets the two as one idiom
+# - the fine print that says what the name above it actually refers to - so
+# they are the same size deliberately, and aliasing rather than writing 12
+# twice is what stops the two drifting apart unnoticed.
+PARAMETER_QUALIFIER_SIZE = METRIC_QUALIFIER_SIZE
 # The MAC line under each reading, in the same relationship to the percent
 # above it as the gloss is to the compartment name: smaller and MUTED, because
 # it is the weaker of the two claims. Percent is what the model computes and
@@ -427,6 +433,39 @@ START_NEW_CASE_TEMPLATE = "Discard and start {agent}"
 # than a column of fragments; the dialog is text and has no chart to size to.
 NEW_CASE_DIALOG_WIDTH = 420
 NEW_CASE_DIALOG_SPACING = 12
+
+# While a run is going the agent selector is *replaced* rather than greyed.
+# Disabling it is what the run needs - choosing an agent discards the case -
+# but a disabled control is not a neutral rendering of the same information:
+# Flet/Material paints its label in the theme's disabled-content grey, which
+# overrides the `color=` and `text_style=` the agent scheme sets while leaving
+# the saturated ISO 5360 fill behind it. Grey on purple, at the one moment
+# every number beside it - percent, MAC multiple, alveolar and mixed-venous
+# partial pressures - is agent-specific, which is the wrong-context failure
+# `CLAUDE.md`'s presentation clause names rather than a styling complaint
+# (PL-61WW).
+#
+# Two things follow from replacing it rather than restyling it. The colour on
+# screen during a run is `AgentColorScheme.foreground` on `.fill` - a declared
+# pair `tools/contrast_check.py` measures - instead of a Material default that
+# appears in no source file and so cannot be measured at all. And the display
+# gets to say what the greyed control could not: a disabled dropdown reads as
+# "unavailable", where what a reader needs while a run is going is "this is
+# what is running", with why it cannot be changed second.
+#
+# The caption says "running" rather than "this case" because that is what is
+# true: the selector returns on Pause, and a label claiming the agent is fixed
+# for the case would be a mode statement contradicted by the next click.
+RUNNING_AGENT_LOCK_TEXT = "Locked while running"
+# One width for the selector and for the chip that stands in its place, so the
+# transport controls beside them do not move when a run starts. A header that
+# reflows on Start announces a mode change by motion in the wrong place, and
+# the eye it pulls is the one that should be on the readouts.
+AGENT_SELECTOR_WIDTH = 180
+# The chip's inset. Slightly wider than the header badge's 6 because this one
+# carries two lines rather than one and sits among controls rather than under
+# the title.
+RUNNING_AGENT_DISPLAY_PADDING = 8
 
 # The wash-in trace takes the alveolar compartment's own colour, because it
 # is that compartment expressed against the one filling it: the numerator is
@@ -1145,7 +1184,7 @@ class SimulationView:
                 )
                 for agent_id, display_name in AVAILABLE_AGENTS
             ],
-            width=180,
+            width=AGENT_SELECTOR_WIDTH,
             filled=True,
             fill_color=initial_agent_colors.fill,
             bgcolor=initial_agent_colors.fill,
@@ -1153,7 +1192,44 @@ class SimulationView:
             text_style=initial_agent_style.dropdown_text_style,
             border_color=initial_agent_colors.foreground,
             focused_border_color=initial_agent_colors.foreground,
+            visible=not initial_snapshot.is_running,
             on_select=self._handle_agent_change,
+        )
+
+        # The running agent's identity, carried by a control that is never
+        # disabled and so never recoloured by the theme. `RUNNING_AGENT_LOCK_TEXT`
+        # records why this exists rather than a restyled dropdown.
+        #
+        # Bordered in the agent's own foreground for the reason
+        # `_agent_header_badge` is: this row sits on BACKGROUND, and the
+        # sevoflurane fill is 1.27:1 against it, so without an edge the
+        # coloured region a reader is meant to recognise loses its shape.
+        # Both strings take the agent's foreground, so the chip adds no pair
+        # to `tools/contrast_check.py` that the selector did not already
+        # declare - it is the same fill and the same text colour, now
+        # actually rendered.
+        self._running_agent_text = ft.Text(
+            initial_snapshot.agent_display_name,
+            color=initial_agent_colors.foreground,
+            weight=ft.FontWeight.BOLD,
+        )
+        self._running_agent_lock_text = ft.Text(
+            RUNNING_AGENT_LOCK_TEXT,
+            color=initial_agent_colors.foreground,
+            size=METRIC_QUALIFIER_SIZE,
+        )
+        self._running_agent_display = ft.Container(
+            content=ft.Column(
+                controls=[self._running_agent_text, self._running_agent_lock_text],
+                spacing=0,
+                tight=True,
+            ),
+            bgcolor=initial_agent_colors.fill,
+            border=initial_agent_style.badge_border,
+            border_radius=COMPACT_PANEL_RADIUS,
+            padding=RUNNING_AGENT_DISPLAY_PADDING,
+            width=AGENT_SELECTOR_WIDTH,
+            visible=initial_snapshot.is_running,
         )
 
         self._subtitle_text = ft.Text(
@@ -1415,7 +1491,11 @@ class SimulationView:
                                 ),
                                 ft.Row(
                                     controls=[
+                                        # Exactly one of these two is visible;
+                                        # `_refresh_view` is the one writer of
+                                        # which, from `is_running`.
                                         self._agent_dropdown,
+                                        self._running_agent_display,
                                         self._start_button,
                                         self._pause_button,
                                         self._reset_button,
@@ -1473,8 +1553,30 @@ class SimulationView:
 
         return ft.ResponsiveRow(
             controls=[
+                # "common gas outlet", never "Fresh gas flow" alone. The
+                # phrase on its own is what an anesthesia machine's flowmeter
+                # bank is labelled, and a flowmeter reads the carrier gas
+                # only; the model's own mass balance forces this setting to
+                # be the whole post-vaporizer stream, carrier plus the vapour
+                # the vaporizer added, which `docs/MODEL.md` § "Breathing
+                # circuit" states and derives. The two differ by
+                # 1/(1 - F_D) - under a percent at ordinary dial settings,
+                # 22% at desflurane's 18% Tec 6 maximum, where flowmeters at
+                # 2 L/min leave the common gas outlet at about 2.44 L/min -
+                # and the error lands on the circuit time constant
+                # `V_C/V̇_F`, which is the quantity the wash-in curve is
+                # about. Reading the slider as a flowmeter is therefore a
+                # wrong clinical inference from a correct number, which
+                # `CLAUDE.md` counts as a presentation-safety defect rather
+                # than a wording preference (PL-71CF, after PL-CXYT). Do not
+                # shorten it to fit a layout;
+                # `test_the_fresh_gas_flow_control_names_the_common_gas_outlet`
+                # holds the exact pair of strings.
                 self._build_parameter_panel(
-                    "Fresh gas flow", self._fresh_gas_flow_slider, self._fresh_gas_flow_text
+                    "Fresh gas flow",
+                    self._fresh_gas_flow_slider,
+                    self._fresh_gas_flow_text,
+                    qualifier="common gas outlet",
                 ),
                 self._build_parameter_panel(
                     self._delivered_concentration_label,
@@ -1499,6 +1601,7 @@ class SimulationView:
         slider: ft.Slider,
         value_text: ft.Text,
         secondary_value_text: ft.Text | None = None,
+        qualifier: str | None = None,
     ) -> ft.Container:
         """Build one compact simulation-setting panel.
 
@@ -1511,6 +1614,16 @@ class SimulationView:
                 unit, drawn under the slider, or None where the setting
                 has only one. Only the delivered agent has two: the three
                 flow settings are in L/min, which MAC does not convert.
+            qualifier: Where a setting's name alone would be read as a
+                different quantity than the model uses, the words that
+                separate the two, drawn smaller under the name as the
+                clinical gloss is on a readout (`_build_metric_panel`), or
+                None where the name is unambiguous. Unlike that gloss no
+                spacer is drawn in its place, because these four panels
+                are already of unequal height - the delivered agent
+                carries a MAC line the three flow settings have no
+                conversion for - so there is no shared baseline for a
+                blank line to keep.
 
         Returns:
             Responsive setting panel.
@@ -1526,6 +1639,15 @@ class SimulationView:
             content=ft.Column(
                 controls=[
                     label_control,
+                    *(
+                        []
+                        if qualifier is None
+                        else [
+                            ft.Text(
+                                qualifier, color=MUTED, size=PARAMETER_QUALIFIER_SIZE, italic=True
+                            )
+                        ]
+                    ),
                     ft.Row(controls=[slider, value_text]),
                     *([] if secondary_value_text is None else [secondary_value_text]),
                 ],
@@ -2190,7 +2312,16 @@ class SimulationView:
             snapshot.agent_display_name
         )
         self._agent_dropdown.value = snapshot.agent_id
+        # Disabled *and* hidden while the run is going, with
+        # `_running_agent_display` in its place. `disabled` alone used to be
+        # the whole of this and is what produced the grey-on-fill the chip
+        # exists to prevent; it stays because a control that is off screen
+        # must not be operable either, and because it is what a keyboard
+        # user reaches the same way.
         self._agent_dropdown.disabled = snapshot.is_running
+        self._agent_dropdown.visible = not snapshot.is_running
+        self._running_agent_display.visible = snapshot.is_running
+        self._running_agent_text.value = snapshot.agent_display_name
 
         self._delivered_concentration_slider.max = snapshot.max_delivered_concentration_percent
         self._delivered_concentration_slider.value = (
@@ -2680,13 +2811,26 @@ class SimulationView:
         self._page.update()
 
     def _apply_agent_color_scheme(self, agent_id: str) -> None:
-        """Apply the verified agent color to the header and selection control."""
+        """Apply the verified agent color to every control that carries identity.
+
+        Three of them: the header badge, the selector, and the chip that
+        stands in the selector's place while a run is going. All three are
+        written on every tick whether or not they are visible, so the one
+        that becomes visible on the next state change is already correct -
+        a chip revealed in the previous agent's colour would be the wrong
+        label over the right numbers for as long as one frame.
+        """
 
         scheme = AGENT_COLOR_SCHEMES[agent_id]
         style = AGENT_RENDER_STYLES[agent_id]
         self._agent_header_badge.bgcolor = scheme.fill
         self._agent_header_badge.border = style.badge_border
         self._subtitle_text.color = scheme.foreground
+
+        self._running_agent_display.bgcolor = scheme.fill
+        self._running_agent_display.border = style.badge_border
+        self._running_agent_text.color = scheme.foreground
+        self._running_agent_lock_text.color = scheme.foreground
 
         self._agent_dropdown.fill_color = scheme.fill
         self._agent_dropdown.bgcolor = scheme.fill

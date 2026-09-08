@@ -3,11 +3,15 @@ id: PL-73G7
 title: Explain desflurane's opposite-sign washout disagreement once rebreathing is removed
 priority: P1
 effort: M
-status: blocked
+status: done
 classes: science, docs
-blocked-by: PL-W21J
+feature: numerical-domain
 touches: src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md, tests/reference/test_published_wash_in.py
+blocked-by: PL-W21J
 added: 2026-09-06
+closed: 2026-09-08
+pr: 464
+verify: uv run pytest tests/reference/test_published_wash_in.py && grep -q 'def test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination' tests/reference/test_published_wash_in.py
 ---
 
 **Problem.** Measured 2026-09-06 while building the elimination comparison in

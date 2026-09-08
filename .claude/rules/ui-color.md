@@ -16,6 +16,18 @@ not measure a ratio by hand, quote one in a comment, or reason about whether a
 pair "looks fine" — run the tool, which prints the measured value for every
 declared pair. What follows is only the half it cannot decide.
 
+**`tools/agent_identity_check.py` decides one thing the ratios cannot reach: no
+control carrying agent identity may be *rendered* disabled** (project owner,
+2026-09-08). Flet/Material substitutes its own disabled-content grey for the
+colour you set, and that grey is declared in no source file, so the requirement
+above keeps measuring a pair that has stopped being drawn — which is what
+`PL-61WW` was. A control may be `disabled` where it is also
+`visible = not <the same expression>`, since it then draws nothing; otherwise
+carry the identity in a control with no disabled state, as
+`_running_agent_display` does. A control given an agent colour where it is
+constructed must also be written by `_apply_agent_color_scheme`, which is what
+keeps the checked set complete.
+
 ## The four judgments the tool leaves to you
 
 1. **A new color is added to `REQUIREMENTS` in the same change that introduces

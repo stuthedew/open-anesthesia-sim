@@ -358,7 +358,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "(`_playback_rate_text`), which shares the surface and the size of the "
         "MAC multiples beside it (PL-SN2C), and the border of the chart's "
         "time-base dropdown (`_time_base_dropdown`), a user-interface component "
-        "needing only SC 1.4.11's 3:1.",
+        "needing only SC 1.4.11's 3:1. Also the gloss under a setting's name "
+        "in the controls row (`_build_parameter_panel`, PL-71CF), which is the "
+        "readout gloss one panel row up: the same colour on the same surface "
+        "at the same size, so it too adds no pair.",
     ),
     Requirement(
         "ACCENT_TEXT",
@@ -416,21 +419,60 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "sevoflurane.fill",
         AA_TEXT,
         "1.4.3",
-        "the agent name over its ISO 5360 identification color",
+        "the agent name over its ISO 5360 identification color, in all three "
+        "places it is drawn: the header badge's subtitle (`_subtitle_text`), "
+        "the selector while the run is stopped or paused (`_agent_dropdown`), "
+        "and the static chip that stands in the selector's place while it is "
+        "going (`_running_agent_display`, whose name and lock caption are "
+        "`_running_agent_text` and `_running_agent_lock_text`). All three are "
+        "written by `_apply_agent_color_scheme`. The chip is why this entry "
+        "still describes what is on screen during a run: the selector used to "
+        "be merely disabled while running, and Flet/Material paints a disabled "
+        "label in the theme's disabled-content grey - a colour app/theme.py "
+        "never declares, so this tool could not reach it and reported a "
+        "passing ratio for a pair that had stopped being rendered. Nothing "
+        "carrying agent identity is disabled now, which is what makes the "
+        "measured pair and the rendered pair the same again (PL-61WW)",
     ),
     Requirement(
         "isoflurane.foreground",
         "isoflurane.fill",
         AA_TEXT,
         "1.4.3",
-        "the agent name over its ISO 5360 identification color",
+        "the agent name over its ISO 5360 identification color, in all three "
+        "places it is drawn: the header badge's subtitle (`_subtitle_text`), "
+        "the selector while the run is stopped or paused (`_agent_dropdown`), "
+        "and the static chip that stands in the selector's place while it is "
+        "going (`_running_agent_display`, whose name and lock caption are "
+        "`_running_agent_text` and `_running_agent_lock_text`). All three are "
+        "written by `_apply_agent_color_scheme`. The chip is why this entry "
+        "still describes what is on screen during a run: the selector used to "
+        "be merely disabled while running, and Flet/Material paints a disabled "
+        "label in the theme's disabled-content grey - a colour app/theme.py "
+        "never declares, so this tool could not reach it and reported a "
+        "passing ratio for a pair that had stopped being rendered. Nothing "
+        "carrying agent identity is disabled now, which is what makes the "
+        "measured pair and the rendered pair the same again (PL-61WW)",
     ),
     Requirement(
         "desflurane.foreground",
         "desflurane.fill",
         AA_TEXT,
         "1.4.3",
-        "the agent name over its ISO 5360 identification color",
+        "the agent name over its ISO 5360 identification color, in all three "
+        "places it is drawn: the header badge's subtitle (`_subtitle_text`), "
+        "the selector while the run is stopped or paused (`_agent_dropdown`), "
+        "and the static chip that stands in the selector's place while it is "
+        "going (`_running_agent_display`, whose name and lock caption are "
+        "`_running_agent_text` and `_running_agent_lock_text`). All three are "
+        "written by `_apply_agent_color_scheme`. The chip is why this entry "
+        "still describes what is on screen during a run: the selector used to "
+        "be merely disabled while running, and Flet/Material paints a disabled "
+        "label in the theme's disabled-content grey - a colour app/theme.py "
+        "never declares, so this tool could not reach it and reported a "
+        "passing ratio for a pair that had stopped being rendered. Nothing "
+        "carrying agent identity is disabled now, which is what makes the "
+        "measured pair and the rendered pair the same again (PL-61WW)",
     ),
     EitherRequirement(
         ("sevoflurane.fill", "sevoflurane.foreground"),

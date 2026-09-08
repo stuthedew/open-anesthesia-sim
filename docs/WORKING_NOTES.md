@@ -1083,3 +1083,31 @@ corrected relation is now asserted rather than stated.
 
 `PL-X35V` is the remaining tail: the disclosure reaches only a reader with
 `docs/MODEL.md` open, and the rate control itself still says nothing.
+
+## Open thread: what makes desflurane wash out too fast - PL-W21J, PL-73G7, PL-RFLN
+
+`docs/MODEL.md` is the authority for this and carries the whole account, in
+"Desflurane's residual, and why the parameter file was not changed" under the
+published wash-in validation test. This entry exists so that a session reading
+the notes rather than the model spec finds the thread, and it deliberately does
+not restate it.
+
+The short version. `PL-W21J` built a test-only open-circuit driver so the
+elimination comparison could be run at the inspired fraction of zero the
+published protocols had. With the apparatus difference gone the model
+reproduces sevoflurane and both isoflurane cohorts, and washes desflurane out
+2.33 published SD too fast - the one comparison in this repository that misses
+a human measurement in the direction of overstating recovery. `PL-73G7` closed
+the parameter question: the vessel-rich coefficient the disagreement demands is
+nineteen standard deviations above Yasuda 1989's measured human brain:blood and
+would invert the measured solubility ordering of the three shipped agents, so
+`data/agents/desflurane.json` was not changed and a test now asserts that a
+coefficient raised to the measurement's own ceiling still misses. Five other
+candidates were ruled out the same way.
+
+What is still open is the cause, which `PL-RFLN` carries. Two candidates
+survive - end-tidal sampling in a lung with ventilation-perfusion dispersion,
+and the published value itself - and separating them needs the methods sections
+of the two Yasuda 1991 papers, which are not in PubMed Central and not held in
+`docs/references/`. That is a decision for the project owner before any work is
+scheduled, not a task waiting to be picked up.

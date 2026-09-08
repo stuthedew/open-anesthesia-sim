@@ -3,11 +3,13 @@ id: PL-61WW
 title: During a run, the agent name in the agent selector loses contrast against the agent colour
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, tools/contrast_check.py, tests/unit/test_simulation_view.py
 added: 2026-09-06
+closed: 2026-09-07
+pr: 460
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_agent_name_stays_legible_while_the_run_disables_the_selector' tests/unit/test_simulation_view.py
 ---
 
@@ -88,3 +90,47 @@ both, so neither `bin/docket next product` nor `next workflow` will offer it.
 That matches its sibling `PL-W8DQ` and is what the Done-when asks for: pinning
 the requirement in the checker is the half that keeps the fix from silently
 regressing.
+
+**Fixed by replacing the selector during a run, not by restyling it**
+(2026-09-07). The third candidate direction, chosen over the other two on
+these grounds:
+
+- *Keep the label at `scheme.foreground` when disabled* would have depended on
+  Flet/Material honouring an override of its own disabled-content colour. The
+  unit test would pin the attribute this project sets, not the colour the
+  widget paints, so a green test would have proved nothing about the screen -
+  the exact failure mode the brief describes `make check` already having.
+- *Drop `disabled` for a read-only presentation* is a behaviour change rather
+  than a presentation one: it would let a selection reach `_handle_agent_change`
+  mid-run, and what happens to a running case when `set_agent` rebuilds around
+  it is a design question this item did not ask.
+- *Move the identity into a control that is never disabled* is what landed.
+  `_running_agent_display` is a static chip carrying `_running_agent_text` (the
+  agent's name, bold) and `_running_agent_lock_text` ("Locked while running"),
+  drawn in the agent's own `foreground` on its own `fill` and bordered like
+  `_agent_header_badge` - the border being what keeps the sevoflurane chip's
+  shape against a page it is 1.27:1 against. `_refresh_view` swaps it with
+  `_agent_dropdown` on `is_running`; the dropdown stays `disabled` as well as
+  hidden, since an off-screen control must not be operable.
+
+**How the checker requirement was met, which is not what the Done-when
+anticipated.** The Done-when expected the disabled foreground to become an
+explicit constant in `app/theme.py` so `REQUIREMENTS` could reach it. Under
+this direction there is no disabled foreground to declare: the pair rendered
+during a run *is* `<agent>.foreground` on `<agent>.fill`, which the three agent
+entries already measure. Those three entries were rewritten instead, to name
+all three places the pair is drawn - `_subtitle_text`, `_agent_dropdown`,
+`_running_agent_display` - and to record why the entry had stopped describing
+what was on screen. `check_citations` resolves every one of those symbols, so
+the coverage claim is now audited rather than asserted. Adding a constant for a
+colour nothing renders would have been a worse answer to the same requirement.
+
+**The brief's side question, answered.** No other control disabled during a run
+carries information. `_start_button` is disabled while running, failed, or at
+the supported run length, and `_pause_button` while not running; both name an
+unavailable *action*, and neither is the only statement of the state it
+reflects - `_status_text` says which of the four states the run is in, in words.
+
+**Found and not fixed here:** `PL-K8YM` (docs/MODEL.md does not record the
+chip or the never-disabled bar) and `PL-97VB` (nothing stops a future
+identity-carrying control being disabled).
