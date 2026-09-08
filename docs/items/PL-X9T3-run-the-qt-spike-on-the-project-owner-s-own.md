@@ -3,13 +3,12 @@ id: PL-X9T3
 title: Run the Qt spike on the project owner's own machine and record frame cost, input latency and how it looks, which is the half no session here can measure
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: perf, ux
 feature: teachable-case
-blocked-by: PL-55DH
 touches: docs/WORKING_NOTES.md
 not-delegable: the measurement has to run on the project owner's own hardware. `PL-2QMK` records why no session here can do it - the web container has no GPU and Flet's renderer cannot even load - and the whole point of this item is the number this container is structurally unable to produce.
-verify: python3 tools/doc_check.py check && grep -q 'PL-X9T3' docs/WORKING_NOTES.md
+verify: python3 tools/doc_check.py check && grep -qF 'Measured on real hardware' docs/WORKING_NOTES.md
 added: 2026-09-08
 ---
 
@@ -40,4 +39,53 @@ port cheaply, which is worth as much as the one that starts it.
 
 **Done when** the three are written into `docs/WORKING_NOTES.md` beside
 `PL-QXSB`'s own measurements, so the decision reads one comparison rather than
-two.
+two. **Under a heading containing the exact phrase "Measured on real
+hardware"**, which is not a style rule: it is what this item's `verify:`
+greps for, so the command names something only this item's own work creates.
+
+**Why the command is not the obvious one.** It was
+`grep -q 'PL-X9T3' docs/WORKING_NOTES.md`, and on 2026-09-08 `PL-55DH` wrote a
+section whose *heading* cites this item - correctly, since that section is
+where the spike's own measurements live and this is what will sit beside them.
+That satisfied the grep while none of the work had been done. It is the same
+defect `PL-X7VY` carries for `PL-XH1D`, arriving by a different route: a
+command satisfied by another item's work proves nothing, and `docket verify`
+would accept a branch that did none of this. Fixed here rather than filed,
+because it is this item's own front matter and the repair is the command the
+`docket` skill already prescribes.
+
+## Started, 2026-09-08: the qualitative half, from the project owner
+
+**Two observations, and the pair is more useful than either.** The first was
+made before the spike had been run, about the *Flet* application after
+`PL-2FM6` removed the sample store: "now that we dropped the M4 stuff, I don't
+really notice a difference in performance. Maybe we don't need pyside." The
+second, after running the spike: "I like it better."
+
+**So the premise `PL-QXSB` opened on has expired.** That item was raised on
+"It shouldn't be this laggy", and the lag is what every one of the seven items
+before it was spent on. The owner now reports the Flet build as acceptable. A
+migration argued from lag is therefore arguing from a symptom that is gone,
+and re-deriving it would be the "recommend first, research afterwards"
+`CLAUDE.md` names.
+
+**What the preference is, and what it is not.** "I like it better" is real
+evidence and it is the third of the three things this item asks for - whether
+six traces are distinguishable, whether the type is legible, whether a drag
+feels immediate. It is not the first two. Frame cost and input latency are on
+the spike's own instrument panel and are still unrecorded, and this item does
+not close on a preference.
+
+**Still outstanding, and both are one look at the running window** - the
+instrument panel's `median` and `p90` columns, at 1x and at 300x:
+
+1. **`paint`** - the term `PL-QXSB` could not measure at all and the reason
+   this item exists. Offscreen here it read 24-34 ms, which is a software
+   rasteriser with no GPU rather than a paint cost.
+2. **`timer lateness`** - `PL-X9T3`'s "how long a callback that is ready to
+   run waits", against Flet's 20-30 ms p90 after `PL-KP7H` and `PL-R2YM`.
+   Zero in this container because `--self-check` drives its own frames.
+
+`advance`, `refresh` and `handoff` are worth recording at the same time, but
+they are not the outstanding question: `PL-55DH` measured all three here and
+the ratios travel even where the absolute figures do not.

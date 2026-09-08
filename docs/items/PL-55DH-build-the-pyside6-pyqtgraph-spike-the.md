@@ -6,11 +6,12 @@ effort: M
 status: done
 classes: perf, ux
 feature: teachable-case
-blocked-by: PL-QXSB
 touches: spikes/qt, docs/WORKING_NOTES.md
-verify: python3 tools/doc_check.py check && test -f spikes/qt/qt_spike.py && grep -q 'PL-55DH' docs/WORKING_NOTES.md
+blocked-by: PL-QXSB
 added: 2026-09-08
 closed: 2026-09-08
+pr: 490
+verify: python3 tools/doc_check.py check && test -f spikes/qt/qt_spike.py && grep -q 'PL-55DH' docs/WORKING_NOTES.md
 ---
 
 **Problem.** Build the PySide6 + pyqtgraph spike: the concentration chart and the readout row behind the existing controller, disposable and touching no shipped app/ module
