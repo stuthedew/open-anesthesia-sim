@@ -1,7 +1,7 @@
 ---
 id: PL-6580
 title: Strip the concentration chart's explanatory prose down to legend and labels
-priority: P2
+priority: P1
 effort: S
 status: ready
 classes: ux
@@ -18,6 +18,16 @@ convention, what unchecking a compartment does and does not do, what MAC-awake
 asserts and which trace to read it against, and what a vertical control mark
 is. Roughly a dozen lines of continuous text stand between the reader and the
 chart, every run.
+
+**Raised to P1 on 2026-09-08** (project owner). The owner made the same
+finding a second time, three days after this item was filed, looking at the
+same screen: "I thought we got rid of that as this is for anesthesia
+professionals." A P2 that the queue never reaches is mis-priced when the
+finding it records keeps being re-made, and this is the only item that removes
+what is being looked at. `PL-B89V` (name the interface's reader in a
+path-scoped rule) was opened the same day and stops the *next* panel arriving
+the same way; it does not touch this screen, which is why raising this one is
+not made redundant by it.
 
 **Why it matters.** The audience is an anesthesia provider, not a lay reader
 (project owner, 2026-09-05). MAC, MAC-awake, the endpoint difference between

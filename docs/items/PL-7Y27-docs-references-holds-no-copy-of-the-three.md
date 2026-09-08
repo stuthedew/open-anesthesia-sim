@@ -4,11 +4,12 @@ title: docs/references/ holds no copy of the three vaporizer sources PL-5K5C wro
 priority: P2
 effort: S
 status: done
-closed: 2026-09-08
 classes: docs
 feature: provenance
 touches: docs/MODEL.md
 added: 2026-09-07
+closed: 2026-09-08
+pr: 469
 verify: python3 tools/doc_check.py check && grep -qF 'owner-attested rather than checkable' docs/MODEL.md
 ---
 

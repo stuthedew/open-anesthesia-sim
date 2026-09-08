@@ -1,18 +1,15 @@
 ---
 id: PL-QC38
 title: PL-61WW reported as still reproducing after the fix merged: establish whether it is a stale build or a second element
-status: done
 priority: P3
 effort: S
+status: done
 feature: presentation-safety
 touches: docs/items
 added: 2026-09-08
 closed: 2026-09-08
+pr: 468
 not-delegable: nothing in the repository can prove or disprove this. The
-  question was which build the project owner was running, which is a fact about
-  their machine rather than about the tree - and the tree's own answer, that
-  `tools/agent_identity_check.py` passes on `eac6877`, was already known and was
-  never the thing in doubt.
 ---
 
 **Problem.** PL-61WW reported as still reproducing after the fix merged: establish whether it is a stale build or a second element
