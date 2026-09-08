@@ -1582,7 +1582,14 @@ total stays at 132.
 - PL-4RBD (S) The drawn chart smooths through a control change that leaves the trace monotone, because M4 selects extremes and such a change is not one
 - PL-8PZ1 (S) docs/MODEL.md's release gate is still headed 'Version v0.1.0 is complete only when', but entries are being added to it for v0.3.0
 - PL-B32L (S) core/parameters.py raises OSError and JSONDecodeError outside the exception hierarchy its own docstring promises
-- PL-C4PH (S) Record the history sampling cadence as a decision of its own, separate from the integration step
+- PL-C4PH (S) — **dropped 2026-09-08** (project owner). Record the history
+  sampling cadence as a decision of its own, separate from the integration step.
+  Superseded by `PL-2FM6`, which deletes the store that has a cadence; after it
+  lands there is no recording cadence to state and `SIMULATION_STEP_S` plays one
+  role again. Its durable half — the owner's 2026-09-05 chart-faithful-only
+  decision, recorded nowhere else — is transplanted into `PL-2FM6`'s **Done when**
+  and held there by a `verify:` grep. Counts as cleared, so the gate stands at 132
+  entries, 44 cleared. `PL-4RBD` is deliberately **not** dropped with it.
 - PL-DXQC (S) The v0.4.0 Goal section states two problems in the present tense that are now fixed
 - PL-F5GN (S) The oracle's independence check walks only ImportFrom, so a plain import bypasses it
 - PL-GVXP (S) Separate the six chart traces by more than colour, and meet contrast minima
