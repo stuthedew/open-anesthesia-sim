@@ -1571,8 +1571,8 @@ itself rather than from a label somebody applied.
 An item is delegable when all of: its `status` is `ready`; `model_guidance` is
 silent, which excludes safety- and science-classed work and open decisions by
 the rule that already governs model choice; it names a `verify` command; its
-`touches` is declared and lies wholly outside `protected_paths`; and its effort
-is `S` or `M`.
+`touches` is declared and lies wholly outside `protected_paths` *and*
+`gate_paths`; and its effort is `S` or `M`.
 
 There is no `delegable: yes`. The only writable control is `not-delegable`,
 which withholds an item that would otherwise qualify, so delegability can be
@@ -1589,6 +1589,22 @@ where it would be relitigated are the consequential ones. It defaults to empty,
 and that default disables delegation entirely rather than permitting it
 everywhere: a project that has not said which of its files matter has not
 earned an unguarded lane.
+
+`gate_paths` is the second list, and it refuses for a different reason: these
+are the files that *measure* the work rather than the ones that produce a
+consequential value, so a diff editing one has changed the instrument. `docket
+verify` has always failed such a diff outright; delegability reads the same
+list so that the two commands agree, because a lane that offers work its own
+acceptance audit is certain to REJECT is untrustworthy in exactly the case it
+exists for. The reasons stay distinguishable in the output — `touches
+protected path(s) X` against `touches the checks themselves: X` — and the
+protected one is reported first where both apply.
+
+The two lists are read differently when empty, and the asymmetry follows from
+which of them has a default. An empty `protected_paths` means a project has
+never declared one, and delegation closes. An empty `gate_paths` can only mean
+a real default was cleared on purpose — a project that told `verify` to stop
+auditing its checks has not asked delegability to start.
 
 A `verify` command bounds what "done" means; it does not prove the work is
 right. It can be satisfied by the wrong route — a weakened assertion, an added
@@ -1668,6 +1684,7 @@ untriaged_stale_days = 14
 verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
 minor_classes = ["feature"]
 protected_paths = []
+gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]
 code_paths = ["src", "tests"]      # what `docket trend` counts as code
 version_file = "pyproject.toml"
 roadmap_file = "ROADMAP.md"

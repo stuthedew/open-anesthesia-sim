@@ -213,6 +213,40 @@ version_file = "pyproject.toml"
 # named by a person; the tool refuses to invent one.
 version_policy = "manual"
 
+# Paths holding the checks themselves. A delegated diff that edits one has
+# changed the thing measuring it, so the measurement means nothing - and
+# `docs/worker.md`'s "Never edit the checks themselves" now cites this list
+# rather than restating it, which is the whole point of writing it out here.
+#
+# Read at both ends, which is what `PL-S2L4` fixed. `docket verify`'s "the
+# checks themselves are unedited" audit has always read it; `Item.delegability`
+# now reads it too, so `bin/docket delegable` stops offering work that audit
+# would REJECT once a worker had finished it. Fifteen of the eighty-six items
+# it offered on 2026-09-08 were that shape.
+#
+# The first five are the package defaults, repeated per this file's opening
+# convention. The two `ruff.toml` entries are this repository's addition:
+# they are how `tools/` and `subprojects/docket/` stay parseable by the bare
+# `python3` that runs them, so relaxing one to clear a format failure breaks
+# the thing the check exists to protect. `.claude/hooks/ruff.toml` needs no
+# entry - the `.claude` prefix already covers it.
+#
+# Naming those two by hand is the weakness here, and it is the same shape
+# that made `workflow_paths` drift nine entries short (`PL-JBZK`): a new
+# `ruff.toml` under `tools/` or a new subproject is silent, and silent in the
+# direction that hurts. `PL-BBDD` carries the check that would decide it from
+# the tree, as `tools/workflow_paths_check.py` already does for the list
+# above.
+gate_paths = [
+  "Makefile",
+  "pyproject.toml",
+  ".github",
+  ".claude",
+  "docket.toml",
+  "subprojects/docket/ruff.toml",
+  "tools/ruff.toml",
+]
+
 # Paths a delegated item may never modify, whatever its check proves. These are
 # the files that produce clinically meaningful output: the scientific core, the
 # validated parameter data, and the model specification. A delegated item may

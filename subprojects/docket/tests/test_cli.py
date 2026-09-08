@@ -354,7 +354,7 @@ def test_release_refuses_to_invent_a_version_under_a_manual_policy(
 
 
 def _delegable_store(tmp_path: Path) -> Path:
-    """A store holding one delegable item and three that must not be offered."""
+    """A store holding one delegable item and four that must not be offered."""
     items = tmp_path / "docs" / "items"
     items.mkdir(parents=True)
     # Config is resolved from the store's parent, not the working directory,
@@ -368,6 +368,11 @@ def _delegable_store(tmp_path: Path) -> Path:
         ("PL-BBBB", "touches: tests/test_b.py\n"),  # no verify command
         ("PL-CCCC", "verify: pytest\ntouches: src/core/x.py\n"),  # protected
         ("PL-DDDD", "verify: pytest\ntouches: tests/test_d.py\nclasses: safety\n"),
+        # A gate path, and deliberately from the package default rather than
+        # from the config written above: this is the end-to-end guard that
+        # `cmd_delegable` passes `gate_paths` through at all, which no unit
+        # test of `Item.delegability` can see (`PL-S2L4`).
+        ("PL-EEFF", "verify: pytest\ntouches: Makefile\n"),
     ):
         (items / f"{ident}-x.md").write_text(
             f"---\nid: {ident}\ntitle: Item {ident}\npriority: P1\neffort: S\n"
@@ -380,12 +385,12 @@ def _delegable_store(tmp_path: Path) -> Path:
 def test_delegable_lists_only_what_qualifies(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Three of the four items must not be offered, each for a different reason."""
+    """Four of the five items must not be offered, each for a different reason."""
     assert main(["--items", str(_delegable_store(tmp_path)), "--no-git", "delegable"]) == 0
     out = capsys.readouterr().out
     assert "PL-AAAA" in out
     assert "verify: pytest tests/test_a.py" in out
-    for excluded in ("PL-BBBB", "PL-CCCC", "PL-DDDD"):
+    for excluded in ("PL-BBBB", "PL-CCCC", "PL-DDDD", "PL-EEFF"):
         assert excluded not in out
 
 

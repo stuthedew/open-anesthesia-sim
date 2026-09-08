@@ -52,5 +52,19 @@ skim a REJECT, and `CLAUDE.md` names that as the failure mode a check must not
 have. Recommend (2), and note it costs a triage step per item rather than a
 code change.
 
+**Route (2) does not fix the case observed above** (noted 2026-09-08 from
+`PL-S2L4`, which reaches the same two lists from the delegation end). Marking
+such items `not-delegable:` keeps them out of `bin/docket delegable`, but
+`cmd_verify` in `subprojects/docket/src/docket/cli.py` runs `verify_batch` on
+whatever ids it is given and never consults `Item.delegability`. `PL-X19T` was
+a session running the close-out audit on its own branch, not a delegated
+worker, so the REJECT above fires again under (2) exactly as it did. What (2)
+does buy is that `delegable` stops offering work the audit will refuse - which
+is `PL-S2L4`'s subject, and which `PL-S2L4` proposes to get from
+`Item.delegability` reading `gate_paths` rather than from a triage step per
+item. That leaves this item with the narrower question it should have had:
+what `bin/docket verify <id>` should report when a *non-delegated* session
+audits its own branch against an item whose declared work is a gate path.
+
 **Found.** `PL-X19T` (align the tier-3 absolute in the instruction files with
 the practice), 2026-09-07, running the close-out audit on its own branch.
