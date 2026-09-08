@@ -4,11 +4,13 @@ title: Delete RunHistory and draw the chart from the closed-form sampler instead
 priority: P2
 effort: M
 status: done
-closed: 2026-09-08
 classes: refactor, perf
 feature: numerical-domain
+milestone: v0.4.12
 touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/MODEL.md
 added: 2026-09-05
+closed: 2026-09-08
+pr: 488
 verify: uv run pytest -q tests/unit tests/integration && ! grep -rq 'history_window\|RunHistory' src/anesthesia_sim/ && grep -qF 'the drawn chart reproduces every control change' docs/MODEL.md
 ---
 
