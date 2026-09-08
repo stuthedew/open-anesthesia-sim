@@ -9,6 +9,7 @@ feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, docs/MODEL.md
 added: 2026-09-05
 closed: 2026-09-08
+pr: 479
 verify: uv run pytest tests/unit/test_simulation_view.py && ! grep -q 'Left axis:' src/anesthesia_sim/app/simulation_view.py
 ---
 
