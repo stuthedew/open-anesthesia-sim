@@ -4,12 +4,13 @@ title: Lowe and Ernst's cardiac output is allometric (0.2 x M^0.75 = 4.84 L/min 
 priority: P1
 effort: M
 status: done
-closed: 2026-09-08
-verify: python3 tools/doc_check.py check && grep -qF '2.6 times more slowly' docs/MODEL.md
 classes: science
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-06
+closed: 2026-09-08
+pr: 470
+verify: python3 tools/doc_check.py check && grep -qF '2.6 times more slowly' docs/MODEL.md
 ---
 
 **Problem.** `default_cardiac_output_l_min` is stored as a fixed 5.0, and
