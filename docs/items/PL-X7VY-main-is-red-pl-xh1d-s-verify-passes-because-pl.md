@@ -69,5 +69,28 @@ also `not-delegable` on the ground that its wording states publicly what the
 project owner did and did not write - so its `verify:` is worth a moment of
 his attention rather than a passing edit.
 
+**A second instance, found the same day, says this is a class rather than one
+stale line.** `PL-X9T3`'s command was `grep -q 'PL-X9T3' docs/WORKING_NOTES.md`,
+and `PL-55DH` wrote a section whose heading cites that id - correctly, since
+that section is where the spike's measurements live. The grep passed while none
+of `PL-X9T3`'s work had been done. Different route to the same place: in both
+cases *another item's work* satisfied the command, and in both cases nothing
+local reports it.
+
+The shared lesson is the `docket` skill's own rule, which both commands broke:
+a `verify:` must name something **only this item's work** creates. A file
+another item creates is not that; an id that any note may cite is not that
+either. `PL-X9T3`'s is repaired in place - it greps for a phrase its own
+recorded measurement must carry, and the item's brief now states that phrase so
+the command is a specification rather than a bet on a name. `PL-XH1D`'s is the
+one still outstanding, and it is the one holding `main` red.
+
+**Worth considering when this is fixed**, though not required by it: whether
+`docket check` should advise on the *shape* rather than only on the outcome -
+a command whose whole discriminating half is a `grep` for an id, or for a file
+some other item is known to create, is suspect before it starts passing. That
+is a judgment about a command's wording, so it may be past what a script can
+decide; the outcome check that caught both of these already exists and works.
+
 **Done when** `bin/docket check --verify` reports zero errors on `origin/main`,
 and `PL-XH1D`'s command fails against a tree that has not done its work.
