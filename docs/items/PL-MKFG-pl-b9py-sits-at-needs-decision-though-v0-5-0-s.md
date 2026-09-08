@@ -6,9 +6,10 @@ effort: S
 status: done
 classes: defect
 touches: docs/items/PL-B9PY-decompose-simulationview-so-two-runs-can-be.md
-verify: bin/docket check && grep -q '^status: ready$' docs/items/PL-B9PY-decompose-simulationview-so-two-runs-can-be.md
 added: 2026-09-08
 closed: 2026-09-08
+pr: 478
+verify: bin/docket check && grep -q '^status: ready$' docs/items/PL-B9PY-decompose-simulationview-so-two-runs-can-be.md
 ---
 
 **Problem.** `PL-B9PY` (decompose `SimulationView` so two runs can be rendered
