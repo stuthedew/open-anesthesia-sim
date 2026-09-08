@@ -3,8 +3,7 @@ id: PL-ZX12
 title: Rename RunScore to RunDefinition: 'score' is a metaphor a domain reader has to be taught, in the package that should read like the domain
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-8LXM
+status: ready
 classes: refactor, docs
 feature: core-domain-language
 touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_run_score.py, tests/integration/test_controller.py, tests/reference/test_canonical_evaluation.py, docs/ARCHITECTURE.md, docs/MODEL.md, ROADMAP.md
@@ -97,3 +96,9 @@ in whatever the module ends up called.
 docstring's explanation of the retired term is kept for the history that still
 uses it; `docs/releases/` is untouched; and no `RunScore`, `ScoreSegment` or
 `run_score` remains under `src/` or `tests/`.
+
+**`PL-8LXM` closed 2026-09-08, so this is unblocked and deferred rather than
+blocked** (project owner, same day): the M4 cleanup was the scope that was
+approved, and the rename is its own piece of work. The sequencing note above
+still holds for whoever takes it - it lands before `PL-49R8`, which now waits
+on this item rather than on `PL-2FM6`.

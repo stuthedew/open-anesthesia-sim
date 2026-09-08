@@ -4,7 +4,7 @@ title: A path-scoped rule that stops a session re-introducing a sample store onc
 priority: P2
 effort: S
 status: blocked
-blocked-by: PL-2FM6
+blocked-by: PL-ZX12
 classes: docs
 feature: numerical-domain
 touches: .claude/rules
@@ -64,3 +64,10 @@ or whatever the rename settles on) rather than the one above.
 **Done when.** The rule exists, is scoped to those paths, states the
 precondition before the pointer, and `make check`'s resident-line accounting is
 unaffected because nothing was added to `CLAUDE.md`.
+
+**Re-pointed 2026-09-08.** `PL-2FM6` has landed, so the architecture this rule
+describes now exists and that blocker is satisfied. The remaining wait is
+`PL-ZX12`, the `RunScore` rename: this item's rule file and its `verify:`
+command both name `run-is-its-score.md`, and writing it before that rename
+lands would put the retired term in the one file whose job is explaining the
+architecture to a future session.
