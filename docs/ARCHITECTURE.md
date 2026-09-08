@@ -62,7 +62,7 @@ src/anesthesia_sim/
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; Flet-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; Flet-independent
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; Flet-independent
-│   ├── theme.py                    # UI palette, cited ISO 5360 agent colors, layout constants
+│   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; Flet-independent
 │   └── main.py                     # entry point; builds the Flet page
 └── data/                 # versioned, cited parameter files
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
@@ -376,10 +376,13 @@ already leads needs no item of its own. A release commit is exempt, exactly:
 `make release` writes that subject, and it closes no item.
 
 `tools/contrast_check.py` holds the interface to the accessibility target
-`docs/MODEL.md` states — WCAG 2.2 Level AA. It reads the color constants out of
-`app/theme.py` and `app/simulation_view.py` with `ast` rather than importing
-them, because `app/simulation_view.py` imports Flet and these tools run under a
-bare `python3`. Its `REQUIREMENTS` table is the specification: each entry names
+`docs/MODEL.md` states — WCAG 2.2 Level AA. It reads the color constants with `ast`
+rather than importing them, because `app/simulation_view.py` imports Flet and
+these tools run under a bare `python3`. Since `PL-2CS8` every color is declared
+in `app/theme.py`, and `check_colors_live_in_the_theme` fails the build on one
+declared anywhere else; it still parses `app/simulation_view.py` as well, so a
+color put back there is measured rather than lost, which is the failure that
+item was filed for. Its `REQUIREMENTS` table is the specification: each entry names
 the colors that appear on screen together, the success criterion, the minimum,
 and the reason, which cites the code they are drawn in by symbol. Most entries
 are one foreground against one background; an element whose edge either of two

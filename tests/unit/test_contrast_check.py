@@ -35,6 +35,8 @@ THEME_SOURCE = '''"""Miniature theme."""
 PANEL = "#FFFFFF"
 INK = "#243B53"
 FAINT = "#AAAAAA"
+TRACE_ONE = INK
+TRACE_TWO = "#DC2626"
 
 AGENT_COLOR_SCHEMES = {
     "demoflurane": AgentColorScheme(
@@ -51,8 +53,6 @@ import flet as ft
 
 from anesthesia_sim.app.theme import INK, PANEL
 
-TRACE_ONE = INK
-TRACE_TWO = "#DC2626"
 NOT_A_COLOUR = "solid"
 '''
 
@@ -172,11 +172,16 @@ def test_a_separation_ceiling_needs_two_traces() -> None:
 
 
 def test_the_palette_resolves_names_as_well_as_literals(tmp_path: Path) -> None:
-    """`CIRCUIT_COLOR = PRIMARY` is how half the real trace colors are defined."""
+    """`CIRCUIT_COLOR = PRIMARY` is how half the real trace colors are defined.
+
+    Same-module since PL-2CS8 moved them into the theme; the resolution being
+    tested is the same one, and it is what keeps an aliased trace in the
+    palette rather than silently absent.
+    """
     palette = contrast_check.read_palette(_repo(tmp_path))
 
     assert palette["INK"] == "#243B53"
-    assert palette["TRACE_ONE"] == "#243B53", "a cross-module reference was not resolved"
+    assert palette["TRACE_ONE"] == "#243B53", "a name reference was not resolved"
     assert palette["TRACE_TWO"] == "#DC2626"
 
 
@@ -687,3 +692,50 @@ def test_the_two_agent_fills_iso_5360_makes_inseparable_stay_measured() -> None:
         "deuteranopia": 1.06,
         "tritanopia": 1.11,
     }
+
+
+# --- colors live in the theme (PL-2CS8) -------------------------------------
+
+
+def test_a_color_declared_in_the_view_is_refused(tmp_path: Path) -> None:
+    """The convention PL-2CS8 established, held by the tool rather than by habit."""
+    root = _repo(tmp_path, view=VIEW_SOURCE + '\nSTRAY = "#123456"\n')
+
+    misplaced = contrast_check.check_colors_live_in_the_theme(root)
+
+    assert any("STRAY" in message for message in misplaced)
+    assert any("theme.py" in message for message in misplaced)
+
+
+def test_a_view_color_aliasing_a_theme_name_is_refused_too(tmp_path: Path) -> None:
+    """Resolution runs against the theme first, so an alias cannot slip through.
+
+    `STRAY = INK` carries no `#` of its own; only resolving it against the
+    theme's palette shows it is a color at all.
+    """
+    root = _repo(tmp_path, view=VIEW_SOURCE + "\nSTRAY = INK\n")
+
+    assert any(
+        "STRAY" in message for message in contrast_check.check_colors_live_in_the_theme(root)
+    )
+
+
+def test_a_non_color_string_in_the_view_is_left_alone(tmp_path: Path) -> None:
+    """`NOT_A_COLOUR = "solid"` is a dash style, and the rule is about colors."""
+    assert contrast_check.check_colors_live_in_the_theme(_repo(tmp_path)) == ()
+
+
+def test_a_misplaced_color_fails_the_build(tmp_path: Path, declare) -> None:
+    """An advisory would not hold a convention; this has to be an error."""
+    declare(())
+    root = _repo(tmp_path, view=VIEW_SOURCE + '\nSTRAY = "#123456"\n')
+
+    report = contrast_check.analyze(root)
+
+    assert report.errors
+    assert "Colors declared outside the theme" in contrast_check.format_report(report, matrix=False)
+
+
+def test_the_shipped_view_declares_no_color() -> None:
+    """The real tree, which is what PL-2CS8 actually changed."""
+    assert contrast_check.check_colors_live_in_the_theme(REPO_ROOT) == ()

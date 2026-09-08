@@ -4368,8 +4368,9 @@ answered, and what the rendering backend can deliver for keyboard and
 screen-reader support is an open question rather than a commitment.
 
 **The ratios are computed, not asserted.** `tools/contrast_check.py` runs in
-`make check`, reads the color constants out of `app/theme.py` and
-`app/simulation_view.py`, and holds each declared requirement to its declared
+`make check`, reads the color constants out of `app/theme.py` - which holds
+every one of them since `PL-2CS8`, and is where `check_colors_live_in_the_theme`
+requires them to stay - and holds each declared requirement to its declared
 minimum using WCAG 2.2's own relative-luminance and contrast-ratio
 definitions. Its requirement table names the colors, the criterion and the
 reason they are held to that number; the judgment of *which* colors matter
