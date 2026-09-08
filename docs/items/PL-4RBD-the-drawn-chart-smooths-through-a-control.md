@@ -1,10 +1,10 @@
 ---
 id: PL-4RBD
 title: The drawn chart smooths through a control change that leaves the trace monotone, because M4 selects extremes and such a change is not one
-priority: P2
+priority: P1
 effort: S
 status: ready
-classes: defect, ux
+classes: defect, ux, safety
 feature: teachable-case
 touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
 added: 2026-09-05
@@ -74,6 +74,52 @@ what this store's top band means. If the error at a 12-hour base or at "Fit run"
 is instead a readable fraction of a MAC, that reasoning does not survive and the
 item wants `safety` and `P1`. That is a measurement rather than a judgement, so
 it belongs to whoever starts this and not to a triage pass.
+
+**Re-measured 2026-09-08, and the banding does not survive it.** The table
+above was taken at `MAX_CHART_WINDOW_S` 300 s, a constant no longer in the
+tree. Re-run against the shipped `chart_time_base.TIME_BASE_LADDER`, through
+`M4AggregateCache.select_indices` itself rather than a model of it, on a real
+12 h run at the envelope corner (FGF 10, V_A 12, Q 10), sevoflurane 2% -> 4%
+at t = 600 s, `CHART_COLUMN_BUDGET_PER_SERIES` 150:
+
+| Time base | Bucket | Alveolar | as MAC | Circuit |
+| --- | ---: | ---: | ---: | ---: |
+| 15 min | 64 | 0.0124 pp | 0.006 | 0.0607 pp |
+| 1 h | 256 | 0.1005 pp | 0.049 | 0.2467 pp |
+| 4 h | 1024 | 0.2145 pp | 0.105 | 0.4925 pp |
+| 8 h | 2048 | 0.4216 pp | 0.206 | 0.7627 pp |
+| 12 h | 4096 | 0.6467 pp | **0.315** | 1.0027 pp |
+
+MAC taken as 2.05% for a 40-year-old (Nickalls RWD, Mapleson WW, "Age-related
+iso-MAC charts for isoflurane, sevoflurane and desflurane in man", Br J
+Anaesth 2003;91(2):170-4).
+
+**Two corrections to the brief above.** The bucket at a 12 h base is **4 096
+samples**, not the 2 880 estimated: `_stable_bucket_width` climbs a
+power-of-two ladder rather than fitting the window exactly. And "Fit run" is
+uncapped — `chart_time_base` doubles past the ladder's last rung — so a case
+longer than 12 h is drawn at a wider bucket than any row here.
+
+**So the `P2`/`defect, ux` triage is withdrawn.** The item's own instruction
+was that "if the error at a 12-hour base or at 'Fit run' is instead a readable
+fraction of a MAC, that reasoning does not survive and the item wants `safety`
+and `P1`". At the 12 h base the alveolar trace — the MAC-bearing one — departs
+from the recorded trajectory by **0.32 MAC**, drawn with no indication that
+anything between the plotted points was inferred. Re-banded `P1`, `safety`.
+
+**And the fix in this brief is now the smaller half of the problem.** Unioning
+the control-change indices into the selection pins the kink, which is the
+component this item was written about. It does not touch the rest: most of the
+0.65 pp above is ordinary curvature drawn as a chord across a 4 096-sample
+bucket, and no selection of *recorded extremes* can fix that, because the
+samples that would carry the shape are the ones the budget excludes.
+`PL-2FM6` does fix it, structurally — an evaluated column is a point on the
+trajectory rather than a selected extreme — which is why the sequencing note
+below now decides this item rather than merely dating it.
+
+**The shelf-life argument below is stale, for the second time.** It rests on
+"two `L` items and an `M` stand between here and there". `PL-GS5X` and
+`PL-T691` are both `done`; only `PL-2FM6` (`M`, `ready`) remains.
 
 **Fix.** Force the drawn set to include every recorded control-change index.
 `ControlChange.sample_index` already stores exactly those indices, and stores

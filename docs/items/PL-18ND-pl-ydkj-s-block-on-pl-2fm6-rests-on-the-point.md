@@ -9,6 +9,7 @@ feature: teachable-case
 touches: docs/items/PL-YDKJ-decide-whether-the-chart-should-keep-patching.md
 added: 2026-09-08
 closed: 2026-09-08
+pr: 481
 verify: python3 tools/doc_check.py check && grep -q 'Decided: option 1' docs/items/PL-YDKJ-decide-whether-the-chart-should-keep-patching.md
 ---
 

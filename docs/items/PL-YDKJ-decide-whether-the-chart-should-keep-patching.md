@@ -1,14 +1,15 @@
 ---
 id: PL-YDKJ
 title: Decide whether the chart should keep patching one control per plotted point
-status: done
 priority: P3
 effort: S
+status: done
 classes: perf
 feature: teachable-case
 touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/simulation_view.py, ROADMAP.md
 added: 2026-09-04
 closed: 2026-09-08
+pr: 481
 verify: python3 tools/doc_check.py check && grep -q 'the ceiling this budget sizes against' src/anesthesia_sim/app/chart_series.py
 ---
 
