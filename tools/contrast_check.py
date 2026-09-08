@@ -41,15 +41,17 @@ standard-library-only tool cannot import it. The constants are extracted with
 promise every tool here makes.
 
 **Descriptions cite code by symbol, and the citation is checked.** A `why`
-below names where its pair is drawn by putting a symbol from `app/theme.py` or
-`app/simulation_view.py` in backticks. It used to give line numbers, and every
-one of them rotted: on 2026-09-05 fourteen cited lines were read and not one
-landed on what its entry claimed - `:682`, cited as the run-status word, was a
-list of chart control marks (PL-GJDW). A wrong citation is worse than none,
-because it looks authoritative and quietly makes the check's own coverage
-unauditable. `check_citations` now refuses a line number outright and resolves
-every cited symbol against the two modules, so the form that rotted cannot come
-back. Whether the named symbol is really where that color matters stays a
+below names where its pair is drawn by putting a symbol in backticks - from
+`app/theme.py`, which holds every color since PL-2CS8, or from
+`app/simulation_view.py`, which holds the methods that draw them. It used to
+give line numbers, and every one of them rotted: on 2026-09-05 fourteen cited
+lines were read and not one landed on what its entry claimed - `:682`, cited as
+the run-status word, was a list of chart control marks (PL-GJDW). A wrong
+citation is worse than none, because it looks authoritative and quietly makes
+the check's own coverage unauditable. `check_citations` now refuses a line
+number outright and resolves every cited symbol against the two modules, so the
+form that rotted cannot come back.
+Whether the named symbol is really where that color matters stays a
 person's judgment, exactly as the pair itself does.
 
 **Known shortfalls, and why they do not simply fail the build.** The
@@ -747,7 +749,15 @@ def _collect_agent_schemes(node: ast.expr, known: dict[str, str]) -> dict[str, s
 
 
 def read_palette(root: Path) -> dict[str, str]:
-    """Extract every named color from the two modules that define them.
+    """Extract every named color from the two modules that can define them.
+
+    PL-2CS8 moved every color into `app/theme.py`, and
+    `check_colors_live_in_the_theme` below is what holds them there. This still
+    reads both, deliberately: narrowing it to the theme would make a color
+    added to the view invisible here, which is the exact failure that item
+    existed to fix - `"#D9E2EC"` sat unmeasured at five view sites while the
+    file it was in reported as checked. Enforce the convention, and keep
+    measuring what the convention is meant to prevent.
 
     Read with `ast` rather than imported: `app/simulation_view.py` imports Flet,
     which a standard-library-only tool running in a bare checkout does not have.
@@ -785,7 +795,7 @@ def read_palette(root: Path) -> dict[str, str]:
 
 
 def read_symbols(root: Path) -> frozenset[str]:
-    """Every name the two color-defining modules define.
+    """Every name the theme and the view define, for resolving a citation.
 
     Four kinds, because those are the four a description has cause to cite:
     module-level constants, classes, functions and methods, and the `self.X`
@@ -815,6 +825,47 @@ def read_symbols(root: Path) -> frozenset[str]:
             elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Store):
                 names.add(node.attr)
     return frozenset(names)
+
+
+def check_colors_live_in_the_theme(root: Path) -> tuple[str, ...]:
+    """Refuse a color constant declared in the view rather than in the theme.
+
+    PL-2CS8 consolidated every display token into `app/theme.py`; this is what
+    keeps them there. Without it the convention is a habit, and the failure it
+    would allow is the one that item was filed for: `"#D9E2EC"` sat at five
+    sites in `app/simulation_view.py`, named nowhere, so the tool that reports
+    on colors could not see it while the file it sat in reported as checked.
+
+    `read_palette` deliberately still reads both modules, so a color put back
+    in the view is *measured* rather than lost. This makes it an error as well,
+    which is the difference between a convention and a guarantee.
+
+    Returns:
+        One message per offending assignment, empty when the view declares none.
+    """
+    theme = read_palette(root)
+    path = root / VIEW
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    offenders: list[str] = []
+    for statement in tree.body:
+        targets: list[ast.expr] = []
+        value: ast.expr | None = None
+        if isinstance(statement, ast.Assign):
+            targets, value = list(statement.targets), statement.value
+        elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
+            targets, value = [statement.target], statement.value
+        if value is None:
+            continue
+        for target in targets:
+            if not isinstance(target, ast.Name):
+                continue
+            resolved = _string_value(value, theme)
+            if resolved is not None and resolved.startswith("#"):
+                offenders.append(
+                    f"  {target.id} is declared in {VIEW.name}; every color belongs in "
+                    f"{THEME.name} (PL-2CS8). Move the constant, and its comment with it."
+                )
+    return tuple(offenders)
 
 
 def check_citations(root: Path) -> tuple[str, ...]:
@@ -882,6 +933,8 @@ class Report:
     unexpected: tuple[Result, ...]
     repaired: tuple[Result, ...]
     citations: tuple[str, ...]
+    #: Colors declared in the view rather than the theme (PL-2CS8).
+    misplaced_colors: tuple[str, ...]
     #: `(trace, trace, vision model, ratio)`, every pair in every model.
     trace_pairs: tuple[tuple[str, str, str, float], ...]
     #: `(trace, vision model, ratio)` for each trace under `TRACE_FLOOR`.
@@ -894,6 +947,7 @@ class Report:
             or self.unexpected
             or self.repaired
             or self.citations
+            or self.misplaced_colors
             or self.below_trace_floor
         )
 
@@ -957,6 +1011,7 @@ def analyze(root: Path) -> Report:
         unexpected=unexpected,
         repaired=repaired,
         citations=check_citations(root),
+        misplaced_colors=check_colors_live_in_the_theme(root),
         trace_pairs=trace_pairs,
         below_trace_floor=below_trace_floor,
     )
@@ -966,13 +1021,22 @@ def format_report(report: Report, *, matrix: bool) -> str:
     """Render a report the way `bin/docket check` renders one: verdict first."""
     met = sum(1 for result in report.results if result.meets)
     error_count = (
-        len(report.unexpected) + len(report.missing) + len(report.repaired) + len(report.citations)
+        len(report.unexpected)
+        + len(report.missing)
+        + len(report.repaired)
+        + len(report.citations)
+        + len(report.misplaced_colors)
     )
     lines = [
         f"contrast: {met} of {len(report.results)} declared requirements meet WCAG 2.2 AA, "
         f"{len(KNOWN_SHORTFALLS)} known shortfalls, "
         f"{error_count} errors"
     ]
+
+    if report.misplaced_colors:
+        lines.append("")
+        lines.append("Colors declared outside the theme:")
+        lines.extend(report.misplaced_colors)
 
     if report.citations:
         lines.append("")

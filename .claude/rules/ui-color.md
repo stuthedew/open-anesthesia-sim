@@ -46,6 +46,12 @@ keeps the checked set complete.
    every symbol you name against `app/theme.py` and `app/simulation_view.py`,
    so a rename fails `make check` instead of rotting quietly (`PL-GJDW`).
 
+   **The color itself goes in `app/theme.py`, and nowhere else** (`PL-2CS8`).
+   `check_colors_live_in_the_theme` fails the build on a color constant
+   declared in `app/simulation_view.py`, so this is enforced rather than
+   remembered. The symbol you *cite* may still be a method in the view - that
+   is where a color is drawn, and citing it is the point.
+
 2. **Color is never the only channel carrying a distinction.** SC 1.4.1 is the
    floor; the real reason is stronger and specific to this application. ISO 5360
    Table 2 footnote b makes displaying an agent color an obligation to display

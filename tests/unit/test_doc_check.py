@@ -2352,7 +2352,22 @@ def test_a_closed_item_is_owed_nothing(tmp_path: Path) -> None:
 
 
 def test_this_repository_records_a_disposition_for_every_open_debt_item() -> None:
-    """The real tree, not only a fixture - which is what `PL-36R4` was about."""
+    """The real tree, not only a fixture - which is what `PL-36R4` was about.
+
+    This asserts the tree is *clean*, not merely that the advisory is well
+    formed, and the strictness is deliberate. `ROADMAP.md`'s presence rule
+    leaves *which* disposition an item gets to judgment, but *that* one is
+    recorded is exact and decidable, which is the line `CLAUDE.md` draws for
+    when a check may fail hard.
+
+    It does not penalise capture, which was the reason briefly given for
+    weakening it and is wrong: `bin/docket new` writes `status: untriaged` with
+    no `classes`, and neither satisfies this check's filter. Only a *triaged*
+    debt item trips it, and triage is the deliberate act where the disposition
+    belongs. `PL-33WM` is the evidence that the strictness earns its place - it
+    caught a real gap within forty minutes of the check landing, when `#477`
+    merged an undispositioned item on a base predating the check.
+    """
     root = Path(doc_check.__file__).resolve().parent.parent
 
     assert [a for a in doc_check.analyze(root).advisories if "records no disposition" in a] == []
