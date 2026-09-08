@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: teachable-case
+milestone: v0.4.11
 touches: .claude/rules/ui-reader.md
 added: 2026-09-08
 closed: 2026-09-08

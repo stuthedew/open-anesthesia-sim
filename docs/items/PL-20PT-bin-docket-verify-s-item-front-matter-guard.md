@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: delegation
+milestone: v0.4.11
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, docs/worker.md
 added: 2026-09-08
 closed: 2026-09-08
