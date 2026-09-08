@@ -17,6 +17,7 @@ import asyncio
 import contextlib
 import dataclasses
 import re
+from collections.abc import Sequence
 from typing import Any, cast
 
 import flet as ft
@@ -665,8 +666,27 @@ def _mounted_interface_strings(view: SimulationView, page: _FakePage) -> set[str
 
     view.mount()
 
+    return _strings_in(page.controls)
+
+
+def _strings_in(root: object, skip: Sequence[object] = ()) -> set[str]:
+    """Return every string reachable from `root`, skipping `skip` entirely.
+
+    The traversal half of `_mounted_interface_strings`, on its own so a
+    claim can be made about one panel rather than the whole page.
+
+    Args:
+        root: Any control, container or collection of them.
+        skip: Controls to treat as absent, by identity. For asserting what
+            a panel says in its resting state, where a control that speaks
+            only in some other state would otherwise be walked into.
+
+    Returns:
+        Every string in the subtree.
+    """
+
     strings: set[str] = set()
-    visited: dict[int, object] = {}
+    visited: dict[int, object] = {id(node): node for node in skip}
 
     def visit(node: object) -> None:
         if id(node) in visited:
@@ -689,7 +709,7 @@ def _mounted_interface_strings(view: SimulationView, page: _FakePage) -> set[str
                 if not field.name.startswith("_"):
                     visit(getattr(node, field.name, None))
 
-    visit(page.controls)
+    visit(root)
     return strings
 
 
@@ -3700,15 +3720,24 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
     assert view._mac_reference_text.value == format_mac_reference("Desflurane", 6.0)
 
 
-def test_the_interface_says_what_a_mac_multiple_on_a_compartment_is_not() -> None:
-    """The convention has to be stated where the numbers are read.
+def test_the_interface_states_the_mac_divisor_and_writes_the_unit_as_a_ratio() -> None:
+    """What a MAC multiple owes a reader, once the prose stating it is gone.
 
-    A MAC multiple on a tissue compartment means "this partial pressure
-    equals N times the alveolar concentration that would be 1 MAC", not
-    "the patient is at N MAC of anesthetic depth" — the two read the same
-    on a label and are not the same claim, which is the hard half of
-    PL-DHV7. MAC is also defined for a nominal 40-year-old without
-    adjustment for age or a second agent, neither of which this model has.
+    A MAC multiple has exactly one free parameter, so `CLAUDE.md` requires
+    the divisor on the display: "1 MAC sevoflurane = 2.0%" is what lets a
+    reader who disagrees with it see that they disagree, and convert back
+    to the percent the model computes.
+
+    The second half is notation. PL-DHV7 stated the convention in a
+    paragraph beside the chart - that a multiple on a tissue compartment is
+    a partial-pressure ratio and not a depth of anesthesia - and PL-6580
+    removed it as tutorial for an anesthesia provider. What carries the
+    distinction now is the one `docs/MODEL.md` gives it: the unit is
+    written `×MAC` and never a bare `MAC`, because "0.80 MAC" is read as a
+    depth and "0.80 ×MAC" as the ratio it is. That rule was already true of
+    every numeric readout; this asserts it is now true of the chart axis
+    that labels them, which is where a bare `MAC` would have been read
+    against six traces at once.
 
     Asserted against the whole mounted tree rather than one control, for
     the reason the end-tidal hedge is: the claim is about what the
@@ -3721,9 +3750,13 @@ def test_the_interface_says_what_a_mac_multiple_on_a_compartment_is_not() -> Non
 
     disclosure = " ".join(sorted(_mounted_interface_strings(view, page)))
 
-    assert "not a depth of anesthesia" in disclosure
-    assert "40-year-old" in disclosure
     assert "1 MAC sevoflurane = 2.0%" in disclosure
+
+    # The MAC axis, whose ticks read bare numbers - "0.5", "1.0" - so its
+    # title is the only thing on the chart that says what they are.
+    mac_axis_title = view._mac_axis.title
+    assert isinstance(mac_axis_title, ft.Text)
+    assert mac_axis_title.value == "×MAC"
 
 
 def test_the_chart_carries_a_mac_axis_beside_its_percent_axis() -> None:
@@ -4057,18 +4090,86 @@ def test_the_interface_says_which_trace_the_band_is_read_against() -> None:
     the band's centre 2.3 times sooner than the vessel-rich trace does, so a
     band read against it teaches an early wake-up - the direction with
     clinical consequence. `docs/MODEL.md` § "MAC-awake as a chart reference"
-    is the specification this sentence is the display-side half of.
+    is the specification this is the display-side half of, and § "Interface
+    boundary" is where the labelling requirement itself is stated: a
+    reference is exempt from the drawn-trace rule and owes, in exchange,
+    its value, its divisor, and the compartment it is read against.
+
+    PL-6580 stripped the chart panel to legend and labels, so this is now
+    carried by the band's legend entry rather than by a paragraph beside
+    it. The endpoint difference from MAC - responsiveness to command
+    against immobility to incision - went with the prose as fundamental
+    knowledge for this display's reader, and `docs/MODEL.md` § "What the
+    band asserts" holds it. Which trace to read the band against did not:
+    it is not something a reader can supply, because it is a property of
+    this model's compartment structure rather than of MAC-awake.
     """
 
     view, page = _build_view()
     prose = " ".join(_mounted_interface_strings(view, page))
 
     assert "vessel-rich trace" in prose
-    # The endpoint, distinguished from MAC's own.
-    assert "respond to command" in prose
-    assert "immobility to incision" in prose
-    # And the extent, so the band is not read as a threshold.
-    assert "±1 SD" in prose or "1 SD" in prose
+    # And the extent, so the band is not read as a threshold. "population"
+    # is the other half of it: the band is a distribution rather than this
+    # patient's number, which is what stops it reading as a prediction.
+    assert "±1 SD" in prose
+    assert "population" in prose
+
+
+def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence() -> None:
+    """The panel above the compartment plot is legend and labels, not prose.
+
+    Until PL-6580 a reader passed an axis key, two reference values, three
+    legend rows and four italic paragraphs - the MAC-multiple convention,
+    what unchecking a compartment does, what MAC-awake asserts, and what a
+    vertical mark is - before reaching the chart. Every sentence in it was
+    correct. The audience is an anesthesia provider, for whom MAC, the
+    MAC-awake endpoint and what a tissue compartment is are fundamental
+    knowledge, so the panel spent a dozen lines teaching what its reader
+    already knew and put them between the reader and the plot every run. A
+    chart that has to be read through is a worse teaching instrument than a
+    clean one.
+
+    What stayed is what the safety-critical standard actually asks for, and
+    it asks for it as labels: the divisor behind every MAC number, the
+    band's fraction and extent, and legend rows naming which marks are
+    modelled traces, which are published constants and which are the
+    reader's own inputs. `docs/MODEL.md` carries the full statement of each
+    convention, and is now the only place that does.
+
+    The two state advisories are exempt and are skipped by identity below.
+    They are empty here and speak only when they apply - which is the
+    distinction this test is really drawing: a message at the moment of need
+    is not the standing paragraph that was removed.
+    """
+
+    view, _ = _build_view()
+    panel = view._build_chart_panel()
+    column = panel.content
+    assert isinstance(column, ft.Column)
+
+    above_the_plot: list[ft.Control] = []
+    for control in column.controls:
+        if isinstance(control, ft.Container) and control.content is view._concentration_chart:
+            break
+        above_the_plot.append(control)
+    else:  # pragma: no cover - the plot is in the panel it is the panel for
+        raise AssertionError("the compartment chart is not in the chart panel")
+
+    strings = _strings_in(above_the_plot, skip=(view._hidden_traces_text, view._off_scale_text))
+
+    for value in strings:
+        assert ". " not in value, value
+        assert not value.rstrip().endswith("."), value
+
+    # And the labels the standard does require are all still there.
+    joined = " ".join(sorted(strings))
+    assert "1 MAC sevoflurane = 2.0%" in joined
+    assert "read against vessel-rich trace" in joined
+    assert "1 MAC, reference adult (alveolar)" in joined
+    assert "Compartments:" in joined
+    assert "Clinical references:" in joined
+    assert "Run record:" in joined
 
 
 def test_the_interface_never_predicts_a_time_to_wake_up() -> None:
@@ -4116,9 +4217,17 @@ def test_the_interface_never_predicts_a_time_to_wake_up() -> None:
             preceding = prose[max(0, match.start() - 12) : match.start()]
             assert "not " in preceding, (forbidden, preceding)
 
-    # The band's own line says what it is not, in terms.
-    assert "not a time to wake-up" in prose
-    assert "not a prediction for any individual patient" in prose
+    # The band is labelled as a distribution over a population rather than
+    # as this patient's number. Until PL-6580 a sentence beside the chart
+    # also said "not a prediction for any individual patient" and "not a
+    # time to wake-up" in terms; that panel is now legend and labels only,
+    # and what `docs/MODEL.md` § "What the band does not assert" requires
+    # is that no such figure is *shown* - which the two scans above are the
+    # enforcement of. This is the positive half: the label says what the
+    # band is, so the reader is not left to infer it from an absence.
+    assert "population" in prose
+    # `prose` is lowercased above, for the scans.
+    assert "±1 sd" in prose
 
 
 def _control_change(
@@ -4372,8 +4481,15 @@ def test_the_interface_says_a_control_mark_is_an_input_not_a_measurement() -> No
 
     disclosure = " ".join(sorted(_mounted_interface_strings(view, page)))
 
-    assert "not anything measured from the patient" in disclosure
+    # The control-input timeline, beside the chart, is where this is said.
+    # PL-6580 removed the second statement of it from the chart panel - the
+    # two were one claim written twice, and the panel that holds the record
+    # is the one a reader pairs a mark with.
     assert "Settings only — not a measurement." in disclosure
+    # And the legend entry names the mark as a change to a control rather
+    # than as an event in the patient.
+    assert "Control change" in disclosure
+    assert "Run record:" in disclosure
 
 
 def _wash_in_points(view: SimulationView) -> list[tuple[float, float]]:

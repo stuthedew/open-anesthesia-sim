@@ -3681,7 +3681,14 @@ The phrase “end-tidal-equivalent” must not imply that airway sampling dynami
 Every compartment is displayed twice: as a percent of one atmosphere, and as
 a multiple of the running agent's 1 MAC. Both are shown at once, on every
 compartment, on the delivered-agent control, and on the chart, which carries a
-percent axis on the left and a MAC axis on the right.
+percent axis on the left and a MAC axis on the right. Each axis states its own
+unit in its title — `% of 1 atm` and `×MAC` — rather than in a caption above
+the plot, which is where both stood until PL-6580. `% of 1 atm` and not
+`vol %`: a volumes percent is a gas-phase volume fraction, which the circuit
+and alveolar compartments have and the mixed-venous, vessel-rich, muscle and
+fat compartments do not, holding instead a partial pressure that convention
+quotes as a percentage of an atmosphere. An axis titling all six as a volume
+fraction would assert of four of them a quantity they do not have.
 
 **Why the second unit exists.** A percent axis silently changes meaning when
 the agent changes. 2% is 1 MAC of sevoflurane and about a third of a MAC of
@@ -3706,10 +3713,19 @@ population ED50 for immobility to a standardized surgical stimulus. So:
   ratio. It is **not** a statement that the patient is at N MAC of anesthetic
   depth, and the two read identically on a label unless the label says which.
 
-The interface states the distinction beside the chart, in those terms, and
-the ratio is never presented as a depth. Three further limitations hold for
-every compartment including the alveolar one, and none of them is modeled
-here: MAC falls about 6% per decade of age (Mapleson 1996; cited in each
+The ratio is never presented as a depth, and the notation is what carries
+that on the display: the unit is written `×MAC` on every readout and on
+the chart's right-hand axis, for the reason given below. Until PL-6580 the
+distinction was also stated in prose beside the chart, in the terms above.
+That paragraph was removed with the rest of the panel's explanatory copy:
+the reader of this display is an anesthesia provider, for whom what MAC is
+defined against is fundamental knowledge rather than something to be taught
+at the top of a chart, and a dozen lines of text between the reader and the
+plot cost more than they bought. This section is now the only full statement
+of the convention, which is why it is stated here at length.
+
+Three further limitations hold for every compartment including the alveolar
+one, and none of them is modeled here: MAC falls about 6% per decade of age (Mapleson 1996; cited in each
 agent's `sources`) and this model's reference adult has no age parameter;
 MAC multiples of co-administered agents are additive and this model runs one
 agent at a time; and MAC is modified by opioids, temperature, and patient
@@ -3718,6 +3734,11 @@ factors none of which are represented.
 **The unit is written `×MAC`, not `MAC`.** "0.80 MAC" is read as a depth;
 "0.80 ×MAC" is read as what the number is. The multiplication sign is doing
 safety work rather than typographic work, and it is why the readouts carry it.
+The chart's right-hand axis is titled `×MAC` for the same reason and in the
+same words: its ticks read bare numbers — `0.5`, `1.0` — so the title is the
+only thing on the plot that says what they are, and it labels six traces at
+once, five of which are not the compartment MAC is defined for. One unit, one
+token, everywhere it appears.
 
 **The divisor is displayed.** A MAC multiple has exactly one free parameter,
 and `CLAUDE.md` requires a clinically meaningful displayed value to be
