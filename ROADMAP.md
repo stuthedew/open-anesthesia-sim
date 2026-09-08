@@ -1788,7 +1788,7 @@ so all thirteen clear before implementation begins.
 - PL-36R4 (M) Forty-two presence-qualifying items carry neither a gate placement nor a recorded deferral, which is the one disposition ROADMAP's presence rule forbids
 - PL-NGF7 (M) tools/contrast_check.py can see no disabled-state colour, because none of them is a constant in theme.py
 
-### Declined to Gate 2 on the refilling-queue ground — 29 entries
+### Declined to Gate 2 on the refilling-queue ground — 30 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -1814,6 +1814,16 @@ nothing it exists to protect, while the thirteen with a product-lane half are
 admitted above precisely because they can. Where the two standards compete,
 the simulator wins; this is that rule applied to the gate's own membership.
 
+**The thirtieth arrived after the audit, on the same ground** (`PL-33WM`,
+2026-09-08). `PL-HX5C` was captured hours after this subsection was written and
+merged in `#477` against a base whose CI predated `PL-36R4`'s check, so `main`
+went red on the one disposition this rule forbids — silence. It is recorded
+here rather than admitted above because every argument in the four paragraphs
+above applies to it unchanged: found after the 2026-09-06 freeze, `P2` and
+neither `safety` nor `science`, and wholly in the workflow lane. Later
+additions belong in this list for the same reason the first twenty-nine do;
+what the audit found is a provenance note, not the test.
+
 They enter Gate 2 when v0.6.0 is scoped, unless closed before it.
 
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
@@ -1828,6 +1838,7 @@ They enter Gate 2 when v0.6.0 is scoped, unless closed before it.
 - PL-8P6D (S) Checks refuse a pull request whose branch carries no item id, so the owner's own web edits and any contributor's pull request fail CI
 - PL-F48B (S) Nothing ever repairs a clone's tags after a history rewrite: fetch_remote runs git fetch without --tags --force, so release tags keep pointing at purged commits
 - PL-G8TR (S) no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
+- PL-HX5C (S) Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
 - PL-JBRC (M) docket stranded still calls a branch merged when one of its commits is only docket record output, which converges byte-for-byte with the base
 - PL-JW39 (S) docket next ranks a needs-decision item first, so every fresh session opens on work whose next step is the owner's answer
 - PL-K5PW (S) bin/docket check --items docs/items resolves config from docs/ rather than the repo root, so it reports a clean store as 112 errors

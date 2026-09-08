@@ -74,6 +74,27 @@ __all__ = [
 # moving on every frame, and 1 788 of them at 5 Hz saturated the Flutter
 # client while Python idled. `chart_downsampling.py` is where that is held
 # down, and `tests/integration/test_chart_patching.py` is what keeps it there.
+#
+# **What it does bound is the frame, and this number is the only lever on
+# it.** Decided by the project owner on 2026-09-08, closing `PL-YDKJ`: the
+# chart goes on patching one Flet control per plotted point, and the ceiling
+# that buys is accepted rather than engineered around. Flet's `object_patch`
+# walks every control on the page on every `page.update()` whether or not any
+# of them moved - `PL-YSZN` measured an idle update at the cost of a full
+# frame, both linear in the point count at about 24.5 us each - so the
+# chart's share of a frame is this budget times the traces drawn times that
+# constant, and nothing about the *selection* can reduce it.
+#
+# So the ceiling this budget sizes against is a frame, not a wire. Halving
+# this number halves the chart's share of one: measured 2026-09-08, a
+# saturated frame at 300x fell from 42.8 ms to 28.3 ms at 75 columns, against
+# a 200 ms budget. That is the trade to make if a future chart wants more
+# traces or a faster cadence - fewer columns, and less trace resolution for
+# them - and it is the whole of what is available, because the two routes
+# that would remove the per-point cost were measured and both lose.
+# `docs/WORKING_NOTES.md` § "Measured and answered: a server-rendered chart
+# is not the way out" carries those measurements and why option 4, a sweep
+# display, buys this path nothing: the walk is indifferent to what moved.
 CHART_COLUMN_BUDGET_PER_SERIES: Final = 150
 
 #: One chart trace bound to the recorded series it draws.
