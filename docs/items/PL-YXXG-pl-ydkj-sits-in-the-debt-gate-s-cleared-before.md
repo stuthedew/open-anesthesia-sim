@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning, docs
 feature: teachable-case
+milestone: v0.4.11
 touches: ROADMAP.md, docs/items
 added: 2026-09-08
 closed: 2026-09-08

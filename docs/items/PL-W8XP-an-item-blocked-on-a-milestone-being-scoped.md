@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.4.11
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md
 added: 2026-09-03
 closed: 2026-09-08

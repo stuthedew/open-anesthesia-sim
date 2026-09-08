@@ -3,11 +3,13 @@ id: PL-2CS8
 title: "Nothing carries roadmap item 24's stated prerequisite: the display constants are scattered across theme.py, simulation_view.py and duplicated core/app defaults, with no item to consolidate them"
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: presentation-safety
-touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tools/contrast_check.py, tools/agent_identity_check.py, tests/unit
+milestone: v0.4.11
+touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tools/contrast_check.py, tools/agent_identity_check.py, tests/unit, docs/ARCHITECTURE.md, docs/MODEL.md, .claude/rules/ui-color.md
 added: 2026-09-08
+closed: 2026-09-08
 verify: uv run pytest tests/unit/test_simulation_view.py && ! grep -q '"#D9E2EC"' src/anesthesia_sim/app/simulation_view.py
 ---
 
@@ -97,5 +99,24 @@ given `PL-GVXP` fixed trace separation on dash pattern rather than colour and
 **Done when.** No colour, size, spacing or radius literal remains in
 `app/simulation_view.py`; `app/theme.py`'s dead constants are gone; the page
 padding a reader finds in the theme is the one the page uses; the gridline grey
-is a named constant with a declared contrast requirement; and `make check`
-passes with both tools reading the new location.
+is a named constant; and `make check` passes with both tools reading the new
+location.
+
+**One clause of that was written before the number was measured, and is
+amended rather than met.** "A declared contrast requirement" for the gridline
+is not available: `GRIDLINE` measures 1.31:1 on `PANEL`, so an entry at SC
+1.4.11's 3:1 would fail, and `.claude/rules/ui-color.md` forbids a
+`KNOWN_SHORTFALLS` entry "to make a change go green". The only ways to satisfy
+the clause as written were to darken the colour - changing what is drawn, which
+a consolidation must not do - or to excuse it in the list the rule protects. So
+the constant is named, carries no requirement, and records why beside itself;
+`PL-HKTB` carries the design question of whether it should be darkened.
+
+**What was left, and why.** Thirty-six bare `spacing=`, `run_spacing=` and
+`padding=` literals remain, at fourteen distinct values. Naming them one by one
+would produce value-named constants - `SPACING_6` says nothing a `6` does not -
+and naming them *meaningfully* means inventing a spacing scale, which is design
+work belonging to the interface pass rather than to a consolidation. What was
+named instead is every set that was already half-named: the type scale, the
+selector widths, the legend swatches and the three stroke widths that sat bare
+beside their own named colour and dash pattern. `PL-ZHV6` carries the rest.

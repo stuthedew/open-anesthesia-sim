@@ -1,8 +1,16 @@
 ---
 id: PL-20PT
 title: bin/docket verify's item-front-matter guard compares git show <base>:<bare filename> because Item.path holds no directory, so the lookup always fails, the miss is swallowed as 'a new item file' and the check reports PASS on a branch that marked its own item done
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+feature: delegation
+milestone: v0.4.11
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, docs/worker.md
 added: 2026-09-08
+closed: 2026-09-08
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_branch_that_edits_its_own_front_matter_is_refused' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** bin/docket verify's item-front-matter guard compares git show <base>:<bare filename> because Item.path holds no directory, so the lookup always fails, the miss is swallowed as 'a new item file' and the check reports PASS on a branch that marked its own item done
@@ -67,3 +75,35 @@ unresolvable path is reported rather than treated as either.
 That branch changed `PL-W8XP`'s own `status`, `touches` and `closed`, and
 `bin/docket verify PL-W8XP` reported `PASS  item front matter unchanged -
 unchanged` for all three.
+
+**Fixed.** 2026-09-08. The survey the brief asked for says the smaller route
+is the right one: `Item.path` has exactly one producer (`store.read_items`,
+setting `path.name`) and every other consumer already assumes a bare filename
+— `cli.py` joins it to the store directory twice, `checks.py`'s `_where` uses
+it as a message prefix, and `verify_item`'s own-file exemption takes its
+basename. The repo-relative `path` values in `test_vcs.py` belong to
+`StrandedItem` and `LostItem`, which are separate types. So the join happens at
+the call site, and `Item.path` now carries the field comment it never had —
+the field's meaning being unwritten is how the two spellings came to exist.
+
+`_front_matter_changed` is replaced by `front_matter_check`, which returns the
+`Check` rather than the changed keys. That is the substance of the fix: the
+third outcome had nowhere to go, so "could not look" was returned as the empty
+tuple that "looked, found nothing" returns. It now refuses — an item file that
+resolves to nothing, and a base holding no store at all, are both FAIL with the
+path named. A file the base does not hold is still a pass, since an item
+captured on the branch that works it has no earlier commission.
+
+Two things beyond the brief, both cheap and both closing the same hole. The
+base copy is found by **id** rather than by name, because `store.write_item`
+renames the file when the title changes — and the title is front matter, so a
+lookup by current name would have missed the one edit that moves the file out
+from under the guard. And `docs/worker.md` gains the prohibition it never
+stated: the `**Worked.**` note goes below the fence, and `status`, `touches`
+and `verify:` are the reviewer's. The guard had nothing to point at.
+
+Measured: the seven new cases in `tests/test_verify.py` all fail against the
+unfixed `verify.py` and pass against the fixed one. The fixture now seeds
+`docs/items/` at the base commit, which every earlier test in the file lacked —
+"a checker that has only ever run against a clean store proves nothing" applied
+to the fixture itself.

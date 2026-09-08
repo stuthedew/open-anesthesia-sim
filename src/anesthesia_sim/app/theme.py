@@ -39,9 +39,6 @@ INK = "#243B53"
 # label/value hierarchy against INK reads as it did.
 MUTED = "#59728A"
 WARNING = "#8A4B08"
-PAGE_PADDING = 24
-PANEL_PADDING = 20
-PANEL_RADIUS = 12
 
 
 @dataclass(frozen=True)
@@ -119,3 +116,305 @@ AGENT_COLOR_SCHEMES: Final[dict[str, AgentColorScheme]] = {
         standard_color_pantone="Pantone 3015 C",
     ),
 }
+
+# --- Display tokens ---------------------------------------------------------
+#
+# Everything below was module-level in `app/simulation_view.py` until PL-2CS8.
+# `ROADMAP.md`'s planned-milestone item 24 names consolidating them as its own
+# prerequisite, and "Development pathway" Phase 2 orders it first, "because
+# every control added before it spreads the same scattered defaults further" -
+# which v0.5.0's bookmarks, MAC targets and two-run overlay were about to do.
+#
+# They are here rather than in a new module because this file already *was* the
+# tokens module, holding the palette and the spacing constants; a third file
+# beside it would be the "fourth scattered location" item 24 warns against. It
+# also shortens `tools/contrast_check.py`, which read two files only because
+# the six trace colours lived in the view.
+#
+# **This module stays free of Flet**, which is why two display constants did
+# not come with them: `METRIC_GRID_COLUMNS` is typed on
+# `ft.ResponsiveRowBreakpoint` and `AGENT_RENDER_STYLES` builds `ft.Border` and
+# `ft.TextStyle` objects. `tools/contrast_check.py` and
+# `tools/agent_identity_check.py` read this file with `ast` in a bare checkout
+# precisely because it imports nothing they would need installed.
+#
+# **Order is load-bearing.** `contrast_check.read_palette` resolves a bare name
+# against the palette built so far, in file order, so an alias must sit below
+# what it aliases - `CIRCUIT_COLOR = PRIMARY` below `PRIMARY`,
+# `WASH_IN_COLOR = ALVEOLAR_COLOR` below `ALVEOLAR_COLOR`. Move one above its
+# referent and it resolves to `None`, drops out of the palette, and the
+# requirement citing it reports as missing.
+
+CHART_HEIGHT = 360
+
+PAGE_PADDING = 16
+
+PANEL_PADDING = 14
+
+PANEL_RADIUS = 10
+
+# The clinical gloss under a compartment name is deliberately smaller than the
+# name above it. Which quantity the model computes is the primary claim; what
+# a clinician would compare it against is a secondary one, and the type sizes
+# say so. Same MUTED colour as the name, so this adds no pair to
+# `tools/contrast_check.py`, and it stays normal text at WCAG's 4.5:1.
+METRIC_NAME_SIZE = 14
+
+METRIC_QUALIFIER_SIZE = 12
+
+# The same gloss, one panel row up, under a *control* name rather than under a
+# readout name (`_build_parameter_panel`). A reader meets the two as one idiom
+# - the fine print that says what the name above it actually refers to - so
+# they are the same size deliberately, and aliasing rather than writing 12
+# twice is what stops the two drifting apart unnoticed.
+PARAMETER_QUALIFIER_SIZE = METRIC_QUALIFIER_SIZE
+
+# The MAC line under each reading, in the same relationship to the percent
+# above it as the gloss is to the compartment name: smaller and MUTED, because
+# it is the weaker of the two claims. Percent is what the model computes and
+# what a monitor would show; a MAC multiple is that number divided by a
+# population constant this model does not otherwise use, and on the four
+# non-alveolar compartments it is a partial-pressure ratio rather than
+# anything a clinician reads off a patient. Sized between the name and the
+# gloss so the row reads value, then unit-conversion, then annotation.
+METRIC_SECONDARY_VALUE_SIZE = 13
+
+# The rest of the type scale, bare at its call sites until PL-2CS8 while the
+# three sizes above were named - so the scale was half declared and half
+# literal, and a reader could not see it whole. These complete it, at the
+# values already shipping.
+APP_TITLE_SIZE = 26
+METRIC_VALUE_SIZE = 22
+ACCOUNTING_STATUS_SIZE = 20
+
+# The six compartment traces. Two things decide these values, and only one of
+# them is a colour question.
+#
+# **Against the panel, each trace is held to 3:1 - and under simulated
+# dichromacy as well as under normal vision.** SC 1.4.11 asks it of the
+# displayed colour; this interface asks it of the Brettel 1997 simulation of
+# that colour too, because a trace a protanope cannot find against white is not
+# separable from the panel whatever the criterion measures. `ALVEOLAR_COLOR`
+# and `MUSCLE_COLOR` were re-picked for that and nothing else (PL-GVXP): both
+# keep their own hue and saturation exactly, darkened to the lightest shade
+# clearing 3.2:1 in all four models - 3:1 plus two tenths, so the shipped value
+# is not itself the boundary case the next edit trips over.
+# `tools/contrast_check.py` measures all four and `docs/MODEL.md` records them.
+#
+# **Between traces, colour is not the channel and no palette could make it
+# one.** Contrast composes along a bounded axis, and the 3:1 floor above caps
+# every trace's luminance at 0.30, so six of them cannot all be more than
+# 1.48 apart - and holding hue and saturation fixed, a search over lightness
+# alone reaches 1.28 across the four models while driving four of the six to
+# near-black. Both are far under the 3:1 that would make colour sufficient, so
+# the separating channel is the line style below, and these hues are chosen to
+# name their compartment rather than to win an arithmetic that cannot be won
+# (`.claude/rules/ui-color.md`, judgment 3).
+CIRCUIT_COLOR = PRIMARY
+
+# Its own value rather than `ACCENT`, which it used to share. The two roles
+# had different constraints the moment this one acquired a four-model floor
+# five other traces also have to clear, and `ACCENT`'s remaining role - the
+# sliders' active track - is bounded by nothing but the panel behind it. That
+# is the question `PL-W8DQ` was waiting on: `ACCENT` is no longer a chart
+# colour, so it is free to be darkened on the sliders' own terms.
+ALVEOLAR_COLOR = "#159789"
+
+MIXED_VENOUS_COLOR = "#7C3AED"
+
+VESSEL_RICH_COLOR = "#DC2626"
+
+MUSCLE_COLOR = "#D17206"
+
+FAT_COLOR = "#64748B"
+
+# The colour swatch every legend entry draws, at one size across all three
+# legend rows so that a reader scanning down them compares marks rather than
+# shapes. `_build_band_legend_item` is the one deliberate exception: a band's
+# extent is exactly what distinguishes it from a line.
+LEGEND_SWATCH_WIDTH = 24
+
+LEGEND_SWATCH_HEIGHT = 4
+
+# Two legend marks that are not a trace swatch and so cannot use the pair
+# above: a control mark is a vertical tick, and the MAC-awake band is an
+# interval rather than a line. Bare at their call sites until PL-2CS8.
+CONTROL_MARK_SWATCH_WIDTH = 3
+CONTROL_MARK_SWATCH_HEIGHT = 16
+BAND_SWATCH_WIDTH = 24
+BAND_SWATCH_HEIGHT = 12
+
+# The rule between the concentration panel and the wash-in section below it.
+SECTION_DIVIDER_HEIGHT = 16
+
+# The two chart references are furniture rather than data, and are drawn in
+# the interface's own ink and label colour rather than in a seventh and
+# eighth hue. A new hue would enter the trace palette's separation problem
+# (`.claude/rules/ui-color.md`, judgment 3: six traces already cannot all
+# clear 3:1 against each other on a bounded axis) while implying the mark is
+# another compartment. What separates a reference from a trace here is
+# instead its *kind* — constant, horizontal, spanning the window — and its
+# mark type, which is also what separates the two references from each
+# other: a band for a measured population value with real spread, a line for
+# a definitional anchor. That distinction survives greyscale and every
+# colour-vision deficiency, which `.claude/rules/ui-color.md`'s judgment 2
+# requires of any encoding that carries meaning.
+#
+# The ranking between them is deliberate and is INK against MUTED. After a
+# long case at a steady setpoint the alveolar and vessel-rich traces have
+# converged, so the 1 MAC anchor is robust to which trace it is read
+# against; at MAC-awake they have not, so the band is the trace-critical
+# mark and carries the heavier weight. Giving the easier mark equal weight
+# is the failure PL-F52R names.
+MAC_AWAKE_BAND_COLOR = INK
+
+ONE_MAC_LINE_COLOR = MUTED
+
+# The band's fill is decoration: both boundaries are carried by a stroke in
+# `MAC_AWAKE_BAND_COLOR`, which is what `tools/contrast_check.py` measures.
+# The fill is light enough for six traces to remain legible across it, which
+# a fill at its own 3:1 would not be.
+MAC_AWAKE_BAND_FILL_OPACITY = 0.14
+
+# Both edges, and this is the geometry the mark type depends on rather than
+# a styling choice. One standard deviation either side of the published mean
+# is 3.3% of the plot height for sevoflurane and 4.2% for desflurane on the
+# fixed `CHART_AXIS_TOP_MAC` axis, and `PL-90Y6` measured that no axis range
+# the overpressure constraint allows makes that fill read as a band on its
+# own: at a 2 MAC ceiling the band is unambiguous but the 1 MAC anchor sits
+# at mid-plot with no room to show an overpressure induction, and at 4 MAC
+# the band is back to the 2.50% it had on the old dial-maximum axis. So the
+# fix is at the mark. A stroked upper edge over an unstroked fill is the
+# geometry of a line with a shadow under it; two strokes with a gap between
+# them is the geometry of an interval, and reads as one at any thickness.
+#
+# What is deliberately *not* done is giving the band a minimum drawn height.
+# The band's extent is its claim - one standard deviation either side of a
+# published mean - so drawing it thicker than the data would assert a wider
+# population spread than the literature supports, trading this
+# interpretability defect for a correctness one. Both strokes therefore sit
+# on the true boundaries and the fill between them keeps its true extent.
+MAC_AWAKE_BAND_EDGE_STROKE_WIDTH = 1.5
+
+# Wider than any trace's dashes ([10, 4], [4, 3], [6, 6], [2, 3],
+# [12, 4, 2, 4]), so the 1 MAC line does not read as a seventh compartment at
+# a glance. The longest mark among the six is the alveolar trace's 10 px and
+# the widest gap the vessel-rich trace's 6 px; this exceeds both.
+ONE_MAC_LINE_DASH_PATTERN = [16, 8]
+
+# Written bare at its call site until PL-2CS8, beside a named colour and a
+# named dash pattern - the same 1.5 as the band edge, but a different line, so
+# the two carry their own names rather than one standing in for both.
+ONE_MAC_LINE_STROKE_WIDTH = 1.5
+
+# A control-change mark is furniture like the two references, and takes the
+# same MUTED ink for the same reason: it is not a compartment, and a hue of
+# its own would enter the trace palette's separation problem while implying
+# it were. It needs no second colour channel because it already has a
+# stronger one - it is the only vertical thing on the chart, which no
+# colour-vision deficiency and no greyscale rendering can take away.
+# Reusing MUTED also declares no new pair for `tools/contrast_check.py`:
+# MUTED on PANEL is already measured, as the 1 MAC line.
+CONTROL_MARK_COLOR = MUTED
+
+# Finer than either reference and than every trace, because a control mark
+# annotates the run rather than showing any part of it: at the density of a
+# case with a dozen adjustments, a mark as heavy as a trace would compete
+# with the curves it exists to be read against. Heavier than the vertical
+# grid lines, though, and dashed where they are solid: measured against a
+# rendered frame, a mark at a hair's width beside a 60 s gridline is
+# findable but not immediately separable from it, and a reader who cannot
+# tell an annotation from an axis decoration reads the time off the wrong
+# one.
+CONTROL_MARK_STROKE_WIDTH = 1.5
+
+CONTROL_MARK_DASH_PATTERN = [3, 5]
+
+# Wide enough for the discard warning to fall in two or three lines rather
+# than a column of fragments; the dialog is text and has no chart to size to.
+NEW_CASE_DIALOG_WIDTH = 420
+
+NEW_CASE_DIALOG_SPACING = 12
+
+# One width for the selector and for the chip that stands in its place, so the
+# transport controls beside them do not move when a run starts. A header that
+# reflows on Start announces a mode change by motion in the wrong place, and
+# the eye it pulls is the one that should be on the readouts.
+AGENT_SELECTOR_WIDTH = 180
+
+# The chart's two dropdowns, sized like the agent selector above and bare at
+# their call sites until PL-2CS8. They differ from it and from each other
+# because their longest option differs.
+TIME_BASE_SELECTOR_WIDTH = 170
+PLAYBACK_RATE_SELECTOR_WIDTH = 150
+
+# The chip's inset. Slightly wider than the header badge's 6 because this one
+# carries two lines rather than one and sits among controls rather than under
+# the title.
+RUNNING_AGENT_DISPLAY_PADDING = 8
+
+# The wash-in trace takes the alveolar compartment's own colour, because it
+# is that compartment expressed against the one filling it: the numerator is
+# the alveolar fraction and nothing else on the second chart competes with
+# it. Reusing it declares no new pair for `tools/contrast_check.py` -
+# ALVEOLAR_COLOR on PANEL is already measured - and it is what lets a reader
+# carry the alveolar curve from the chart above into the ratio below.
+#
+# This trace carries none of the six-way separation problem the chart above
+# has, so PL-GVXP's arithmetic never bound it; what did bind it was that
+# constant's own 2.93:1 against the panel, which it inherited. That is fixed
+# at the source, so the single trace on this plot now clears 3:1 without the
+# linkage having to be broken to get it.
+WASH_IN_COLOR = ALVEOLAR_COLOR
+
+# Shorter than the compartment chart. The ratio is one trace on a fixed
+# 0-to-1 axis, so it needs no room to separate six curves, and the two plots
+# have to be readable together without scrolling between them.
+WASH_IN_CHART_HEIGHT = 200
+
+# The wash-in trace is drawn heavier than the reference lines around it: it is
+# the measured quantity and they are the ruling. Bare at the call site until
+# PL-2CS8.
+WASH_IN_STROKE_WIDTH = 3
+
+# The wash-in curve's asymptote, drawn as the reference it is. A trace that
+# simply halts in open space reads as clipped; one that halts *on a labelled
+# line* reads as having arrived somewhere. It is a definitional anchor rather
+# than a measured value with spread - F_A = F_I is where net uptake stops, by
+# definition - so it is a line and not a band, on the distinction
+# `docs/MODEL.md` § "MAC-awake as a chart reference" draws between the two.
+# MUTED and a wide dash, matching the 1 MAC line on the chart above: this is
+# furniture rather than a second compartment, and it declares no new pair for
+# `tools/contrast_check.py`.
+EQUILIBRIUM_LINE_COLOR = MUTED
+
+EQUILIBRIUM_LINE_DASH_PATTERN = [16, 8]
+
+# As above: bare at the call site until PL-2CS8, beside its own named colour
+# and dash pattern.
+EQUILIBRIUM_LINE_STROKE_WIDTH = 1.5
+
+# Room for one axis label at `format_wash_in_ratio`'s two decimals. The chart's
+# own default is sized for the single digits the percent axis carries, and
+# wraps "0.25" onto two lines.
+WASH_IN_AXIS_LABEL_SIZE = 34
+
+# The chart gridlines and the divider under the concentration panel. Named by
+# PL-2CS8; it was the bare literal "#D9E2EC" at five sites and defined nowhere,
+# so `tools/contrast_check.py` - which reads named constants - could not see it
+# at all, and the file it sat in reported as checked.
+#
+# **It carries no `REQUIREMENTS` entry, and that is a judgment rather than an
+# omission.** Measured 1.31:1 on `PANEL` and 1.22:1 on `BACKGROUND`, so an
+# entry at SC 1.4.11's 3:1 would fail - and `.claude/rules/ui-color.md` forbids
+# a `KNOWN_SHORTFALLS` entry "to make a change go green". The criterion asks
+# 3:1 of a graphical object *required to understand the content*, and WCAG's
+# own line-graph example - quoted in `docs/MODEL.md` § "Color contrast" -
+# treats the "graduated lines" as furniture the traces need not contrast
+# against. The values a reader takes off this chart come from the axis labels,
+# which are held to 4.5:1 as text.
+#
+# Whether the gridline should be darkened anyway is a design question, not a
+# consolidation one: PL-2CS8 moved this literal without changing what it draws.
+# PL-HKTB carries it.
+GRIDLINE = "#D9E2EC"
