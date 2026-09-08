@@ -13,7 +13,6 @@ one data file, so a test names only the thing it breaks.
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 from pathlib import Path
 
@@ -2352,27 +2351,23 @@ def test_a_closed_item_is_owed_nothing(tmp_path: Path) -> None:
     assert _dispositions(tmp_path, {"PL-ZZZZ": front}) == []
 
 
-def test_the_disposition_advisory_names_only_real_items_on_this_repository() -> None:
-    """The real tree, checking the shape of the answer rather than its emptiness.
+def test_this_repository_records_a_disposition_for_every_open_debt_item() -> None:
+    """The real tree, not only a fixture - which is what `PL-36R4` was about.
 
-    An earlier version of this asserted the advisory was empty. That was wrong,
-    and `PL-HX5C` is what showed it: the moment any session captures a debt item
-    the gate has not yet placed, an emptiness assertion turns `make check` red -
-    so filing an item would break the build, which is the opposite of what
-    `CLAUDE.md`'s capture rule asks for. Whether an item belongs in this gate is
-    a judgment, and `CLAUDE.md` reserves hard failure for exact rules; the
-    advisory is the right instrument and it already prints on every run.
+    This asserts the tree is *clean*, not merely that the advisory is well
+    formed, and the strictness is deliberate. `ROADMAP.md`'s presence rule
+    leaves *which* disposition an item gets to judgment, but *that* one is
+    recorded is exact and decidable, which is the line `CLAUDE.md` draws for
+    when a check may fail hard.
 
-    What is worth pinning is that the advisory is well formed - that every id it
-    names is a real item - because a malformed one would be acted on.
+    It does not penalise capture, which was the reason briefly given for
+    weakening it and is wrong: `bin/docket new` writes `status: untriaged` with
+    no `classes`, and neither satisfies this check's filter. Only a *triaged*
+    debt item trips it, and triage is the deliberate act where the disposition
+    belongs. `PL-33WM` is the evidence that the strictness earns its place - it
+    caught a real gap within forty minutes of the check landing, when `#477`
+    merged an undispositioned item on a base predating the check.
     """
     root = Path(doc_check.__file__).resolve().parent.parent
-    named = {
-        identifier
-        for advisory in doc_check.analyze(root).advisories
-        if "records no disposition" in advisory
-        for identifier in re.findall(r"PL-[A-Z0-9]{4}", advisory)
-    }
 
-    for identifier in named:
-        assert list(root.glob(f"docs/items/{identifier}-*.md")), f"{identifier} is not a filed item"
+    assert [a for a in doc_check.analyze(root).advisories if "records no disposition" in a] == []
