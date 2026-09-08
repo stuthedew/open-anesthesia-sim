@@ -612,7 +612,25 @@ noted now so they aren't lost:
   exists, since every built-in agent's JSON is already fully
   self-contained - cloning one as a starting point is close to free.
 
-## Shelved: UI structure/form mockups
+## Shelved, then resumed: UI structure/form mockups
+
+**The project owner asked again on 2026-09-08, so the condition below is met
+and this thread now lives in `ROADMAP.md`** — Planned-milestone item 33, "Run
+the interface pass", with the `v0.5.x — the interface pass` row of "The
+timeline" giving it a position between v0.5.0 and v0.6.0. What was decided that
+day: the placement above, and that the structural half of an overhaul is not
+polish and does not wait for it (`PL-2CS8` consolidates the display constants,
+`PL-NGF7` decides the theme object, `PL-B9PY` is the component seam). No design
+round was authorised, so the paragraph below still governs the mockups
+themselves: they are a record of what was tried, not a starting point.
+
+One correction the resumption is worth recording. The assessment below is of
+"the current v0.1.0 interface", and it was accurate then; ten interface-changing
+releases later it is a statement about a baseline rather than about today, and
+quoting it as a live objection would be quoting a stale measurement. What
+survives unchanged is the principle in "Long-term vision" below — UI/UX ambition
+follows scientific-core maturity — and that principle is what places item 33
+after the MVP rather than before it.
 
 Explored, then explicitly shelved (project owner's call) in favor of
 maturing the scientific core first. Do not resume this without the
