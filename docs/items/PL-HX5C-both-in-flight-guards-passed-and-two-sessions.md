@@ -1,7 +1,12 @@
 ---
 id: PL-HX5C
 title: Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: infra, session-cost
+feature: parallel-sessions
+touches: .claude/skills/docket/SKILL.md
 added: 2026-09-08
 ---
 
