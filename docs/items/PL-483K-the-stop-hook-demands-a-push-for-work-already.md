@@ -98,3 +98,35 @@ than teaching the comparison to tolerate it.
 
 **Found again by** `PL-GBBZ`.
 
+
+**Observed twice more 2026-09-07, on branches outside `claude/*`, which
+narrows candidate 3.** A session working `PL-F5GN` cloned fresh
+(`git clone --depth 1`) and pushed two branches with `git push -u`:
+`codex/batch-PL-F5GN`, the batch branch `docs/worker.md` prescribes for a
+worker run, and later `chore/docket-record-452`. Neither ended up with a
+`refs/remotes/origin/<branch>`, and `git ls-remote` returned `HEAD`'s sha for
+both, so both were fully pushed.
+
+Neither name matches `claude/*`, so candidate 3 as written - fetch the
+`claude/*` refspec - would have left both of these firing. The cause does not
+turn on what the branch is called: `remote.origin.fetch` covers only `main`,
+so the repair has to widen to `+refs/heads/*:refs/remotes/origin/*`, or to the
+branch actually being pushed, rather than to one prefix. `docs/worker.md`
+mandates `codex/batch-<id>-<id>-...` for a worker run, so a worker's branches
+are never `claude/*` by construction and a `claude/*` refspec would miss every
+delegated batch.
+
+**The two branches failed differently, and the second failure is the dangerous
+one.** `chore/docket-record-452` produced the stop-hook message this item is
+named for. `codex/batch-PL-F5GN` never reached the stop hook: the missing
+tracking ref surfaced earlier, as a *push* rejection. After rebasing onto a
+moved `main`, `git push --force-with-lease` was refused with `stale info`,
+because the lease had no `refs/remotes/origin/<branch>` to read. The stop-hook
+message invites a redundant push, which is harmless. This one invites dropping
+`--force-with-lease` for a bare `--force`, which is not, and it arrives at the
+one moment the branch is legitimately being rewritten. What made the force
+safe was confirming with `git ls-remote` that the remote head was the
+session's own pre-rebase commit; the refspec repair this brief already names
+is what removes the need to make that judgment at all.
+
+**Found again by** `PL-F5GN`.
