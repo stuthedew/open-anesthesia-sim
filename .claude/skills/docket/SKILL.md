@@ -675,6 +675,19 @@ queue this pass exists to describe. `needs-decision` is what the store has for
 it, and `bin/docket gate` counts it, so the question reaches the owner through
 the queue rather than through the reply.
 
+**Except where the decision is a milestone being scoped, which is `blocked-by:
+<version>`.** The two look alike and want opposite statuses. A question this
+project can answer is `needs-decision`, and `bin/docket gate` counting it as
+debt is right - somebody can go and resolve it. A milestone not yet scoped is
+`status: blocked` with `blocked-by: v0.6.0`, and is not debt: only a scoping
+round resolves it, and working the item cannot bring one forward. `docket
+check` promotes it once that section carries its four subsections, and errors
+on a version the roadmap names nowhere. `PL-B9PY` is what the wrong one cost -
+parked at `needs-decision`, counted into Gate 1 as resolvable, then two days
+hidden from `bin/docket next` after v0.5.0 was scoped. A patch track
+(`v0.5.x`) is not a version anything can wait on: it freezes no gate and takes
+no section, so nothing resolves it.
+
 ### The `verify:` command, and running it before writing it down
 
 Triaging an item to `ready` means naming the command that proves it done.
