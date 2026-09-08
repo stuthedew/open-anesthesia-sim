@@ -17,6 +17,12 @@ from typing import Final, Self
 from anesthesia_sim.app.chart_downsampling import M4AggregateCache, first_index_at_or_after
 from anesthesia_sim.app.wash_in import is_wash_in, wash_in_ratio
 from anesthesia_sim.core.exceptions import SimulationDomainLimitError, SimulationExecutionError
+from anesthesia_sim.core.governing_equations import (
+    ALVEOLAR_FRACTION,
+    FIRST_TISSUE_FRACTION,
+    INSPIRED_FRACTION,
+    VENOUS_FRACTION,
+)
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.run_score import RunScore, SampledWindow, ScoreSegment
 from anesthesia_sim.core.simulation import SimulationState
@@ -165,6 +171,37 @@ COMPARTMENT_QUANTITIES: Final = (
     RecordedQuantity.VESSEL_RICH,
     RecordedQuantity.MUSCLE,
     RecordedQuantity.FAT,
+)
+
+#: Which core state each drawn quantity reads, by position in the state vector.
+#:
+#: **The whole of the run's pairing is here**, one entry per compartment, and
+#: it is the one place a trace could come to carry another compartment's
+#: values. It replaces the same pairing `_build_history_sample` held while the
+#: chart was drawn from recorded samples (`PL-2FM6`): the chart now evaluates
+#: the score instead, so what a trace needs is a position in
+#: `governing_equations`' state order rather than a compartment accessor.
+#:
+#: The three tissue groups are consecutive from `FIRST_TISSUE_FRACTION` in
+#: `PatientCompartmentsState.tissues`' own order, which
+#: `AgentUptakeSystem.state_vector` writes them in. That order is an
+#: assumption this table makes about another module, so
+#: `tests/integration/test_controller.py`'s
+#: `test_each_recorded_quantity_carries_the_compartment_it_names` holds it
+#: against the core's own attributes rather than restating it.
+#:
+#: `WASH_IN_RATIO` is absent deliberately: it is not a state but the quotient
+#: `app/wash_in.py` forms from two of these, so giving it a position here
+#: would present a derived value as one the equations carry.
+COMPARTMENT_STATE_INDEX: Final[Mapping[RecordedQuantity, int]] = MappingProxyType(
+    {
+        RecordedQuantity.CIRCUIT: INSPIRED_FRACTION,
+        RecordedQuantity.ALVEOLAR: ALVEOLAR_FRACTION,
+        RecordedQuantity.MIXED_VENOUS: VENOUS_FRACTION,
+        RecordedQuantity.VESSEL_RICH: FIRST_TISSUE_FRACTION,
+        RecordedQuantity.MUSCLE: FIRST_TISSUE_FRACTION + 1,
+        RecordedQuantity.FAT: FIRST_TISSUE_FRACTION + 2,
+    }
 )
 
 

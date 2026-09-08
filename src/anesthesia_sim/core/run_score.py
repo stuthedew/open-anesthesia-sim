@@ -7,6 +7,17 @@ settings in force at each moment - the *score* - and every state it passed
 through is a closed-form function of that score and the time asked for.
 Nothing has to be recorded for a value to be recoverable.
 
+**Why "score", since the word is doing real work here.** It is the musical
+sense: the written instruction set a performance is produced from, rather
+than a recording of one. That is exactly the distinction this module exists
+to draw - what is *held* is the ordered list of settings and when each took
+effect, and what a caller asks for is *derived* by playing it to a given
+instant. The vocabulary is already in the file: a `Keyframe` is the animation
+term for a stated instant a continuous motion is interpolated between, and
+the two words come from the same place. The names to reject are the ones that
+would suggest a stored trajectory - a run's `history`, `samples` or `record` -
+because the whole point is that no such thing exists here.
+
 Two consequences carry this module, and both are what `PL-T691` exists for:
 
 - **Memory stops growing with the run.** A recorded run costs one sample per

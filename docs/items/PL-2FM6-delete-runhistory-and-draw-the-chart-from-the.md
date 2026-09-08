@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: refactor, perf
 feature: numerical-domain
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/MODEL.md
+touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/MODEL.md
 added: 2026-09-05
 verify: uv run pytest -q tests/unit tests/integration && ! grep -rq 'history_window\|RunHistory' src/anesthesia_sim/ && grep -qF 'the drawn chart reproduces every control change' docs/MODEL.md
 ---

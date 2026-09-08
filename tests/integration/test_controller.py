@@ -3,6 +3,8 @@ import dataclasses
 import pytest
 
 from anesthesia_sim.app.controller import (
+    COMPARTMENT_QUANTITIES,
+    COMPARTMENT_STATE_INDEX,
     CONTROL_INPUT_UNITS,
     ControlInput,
     RecordedQuantity,
@@ -388,6 +390,52 @@ def test_each_recorded_quantity_carries_the_compartment_it_names() -> None:
     # ...and they really are far enough apart for that to mean something.
     assert len(set(recorded.values())) == len(recorded)
     assert recorded[RecordedQuantity.CIRCUIT] > 100.0 * recorded[RecordedQuantity.FAT]
+
+
+def test_each_drawn_quantity_reads_the_state_of_the_compartment_it_names() -> None:
+    """The same pairing, audited against the state vector the chart draws from.
+
+    `COMPARTMENT_STATE_INDEX` is what `_build_history_sample` was once the
+    chart evaluates the score instead of reading recorded samples
+    (`PL-2FM6`): a position in `governing_equations`' state order rather
+    than a compartment accessor. It is the one place a trace could come to
+    carry another compartment's values, and a swap here would reach a
+    labelled curve drawn entirely from numbers the model really produced -
+    which is why it is audited against the core rather than restated.
+
+    The three tissue groups are the entries worth the audit: they are
+    consecutive positions from `FIRST_TISSUE_FRACTION`, so this table
+    assumes `PatientCompartmentsState.tissues`' order and would keep
+    passing every other check if that order changed.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=60.0)
+
+    system = controller._state.uptake_system
+    state = system.state_vector()
+
+    assert {
+        quantity: state[COMPARTMENT_STATE_INDEX[quantity]] for quantity in COMPARTMENT_STATE_INDEX
+    } == {
+        RecordedQuantity.CIRCUIT: system.circuit.circuit_concentration_fraction,
+        RecordedQuantity.ALVEOLAR: system.alveoli.concentration_fraction,
+        RecordedQuantity.MIXED_VENOUS: system.patient.mixed_venous_fraction,
+        RecordedQuantity.VESSEL_RICH: system.patient.vessel_rich.partial_pressure_fraction,
+        RecordedQuantity.MUSCLE: system.patient.muscle.partial_pressure_fraction,
+        RecordedQuantity.FAT: system.patient.fat.partial_pressure_fraction,
+    }
+
+    # Every compartment the interface draws has an entry, and the derived
+    # ratio has none: it is a quotient of two of these rather than a state.
+    assert set(COMPARTMENT_STATE_INDEX) == set(COMPARTMENT_QUANTITIES)
+    assert RecordedQuantity.WASH_IN_RATIO not in COMPARTMENT_STATE_INDEX
+
+    # ...and sixty seconds in they are far enough apart that a swap shows.
+    drawn = [state[COMPARTMENT_STATE_INDEX[quantity]] for quantity in COMPARTMENT_QUANTITIES]
+    assert len(set(drawn)) == len(drawn)
+    assert drawn[0] > 100.0 * drawn[-1]
 
 
 def test_a_run_records_the_agent_it_is_a_run_of() -> None:
