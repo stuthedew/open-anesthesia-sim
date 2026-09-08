@@ -28,19 +28,25 @@ It is not the input to the walk. Whether `PL-2FM6` should still gate `PL-YDKJ`
 therefore turns on which of the two costs the sizing decision is about, and the
 block was written as though only one existed.
 
-**Why this is a separate item rather than an edit.**
-`origin/claude/m4-implementation-status-be2syh` is holding `PL-YDKJ`'s file
-with the edit that created the block, so a second edit collides at merge. The
-finding is recorded here and in `docs/WORKING_NOTES.md` under "Measured and
-answered: a server-rendered chart is not the way out", which carries the whole
-measurement.
+**Why this was filed separately rather than edited in.** When the finding was
+made, `origin/claude/m4-implementation-status-be2syh` was holding `PL-YDKJ`'s
+file with the edit that created the block, so a second edit would have collided
+at merge. That branch has since merged (`#473`), so the collision is
+historical. The measurement itself is in `docs/WORKING_NOTES.md` under
+"Measured and answered: a server-rendered chart is not the way out".
 
-**Not an argument to unblock it.** The ordering may still be right: `PL-2FM6`
-changes what the chart draws from, which changes the *point count* as well as
-the movement rate, and that is the input the walk does care about. The defect
-is that the block's stated reason names the quantity that stopped mattering.
-Re-check the reason against `PL-YSZN`, and either restate it or drop the edge.
+**This item is not blocked, and nothing here is waiting on `PL-2FM6`.**
+`PL-2FM6` is what `PL-YDKJ` is blocked on; it is named above only because the
+sentence under review is about that edge. Correcting a reason is reading two
+paragraphs against one measurement, and both are on `origin/main` now.
 
-**First step.** After `origin/claude/m4-implementation-status-be2syh` merges,
-read `PL-YDKJ`'s block paragraph against `PL-YSZN`'s walk measurement and
-correct the reason it gives.
+**Nor is it an argument to drop the edge.** The ordering may well be right for
+a reason the block does not give: `PL-2FM6` changes what the chart draws from,
+so it changes the *point count* as well as the movement rate, and the point
+count is the input the walk does care about. The defect is that the stated
+reason names the quantity that stopped mattering, which will read as settled to
+every session that meets it.
+
+**First step.** Read `PL-YDKJ`'s block paragraph against `PL-YSZN`'s walk
+measurement, and either restate the reason in terms of the point count or drop
+the edge and return the item to `needs-decision`.

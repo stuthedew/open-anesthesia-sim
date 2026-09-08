@@ -7,9 +7,10 @@ status: done
 classes: docs, infra
 feature: dev-tooling
 touches: .claude/skills/docket/SKILL.md
-verify: python3 tools/doc_check.py check && grep -qF 'the decision is a milestone being scoped' .claude/skills/docket/SKILL.md
 added: 2026-09-08
 closed: 2026-09-08
+pr: 477
+verify: python3 tools/doc_check.py check && grep -qF 'the decision is a milestone being scoped' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** The docket skill routes every undecided item to needs-decision, so a session triaging one that waits on an unscoped milestone will not reach for the blocked-by entry PL-W8XP added

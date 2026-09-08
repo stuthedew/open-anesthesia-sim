@@ -9,6 +9,7 @@ feature: vaporizer-controls
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-08
 closed: 2026-09-08
+pr: 475
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_a_dragged_slider_leaves_its_frame_to_the_render_tick' tests/unit/test_simulation_view.py
 ---
 

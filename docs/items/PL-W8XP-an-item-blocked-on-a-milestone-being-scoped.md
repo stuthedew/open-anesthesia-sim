@@ -7,9 +7,10 @@ status: done
 classes: infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md
-verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_blocked_by_may_name_a_milestone' subprojects/docket/tests/test_checks.py
 added: 2026-09-03
 closed: 2026-09-08
+pr: 478
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_blocked_by_may_name_a_milestone' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `blocked-by:` takes queue-item ids. An item whose real dependency
