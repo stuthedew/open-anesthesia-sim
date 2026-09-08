@@ -188,6 +188,7 @@ workflow_paths = [
   "docs/items",
   "docs/worker.md",
   "subprojects",
+  "tests/unit/test_agent_identity_check.py",
   "tests/unit/test_branch_id_check.py",
   "tests/unit/test_contrast_check.py",
   "tests/unit/test_doc_check.py",

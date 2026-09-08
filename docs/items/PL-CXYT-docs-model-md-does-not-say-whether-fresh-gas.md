@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md, src/anesthesia_sim/core/circuit.py
 added: 2026-09-06
 closed: 2026-09-07
+pr: 459
 verify: python3 tools/doc_check.py check && grep -q 'common gas outlet' docs/MODEL.md
 ---
 

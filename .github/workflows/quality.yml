@@ -250,6 +250,7 @@ jobs:
       # carries the same note on the same three lines. `PL-Y0RZ`, `PL-L17Q`,
       # `PL-JBZK`.
       - run: uv run python tools/contrast_check.py
+      - run: uv run python tools/agent_identity_check.py
       - run: uv run python tools/import_boundary_check.py
       - run: uv run python tools/workflow_paths_check.py
 

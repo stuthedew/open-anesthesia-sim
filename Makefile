@@ -119,12 +119,19 @@ check: sync
 # whether that file imports the simulator, and `tests/` targets 3.14 like the
 # rest of the tree.
 #
+# `agent_identity_check.py` is here for the narrowest version of the same
+# reason: `app/simulation_view.py` is its only input. It refuses a control
+# that carries the agent colour and can be rendered disabled, which is the
+# colour Material substitutes and `contrast_check.py` above cannot reach
+# because it is declared in no source file (`PL-97VB`).
+#
 # `tools/ignore_check.py` above is the same category for a different reason.
-# All three tools here stay standard-library-only and parse at the floor
+# All four tools here stay standard-library-only and parse at the floor
 # themselves, which is what `tests/unit/test_tools_portability.py` holds them
 # to; that suite's docstring states the rule this group is an instance of.
-# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`.
+# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`.
 	uv run python tools/contrast_check.py
+	uv run python tools/agent_identity_check.py
 	uv run python tools/import_boundary_check.py
 	uv run python tools/workflow_paths_check.py
 

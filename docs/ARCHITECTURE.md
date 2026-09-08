@@ -300,6 +300,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
+├── agent_identity_check.py  # refuses a control that carries the agent colour and can be rendered disabled, because Flet/Material then paints its label in a disabled-content grey that is declared in no source file and so is unreachable by `contrast_check.py`; a control may be `disabled` only where it is also `visible = not <the same expression>`, and one given an agent colour where it is constructed must be written by the single writer `SimulationView._apply_agent_color_scheme`
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, citations - in the documentation, in every `docs/items/` brief and in every source docstring, since those last two are where this project writes most of them - markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline, and the current gate's membership against the queue's `safety`- and `science`-classed items; reports resident instruction size
@@ -410,6 +411,25 @@ separation across all four, which is the evidence that these six traces cannot
 be separated by color at all and that the line style is doing the work;
 `docs/MODEL.md` § "The six compartment traces" carries the tables and the
 limits on how far a simulated ratio may be read.
+
+`tools/agent_identity_check.py` closes the one gap that table structurally
+cannot cover: a colour the project never declares. Flet/Material paints a
+disabled control's label in the theme's disabled-content grey, which appears in
+neither module `contrast_check.py` reads, so a requirement went on measuring
+the enabled pair and reporting a pass while the agent's name sat grey on its
+own ISO 5360 fill for the whole of every run (`PL-61WW`). The rule it enforces
+is the project owner's, 2026-09-08: no control carrying agent identity may be
+*rendered* disabled, so SC 1.4.3's exemption for an inactive component — which
+settles a conformance claim, not whether a reader can identify the running
+agent — is never claimed here. Rendered is the load-bearing word: a control may
+be `disabled` where it is also `visible = not <the same expression>`, since it
+then draws nothing. The identity set is not a second list to keep in step but
+whatever `SimulationView._apply_agent_color_scheme` writes, that method already
+being the single writer of agent colour; a control given an agent colour where
+it is constructed and never written there is the check's other error, and is
+what keeps that coverage claim true rather than asserted. Like the two tools
+above it decides nothing else — whether a control's identity is legible, and
+whether a pairing is the right one for it, stay judgments.
 
 `tools/import_boundary_check.py` measures two claims the source makes about
 itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
