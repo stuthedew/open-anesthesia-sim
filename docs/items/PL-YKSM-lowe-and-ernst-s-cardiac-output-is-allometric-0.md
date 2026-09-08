@@ -129,3 +129,57 @@ Done-when is now met in part - `docs/MODEL.md` and the data file both record
 the 4.84 L/min discrepancy against the stored 5.0, sourced to the book rather
 than to a report of it - so what is left for this item is the decision itself.
 
+## Recommendation, 2026-09-08: keep the fixed 5.0 and record why
+
+Offered so the deciding session does not re-derive it. **The decision is still
+the project owner's** and this item stays `needs-decision`; nothing below has
+been implemented.
+
+**1. Adopting would move the stored value away from the only primary
+measurement this file cites.** Cattermole et al. 2017 (PMID 28320891, already a
+`sources` entry here, read at full text 2026-09-06) measured a cardiac-output
+median of 5.51 L/min in the 50.0-74.9 kg band, n = 686. The stored 5.0 L/min is
+9.3% below that median; Lowe's 4.84 L/min is 12.2% below it. So the change
+being contemplated is one that makes the stored value *worse* against the
+reachable measurement, in exchange for agreement with a lineage that is
+tier 2 and cites its own numbers onward.
+
+**2. The 3/4 power is interspecies metabolic allometry, and cardiac output in
+humans is not conventionally scaled that way.** Lowe's method is built on
+metabolic rate - the whole square-root-of-time argument descends from oxygen
+consumption - and 3/4-power scaling of metabolic rate across species is
+standard. Within humans the clinical convention is body surface area, i.e.
+cardiac index in L/min/m2. The one within-human measurement of the exponent
+reachable from a session, Rowland et al. 2000 (PMID 10982700, Pediatr Cardiol
+2000;21(5):429-32, doi:10.1007/s002460010102 - retrieved from PubMed and read
+at abstract depth only, 2026-09-08), fitted maximal cardiac output against body
+mass at an exponent of **0.55**, not 0.75, and found the BSA ratio standard
+(exponent 1.0) appropriate. That is 24 premenarcheal girls at maximal exercise,
+so it does not settle resting adults and must not be cited as though it did -
+but it is evidence pointing away from 0.75 rather than toward it, and no
+reachable study supports 0.75 for cardiac output within humans.
+
+**3. The book is not established as the authority for the relation.** Page 59
+uses 2 kg^(3/4) in a worked example and cites nothing there; the derivation is
+in a chapter outside the pages supplied. So even the recorded-decision path
+would be adopting a relation whose provenance inside its own source is unread.
+
+**4. It is out of milestone**, as this brief already says.
+
+**So: take the cheap branch.** Record that the fixed 5.0 is kept, and why -
+that its cited lineage would give 4.84 L/min at 70 kg, and that the value is
+kept because the reachable human measurement sits above both and the 3/4 power
+is a cross-species law. The 4.84 discrepancy is already recorded in
+`docs/MODEL.md` and in the data file's Lowe and Ernst entry (`PL-7HDS`), so
+what is left is the "why it is kept" half, which is one paragraph in "Known
+limitations" plus a line on the `default_cardiac_output_l_min` provenance.
+
+**What that leaves open, and where it belongs.** `weight_kg` still has no
+consumer, which is the part of this item that is a real hazard rather than a
+provenance note. The recommendation is not to close that with Lowe's relation
+but at the weight-varying-physiology milestone, where a scaling rule can be
+chosen for humans on its own evidence - BSA-indexed cardiac output being the
+obvious candidate - rather than inherited from a closed-circuit dosing method.
+Until then the honest statement is the one the file already makes: the weight
+is a labelling convention that no equation reads.
+
