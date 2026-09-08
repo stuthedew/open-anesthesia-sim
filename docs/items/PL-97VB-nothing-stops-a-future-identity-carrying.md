@@ -1,14 +1,15 @@
 ---
 id: PL-97VB
 title: Nothing stops a future identity-carrying control being disabled, which is the general shape PL-61WW fixed one instance of
-status: done
 priority: P2
 effort: M
+status: done
 classes: infra
 feature: dev-tooling
 touches: tools/agent_identity_check.py, tests/unit/test_agent_identity_check.py, Makefile, docket.toml, docs/ARCHITECTURE.md, .github/workflows/quality.yml, .claude/rules/ui-color.md
 added: 2026-09-07
 closed: 2026-09-08
+pr: 463
 verify: uv run pytest tests/unit/test_contrast_check.py && python3 tools/agent_identity_check.py && grep -q 'def test_a_disabled_identity_control_without_the_paired_hide_is_reported' tests/unit/test_agent_identity_check.py
 ---
 

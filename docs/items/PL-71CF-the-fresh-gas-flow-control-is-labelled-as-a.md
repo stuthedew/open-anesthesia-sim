@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, docs/MODEL.md, tools/contrast_check.py
 added: 2026-09-07
 closed: 2026-09-08
+pr: 462
 verify: uv run pytest -q tests/unit/test_simulation_view.py && grep -q 'def test_the_fresh_gas_flow_control_names_the_common_gas_outlet' tests/unit/test_simulation_view.py
 ---
 

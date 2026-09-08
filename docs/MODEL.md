@@ -1411,46 +1411,82 @@ what is stored; cardiac output is there only as the sum of the flow column.
 Reference weight and alveolar ventilation are interface defaults the supplied
 chapters state no number for, and **the venous pool's 1.0 L is not in the table
 at all** — its `Blood` row reads 5.00 L. `PL-3YZW` carries that gap and
-`PL-7HDS` carries reading Lowe and Ernst, which is the link that decides
-whether this chain ends in a measurement or in another compilation. Neither is
-assumed here: a 1981 monograph nobody has opened is recorded as located and
-unread, which is the discipline the Mapleson entries were removed for failing.
+`PL-7HDS` carried reading Lowe and Ernst, the link that decides whether this
+chain ends in a measurement or in another compilation. It ends in neither, and
+the reading is the next four paragraphs.
 
-**Lowe and Ernst has since been read at one remove, and is still not opened.**
-On 2026-09-06 the project owner supplied two peer-reviewed papers that used the
-book — Lerou and Booij's system model (*Br J Anaesth* 2001;86:12–28) and Couto
-da Silva, Mapleson and Vickers' study of Lowe's method (*Br J Anaesth*
-1997;79:103–12) — both read here at full text. The initial is `HJ`; the
-Workbook's `HF` is a misprint. More usefully, the book supplies this material as
-**fractions of body mass and of cardiac output, with cardiac output itself
-allometric** — 0.2 times body mass to the three-quarter power, which is
-4.84 L/min at 70 kg rather than the 5.0 stored here. Lerou and Booij's Table 6
-prints eight such compartments, captioned as data given by Lowe and Ernst and
-cited to **page 57** of the book.
+**Lowe and Ernst has now been read at the source, and the chain does not end
+there.** On 2026-09-08 the project owner supplied pages 55–60 and 82–84 as an
+interlibrary-loan scan — the pages having been narrowed to 57 and 83 by two
+earlier readings at one remove, Lerou and Booij's system model (*Br J Anaesth*
+2001;86:12–28) and Couto da Silva, Mapleson and Vickers' study of Lowe's method
+(*Br J Anaesth* 1997;79:103–12), both supplied on 2026-09-06 and read here at
+full text. This repository does not hold the scan: it is publisher-copyright
+material and the repository is public. The initial is `HJ` — the scan's own
+record prints the author as Lowe, Harry J. — so the Workbook's `HF` is a
+misprint. Interlibrary loan is a third route, neither the one
+`.claude/rules/citing-sources.md` describes nor the personal access the
+Workbook arrived by, and `PL-XJ5P` still carries that gap.
 
-**Checked against that table, the Workbook's attribution holds for two of the
-seven values.** At 70 kg the kidney, heart, brain and liver rows sum to 6.02 kg
-at a flow fraction of 0.760, reproducing the stored vessel-rich pair; muscle
-(29.8 kg at 0.130) and adipose (10.5 kg at 0.050) do not reproduce the stored
-33.0 at 0.18 and 14.5 at 0.06, and no grouping of the eight compartments does.
-Alveolar volume is untouched, Lerou and Booij deriving their alveolar space
-rather than taking it from the book. That arithmetic is this project's, from a
-table read at second hand, and it convicts the Workbook of nothing — Gas Man may
-lump compartments differently, or read a different page. The data file carries
-the figures and the per-value detail.
+**Page 56 answers the tier question against the book, in one sentence.** Of
+figure 4.1b, the table the volumes and flows are printed in, it says: "The
+figure models a 100-kg patient with normal physiologic organ volumes and blood
+flows (9, 19, 20, 26)." The book collects those figures and cites them onward
+to four references, of which chapter 4's own narrative names three — Mapleson,
+Smith et al. and Zwart et al. The reference list is outside the pages supplied,
+so `PL-8SDL` (identify those four references) carries the next link. Lowe and
+Ernst is therefore **tier 2, a secondary synthesis**: the Workbook's upstream
+has an upstream, and the only provenance chain the reference patient has still
+ends in nobody's measurement. It could have gone the other way — the hierarchy
+above admits a lower tier on a recorded decision, and a book that had
+*measured* these volumes would have been adoptable without one.
 
-**Nothing is promoted by any of it, and the stake is narrower than the chain's
-length suggests.** A second-hand report of a book's table is not the book, so
-all seven stay tier 3 and unadopted. And the hierarchy above admits a lower
-tier only on a recorded decision, so opening the book changes what this
-document may claim **without one only if it turns out to have measured these
-volumes and flows rather than collected them**; a book that collected them
-could still be adopted on the record, the way Davis and Mapleson was. It could not be reached from a session
-container — the egress proxy refuses the Internet Archive, HathiTrust, Open
-Library and Google Books alike, and PubMed does not index monographs — so it
-still needs the project owner's institutional or library access, as the Workbook
-did; `PL-XJ5P` carries that gap. What changed is the size of the ask: page 57,
-with page 83 next.
+**The model patient is 100 kg, which is why the material reaches this project
+as fractions.** Page 56 picks that weight so that "the organ weights can also
+be read as per cent of total body weight", so Lerou and Booij's Table 6 of
+fractions is the book's own table divided by 100 rather than a normalization
+they performed, and nothing in the book states a 70 kg parameter set. Cardiac
+output is allometric, and that too is now read rather than reported: page 59
+gives the cardiac output for its worked prime dose as $`2M^{3/4}`$ dl/min, "or
+63.25 dl" for the 100 kg patient —
+0.2 times body mass to the three-quarter power in L/min, **4.84 L/min at
+70 kg** against the 5.0 stored here, which would need 73.1 kg. The book's own
+worked 63.25 dl is what fixes the exponent independently of reading a
+superscript off a scan. `PL-YKSM` (adopt weight-scaled cardiac output, or
+record why the fixed 5.0 stays) carries the discrepancy.
+
+**Checked against the book itself, the Workbook's attribution holds for three
+of the seven values and fails for four.** The vessel-rich pair reproduces
+exactly and *uniquely*: kidney, heart, brain and liver are 8.6% of body weight
+at 76% of cardiac output, which is 6.02 L at 70 kg against the stored 6.0 and
+0.76 against the stored 0.76 — and across all 1023 non-empty groupings of the
+book's ten compartments, at a tolerance of half a percentage point, no other
+grouping matches both. The same exhaustive search returns **zero** groupings
+for the stored muscle pair (33.0 L at 0.18, against the book's muscle row at
+29.8 L and 0.130) and zero for the stored fat pair (14.5 L at 0.06, against
+adipose at 10.5 L and 0.050). Alveolar volume is the third that holds, and it
+holds negatively: the book states no alveolar gas volume at all, lumping the
+circuit and the patient's FRC into a single ventilatory volume of "about
+100 dl", so the Workbook cannot have taken 2.5 L from it.
+
+**What survives for the other four is the split rather than the values.** The
+book's five non-vessel-rich compartments take 13 + 3 + 2 + 1 + 5 = 24% of
+cardiac output, and the stored muscle and fat fractions sum to exactly 0.24;
+their volumes do not follow, 83.6% of body weight being 58.5 L at 70 kg against
+the stored 47.5 L. So Gas Man appears to have kept the book's 76/24 flow split
+and redistributed the 24 across two compartments where the book has five, over
+a smaller tissue volume. That arithmetic is this project's and it convicts the
+Workbook of nothing — Gas Man may lump differently, or work from a page outside
+the range supplied. The data file carries the figures and the per-value detail.
+
+**Nothing is promoted or adopted by any of it.** All seven stay tier 3 and
+unadopted: reading where Gas Man's numbers came from is not evidence that they
+were measured. For the four that do not reproduce there is nothing here to
+adopt, and for the ones that do, adopting would mean naming as the authority a
+compilation whose own four sources are unread. What the reading buys is that
+the attribution has been checked against the document rather than against a
+report of it, and that the tier of the next link is now a known question
+instead of an assumption.
 
 **The venous pool now has a published counterpart, and it is not the stored
 1.0 L.** Davis and Mapleson (*Br J Anaesth* 1981;53:399–405), supplied by the
@@ -1671,7 +1707,10 @@ The reference patient weight identifies which patient the volumes and flows
 describe; no equation in this model consumes it (`PatientParameters.weight_kg`
 is loaded and range-validated, and read by nothing else). Compartment volumes
 and flows are the source's absolute values for a 70 kg adult, not quantities
-scaled from a weight, so changing the weight alone would not rescale them.
+scaled from a weight, so changing the weight alone would not rescale them. The
+litres are Gas Man's form rather than its upstream's: Lowe and Ernst, the book
+the Workbook names, prints the same material as per cent of a 100 kg body with
+cardiac output an allometric function of mass (`PL-YKSM`).
 
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
 and holds no independent state (see "Model boundary"). Tissue:blood
