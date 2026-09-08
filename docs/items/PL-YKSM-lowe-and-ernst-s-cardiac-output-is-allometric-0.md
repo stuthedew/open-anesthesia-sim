@@ -144,20 +144,23 @@ being contemplated is one that makes the stored value *worse* against the
 reachable measurement, in exchange for agreement with a lineage that is
 tier 2 and cites its own numbers onward.
 
-**2. The 3/4 power is interspecies metabolic allometry, and cardiac output in
-humans is not conventionally scaled that way.** Lowe's method is built on
-metabolic rate - the whole square-root-of-time argument descends from oxygen
-consumption - and 3/4-power scaling of metabolic rate across species is
-standard. Within humans the clinical convention is body surface area, i.e.
-cardiac index in L/min/m2. The one within-human measurement of the exponent
-reachable from a session, Rowland et al. 2000 (PMID 10982700, Pediatr Cardiol
-2000;21(5):429-32, doi:10.1007/s002460010102 - retrieved from PubMed and read
-at abstract depth only, 2026-09-08), fitted maximal cardiac output against body
-mass at an exponent of **0.55**, not 0.75, and found the BSA ratio standard
-(exponent 1.0) appropriate. That is 24 premenarcheal girls at maximal exercise,
-so it does not settle resting adults and must not be cited as though it did -
-but it is evidence pointing away from 0.75 rather than toward it, and no
-reachable study supports 0.75 for cardiac output within humans.
+**2. The within-adult evidence for a 0.75 exponent on cardiac output
+specifically is weaker than for clearance.** Haemodynamic convention is body
+surface area, i.e. cardiac index in L/min/m2. The one within-human fit of the
+exponent reachable from a session, Rowland et al. 2000 (PMID 10982700, Pediatr
+Cardiol 2000;21(5):429-32, doi:10.1007/s002460010102 - retrieved from PubMed
+and read at abstract depth only, 2026-09-08), fitted maximal cardiac output
+against body mass at an exponent of **0.55**, not 0.75, and found the BSA ratio
+standard (exponent 1.0) appropriate. That is 24 premenarcheal girls at maximal
+exercise, so it does not settle resting adults and must not be cited as though
+it did.
+
+**THIS PARAGRAPH READ DIFFERENTLY UNTIL LATER THE SAME DAY, AND WAS WRONG.** It
+said the 3/4 power is interspecies allometry that humans are not scaled by,
+which overstates the case against; section 4 of the analysis below is the
+correction, and within humans 3/4-power scaling is mainstream in anaesthetic
+pharmacokinetics. What survives is only the narrower claim above, about cardiac
+output rather than about clearance.
 
 **3. The book is not established as the authority for the relation.** Page 59
 uses 2 kg^(3/4) in a worked example and cites nothing there; the derivation is
@@ -183,3 +186,107 @@ obvious candidate - rather than inherited from a closed-circuit dosing method.
 Until then the honest statement is the one the file already makes: the weight
 is a labelling convention that no equation reads.
 
+## What the decision costs and buys, measured, 2026-09-08
+
+Written after the project owner asked for the trade-off explicitly. The
+recommendation above is unchanged; its second reason is corrected in place and
+a stronger one is added here.
+
+### 1. What adopting would change today: one number, and 3.32% everywhere
+
+Only one patient file exists (`reference_adult.json`), and `weight_kg` is read
+by nothing outside `core/parameters.py`. Cardiac output is also already a
+**live control** - `ControlKind.CARDIAC_OUTPUT`, settable at run time over 0.0
+to 10.0 L/min and preserved across a reset - so `default_cardiac_output_l_min`
+is the value that control *starts* at, not a constant the learner is held to.
+
+Adopting today therefore moves 5.0 to 4.8401 L/min and nothing else. Every time
+constant is proportional to $`1/Q`$, so all of them lengthen by exactly the
+same 3.32%. Measured 2026-09-08 against the shipped sevoflurane coefficients:
+
+| Quantity | at Q = 5.00 | at Q = 4.84 |
+| --- | ---: | ---: |
+| Vessel-rich time constant | 2.7 min | 2.8 min |
+| Muscle time constant | 135.4 min | 139.9 min |
+| Fat time constant | 2528.2 min | 2612.1 min |
+| Venous mixing $`V_v/Q`$ | 14.66 s | 15.15 s |
+
+Nothing qualitative moves: no curve changes shape, and no ordering changes.
+
+### 2. The strongest argument against is structural rather than evidential
+
+$`\tau_i = V_i \lambda_{i:b} / Q_i`$. This model stores compartment volumes as
+**fixed litres**, so under a weight-scaled cardiac output alone the volumes go
+as $`M^0`$ while the flows go as $`M^{0.75}`$, making
+$`\tau \propto M^{-0.75}`$. **A heavier patient would equilibrate faster** - at
+100 kg against 70 kg, 23.5% faster - which is backwards from the clinical
+observation every text teaches, that larger and fatter patients equilibrate
+more slowly.
+
+Lowe and Ernst's own scheme does not have this problem, because it scales
+both: volumes are fixed fractions of body mass ($`M^1`$) and cardiac output
+goes as $`M^{0.75}`$, giving $`\tau \propto M^{0.25}`$. Measured:
+
+| Scheme | Q, 100 kg vs 70 kg | Time constants | Direction |
+| --- | ---: | ---: | --- |
+| Fixed volumes, fixed Q (today) | x1.000 | x1.000 | weight does nothing |
+| Fixed volumes, $`Q \propto M^{0.75}`$ | x1.307 | x0.765 | **faster - wrong** |
+| $`V \propto M`$, $`Q \propto M^{0.75}`$ | x1.307 | x1.093 | slower - right |
+
+So the relation is **only safe as half of a package**: adopting the flow law on
+its own would be worse than either endpoint. That is a property of this model's
+structure rather than a judgment about the literature, and it is the reason to
+decline that survives whatever the sources turn out to say.
+
+### 3. What adopting would buy, stated at full strength
+
+- **It completes the lineage's own scheme.** The pairing above - volume
+  exponent 1, flow exponent 0.75 - is exactly what Lowe and Ernst use. Gas
+  Man's fixed litres beside a fixed 5.00 L/min is what broke the coherence,
+  not the book.
+- **`weight_kg` acquires a consumer.** A stored parameter a reader can change
+  with no effect is what `CLAUDE.md`'s safety-critical standard calls a
+  presentation failure in waiting, and this is the obvious consumer.
+- **The rule is needed anyway** for any patient other than the reference adult,
+  and choosing it late means choosing it under pressure.
+- **It is a teachable fact**: cardiac output rises with size but falls per
+  kilogram, which is the same shape as the metabolic-rate argument Lowe's whole
+  method rests on.
+
+### 4. The correction: 3/4-power scaling within humans is mainstream in anaesthetic PK
+
+The recommendation's second reason originally called the 3/4 power interspecies
+allometry that humans are not scaled by. That is wrong as written, and it
+excluded the strongest pro-adoption authority. Anderson and Holford,
+*Mechanism-based concepts of size and maturity in pharmacokinetics* (Annu Rev
+Pharmacol Toxicol 2008;48:303-32, PMID 17914927,
+doi:10.1146/annurev.pharmtox.48.113006.094708 - retrieved from PubMed and read
+at abstract depth only, 2026-09-08), state in terms: "Size is the primary
+covariate and can be referenced to a 70-kg person with allometry using a
+coefficient of 0.75 for clearance and 1 for volume." The first author writes
+from a department of anaesthesiology, and this is the standard basis for the
+paediatric anaesthetic pharmacokinetic models in routine use.
+
+The honest statement is therefore not that 0.75 is foreign to human modelling.
+It is that 0.75 is established for **clearance**, that Lowe applies it to
+cardiac output, that the reachable within-human fit for cardiac output
+specifically is lower, and that this model cannot take the flow half without
+the volume half.
+
+### 5. Provenance, which the pending interlibrary loan may move
+
+Page 59 uses 2 kg^(3/4) in a worked example and cites nothing there. A second
+loan request covering pages 17-21 was placed by the project owner on
+2026-09-08; if the derivation is there with a source of its own, the relation
+stops being an unattributed line inside a tier-2 compilation, which is a real
+input to this decision. Waiting for it costs nothing, because nothing consumes
+the value today.
+
+### So, concretely
+
+Keep 5.0 and record why. If the answer is instead to scale, **adopt both laws
+together or neither** - volumes proportional to body mass, or to fat-free mass
+which the obesity pharmacokinetic literature generally prefers over total
+weight, and cardiac output to its three-quarter power - at the weight-varying
+physiology milestone and with a validation target, rather than as a lone change
+to one stored default.
