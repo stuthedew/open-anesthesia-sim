@@ -1,8 +1,15 @@
 ---
 id: PL-18ND
 title: PL-YDKJ's block on PL-2FM6 rests on the point-movement rate being its main input, which the PL-YSZN measurement contradicts for the cost that now dominates
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: docs
+feature: teachable-case
+touches: docs/items/PL-YDKJ-decide-whether-the-chart-should-keep-patching.md
 added: 2026-09-08
+closed: 2026-09-08
+verify: python3 tools/doc_check.py check && grep -q 'Decided: option 1' docs/items/PL-YDKJ-decide-whether-the-chart-should-keep-patching.md
 ---
 
 **Problem.** PL-YDKJ's block on PL-2FM6 rests on the point-movement rate being its main input, which the PL-YSZN measurement contradicts for the cost that now dominates
@@ -50,3 +57,11 @@ every session that meets it.
 **First step.** Read `PL-YDKJ`'s block paragraph against `PL-YSZN`'s walk
 measurement, and either restate the reason in terms of the point count or drop
 the edge and return the item to `needs-decision`.
+
+**Resolved by the second of the two dispositions this item named** (project
+owner, 2026-09-08): the edge is dropped rather than the reason restated,
+because `PL-YDKJ` was decided outright. Option 1 is stable under `PL-2FM6` -
+what `PL-2FM6` changes is where the drawn points come from, not how many
+controls the chart holds, and the column budget still decides that - so there
+was no answer left for it to change. `PL-YDKJ` records the reasoning and the
+measurements.

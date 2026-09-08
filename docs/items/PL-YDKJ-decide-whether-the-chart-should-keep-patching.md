@@ -1,14 +1,15 @@
 ---
 id: PL-YDKJ
 title: Decide whether the chart should keep patching one control per plotted point
-status: blocked
-blocked-by: PL-2FM6
+status: done
 priority: P3
 effort: S
 classes: perf
 feature: teachable-case
-touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/simulation_view.py
+touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/simulation_view.py, ROADMAP.md
 added: 2026-09-04
+closed: 2026-09-08
+verify: python3 tools/doc_check.py check && grep -q 'the ceiling this budget sizes against' src/anesthesia_sim/app/chart_series.py
 ---
 
 **Problem.** `flet_charts.LineChartData.points` is a `list[LineChartDataPoint]`
@@ -99,3 +100,47 @@ them addresses the *transport* question above, which is this item's subject.
 
 **Done when.** One of the options above is chosen and recorded, with the
 reasoning, and either implemented or written into `ROADMAP.md` as intent.
+
+**Decided: option 1 — accept it** (project owner, 2026-09-08). The chart goes
+on patching one Flet control per plotted point. The ceiling is documented at
+the lever rather than engineered around, and `CHART_COLUMN_BUDGET_PER_SERIES`
+in `app/chart_series.py` is where it is written, because that is the number a
+future session sizing the chart will be holding.
+
+**What the two remaining options turned out to cost.** Both were measured on
+2026-09-08 at the owner's request; `docs/WORKING_NOTES.md` § "Measured and
+answered: a server-rendered chart is not the way out" carries the tables.
+
+- **Option 3, render server-side.** The transport is better than this brief
+  assumed - `flet_charts.MatplotlibChart` sends WebAgg frames over a dedicated
+  `ft.DataChannel`, skipping the msgpack encode *and* the control walk - and it
+  still loses. 44.4 ms a frame in the mode this chart is actually in, against
+  about 10 ms today. Its cheap variant needs blitting, blitting needs fixed
+  axes, and fixed axes means adopting option 4 as well; even then it is 9.6 ms
+  at 1x and 34.8 ms at 2x, which any HiDPI display is. It also pulls numpy,
+  against `docs/WORKING_NOTES.md` § "Decided: no numpy", and gives back
+  `PL-KP7H`'s paused hover.
+- **Option 4, a sweep display.** It buys *this* path nothing. `PL-YSZN`
+  measured `page.update()` on a chart where nothing had changed at the cost of
+  a full frame, linear in the point count and indifferent to how many moved. A
+  sweep is O(1) in operations sent - which was `PL-Q197`'s bottleneck, and is
+  what this brief's "domain-native and O(1)" was true of - and O(n) in the
+  walk, which is today's. It remains a live idea as a *reading* change, and it
+  is a prerequisite of option 3 rather than an alternative to it.
+
+**Why this could be decided while `PL-2FM6` is open**, having been moved to
+`blocked-by: PL-2FM6` by `PL-YXXG` two days earlier on the ground that
+"the point-movement rate is its main input, and this item changes it". The
+measurement says the movement rate is not an input to the cost that now
+dominates - it was the input while the *client* was the bottleneck. What
+`PL-2FM6` does change is where the drawn points come from, not how many
+controls the chart holds, and the column budget still decides that. So option
+1 is stable under it: the answer is the same before and after. The block is
+removed rather than satisfied, and `PL-18ND` is what carried that finding.
+
+**What would reopen this.** A scale the column budget cannot absorb - more
+traces, a second plot, a faster cadence - or `PL-2QMK` becoming the binding
+constraint, since a matplotlib figure rasterizes in any container and can be
+asserted on in an ordinary test where a Flet chart cannot. The second is a
+testability argument rather than a performance one and should be made on those
+terms.
