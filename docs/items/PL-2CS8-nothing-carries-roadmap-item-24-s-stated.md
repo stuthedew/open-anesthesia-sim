@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: presentation-safety
+milestone: v0.4.11
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tools/contrast_check.py, tools/agent_identity_check.py, tests/unit, docs/ARCHITECTURE.md, docs/MODEL.md, .claude/rules/ui-color.md
 added: 2026-09-08
 closed: 2026-09-08

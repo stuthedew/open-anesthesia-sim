@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: planning, docs
+milestone: v0.4.11
 touches: ROADMAP.md, docs/WORKING_NOTES.md
 added: 2026-09-08
 closed: 2026-09-08

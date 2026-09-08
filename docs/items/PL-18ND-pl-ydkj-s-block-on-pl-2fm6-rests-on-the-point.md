@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: teachable-case
+milestone: v0.4.11
 touches: docs/items/PL-YDKJ-decide-whether-the-chart-should-keep-patching.md
 added: 2026-09-08
 closed: 2026-09-08

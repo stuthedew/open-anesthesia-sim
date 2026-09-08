@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: provenance
+milestone: v0.4.11
 touches: docs/MODEL.md
 added: 2026-09-07
 closed: 2026-09-08

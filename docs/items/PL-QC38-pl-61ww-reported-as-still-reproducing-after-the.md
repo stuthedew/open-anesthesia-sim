@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 feature: presentation-safety
+milestone: v0.4.11
 touches: docs/items
 added: 2026-09-08
 closed: 2026-09-08
