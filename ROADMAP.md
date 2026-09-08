@@ -333,6 +333,7 @@ adds no capability and exists to clear the ground they are built on:
 | 4 | **Gate 1** | **Frozen 2026-09-06**, the day v0.5.0 was scoped, and recorded in that milestone's own section below rather than here. Contents were unknown by construction and are now the list: v0.4.0's findings, the queue's own defects, and the model-specification debt. Ships inside v0.5.0, not as its own release — except for the three items "The timeline" had already placed on the `v0.4.x` step, which that patch carries. | — |
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 132 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and eighteen items carry it. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
+| — | **v0.5.x — the interface pass** | Planned-milestone item 33, shipping as a patch in the `v0.5.x` track. A patch, not a milestone: § "Versioning decision" chooses the number for the capability boundary it crosses, and a learner can do nothing after a restyle they could not do before — so this **freezes no gate and takes no section of its own**, on the `v0.4.x` row's precedent above. **Placed here (project owner, 2026-09-08.)** After MVP because the owner's standing sequencing principle is that UI ambition follows scientific-core maturity, and ahead of v0.6.0 because the schematic is the largest new visual surface left and is a second consumer of the six compartment colours `app/simulation_view.py` still defines privately. Two alternatives were put and declined: after v0.6.0, on the argument that the schematic would teach the visual system what it needs; and after v0.7.0, on the argument that nitrous oxide changes what the readouts must show. **Its structural half is not part of this row** and lands ahead of v0.5.0 — `PL-2CS8` (consolidate the display constants), `PL-NGF7`'s decision (an explicit theme object, so Material stops supplying colours no tool can measure) and `PL-B9PY` (the decomposition, which is the component seam). Those are debt and reach the gate on their own class; only palette, type scale, spacing rhythm, density and layout are this row. | — |
 | 6 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
 | 7 | **v0.6.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
 | 8 | **Gate 3** | Frozen when v0.7.0 is scoped; ships inside it. | — |
@@ -2800,7 +2801,73 @@ once someone is ready to scope it.
     blocked on it and no check reports it, so it waits for a session offering to
     scope this milestone or for the owner to ask.
 
-None of items 1-32 mix scientific-core and UI/tooling concerns within a
+33. Run the interface pass: one deliberate visual design pass over the whole
+    interface — palette, type scale, spacing rhythm, density and layout — rather
+    than the per-defect corrections the queue has been making one at a time.
+    Requested by the project owner on 2026-09-08, who framed it as "a decent
+    size overhaul (theme, style, overall polish)" and as not urgent, wanted
+    after the simulator works rather than before.
+
+    *This resumes a shelved thread rather than opening a new one.*
+    `docs/WORKING_NOTES.md` § "Shelved: UI structure/form mockups" records a
+    mockup round explored and shelved on the owner's call, closing "Do not
+    resume this without the project owner asking again". That condition is now
+    met. The note's own reasoning — that a mature UI could not be designed on
+    the functionality then available — was written against v0.1.0 and is a
+    statement about that baseline rather than about today; the principle beside
+    it, that UI/UX ambition follows scientific-core maturity, is what places
+    this after MVP. The three artefacts from that round are explicitly not a
+    starting point, per the note.
+
+    *Placement (project owner, 2026-09-08).* Between v0.5.0 and v0.6.0, as the
+    `v0.5.x — the interface pass` row of "The timeline". A patch track rather
+    than a numbered milestone, for the reason that row gives.
+
+    *The structural half is not part of this item, and lands ahead of v0.5.0.*
+    Most of what an overhaul looks like from outside is not polish and is
+    already owed: `PL-2CS8` consolidates the display constants item 24 names as
+    its own prerequisite and "Development pathway" Phase 2 orders first;
+    `PL-NGF7` decides whether an explicit theme object replaces the Material
+    defaults that supply colours no tool in this repository can measure; and
+    `PL-B9PY` is the decomposition, which is also the component seam that makes
+    the six repeated panel recipes one. All three are debt and reach the gate on
+    their own class. What is left for this item is the part that is genuinely
+    taste.
+
+    *Two hard prerequisites, and they are the reason this cannot simply be
+    started.* Nothing in this repository draws the interface. `PL-7J96` records
+    two defects that shipped while every tree-level test passed — a required
+    label wrapping mid-phrase, four of seven readouts dropping to a second
+    baseline at some widths — both found only by screenshotting, and neither
+    reachable from the control tree the suite reads. `PL-2QMK` records that no
+    session in the web container can render Flet at all, the egress proxy
+    refusing the CanvasKit fetch. A visual pass is the one class of change that
+    suite structurally cannot see, so both land first.
+
+    *Three constraints on any palette, recorded here so scoping does not
+    rediscover them.* `tools/contrast_check.py` parses `app/theme.py` and
+    `app/simulation_view.py` with `ast`, holds every declared pair to WCAG 2.2
+    AA under four vision models, and fails the build on a renamed or undeclared
+    colour constant — so a restyle is also a `REQUIREMENTS` rewrite, in the same
+    change, per `.claude/rules/ui-color.md` judgment 1. The three ISO 5360:2016
+    Table 2 agent colours are fixed and not available to move (judgment 4); a
+    palette lives with them and keeps them legible on whatever surface it puts
+    behind them. And trace separation is carried by dash pattern rather than
+    colour: `PL-GVXP` measured the pairwise ceiling at about 1.48 once each of
+    six traces must also clear 3:1 against the panel, so re-picking the chart
+    palette cannot buy what it appears to, and a session attempting it is
+    solving a problem that has no solution in that channel.
+
+    *Out of scope, and deliberately.* Dark mode is a separate decision — it
+    doubles the declared contrast matrix and the ISO colours were chosen for a
+    light context — and belongs to scoping this milestone rather than to this
+    line. So does the publication-quality figure export
+    `docs/WORKING_NOTES.md` § "Long-term vision" describes: it implies its own
+    rendering path, separate from the Flet live chart, and is a capability
+    rather than a restyle.
+
+
+None of items 1-33 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
