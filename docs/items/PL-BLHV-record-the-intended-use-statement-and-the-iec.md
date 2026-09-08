@@ -68,8 +68,8 @@ displayed-precision constant, the ISO 5360 agent colours, and the decimation
 `docs/MODEL.md` requires to preserve extremes. It would also draw a second
 boundary across the one this project already has, which runs between the
 product and the workflow apparatus and puts `app/` on the product side. And
-the line does not sit still: `chart_downsampling.py` looks like chrome and is
-safety-relevant, `theme.py` looks like styling and carries agent
+the line does not sit still: `chart_series.py` looks like chrome and decides
+what a trace asserts about the run, `theme.py` looks like styling and carries agent
 identification, and the genuinely non-clinical residue is small enough to
 test anyway.
 

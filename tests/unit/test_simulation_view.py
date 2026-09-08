@@ -1858,9 +1858,9 @@ def _drawn_series(view: SimulationView) -> tuple[fch.LineChartData, ...]:
 def test_chart_payload_is_bounded_however_long_the_run(sample_count: int) -> None:
     """The render payload must not grow with the length of the run.
 
-    The budget is in columns and the points follow from it: M4 contributes
-    at most its four tuples per column, and two on the monotone stretches a
-    real run is mostly made of.
+    The budget is in grid columns and the points follow from it: the columns
+    inside the drawn range, its two ends, and one per control event in the
+    window.
     """
 
     view, _ = _build_view(history=_run_history(sample_count))
@@ -2795,10 +2795,10 @@ def test_refresh_allocates_no_chart_points_when_drawn_count_unchanged(
     way a wall-clock ceiling would.
 
     Stated as a conditional, because the unconditional form is false. The
-    drawn count is not fixed frame to frame even at a saturated window: M4
-    contributes up to four points per column and two on the monotone
-    stretches a real run is mostly made of, so a sliding window crosses
-    column boundaries where the total moves by a point or two per trace. A
+    drawn count is not fixed frame to frame even at a saturated window: the
+    grid is anchored to the run's start, so a sliding window admits a new
+    column whenever its edge crosses a multiple of the spacing, and the
+    total moves by a point per trace when it does. A
     frame that grows a trace *must* build the difference. What must never
     happen is building points for a trace whose drawn count is exactly what
     it already was - that is the per-sample rebuild returning by another

@@ -2738,9 +2738,9 @@ class SimulationView:
         The reading half, which is why this is not merely an optimization
         dressed as a feature. A trace at 300x advances a simulated minute
         between frames, so a value read under a moving cursor is stale
-        before it is read; and every drawn point is an M4 representative of
-        a bucket rather than a sample, which is a thing to study rather than
-        to glance at. Pausing is what a reader does to inspect, and it is
+        before it is read; and a drawn point is the run's state at that
+        instant, which is a thing to study rather than to glance at.
+        Pausing is what a reader does to inspect, and it is
         the state in which the number under the cursor still means what it
         said.
 

@@ -23,3 +23,11 @@ was reaching for.
 Kept rather than deleted so the framing is not re-raised: the next session to
 notice that `src/` uses syntax the floor cannot parse should read `PL-L17Q` and
 not re-open this one.
+
+**The example this item names has moved (`PL-8LXM`, 2026-09-08).**
+`app/chart_downsampling.py` is deleted, and with it the
+`def first_index_at_or_after[SampleT](` this brief cites. The constraint is
+unchanged and still live: `app/chart_series.py` declares
+`type PlottedSeries = tuple[fch.LineChartData, RecordedSeries]`, a PEP 695
+statement added in 3.12 and a `SyntaxError` to the 3.11 parser, so a tool that
+parses `src/` still needs an interpreter that understands it.

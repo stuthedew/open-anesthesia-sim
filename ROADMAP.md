@@ -1112,7 +1112,7 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
 - **The interface layer's two pure-module extractions** (queue item PL-WB0X,
   stages 1 and 2 only): the displayed-precision formatters into a Flet-free
   module of their own, and the chart-series shaping into a module beside
-  `app/chart_downsampling.py`. Both are behavior-unchanged and held to the
+  `app/chart_series.py`. Both are behavior-unchanged and held to the
   existing view tests; PL-WB0X's brief names the modules. Stage 1 lands before
   the MAC unit below: that item rewrites every formatter and extends
   `docs/MODEL.md`'s "Displayed precision" derivation, which today terminates in
@@ -1824,7 +1824,8 @@ the last eight are the feature itself.
   PL-2FM6). This is where `PL-011`'s dropped growth debt is actually paid:
   the controller holds a score and one keyframe per control event instead of
   every sample ever recorded.
-- **The M4 decimation path is deleted with it** (queue item PL-8LXM),
+- **The M4 decimation path is deleted with it** (queue item PL-8LXM, moved
+  with `PL-2FM6` into the `v0.4.x` track on 2026-09-08 and shipped there),
   including its tests, the cited paper and every reference to them. A sampler
   answering a window in closed form has nothing to decimate.
 - **A path-scoped rule against re-introducing a sample store** (queue item

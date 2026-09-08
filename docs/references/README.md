@@ -16,8 +16,12 @@ licence permits that. Check a new file's licence before adding it; there is no
 directory-wide policy to inherit, and "the repository is private" is no longer
 available as the thing that makes personal use lawful.
 
-The M4 paper meets that bar: VLDB publishes it under Creative Commons
-Attribution-NonCommercial-NoDerivs 3.0, stated on the paper's own first page.
+**This directory currently holds no full texts**, only the records below.
+The one it did hold - VLDB's M4 aggregation paper, redistributable under
+CC BY-NC-ND 3.0 - was removed with the code that cited it (`PL-8LXM`,
+2026-09-08): this directory holds papers the code is founded on, and a paper
+nothing founds is a question a reader has to answer (project owner,
+2026-09-05).
 
 **Two publisher-copyright full texts were removed on 2026-09-06**, by the
 `git filter-repo` pass and force-push this section used to name as a
@@ -80,44 +84,3 @@ sourcing when either is promoted into a scoped milestone, and not a source that
 has been read and checked yet. A chapter in an edited volume is cited as that
 chapter with its own authors, never as the volume.
 
-### Jugel et al. 2014 — M4 time series aggregation
-
-`jugel-2014-m4-visualization-oriented-time-series-aggregation.pdf`
-
-> Jugel U, Jerzak Z, Hackenbroich G, Markl V. M4: A Visualization-Oriented
-> Time Series Data Aggregation. *Proceedings of the VLDB Endowment*.
-> 2014;7(10):797–808. ISSN 2150-8097.
-
-Every field above is taken from the paper's own title page and running
-footer, which is all this entry asserts. **No DOI is recorded, deliberately.**
-Unlike the Baker & Farmery entry, whose metadata was confirmed against PubMed,
-nothing here could be checked against a registry: `www.vldb.org` and `doi.org`
-are both blocked by the session egress proxy, and the PDF prints no DOI of its
-own — only the ISSN and the copyright line. A remembered DOI written down
-becomes a fact by tomorrow, so it was left out. A session that can reach a
-registry should confirm the record and add one.
-
-Licensed by the publisher under
-[CC BY-NC-ND 3.0](http://creativecommons.org/licenses/by-nc-nd/3.0/), per the
-statement on its first page — the one full text this public repository may
-carry, and now the only one it does.
-
-Supplied by the project owner, 2026-09-04, after `www.vldb.org` proved
-unreachable from a session. It is the authority for what the chart may claim
-when it cannot draw every recorded sample, and `PL-D9WD` (build an M4
-aggregate cache on a fixed dyadic grid) is written against it rather than
-against a summary of it.
-
-Three parts carry that weight. Definition 2 fixes what M4 selects per group —
-the tuples at `min(v)`, `max(v)`, `min(t)` and `max(t)`. Theorem 1 proves
-`vis_wh(G_M4(T)) = vis_wh(T)`, that a two-colour line visualization of the
-reduced series equals that of the full one. And §6 states the condition that
-guarantee depends on: exactness holds at `nh = k·w` for integer `k`, so the
-bucket count must be an integer multiple of the pixel-column count and not
-merely finer than it — which is the sentence to reread before anyone claims
-this simulator's chart is provably exact, because its grid is anchored to
-absolute sample index instead and therefore is not.
-
-§4.3's error taxonomy for min/max-only aggregation matters for the same
-reason: E1 and E2 are driven by gaps in the time distribution, and this
-simulator samples at a fixed step with no gaps, so only E3 can occur here.

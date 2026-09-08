@@ -175,10 +175,19 @@ scales*: 380 times the points costs four times the frame, because data crosses
 as arrays rather than as one control object per point. Flet's cost is linear in
 controls present; Qt's is not a function of them at all.
 
-**It would make decimation optional.** 648 000 points in 1.96 ms means a
-three-hour case could draw every recorded sample. `app/chart_downsampling.py`,
-M4, `CHART_COLUMN_BUDGET_PER_SERIES`, this item's own accepted ceiling and
-`PL-8LXM` are all machinery for a constraint that would stop existing.
+**It would raise the column ceiling.** 648 000 points in 1.96 ms means a
+three-hour case could be drawn at a far finer resolution than the current
+one. `CHART_COLUMN_BUDGET_PER_SERIES` and this item's own accepted ceiling
+are machinery for a constraint that would slacken.
+
+**Rewritten 2026-09-08 (`PL-8LXM`).** This paragraph read "it would make
+decimation optional" and named `app/chart_downsampling.py`, M4 and `PL-8LXM`
+as machinery that would stop existing. There is no decimation to make
+optional: `PL-2FM6` deleted the sample store, and the chart evaluates the
+run's score at the instants it plots. The argument survives as a statement
+about how *many* columns are affordable, which is what the measurement
+actually supports; it no longer bears on whether a selection rule is needed,
+because there is no selection.
 
 ### What this measurement is not
 

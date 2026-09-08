@@ -99,3 +99,11 @@ later sweep. The floor section's `bin/docket check` comment still read "unlike
 the `checks` job above", which described the job `PL-D551` deleted; and that
 suite's docstring still counted "that job's two commands" where the section now
 runs four.
+
+**The example this item names has moved (`PL-8LXM`, 2026-09-08).**
+`app/chart_downsampling.py` is deleted, and with it the
+`def first_index_at_or_after[SampleT](` this brief cites. The constraint is
+unchanged and still live: `app/chart_series.py` declares
+`type PlottedSeries = tuple[fch.LineChartData, RecordedSeries]`, a PEP 695
+statement added in 3.12 and a `SyntaxError` to the 3.11 parser, so a tool that
+parses `src/` still needs an interpreter that understands it.

@@ -3,8 +3,8 @@ id: PL-8LXM
 title: Delete chart_downsampling.py, its tests, the M4 paper and every citation of them
 priority: P2
 effort: M
-status: blocked
-blocked-by: PL-2FM6
+status: done
+closed: 2026-09-08
 classes: refactor, docs
 feature: numerical-domain
 touches: src/anesthesia_sim/app/chart_downsampling.py, tests/unit/test_chart_downsampling.py, docs/references, docs/MODEL.md, ROADMAP.md, docs/WORKING_NOTES.md, docs/items
@@ -70,3 +70,35 @@ that pointer where a session will meet it.
 `make check` is green with no dangling citation; `PL-5CGK` is closed against
 this item; and this item records the commit the implementation is recoverable
 from.
+
+**Closed 2026-09-08.** `app/chart_downsampling.py`, its test, the PDF and its
+`docs/references/README.md` entry are gone; `make check` is green with no
+dangling citation, which is the check that made the sweep the item rather
+than a footnote to it.
+
+**The implementation is recoverable from `d433940`**, the last commit that
+carried the module, and the citation it was founded on is preserved above in
+full so the paper stays re-findable without staying on disk.
+
+**Where the sweep went beyond the file.** `docs/MODEL.md`'s chart section
+stated the drawn set as M4 over recorded samples and now states the two rules
+that place an evaluated column; `docs/ARCHITECTURE.md`'s package map, its
+render-path paragraph and its PEP 695 example; `docs/WORKING_NOTES.md`'s
+rendering-bound note; `ROADMAP.md`'s v0.5.0 Required scope and one stale
+module reference; and the tooltip docstring in `app/simulation_view.py`,
+which told a reader that a drawn point was "an M4 representative of a bucket
+rather than a sample" - the one remaining place the interface described its
+own trace in the retired algorithm's terms.
+
+**Two things the sweep turned up that the brief did not name.** The PEP 695
+example three open tooling items rest on (`PL-L17Q`, `PL-Y0RZ`, `PL-JRV5`)
+was this module's `def first_index_at_or_after[SampleT](`; each is annotated
+with the surviving example, `app/chart_series.py`'s `type PlottedSeries`
+statement, so the constraint they argue from is still checkable. And
+`PL-QXSB`'s "it would make decimation optional" paragraph argued from
+machinery that no longer exists; it is rewritten as the claim the measurement
+actually supports, about how many columns are affordable.
+
+**Closed items citing the module are left as written.** A brief is the
+reasoning at the time it was written, and rewriting a closed one to match a
+tree it predates would falsify the record rather than repair it.

@@ -58,7 +58,6 @@ src/anesthesia_sim/
 │   ├── formatting.py               # modeled value -> displayed string; Flet-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; Flet-independent
 │   ├── chart_series.py             # builds and redraws the chart's traces, references and control marks
-│   ├── chart_downsampling.py       # chooses which samples a trace draws; Flet-independent
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; Flet-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; Flet-independent
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; Flet-independent
@@ -252,12 +251,15 @@ failure — they are started once, at mount, so a loop that exited could
 never be restarted.
 
 Drawing that full record every frame is what made the render payload grow
-with run length, so the view draws a bounded subset instead: which samples a
-trace draws is decided by `app/chart_downsampling.py`, a Flet-independent
-module kept separate because choosing a subset is a
-presentation-correctness concern (a subset that drops a transient shows a
-curve the simulation never produced) and therefore needs to be tested on its
-own. Bounding how many points are drawn is only half of it: the client is
+with run length. The run no longer keeps a record to draw: `core/run_score.py`
+answers the state at any instant in closed form, so the view asks the
+controller for the states at the instants it is about to plot
+(`SimulationController.drawn_window`) and there is nothing to subset. Which
+instants those are is a presentation-correctness concern — a chart that
+stepped over a control change would show a curve the simulation never
+produced — so the rules that place them are stated in `docs/MODEL.md` § "What
+the chart draws" and tested on their own. Bounding how many points are drawn
+is only half of it: the client is
 patched per point, so what a frame costs is how many drawn points *changed*
 which sample they show. The selection is therefore anchored to absolute
 sample index rather than to position within the window, so appending a
@@ -605,9 +607,9 @@ Two of them are nonetheless *invoked* under `uv run python`, and the
 distinction is worth keeping straight, because it is about what a tool reads
 rather than what it needs. `ignore_check.py` shells out to mypy, so it wants
 the virtualenv that gate runs in. `import_boundary_check.py` parses
-`src/anesthesia_sim/`, and that source targets 3.14: `app/chart_downsampling.py`
-opens `def first_index_at_or_after[SampleT](`, PEP 695 syntax that is a
-`SyntaxError` to the 3.11 parser, and `ast.parse`'s `feature_version` only
+`src/anesthesia_sim/`, and that source targets 3.14: `app/chart_series.py`
+declares `type PlottedSeries = ...`, a PEP 695 statement added in 3.12 and so
+a `SyntaxError` to the 3.11 parser, and `ast.parse`'s `feature_version` only
 narrows the syntax it accepts rather than extending it. A tool that parses
 repository source can only run under an interpreter that understands that
 source. Both still meet the promise above, which is what the portability suite

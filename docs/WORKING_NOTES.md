@@ -82,9 +82,9 @@ appropriate, and its entry here should be deleted rather than left stale.
   `mount()`'s layout composition remains uncovered and has no formatting or
   domain logic to verify.
 - Rendering is bounded and independent of run length: the chart is sent
-  only the samples inside its visible window, reduced to at most
-  `CHART_COLUMN_BUDGET_PER_SERIES` columns per trace (`app/chart_series.py`)
-  by M4 (`app/chart_downsampling.py`), and the loops run at
+  only the states at the instants it plots, at most
+  `CHART_COLUMN_BUDGET_PER_SERIES` grid columns per trace plus the control
+  events among them (`app/chart_series.py`), and the loops run at
   separate cadences. **Closed by PL-010, 2026-09-02.** What that left
   standing for another release was the *read* rather than the draw: the
   snapshot still copied every recorded sample on every frame, so the frame
