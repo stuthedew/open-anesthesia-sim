@@ -7,9 +7,10 @@ status: done
 classes: infra
 feature: dev-tooling
 touches: ROADMAP.md
-verify: python3 tools/doc_check.py check && grep -qF 'PL-HX5C (S) Both in-flight guards passed' ROADMAP.md
 added: 2026-09-08
 closed: 2026-09-08
+pr: 480
+verify: python3 tools/doc_check.py check && grep -qF 'PL-HX5C (S) Both in-flight guards passed' ROADMAP.md
 ---
 
 **Problem.** main is red: PL-HX5C was merged in #477 with no gate disposition, because #476 added the presence check on a base #477's CI never saw
