@@ -6,17 +6,14 @@ values of its own: every unspecified setting comes from the core, which
 builds it from the versioned data files.
 """
 
-from array import array
-from bisect import bisect_right
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from math import isfinite
 from types import MappingProxyType
-from typing import Final, Self
+from typing import Final
 
-from anesthesia_sim.app.chart_downsampling import M4AggregateCache, first_index_at_or_after
-from anesthesia_sim.app.wash_in import is_wash_in, wash_in_ratio
+from anesthesia_sim.app.wash_in import wash_in_ratio
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -29,7 +26,7 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
 )
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
-from anesthesia_sim.core.run_score import DisplayState, RunScore, SampledWindow, ScoreSegment
+from anesthesia_sim.core.run_score import DisplayState, RunScore, ScoreSegment
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -114,15 +111,6 @@ class ControlChange:
 
     elapsed_s: float
     """Simulated time the change took effect, in seconds."""
-    sample_index: int
-    """Index into the run's recorded history the change took effect at.
-
-    The change applies to every step computed *after* this sample, so this
-    is the last sample recorded under the previous value. It is stored
-    rather than derived from `elapsed_s` because the two must not be able
-    to disagree: a mark placed on the chart from a recomputed index would
-    drift from the sample the model actually changed at.
-    """
     adjustment: int
     """Which user adjustment this change belongs to. See the class docstring."""
     control: ControlInput
@@ -133,22 +121,20 @@ class ControlChange:
 
 
 class RecordedQuantity(StrEnum):
-    """One quantity a run records for every sample, under a stable identifier.
+    """One quantity the interface draws, under a stable identifier.
 
-    A run keeps its samples *by quantity* rather than by instant, and this
-    is the key into that. Members are named for the compartment or the
-    quantity rather than for whichever field or accessor currently spells
-    it, for the reason `ControlInput`'s are: `PL-9SH6` and `PL-3TLK` rename
-    two of the fields these read from, and a key that had followed the code
-    would have to be renamed with them while meaning the same thing
-    throughout.
+    What a chart trace is bound to, and the key a drawn window is read by.
+    Members are named for the compartment or the quantity rather than for
+    whichever field or accessor currently spells it, for the reason
+    `ControlInput`'s are: `PL-9SH6` and `PL-3TLK` rename two of the fields
+    these read from, and a key that had followed the code would have to be
+    renamed with them while meaning the same thing throughout.
 
-    `WASH_IN_RATIO` is the one derived member. It is not a compartment
-    state but the quotient `app/wash_in.py` specifies, recorded alongside
-    the states it is formed from so that the plot drawing it is summarized
-    the same way every other trace is, and so that the stretches where it
-    is undefined are recorded as undefined once rather than reconstructed
-    on every frame.
+    `WASH_IN_RATIO` is the one derived member. It is not a compartment state
+    but the quotient `app/wash_in.py` specifies, named here so that the plot
+    drawing it is addressed the same way every other trace is - and it is
+    deliberately absent from `COMPARTMENT_STATE_INDEX`, which is what keeps
+    it from being read as a state the equations carry.
     """
 
     CIRCUIT = "circuit"
@@ -160,15 +146,14 @@ class RecordedQuantity(StrEnum):
     WASH_IN_RATIO = "wash_in_ratio"
 
 
-#: The quantities every recorded sample carries for each substance, in the
-#: order the interface lists its compartments.
+#: The compartment quantities the interface draws for each substance, in the
+#: order it lists them.
 #:
 #: Every `RecordedQuantity` except `WASH_IN_RATIO`, which is not a compartment
-#: state: it is the quotient `RunHistory` forms from two of these as the sample
-#: arrives, so a sample supplying one would present a derived value as a
-#: recorded one. Written out rather than filtered from the enum, so that adding
-#: a member forces a decision here instead of silently joining what a caller
-#: must supply.
+#: state: it is the quotient `app/wash_in.py` forms from two of these, so
+#: including it here would present a derived value as one the equations carry.
+#: Written out rather than filtered from the enum, so that adding a member
+#: forces a decision here instead of silently joining the compartments.
 COMPARTMENT_QUANTITIES: Final = (
     RecordedQuantity.CIRCUIT,
     RecordedQuantity.ALVEOLAR,
@@ -214,7 +199,7 @@ COMPARTMENT_STATE_INDEX: Final[Mapping[RecordedQuantity, int]] = MappingProxyTyp
 class RecordedSeries:
     """One recorded trace: one substance's values for one quantity.
 
-    The address of a series inside `RunHistory`, and what a chart trace is
+    The address of one trace in a drawn window, and what a chart trace is
     bound to. One value rather than two loose arguments, because the binding
     is a presentation-correctness property rather than a lookup convenience:
     a trace drawn from another substance's values misstates the run exactly
@@ -234,433 +219,6 @@ class RecordedSeries:
 
     quantity: RecordedQuantity
     """Which of that substance's quantities. See `RecordedQuantity`."""
-
-
-@dataclass(frozen=True, slots=True)
-class SimulationHistorySample:
-    """Read-only concentrations recorded at one simulation time, by substance.
-
-    **Keyed by substance rather than by six flat named floats** (`PL-W3DD`).
-    Every compartment state a run records belongs to some substance, and a
-    record naming six of them flatly can hold exactly one: adding nitrous
-    oxide to that shape would mean six more fields, six more places for a
-    value to be paired with the wrong compartment, and a rewrite of whatever
-    had been written against the flat form. Here a second substance is one
-    more entry and no new name at all. The reshaping is done now, before the
-    forking work of a later milestone writes its element-wise reproducibility
-    proof against this record, so that the proof is written once against the
-    shape it keeps.
-
-    Its compartment keys are `RecordedQuantity`'s stable identifiers rather
-    than field names, which is what keeps the record's shape independent of
-    the naming pass v0.4.1 runs over the code that fills it.
-
-    This record is the *row* form of a run. `RunHistory` stores by series
-    instead, and rebuilds a row through `RunHistory.sample` where one is
-    wanted; nothing on the render path builds one.
-
-    Attributes:
-        elapsed_s: Simulated time this sample was recorded at, in seconds.
-            Flat because it belongs to the instant rather than to any one
-            substance: two substances recorded together share it, and a
-            per-substance time would let them disagree.
-        substances: One entry per substance the run records, each holding
-            exactly `COMPARTMENT_QUANTITIES` as fractions of one atmosphere.
-            Both levels are wrapped read-only at construction, so a caller
-            holding a sample cannot have its values changed underneath it.
-
-    Raises:
-        ValueError: If no substance is given, or a substance's entry does
-            not carry exactly `COMPARTMENT_QUANTITIES`. Checked here rather
-            than left to the reader: a missing compartment would otherwise
-            surface as a `KeyError` with the run already half-recorded, and
-            an unrecognised key would be dropped without a word.
-    """
-
-    elapsed_s: float
-    substances: Mapping[str, Mapping[RecordedQuantity, float]]
-
-    def __post_init__(self) -> None:
-        if not self.substances:
-            raise ValueError("a recorded sample must carry at least one substance")
-
-        expected = frozenset(COMPARTMENT_QUANTITIES)
-        recorded: dict[str, Mapping[RecordedQuantity, float]] = {}
-
-        for substance_id, values in self.substances.items():
-            if frozenset(values) != expected:
-                raise ValueError(
-                    f"substance {substance_id!r} must record exactly "
-                    f"{sorted(expected)}, not {sorted(values)}"
-                )
-
-            recorded[substance_id] = MappingProxyType(dict(values))
-
-        object.__setattr__(self, "substances", MappingProxyType(recorded))
-
-
-class RunHistory:
-    """Every sample a run has recorded, kept by series and summarized as it grows.
-
-    The chart's read side. A run's history grows for as long as the
-    simulation advances, while a chart draws a bounded window of it at a
-    few hundred columns, so what this class exists to make cheap is
-    answering *which samples does this window draw* without touching the
-    samples it does not.
-
-    **Stored by series, not by instant.** Every recorded sample used to
-    be one `SimulationHistorySample`, which is the right shape for the one
-    row a readout formats and the wrong one for a trace: drawing six traces
-    meant walking the whole visible window six times to pull one field out
-    of each row. Here each `RecordedSeries` - one substance's values for one
-    quantity - is its own `chart_downsampling.M4AggregateCache`, which holds
-    the values *and* the dyadic ladder of M4 aggregates over them, so a
-    window is read as a few hundred cached aggregates whatever its width.
-    `sample()` rebuilds a row where one is wanted.
-
-    **Its substances are fixed when it is built** (`PL-W3DD`). A series
-    that began part-way through a run would be shorter than the ones beside
-    it while sharing their time axis, so every one of its values would be
-    drawn at another sample's instant - a whole trace displaced, from data
-    that is individually correct. `record` refuses a sample carrying any
-    other set for that reason. One substance is recorded today, the agent
-    the controller is running; a second is an entry rather than a change of
-    shape.
-
-    **Append-only, and that is load-bearing.** A completed aggregate is
-    final, and every read is bounded by an explicit stop index, so a window
-    handed out here cannot change underneath the caller as the run
-    advances. That is what removes the copy the window used to make: the
-    hazard it guarded against - one trace drawn half from one instant and
-    half from the next - is closed by the structure instead
-    (`chart_downsampling.M4AggregateCache`).
-
-    The wash-in stretches are maintained here for the same reason the
-    aggregates are. Which samples lie inside `app/wash_in.py`'s domain is a
-    property of the run rather than of the frame, so it is decided once as
-    each sample arrives; recomputing it per frame was a second pass over
-    the whole visible window.
-    """
-
-    __slots__ = ("_elapsed_s", "_series", "_substances", "_wash_in_starts", "_wash_in_stops")
-
-    def __init__(self, substances: Sequence[str]) -> None:
-        """Build an empty history for the substances a run will record.
-
-        Args:
-            substances: Every substance this run records, in the order the
-                run declares them. Fixed for the life of the history; see
-                the class docstring for why.
-
-        Raises:
-            ValueError: If no substance is given, or one is named twice.
-                A duplicate would collapse two series into one and record
-                each sample's value over the other's.
-        """
-
-        if not substances:
-            raise ValueError("a run must record at least one substance")
-
-        if len(set(substances)) != len(substances):
-            raise ValueError(f"a substance may be recorded once only, got {list(substances)}")
-
-        self._substances = tuple(substances)
-        self._elapsed_s = array("d")
-        self._series = {
-            substance_id: {quantity: M4AggregateCache() for quantity in RecordedQuantity}
-            for substance_id in self._substances
-        }
-        # Maximal stretches of consecutive samples inside the wash-in
-        # domain, per substance, as parallel start and stop lists so the
-        # newest stretch can be extended in place. Both are ascending, which
-        # is what lets `wash_in_stretches` find a window's own by binary
-        # search. Per substance because the quotient is: F_A/F_I is formed
-        # from one substance's own two fractions, so where it is defined is
-        # a property of that substance's trace and not of the run.
-        self._wash_in_starts: dict[str, list[int]] = {
-            substance_id: [] for substance_id in self._substances
-        }
-        self._wash_in_stops: dict[str, list[int]] = {
-            substance_id: [] for substance_id in self._substances
-        }
-
-    @classmethod
-    def of(cls, samples: Iterable[SimulationHistorySample]) -> Self:
-        """Build a history holding a run that has already been recorded.
-
-        For a test or a caller replaying a stored run. A live run is built
-        by `record` as it advances, which is the path that has to stay
-        cheap.
-
-        The run's substances are the first sample's, and `record` holds
-        every later sample to them.
-
-        Raises:
-            ValueError: If `samples` is empty. A history's substances
-                cannot be read from a run with no samples in it, and
-                inventing an empty set would build a history that refuses
-                the first sample recorded into it. Build one directly with
-                `RunHistory(substances)` instead.
-        """
-
-        recorded = iter(samples)
-        first = next(recorded, None)
-
-        if first is None:
-            raise ValueError("cannot read a run's substances from no samples")
-
-        history = cls(tuple(first.substances))
-        history.record(first)
-
-        for sample in recorded:
-            history.record(sample)
-
-        return history
-
-    @property
-    def substances(self) -> tuple[str, ...]:
-        """Every substance this run records, in the order it declares them."""
-
-        return self._substances
-
-    def __len__(self) -> int:
-        """How many samples the run has recorded."""
-
-        return len(self._elapsed_s)
-
-    def record(self, sample: SimulationHistorySample) -> None:
-        """Add one recorded sample, and everything derived from it.
-
-        The single place a sample enters the run. Which value lands in which
-        series is not decided here and cannot be got wrong here: the sample
-        names every value by the substance and the compartment it belongs
-        to, so the two pairings a misdrawn trace could come from - one
-        compartment's values on another's line, one substance's on
-        another's - are both made where the sample is built, in
-        `SimulationController._build_history_sample`, one line per
-        compartment. `tests/integration/test_controller.py`'s
-        `test_each_recorded_quantity_carries_the_compartment_it_names`
-        audits that pairing against the core's own state, and
-        `tests/unit/test_run_history.py` holds this rearrangement lossless.
-
-        Args:
-            sample: The concentrations recorded at one simulation time.
-                Its time must not precede the previous sample's.
-
-        Raises:
-            ValueError: If the sample does not carry exactly this run's
-                substances. Recording it would leave the series it did
-                carry longer than the ones it did not, so every later value
-                of the short ones would be read at another sample's instant.
-        """
-
-        if frozenset(sample.substances) != frozenset(self._series):
-            raise ValueError(
-                f"this run records {sorted(self._series)}, "
-                f"but the sample carries {sorted(sample.substances)}"
-            )
-
-        index = len(self._elapsed_s)
-        self._elapsed_s.append(sample.elapsed_s)
-
-        for substance_id, series in self._series.items():
-            values = sample.substances[substance_id]
-
-            for quantity in COMPARTMENT_QUANTITIES:
-                series[quantity].record(values[quantity])
-
-            ratio = wash_in_ratio(
-                values[RecordedQuantity.ALVEOLAR], values[RecordedQuantity.CIRCUIT]
-            )
-            wash_in = series[RecordedQuantity.WASH_IN_RATIO]
-
-            if ratio is None:
-                # Rule 1 of `app/wash_in.py`: no agent in the circuit yet, so
-                # the quotient has no value the interface may show. Recorded as
-                # undefined rather than as a substituted zero, which is what
-                # keeps the trace broken there instead of drawing a line the
-                # run never produced.
-                wash_in.record_undefined()
-            else:
-                wash_in.record(ratio)
-
-            self._extend_wash_in_stretches(substance_id, index, ratio)
-
-    def elapsed_s(self, index: int) -> float:
-        """Simulated time of one recorded sample, in seconds."""
-
-        return self._elapsed_s[index]
-
-    def times_s(self) -> Sequence[float]:
-        """Every recorded sample time, ascending. Read-only to callers."""
-
-        return self._elapsed_s
-
-    def aggregates(self, series: RecordedSeries) -> M4AggregateCache:
-        """The values and M4 aggregates of one series over the whole run.
-
-        Raises:
-            KeyError: If this run records no such series, which means the
-                caller is drawing a substance the run does not hold rather
-                than that it asked wrongly. Failing is the point: the
-                alternative is a trace silently drawn from whichever
-                substance the run happened to have.
-        """
-
-        return self._series[series.substance_id][series.quantity]
-
-    def sample(self, index: int) -> SimulationHistorySample:
-        """Rebuild one recorded sample as a row.
-
-        The inverse of `record`, and deliberately not the shape anything on
-        the render path uses: a trace wants one series over many samples,
-        which `aggregates` answers without building a row at all.
-        """
-
-        return SimulationHistorySample(
-            elapsed_s=self._elapsed_s[index],
-            substances={
-                substance_id: {
-                    quantity: series[quantity].value(index) for quantity in COMPARTMENT_QUANTITIES
-                }
-                for substance_id, series in self._series.items()
-            },
-        )
-
-    def value(self, series: RecordedSeries, index: int) -> float:
-        """One series' recorded value at one sample."""
-
-        return self.aggregates(series).value(index)
-
-    def wash_in_stretches(self, substance_id: str, start: int, stop: int) -> list[tuple[int, int]]:
-        """One substance's wash-in stretches, clipped to `[start, stop)`.
-
-        A stretch is a run of consecutive samples whose F_A/F_I quotient is
-        inside the domain `app/wash_in.py` states. The chart draws one line
-        per stretch rather than one line through every in-domain sample,
-        because a single polyline would join across the samples it skipped
-        and draw values the run never produced.
-
-        Found by binary search over the stretches recorded so far, so the
-        cost is a property of how many stretches the window contains rather
-        than of how many samples it spans.
-
-        Args:
-            substance_id: Whose quotient. The domain is a property of one
-                substance's own two fractions, so two substances recorded
-                together enter and leave it at different samples.
-            start: First position of the window, absolute within the run.
-            stop: One past the window's last position.
-
-        Returns:
-            One `(start, stop)` pair per stretch the window overlaps,
-            oldest first, each already clipped to the window.
-
-        Raises:
-            KeyError: If this run does not record that substance.
-        """
-
-        starts = self._wash_in_starts[substance_id]
-        stops = self._wash_in_stops[substance_id]
-        stretches: list[tuple[int, int]] = []
-
-        for position in range(bisect_right(stops, start), len(starts)):
-            stretch_start = starts[position]
-
-            if stretch_start >= stop:
-                break
-
-            stretches.append((max(stretch_start, start), min(stops[position], stop)))
-
-        return stretches
-
-    def window_from(self, start_s: float) -> HistoryWindow:
-        """The window of this run at or after `start_s`.
-
-        Located by binary search, so finding the window costs the same on a
-        week-long run as on a minute-long one.
-        """
-
-        return HistoryWindow(
-            run=self,
-            index_offset=first_index_at_or_after(self._elapsed_s, start_s),
-            stop_index=len(self._elapsed_s),
-        )
-
-    def _extend_wash_in_stretches(self, substance_id: str, index: int, ratio: float | None) -> None:
-        """Place one substance's sample in its wash-in stretches, or in none.
-
-        Both of `app/wash_in.py`'s rules are applied here and nowhere else
-        on the chart's path: a sample with no quotient fails rule 1, and one
-        above equilibrium fails rule 2. Either ends the stretch in progress.
-        """
-
-        if ratio is None or not is_wash_in(ratio):
-            return
-
-        starts = self._wash_in_starts[substance_id]
-        stops = self._wash_in_stops[substance_id]
-
-        if stops and stops[-1] == index:
-            stops[-1] = index + 1
-
-            return
-
-        starts.append(index)
-        stops.append(index + 1)
-
-
-@dataclass(frozen=True, slots=True)
-class HistoryWindow:
-    """The part of a run one frame draws, as a bounded range over its history.
-
-    What `SimulationController.history_window` answers with, and the whole
-    of what the chart is drawn from. A run's history grows for as long as
-    the simulation advances; a window is the bounded part of it a display
-    can actually show, so handing over a window rather than the run keeps
-    the cost of a frame a property of the visible axis rather than of how
-    long the simulation has been running.
-
-    It is a *range*, not a copy. Nothing inside `[index_offset, stop_index)`
-    can change once those two numbers are fixed - `RunHistory` is
-    append-only and its aggregates are final once complete - so the
-    stale-state hazard the copy used to guard against, one trace drawn half
-    from one instant and half from the next, is closed by the structure
-    rather than by copying the samples out.
-    """
-
-    run: RunHistory
-    """The run this window is a range over."""
-
-    index_offset: int
-    """Absolute index, within the whole recorded run, of the window's first sample.
-
-    Carried because decimation anchors its buckets to the run rather than
-    to the window: a selection re-derived from the window's own length
-    rebuckets on every frame and rewrites every drawn point, which is what
-    `chart_downsampling.py`'s docstring records the cost of.
-    """
-
-    stop_index: int
-    """One past the absolute index of the window's last sample."""
-
-    @property
-    def sample_count(self) -> int:
-        """How many recorded samples fall inside the window."""
-
-        return self.stop_index - self.index_offset
-
-    @property
-    def samples(self) -> tuple[SimulationHistorySample, ...]:
-        """The window's samples as rows, oldest first.
-
-        Builds every row, so it costs the window's width. Nothing on the
-        render path uses it - a trace reads one quantity through
-        `RunHistory.aggregates` instead - and it is here for the callers
-        that genuinely want a recorded instant.
-        """
-
-        return tuple(self.run.sample(index) for index in range(self.index_offset, self.stop_index))
 
 
 @dataclass(frozen=True, slots=True)
@@ -780,7 +338,7 @@ class DrawnWindow:
     def _require_substance(self, substance_id: str) -> None:
         """Refuse a read for a substance this window does not describe.
 
-        The same guard `RunHistory.aggregates` made, and it is kept for the
+        The same guard the run's own store made before it was deleted, kept for the
         same reason: a trace drawn from another substance's values misstates
         the run exactly as one drawn from another compartment's does, and
         every value in it would be one the model really produced.
@@ -994,8 +552,6 @@ class SimulationController:
         # through here and builds a new history under the new agent's id,
         # so a run's recorded substance is always the one its samples were
         # produced by.
-        self._history = RunHistory((agent_id,))
-        self._history.record(self._build_history_sample())
         self._score = RunScore(uptake_system.equation_settings(), uptake_system.state_vector())
         self._clear_control_timeline()
 
@@ -1154,45 +710,6 @@ class SimulationController:
             failure_reason=self._failure_reason,
         )
 
-    def history_window(self, start_s: float) -> HistoryWindow:
-        """The recorded samples at or after `start_s`, with their run offset.
-
-        The read the render path makes, and deliberately not a field of
-        `snapshot()`. A snapshot is the run's state at one instant, which is
-        a fixed number of values however long the run; the history is the
-        run itself. Carrying the history in the snapshot meant copying every
-        sample ever recorded on every frame - work proportional to the run
-        length, five times a second, with all but the visible few hundred
-        samples discarded by the chart immediately (`PL-0VM7`). Asking for
-        the window instead makes what crosses this boundary a property of
-        the visible axis: at the chart's 300 s window and 0.1 s step, at
-        most 3 001 samples, whether the run is a minute or a week old.
-
-        `start_s` is the caller's own left edge rather than a span chosen
-        here, so the samples handed over are exactly the ones that window
-        can show. A cut this method made itself could fall inside the drawn
-        window and truncate the trace, which would understate the run rather
-        than merely slow it down - a plot beginning later than the run did,
-        with nothing on it to say so.
-
-        Located by binary search, so finding the window costs the same on a
-        week-long run as on a minute-long one. A linear scan here would put
-        the unbounded per-frame cost straight back, in the one place the
-        change above was made to remove it.
-
-        Args:
-            start_s: Earliest simulated time to include, in seconds.
-                Samples before it lie outside the caller's window and are
-                not returned. A value at or below zero returns the whole
-                recorded run.
-
-        Returns:
-            The samples at or after `start_s`, oldest first, paired with the
-            absolute index within the run of the first of them.
-        """
-
-        return self._history.window_from(start_s)
-
     @property
     def score_segments(self) -> tuple[ScoreSegment, ...]:
         """The stretches of constant settings this run has had, oldest first.
@@ -1212,40 +729,10 @@ class SimulationController:
 
         return self._score.segments
 
-    def evaluate_window(self, start_s: float, stop_s: float, columns: int) -> SampledWindow:
-        """`columns` states evenly spaced across `[start_s, stop_s]`, from the score.
-
-        The closed-form read, and the one that does not grow with the run.
-        `history_window` answers the same question from recorded samples, at a
-        cost that follows the run's length rather than the window's;
-        `PL-2FM6` retires it and moves the chart onto this.
-
-        What comes back is the display path: fit for drawing, and not for a
-        keyframe, an export or a fork's starting state, which are taken
-        canonically. Its states are `DisplayState` rather than state vectors
-        for that reason, so the separation is refused at the canonical entry
-        points rather than left to a reader; `docs/MODEL.md` § "The canonical
-        evaluation rule" is the guarantee.
-
-        Args:
-            start_s: The window's first instant, in seconds.
-            stop_s: The window's last instant, in seconds.
-            columns: How many instants to sample, at least one.
-
-        Raises:
-            SimulationConfigurationError: `columns` is below one, either bound
-                is outside `[0, elapsed_s]`, or `stop_s` precedes `start_s`.
-                A bound past the run is refused rather than answered, because
-                the score can be evaluated arbitrarily far ahead and what came
-                back would be a prediction drawn on the run's own axis.
-        """
-
-        return self._score.evaluate(start_s, stop_s, columns)
-
     def drawn_window(self, start_s: float, stop_s: float, columns: int) -> DrawnWindow:
         """The states to plot across an axis, evaluated from the score.
 
-        The chart's own read, and what `history_window` was before the run
+        The chart's own read, and what the recorded-window read was before the run
         stopped keeping samples of itself (`PL-2FM6`).
 
         **The axis is a viewport, and the run is what fills it.** Both bounds
@@ -1369,8 +856,6 @@ class SimulationController:
         self._failure_reason = None
         self._supported_limit_reason = None
         self._state.reset()
-        self._history = RunHistory((self._agent_id,))
-        self._history.record(self._build_history_sample())
         uptake_system = self._state.uptake_system
         self._score = RunScore(uptake_system.equation_settings(), uptake_system.state_vector())
         self._clear_control_timeline()
@@ -1488,12 +973,15 @@ class SimulationController:
             self._open_adjustment_control = control
             self._open_adjustment = self._adjustment_count
 
-        sample_index = len(self._history) - 1
-
         if self._control_timeline:
             latest = self._control_timeline[-1]
 
-            if latest.control is control and latest.sample_index == sample_index:
+            # Two changes to one control inside a single step are one act:
+            # the model integrated only the last value, so recording both
+            # would describe a run of settings it was never computed under.
+            # Compared on the instant, which is what a step *is* now that
+            # there is no sample index to stand in for one (`PL-2FM6`).
+            if latest.control is control and latest.elapsed_s == self._state.elapsed_s:
                 if latest.previous_value == new_value:
                     self._control_timeline = self._control_timeline[:-1]
                     return
@@ -1508,7 +996,6 @@ class SimulationController:
             *self._control_timeline,
             ControlChange(
                 elapsed_s=self._state.elapsed_s,
-                sample_index=sample_index,
                 adjustment=self._open_adjustment,
                 control=control,
                 previous_value=previous_value,
@@ -1531,37 +1018,4 @@ class SimulationController:
             return
 
         self._state.advance(simulation_step_s)
-        self._history.record(self._build_history_sample())
         self._score.advance_to(self._state.elapsed_s)
-
-    def _build_history_sample(self) -> SimulationHistorySample:
-        """Read the core's compartments into one recorded row.
-
-        **The whole of the run's pairing is here**, one line per
-        compartment: which core state each `RecordedQuantity` carries, and
-        which substance the row belongs to. `RunHistory.record` decides
-        neither - it stores each value under the key the sample already
-        gives it - so this is the one place a compartment could come to
-        carry another's values, and the one place it is audited.
-        `tests/integration/test_controller.py`'s
-        `test_each_recorded_quantity_carries_the_compartment_it_names`
-        holds it against the core's own attributes.
-        """
-
-        system = self._state.uptake_system
-
-        return SimulationHistorySample(
-            elapsed_s=self._state.elapsed_s,
-            substances={
-                self._agent_id: {
-                    RecordedQuantity.CIRCUIT: (system.circuit.circuit_concentration_fraction),
-                    RecordedQuantity.ALVEOLAR: (system.alveoli.concentration_fraction),
-                    RecordedQuantity.MIXED_VENOUS: (system.patient.mixed_venous_fraction),
-                    RecordedQuantity.VESSEL_RICH: (
-                        system.patient.vessel_rich.partial_pressure_fraction
-                    ),
-                    RecordedQuantity.MUSCLE: (system.patient.muscle.partial_pressure_fraction),
-                    RecordedQuantity.FAT: (system.patient.fat.partial_pressure_fraction),
-                }
-            },
-        )

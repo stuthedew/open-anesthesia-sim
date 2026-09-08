@@ -76,8 +76,6 @@ class ControlAdjustment:
     """Simulated time the last one did. Equal to `started_at_s` for a
     single-change adjustment, which is the ordinary case for a keyboard
     press or a click on a slider track."""
-    sample_index: int
-    """History index the adjustment began at, for placing its chart mark."""
     from_value: float
     """The value in place before the adjustment, in the control's own unit."""
     to_value: float
@@ -118,7 +116,6 @@ def group_adjustments(timeline: Sequence[ControlChange]) -> tuple[ControlAdjustm
                 control=latest.control,
                 started_at_s=latest.started_at_s,
                 ended_at_s=change.elapsed_s,
-                sample_index=latest.sample_index,
                 from_value=latest.from_value,
                 to_value=change.new_value,
                 unit=latest.unit,
@@ -132,7 +129,6 @@ def group_adjustments(timeline: Sequence[ControlChange]) -> tuple[ControlAdjustm
                 control=change.control,
                 started_at_s=change.elapsed_s,
                 ended_at_s=change.elapsed_s,
-                sample_index=change.sample_index,
                 from_value=change.previous_value,
                 to_value=change.new_value,
                 unit=change.unit,

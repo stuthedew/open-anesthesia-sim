@@ -15,12 +15,11 @@ steps, which is the property a replayed or forked run is compared against
 element-wise (PL-VM40).
 
 A run takes one step size and keeps it, and `advance()` refuses a
-different one rather than deriving a time from a mixture. `elapsed_s` has
-one step to multiply by only if there is one; and a history recorded at two
-cadences has a sample spacing that is not a constant of the run, which
-every reader that maps between a sample index and a time - a control
-change's `sample_index`, a window's sample budget, the chart's grouping by
-index - assumes it is.
+different one rather than deriving a time from a mixture: `elapsed_s` has
+one step to multiply by only if there is one. The run no longer records
+samples at all (`PL-2FM6`), so the readers that used to map between a
+sample index and a time are gone with it; what remains is that a step count
+means a time, which is what `elapsed_s` is.
 
 It deliberately re-exports nothing. `circuit`, `alveoli` and `patient` were
 properties here as well as attributes of the system, which gave every

@@ -3,12 +3,13 @@ id: PL-4RBD
 title: The drawn chart smooths through a control change that leaves the trace monotone, because M4 selects extremes and such a change is not one
 priority: P1
 effort: S
-status: ready
+status: done
+closed: 2026-09-08
 classes: defect, ux, safety
 feature: teachable-case
 touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
 added: 2026-09-05
-verify: uv run pytest tests/unit/test_chart_downsampling.py tests/unit/test_simulation_view.py && grep -q 'def test_a_control_change_inside_a_monotone_bucket_is_still_drawn' tests/unit/test_chart_downsampling.py
+verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select' tests/integration/test_controller.py
 ---
 
 **Problem.** `chart_downsampling` selects each bucket's minimum, maximum,
@@ -166,3 +167,25 @@ whole fidelity guarantee in the meantime (see `PL-C4PH`), so the `S` fix is wort
 taking now. The **test** is the part that survives: write it against the drawn
 set rather than against `chart_downsampling`'s internals, so `PL-2FM6` inherits
 it as a behavioural requirement instead of deleting it with the module.
+
+**Closed 2026-09-08 by `PL-2FM6`, structurally rather than by the fix above.**
+The brief's own sequencing note anticipated this: `PL-2FM6`'s **Done when**
+already required that "a control event inside the visible window always gets
+its own column", which is this item's guarantee delivered by evaluating
+columns instead of by unioning indices into a selection.
+
+Taking the structural route rather than the `S` fix was the project owner's
+call, on the re-measurement recorded above. The `S` fix pins the kink and
+nothing else, and most of the 0.65 pp measured at the 12 h base is ordinary
+curvature drawn as a chord across a 4 096-sample bucket - which no selection
+of *recorded extremes* can reach, because the samples carrying the shape are
+the ones the column budget excludes. An evaluated column is a point on the
+trajectory, so both halves go together.
+
+**The `verify:` command was re-pointed while this item was open**, from
+`tests/unit/test_chart_downsampling.py` - a file `PL-8LXM` deletes - to
+`test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select` in
+`tests/integration/test_controller.py`. That test walks the whole
+`TIME_BASE_LADDER` rather than the three bucket widths the original table
+measured, which is what the brief asked for: the event is a column because it
+is an event, not because a spacing happened to land on it.

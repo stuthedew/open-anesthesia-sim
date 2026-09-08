@@ -48,8 +48,6 @@ from anesthesia_sim.app.controller import (
     ControlInput,
     DrawnWindow,
     RecordedQuantity,
-    RunHistory,
-    SimulationHistorySample,
     SimulationSnapshot,
 )
 from anesthesia_sim.app.simulation_view import (
@@ -107,7 +105,7 @@ class _RecordingConnection(Connection):
 class _ReplayController:
     """Serve one recorded run to the view, one render tick per frame.
 
-    Answers `snapshot` and `history_window` the way the real controller
+    Answers `snapshot` and `drawn_window` the way the real controller
     does: the snapshot is the instant, the window is the part of the run
     the caller asks for. The cursor advances on the snapshot alone, so both
     halves of one frame describe the same instant however many times the
@@ -115,18 +113,14 @@ class _ReplayController:
     """
 
     def __init__(
-        self,
-        samples: tuple[SimulationHistorySample, ...],
-        start: int,
-        control_timeline: tuple[ControlChange, ...] = (),
+        self, sample_count: int, start: int, control_timeline: tuple[ControlChange, ...] = ()
     ) -> None:
-        self._samples = samples
+        self._sample_count = sample_count
         # The whole run is recorded up front and the cursor bounds what the
         # view may see, which is what the real controller's append-only
         # history gives a reader for free: a window is a range, and a range
         # that stops short of the newest sample reads exactly as it did when
         # that sample was the newest.
-        self._run = RunHistory.of(samples)
         self._cursor = start
         self._control_timeline = control_timeline
         self.is_running = True
@@ -148,7 +142,7 @@ class _ReplayController:
 
         spacing_s = (stop_s - start_s) / (columns - 1)
         first_s = max(0.0, start_s)
-        last_s = min(stop_s, (min(self._cursor, len(self._samples)) - 1) * SIMULATION_STEP_S)
+        last_s = min(stop_s, (min(self._cursor, self._sample_count) - 1) * SIMULATION_STEP_S)
 
         if last_s < first_s:
             return DrawnWindow(substance_id=AGENT_ID, times_s=(), states=())
@@ -173,14 +167,13 @@ class _ReplayController:
         )
 
     def snapshot(self) -> SimulationSnapshot:
-        history = self._samples[: self._cursor]
+        elapsed_s = (min(self._cursor, self._sample_count) - 1) * SIMULATION_STEP_S
         self._cursor += SAMPLES_PER_RENDER_TICK
-        latest = history[-1]
-        recorded = latest.substances[AGENT_ID]
+        state = _state_at(elapsed_s)
 
         return SimulationSnapshot(
             is_running=self.is_running,
-            elapsed_s=latest.elapsed_s,
+            elapsed_s=elapsed_s,
             agent_id=AGENT_ID,
             agent_display_name="Sevoflurane",
             max_delivered_concentration_percent=8.0,
@@ -191,12 +184,12 @@ class _ReplayController:
             delivered_concentration_fraction=0.08,
             alveolar_ventilation_l_min=4.0,
             cardiac_output_l_min=5.0,
-            circuit_concentration_fraction=recorded[RecordedQuantity.CIRCUIT],
-            alveolar_concentration_fraction=recorded[RecordedQuantity.ALVEOLAR],
-            mixed_venous_concentration_fraction=recorded[RecordedQuantity.MIXED_VENOUS],
-            vessel_rich_partial_pressure_fraction=recorded[RecordedQuantity.VESSEL_RICH],
-            muscle_partial_pressure_fraction=recorded[RecordedQuantity.MUSCLE],
-            fat_partial_pressure_fraction=recorded[RecordedQuantity.FAT],
+            circuit_concentration_fraction=state[INSPIRED_FRACTION],
+            alveolar_concentration_fraction=state[ALVEOLAR_FRACTION],
+            mixed_venous_concentration_fraction=state[VENOUS_FRACTION],
+            vessel_rich_partial_pressure_fraction=state[FIRST_TISSUE_FRACTION],
+            muscle_partial_pressure_fraction=state[FIRST_TISSUE_FRACTION + 1],
+            fat_partial_pressure_fraction=state[FIRST_TISSUE_FRACTION + 2],
             delivered_agent_l=0.012345,
             exhausted_agent_l=0.002345,
             stored_agent_l=0.01,
@@ -211,8 +204,9 @@ class _ReplayController:
 
 #: The fixture's traces as a closed form, in `governing_equations`' state order.
 #:
-#: The same six curves `_recorded_run` tabulates, evaluated at an instant
-#: rather than at a sample index, because the chart now asks for instants. The
+#: A monotone wash-in whose six traces never coincide, evaluated at an
+#: instant rather than tabulated per sample, because the chart asks for
+#: instants. The
 #: alveolar trace *lags* the circuit one - a slower rise to a lower asymptote -
 #: which is not decoration: the chart draws F_A/F_I from that pair, and the
 #: ratio is only inside the domain `app/wash_in.py` states while alveolar stays
@@ -242,38 +236,6 @@ def _state_at(elapsed_s: float) -> tuple[float, ...]:
     return tuple(state)
 
 
-def _recorded_run(sample_count: int) -> tuple[SimulationHistorySample, ...]:
-    """A monotone wash-in whose six traces never coincide.
-
-    The alveolar trace *lags* the circuit one - a slower rise to a lower
-    asymptote - which is not decoration. The chart draws F_A/F_I from this
-    pair, and that ratio is only inside the domain `app/wash_in.py` states
-    while alveolar stays under circuit; a fixture where the alveolar trace
-    led would describe a run in which the lung filled the circuit, and would
-    leave the wash-in trace here drawing nothing or growing where every
-    other trace is steady. The two decay constants are 0.999 and 0.9993, so
-    the ratio rises from 0.61 to its 0.875 asymptote across the run and is
-    saturated at the window sizes these tests use.
-    """
-
-    return tuple(
-        SimulationHistorySample(
-            elapsed_s=index * SIMULATION_STEP_S,
-            substances={
-                AGENT_ID: {
-                    RecordedQuantity.CIRCUIT: 0.080 * (1.0 - 0.999**index),
-                    RecordedQuantity.ALVEOLAR: 0.070 * (1.0 - 0.9993**index),
-                    RecordedQuantity.MIXED_VENOUS: 0.050 * (1.0 - 0.997**index),
-                    RecordedQuantity.VESSEL_RICH: 0.060 * (1.0 - 0.996**index),
-                    RecordedQuantity.MUSCLE: 0.030 * (1.0 - 0.995**index),
-                    RecordedQuantity.FAT: 0.010 * (1.0 - 0.994**index),
-                }
-            },
-        )
-        for index in range(sample_count)
-    )
-
-
 def _control_timeline(
     count: int, first_elapsed_s: float, spacing_s: float
 ) -> tuple[ControlChange, ...]:
@@ -289,7 +251,6 @@ def _control_timeline(
     return tuple(
         ControlChange(
             elapsed_s=first_elapsed_s + index * spacing_s,
-            sample_index=round((first_elapsed_s + index * spacing_s) / SIMULATION_STEP_S),
             adjustment=index + 1,
             control=controls[index % len(controls)],
             previous_value=1.0,
@@ -323,9 +284,7 @@ def _mounted_view(
 
     connection = _RecordingConnection()
     session = Session(connection)
-    controller = _ReplayController(
-        _recorded_run(sample_count), start=start, control_timeline=control_timeline
-    )
+    controller = _ReplayController(sample_count, start=start, control_timeline=control_timeline)
     view = SimulationView(page=session.page, controller=controller)
 
     if time_base_span_s is not None:
@@ -455,7 +414,7 @@ def test_a_shorter_trace_removes_the_points_it_no_longer_draws() -> None:
     # draws the few grid columns inside that sliver and its two ends - far
     # shorter than the saturated trace already on screen. Resolution follows
     # the axis, which is the whole of what the reader can resolve.
-    view._controller = _ReplayController(_recorded_run(12), start=12)  # type: ignore[assignment]
+    view._controller = _ReplayController(12, start=12)  # type: ignore[assignment]
     view._refresh_view()
     session.page.update()
 
@@ -478,7 +437,7 @@ def test_a_longer_trace_adds_the_points_it_has_gained() -> None:
     assert drawn_at_mount < CHART_COLUMN_BUDGET_PER_SERIES
 
     view._controller = _ReplayController(  # type: ignore[assignment]
-        _recorded_run(SATURATED_SAMPLE_COUNT), start=SATURATED_SAMPLE_COUNT // 2
+        SATURATED_SAMPLE_COUNT, start=SATURATED_SAMPLE_COUNT // 2
     )
     view._refresh_view()
     session.page.update()

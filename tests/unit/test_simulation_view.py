@@ -17,7 +17,8 @@ import asyncio
 import contextlib
 import dataclasses
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, cast
 
 import flet as ft
@@ -40,7 +41,6 @@ from anesthesia_sim.app.controller import (
     DrawnWindow,
     RecordedQuantity,
     SimulationController,
-    SimulationHistorySample,
     SimulationSnapshot,
 )
 from anesthesia_sim.app.formatting import (
@@ -102,7 +102,7 @@ from anesthesia_sim.core.parameters import (
     MacAwakeReference,
     load_agent_parameters,
 )
-from anesthesia_sim.core.run_score import DisplayState
+from anesthesia_sim.core.run_score import DisplayState, ScoreSegment
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -173,9 +173,7 @@ class _FakeController:
     """
 
     def __init__(
-        self,
-        snapshot: SimulationSnapshot,
-        history: tuple[SimulationHistorySample, ...] | None = None,
+        self, snapshot: SimulationSnapshot, history: tuple[_Sample, ...] | None = None
     ) -> None:
         self.snapshot_value = snapshot
         self.history_value = (
@@ -193,9 +191,7 @@ class _FakeController:
     def snapshot(self) -> SimulationSnapshot:
         return self.snapshot_value
 
-    def advance_to(
-        self, history: tuple[SimulationHistorySample, ...], **snapshot_fields: Any
-    ) -> None:
+    def advance_to(self, history: tuple[_Sample, ...], **snapshot_fields: Any) -> None:
         """Move the fake on to a longer run, snapshot and history together.
 
         Set as a pair for the reason `_fake_controller` builds them as one:
@@ -207,10 +203,7 @@ class _FakeController:
         self.history_value = history
 
     def switch_agent(
-        self,
-        agent_id: str,
-        history: tuple[SimulationHistorySample, ...] | None = None,
-        **snapshot_fields: Any,
+        self, agent_id: str, history: tuple[_Sample, ...] | None = None, **snapshot_fields: Any
     ) -> None:
         """Move the fake to another agent, its run started over as the real one does.
 
@@ -268,7 +261,7 @@ class _FakeController:
         )
 
 
-def _state_of(sample: SimulationHistorySample, substance_id: str) -> tuple[float, ...]:
+def _state_of(sample: _Sample, substance_id: str) -> tuple[float, ...]:
     """One recorded sample as a state vector, in `governing_equations`' order.
 
     The fixtures are written as recorded samples because that is how a run
@@ -295,6 +288,21 @@ def _state_of(sample: SimulationHistorySample, substance_id: str) -> tuple[float
 _DEFAULT_AGENT = "sevoflurane"
 
 
+@dataclass(frozen=True, slots=True)
+class _Sample:
+    """One instant of one substance's six compartments, as a fixture writes it.
+
+    A test-local shape rather than an application one. The run stopped
+    keeping samples of itself in `PL-2FM6`, so there is no recorded-row type
+    to borrow; but a fixture is still most readable as "at this time, these
+    six values", and `_FakeController.drawn_window` is where it becomes the
+    state vector the chart actually draws.
+    """
+
+    elapsed_s: float
+    substances: Mapping[str, Mapping[RecordedQuantity, float]]
+
+
 def _sample(
     elapsed_s: float,
     circuit: float,
@@ -304,7 +312,7 @@ def _sample(
     muscle: float,
     fat: float,
     substance_id: str = _DEFAULT_AGENT,
-) -> SimulationHistorySample:
+) -> _Sample:
     """One recorded sample of one substance's six compartments.
 
     `substance_id` defaults to the agent `_snapshot` does, so the two
@@ -314,7 +322,7 @@ def _sample(
     rather than drawing whichever substance the run happens to hold.
     """
 
-    return SimulationHistorySample(
+    return _Sample(
         elapsed_s=elapsed_s,
         substances={
             substance_id: {
@@ -330,7 +338,7 @@ def _sample(
 
 
 def _recorded(
-    sample: SimulationHistorySample, quantity: RecordedQuantity, substance_id: str = _DEFAULT_AGENT
+    sample: _Sample, quantity: RecordedQuantity, substance_id: str = _DEFAULT_AGENT
 ) -> float:
     """One compartment's recorded value, addressed the way the chart addresses it."""
 
@@ -340,7 +348,7 @@ def _recorded(
 def _snapshot(
     is_running: bool = False,
     passes_validation: bool = True,
-    history: tuple[SimulationHistorySample, ...] | None = None,
+    history: tuple[_Sample, ...] | None = None,
     agent_id: str = "sevoflurane",
     agent_display_name: str = "Sevoflurane",
     max_delivered_concentration_percent: float = 8.0,
@@ -411,7 +419,7 @@ def _snapshot(
 
 
 def _fake_controller(
-    history: tuple[SimulationHistorySample, ...] | None = None, **snapshot_fields: Any
+    history: tuple[_Sample, ...] | None = None, **snapshot_fields: Any
 ) -> _FakeController:
     """A fake controller whose snapshot and history come from one run.
 
@@ -426,7 +434,7 @@ def _fake_controller(
 
 
 def _recording_controller(
-    history: tuple[SimulationHistorySample, ...] | None = None, **snapshot_fields: Any
+    history: tuple[_Sample, ...] | None = None, **snapshot_fields: Any
 ) -> _RecordingController:
     """`_fake_controller`, recording `fail()` instead of running."""
 
@@ -434,7 +442,7 @@ def _recording_controller(
 
 
 def _build_view(
-    history: tuple[SimulationHistorySample, ...] | None = None, **snapshot_fields: Any
+    history: tuple[_Sample, ...] | None = None, **snapshot_fields: Any
 ) -> tuple[SimulationView, _FakePage]:
     page = _FakePage()
     view = SimulationView(page=page, controller=_fake_controller(history, **snapshot_fields))
@@ -1544,14 +1552,14 @@ def test_a_recorded_run_is_not_discarded_before_the_reader_has_answered() -> Non
 
     controller = _paused_run_with_history()
     before = controller.snapshot()
-    samples_before = controller.history_window(0.0).sample_count
+    run_before = (controller.snapshot().elapsed_s, controller.score_segments)
 
     view, page = _select_agent(controller)
 
     after = controller.snapshot()
     assert after.agent_id == before.agent_id
     assert after.elapsed_s == before.elapsed_s
-    assert controller.history_window(0.0).sample_count == samples_before
+    assert (controller.snapshot().elapsed_s, controller.score_segments) == run_before
     assert len(page.dialogs) == 1
     assert page.dialogs[0].open is True
     # The selector reads the agent that is actually running, not the one
@@ -1564,7 +1572,7 @@ def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched() -> 
 
     controller = _paused_run_with_history()
     before = controller.snapshot()
-    samples_before = controller.history_window(0.0).sample_count
+    run_before = (controller.snapshot().elapsed_s, controller.score_segments)
 
     view, page = _select_agent(controller)
     _click_dialog_action(view, KEEP_CURRENT_CASE_TEMPLATE.format(agent="sevoflurane"))
@@ -1573,7 +1581,7 @@ def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched() -> 
     assert after.agent_id == "sevoflurane"
     assert after.elapsed_s == before.elapsed_s
     assert after.control_timeline == before.control_timeline
-    assert controller.history_window(0.0).sample_count == samples_before
+    assert (controller.snapshot().elapsed_s, controller.score_segments) == run_before
     assert view._agent_dropdown.value == "sevoflurane"
     assert view._subtitle_text.value is not None
     assert "Sevoflurane" in view._subtitle_text.value
@@ -1593,7 +1601,7 @@ def test_a_confirmed_agent_change_starts_the_new_case() -> None:
     assert after.agent_id == "desflurane"
     assert after.elapsed_s == 0.0
     assert after.control_timeline == ()
-    assert controller.history_window(0.0).sample_count == 1
+    assert controller.snapshot().elapsed_s == 0.0
     assert view._agent_dropdown.value == "desflurane"
     assert view._delivered_concentration_label.value == "Delivered desflurane"
     assert page.dialogs[0].open is False
@@ -1797,9 +1805,7 @@ def test_change_handlers_ignore_a_none_value(handler_name: str) -> None:
     assert page.update_calls == 0
 
 
-def _run_history(
-    sample_count: int, substance_id: str = _DEFAULT_AGENT
-) -> tuple[SimulationHistorySample, ...]:
+def _run_history(sample_count: int, substance_id: str = _DEFAULT_AGENT) -> tuple[_Sample, ...]:
     """A run of `sample_count` samples at the real 0.1 s simulation step."""
 
     return tuple(
@@ -2627,15 +2633,15 @@ def test_choosing_a_time_base_changes_nothing_the_run_recorded() -> None:
     for _ in range(200):
         controller.advance(SIMULATION_STEP_S)
 
-    def recorded() -> tuple[SimulationHistorySample, ...]:
-        return controller.history_window(0.0).samples
+    def run() -> tuple[float, tuple[ScoreSegment, ...]]:
+        return controller.snapshot().elapsed_s, controller.score_segments
 
-    before = recorded()
+    before = run()
 
     for time_base in SELECTABLE_TIME_BASES:
         _select_time_base(view, time_base.span_s)
 
-    assert recorded() == before
+    assert run() == before
 
 
 def test_the_time_base_is_never_disabled() -> None:
@@ -3075,7 +3081,7 @@ def test_simulation_time_does_not_depend_on_render_cadence() -> None:
 
     reference = SimulationController()
     reference.start()
-    steps_taken = len(controller.history_window(0.0).samples) - 1
+    steps_taken = round(controller.snapshot().elapsed_s / SIMULATION_STEP_S)
     assert steps_taken > 0
 
     for _ in range(steps_taken):
@@ -3156,7 +3162,7 @@ def test_the_run_loop_takes_one_step_per_tick_at_real_time_and_never_catches_up(
     _drive_exact_ticks(view, ticks, monkeypatch)
 
     assert controller.snapshot().elapsed_s == ticks * SIMULATION_STEP_S
-    assert len(controller.history_window(0.0).samples) == ticks + 1
+    assert round(controller.snapshot().elapsed_s / SIMULATION_STEP_S) == ticks
 
 
 def test_a_tick_is_one_simulation_step_of_real_time() -> None:
@@ -3235,7 +3241,7 @@ def test_the_run_loop_takes_the_playback_rates_steps_per_tick(
     assert len(steps_requested) == expected_steps
     assert set(steps_requested) == {SIMULATION_STEP_S}
     assert controller.snapshot().elapsed_s == expected_steps * SIMULATION_STEP_S
-    assert len(controller.history_window(0.0).samples) == expected_steps + 1
+    assert round(controller.snapshot().elapsed_s / SIMULATION_STEP_S) == expected_steps
 
 
 def _panel_under(view: SimulationView, value_text: ft.Text) -> ft.Text:
@@ -3723,9 +3729,7 @@ class _RecordingController(_FakeController):
     """
 
     def __init__(
-        self,
-        snapshot: SimulationSnapshot,
-        history: tuple[SimulationHistorySample, ...] | None = None,
+        self, snapshot: SimulationSnapshot, history: tuple[_Sample, ...] | None = None
     ) -> None:
         super().__init__(snapshot, history)
         self.failures: list[str] = []
@@ -4458,7 +4462,6 @@ def _control_change(
 ) -> ControlChange:
     return ControlChange(
         elapsed_s=elapsed_s,
-        sample_index=round(elapsed_s * 10),
         adjustment=adjustment,
         control=control,
         previous_value=previous_value,
@@ -4892,7 +4895,6 @@ def test_a_control_change_is_marked_on_the_wash_in_plot_too() -> None:
 
     change = ControlChange(
         elapsed_s=1.0,
-        sample_index=10,
         adjustment=1,
         control=ControlInput.DELIVERED,
         previous_value=0.02,

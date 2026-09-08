@@ -65,10 +65,9 @@ appropriate, and its entry here should be deleted rather than left stale.
   pattern documented at the top of `tests/unit/test_simulation_view.py`,
   which is still where its presentation logic is covered. The pure modules
   it delegates to are tested without that pattern: the displayed-value
-  formatters in `tests/unit/test_formatting.py`, the sample selection in
-  `tests/unit/test_chart_downsampling.py`, the run's own recorded history in
-  `tests/unit/test_run_history.py`, the recorded control changes in
-  `tests/unit/test_control_timeline.py` and the wash-in ratio and its domain
+  formatters in `tests/unit/test_formatting.py`, the score the chart is
+  evaluated from in `tests/unit/test_run_score.py`, the recorded control
+  changes in `tests/unit/test_control_timeline.py` and the wash-in ratio and its domain
   in `tests/unit/test_wash_in.py`, while `app/chart_series.py` is covered
   through the view, where a trace can be read back off the chart it was
   drawn on (PL-WB0X). The wash-in ratio is covered twice over on purpose:

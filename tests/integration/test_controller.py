@@ -2,6 +2,7 @@ import dataclasses
 
 import pytest
 
+from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.controller import (
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
@@ -10,7 +11,6 @@ from anesthesia_sim.app.controller import (
     RecordedQuantity,
     RecordedSeries,
     SimulationController,
-    SimulationHistorySample,
 )
 from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core import uptake_system
@@ -21,6 +21,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationNumericalError,
 )
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
+from anesthesia_sim.core.run_score import ScoreSegment
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
 
@@ -268,10 +269,10 @@ def _samples_a_snapshot_carries(controller: SimulationController) -> int:
     for field in dataclasses.fields(snapshot):
         value = getattr(snapshot, field.name)
 
-        if isinstance(value, SimulationHistorySample):
+        if isinstance(value, ScoreSegment):
             total += 1
         elif isinstance(value, tuple | list):
-            total += sum(1 for item in value if isinstance(item, SimulationHistorySample))
+            total += sum(1 for item in value if isinstance(item, ScoreSegment))
 
     return total
 
@@ -878,8 +879,6 @@ def test_the_same_control_changed_across_two_steps_records_both() -> None:
     first, second = controller.snapshot().control_timeline
     assert (first.previous_value, first.new_value) == pytest.approx((0.02, 0.03))
     assert (second.previous_value, second.new_value) == pytest.approx((0.03, 0.04))
-    assert first.sample_index == 0
-    assert second.sample_index == 10
 
 
 def test_consecutive_changes_to_one_control_are_one_adjustment() -> None:
@@ -1374,3 +1373,38 @@ def test_an_axis_entirely_ahead_of_the_run_draws_nothing() -> None:
 
     assert window.times_s == ()
     assert window.states == ()
+
+
+def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select() -> None:
+    """`PL-4RBD`: a dial change that leaves the trace rising is still a drawn point.
+
+    The defect this closes was a property of selecting recorded extremes:
+    turned down, the kink was a local maximum and was drawn; turned up
+    mid-rise the trace kept rising, the kink was interior to a bucket, and
+    the polyline went straight through the one instant a reader was looking
+    for. Re-measured 2026-09-08 at the shipped time bases, that reached
+    0.65 pp on the alveolar trace at the 12 h base - 0.32 MAC.
+
+    Evaluating columns removes it at every width rather than at the widths
+    somebody remembered to check, which is why this walks the whole ladder:
+    the event is a column because it is an event, not because the spacing
+    happened to land on it.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=60.0)
+    # Turned *up* mid-rise: the case a selection of extremes could not reach.
+    controller.set_delivered_concentration(0.04)
+    change_s = controller.snapshot().elapsed_s
+    _advance_for(controller, duration_s=60.0)
+
+    elapsed_s = controller.snapshot().elapsed_s
+
+    for time_base in TIME_BASE_LADDER:
+        window = controller.drawn_window(0.0, time_base.span_s, 150)
+
+        assert change_s in window.times_s, (
+            f"the dial change at {change_s} s is not drawn at the {time_base.span_s} s time base"
+        )
+        assert window.times_s[-1] == pytest.approx(min(time_base.span_s, elapsed_s))

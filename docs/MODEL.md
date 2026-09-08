@@ -3353,51 +3353,71 @@ adding to this one, so the mapping is one entry wide.
 
 It is keyed by substance rather than by six named fields because a
 compartment fraction asserts nothing without the substance it is a fraction
-of. A record naming the six flatly can hold exactly one substance, so a
+of. A naming of the six flatly can describe exactly one substance, so a
 second would have to arrive either as six more names or as values pooled
 with the first's, and pooled values are the correct-number-wrong-label
-failure this document forbids elsewhere. The chart addresses the store the
-same way — one trace is bound to one substance-and-quantity pair — so a
-trace can draw only what it names, and a frame asking for a substance the
-run does not record fails rather than drawing whichever substance it does
-hold. The wash-in quotient below is formed from one substance's own two
-fractions and is recorded per substance for the same reason.
+failure this document forbids elsewhere. The chart is addressed the same
+way — one trace is bound to one substance-and-quantity pair — so a trace can
+draw only what it names, and a frame asking for a substance the run is not
+of fails rather than drawing whichever substance it does hold. The wash-in
+quotient below is formed from one substance's own two fractions, for the
+same reason.
 
-A plotted trace need not draw every recorded sample — the recorded history
-grows by one sample per simulation step, well beyond what a chart can
-resolve — but every point it does draw must be a recorded sample. The
-interface must not interpolate, smooth, average, or otherwise synthesize a
-plotted value, and the most recent recorded sample must always be drawn, so
-that the end of a trace and the numeric readouts cannot disagree. Selection
-must also preserve the extremes of the samples it omits, so that decimation
-cannot hide an excursion the model produced.
+**What the chart draws.** A plotted trace need not draw the run at every
+instant it passed through — a run advances by one step every 0.1 s, well
+beyond what a chart can resolve — but every point it does draw must be a
+state the run actually reached, at the instant it is drawn at. The interface
+must not interpolate, smooth, average, or otherwise synthesize a plotted
+value, and the instant the numeric readouts were formatted from must always
+be drawn, so that the end of a trace and the readouts beside it cannot
+disagree.
 
-The selection that meets those constraints is **M4** (Jugel U, Jerzak Z,
-Hackenbroich G, Markl V. M4: A Visualization-Oriented Time Series Data
-Aggregation. *Proceedings of the VLDB Endowment*. 2014;7(10):797-808 — held
-in `docs/references/` and read there in full, 2026-09-04). The visible
-window is divided into groups of consecutive samples, and each group
-contributes four recorded samples: its lowest value, its highest, its first
-and its last. Naming the algorithm is part of the constraint rather than
-commentary on it — a chart that says which published reduction it draws can
-be checked against that reduction, and one that says "something that keeps
-the extremes" cannot.
+The chart meets this by **evaluating the run's score rather than reading
+samples back from a store**. `core/run_score.py` answers the state at any
+instant in closed form, so the columns a frame draws are chosen for the
+axis being drawn and computed for it, and there is no recorded series
+behind the trace that could disagree with it. Where the columns fall is
+decided by two rules, and both are properties this document requires rather
+than optimisations:
 
-**The chart is not exact, and this document says so rather than implying
-otherwise.** M4's Theorem 1 — that a line visualization of the reduced
-series equals one of the whole series — holds under the condition its § 6
-states: the number of groups drawn must be an integer multiple of the
-chart's pixel-column count. This interface groups on a grid anchored to
-absolute sample index instead, because a grid that followed the viewport
-would move on every scroll and resize and so rewrite the whole chart on
-every frame. It therefore buys stability at the cost of that condition and
-lands in the paper's general case rather than its exact one. What the
-departure costs here is bounded: of the paper's three error classes, the two
-driven by gaps in the sampling cannot arise, because this simulation records
-one sample every step and has no gaps at all, leaving only a spurious pixel
-where the line between two consecutive extrema crosses a column boundary.
-`app/chart_downsampling.py` carries the same statement for a reader of the
-code.
+- **The columns sit on a grid anchored to the run's start**, at the spacing
+  the selected time base and the per-trace column budget imply. A window
+  following the run therefore keeps every column it had and gains at most
+  one, so a steady trace is not redrawn on every frame. A grid anchored to
+  the viewport instead would move on every scroll and resize, and rewrite
+  the whole chart on every frame.
+- **Every control event inside the window is a column of its own.** Between
+  events the trajectory is a sum of exponentials with bounded curvature and
+  no hidden transients, so every sharp feature in a run is at an event
+  boundary; a grid that stepped over one would draw a straight line through
+  the single instant a reader is looking for. Each such column is read from
+  the keyframe the score already holds at that instant, so it is exact
+  rather than propagated.
+
+**So the drawn chart reproduces every control change**, to the last digit
+the readouts display, while the stored record need not — there is no stored
+record (project owner, 2026-09-05, recorded here when the sample store was
+deleted). The interpolation error at every cadence sits at the instant the
+dial moves and scales as O(h) rather than O(h²) — the signature of a kink,
+since the derivative of the circuit fraction is discontinuous at a control
+change — so the fidelity question is entirely a question about control
+events, and placing a column on each is the whole of the answer. Away from
+one the trajectory is faithful to about 1e-3 percentage points even at a 2 s
+cadence, a tenth of the display resolution.
+
+Pegging the guarantee to the displayed resolution is deliberate, and it does
+not cross the line drawn under "Supported simulation step". That section
+forbids traffic in the other direction — the readout's decimal count must not
+reach back into the model, which is why the step tolerance and the supported
+ranges are stated in absolute percentage points. This is a statement about
+the *chart*, expressed in the units a reader actually reads it in. Nor is the
+peg arbitrary: the two-decimal readout is itself derived from model fidelity
+under "Displayed precision", one published SD of a partition coefficient
+displacing a compartment by 8.7e-4 to 6.8e-2 percentage points.
+
+The drawn columns are display-path values, taken under "The canonical
+evaluation rule" below: they may be drawn and nothing else, and the program
+enforces that rather than describing it.
 
 **Which compartment traces are drawn is the reader's to choose, and the
 choice may not change anything else.** Two compartments cannot be compared
