@@ -1,8 +1,15 @@
 ---
 id: PL-R2YM
 title: One slider on_change costs 59 ms because it triggers a whole-page update: a drag emitting 30 events a second would need 1.8 s of event-loop time per second
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: perf, ux
+feature: vaporizer-controls
+touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-08
+closed: 2026-09-08
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_a_dragged_slider_leaves_its_frame_to_the_render_tick' tests/unit/test_simulation_view.py
 ---
 
 **Problem.** Every parameter slider is wired `on_change=` rather than
@@ -43,3 +50,51 @@ arrive.
 change can reach, deferring the redraw to the next render tick with an
 immediate render on refusal, and moving the sliders to `on_change_end`. Then
 measure the drag cost again on the same harness.
+
+**Resolved: the slider's frame is coalesced onto the render tick; everything
+else still draws its own** (project owner, 2026-09-08, approving the deferral
+route over narrowing the redraw and over `on_change_end`).
+
+**Deferring only `page.update()`, not `_refresh_view`.** The route as proposed
+was to defer the redraw whole. Splitting it is strictly better and gives up
+nothing: `_refresh_view` costs 3-4 ms against `page.update()`'s 23-59 ms, so
+running it on every event keeps 85% of the saving — and it is what preserves
+`PL-018`'s property, that the control objects agree with the snapshot the
+moment a setting is applied. Every existing test passed unchanged under this
+variant and five would have failed under the other, which is the suite saying
+the invariant was deliberate rather than incidental.
+
+**Two carve-outs, and they are the same fault in opposite directions.** A
+refusal draws its own frame, because it is the one case where the dial on
+screen and the simulation disagree — the reader dragged it somewhere the core
+would not go — so a tick of delay leaves a control stating a setting the run
+is not using. And the call that *clears* a refusal draws too, because a notice
+left up after it stopped being true misstates the run the same way. An
+accepted setting with no notice on either side of it has nothing on screen to
+correct.
+
+**The render tick now fires while the run is stopped**, whenever a change is
+owed a frame. Without that the bound would not hold on the pause-change-resume
+route `app/playback.py` documents as the way to time a control change exactly:
+paused there is no run to draw, but there is still a dial moving.
+
+Measured on the harness `PL-YSZN` describes, saturated chart at 300x, one
+slider `on_change`:
+
+| | Per event | A 30-event/s drag needs |
+| --- | ---: | ---: |
+| As found | 59.1 ms | 1.8 s of loop time per second |
+| After `PL-KP7H` (tooltips off while playing) | 23.3 ms | 0.7 s |
+| After this | 3.4 ms | 0.1 s |
+
+**What it costs.** A change now reaches the client up to `RENDER_INTERVAL_S`
+later — 200 ms, the cadence every other readout on the dashboard already moves
+at. That is a bound rather than a regression: at 30 events a second the old
+path asked for more loop time than a second contains, so the readouts arrived
+*later* than a tick and unpredictably. The immediacy was claimed rather than
+achieved.
+
+**What it hands on.** `PL-027` keeps the half that needs a live client: whether
+a same-value write landing mid-drag snaps the thumb. Its other half — whether
+the write-back costs anything — is answered, and the answer was that the cost
+was never the write.

@@ -2911,6 +2911,123 @@ def test_neither_loop_does_anything_while_paused() -> None:
     assert page.update_calls == 0
 
 
+def test_a_dragged_slider_leaves_its_frame_to_the_render_tick() -> None:
+    """`PL-R2YM`: the drag stops paying a whole-page walk per pointer move.
+
+    What must still be immediate is the *view* - the readout beside the dial
+    has to agree with the snapshot the moment the setting is applied, which
+    is `PL-018`'s property. What waits is the submission of that view to the
+    client, which is the expensive half.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+    page.update_calls = 0
+
+    view._fresh_gas_flow_slider.value = 7.0
+    view._handle_fresh_gas_flow_change(ft.Event(name="change", control=view._fresh_gas_flow_slider))
+
+    assert controller.snapshot().fresh_gas_flow_l_min == 7.0
+    assert view._fresh_gas_flow_text.value == "7.0 L/min"
+    assert page.update_calls == 0
+    assert view._render_pending is True
+
+
+def test_a_refused_slider_change_draws_its_own_frame() -> None:
+    """The one state the coalescing rule may not defer.
+
+    A refused setting is the only case where the dial on screen and the
+    simulation disagree, because the reader dragged it somewhere the core
+    would not go. Waiting even a tick there leaves a control stating a
+    setting the run is not using.
+    """
+
+    page = _FakePage()
+    controller = SimulationController(agent_id="isoflurane")
+    view = SimulationView(page=page, controller=controller)
+    page.update_calls = 0
+
+    view._delivered_concentration_slider.value = 50.0
+    view._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view._delivered_concentration_slider)
+    )
+
+    assert view._notice_text.visible is True
+    assert page.update_calls == 1
+    assert view._render_pending is False
+
+
+def test_the_frame_that_clears_a_refusal_is_drawn_too() -> None:
+    """The same fault backwards: a notice left up after it stopped being true."""
+
+    page = _FakePage()
+    controller = SimulationController(agent_id="isoflurane")
+    view = SimulationView(page=page, controller=controller)
+
+    view._delivered_concentration_slider.value = 50.0
+    view._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view._delivered_concentration_slider)
+    )
+    page.update_calls = 0
+
+    view._delivered_concentration_slider.value = 2.0
+    view._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view._delivered_concentration_slider)
+    )
+
+    assert view._notice_text.visible is False
+    assert page.update_calls == 1
+
+
+def test_a_discrete_action_still_draws_its_own_frame() -> None:
+    """Only a control that reports continuously coalesces.
+
+    A button press is one action and one frame; making it wait a tick would
+    spend responsiveness to save nothing.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    page.update_calls = 0
+
+    view._handle_start(ft.Event(name="click", control=view._start_button))
+
+    assert controller.is_running
+    assert page.update_calls == 1
+    assert view._render_pending is False
+
+
+def test_the_render_tick_draws_a_pending_change_while_the_run_is_stopped() -> None:
+    """The bound has to hold on the pause-change-resume route as well.
+
+    `app/playback.py` documents pausing as how a reader times a control
+    change exactly. Paused there is no run to draw, but there is still a
+    dial moving, so the tick has to fire for a change that is owed a frame
+    even though `is_running` is false - and stop firing once it has.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+
+    view._fresh_gas_flow_slider.value = 7.0
+    view._handle_fresh_gas_flow_change(ft.Event(name="change", control=view._fresh_gas_flow_slider))
+    assert view._render_pending is True
+    page.update_calls = 0
+
+    _run_briefly(view._run_render_timer, ticks=1, interval_s=RENDER_INTERVAL_S)
+
+    assert page.update_calls == 1
+    assert view._render_pending is False
+
+    _run_briefly(view._run_render_timer, ticks=1, interval_s=RENDER_INTERVAL_S)
+
+    assert page.update_calls == 1, "the tick kept drawing a paused run with nothing owed"
+
+
 def test_simulation_time_does_not_depend_on_render_cadence() -> None:
     """Identical step counts must give identical results, however drawing goes.
 

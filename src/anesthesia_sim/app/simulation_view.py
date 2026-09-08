@@ -731,6 +731,12 @@ class SimulationView:
         # false so that the first frame's write is the one that decides it,
         # whatever state the run is in when the dashboard is mounted.
         self._chart_tooltips_enabled = False
+        # Whether a frame is owed to a setting change that chose not to draw
+        # its own. Set by a coalesced `_apply_setting` and cleared by the
+        # render tick that pays it, which is what lets that tick run while
+        # the simulation is stopped - a paused reader moving a dial still
+        # needs the readouts beside it to move.
+        self._render_pending = False
         # The agent a reader has asked for and not yet confirmed, and the
         # dialog asking them. Held here rather than passed through the
         # button callbacks because Flet hands a callback its own control and
@@ -2913,7 +2919,7 @@ class SimulationView:
         self._refresh_view()
         self._page.update()
 
-    def _apply_setting(self, apply_setting: Callable[[], None]) -> None:
+    def _apply_setting(self, apply_setting: Callable[[], None], *, coalesce: bool = False) -> None:
         """Apply one user setting, reporting a refusal instead of losing it.
 
         A `SimulationConfigurationError` here means the core rejected the
@@ -2923,8 +2929,40 @@ class SimulationView:
         while the simulation kept running at the old one, which is the
         correct number under the wrong label that `CLAUDE.md` treats as a
         safety failure. `_refresh_view` restores the control from the
-        snapshot on the way out.
+        snapshot, on the frame this draws or on the next tick.
+
+        **`_refresh_view` is never what waits.** It runs on every call,
+        coalesced or not, so the control objects always agree with the
+        snapshot the moment a setting has been applied - which is the
+        property `PL-018` established and the one a reader's dial position
+        rests on. What waits is only `page.update()`, the submission of
+        those objects to the client, and it is that which costs 23-59 ms on
+        a saturated chart against this method's 3-4 ms (`PL-R2YM`,
+        `PL-YSZN`). Deferring the cheap half as well would buy a further
+        tenth of the drag and give up a stated invariant for it.
+
+        **A refusal draws its own frame, whatever `coalesce` says**, and so
+        does the call that clears one. A refusal is the one case where the
+        control on screen and the simulation disagree - the reader dragged
+        the dial somewhere the core would not go - so waiting even a tick
+        would leave a dial stating a setting the run is not using, and
+        leaving the notice up a tick after it stopped being true is the
+        same fault backwards. An accepted setting with no notice on either
+        side of it has nothing on screen to correct: the snapshot already
+        says what the dial says.
+
+        Args:
+            apply_setting: The setter to run. Called once, and any
+                `AnesthesiaSimulationError` it raises is reported rather
+                than propagated.
+            coalesce: Whether this call may leave its frame to the next
+                render tick. True for the parameter sliders, which report
+                continuously while dragged; false for every discrete
+                action, where one action is one frame and a tick of delay
+                would read as lag.
         """
+
+        settled_notice = self._rejected_setting_notice
 
         try:
             apply_setting()
@@ -2933,7 +2971,13 @@ class SimulationView:
         else:
             self._rejected_setting_notice = None
 
-        self._refresh_and_render()
+        self._refresh_view()
+
+        if coalesce and settled_notice is None and self._rejected_setting_notice is None:
+            self._render_pending = True
+            return
+
+        self._page.update()
 
     def _refresh_notice(
         self, failure_reason: str | None, supported_limit_reason: str | None
@@ -3257,7 +3301,9 @@ class SimulationView:
             return
 
         fresh_gas_flow_l_min = float(event.control.value)
-        self._apply_setting(lambda: self._controller.set_fresh_gas_flow(fresh_gas_flow_l_min))
+        self._apply_setting(
+            lambda: self._controller.set_fresh_gas_flow(fresh_gas_flow_l_min), coalesce=True
+        )
 
     def _handle_delivered_concentration_change(self, event: ft.Event[ft.Slider]) -> None:
         if event.control.value is None:
@@ -3265,7 +3311,8 @@ class SimulationView:
 
         delivered_concentration_fraction = float(event.control.value) / 100.0
         self._apply_setting(
-            lambda: self._controller.set_delivered_concentration(delivered_concentration_fraction)
+            lambda: self._controller.set_delivered_concentration(delivered_concentration_fraction),
+            coalesce=True,
         )
 
     def _handle_alveolar_ventilation_change(self, event: ft.Event[ft.Slider]) -> None:
@@ -3274,7 +3321,8 @@ class SimulationView:
 
         alveolar_ventilation_l_min = float(event.control.value)
         self._apply_setting(
-            lambda: self._controller.set_alveolar_ventilation(alveolar_ventilation_l_min)
+            lambda: self._controller.set_alveolar_ventilation(alveolar_ventilation_l_min),
+            coalesce=True,
         )
 
     def _handle_cardiac_output_change(self, event: ft.Event[ft.Slider]) -> None:
@@ -3282,7 +3330,9 @@ class SimulationView:
             return
 
         cardiac_output_l_min = float(event.control.value)
-        self._apply_setting(lambda: self._controller.set_cardiac_output(cardiac_output_l_min))
+        self._apply_setting(
+            lambda: self._controller.set_cardiac_output(cardiac_output_l_min), coalesce=True
+        )
 
     def _halt_run(self, error: Exception) -> None:
         """Stop the run and say on screen why it stopped.
@@ -3405,10 +3455,32 @@ class SimulationView:
         """Redraw the running simulation on its own, slower cadence.
 
         Drawing no longer gates stepping, and the interval can be tuned for
-        the display without changing the simulation. Explicit user actions
-        redraw immediately rather than waiting for this tick, so a control
-        never appears unresponsive and the view is never left showing state
-        the user has already changed.
+        the display without changing the simulation. A discrete user action
+        still redraws immediately rather than waiting for this tick, so a
+        button or a dropdown never appears unresponsive.
+
+        **A dragged slider is the exception, and it buys responsiveness
+        rather than spending it** (`PL-R2YM`). A slider reports continuously
+        while it is dragged, and each report used to draw a whole frame:
+        Flet's diff walks the entire control tree whether or not anything in
+        it moved, so one `on_change` cost 23-59 ms on a saturated chart and
+        a drag emitting thirty a second asked for more event-loop time than
+        a second contains. The loop could not deliver that, so the readouts
+        arrived *later* than a tick, not sooner - the immediacy was claimed
+        rather than achieved. Coalescing them onto this tick bounds the
+        delay at `RENDER_INTERVAL_S` instead, which is the cadence every
+        other readout on the dashboard already moves at.
+
+        So this tick fires while the run is stopped as well, whenever a
+        setting change is owed a frame. That is what makes the bound hold
+        for a reader using the pause-change-resume route `app/playback.py`
+        documents: paused, there is no run to draw, but there is still a
+        dial moving and readouts that have to follow it.
+
+        `_render_pending` is cleared before the frame rather than after, so
+        a frame that raises does not also swallow the change that asked for
+        it - `_halt_run` stops the run and draws what it can, and the next
+        tick has no stale claim to act on.
 
         Guarded for the mirror-image reason the simulation loop is: a dead
         render loop leaves a frozen display over a simulation that is still
@@ -3418,8 +3490,10 @@ class SimulationView:
         while True:
             await asyncio.sleep(RENDER_INTERVAL_S)
 
-            if not self._controller.is_running:
+            if not self._controller.is_running and not self._render_pending:
                 continue
+
+            self._render_pending = False
 
             try:
                 self._refresh_and_render()
