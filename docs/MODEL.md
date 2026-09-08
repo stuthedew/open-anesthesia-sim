@@ -323,7 +323,7 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | $`V_A`$ | Modeled alveolar gas volume | L gas |
 | $`V_v`$ | Venous blood-pool volume | L blood |
 | $`V_i`$ | Volume of tissue group $`i`$ | L tissue |
-| $`\dot V_F`$ | Fresh gas flow | L gas/min |
+| $`\dot V_F`$ | Fresh gas flow at the common gas outlet: carrier gas plus the vapour the vaporizer added, not the flowmeter setting (see "Breathing circuit") | L gas/min |
 | $`\dot V_A`$ | Alveolar ventilation | L gas/min |
 | $`Q`$ | Cardiac output | L blood/min |
 | $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min |
@@ -449,6 +449,37 @@ All flow terms below must use liters per second after conversion from user-facin
 ### Breathing circuit
 
 Fresh gas enters at concentration $`F_D`$. An equal fresh-gas volume leaves through the exhaust at the current mixed-circuit concentration $`F_I`$.
+
+**$`\dot V_F`$ is the flow at the common gas outlet, not the flowmeter
+setting.** The balance below carries one $`\dot V_F`$ for both the agent
+arriving and the gas leaving, so the two have to name the same stream: agent
+enters at $`\dot V_F F_D`$, which must be the vapour flow the vaporizer
+actually adds, and mixed circuit gas leaves at that same total volumetric
+rate. $`\dot V_F`$ is therefore the whole gas stream delivered to the
+circuit — carrier gas plus that added vapour — and the balance does not close
+under a carrier-only reading. This settles what the symbol means; it changes
+no equation.
+
+A vaporizer adds vapour to the carrier stream rather than displacing part of
+it. So with carrier flow $`\dot V_c`$, which is what the flowmeters are set
+to, and added vapour flow $`\dot V_v`$, the delivered fraction is
+$`F_D = \dot V_v/(\dot V_c + \dot V_v)`$ and the two flows are related by:
+
+$$
+\dot V_F = \dot V_c + \dot V_v = \frac{\dot V_c}{1-F_D}
+$$
+
+The gap that opens between them is small at ordinary dial settings and is not
+small at the top of a desflurane dial. At 2% delivered the two flows differ by
+2%; at the 18% calibrated maximum of the Tec 6 vaporizer, which this model
+accepts as desflurane's `max_delivered_concentration_percent`, they differ by
+22% — flowmeters set to 2 L/min leave the common gas outlet at about
+2.44 L/min. A reader who takes the interface's fresh-gas-flow control for a
+flowmeter setting is wrong by that factor in the circuit time constant
+$`V_C/\dot V_F`$, which is the quantity the wash-in curve is about.
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
 Ventilation transfers gas between the breathing circuit and alveolar compartment.
 

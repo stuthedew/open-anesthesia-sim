@@ -64,6 +64,15 @@ class BreathingCircuit:
     agent has, and therefore the only delivered concentration this class
     can supply without borrowing some particular agent's number (PL-019).
 
+    `fresh_gas_flow_l_min` is the flow at the common gas outlet - carrier
+    gas plus the vapour the vaporizer added - and not the flowmeter
+    setting a user reads it as. The two differ by a factor of
+    1/(1 - `delivered_concentration_fraction`), which is 22% at
+    desflurane's 18% dial maximum. `advance_fresh_gas()` reads this one
+    field as both the rate agent arrives at and the rate mixed circuit gas
+    leaves at, so only the post-vaporizer total balances; see
+    `docs/MODEL.md`, "Breathing circuit".
+
     `max_delivered_concentration_fraction` is the vaporizer's calibrated
     dial maximum for the agent in use. It defaults to 1.0, meaning "no
     device limit declared", which is only appropriate for a circuit built
@@ -121,7 +130,11 @@ class BreathingCircuit:
 
     @property
     def time_constant_s(self) -> float:
-        """Return the fresh-gas wash-in time constant."""
+        """Return the fresh-gas wash-in time constant.
+
+        `circuit_volume_l / fresh_gas_flow_l_min`, so it is a time constant
+        on common-gas-outlet flow rather than on a flowmeter setting.
+        """
 
         if self.fresh_gas_flow_l_min == 0.0:
             return inf
