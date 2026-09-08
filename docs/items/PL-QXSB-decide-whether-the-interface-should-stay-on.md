@@ -132,3 +132,107 @@ page.
 which is why this is `needs-decision` rather than `ready`. If the answer is
 the bake-off, candidates 1 and 2 are cheap to measure and settle most of it
 without touching the dashboard.
+
+## Qt investigated at the project owner's direction, 2026-09-08
+
+"I think we should look into pyside or pyqt." Two of the four candidates
+above, and the investigation settles more than expected.
+
+**PyQt is ruled out by licensing rather than by preference.** This project is
+Apache-2.0 (`pyproject.toml`, `LICENSE`). Riverbank's own PyPI page for PyQt6
+6.11.0 states: "PyQt6 is released under the GPL v3 license and under a
+commercial license." Linking Apache-2.0 code against GPLv3 PyQt means
+redistributing the combined work under GPLv3 — relicensing this project — or
+buying a commercial licence. That is a decision about what the project *is*,
+not a toolkit trade-off, and nothing below depends on taking it.
+
+**PySide6 does not have that problem.** `PySide6-Essentials` 6.11.2 and
+`shiboken6` declare `LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only`; the LGPL
+option lets an Apache-2.0 application link dynamically and keep its own
+licence. `PySide6-Addons` (which carries QtCharts) declares the same.
+`pyqtgraph` 0.14.0 is MIT and `numpy` is BSD-3-Clause. So the licence-clean
+stack is **PySide6 + pyqtgraph**, and it is also the fast one.
+
+### The measurement
+
+PySide6 6.11.2 with pyqtgraph 0.14.0, offscreen, six traces plus twelve
+numeric readouts — the shape of the real dashboard. Timed: `setData` on six
+curves, the x-range move, and twelve `setText` calls. Median of 60 frames.
+
+| Points per trace | Total points | Python-side frame |
+| ---: | ---: | ---: |
+| 282 — the shipped column budget | 1 692 | **0.51 ms** |
+| 1 128 — four times it | 6 768 | 0.72 ms |
+| 18 000 — a 30-minute case, every sample | 108 000 | 0.92 ms |
+| 108 000 — a 3-hour case, every sample | 648 000 | 1.96 ms |
+
+Against Flet's `page.update()` at 20.3 ms for the whole page at 300x, of which
+the ~2 080 point controls are about half.
+
+**Two things in that table, and the second is the larger.** It is roughly
+twenty times cheaper at the point count actually shipped. And it *barely
+scales*: 380 times the points costs four times the frame, because data crosses
+as arrays rather than as one control object per point. Flet's cost is linear in
+controls present; Qt's is not a function of them at all.
+
+**It would make decimation optional.** 648 000 points in 1.96 ms means a
+three-hour case could draw every recorded sample. `app/chart_downsampling.py`,
+M4, `CHART_COLUMN_BUDGET_PER_SERIES`, this item's own accepted ceiling and
+`PL-8LXM` are all machinery for a constraint that would stop existing.
+
+### What this measurement is not
+
+**Paint cost is unmeasurable in this container** — no GPU, a software
+rasteriser, and an offscreen platform plugin. Forcing a full repaint gave
+18-28 ms *including for a frame where nothing changed*, which is `grab()` and
+`processEvents` re-rendering the whole surface offscreen rather than what a
+composited desktop pays. So the table measures the term `PL-YSZN` found to be
+98% of a Flet frame, not the whole frame.
+
+The structural claim is what carries, and it does not depend on the timing:
+**Qt has no diff.** A widget is handed new data, marks itself dirty, and the
+toolkit repaints the dirty region. Nothing walks the whole interface to find
+out what changed, which is precisely what Flet's 10.3 ms idle floor is.
+
+### Costs, measured where measurable
+
+- **Installed size**: PySide6-Essentials 233 MB + numpy 33 MB + pyqtgraph
+  7.7 MB against flet 5.5 MB + flet_web 73 MB. About 3.5x, trimmable because a
+  packaged app ships selected Qt modules rather than all of them, but real for
+  a download.
+- **numpy enters**, required by pyqtgraph. `docs/WORKING_NOTES.md` § "Decided:
+  no numpy" argued *fit* — that numpy has no append and would make `RunHistory`
+  harder — and concluded no for compaction and chart storage. numpy underneath
+  a plotting library is a different proposition, so this reopens that note's
+  scope rather than contradicting its conclusion; it should be re-argued, not
+  cited either way.
+- **The dashboard is rewritten**: `app/simulation_view.py` (3 586 lines),
+  `app/chart_series.py`, `app/theme.py`. What is *not* rewritten is why this is
+  tractable at all — `core/` and `app/controller.py` import no Flet and
+  `tools/import_boundary_check.py` enforces it, and `app/formatting.py`,
+  `app/playback.py`, `app/chart_time_base.py` and `app/wash_in.py` are
+  Flet-independent by the same discipline. The model, the run, the score and
+  every unit conversion survive untouched.
+- **Flet's web target is given up.** Nothing ships it today and `PL-2QMK` is
+  about that renderer failing rather than about wanting it, but it is a
+  capability lost.
+
+### One thing it would buy that is not speed
+
+`PL-2QMK` records that no session in the web container can visually confirm a
+chart change. **Qt rendered offscreen in that very container — it is how this
+benchmark ran.** Headless screenshot tests of the real interface become
+ordinary rather than impossible, which is what `PL-90Y6`, `PL-3355`,
+`PL-W8DQ`, `PL-GVXP` and the rest of `presentation-safety` are waiting on.
+`PL-F0L8` (accessibility) is the other Flet-capability question; Qt's
+`QAccessible` would need checking on its own terms rather than assumed.
+
+### Recommendation
+
+Not a migration, and no longer "stay on Flet with a control budget" either —
+the measurement is strong enough that the null option is now the weaker one.
+**A spike:** port the concentration chart and the readout row alone to
+PySide6 + pyqtgraph, behind the existing controller, and run it on the owner's
+own machine. It is bounded, it throws away cleanly, and it answers the two
+things this container cannot — real paint cost on real hardware, and whether
+the interface can be made to look the way it is meant to.
