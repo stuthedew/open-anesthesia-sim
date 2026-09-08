@@ -582,16 +582,19 @@ def test_a_base_current_with_its_remote_says_nothing(tmp_path: Path) -> None:
 
 @pytest.fixture(autouse=True)
 def _no_inherited_guard(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Clear the re-entry guard this suite may have inherited.
+    """Clear the re-entry guards this suite may have inherited.
 
     `docket check` sets `DOCKET_SKIP_LANDED` for every command it runs, and
-    one of those commands is the pytest invocation recorded as `PL-3CBS`'s own
-    `verify:`. Without this, the cases below read the declined report meant for
-    a nested run and the item's command fails under `check` while passing when
-    run by hand - which is exactly the environment-dependent result the check
-    itself exists to make visible.
+    `docket verify` sets `DOCKET_IN_VERIFY` for the item command it runs. One
+    of those commands is the pytest invocation recorded as this file's own
+    `verify:`, twice over. Without this, the cases below read the declined
+    report meant for a nested run and the item's command fails under the tool
+    that runs it while passing when run by hand - which is exactly the
+    environment-dependent result the check itself exists to make visible. The
+    one case that wants the verify guard sets it itself, after this.
     """
     monkeypatch.delenv(LANDED_GUARD, raising=False)
+    monkeypatch.delenv(VERIFY_GUARD, raising=False)
 
 
 def test_an_item_whose_work_has_landed_is_found_by_running_its_command(tmp_path: Path) -> None:
