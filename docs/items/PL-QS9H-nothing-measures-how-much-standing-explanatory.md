@@ -3,10 +3,11 @@ id: PL-QS9H
 title: Nothing measures how much standing explanatory text the interface carries, so prose accretes between reviews the way contrast claims did before contrast_check
 priority: P2
 effort: M
-status: needs-decision
+status: blocked
 classes: ux, infra
 feature: teachable-case
 touches: tools/, src/anesthesia_sim/app/simulation_view.py, .claude/rules/ui-reader.md
+blocked-by: PL-6580, PL-F9TQ
 added: 2026-09-08
 ---
 
@@ -34,10 +35,19 @@ matching file first, is the same failure one level up. The measurement is also
 what makes the strip work reviewable: right now nobody can say whether the
 screen got better between two releases.
 
-**Decision needed.** Which of the two shapes below to build, or neither. Shape
-1 costs an allowlist entry per permitted sentence forever; shape 2 costs almost
-nothing and probably fails `CLAUDE.md`'s own retirement test; neither is
-free, and `CLAUDE.md` says that where the benefit is unclear the answer is no.
+**Decided 2026-09-08 (project owner): shape 1, the declared-standing-text
+allowlist.** Shape 2, the bare character budget, is not to be built — it fires
+on legitimate growth, which is the retirement defect `CLAUDE.md` names, and a
+session answers it by raising the number.
+
+Two things the decision fixes, so a later session does not reopen them: the
+allowlist is keyed on the **element** — the attribute or builder method, in
+backticks, resolved against the source — never on the string text, which is
+`contrast_check.py`'s cite-by-symbol rule (`PL-GJDW`) and what stops a
+reworded label churning the table; and an entry is a *declaration a person
+wrote*, so the tool never decides whether a sentence earns its place. Adding an
+entry to make a change go green is the same abuse `ui-color.md` forbids for
+`KNOWN_SHORTFALLS`.
 
 **The decidable half.** How much standing text the interface carries, and
 whether a given standing block has been declared. Both are `ast` over
