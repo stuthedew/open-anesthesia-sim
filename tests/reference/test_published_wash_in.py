@@ -128,9 +128,13 @@ is removed, from +3.79 to +5.13 SD outside it. It over-accounts for
 desflurane, which crosses its published mean and settles 2.33 SD below - so
 without rebreathing this model washes desflurane out *faster* than Yasuda's
 volunteers did. That residual is a disagreement about tissue return with the
-apparatus no longer available to explain it, and it is what `PL-73G7` is for.
-Neither column is a validation of the shipped simulator's elimination, and no
-test here claims one.
+apparatus no longer available to explain it, and it is not a coefficient this
+repository could correct:
+`test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination`
+below carries what was ruled out, and `docs/MODEL.md` "Desflurane's residual,
+and why the parameter file was not changed" carries the rest of it and what is
+left open. Neither column is a validation of the shipped simulator's
+elimination, and no test here claims one.
 
 **Four caveats bound how strongly either comparison may be read.** The first
 two are the module's originals and apply to both directions; the third and
@@ -1389,8 +1393,9 @@ def test_five_minute_elimination_ratio_without_rebreathing_against_published_hum
     before. For desflurane it over-accounts: the model crosses its published
     mean and settles 2.33 SD below it, washing out faster than the volunteers
     did rather than more slowly. That residual is a real disagreement about
-    tissue return with the circuit no longer available to explain it, and
-    `PL-73G7` is the item that owes an explanation for it.
+    tissue return with the circuit no longer available to explain it. What it
+    is not is the next test, and `docs/MODEL.md` "Desflurane's residual, and
+    why the parameter file was not changed" carries the whole account.
 
     **What is asserted here is a regression band, not the agreement above.**
     Three rows landing inside the published spread is a result to state, not a

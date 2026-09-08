@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, tools/contrast_check.py, tests/unit/test_simulation_view.py
 added: 2026-09-06
 closed: 2026-09-07
+pr: 460
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_agent_name_stays_legible_while_the_run_disables_the_selector' tests/unit/test_simulation_view.py
 ---
 

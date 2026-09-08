@@ -1704,9 +1704,22 @@ any equation: lower solubility only means faster equilibration through the
 same closed-form solutions, which `tests/reference/test_multi_agent.py`
 checks directly by comparing simulated alveolar/circuit ratios rather than
 only comparing the static coefficient values.
+
 <!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
+
+**Desflurane's tissue coefficients have been questioned against a published
+measurement and kept.** Its five-minute elimination is the one comparison in
+this repository that misses a human measurement in the direction of washing
+out too fast, and the sensitivity of that ratio makes the vessel-rich
+coefficient the obvious suspect. It is not the cause, and the reasoning is in
+"Desflurane's residual, and why the parameter file was not changed" rather
+than here so that it sits beside the comparison that raised it. Read that
+before changing any coefficient in `data/agents/desflurane.json`: the value
+the disagreement demands is nineteen standard deviations above the human
+measurement and would invert the measured solubility ordering of the three
+shipped agents.
 
 ### Delivery-limit and MAC parameters
 
@@ -2327,7 +2340,8 @@ systems are matched, which no comparison in this repository could say before.
 For desflurane it over-accounts: the model crosses its published mean and
 settles 2.33 SD below it, washing out *faster* than the volunteers did rather
 than more slowly. That residual is a disagreement about tissue return with the
-circuit no longer available to explain it, and it is what `PL-73G7` is for.
+circuit no longer available to explain it; what it is not, and what is left of
+it, is "Desflurane's residual" below.
 The movement itself — 3.5 to 4.2 SD per cohort — is asserted rather than
 recorded, so the attribution in the paragraph above cannot go stale in
 silence, as are the driver's residual $`F_I`$, the model's own conservation
@@ -2339,6 +2353,131 @@ between 1 and 10 L/min.
 Neither condition validates the elimination a user watches, and no test claims
 that it does. The elimination this simulator runs is the rebreathing one, and
 what is asserted about it is the regression band above.
+
+#### Desflurane's residual, and why the parameter file was not changed
+
+The obvious reading of that residual is that desflurane's vessel-rich
+coefficient is too low. The sensitivity measured under "Parameter provenance"
+makes the five-minute ratio a vessel-rich tissue:gas measurement and barely a
+blood:gas one, and a tissue group with too little capacity is a tissue group
+that empties too fast. The reading is arithmetically right and physically
+wrong, and the difference is what this section records.
+
+**Raising the coefficient does close the gap, and it costs almost nothing in
+the wash-in row.** Desflurane's stored vessel-rich tissue:gas coefficient is
+0.54 against a blood:gas of 0.42, an implied tissue:blood of 1.286. Solving
+instead for the coefficient that reproduces each cohort's published
+five-minute ratio, at the shipped operating point and with the apparatus
+removed (measured 2026-09-08):
+
+<!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 1.286 from data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
+
+| Agent | Tissue:blood demanded | Measured human brain:blood | Distance |
+| --- | --- | --- | --- |
+| Sevoflurane | 1.74 | 1.70 ± 0.09 | +0.4 SD |
+| Isoflurane | 1.45 | 1.57 ± 0.10 | −1.2 SD |
+| Desflurane | 2.24 | 1.29 ± 0.05 | +19 SD |
+
+At 2.24 desflurane's elimination lands on the published 0.140 and its wash-in
+row stays inside its published spread at +0.55 SD. That is not luck: the
+vessel-rich group is fully equilibrated after a 30-minute administration — its
+time constant is 2.0 to 2.7 minutes across the three agents — so its capacity
+is nearly invisible in $`F_A/F_I`$ and shows up almost entirely in the
+elimination. The two published rows are therefore not in conflict with each
+other, and a single coefficient satisfies both.
+
+**What rules the change out is the tissue measurement rather than this
+model.** The measured column above is Yasuda's human tissue study, the same
+group's, three years before the kinetic pair:
+
+- Yasuda N, Targ AG, Eger EI 2nd. *Solubility of I-653, sevoflurane,
+  isoflurane, and halothane in human tissues.* Anesth Analg 1989;69(3):370-3.
+  PMID 2774233. Brain:blood, mean ± SD: I-653 (desflurane) 1.29 ± 0.05,
+  isoflurane 1.57 ± 0.10, sevoflurane 1.70 ± 0.09, halothane 1.94 ± 0.17.
+  Read from the abstract and checked against PubMed on 2026-09-08.
+
+Two of the three demanded values land on that measurement. Desflurane's is
+nineteen standard deviations above its own, and above what either other agent
+demands: adopting it would make desflurane the *most* tissue-soluble of the
+three, inverting the ordering the source paper was written to report. The
+stored Gas Man coefficients are that paper's brain:blood values to within 3%
+— 1.692 against 1.70, 1.615 against 1.57, 1.286 against 1.29 — so this is not
+a case of a reference implementation having wandered from the primary
+literature, and there is no better value to move to.
+`test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination`
+asserts the contrapositive: given a vessel-rich coefficient the published
+human tissue data will bear, desflurane's elimination still misses on the same
+side.
+
+| Coefficient given | $`F_A/F_{A0}`$ at 5 min | Against 0.14 ± 0.02 |
+| --- | --- | --- |
+| 1.286, shipped | 0.0935 | −2.33 SD |
+| 1.39, its own measured mean + 2 SD | 0.0998 | −2.01 SD |
+| 1.70, sevoflurane's, the highest of the three | 0.1167 | −1.17 SD |
+
+**Five other candidates were tested, and each fails the same way**: it moves
+sevoflurane and isoflurane as much as desflurane or more, and the published
+rows have no room for that, or it moves desflurane the wrong way. Measured
+2026-09-08; the last three on an independent forward-Euler integration of
+these equations, which reproduces the shipped driver to within 0.8% and whose
+own zero-shunt baseline for desflurane is −2.29 SD rather than −2.33.
+
+| Candidate | What reaching 0.140 takes | What it costs the other rows |
+| --- | --- | --- |
+| Blood:gas too low | ×1.63, to 0.687 | 10.9 SD above Eger 1987's measured 0.424 ± 0.024, and the wash-in row falls to −4.35 SD |
+| Alveolar ventilation too high | between 2.5 and 3.0 L/min | at 3.0, sevoflurane +2.1 and isoflurane +2.7 SD, and all three wash-in rows at −2.0 SD |
+| Cardiac output | out of reach | 3 to 7 L/min moves desflurane only from −2.6 to −2.1 SD |
+| Fast capacity this model omits — lung tissue, pulmonary and arterial blood | about 3 L of blood-equivalent | worth 20.1% of desflurane's fast pool against 19.7% of sevoflurane's and 23.4% of isoflurane's: flat, where desflurane needs +2.41 gas-equivalent litres and isoflurane −1.32 |
+| A non-ideal lung — shunt or ventilation-perfusion dispersion, both excluded by $`F_a \equiv F_A`$ | moves the wrong way | a 20% shunt takes desflurane from −2.29 to −2.66 SD; a log-normal V/Q distribution at log SD 1.0 takes it to −2.91 |
+| Residual rebreathing in the published apparatus | $`F_I/F_A`$ = 0.30 | sevoflurane +2.72 SD, isoflurane +3.29 and +4.10 |
+
+The fourth row's volumes are round physiologic figures — 1 kg of lung tissue
+at a tissue:blood ratio of 1.2, and 1.8 L of pulmonary and arterial blood —
+used to size the term and not proposed as parameters; none of them is a stored
+value and none should be read as one. What it establishes does not depend on
+their precision: any capacity that scales with blood solubility is worth the
+same *fraction* of every agent's fast pool, so adding it moves all three rows
+together and cannot produce a residual in one of them.
+
+**So the cause is not identified. This is a recorded disagreement, and the
+sign and the size are what is recorded.** What survives the eliminations above
+is a mechanism acting on the least soluble agent alone, in the direction of
+holding its alveolar fraction up. Two candidates, neither demonstrated:
+
+1. *End-tidal sampling in a lung with ventilation-perfusion dispersion.* The
+   published $`F_A`$ is end-tidal gas from an anaesthetized volunteer; this
+   model's is one perfectly mixed compartment. In a dispersed lung, a unit
+   with ventilation-perfusion ratio $`r`$ sits at
+   $`P_A/P_{\bar v} = \lambda_{b:g}/(\lambda_{b:g} + r)`$ through an
+   elimination, so the last units to empty carry the highest partial pressure
+   during washout and the lowest during wash-in, and a ratio of the two is
+   biased upward at both ends by an amount that grows as solubility falls. On
+   a log-normal perfusion distribution at log SD 1.0 with a 5% shunt, the
+   arterial retention this model fixes at
+   $`\lambda_{b:g}/(\lambda_{b:g} + \dot V_A/Q)`$ is understated by 44% for
+   desflurane, 30% for sevoflurane and 15% for isoflurane — the rank order the
+   residuals have. What stops it being the answer is the fifth row of the
+   table above: the flow-weighted alveolar reading of that same calculation
+   moves every agent the wrong way, so the hypothesis rests entirely on the
+   end-tidal weighting, and neither abstract says how end-tidal gas was
+   sampled.
+2. *The published value.* Desflurane's recovery — agent recovered over agent
+   taken up — was 105 ± 25% in those eight volunteers, against 102 ± 13% for
+   isoflurane measured in the same sitting: the wider spread of the two, and
+   centred above complete recovery.
+
+Whatever the explanation is, it has to fit the whole published set and not
+desflurane alone. The same eight volunteers gave halothane 0.25 ± 0.02, so
+across a solubility range of roughly six-fold — halothane's blood:gas is
+conventionally about 2.4, a textbook figure and not a parameter this project
+stores — the published five-minute ratios span only 0.14 to 0.25, which is a
+narrower spread than a perfusion-limited model produces.
+
+**What would settle it** is the methods sections of the two papers: the
+breathing system, how end-tidal gas was sampled, and the alveolar ventilation
+measured through the elimination. Neither is in PubMed Central, and neither is
+held in `docs/references/`.
 
 **Which question a band of one standard deviation answers**, since this
 section now makes the claim in two places. A deterministic model compared
@@ -4753,6 +4892,22 @@ beside the volatile, meet the coupling late, and be tempted into a partial fix
 whose $`F_A`$ curve is plausible and wrong by tens of percent through
 induction. "Alveolar gas" carries the arithmetic that separates the two cases
 and the two standard formulations that lift the constraint.
+
+**Desflurane's five-minute washout disagrees with the published human
+measurement, and no admissible parameter closes it.** With the rebreathing
+circuit removed as a diagnostic, this model reproduces sevoflurane's and both
+isoflurane cohorts' published $`F_A/F_{A0}`$ at five minutes and washes
+desflurane out 2.33 published standard deviations too *fast*. It is the one
+place in this repository where a comparison against a human measurement fails
+in the direction that overstates recovery, and a learner reading desflurane's
+early washout as a physiologic prediction would expect a faster fall than
+Yasuda's volunteers showed. "Desflurane's residual, and why the parameter file
+was not changed" carries what was ruled out — the tissue and blood
+solubilities, the operating point, the fast capacity this model omits, a
+non-ideal lung, and residual rebreathing in the published apparatus — and
+which of this section's omissions the two surviving hypotheses rest on. It is
+recorded rather than corrected because every value that would close it is
+outside what the human measurements support.
 
 **The MAC divisor is a limitation of the display, and a named one.** The
 second display unit divides by a tier-3 `mac_percent`, and "Delivery-limit
