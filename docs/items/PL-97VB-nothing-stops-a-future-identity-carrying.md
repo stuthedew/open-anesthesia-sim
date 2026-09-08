@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.4.10
 touches: tools/agent_identity_check.py, tests/unit/test_agent_identity_check.py, Makefile, docket.toml, docs/ARCHITECTURE.md, .github/workflows/quality.yml, .claude/rules/ui-color.md
 added: 2026-09-07
 closed: 2026-09-08

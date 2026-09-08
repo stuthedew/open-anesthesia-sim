@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: science, docs
 feature: numerical-domain
+milestone: v0.4.10
 touches: src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md, tests/reference/test_published_wash_in.py
 blocked-by: PL-W21J
 added: 2026-09-06
