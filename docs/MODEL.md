@@ -476,7 +476,12 @@ accepts as desflurane's `max_delivered_concentration_percent`, they differ by
 22% — flowmeters set to 2 L/min leave the common gas outlet at about
 2.44 L/min. A reader who takes the interface's fresh-gas-flow control for a
 flowmeter setting is wrong by that factor in the circuit time constant
-$`V_C/\dot V_F`$, which is the quantity the wash-in curve is about.
+$`V_C/\dot V_F`$, which is the quantity the wash-in curve is about. The
+interface therefore names that control "Fresh gas flow" over the gloss
+"common gas outlet", in the same two-line form the alveolar readout uses for
+"end-tidal-equivalent" and for the same reason: the unqualified name is the
+one on a real flowmeter bank, and it must not be shortened back to it to fit
+a layout (`PL-71CF`).
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->

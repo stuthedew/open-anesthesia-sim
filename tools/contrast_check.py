@@ -358,7 +358,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "(`_playback_rate_text`), which shares the surface and the size of the "
         "MAC multiples beside it (PL-SN2C), and the border of the chart's "
         "time-base dropdown (`_time_base_dropdown`), a user-interface component "
-        "needing only SC 1.4.11's 3:1.",
+        "needing only SC 1.4.11's 3:1. Also the gloss under a setting's name "
+        "in the controls row (`_build_parameter_panel`, PL-71CF), which is the "
+        "readout gloss one panel row up: the same colour on the same surface "
+        "at the same size, so it too adds no pair.",
     ),
     Requirement(
         "ACCENT_TEXT",

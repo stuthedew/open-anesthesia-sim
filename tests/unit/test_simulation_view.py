@@ -594,6 +594,42 @@ _ALVEOLAR_METRIC_QUALIFIER = "end-tidal-equivalent"
 _UNHEDGED_END_TIDAL = re.compile(r"end[\s-]?tidal(?!-equivalent)", re.IGNORECASE)
 
 
+# The exact two strings the fresh-gas-flow control must carry, restated here
+# for the same reason as the pair above: importing them from the view would
+# move both sides of the assertion in one edit.
+_FRESH_GAS_FLOW_LABEL = "Fresh gas flow"
+_FRESH_GAS_FLOW_QUALIFIER = "common gas outlet"
+
+# What an `ft.Text` with no explicit `size` renders at. The setting names are
+# left unsized so they follow the theme; the gloss overrides that downwards,
+# and this is the number that claim is measured against.
+_THEME_BODY_TEXT_SIZE = 14
+
+
+def _parameter_labels_above(
+    view: SimulationView, slider: ft.Slider
+) -> tuple[ft.Text, ft.Text | None]:
+    """Return the name, and any gloss under it, that the row draws above `slider`.
+
+    Reads the assembled row rather than a constant, for the reason
+    `_metric_labels_above` does: a label asserted on its own would still pass
+    if it were drawn over the wrong control. The gloss is optional here - only
+    a setting whose name would otherwise be read as a different quantity
+    carries one - so this returns None where the panel draws none, rather than
+    the blank spacer a readout panel would hold.
+    """
+
+    for panel in view._build_parameter_controls().controls:
+        label_control, *rest = panel.content.controls
+        row = next(control for control in rest if isinstance(control, ft.Row))
+        if slider not in row.controls:
+            continue
+        gloss = rest[0] if isinstance(rest[0], ft.Text) else None
+        return label_control, gloss
+
+    raise AssertionError("no parameter panel in the row carries that slider")
+
+
 def _metric_labels_above(view: SimulationView, value_text: ft.Text) -> tuple[ft.Text, ft.Text]:
     """Return the name and qualifier controls the grid draws above `value_text`.
 
@@ -687,6 +723,61 @@ def test_the_alveolar_readout_is_labelled_end_tidal_equivalent() -> None:
     # alternative names for one quantity, which is the confusion the split
     # exists to remove.
     assert qualifier.size < name.size
+
+
+def test_the_fresh_gas_flow_control_names_the_common_gas_outlet() -> None:
+    """The gloss is a safety requirement, not a wording preference.
+
+    "Fresh gas flow" alone is what an anesthesia machine's flowmeter bank is
+    labelled, and a flowmeter reads the carrier gas only. The model's own
+    circuit balance forces this setting to be the whole post-vaporizer
+    stream - `docs/MODEL.md` § "Breathing circuit" derives it, and states the
+    consequence: the two flows differ by 1/(1 - F_D), which reaches 22% at
+    desflurane's 18% Tec 6 maximum, where flowmeters at 2 L/min leave the
+    common gas outlet at about 2.44 L/min.
+
+    That factor lands on the circuit time constant this control sets, so a
+    reader who takes the slider for a flowmeter draws a wrong clinical
+    inference from a correct number - which `CLAUDE.md` counts as a
+    presentation failure rather than a wording preference, on the one control
+    a user most readily maps onto a real machine (PL-71CF, after PL-CXYT).
+    """
+
+    view, _ = _build_view()
+
+    label, qualifier = _parameter_labels_above(view, view._fresh_gas_flow_slider)
+
+    assert label.value == _FRESH_GAS_FLOW_LABEL
+    assert qualifier is not None, "the fresh-gas-flow control carries no gloss"
+    assert qualifier.value == _FRESH_GAS_FLOW_QUALIFIER
+    # Subordinate to the name for the reason the readout gloss is: the setting
+    # is what the control changes, and where in the machine that flow is
+    # measured is the qualification on it. Equal type would offer the two as
+    # alternative names for one quantity.
+    assert label.size is None, "the setting name should follow the theme's body size"
+    assert qualifier.size is not None and qualifier.size < _THEME_BODY_TEXT_SIZE
+    assert qualifier.italic
+
+
+def test_the_other_three_controls_carry_no_gloss() -> None:
+    """A gloss is drawn only where a name would otherwise be misread.
+
+    The counterpart of the test above: it would still pass if every panel
+    grew a gloss, which would make the fresh-gas-flow one ordinary rather
+    than the exception it is. Delivered concentration, alveolar ventilation
+    and cardiac output each name exactly the model quantity behind them, so
+    a gloss on one of those is a wrong claim that something needs qualifying.
+    """
+
+    view, _ = _build_view()
+
+    for slider in (
+        view._delivered_concentration_slider,
+        view._alveolar_ventilation_slider,
+        view._cardiac_output_slider,
+    ):
+        _label, qualifier = _parameter_labels_above(view, slider)
+        assert qualifier is None
 
 
 def test_the_header_shows_the_application_name_from_app_metadata() -> None:
