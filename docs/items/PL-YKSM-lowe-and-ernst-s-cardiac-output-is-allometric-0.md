@@ -3,7 +3,9 @@ id: PL-YKSM
 title: Lowe and Ernst's cardiac output is allometric (0.2 x M^0.75 = 4.84 L/min at 70 kg), not the stored fixed 5.0, and weight_kg is still read by no equation
 priority: P1
 effort: M
-status: needs-decision
+status: done
+closed: 2026-09-08
+verify: python3 tools/doc_check.py check && grep -qF '2.6 times more slowly' docs/MODEL.md
 classes: science
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
@@ -290,3 +292,37 @@ which the obesity pharmacokinetic literature generally prefers over total
 weight, and cardiac output to its three-quarter power - at the weight-varying
 physiology milestone and with a validation target, rather than as a lone change
 to one stored default.
+
+## Decided 2026-09-08: the fixed 5.0 is kept
+
+**The project owner's decision**, taken on the recommendation and the analysis
+above. The relation is not adopted, no stored value moves, and `weight_kg`
+stays a labelling convention that no equation reads.
+
+**What was recorded, which is the Done-when's second branch.**
+
+- `docs/MODEL.md`, "Known limitations": a new entry stating that cardiac output
+  does not scale with the patient, giving both published figures either side of
+  the stored value (Lowe and Ernst's 4.84 L/min at 70 kg, Cattermole et al.'s
+  measured 5.51 L/min median), the structural reason the fixed value is kept,
+  and the 20 kg child worked out at about 2.6 times more slowly. It closes with
+  what a reader should take from it: this model describes one 70 kg adult, and
+  no field in the interface makes it a paediatric or weight-varying model.
+- `src/anesthesia_sim/data/patients/reference_adult.json`: the decision is on
+  the Cattermole entry, which is this parameter's comparison entry and so is
+  where a reader of `default_cardiac_output_l_min` meets it. The Lowe and Ernst
+  entry, which states the discrepancy, now points at it.
+
+**The clarification that settled it** (project owner, 2026-09-08). The stated
+goal was never "should the reference adult read 4.84" but "a child-sized
+patient must not default to 5" - which is right, and is
+`ROADMAP.md`'s planned-milestone item 30 rather than this item. Worked at 20 kg
+against the shipped sevoflurane coefficients: scaling cardiac output alone
+gives 2.64 times the adult's time constants, scaling volumes with it gives
+0.76 times, and changing nothing gives 1.00. So the half-measure is further
+from the paediatric truth than the status quo, which is why this item closes on
+the recording and the scaling is milestone 30's to build as a package.
+
+`PL-MMWX` carries recording that obligation in milestone 30's own entry, so a
+session scoping it does not have to reach `docs/MODEL.md` to find the
+constraint.
