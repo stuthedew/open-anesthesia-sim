@@ -3,11 +3,12 @@ id: PL-B89V
 title: The interface's reader is named in no file a session loads, so every session writing app/ writes for a lay reader by default
 priority: P1
 effort: S
-status: ready
+status: done
 classes: ux
 feature: teachable-case
 touches: .claude/rules/ui-reader.md
 added: 2026-09-08
+closed: 2026-09-08
 verify: python3 tools/rules_paths_check.py && grep -q 'anesthesia' .claude/rules/ui-reader.md
 ---
 
