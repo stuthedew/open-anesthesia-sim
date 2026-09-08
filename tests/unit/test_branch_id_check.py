@@ -15,6 +15,13 @@ directions: an id mentioned mid-subject, which `docket flight` does not read
 and this must not credit, and a branch *name* carrying the id, which it does
 read and this must credit even when no subject does.
 
+A third mode joined them with `PL-8P6D`: firing on somebody the rule was never
+written for. The guarantee is about agent sessions, and the check refused the
+project owner's own web-UI edit and would have refused the first contributor's
+pull request, so the branch name now decides scope as well as attribution -
+which means the exemption needs its own tests in both directions, one for a
+branch outside `claude/` passing and one for the ambiguous name that must not.
+
 `_git` is substituted rather than a repository built, because what is under
 test is the reading of subjects and a branch name, not git.
 """
@@ -136,6 +143,59 @@ def test_a_walk_that_ran_off_the_end_declines_instead_of_passing(
     out = capsys.readouterr().out
     assert "not checked" in out
     assert "PL-0D4X" not in out
+
+
+def test_a_branch_outside_the_agent_namespace_owes_no_id(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # `#394`'s shape, which is what `PL-8P6D` is: the project owner's own
+    # README edit from the GitHub web UI, on the branch that dialog names, with
+    # no id anywhere. Identical to the refusal above in every respect the old
+    # rule could read, and the whole point is that it now passes.
+    _install(
+        monkeypatch,
+        ["Add pre-release warning to README", "Update README.md"],
+        branch="stuthedew-patch-1",
+    )
+
+    assert branch_id_check.main() == 0
+    assert "stuthedew-patch-1 is outside `claude/`" in capsys.readouterr().out
+
+
+def test_a_contributor_pull_request_passes_on_its_head_ref(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The drive-by case, as CI sees it: a detached merge commit, the head
+    # branch's real name only in the environment. A contributor has no queue
+    # and no `bin/docket`, so the remedy this used to print named a tool they
+    # cannot run.
+    _install(monkeypatch, ["Fix a typo in docs/MODEL.md"], branch="HEAD")
+    monkeypatch.setenv("GITHUB_HEAD_REF", "fix-model-typo")
+
+    assert branch_id_check.main() == 0
+    assert "no id is owed" in capsys.readouterr().out
+
+
+def test_a_name_that_cannot_be_read_stays_in_scope(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The exemption is a widening, so its failure mode is a branch escaping
+    # that should not. An unreadable name resolves the ambiguity the way that
+    # keeps the old verdict; CI never reaches it, because `GITHUB_HEAD_REF` is
+    # set on every `pull_request` event.
+    _install(monkeypatch, ["Resolve the merge"], branch="HEAD")
+
+    assert branch_id_check.main() == 1
+    assert "no item id names any of them" in capsys.readouterr().err
+
+
+def test_the_namespace_is_matched_case_insensitively(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Branch names are case-sensitive to git, so `Claude/x` is a name no
+    # harness produces and no contributor would choose. Folding the comparison
+    # can only widen what the rule binds, which is the safe direction for it.
+    _install(monkeypatch, ["Resolve the merge"], branch="Claude/some-generated-name-a36q1s")
+
+    assert branch_id_check.main() == 1
 
 
 def test_the_pull_request_head_ref_is_preferred_to_a_detached_head(

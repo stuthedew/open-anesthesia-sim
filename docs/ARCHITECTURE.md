@@ -301,7 +301,7 @@ Outside the packaged application, and not imported by it:
 ```text
 tools/
 ├── agent_identity_check.py  # refuses a control that carries the agent colour and can be rendered disabled, because Flet/Material then paints its label in a disabled-content grey that is declared in no source file and so is unreachable by `contrast_check.py`; a control may be `disabled` only where it is also `visible = not <the same expression>`, and one given an agent colour where it is constructed must be written by the single writer `SimulationView._apply_agent_color_scheme`
-├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them
+├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them; scoped to the `claude/*` namespace, since a contributor has no queue to be visible in
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, citations - in the documentation, in every `docs/items/` brief and in every source docstring, since those last two are where this project writes most of them - markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline, and the current gate's membership against the queue - unconditionally for the queue's `safety`- and `science`-classed items, and as a recorded disposition, placed or deferred, for every other open debt item; reports resident instruction size
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
@@ -364,6 +364,12 @@ the session-start digest all answer "is anybody already on this?" by matching a
 `PL-` id in a branch name or at the front of a commit subject, so a branch
 carrying none reads as nobody's work to every one of them, and goes on doing so
 after both sessions have pushed.
+
+That argument is about agent sessions, so the check binds only their branch
+namespace — `claude/*` — and passes anything outside it. A contributor has no
+queue and no id, and requiring one refused `#394`, the project owner's own
+web-UI edit to the README, in the required job (`PL-8P6D`).
+[`CONTRIBUTING.md`](../CONTRIBUTING.md) is the route that leaves open.
 
 It imports `BRANCH_ID_RE` and `leading_ids` from `docket.vcs` rather than
 matching ids its own way, because a check looser than the guard it protects

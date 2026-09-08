@@ -282,6 +282,10 @@ check` and CI fail a branch ahead of `main` that carries no id in its name and
 leads no commit subject with one. It decides visibility only, never whether the
 work deserved an item — that judgment is the paragraph above and stays here.
 
+It binds the `claude/*` namespace and nothing outside it (`PL-8P6D`), so a
+session that names its branch anything else is unchecked rather than exempt:
+the rule above still applies to it, with nothing left to enforce it.
+
 
 ## Mode: recommend what to work on
 
