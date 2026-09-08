@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: docket.toml, docs/worker.md, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-08-30
 closed: 2026-09-08
+pr: 471
 verify: uv run pytest subprojects/docket/tests/test_model.py subprojects/docket/tests/test_cli.py && grep -q 'def test_an_item_touching_the_checks_themselves_is_not_delegable' subprojects/docket/tests/test_model.py
 ---
 

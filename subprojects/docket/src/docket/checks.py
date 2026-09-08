@@ -28,6 +28,7 @@ from .config import Config
 from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .plan import OfferedReport
 from .release import SEMVER_RE, version_key
+from .roadmap import MilestoneStates
 from .store import ID_PATTERN, ID_RE
 from .vcs import ClosureReport, LostReport, PullRequestHistory, RecordReport
 from .verify import LandedReport, reads_check_output, reenters_verify
@@ -359,7 +360,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"safety-critical work starts at P0 or P1{blocked_hint}"
         )
     if item.status == "blocked" and not item.blocked_by:
-        report.errors.append(f"{where}: marked blocked but names no blocking item")
+        report.errors.append(f"{where}: marked blocked but names no blocking item or milestone")
     if item.status == "needs-decision" and "**Decision needed.**" not in item.body:
         report.errors.append(
             f"{where}: marked needs-decision but states no decision to make; add a "
@@ -821,15 +822,43 @@ def _note_cost(report: Report, landed: LandedReport | None) -> None:
     )
 
 
-def _check_references(report: Report) -> None:
-    """Hold every cross-reference to an item that exists."""
+def _check_references(report: Report, milestones: MilestoneStates | None = None) -> None:
+    """Hold every cross-reference to an item, or a milestone, that exists.
+
+    `blocked-by` carries two kinds of entry since `PL-W8XP`, and both are held
+    to something real: an id must name an item in this store, a `vX.Y.Z` must
+    name a milestone the roadmap places. The second check is what keeps a
+    milestone blocker from being a way to park an item forever - a typo would
+    otherwise read as a dependency on something that is never going to be
+    scoped, which is indistinguishable from a live block and never fires.
+
+    Without a readable roadmap the milestone half declines rather than
+    guessing, and `analyze` says so: refusing an entry no file was read to
+    check would fail a bare checkout for the roadmap's absence.
+    """
     known = {item.identifier for item in report.items if item.identifier}
     for item in report.items:
-        for blocker in item.blocked_by:
+        for blocker in item.blocking_items:
             if blocker == item.identifier:
                 report.errors.append(f"{_where(item)}: lists itself as a blocker")
             elif blocker not in known:
-                report.errors.append(f"{_where(item)}: blocked by {blocker}, which is not an item")
+                near_miss = (
+                    " (a milestone blocker is written `vX.Y.Z`, in full)"
+                    if blocker.startswith("v")
+                    else ""
+                )
+                report.errors.append(
+                    f"{_where(item)}: blocked by {blocker}, which is not an item{near_miss}"
+                )
+        if milestones is None:
+            continue
+        for version in item.blocking_milestones:
+            if not milestones.is_known(version):
+                report.errors.append(
+                    f"{_where(item)}: blocked by {version}, which the roadmap places "
+                    "nowhere; a milestone blocker names a milestone on the timeline or "
+                    "with a section of its own"
+                )
 
     known_items = {i.identifier: i for i in report.items}
     _outranks_its_blocker(report, known_items)
@@ -868,7 +897,8 @@ def _outranks_its_blocker(report: Report, known_items: dict[str, Item]) -> None:
     for item in report.items:
         if item.status != "blocked" or item.priority not in PRIORITIES:
             continue
-        for identifier in item.blocked_by:
+        # Items only: a milestone has no band to be outranked by.
+        for identifier in item.blocking_items:
             blocker = known_items.get(identifier)
             if blocker is None or not blocker.is_open or blocker.priority not in PRIORITIES:
                 continue
@@ -994,7 +1024,7 @@ def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> N
             blocker = known_items.get(other)
             if blocker is None or other == item.identifier or not blocker.is_open:
                 continue
-            if other in item.blocked_by or other in seen:
+            if other in item.blocking_items or other in seen:
                 continue
             seen.add(other)
             report.advisories.append(
@@ -1217,7 +1247,13 @@ def _check_records(report: Report, records: RecordReport | None) -> None:
             )
 
 
-def _groom(report: Report, today: date, config: Config, offered: frozenset[str] | None) -> None:
+def _groom(
+    report: Report,
+    today: date,
+    config: Config,
+    offered: frozenset[str] | None,
+    milestones: MilestoneStates | None = None,
+) -> None:
     """Detect the conditions that make a grooming pass worth someone's time."""
     stale = [
         item
@@ -1268,10 +1304,33 @@ def _groom(report: Report, today: date, config: Config, offered: frozenset[str] 
 
     resolved = {i.identifier for i in report.items if i.status in ("done", "dropped")}
     for item in report.items:
-        if item.status == "blocked" and item.blocked_by and set(item.blocked_by) <= resolved:
+        if item.status != "blocked" or not item.blocked_by:
+            continue
+        if not set(item.blocking_items) <= resolved:
+            continue
+        versions = item.blocking_milestones
+        if not versions:
             report.advisories.append(
                 f"{item.identifier}: every blocker has closed; it is ready to promote"
             )
+            continue
+        # A milestone blocker needs the roadmap to answer, and an unreadable
+        # one declines: this advisory says an item may now be started, and
+        # saying that on evidence nobody read is the way it does harm.
+        if milestones is None:
+            continue
+        if not all(milestones.is_cleared(version) for version in versions):
+            continue
+        # Said separately because the word is different, and the difference is
+        # the point. An item blocker *closes*; a milestone blocker clears when
+        # the milestone is scoped, which is the decision the item was waiting
+        # on rather than the release it will ship in.
+        one = len(versions) == 1
+        report.advisories.append(
+            f"{item.identifier}: {', '.join(versions)} "
+            f"{'is' if one else 'are'} scoped and every other blocker has closed; "
+            "it is ready to promote"
+        )
 
     top = _top_band(report)
     if not top:
@@ -1393,6 +1452,7 @@ def analyze(
     records: RecordReport | None = None,
     lost: LostReport | None = None,
     version: str | None = None,
+    milestones: MilestoneStates | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -1409,13 +1469,18 @@ def analyze(
     command would contradict. Like the other three it can decline: the ranking
     reads what is in flight, and a checkout that could not walk every ref has
     settled which items come next only as far as the refs it could read.
+
+    `milestones` is the roadmap's answer to the two questions a `blocked-by:
+    vX.Y.Z` asks - whether that milestone exists, and whether it has been
+    scoped. Omitting it leaves both halves unjudged rather than guessed, which
+    is what a bare checkout with no roadmap gets.
     """
     settings = config or Config()
     ids = offered.ids if offered is not None else None
     report = Report(items=list(items))
     for item in report.items:
         _check_item(item, report, settings)
-    _check_references(report)
+    _check_references(report, milestones)
     _check_feature_spellings(report)
     _check_milestones(report, version)
     _check_provenance(report, history)
@@ -1426,7 +1491,7 @@ def analyze(
     _check_closures(report, closures)
     _check_records(report, records)
     _check_lost(report, lost)
-    _groom(report, today, settings, ids)
+    _groom(report, today, settings, ids, milestones)
     # Said once, for both advisories above that read `offered`, and said even
     # where neither fired: an unread ref might carry the item that would have
     # been named, so silence there is the same partial answer as a wrong name.
@@ -1435,4 +1500,11 @@ def analyze(
             f"whether the grooming advisories name the items `next` will really "
             f"offer: {offered.declined}"
         )
+    if milestones is None:
+        waiting = sorted(item.identifier for item in report.items if item.blocking_milestones)
+        if waiting:
+            report.declined.append(
+                f"whether the milestones {', '.join(waiting)} wait on exist and have "
+                "been scoped: no roadmap was read"
+            )
     return report

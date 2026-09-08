@@ -3,12 +3,13 @@ id: PL-W8XP
 title: An item blocked on a milestone being scoped cannot say so: blocked-by only names items
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_blocked_by_may_name_a_milestone' subprojects/docket/tests/test_checks.py
 added: 2026-09-03
+closed: 2026-09-08
 ---
 
 **Problem.** `blocked-by:` takes queue-item ids. An item whose real dependency
@@ -63,9 +64,53 @@ a missing representation rather than a live defect, so it is not gate debt.
 **Done when.** `blocked-by:` accepts a milestone version alongside item ids;
 `docket check` resolves it against `ROADMAP.md` and neither raises the
 "every blocker has closed" advisory nor a hard error while the milestone is
-unscoped; `PL-B9PY` is moved off its `needs-decision` workaround onto
-`blocked-by: v0.5.0`; and `subprojects/docket/README.md` documents the two
-kinds of entry.
+unscoped; and `subprojects/docket/README.md` documents the two kinds of entry.
+
+**A fourth clause was dropped rather than met: "`PL-B9PY` is moved off its
+`needs-decision` workaround onto `blocked-by: v0.5.0`".** It was written on
+2026-09-03 and overtaken on 2026-09-06, when v0.5.0 was scoped. Writing
+`blocked-by: v0.5.0` onto `PL-B9PY` now would resolve as cleared on the first
+`docket check`, which is `ready` said in two steps; and `PL-B9PY` was promoted
+to `ready` outright the same session this landed, under `PL-MKFG`. The
+representation is what this item owed, and the worked example that motivated it
+had stopped needing it — which is a good outcome for that item and leaves this
+one with no live user.
+
+**Shipped with no live user, deliberately.** No open item currently waits on an
+unscoped milestone: `PL-B9PY` is `ready`, and the two others this brief counted
+at Gate 1 have since closed or dropped (`PL-XYRN` done, `PL-X9R0` dropped).
+That is not an argument for having deferred it. v0.6.0 and v0.7.0 both sit on
+the timeline unscoped, so the next item placed against either has the field
+waiting rather than the three wrong states this brief opens with; and the cost
+of the mechanism is paid once, while the cost of the workaround is paid by
+every session that reads a `needs-decision` it cannot resolve.
 
 **Found.** Closing `PL-WB0X` (split `simulation_view.py`), 2026-09-03, which
 was `PL-B9PY`'s only representable blocker.
+
+**How it was built.** `Item.blocking_milestones` matches `^v\d+\.\d+\.\d+$`
+positively and `Item.blocking_items` is *everything else* — a fail-closed
+partition, so an entry of neither shape stays an item entry and is refused by
+name in `checks.py` rather than falling out of both halves and being ignored.
+The raw `blocked_by` is untouched, so `render_item` round-trips a milestone
+entry; a test asserts that, because a partition that dropped it would silently
+unblock the item on the next write. `roadmap.milestone_states` reads the
+timeline *and* the sections for `known` — a milestone is placed long before it
+has a section, which is the interval this field exists to cover — and clears a
+milestone that is scoped **or** completed. The second half is not redundant:
+`ROADMAP.md`'s own v0.2.8 and v0.3.0 sections answer `is_scoped` False, v0.2.8
+because the file says its frozen list *is* its content, so a structural test
+alone would leave a blocker naming either permanently unresolved and silent.
+
+`analyze` takes the states as a parameter rather than reading `ROADMAP.md`
+itself, per its own docstring: inputs that cannot be read from the store are
+passed in, and `cli.py`'s `_milestones` declines exactly as `_plan` does, so a
+bare checkout gets its queue validated and a `declined` line naming the items
+it could not judge. `cli.py` was added to `touches` during the work: without it
+`analyze` would receive `None` forever and the feature would decline in every
+session.
+
+Verified end to end against the real store as well as by unit test — a scratch
+item at `blocked-by: v0.6.0` gives 0 errors and no advisory, at `v0.5.0` raises
+"v0.5.0 is scoped and every other blocker has closed", and at `v9.9.9` is an
+error naming the version.

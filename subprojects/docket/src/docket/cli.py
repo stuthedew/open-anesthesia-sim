@@ -41,7 +41,7 @@ from .release import (
     release_notes,
     stamp,
 )
-from .roadmap import Wave, wave
+from .roadmap import MilestoneStates, Wave, milestone_states, wave
 from .store import find_item, new_id, read_items, write_item
 from .trend import BY_DAY, BY_WEEK
 from .trend import analyze as analyze_trend
@@ -226,6 +226,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         config,
         history=merged_pull_requests(root),
         offered=_offered(root, items, config, args),
+        milestones=_milestones(root, config),
         # Runs every open item's own `verify:` command, which is the only
         # check here that executes the project rather than reading it - 83
         # subprocesses and 31 s of the 32 s this command took, measured
@@ -331,7 +332,10 @@ def _offered(
 
 def cmd_list(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
-    report = analyze(items, args.today or date.today(), config)
+    root = args.items.parent if args.items else find_root()
+    report = analyze(
+        items, args.today or date.today(), config, milestones=_milestones(root, config)
+    )
     rendered = render.format_list(report, _flight(args), config.protected_paths, config.gate_paths)
     if rendered:
         print(rendered)
@@ -361,13 +365,34 @@ def _plan(root: Path, items: Sequence[Item], config: Config) -> Wave | None:
         return None
 
 
+def _milestones(root: Path, config: Config) -> MilestoneStates | None:
+    """What the roadmap says about the milestones an item may be blocked on.
+
+    Declines exactly as `_plan` does, and for the same reason: a bare checkout
+    or an unreadable roadmap must still get its queue validated. `analyze`
+    turns `None` into a declined line naming the items it could not judge,
+    rather than into either a pass or a failure.
+    """
+    roadmap = root / config.roadmap_file
+    if not roadmap.is_file():
+        return None
+    try:
+        return milestone_states(roadmap.read_text(encoding="utf-8"))
+    except (OSError, ValueError, KeyError):
+        return None
+
+
 def cmd_digest(args: argparse.Namespace) -> int:
     directory, items, config = _load(args)
     if not items:
         return 0
     root = args.items.parent if args.items else find_root()
     report = analyze(
-        items, args.today or date.today(), config, offered=_offered(root, items, config, args)
+        items,
+        args.today or date.today(),
+        config,
+        offered=_offered(root, items, config, args),
+        milestones=_milestones(root, config),
     )
     ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
     rendered = render.format_digest(
