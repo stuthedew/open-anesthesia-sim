@@ -3,11 +3,12 @@ id: PL-2CS8
 title: "Nothing carries roadmap item 24's stated prerequisite: the display constants are scattered across theme.py, simulation_view.py and duplicated core/app defaults, with no item to consolidate them"
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: refactor
 feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tools/contrast_check.py, tools/agent_identity_check.py, tests/unit
 added: 2026-09-08
+verify: uv run pytest tests/unit/test_simulation_view.py && ! grep -q '"#D9E2EC"' src/anesthesia_sim/app/simulation_view.py
 ---
 
 **Problem.** `ROADMAP.md` § "Planned milestones" item 24 names its own
@@ -63,7 +64,28 @@ reasons move with it, in the same commit. `.claude/rules/ui-color.md`
 judgment 1 already requires the second half of that; the first half is what a
 consolidation adds. This is why `touches` above names `tools/`.
 
-**Decision needed.** Whether the destination is one settings module serving
+**Decided (project owner, 2026-09-08): a tokens module now, the
+preferences store later.** Item 24's panel is not scoped, and designing a
+read/write preferences store before there is a panel to read it is the
+speculative generality `PL-B9PY`'s own brief refuses - "guessing at the target
+shape is how a refactor becomes speculative generality". The roadmap's warning
+is against adding a *fourth scattered location*; one consolidated tokens module
+that a later store reads from is the first consolidated one rather than a
+fourth scattered one. And the whole benefit that is urgent - stopping v0.5.0's
+new controls spreading the constants further - is delivered by the tokens half
+alone.
+
+**The second question is settled with it: the six trace colours move.** They
+are display constants like any other, and `.claude/rules/ui-color.md`
+judgment 3 turns on *how* traces are separated - dash pattern, because colour
+provably cannot - not on where the colour constants live. Moving them is also
+what lets the v0.6.0 schematic read them as a second consumer rather than
+reaching into `app/simulation_view.py`. The constraint that follows is already
+recorded above: `tools/contrast_check.py` and `tools/agent_identity_check.py`
+hardcode the two files they parse, so their file list and every `REQUIREMENTS`
+symbol move in the same commit or `make check` fails.
+
+**Superseded decision needed.** Whether the destination is one settings module serving
 both the tokens and item 24's user-settable preferences, or a tokens module
 now with the preferences store built on it later. The first is what item 24
 asks for and risks designing a preferences store before there is a panel to

@@ -9,6 +9,7 @@ feature: teachable-case
 touches: .claude/rules/ui-reader.md
 added: 2026-09-08
 closed: 2026-09-08
+pr: 472
 verify: python3 tools/rules_paths_check.py && grep -q 'anesthesia' .claude/rules/ui-reader.md
 ---
 

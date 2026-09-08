@@ -7,8 +7,9 @@ status: done
 classes: planning, docs
 touches: ROADMAP.md, docs/WORKING_NOTES.md
 added: 2026-09-08
-verify: python3 tools/doc_check.py check && grep -q 'Run the interface pass' ROADMAP.md
 closed: 2026-09-08
+pr: 474
+verify: python3 tools/doc_check.py check && grep -q 'Run the interface pass' ROADMAP.md
 ---
 
 **Problem.** A designed interface — palette, type scale, spacing rhythm,

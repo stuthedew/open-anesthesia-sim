@@ -2254,3 +2254,105 @@ def test_the_advisory_names_every_unplaced_item_in_one_line(tmp_path: Path) -> N
     assert "PL-ZZZZ (safety)" in advisories[0]
     assert "PL-YYYY (science)" in advisories[0]
     assert "2 open items" in advisories[0]
+
+
+# --- gate dispositions ------------------------------------------------------
+#
+# `check_gate_reentries`, the sibling this sits beside, has no test of its own:
+# `PL-KTKP`'s `verify:` command greps that its `def` exists, which proves the
+# function is present and nothing about what it decides (`PL-PDP6`). These
+# cover the half of the rule that needs a judgment, so they exercise both
+# dispositions the rule allows and the silence it forbids.
+
+
+def _disposition_repo(
+    tmp_path: Path, items: dict[str, str], roadmap: str = VERSIONED_GATE_ROADMAP
+) -> Path:
+    """A repository carrying a gate, a version baseline and an item store."""
+    root = _repo(tmp_path, roadmap=roadmap)
+    (root / "pyproject.toml").write_text(
+        '[project]\nname = "demo"\nversion = "0.2.5"\n', encoding="utf-8"
+    )
+    (root / "docket.toml").write_text(
+        'items_dir = "docs/items"\n'
+        'debt_classes = ["defect", "safety", "science", "refactor", "perf"]\n',
+        encoding="utf-8",
+    )
+    store = root / "docs" / "items"
+    store.mkdir(parents=True, exist_ok=True)
+    for identifier, front in items.items():
+        (store / f"{identifier}-demo.md").write_text(
+            f"---\nid: {identifier}\ntitle: Demo\n{front}added: 2026-09-06\n---\n\n"
+            "**Problem.** A thing.\n**Why it matters.** It does.\n**Done when.** Fixed.\n",
+            encoding="utf-8",
+        )
+    return root
+
+
+def _dispositions(tmp_path: Path, items: dict[str, str], roadmap: str | None = None) -> list[str]:
+    root = _disposition_repo(
+        tmp_path, items, **({"roadmap": roadmap} if roadmap is not None else {})
+    )
+    return [a for a in doc_check.analyze(root).advisories if "records no disposition" in a]
+
+
+DEBT = "priority: P2\neffort: S\nstatus: ready\nclasses: defect\n"
+
+
+def test_a_placed_debt_item_needs_no_further_disposition(tmp_path: Path) -> None:
+    """PL-BBBB is on the fixture's frozen list, so the gate has answered for it."""
+    assert _dispositions(tmp_path, {"PL-BBBB": DEBT}) == []
+
+
+def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_reported(tmp_path: Path) -> None:
+    """The silence the presence rule forbids by name, and the check exists for."""
+    advisories = _dispositions(tmp_path, {"PL-ZZZZ": DEBT})
+
+    assert any("PL-ZZZZ" in advisory for advisory in advisories)
+
+
+def test_an_item_deferred_with_a_recorded_reason_is_not_reported(tmp_path: Path) -> None:
+    """Deferring is one of the two answers the rule allows, so it must silence this.
+
+    The subsection is what carries the reason, and reading it is the whole
+    difference between a check that can be satisfied and one that names the
+    same backlog every run.
+    """
+    roadmap = VERSIONED_GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Declined to Gate 2 on the refilling-queue ground — 1 entry\n\n"
+        "Deferred because pulling it in would refill the gate.\n\n"
+        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
+        1,
+    )
+
+    assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap) == []
+
+
+def test_a_needs_decision_item_is_owed_a_disposition_whatever_its_classes(tmp_path: Path) -> None:
+    """The gate takes `needs-decision` regardless of class, so this must too."""
+    front = "priority: P2\neffort: S\nstatus: needs-decision\nclasses: docs\n"
+
+    advisories = _dispositions(tmp_path, {"PL-ZZZZ": front})
+
+    assert any("PL-ZZZZ" in advisory for advisory in advisories)
+
+
+def test_an_item_that_is_neither_debt_nor_needs_decision_is_left_alone(tmp_path: Path) -> None:
+    front = "priority: P3\neffort: S\nstatus: ready\nclasses: docs\n"
+
+    assert _dispositions(tmp_path, {"PL-ZZZZ": front}) == []
+
+
+def test_a_closed_item_is_owed_nothing(tmp_path: Path) -> None:
+    """A gate is about open work; a done item needs no placement."""
+    front = "priority: P2\neffort: S\nstatus: done\nclasses: defect\nclosed: 2026-09-07\n"
+
+    assert _dispositions(tmp_path, {"PL-ZZZZ": front}) == []
+
+
+def test_this_repository_records_a_disposition_for_every_open_debt_item() -> None:
+    """The real tree, not only a fixture - which is what `PL-36R4` was about."""
+    root = Path(doc_check.__file__).resolve().parent.parent
+
+    assert [a for a in doc_check.analyze(root).advisories if "records no disposition" in a] == []

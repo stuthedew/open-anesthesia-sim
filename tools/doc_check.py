@@ -1435,6 +1435,124 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     )
 
 
+DECLINED_HEADING_RE = re.compile(r"^###\s+Declined to Gate\b", re.IGNORECASE)
+
+
+def _declined_ids(text: str, gate: MilestoneSection) -> frozenset[str]:
+    """The ids the current gate's section defers with a reason written down.
+
+    `MilestoneSection.scope_ids` deliberately names only what a section
+    *places* - its frozen list, then `Required scope`. A deferral is the
+    opposite disposition and must not read as a placement, so it lives in a
+    `### Declined to Gate ...` subsection of its own and is read here instead.
+    Its ids are excluded from the gate's counts for the same reason: they are
+    not entries the gate has to clear.
+    """
+    lines = text.splitlines()
+    start = next(
+        (
+            index
+            for index in range(gate.line, len(lines))
+            if DECLINED_HEADING_RE.match(lines[index])
+        ),
+        None,
+    )
+    if start is None:
+        return frozenset()
+    end = next(
+        (index for index in range(start + 1, len(lines)) if HEADING_RE.match(lines[index])),
+        len(lines),
+    )
+    return frozenset(re.findall(r"PL-[A-Z0-9]{4}", "\n".join(lines[start:end])))
+
+
+def check_gate_dispositions(root: Path, report: Report) -> None:
+    """Name every open debt item the current gate neither places nor defers.
+
+    `ROADMAP.md` § "The gate is a snapshot, not a moving target" allows either
+    answer for a presence-qualifying finding - pull it into this gate, or defer
+    it to the next - and forbids only the third thing, which is neither: "Either
+    way it must say so and say why: silently reinterpreting which gate a finding
+    belongs to is the renegotiation freezing the list exists to prevent."
+
+    `check_gate_reentries` above covers the half of the rule that needs no
+    judgment, and says so: `safety`, `science` and `P0` re-enter unconditionally.
+    Its docstring is explicit that every other class "defers to the next gate
+    unless its problem predates the freeze, which is a judgment call", and
+    declines to make it. That is right, and it left nobody being *asked* for the
+    judgment - so on 2026-09-08 forty-two items had gone without one
+    (`PL-36R4`).
+
+    So this reports the silence and decides nothing, which is why it is an
+    advisory rather than an error. Whether a given item's problem predates the
+    freeze is not decidable here and must not be scripted; whether *some*
+    disposition has been recorded is, and is all this asks.
+
+    It is quiet once every item carries one, which is what keeps it worth
+    running. An advisory that named the same backlog every run would be the
+    check `CLAUDE.md` calls a defect - one that "fires every run without
+    changing a decision" - so the deferrals are written into the roadmap where
+    this can read them, rather than held as a list somebody re-judges.
+    """
+    roadmap = root / ROADMAP
+    if not roadmap.is_file():
+        return
+    text = roadmap.read_text(encoding="utf-8")
+
+    baseline = [row for row in parse_version_table(text) if row.is_baseline]
+    if len(baseline) != 1:
+        # `check_baseline` already fails hard on this and names the rows; a
+        # second voice on one fault would not help a reader.
+        return
+
+    current = version_tuple(baseline[0].version)
+    gate = next(
+        (
+            section
+            for section in parse_milestones(text)
+            if (current is None or section.version > current) and section.records_a_gate
+        ),
+        None,
+    )
+    if gate is None:
+        return
+
+    try:
+        config = load_docket_config(root)
+        items = read_items(root / config.items_dir)
+    except (OSError, ValueError) as error:  # pragma: no cover - a store that will not parse
+        report.declined.append(
+            f"{ROADMAP}: the gate's disposition rule, because the item store would not "
+            f"read ({error}); `bin/docket check` is what reports why"
+        )
+        return
+
+    disposed = set(gate.scope_ids) | _declined_ids(text, gate)
+    owed = [
+        item
+        for item in items
+        if item.status not in CLOSED_STATUSES
+        and item.identifier not in disposed
+        and (
+            item.status == "needs-decision"
+            or any(name in config.debt_classes for name in item.classes)
+        )
+    ]
+    if not owed:
+        return
+
+    rendered = "v{}.{}.{}".format(*gate.version)
+    listed = ", ".join(item.identifier for item in owed)
+    report.advisories.append(
+        f"{ROADMAP}:{gate.gate_line}: {rendered}'s gate records no disposition for "
+        f"{_plural(len(owed), 'open debt item', 'open debt items')} - neither placed on "
+        f"the frozen list or in Required scope, nor deferred with a reason: {listed}. "
+        "The presence rule allows either answer and forbids neither being written "
+        "down; add each to the list, or to a `### Declined to Gate ...` subsection "
+        "saying why"
+    )
+
+
 def _tags_region(text: str) -> tuple[int, str] | None:
     """The `**Tags.**` statement, and everything up to the next section heading.
 
@@ -2405,6 +2523,7 @@ def analyze(root: Path) -> Report:
     check_baseline(root, report)
     check_gate_counts(root, report)
     check_gate_reentries(root, report)
+    check_gate_dispositions(root, report)
     check_tags(root, report)
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)

@@ -5,11 +5,12 @@ priority: P3
 effort: S
 status: done
 classes: planning, docs
-closed: 2026-09-08
-verify: grep -q '^blocked-by: PL-2FM6$' docs/items/PL-YDKJ-*.md && grep -qF 'Cleared by v0.5.0 itself — 10 entries' ROADMAP.md && grep -qF 'product lane — 39 entries' ROADMAP.md
 feature: teachable-case
 touches: ROADMAP.md, docs/items
 added: 2026-09-08
+closed: 2026-09-08
+pr: 473
+verify: grep -q '^blocked-by: PL-2FM6$' docs/items/PL-YDKJ-*.md && grep -qF 'Cleared by v0.5.0 itself — 10 entries' ROADMAP.md && grep -qF 'product lane — 39 entries' ROADMAP.md
 ---
 
 **Problem.** Gate 1 places `PL-YDKJ` (decide whether the chart should keep
