@@ -1,8 +1,18 @@
 ---
 id: PL-QC38
 title: PL-61WW reported as still reproducing after the fix merged: establish whether it is a stale build or a second element
-status: untriaged
+status: done
+priority: P3
+effort: S
+feature: presentation-safety
+touches: docs/items
 added: 2026-09-08
+closed: 2026-09-08
+not-delegable: nothing in the repository can prove or disprove this. The
+  question was which build the project owner was running, which is a fact about
+  their machine rather than about the tree - and the tree's own answer, that
+  `tools/agent_identity_check.py` passes on `eac6877`, was already known and was
+  never the thing in doubt.
 ---
 
 **Problem.** PL-61WW reported as still reproducing after the fix merged: establish whether it is a stale build or a second element
@@ -49,5 +59,26 @@ driving it with the container's Chromium gets as far as the Flet splash screen
 and no further. Verification of anything visual has to happen on the owner's
 own machine, or through a screenshot they supply.
 
+**Why it matters.** A fix reported as not working is worth more than the
+symptom on its own: it is either a regression that shipped, or evidence that
+this project has no way for the owner to tell which build they are looking at.
+The second turned out to be the case, and is the part worth keeping.
+
 **Done when.** Either the report is traced to a stale build and this closes
 with that recorded, or the second element is identified and gets its own fix.
+
+**Closed: hypothesis 1, a stale build** (project owner, 2026-09-08 - "Fixed.
+Must have been running old one"). No regression, no second element, and no code
+change. The fix in `8d46af8` behaves as `PL-61WW` describes once the running
+build contains it.
+
+**What this cost, and the finding worth keeping.** The symptom and its absence
+were indistinguishable to the person looking at the screen, because nothing on
+that screen says which build drew it. `_subtitle_text` in the header badge
+reads "Version {APP_VERSION} - {agent} patient model", and `APP_VERSION` is
+`pyproject.toml`'s - which is still `0.4.9` on both sides of this fix, since no
+release has been cut since it landed. So the one version string the interface
+does show was identical before and after, and reading it would have confirmed
+the wrong answer. That is a real gap rather than a nuisance: the same
+ambiguity applies to any change the owner is asked to verify by eye, which is
+every presentation-safety item this gate still holds. Captured as `PL-YKF8`.
