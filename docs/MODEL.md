@@ -5026,8 +5026,9 @@ circuit at the fresh-gas circuit's pressure, so the two flows stay in the
 fixed *ratio* the dial sets — "The pressure in the vapor circuit is
 electronically regulated to equal the pressure in the fresh gas circuit…
 vaporizer output is constant because the amount of flow through each circuit
-is proportional" (Andrews and Johnston). Output is therefore a constant volumes percent and the delivered
-partial pressure falls with ambient pressure. Datex-Ohmeda states the
+is proportional" (Andrews and Johnston). Output is therefore a constant
+volumes percent and the delivered partial pressure falls with ambient
+pressure. Datex-Ohmeda states the
 consequence for the operator directly: "Decreased atmospheric pressure, with
 altitude, does not significantly affect the concentration of agent delivered
 (V/V), but decreases the partial pressure of the agent in the ratio of the
