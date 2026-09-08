@@ -11,12 +11,17 @@ from bisect import bisect_right
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
+from math import isfinite
 from types import MappingProxyType
 from typing import Final, Self
 
 from anesthesia_sim.app.chart_downsampling import M4AggregateCache, first_index_at_or_after
-from anesthesia_sim.app.wash_in import is_wash_in, wash_in_ratio
-from anesthesia_sim.core.exceptions import SimulationDomainLimitError, SimulationExecutionError
+from anesthesia_sim.app.wash_in import WashInReading, is_wash_in, read_wash_in, wash_in_ratio
+from anesthesia_sim.core.exceptions import (
+    SimulationConfigurationError,
+    SimulationDomainLimitError,
+    SimulationExecutionError,
+)
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
     FIRST_TISSUE_FRACTION,
@@ -24,7 +29,7 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
 )
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
-from anesthesia_sim.core.run_score import RunScore, SampledWindow, ScoreSegment
+from anesthesia_sim.core.run_score import DisplayState, RunScore, SampledWindow, ScoreSegment
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -659,6 +664,128 @@ class HistoryWindow:
 
 
 @dataclass(frozen=True, slots=True)
+class DrawnWindow:
+    """The states one frame draws, evaluated from the run's score.
+
+    What `SimulationController.drawn_window` answers with, and the whole of
+    what the chart is drawn from. It replaces `HistoryWindow`, and the
+    difference is what `PL-2FM6` is: a window over *recorded samples* asked
+    which of them to draw and cost what the window spanned, where this one
+    is the answer itself - the states at the instants the chart plots, and
+    nothing else exists behind them.
+
+    **A drawn value is not a recorded one, and the type says so.** Every
+    state here is a `DisplayState`, which `core/run_score.py` makes
+    structurally not a state vector precisely so that a drawn value cannot
+    become a keyframe, an export or a fork's opening state by having the
+    right shape. `docs/MODEL.md` § "The canonical evaluation rule" is the
+    guarantee; this class is one of the places it has to hold.
+
+    Attributes:
+        substance_id: Which substance every state here describes. Carried so
+            a trace cannot be drawn from another substance's values: the
+            frame that asks for the window names the agent its readouts were
+            formatted from, and `compartment_fractions` refuses any other.
+        times_s: The instants drawn, ascending, in simulated seconds.
+        states: One state per instant.
+
+    Raises:
+        SimulationConfigurationError: If the two sequences differ in length,
+            which would draw one trace against another's time axis.
+    """
+
+    substance_id: str
+    times_s: tuple[float, ...]
+    states: tuple[DisplayState, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.times_s) != len(self.states):
+            raise SimulationConfigurationError(
+                f"a drawn window has {len(self.times_s)} instants and {len(self.states)} "
+                "states; each state belongs to one instant"
+            )
+
+    def compartment_fractions(self, series: RecordedSeries) -> list[float]:
+        """This trace's value at every drawn instant, as a fraction of 1 atm.
+
+        Args:
+            series: Which substance's quantity to read.
+                `COMPARTMENT_STATE_INDEX` is the pairing, and it holds no
+                entry for `RecordedQuantity.WASH_IN_RATIO`, which is a
+                quotient rather than a state - use `wash_in_readings`.
+
+        Returns:
+            One fraction per entry of `times_s`, in the same order.
+
+        Raises:
+            SimulationConfigurationError: If `series` names a substance this
+                window does not describe, or the derived wash-in ratio.
+        """
+
+        self._require_substance(series.substance_id)
+
+        if series.quantity not in COMPARTMENT_STATE_INDEX:
+            raise SimulationConfigurationError(
+                f"{series.quantity} is not a compartment state; it is derived from two of "
+                "them, and `wash_in_readings` is what forms it"
+            )
+
+        index = COMPARTMENT_STATE_INDEX[series.quantity]
+
+        return [state.values[index] for state in self.states]
+
+    def wash_in_readings(self, substance_id: str) -> list[WashInReading]:
+        """F_A/F_I and its domain at every drawn instant.
+
+        `app/wash_in.py`'s domain rules ran once per *recorded sample* while
+        the run kept a history, and the stretches they produced were
+        maintained incrementally. With no history to maintain they become a
+        property of the drawn column instead: the rules are pure arithmetic
+        over the two fractions this window already carries, so they are
+        applied to what is being plotted rather than to samples behind it.
+
+        That is a strengthening rather than a like-for-like move. A stretch
+        boundary can now fall only on a drawn instant, so the point where a
+        trace stops is a point the chart actually plots - where before it was
+        a recorded sample the decimation might not have selected.
+
+        Args:
+            substance_id: Whose ratio. The quotient is formed from one
+                substance's own two fractions.
+
+        Returns:
+            One reading per entry of `times_s`, in the same order.
+
+        Raises:
+            SimulationConfigurationError: If `substance_id` is not the one
+                this window describes.
+        """
+
+        self._require_substance(substance_id)
+        alveolar = COMPARTMENT_STATE_INDEX[RecordedQuantity.ALVEOLAR]
+        circuit = COMPARTMENT_STATE_INDEX[RecordedQuantity.CIRCUIT]
+
+        return [
+            read_wash_in(state.values[alveolar], state.values[circuit]) for state in self.states
+        ]
+
+    def _require_substance(self, substance_id: str) -> None:
+        """Refuse a read for a substance this window does not describe.
+
+        The same guard `RunHistory.aggregates` made, and it is kept for the
+        same reason: a trace drawn from another substance's values misstates
+        the run exactly as one drawn from another compartment's does, and
+        every value in it would be one the model really produced.
+        """
+
+        if substance_id != self.substance_id:
+            raise SimulationConfigurationError(
+                f"this window describes {self.substance_id!r}, so it cannot draw "
+                f"{substance_id!r}; a run is of one agent"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class SimulationSnapshot:
     """Read-only simulation data exposed to the user interface."""
 
@@ -1106,6 +1233,83 @@ class SimulationController:
         """
 
         return self._score.evaluate(start_s, stop_s, columns)
+
+    def drawn_window(self, start_s: float, stop_s: float, columns: int) -> DrawnWindow:
+        """The states to plot across an axis, evaluated from the score.
+
+        The chart's own read, and what `history_window` was before the run
+        stopped keeping samples of itself (`PL-2FM6`).
+
+        **The axis is a viewport, and the run is what fills it.** Both bounds
+        are the axis the caller has just set, which legitimately reaches past
+        the run: `chart_time_base.following_window` keeps
+        `live_headroom_s` of empty axis to the right of the newest instant, and
+        `fitted_window` returns the chosen rung's full width however short the
+        run is - both deliberately, so the width a trace is drawn at is fixed
+        and its slope means the same thing at every moment of every run. So
+        the drawn range is clipped to the part of the axis the run covers.
+        That is not the coercion `CLAUDE.md` forbids: nothing is substituted
+        or defaulted, and `DrawnWindow.times_s` says exactly which instants
+        came back, so a caller can see where the run ends rather than being
+        told a value for an instant it never reached. Asking the score itself
+        for those instants is refused, and rightly - see `evaluate_window`.
+
+        **The column spacing comes from the axis, not from the clipped
+        range**, which is what keeps the grid anchored: the span is a property
+        of the selected time base and so is constant, so the evaluated
+        instants stay put as the window follows the run and only the newest
+        column is new. Deriving the spacing from the clipped range instead
+        would move every column on every frame early in a run, which is the
+        defect `RunScore.evaluate_anchored` exists to avoid.
+
+        Args:
+            start_s: Left edge of the axis, in simulated seconds.
+            stop_s: Right edge of the axis, in simulated seconds. Not before
+                `start_s`.
+            columns: Grid columns the axis is divided into, at least two.
+                The points actually drawn are these plus the control events
+                inside the window and the two ends of the drawn range, so
+                this bounds the grid rather than the point count.
+
+        Returns:
+            The states at the drawn instants, bound to the agent this run is
+            of.
+
+        Raises:
+            SimulationConfigurationError: If `columns` is below two, either
+                bound is not finite, or `stop_s` precedes `start_s`.
+        """
+
+        if columns < 2:
+            raise SimulationConfigurationError(
+                f"an axis is divided into at least two columns, not {columns}"
+            )
+
+        if not isfinite(start_s) or not isfinite(stop_s):
+            raise SimulationConfigurationError(
+                f"an axis runs between finite instants, not ({start_s}, {stop_s})"
+            )
+
+        if stop_s < start_s:
+            raise SimulationConfigurationError(
+                f"an axis from {start_s} s to {stop_s} s ends before it begins"
+            )
+
+        spacing_s = (stop_s - start_s) / (columns - 1)
+        first_s = max(0.0, start_s)
+        last_s = min(stop_s, self._score.duration_s)
+
+        if last_s < first_s or spacing_s <= 0.0:
+            # The axis lies entirely ahead of the run, or has no width. Both
+            # are ordinary states at the very start of a run rather than
+            # errors, and an empty window draws nothing.
+            return DrawnWindow(substance_id=self._agent_id, times_s=(), states=())
+
+        window = self._score.evaluate_anchored(first_s, last_s, spacing_s)
+
+        return DrawnWindow(
+            substance_id=self._agent_id, times_s=window.times_s, states=window.states
+        )
 
     def start(self) -> None:
         """Start or resume the run, refusing a session that cannot continue.

@@ -8,9 +8,11 @@ from anesthesia_sim.app.controller import (
     CONTROL_INPUT_UNITS,
     ControlInput,
     RecordedQuantity,
+    RecordedSeries,
     SimulationController,
     SimulationHistorySample,
 )
+from anesthesia_sim.app.wash_in import WashInDomain
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
@@ -1369,3 +1371,113 @@ def test_a_paused_run_s_score_stops_where_the_run_did() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="rather than the run"):
         controller.evaluate_window(0.0, elapsed_s + MAXIMUM_SIMULATION_STEP_S, 3)
+
+
+def test_the_drawn_window_is_clipped_to_the_run_not_to_the_axis() -> None:
+    """The axis reaches past the run by design; the trace must not.
+
+    `following_window` keeps empty axis to the right of the newest instant
+    and `fitted_window` returns the chosen rung's full width however short
+    the run, both so a trace's slope means the same thing at every moment.
+    So the drawn range ends where the run does, and says so in `times_s`
+    rather than being padded to the axis.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=60.0)
+
+    window = controller.drawn_window(0.0, 900.0, 150)
+
+    assert window.times_s[0] == 0.0
+    assert window.times_s[-1] == pytest.approx(controller.snapshot().elapsed_s)
+    assert window.times_s[-1] < 900.0
+
+
+def test_the_drawn_window_places_a_column_on_every_control_change() -> None:
+    """A dial change inside the window is an instant the chart actually plots.
+
+    `PL-4RBD`'s guarantee, delivered structurally: the columns are evaluated
+    rather than selected, so the event is a column instead of a sample the
+    decimation had to be persuaded to keep.
+    """
+
+    controller = SimulationController()
+    _run_with_two_changes(controller)
+
+    window = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
+    changes = {change.elapsed_s for change in controller.snapshot().control_timeline}
+
+    assert changes
+    assert changes <= set(window.times_s)
+
+
+def test_a_drawn_window_refuses_another_substance() -> None:
+    """A trace drawn from another agent's values misstates the run."""
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+
+    window = controller.drawn_window(0.0, 10.0, 150)
+
+    with pytest.raises(SimulationConfigurationError, match="a run is of one agent"):
+        window.compartment_fractions(RecordedSeries("desflurane", RecordedQuantity.CIRCUIT))
+
+    with pytest.raises(SimulationConfigurationError, match="a run is of one agent"):
+        window.wash_in_readings("desflurane")
+
+
+def test_a_drawn_window_refuses_the_derived_ratio_as_a_compartment() -> None:
+    """F_A/F_I is a quotient of two states, so it is not read as one."""
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+
+    window = controller.drawn_window(0.0, 10.0, 150)
+    agent_id = controller.snapshot().agent_id
+
+    with pytest.raises(SimulationConfigurationError, match="not a compartment state"):
+        window.compartment_fractions(RecordedSeries(agent_id, RecordedQuantity.WASH_IN_RATIO))
+
+
+def test_wash_in_is_read_per_drawn_column() -> None:
+    """The domain rules are a property of the instant plotted, not of a sample.
+
+    Every drawn instant gets a reading, and a run that has just started
+    carries both the undefined opening stretch and the wash-in that follows
+    it - so the boundary between them falls on a column the chart plots.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=120.0)
+
+    window = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
+    readings = window.wash_in_readings(controller.snapshot().agent_id)
+
+    assert len(readings) == len(window.times_s)
+    assert {reading.domain for reading in readings} == {
+        WashInDomain.NO_INSPIRED_AGENT,
+        WashInDomain.WASH_IN,
+    }
+    # Inside the domain the ratio is a number; outside it there is none.
+    for reading in readings:
+        assert (reading.plotted_ratio is not None) == (reading.domain is WashInDomain.WASH_IN)
+
+
+def test_an_axis_entirely_ahead_of_the_run_draws_nothing() -> None:
+    """A window before the run began is empty rather than an error.
+
+    It is an ordinary state at the very start of a run, and an empty window
+    draws nothing - which is correct, and is not the same as drawing a zero.
+    """
+
+    controller = SimulationController()
+    controller.start()
+
+    window = controller.drawn_window(60.0, 960.0, 150)
+
+    assert window.times_s == ()
+    assert window.states == ()
