@@ -25,8 +25,9 @@ all in the compartment-chart panel. Executed exactly as written it leaves:
   Horizontal axis: simulated time, the same window as above", which duplicates
   its axis titles the same way the compartment chart's does.
 
-So roughly 40% of the standing prose survives the item that was filed to
-remove it, and no item names the remainder.
+The four paragraphs `PL-6580` names total 995 characters, so **873 of the
+1,868 characters of explanatory paragraph — 47% — survive the item that was
+filed to remove them**, and no item names the remainder.
 
 **Why it matters.** `PL-6580` closing is what will read as "the prose was
 dealt with", and the largest single block on the screen will still be there.
