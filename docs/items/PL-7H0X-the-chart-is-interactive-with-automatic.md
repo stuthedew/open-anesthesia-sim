@@ -51,3 +51,29 @@ describe a real defect or a feature that shows nothing at all. `PL-YLKR` is
 where the answer goes either way — it designs the content — so if the hover
 turns out to render nothing, close this as answered and let `PL-YLKR` carry the
 design from scratch.
+
+**Confirmed on a live client, 2026-09-08** (project owner): the paused hover
+works. That settles two things and deliberately not a third.
+
+Settled: the tooltip **renders and behaves** on a paused run, which is the
+first live-client confirmation of `PL-KP7H` end to end — Flet's diff reports
+the `tooltip` mutation, the client acts on it, and `interactive` toggling
+reaches the chart. `tests/integration/test_chart_patching.py` asserted the
+patch; this is the other end of it.
+
+Settled: this item's premise holds. There *is* an automatic hover on the
+traces, so it is not a feature that shows nothing, and the case for designing
+what it says does not collapse.
+
+**Not settled: what it says.** "Works" is a report that the affordance
+functions, not that its contents are right, and the owner had already asked
+for the tooltip to be made more readable — which is `PL-YLKR`. So the three
+concerns above stand unexamined: whether the number carries a unit, a
+compartment and an agent, and whether it presents an M4 representative of a
+bucket as though it were the sample at that instant. That last one is the
+safety-relevant half and no report of "it works" can answer it.
+
+**What is left here**, now that `PL-KP7H` set `interactive` explicitly and the
+affordance is confirmed: read the rendered tooltip against the three concerns
+and write down what it actually prints. Then this item closes and `PL-YLKR`
+designs the replacement from a known starting point rather than a guess.
