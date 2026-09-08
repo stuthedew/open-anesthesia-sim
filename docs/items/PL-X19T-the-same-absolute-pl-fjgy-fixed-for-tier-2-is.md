@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: worker-instructions
+milestone: v0.4.10
 touches: .claude/rules/expert-review.md, .claude/rules/sources-and-docstrings.md, docs/consultant-brief.md, docs/resident-instructions.md
 added: 2026-09-07
 closed: 2026-09-07
