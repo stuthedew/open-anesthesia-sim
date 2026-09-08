@@ -4,11 +4,12 @@ title: The drawn chart smooths through a control change that leaves the trace mo
 priority: P1
 effort: S
 status: done
-closed: 2026-09-08
 classes: defect, ux, safety
 feature: teachable-case
 touches: src/anesthesia_sim/app/chart_downsampling.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
 added: 2026-09-05
+closed: 2026-09-08
+pr: 488
 verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select' tests/integration/test_controller.py
 ---
 

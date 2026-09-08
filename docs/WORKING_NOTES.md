@@ -1224,3 +1224,94 @@ actually arrives, or when `PL-2QMK` becomes the binding constraint.
 `origin/claude/m4-implementation-status-be2syh` is holding that file - it moves
 the item to `blocked-by: PL-2FM6` - and a second edit would collide at merge.
 `PL-18ND` carries the one finding that bears on that block.
+
+## Built and measured: the Qt spike runs, and the frame's dominant cost moved - PL-55DH, PL-X9T3, PL-QXSB, PL-2FM6, PL-YSZN (2026-09-08)
+
+`PL-55DH` built the PySide6 + pyqtgraph spike the project owner approved:
+the concentration chart and the readout row behind the *existing*
+`SimulationController`, in `spikes/qt/`, which nothing under
+`src/anesthesia_sim/` imports and which `rm -rf spikes/` removes whole. It
+runs a real case end to end, and `--self-check` asserts every trace's newest
+drawn point against the readout printed beneath it.
+
+**It was scoped against a read path that was deleted while it was being
+built.** `PL-55DH` says "the shipped column budget", meaning M4 selection over
+recorded samples at `CHART_COLUMN_BUDGET_PER_SERIES`. `PL-2FM6`, `PL-4RBD` and
+`PL-8LXM` merged mid-session: `RunHistory`, `history_window` and the M4
+decimation module are gone, and `SimulationController.drawn_window` is the
+only read path. The spike was rebuilt on it, which is a simplification -
+one evaluation serves all six traces - and the source selector it was going to
+need became a **column-budget control** instead. With M4 gone, "would Qt make
+decimation optional" is "can the column budget be raised", which is the same
+question in the architecture that replaced it.
+
+### Measured, offscreen, on the same 4-vCPU container as `PL-YSZN`
+
+Median of the last 120 frames, at the shipped 150-column budget, six traces,
+five-Hz render cadence, `--self-check` driving its own ticks:
+
+| Stage | Qt at 1x | Qt at 300x | Flet at 1x (`PL-YSZN`) | Flet at 300x |
+| --- | ---: | ---: | ---: | ---: |
+| `advance` | 0.08 ms | 8.7 ms | 0.18 ms | 26.2 ms |
+| `refresh` | 5.2 ms | 6.2 ms | 1.6 ms | 4.6 ms |
+| `handoff` / `page.update` | 1.0 ms | 1.2 ms | 26.6 ms | 45.5 ms |
+
+**Only the third row is a comparison.** The other two changed underneath the
+Flet figures when `PL-2FM6` landed, so `PL-YSZN`'s table is a measurement of a
+tree that no longer exists in two of its three stages, and reading the first
+two rows as a Qt-against-Flet result would be reading a toolkit difference off
+an architecture change. `PL-C92D` is the re-measure that closes that gap.
+
+On the row that *is* a comparison, the result holds and is the one `PL-QXSB`
+predicted: **handing the frame to the toolkit costs 1.0-1.2 ms against Flet's
+26.6-45.5 ms**, because Qt has no diff to walk. That is 26x at 1x and 39x at
+300x.
+
+### The finding that was not predicted: `refresh` now dominates
+
+`refresh` is 5.2-6.2 ms, and **6.18 ms of a 6.24 ms frame read is
+`controller.drawn_window`** - the closed-form score evaluation. The percent
+conversion is 0.06 ms and `controller.snapshot()` is 0.02 ms. Measured
+directly on a 1 800 s run at the fitted 15-minute base:
+
+| Columns | `drawn_window` |
+| ---: | ---: |
+| 150 (shipped) | 6.15 ms |
+| 600 | 9.69 ms |
+| 2 400 | 25.81 ms |
+
+Two consequences, and the second is the larger.
+
+**The column budget is now bounded by evaluation cost, not by the toolkit.**
+`CHART_COLUMN_BUDGET_PER_SERIES` is 150 because Flet charged ~24.5 us per
+point control per frame. Qt removes that constraint entirely - `PL-QXSB`
+measured 648 000 points in 1.96 ms - but raising the budget now costs about
+8.7 us per column in `drawn_window` instead. So the answer to "can the budget
+be raised" is yes, and by a factor of about four rather than of four hundred.
+
+**At 1x the chart read is about eighty times the simulation.** A frame
+advances two steps (0.08 ms) and then spends 6.2 ms evaluating 150 columns of
+a run it already advanced. Inside Flet that is invisible under 26-45 ms of
+`page.update()`; on any toolkit without a diff it is the frame. `PL-CNCF`
+carries it.
+
+### What this container still cannot answer, and it is the load-bearing half
+
+`paint` measured 24-34 ms here and means nothing: no GPU, a software
+rasteriser, an offscreen platform plugin, which `PL-QXSB` already found gives
+18-28 ms *including for a frame where nothing changed*. `timer lateness` is
+zero because the check drives its own frames. Both are exactly what `PL-X9T3`
+exists to measure on the owner's own hardware, and the spike now reports them
+on screen for that purpose.
+
+### One capability confirmed rather than argued
+
+`PL-2QMK` records that no session in the web container can visually confirm a
+chart change, because Flet's web renderer fetches Flutter assets the egress
+proxy denies. `qt_spike.py --screenshot` writes a PNG of the running interface
+in that very container, with a dial change drawn in it. So the claim `PL-QXSB`
+made for Qt is now exercised rather than asserted: headless screenshot review
+of the real interface is available, which is what `PL-90Y6`, `PL-3355`,
+`PL-W8DQ`, `PL-GVXP` and the rest of `presentation-safety` are waiting on.
+That is a point for Qt independent of speed, and it is the one `PL-QXSB` said
+would be worth the most.

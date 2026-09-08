@@ -9,6 +9,7 @@ feature: public-readiness
 touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, docs/ARCHITECTURE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-06
 closed: 2026-09-08
+pr: 487
 verify: uv run pytest tests/unit/test_branch_id_check.py && grep -q 'def test_a_branch_outside_the_agent_namespace_owes_no_id' tests/unit/test_branch_id_check.py
 ---
 

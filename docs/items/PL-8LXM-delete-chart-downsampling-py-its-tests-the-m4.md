@@ -4,11 +4,12 @@ title: Delete chart_downsampling.py, its tests, the M4 paper and every citation 
 priority: P2
 effort: M
 status: done
-closed: 2026-09-08
 classes: refactor, docs
 feature: numerical-domain
 touches: src/anesthesia_sim/app/chart_downsampling.py, tests/unit/test_chart_downsampling.py, docs/references, docs/MODEL.md, ROADMAP.md, docs/WORKING_NOTES.md, docs/items
 added: 2026-09-05
+closed: 2026-09-08
+pr: 488
 verify: make check && ! test -e src/anesthesia_sim/app/chart_downsampling.py
 ---
 
