@@ -547,3 +547,135 @@ def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
 
     assert len(score.segments) == 1
     assert score.segments[0].settings.delivered_concentration_fraction == pytest.approx(0.05)
+
+
+def test_anchored_columns_land_on_multiples_of_the_spacing() -> None:
+    """The grid is measured from the run's start, not from the window's left edge.
+
+    This is what makes a following window reuse its column times, and it is
+    the property `evaluate` deliberately does not have.
+    """
+
+    _, score, _ = _stepped_run()
+    spacing_s = 7.0
+    window = score.evaluate_anchored(103.0, 297.0, spacing_s)
+    interior = [time_s for time_s in window.times_s if time_s not in (103.0, 297.0)]
+    events = {segment.opening.elapsed_s for segment in score.segments}
+
+    assert interior
+    for time_s in interior:
+        if time_s in events:
+            continue
+        assert time_s % spacing_s == pytest.approx(0.0, abs=1e-9)
+
+
+def test_a_following_window_reuses_every_column_time_but_its_edge() -> None:
+    """A frame moves one point rather than all of them.
+
+    `PL-Q197` measured every drawn point moving on every frame as what
+    saturated the client. Anchoring the evaluation times to the run is that
+    fix applied to the closed-form path, so a window advancing by less than
+    the spacing keeps every interior column it had.
+    """
+
+    _, score, _ = _stepped_run()
+    spacing_s = 4.0
+    # Neither edge is a multiple of the spacing, which is the ordinary case:
+    # the right edge is whatever instant the run has reached this frame.
+    before = set(score.evaluate_anchored(0.0, 401.0, spacing_s).times_s)
+    after = set(score.evaluate_anchored(0.0, 402.0, spacing_s).times_s)
+
+    # Only the moving right-hand bound leaves, and only it arrives; every
+    # interior column keeps the instant it had, so its drawn point does not
+    # move and the client is not sent it.
+    assert before - after == {401.0}
+    assert after - before == {402.0}
+
+
+def test_every_control_event_inside_the_window_is_a_column() -> None:
+    """The drawn chart reproduces every control change.
+
+    A grid alone steps over a dial change, and the trajectory's only sharp
+    features are at events, so a window that misses one draws a straight
+    line through the single instant a reader is looking for.
+    """
+
+    _, score, _ = _stepped_run()
+    # A spacing far wider than the gap between the two recorded changes, so
+    # no grid column could land on either by luck.
+    window = score.evaluate_anchored(0.0, 600.0, 250.0)
+    events = {
+        segment.opening.elapsed_s
+        for segment in score.segments
+        if 0.0 < segment.opening.elapsed_s < 600.0
+    }
+
+    assert events
+    assert events <= set(window.times_s)
+
+
+def test_an_event_column_is_its_own_keyframe_exactly() -> None:
+    """An event column is read, not propagated: no interval, no error, no cost."""
+
+    _, score, _ = _stepped_run()
+    window = score.evaluate_anchored(0.0, 600.0, 250.0)
+    by_time = dict(zip(window.times_s, window.states, strict=True))
+
+    for segment in score.segments:
+        if 0.0 < segment.opening.elapsed_s < 600.0:
+            assert by_time[segment.opening.elapsed_s].values == segment.opening.state
+
+
+def test_anchored_matches_a_stepped_run() -> None:
+    """Every anchored column is the state the stepped run actually reached."""
+
+    _, score, stepped = _stepped_run()
+    window = score.evaluate_anchored(0.0, 600.0, SIMULATION_STEP_S * 10)
+
+    for elapsed_s, state in zip(window.times_s, window.states, strict=True):
+        expected = stepped[round(elapsed_s, 6)]
+
+        for compartment, want in zip(COMPARTMENT_STATES, expected, strict=True):
+            assert abs(state.values[compartment] - want) < WORST_DISPLAY_DIFFERENCE
+
+
+def test_both_bounds_are_columns_so_the_trace_ends_where_the_readouts_do() -> None:
+    """The right-hand end of a trace is the instant the readouts are showing."""
+
+    _, score, _ = _stepped_run()
+    window = score.evaluate_anchored(103.0, 297.5, 7.0)
+
+    assert window.times_s[0] == 103.0
+    assert window.times_s[-1] == 297.5
+
+
+def test_an_anchored_window_of_no_width_is_one_column() -> None:
+    """Both bounds are the same instant, so the window is that instant alone."""
+
+    _, score, _ = _stepped_run(steps=100)
+    window = score.evaluate_anchored(6.0, 6.0, 1.0)
+
+    assert window.times_s == (6.0,)
+    assert window.states[0] == DisplayState(score.state_at(6.0))
+
+
+@pytest.mark.parametrize("spacing_s", [0.0, -1.0, float("inf"), float("nan")])
+def test_an_anchored_window_refuses_a_spacing_that_is_not_an_interval(spacing_s: float) -> None:
+    """A column spacing is a positive, finite interval or it is not one."""
+
+    _, score, _ = _stepped_run(steps=100)
+
+    with pytest.raises(SimulationConfigurationError):
+        score.evaluate_anchored(0.0, 10.0, spacing_s)
+
+
+def test_an_anchored_window_refuses_bounds_the_run_has_not_reached() -> None:
+    """A window past the run's duration would be a prediction rather than the run."""
+
+    _, score, _ = _stepped_run(steps=100)
+
+    with pytest.raises(SimulationConfigurationError):
+        score.evaluate_anchored(0.0, score.duration_s + 1.0, 1.0)
+
+    with pytest.raises(SimulationConfigurationError):
+        score.evaluate_anchored(5.0, 1.0, 1.0)

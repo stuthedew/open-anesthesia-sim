@@ -4,7 +4,7 @@ from math import isfinite
 
 import pytest
 
-from anesthesia_sim.app.controller import RecordedQuantity, SimulationController
+from anesthesia_sim.app.controller import RecordedQuantity, RecordedSeries, SimulationController
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -50,7 +50,7 @@ def test_running_controller_advances_patient_and_named_history() -> None:
     _advance_for(controller, duration_s=60.0)
 
     snapshot = controller.snapshot()
-    latest_sample = controller.history_window(0.0).samples[-1]
+    drawn = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
 
     assert snapshot.circuit_concentration_fraction > 0.0
     assert snapshot.alveolar_concentration_fraction > 0.0
@@ -59,10 +59,13 @@ def test_running_controller_advances_patient_and_named_history() -> None:
     assert snapshot.delivered_agent_l > 0.0
     assert snapshot.agent_accounting_passes_validation is True
 
-    assert latest_sample.elapsed_s == pytest.approx(snapshot.elapsed_s)
-    assert latest_sample.substances[snapshot.agent_id][RecordedQuantity.ALVEOLAR] == pytest.approx(
-        snapshot.alveolar_concentration_fraction
-    )
+    # The trace's right-hand end is the instant the readouts show. Both
+    # bounds of a drawn window are always columns, so this holds by
+    # construction rather than by the two reads being ordered.
+    assert drawn.times_s[-1] == pytest.approx(snapshot.elapsed_s)
+    assert drawn.compartment_fractions(
+        RecordedSeries(snapshot.agent_id, RecordedQuantity.ALVEOLAR)
+    )[-1] == pytest.approx(snapshot.alveolar_concentration_fraction)
 
 
 def test_ventilation_and_cardiac_output_changes_preserve_state() -> None:
@@ -166,7 +169,9 @@ def _scripted_run(
                 controller.set_delivered_concentration(0.05)
 
         # What a frame does between ticks: read the run, and never move it.
-        controller.history_window(controller.snapshot().elapsed_s - 60.0)
+        controller.drawn_window(
+            controller.snapshot().elapsed_s - 60.0, controller.snapshot().elapsed_s, 150
+        )
 
     return controller
 
@@ -211,10 +216,11 @@ def test_a_run_records_the_same_history_however_the_ticks_fell() -> None:
     one_step_per_tick = _scripted_run([1] * steps)
     ragged = _scripted_run(_ragged_bursts(steps))
 
-    whole_run = one_step_per_tick.history_window(0.0)
-
-    assert whole_run.sample_count == steps + 1
-    assert whole_run.samples == ragged.history_window(0.0).samples
+    # The score *is* the run now, so identity is compared there: the
+    # settings each stretch was computed under and the keyframe opening it,
+    # element for element and bit for bit, which the canonical evaluation
+    # rule guarantees is reproducible rather than merely close.
+    assert one_step_per_tick.score_segments == ragged.score_segments
     assert one_step_per_tick.snapshot() == ragged.snapshot()
 
 
@@ -237,9 +243,7 @@ def test_the_recorded_history_is_identical_at_every_playback_rate() -> None:
 
     steps = 600
     real_time = _scripted_run([1] * steps)
-    reference = real_time.history_window(0.0)
-
-    assert reference.sample_count == steps + 1
+    reference = real_time.score_segments
 
     for rate in SUPPORTED_PLAYBACK_RATES:
         steps_per_tick = rate.steps_per_tick(
@@ -251,9 +255,7 @@ def test_the_recorded_history_is_identical_at_every_playback_rate() -> None:
         played = _scripted_run(bursts)
 
         assert sum(bursts) == steps
-        assert played.history_window(0.0).samples == reference.samples, (
-            f"playing at {rate.multiplier}x changed the recorded history"
-        )
+        assert played.score_segments == reference, f"playing at {rate.multiplier}x changed the run"
         assert played.snapshot() == real_time.snapshot()
 
 

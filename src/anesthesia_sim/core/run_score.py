@@ -7,6 +7,17 @@ settings in force at each moment - the *score* - and every state it passed
 through is a closed-form function of that score and the time asked for.
 Nothing has to be recorded for a value to be recoverable.
 
+**Why "score", since the word is doing real work here.** It is the musical
+sense: the written instruction set a performance is produced from, rather
+than a recording of one. That is exactly the distinction this module exists
+to draw - what is *held* is the ordered list of settings and when each took
+effect, and what a caller asks for is *derived* by playing it to a given
+instant. The vocabulary is already in the file: a `Keyframe` is the animation
+term for a stated instant a continuous motion is interpolated between, and
+the two words come from the same place. The names to reject are the ones that
+would suggest a stored trajectory - a run's `history`, `samples` or `record` -
+because the whole point is that no such thing exists here.
+
 Two consequences carry this module, and both are what `PL-T691` exists for:
 
 - **Memory stops growing with the run.** A recorded run costs one sample per
@@ -387,6 +398,163 @@ class RunScore:
             column = last + 1
 
         return SampledWindow(times_s=times_s, states=tuple(DisplayState(state) for state in states))
+
+    def evaluate_anchored(self, start_s: float, stop_s: float, spacing_s: float) -> SampledWindow:
+        """Columns on an absolute grid across `[start_s, stop_s]`, plus every event in it.
+
+        The chart's own display path, and it differs from `evaluate` in the
+        two ways a drawn trace needs and a bare window does not.
+
+        **The grid is anchored to `t = 0`, not to the window.** Columns land
+        on multiples of `spacing_s` measured from the run's start, so a
+        window that follows the run reuses every column time it had last
+        frame and gains at most one. `evaluate` spaces its columns across
+        whichever bounds it is given, which makes every column a new instant
+        on every frame: the drawn points then all move, and `PL-Q197`
+        measured that as what saturated the Flutter client - 2 700 discrete
+        control mutations a frame - before decimation was anchored to the run
+        for exactly this reason. Anchoring the *evaluation* times is that
+        same fix one level over.
+
+        **Every control event inside the window gets its own column, and it
+        costs nothing.** Between events the trajectory is a sum of
+        exponentials with bounded curvature and no hidden transients, so
+        every sharp feature in a run is at an event boundary; a grid that
+        steps over one draws a straight line through a kink. Each event is a
+        segment opening, and a segment's opening state is already held as its
+        keyframe, so these columns are read rather than computed - exactly,
+        and with no propagator formed. `docs/MODEL.md` § "What the chart
+        draws" states the guarantee this buys.
+
+        Both bounds are always columns. `stop_s` in particular is what the
+        numeric readouts are showing, so drawing it is what stops the trace's
+        right-hand end and the readout beside it from disagreeing.
+
+        Cost is `evaluate`'s plus one propagator per bound: two matrix
+        exponentials per segment in view - one from the segment's keyframe to
+        its first grid column, one for the spacing that carries the rest -
+        and the event columns are free. A propagator is about 1.29 ms against
+        6.2 us for a chained product (measured 2026-09-08, `PL-2FM6`), which
+        is why the grid stays uniform within a segment rather than each
+        column being taken from its keyframe.
+
+        Args:
+            start_s: The window's first instant, in seconds. Always a column.
+            stop_s: The window's last instant, in seconds. Always a column,
+                and equal to `start_s` for a window of one instant.
+            spacing_s: Distance between grid columns, in seconds. Positive.
+                The caller sets it from the width it is drawing and the
+                columns it can afford; this class does not know either.
+
+        Returns:
+            Ascending, duplicate-free instants and the state at each.
+
+        Raises:
+            SimulationConfigurationError: `spacing_s` is not positive or not
+                finite; either bound is not finite; `start_s` is negative;
+                `stop_s` precedes `start_s`; or `stop_s` is past the time the
+                run has reached.
+        """
+
+        if not isfinite(spacing_s) or spacing_s <= 0.0:
+            raise SimulationConfigurationError(
+                f"a column spacing is a positive interval, not {spacing_s}"
+            )
+
+        self._require_within_run(start_s)
+        self._require_within_run(stop_s)
+
+        if stop_s < start_s:
+            raise SimulationConfigurationError(
+                f"a window from {start_s} s to {stop_s} s ends before it begins"
+            )
+
+        times_s, grid_index = self._anchored_columns(start_s, stop_s, spacing_s)
+        states: list[tuple[float, ...]] = [()] * len(times_s)
+        segment_index = self._segment_index_at(times_s[0])
+        column = 0
+
+        while column < len(times_s):
+            segment_index = self._advance_index_to(times_s[column], segment_index)
+            segment = self._segments[segment_index]
+            opening_after_s = self._opening_after(segment_index)
+            state = self._state_from_opening(segment, times_s[column])
+            states[column] = state
+            chained: Matrix | None = None
+
+            # Consecutive grid columns are consecutive multiples of the
+            # spacing, so one propagator over it carries the whole run of
+            # them inside this segment. A bound or an event column breaks
+            # the run, because its own gap is not the spacing.
+            while column + 1 < len(times_s) and times_s[column + 1] < opening_after_s:
+                here, next_ = grid_index[column], grid_index[column + 1]
+
+                if here is None or next_ is None or next_ != here + 1:
+                    break
+
+                if chained is None:
+                    chained = _propagator(segment, spacing_s)
+
+                state = _advanced(chained, state)
+                column += 1
+                states[column] = state
+
+            column += 1
+
+        return SampledWindow(times_s=times_s, states=tuple(DisplayState(state) for state in states))
+
+    def _anchored_columns(
+        self, start_s: float, stop_s: float, spacing_s: float
+    ) -> tuple[tuple[float, ...], list[int | None]]:
+        """The column times, and which grid multiple each is where it is one.
+
+        The grid index travels with the time because it is what lets the walk
+        above tell a run of consecutive grid columns - which one propagator
+        carries - from a bound or an event column, whose gap to its neighbour
+        is not the spacing. Deriving it back from the time would mean testing
+        a float for divisibility.
+
+        Returns:
+            Ascending, duplicate-free times, and one entry per time holding
+            its multiple of `spacing_s` or `None` where it is a bound or an
+            event.
+        """
+
+        indexed: dict[float, int | None] = {start_s: None, stop_s: None}
+
+        for multiple in range(int(start_s // spacing_s) + 1, int(stop_s // spacing_s) + 1):
+            time_s = multiple * spacing_s
+
+            if start_s < time_s < stop_s:
+                indexed.setdefault(time_s, multiple)
+
+        for segment in self._segments:
+            event_s = segment.opening.elapsed_s
+
+            if start_s < event_s < stop_s:
+                # An event column overrides a grid column at the same
+                # instant: both draw the same state, and marking it `None`
+                # keeps the walk from chaining across a segment boundary.
+                indexed[event_s] = None
+
+        times_s = tuple(sorted(indexed))
+
+        return times_s, [indexed[time_s] for time_s in times_s]
+
+    def _state_from_opening(self, segment: ScoreSegment, elapsed_s: float) -> tuple[float, ...]:
+        """The state at `elapsed_s`, propagated from `segment`'s own keyframe.
+
+        A column landing exactly on the keyframe is the event-column case,
+        and it is answered by reading the keyframe rather than by forming a
+        propagator over a zero interval.
+        """
+
+        if elapsed_s == segment.opening.elapsed_s:
+            return segment.opening.state
+
+        return _advanced(
+            _propagator(segment, elapsed_s - segment.opening.elapsed_s), segment.opening.state
+        )
 
     def _canonical_state_at(self, elapsed_s: float) -> tuple[float, ...]:
         """`state_at` without the bounds check, for the keyframe path.

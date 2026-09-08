@@ -4,7 +4,7 @@ title: A path-scoped rule that stops a session re-introducing a sample store onc
 priority: P2
 effort: S
 status: blocked
-blocked-by: PL-2FM6
+blocked-by: PL-ZX12
 classes: docs
 feature: numerical-domain
 touches: .claude/rules
@@ -52,6 +52,22 @@ which is what `CLAUDE.md` calls a defect in the check. This one earns its place
 every time it fires, because the regression it prevents is likelier than the
 recovery it enables.
 
+**This item's filename and `verify:` move with `PL-ZX12`** (the rename of
+`RunScore` to `RunDefinition`, decided by the project owner 2026-09-08). The
+rule file is specified above as `.claude/rules/run-is-its-score.md` and the
+`verify:` command greps that exact path, so written before that rename lands
+the rule is born carrying the retired term - in the one file whose whole job is
+telling a future session how this architecture works. `PL-ZX12` is sequenced
+ahead of this item for that reason; take its name (`run-is-its-definition.md`,
+or whatever the rename settles on) rather than the one above.
+
 **Done when.** The rule exists, is scoped to those paths, states the
 precondition before the pointer, and `make check`'s resident-line accounting is
 unaffected because nothing was added to `CLAUDE.md`.
+
+**Re-pointed 2026-09-08.** `PL-2FM6` has landed, so the architecture this rule
+describes now exists and that blocker is satisfied. The remaining wait is
+`PL-ZX12`, the `RunScore` rename: this item's rule file and its `verify:`
+command both name `run-is-its-score.md`, and writing it before that rename
+lands would put the retired term in the one file whose job is explaining the
+architecture to a future session.

@@ -1,7 +1,7 @@
 """Assemble the compartment chart's traces and redraw them from the run.
 
-The shaping layer between the controller's recorded history and the chart
-control: which sample a trace draws is `chart_downsampling.py`'s, what a
+The shaping layer between the controller's evaluated window and the chart
+control: which instants a trace draws is `core/run_score.py`'s, what a
 trace *is* and how a frame updates it is this module's, and the dashboard
 that owns the chart is `simulation_view.py`'s. Nothing here reads
 simulation state, holds a setting, or performs a physiological or unit
@@ -9,29 +9,31 @@ calculation beyond the fraction-to-percent conversion the axis is labelled
 in. The one derived quantity it draws, the wash-in ratio, is computed and
 bounded by `app/wash_in.py` and only *placed* here.
 
-It is separate from the view for the reason `chart_downsampling.py` is:
-what a trace draws is a presentation-correctness concern rather than a
-layout one. Plotting one compartment's values on another compartment's
-line would misstate the run as surely as a wrong number would, so the
-pairing is passed in as one `PlottedSeries` table the caller declares
-beside its traces, where it can be audited at a glance, rather than being
-spread across a dashboard. The table is not type-enforced - `flet_charts`
-ships no stubs, so a chart series is `Any` to the checker - and
-`tests/unit/test_simulation_view.py`'s
+It is separate from the view because what a trace draws is a
+presentation-correctness concern rather than a layout one. Plotting one
+compartment's values on another compartment's line would misstate the run
+as surely as a wrong number would, so the pairing is passed in as one
+`PlottedSeries` table the caller declares beside its traces, where it can
+be audited at a glance, rather than being spread across a dashboard. The
+table is not type-enforced - `flet_charts` ships no stubs, so a chart
+series is `Any` to the checker - and `tests/unit/test_simulation_view.py`'s
 `test_chart_traces_stay_bound_to_their_own_compartment` is what holds it.
 
-Every drawn point remains a recorded sample. Nothing in this module
-interpolates, extrapolates, or synthesizes a value, and the controller's
-own history is read but never modified.
+**Every drawn point is a state of the run at the instant it is drawn at.**
+Nothing in this module interpolates, extrapolates or synthesizes a value:
+the coordinates it writes are the ones `DrawnWindow` carries, evaluated
+from the run's score at instants chosen so that no sharp feature falls
+between two of them (`PL-2FM6`). The straight segment the chart rules
+between two points is the chart's own rendering, and it is honest here
+because a control event always gets its own column.
 """
 
 from collections.abc import Iterable, Sequence
-from math import isnan
 from typing import Final
 
 import flet_charts as fch
 
-from anesthesia_sim.app.controller import HistoryWindow, RecordedQuantity, RecordedSeries
+from anesthesia_sim.app.controller import DrawnWindow, RecordedSeries
 from anesthesia_sim.app.wash_in import is_wash_in
 
 __all__ = [
@@ -55,25 +57,28 @@ __all__ = [
     "redraw_wash_in_segments",
 ]
 
-# Per-trace ceiling on the *columns* a trace is drawn as - the `w` M4 is
-# parameterised by, one group of consecutive samples each. The count of
-# points follows from it rather than being set: M4 contributes up to four
-# tuples per column and two on a monotone stretch, so a real run draws about
-# this many points and a noisy one at most four times as many. The budget was
-# a point ceiling while the algorithm was min/max envelope decimation, which
-# is the parameter that algorithm had; naming the columns is what makes the
-# code read in the terms `chart_downsampling.py` cites (`PL-D9WD`).
+# Per-trace ceiling on the *grid columns* an axis is divided into, which the
+# chart's evaluated instants are placed on. The count of points follows from
+# it rather than being set: the grid columns inside the drawn range, plus the
+# two ends of that range, plus one column per control event in the window -
+# bounded in turn by the marks the chart already draws
+# (`simulation_view.MAX_CHART_CONTROL_MARKS`).
+#
+# It was a bucket count while the chart selected recorded samples, and a point
+# ceiling before that when the algorithm was min/max envelope decimation. It
+# is now the resolution the run is *evaluated* at, which is the first time the
+# number has meant a spacing rather than a summary (`PL-2FM6`).
 #
 # 150 columns across a chart a few hundred pixels wide is already finer than
-# the display can resolve, and it is what today's 300-point envelope drew:
-# that budget bought 149 buckets of two points each.
+# the display can resolve.
 #
-# What this ceiling does *not* bound is the traffic the client is sent. That
-# is the count of points whose chosen sample moved, which is a property of
-# the selection rather than of this number: PL-Q197 found every drawn point
-# moving on every frame, and 1 788 of them at 5 Hz saturated the Flutter
-# client while Python idled. `chart_downsampling.py` is where that is held
-# down, and `tests/integration/test_chart_patching.py` is what keeps it there.
+# What this ceiling does *not* bound is how many drawn points move on a frame.
+# That is a property of where the columns sit: `RunScore.evaluate_anchored`
+# anchors them to multiples of the spacing measured from `t = 0`, so a window
+# following the run keeps every interior column and moves only its right-hand
+# end. PL-Q197 found every drawn point moving on every frame, and 1 788 of
+# them at 5 Hz saturated the Flutter client while Python idled;
+# `tests/integration/test_chart_patching.py` is what keeps that fixed.
 #
 # **What it does bound is the frame, and this number is the only lever on
 # it.** Decided by the project owner on 2026-09-08, closing `PL-YDKJ`: the
@@ -83,7 +88,7 @@ __all__ = [
 # of them moved - `PL-YSZN` measured an idle update at the cost of a full
 # frame, both linear in the point count at about 24.5 us each - so the
 # chart's share of a frame is this budget times the traces drawn times that
-# constant, and nothing about the *selection* can reduce it.
+# constant, and nothing about where the columns sit can reduce it.
 #
 # So the ceiling this budget sizes against is a frame, not a wire. Halving
 # this number halves the chart's share of one: measured 2026-09-08, a
@@ -399,17 +404,17 @@ def park_control_mark(series: fch.LineChartData) -> None:
         point.y = 0.0
 
 
-def redraw_visible_window(plotted: Sequence[PlottedSeries], window: HistoryWindow) -> None:
+def redraw_visible_window(plotted: Sequence[PlottedSeries], window: DrawnWindow) -> None:
     """Redraw the traces the caller is drawing, from the window it asked for.
 
     The window arrives already cut to the axis the caller is about to draw:
-    the controller answers `history_window` with the range at or after the
-    chart's own left edge, so nothing outside the plotted range crosses that
-    boundary in the first place and there is nothing to slice off here
-    (`PL-0VM7`). Each trace is then reduced to a fixed per-trace column
-    budget, read out of the run's M4 aggregates rather than by rescanning
-    it, so a frame costs what it draws rather than what the window spans
-    (`PL-D9WD`).
+    the controller answers `drawn_window` with the part of that axis the run
+    covers, so nothing outside the plotted range crosses that boundary in
+    the first place and there is nothing to slice off here (`PL-0VM7`).
+    Every trace draws the same instants - one evaluation of the score
+    serves all of them, because a state carries every compartment at
+    once - so a frame costs what it draws rather than what the window
+    spans, and two traces cannot come from different instants.
 
     **The caller passes the traces it is drawing, not all of them.** A trace
     left out is *not blanked*: it keeps the points of the frame it was last
@@ -423,47 +428,54 @@ def redraw_visible_window(plotted: Sequence[PlottedSeries], window: HistoryWindo
 
     Args:
         plotted: Every trace to draw this frame, each paired with the
-            recorded series it draws. A trace omitted is left holding its
-            previous points.
-        window: The part of the run inside the plotted time range.
+            series it draws. A trace omitted is left holding its previous
+            points.
+        window: The states this frame draws, evaluated from the run's score.
     """
 
     for series, recorded in plotted:
         redraw_series(series, window, recorded)
 
 
-def redraw_series(
-    series: fch.LineChartData, window: HistoryWindow, recorded: RecordedSeries
-) -> None:
-    """Set one trace to its visible samples, bounded and in percent.
+def redraw_series(series: fch.LineChartData, window: DrawnWindow, recorded: RecordedSeries) -> None:
+    """Set one trace to its evaluated columns, in percent.
 
     `redraw_points` does the writing and records why the points a series
     already holds are reused rather than rebuilt.
 
-    Every drawn point remains a recorded sample: the selection returns
-    positions within the run, and each is drawn at that sample's own
-    recorded time and value converted from fraction to percent. Nothing is
-    interpolated or synthesized, and the run's own history is read but not
-    modified.
+    **Every drawn point is a state of the run at the instant it is drawn
+    at**, evaluated from the score rather than selected from recorded
+    samples (`PL-2FM6`). Nothing between two drawn points is interpolated
+    by this code - the straight segment the chart rules between them is the
+    chart's own rendering - and the columns are placed so that no sharp
+    feature falls between them: `RunScore.evaluate_anchored` puts one on
+    every control event in the window, and between events the trajectory
+    is a sum of exponentials with no hidden transients.
+
+    That is what `PL-4RBD` asked for and could not get from a selection of
+    recorded extremes: a dial change that left the trace rising was not an
+    extreme of anything, so no selection rule reached it and the polyline
+    was drawn straight through the one instant a reader was looking for.
 
     Args:
         series: Trace to redraw. Its existing points are mutated.
-        window: The part of the run inside the plotted time range.
+        window: The states this frame draws.
         recorded: Which substance's quantity this trace draws. Raises
-            through `RunHistory.aggregates` if the run does not record it,
-            rather than drawing whichever substance the run does hold.
+            through `DrawnWindow.compartment_fractions` if the window
+            describes another substance, rather than drawing whichever one
+            it does hold.
     """
 
-    run = window.run
-    aggregates = run.aggregates(recorded)
     # Raises before anything is written, so a trace is never left holding
     # half of one frame and half of the next.
-    indices = aggregates.select_indices(
-        window.index_offset, window.stop_index, CHART_COLUMN_BUDGET_PER_SERIES
-    )
+    fractions = window.compartment_fractions(recorded)
 
     redraw_points(
-        series, [(run.elapsed_s(index), aggregates.value(index) * 100.0) for index in indices]
+        series,
+        [
+            (elapsed_s, fraction * 100.0)
+            for elapsed_s, fraction in zip(window.times_s, fractions, strict=True)
+        ],
     )
 
 
@@ -540,7 +552,7 @@ def park_series(series: fch.LineChartData) -> None:
 
 def redraw_wash_in_segments(
     segment_series: Sequence[fch.LineChartData],
-    window: HistoryWindow,
+    window: DrawnWindow,
     substance_id: str,
     extension_ceiling: float,
 ) -> int:
@@ -552,18 +564,17 @@ def redraw_wash_in_segments(
     exists: a single polyline through the drawn samples would draw a
     straight line across the stretch it skipped - a segment joining two
     real points through values the run never produced, which is the
-    synthesized trace this package's decimation is careful never to
-    create. A broken line asserts nothing about the gap.
+    synthesized trace this module is careful never to create. A broken
+    line asserts nothing about the gap.
 
-    Which samples those are is decided as the run records them rather than
-    here: `RunHistory.wash_in_stretches` answers from stretches it
-    maintains incrementally, so a frame costs what it draws instead of
-    reclassifying every sample the window spans (`PL-D9WD`).
+    Which columns those are is decided here, from the quotient at each
+    drawn instant: there are only the columns being drawn, so classifying
+    all of them is proportional to the frame rather than to the run.
 
-    **A stretch is extended by its crossing sample at each end**, where
+    **A stretch is extended by its crossing column at each end**, where
     one exists inside the window and within `extension_ceiling`. Without
-    it the curve stops at the last sample at or below equilibrium, up to
-    one step short of the boundary it stopped at, and a trace halting in
+    it the curve stops at the last column at or below equilibrium, short
+    of the boundary it stopped at, and a trace halting in
     clear space short of a line reads as clipped rather than finished.
     With it the curve meets the equilibrium reference and ends on it.
 
@@ -581,14 +592,13 @@ def redraw_wash_in_segments(
     it did before: not clamped to the ceiling, not interpolated onto it -
     simply a point outside what this plot can show.
 
-    Each segment is reduced on its own, anchored to its position in the
-    whole run, so a stretch that is not changing keeps choosing the same
-    samples from frame to frame for the reason `chart_downsampling.py`
-    gives. Each is given the full per-series budget: the segments are few
-    and short in any real run, and splitting one budget between them
-    would make a point's chosen sample depend on how many *other*
-    segments happened to be on screen, which is exactly the instability
-    the anchoring exists to remove.
+    Every segment draws the window's own columns, so a stretch that is not
+    changing keeps the same instants from frame to frame - the anchoring
+    `RunScore.evaluate_anchored` provides, and the property that keeps the
+    client from being sent points that did not move. There is no budget to
+    split between segments: they all read one evaluation of the score, so
+    what a point sits at cannot depend on how many *other* segments happen
+    to be on screen.
 
     A stretch one sample long draws a single point and so shows nothing,
     which is correct: at a 0.1 s step it is a stretch too short for the
@@ -616,16 +626,26 @@ def redraw_wash_in_segments(
         letting the curve end without explanation.
     """
 
-    run = window.run
-    ratios = run.aggregates(RecordedSeries(substance_id, RecordedQuantity.WASH_IN_RATIO))
-    segments = _wash_in_segments(window, substance_id, extension_ceiling)
+    quotients = window.wash_in_quotients(substance_id)
+    segments = _wash_in_segments(quotients, extension_ceiling)
     drawn = segments[-len(segment_series) :] if segment_series else []
 
     for series, (start, stop) in zip(segment_series, drawn, strict=False):
-        indices = ratios.select_indices(start, stop, CHART_COLUMN_BUDGET_PER_SERIES)
-        redraw_points(series, [(run.elapsed_s(index), ratios.value(index)) for index in indices])
+        # Every column of a stretch has a quotient: the anchors are inside
+        # the domain, and the one extending column at each end was chosen
+        # for having one. `_wash_in_segments` is where that holds.
+        ratios = [quotients[column] for column in range(start, stop)]
+        redraw_points(
+            series,
+            [
+                (window.times_s[column], ratio)
+                for column, ratio in zip(range(start, stop), ratios, strict=True)
+                if ratio is not None
+            ],
+        )
+        last = ratios[-1]
         _mark_wash_in_terminus(
-            series, ends_above_equilibrium=not is_wash_in(ratios.value(indices[-1]))
+            series, ends_above_equilibrium=last is not None and not is_wash_in(last)
         )
 
     for series in segment_series[len(drawn) :]:
@@ -673,61 +693,83 @@ def _mark_wash_in_terminus(series: fch.LineChartData, ends_above_equilibrium: bo
 
 
 def _wash_in_segments(
-    window: HistoryWindow, substance_id: str, extension_ceiling: float
+    quotients: Sequence[float | None], extension_ceiling: float
 ) -> list[tuple[int, int]]:
-    """The stretches the chart draws, as absolute ranges within the run.
+    """The stretches the chart draws, as ranges over the drawn columns.
 
-    A sample *anchors* a stretch when its ratio is inside the wash-in
-    domain, which `RunHistory` decided as the sample was recorded. A
-    sample *extends* one when it has a ratio at all - its denominator was
-    above the floor - that ratio is no higher than `extension_ceiling`,
-    and it neighbours an anchor inside the window. So a stretch is a run
-    of in-domain samples plus, at each end, the one crossing sample that
-    shows where it left the domain and that the plot can show.
+    A column *anchors* a stretch when its quotient is inside the wash-in
+    domain `app/wash_in.py` states. A column *extends* one when it has a
+    quotient at all - its denominator was above the display floor - that
+    quotient is no higher than `extension_ceiling`, and it neighbours an
+    anchor. So a stretch is a run of in-domain columns plus, at each end,
+    the one crossing column that shows where the curve left the domain and
+    that the plot can still show.
 
-    Two anchor runs separated by a single extendable sample both reach
-    it, and it is drawn once as each stretch's endpoint. That is the
-    honest rendering of a run that left the domain and returned within
-    0.1 s, and it is the only case where one sample appears twice.
+    **Computed over the drawn columns rather than maintained as the run
+    records samples** (`PL-2FM6`). The run kept these stretches
+    incrementally because reclassifying every sample a window spanned was
+    work proportional to the run; there are now only the columns being
+    drawn, so classifying all of them is proportional to the frame. It is
+    also the stronger guarantee: a boundary can fall only on an instant the
+    chart actually plots.
+
+    Two anchor runs separated by a single extendable column both reach it,
+    and it is drawn once as each stretch's endpoint. That is the honest
+    rendering of a run that left the domain and returned within one column,
+    and it is the only case where one column appears twice.
 
     Args:
-        window: The part of the run inside the plotted time range.
-        substance_id: Whose quotient, and so whose stretches.
-        extension_ceiling: Highest ratio a crossing sample may carry and
+        quotients: One entry per drawn column, `None` where the column has
+            no quotient at all.
+        extension_ceiling: Highest quotient a crossing column may carry and
             still extend a stretch.
 
     Returns:
-        One `(start, stop)` pair per stretch, oldest first, clipped to
-        the window and extended within it.
+        One `(start, stop)` pair of column indices per stretch, oldest
+        first, extended within the window.
     """
 
-    ratios = window.run.aggregates(RecordedSeries(substance_id, RecordedQuantity.WASH_IN_RATIO))
     segments: list[tuple[int, int]] = []
+    start: int | None = None
 
-    for start, stop in window.run.wash_in_stretches(
-        substance_id, window.index_offset, window.stop_index
-    ):
-        if start > window.index_offset and _extends_a_stretch(
-            ratios.value(start - 1), extension_ceiling
-        ):
-            start -= 1
+    for column, quotient in enumerate(quotients):
+        anchors = quotient is not None and is_wash_in(quotient)
 
-        if stop < window.stop_index and _extends_a_stretch(ratios.value(stop), extension_ceiling):
-            stop += 1
+        if anchors and start is None:
+            start = column
+        elif not anchors and start is not None:
+            segments.append((start, column))
+            start = None
 
-        segments.append((start, stop))
+    if start is not None:
+        segments.append((start, len(quotients)))
 
-    return segments
+    return [
+        (
+            start - 1 if _extends_a_stretch(quotients, start - 1, extension_ceiling) else start,
+            stop + 1 if _extends_a_stretch(quotients, stop, extension_ceiling) else stop,
+        )
+        for start, stop in segments
+    ]
 
 
-def _extends_a_stretch(ratio: float, extension_ceiling: float) -> bool:
-    """Whether one out-of-domain sample is the crossing point to draw.
+def _extends_a_stretch(
+    quotients: Sequence[float | None], column: int, extension_ceiling: float
+) -> bool:
+    """Whether the column at `column` is the crossing point to draw.
 
-    A NaN is how `RunHistory` records a sample with no quotient at all -
+    `None` is how a column with no quotient at all is carried -
     `app/wash_in.py`'s rule 1, no agent in the circuit yet - and there is
-    nothing there to draw. Every other out-of-domain sample crossed
+    nothing there to draw. Every other out-of-domain column crossed
     equilibrium, and it is drawn when it is close enough to stay on the
-    plot.
+    plot. A column outside the window extends nothing, which is what the
+    bounds check answers rather than an error: a stretch running to the
+    edge of the frame simply has no crossing column on that side yet.
     """
 
-    return not isnan(ratio) and ratio <= extension_ceiling
+    if not 0 <= column < len(quotients):
+        return False
+
+    quotient = quotients[column]
+
+    return quotient is not None and quotient <= extension_ceiling

@@ -24,7 +24,7 @@ than silently freeze the chart.
 """
 
 from statistics import median
-from typing import Any
+from typing import Any, Final
 
 import flet as ft
 import flet_charts as fch
@@ -42,15 +42,12 @@ from flet.messaging.protocol import (
 from flet.messaging.session import Session
 from flet.pubsub.pubsub_hub import PubSubHub
 
-from anesthesia_sim.app.chart_downsampling import first_index_at_or_after
 from anesthesia_sim.app.chart_series import CHART_COLUMN_BUDGET_PER_SERIES, PARKED_CONTROL_MARK_X
 from anesthesia_sim.app.controller import (
     ControlChange,
     ControlInput,
-    HistoryWindow,
+    DrawnWindow,
     RecordedQuantity,
-    RunHistory,
-    SimulationHistorySample,
     SimulationSnapshot,
 )
 from anesthesia_sim.app.simulation_view import (
@@ -59,7 +56,16 @@ from anesthesia_sim.app.simulation_view import (
     SIMULATION_STEP_S,
     SimulationView,
 )
+from anesthesia_sim.core.governing_equations import (
+    ALVEOLAR_FRACTION,
+    FIRST_TISSUE_FRACTION,
+    INSPIRED_FRACTION,
+    STATE_SIZE,
+    UNIT_STATE,
+    VENOUS_FRACTION,
+)
 from anesthesia_sim.core.parameters import load_agent_parameters
+from anesthesia_sim.core.run_score import DisplayState
 
 #: The agent whose run this suite replays, and so the substance its recorded
 #: samples are keyed by. The snapshot and the run must name the same one: the
@@ -99,7 +105,7 @@ class _RecordingConnection(Connection):
 class _ReplayController:
     """Serve one recorded run to the view, one render tick per frame.
 
-    Answers `snapshot` and `history_window` the way the real controller
+    Answers `snapshot` and `drawn_window` the way the real controller
     does: the snapshot is the instant, the window is the part of the run
     the caller asks for. The cursor advances on the snapshot alone, so both
     halves of one frame describe the same instant however many times the
@@ -107,40 +113,67 @@ class _ReplayController:
     """
 
     def __init__(
-        self,
-        samples: tuple[SimulationHistorySample, ...],
-        start: int,
-        control_timeline: tuple[ControlChange, ...] = (),
+        self, sample_count: int, start: int, control_timeline: tuple[ControlChange, ...] = ()
     ) -> None:
-        self._samples = samples
+        self._sample_count = sample_count
         # The whole run is recorded up front and the cursor bounds what the
         # view may see, which is what the real controller's append-only
         # history gives a reader for free: a window is a range, and a range
         # that stops short of the newest sample reads exactly as it did when
         # that sample was the newest.
-        self._run = RunHistory.of(samples)
         self._cursor = start
         self._control_timeline = control_timeline
         self.is_running = True
 
-    def history_window(self, start_s: float) -> HistoryWindow:
-        # The cursor runs past the recorded run on the last frames of a
-        # replay, exactly as `snapshot` lets it; a window is still a range
-        # within what was recorded.
-        stop_index = min(self._cursor, len(self._run))
-        start_index = min(first_index_at_or_after(self._run.times_s(), start_s), stop_index)
+    def drawn_window(self, start_s: float, stop_s: float, columns: int) -> DrawnWindow:
+        """Evaluate this run's analytic traces the way the controller does.
 
-        return HistoryWindow(run=self._run, index_offset=start_index, stop_index=stop_index)
+        The grid is anchored to multiples of the spacing measured from
+        `t = 0`, and both ends of the drawn range are columns, which is
+        `RunScore.evaluate_anchored`'s contract restated over a fixture that
+        has a closed form of its own. Anchoring is what these tests are
+        about: a window following the run must keep every interior column,
+        so only the moving edge is patched onto the client.
+
+        The cursor runs past the recorded run on the last frames of a
+        replay, exactly as `snapshot` lets it, so the range is clipped to
+        what the run has reached.
+        """
+
+        spacing_s = (stop_s - start_s) / (columns - 1)
+        first_s = max(0.0, start_s)
+        last_s = min(stop_s, (min(self._cursor, self._sample_count) - 1) * SIMULATION_STEP_S)
+
+        if last_s < first_s:
+            return DrawnWindow(substance_id=AGENT_ID, times_s=(), states=())
+
+        instants = {first_s, last_s}
+        instants.update(
+            multiple * spacing_s
+            for multiple in range(int(first_s // spacing_s) + 1, int(last_s // spacing_s) + 1)
+            if first_s < multiple * spacing_s < last_s
+        )
+        instants.update(
+            change.elapsed_s
+            for change in self._control_timeline
+            if first_s < change.elapsed_s < last_s
+        )
+        times_s = tuple(sorted(instants))
+
+        return DrawnWindow(
+            substance_id=AGENT_ID,
+            times_s=times_s,
+            states=tuple(DisplayState(_state_at(elapsed_s)) for elapsed_s in times_s),
+        )
 
     def snapshot(self) -> SimulationSnapshot:
-        history = self._samples[: self._cursor]
+        elapsed_s = (min(self._cursor, self._sample_count) - 1) * SIMULATION_STEP_S
         self._cursor += SAMPLES_PER_RENDER_TICK
-        latest = history[-1]
-        recorded = latest.substances[AGENT_ID]
+        state = _state_at(elapsed_s)
 
         return SimulationSnapshot(
             is_running=self.is_running,
-            elapsed_s=latest.elapsed_s,
+            elapsed_s=elapsed_s,
             agent_id=AGENT_ID,
             agent_display_name="Sevoflurane",
             max_delivered_concentration_percent=8.0,
@@ -151,12 +184,12 @@ class _ReplayController:
             delivered_concentration_fraction=0.08,
             alveolar_ventilation_l_min=4.0,
             cardiac_output_l_min=5.0,
-            circuit_concentration_fraction=recorded[RecordedQuantity.CIRCUIT],
-            alveolar_concentration_fraction=recorded[RecordedQuantity.ALVEOLAR],
-            mixed_venous_concentration_fraction=recorded[RecordedQuantity.MIXED_VENOUS],
-            vessel_rich_partial_pressure_fraction=recorded[RecordedQuantity.VESSEL_RICH],
-            muscle_partial_pressure_fraction=recorded[RecordedQuantity.MUSCLE],
-            fat_partial_pressure_fraction=recorded[RecordedQuantity.FAT],
+            circuit_concentration_fraction=state[INSPIRED_FRACTION],
+            alveolar_concentration_fraction=state[ALVEOLAR_FRACTION],
+            mixed_venous_concentration_fraction=state[VENOUS_FRACTION],
+            vessel_rich_partial_pressure_fraction=state[FIRST_TISSUE_FRACTION],
+            muscle_partial_pressure_fraction=state[FIRST_TISSUE_FRACTION + 1],
+            fat_partial_pressure_fraction=state[FIRST_TISSUE_FRACTION + 2],
             delivered_agent_l=0.012345,
             exhausted_agent_l=0.002345,
             stored_agent_l=0.01,
@@ -169,36 +202,38 @@ class _ReplayController:
         )
 
 
-def _recorded_run(sample_count: int) -> tuple[SimulationHistorySample, ...]:
-    """A monotone wash-in whose six traces never coincide.
+#: The fixture's traces as a closed form, in `governing_equations`' state order.
+#:
+#: A monotone wash-in whose six traces never coincide, evaluated at an
+#: instant rather than tabulated per sample, because the chart asks for
+#: instants. The
+#: alveolar trace *lags* the circuit one - a slower rise to a lower asymptote -
+#: which is not decoration: the chart draws F_A/F_I from that pair, and the
+#: ratio is only inside the domain `app/wash_in.py` states while alveolar stays
+#: under circuit. A fixture where the alveolar trace led would describe a run in
+#: which the lung filled the circuit.
+_DECAYS: Final = (
+    (INSPIRED_FRACTION, 0.080, 0.999),
+    (ALVEOLAR_FRACTION, 0.070, 0.9993),
+    (VENOUS_FRACTION, 0.050, 0.997),
+    (FIRST_TISSUE_FRACTION, 0.060, 0.996),
+    (FIRST_TISSUE_FRACTION + 1, 0.030, 0.995),
+    (FIRST_TISSUE_FRACTION + 2, 0.010, 0.994),
+)
 
-    The alveolar trace *lags* the circuit one - a slower rise to a lower
-    asymptote - which is not decoration. The chart draws F_A/F_I from this
-    pair, and that ratio is only inside the domain `app/wash_in.py` states
-    while alveolar stays under circuit; a fixture where the alveolar trace
-    led would describe a run in which the lung filled the circuit, and would
-    leave the wash-in trace here drawing nothing or growing where every
-    other trace is steady. The two decay constants are 0.999 and 0.9993, so
-    the ratio rises from 0.61 to its 0.875 asymptote across the run and is
-    saturated at the window sizes these tests use.
-    """
 
-    return tuple(
-        SimulationHistorySample(
-            elapsed_s=index * SIMULATION_STEP_S,
-            substances={
-                AGENT_ID: {
-                    RecordedQuantity.CIRCUIT: 0.080 * (1.0 - 0.999**index),
-                    RecordedQuantity.ALVEOLAR: 0.070 * (1.0 - 0.9993**index),
-                    RecordedQuantity.MIXED_VENOUS: 0.050 * (1.0 - 0.997**index),
-                    RecordedQuantity.VESSEL_RICH: 0.060 * (1.0 - 0.996**index),
-                    RecordedQuantity.MUSCLE: 0.030 * (1.0 - 0.995**index),
-                    RecordedQuantity.FAT: 0.010 * (1.0 - 0.994**index),
-                }
-            },
-        )
-        for index in range(sample_count)
-    )
+def _state_at(elapsed_s: float) -> tuple[float, ...]:
+    """The fixture's state vector at one instant."""
+
+    index = elapsed_s / SIMULATION_STEP_S
+    state = [0.0] * STATE_SIZE
+
+    for position, asymptote, decay in _DECAYS:
+        state[position] = asymptote * (1.0 - decay**index)
+
+    state[UNIT_STATE] = 1.0
+
+    return tuple(state)
 
 
 def _control_timeline(
@@ -216,7 +251,6 @@ def _control_timeline(
     return tuple(
         ControlChange(
             elapsed_s=first_elapsed_s + index * spacing_s,
-            sample_index=round((first_elapsed_s + index * spacing_s) / SIMULATION_STEP_S),
             adjustment=index + 1,
             control=controls[index % len(controls)],
             previous_value=1.0,
@@ -250,9 +284,7 @@ def _mounted_view(
 
     connection = _RecordingConnection()
     session = Session(connection)
-    controller = _ReplayController(
-        _recorded_run(sample_count), start=start, control_timeline=control_timeline
-    )
+    controller = _ReplayController(sample_count, start=start, control_timeline=control_timeline)
     view = SimulationView(page=session.page, controller=controller)
 
     if time_base_span_s is not None:
@@ -368,24 +400,26 @@ def test_a_shorter_trace_removes_the_points_it_no_longer_draws() -> None:
     """
 
     view, session, connection = _mounted_view()
-    # Saturated, but not at an exact count, and bounded in points rather
-    # than columns: the width ladder that keeps the selection stable
-    # (PL-Q197) spends somewhere between half the budget and all of it, and
-    # each column it does spend contributes between two and four of M4's
-    # tuples. Pinning the number would assert the ladder's rung and the
-    # trace's shape rather than the buffer behavior under test.
+    # Saturated, but not at an exact count. The drawn set is the grid
+    # columns inside the part of the axis the run covers, plus that range's
+    # two ends - so it is bounded by the budget rather than by a multiple of
+    # it, and it falls short of the budget by however much of the axis is
+    # live headroom the run has not reached. Pinning the number would assert
+    # the time base's rung and the headroom fraction rather than the buffer
+    # behavior under test.
     drawn_when_saturated = len(view._circuit_series.points)
-    assert (
-        CHART_COLUMN_BUDGET_PER_SERIES <= drawn_when_saturated <= 4 * CHART_COLUMN_BUDGET_PER_SERIES
-    )
+    assert 4 < drawn_when_saturated <= CHART_COLUMN_BUDGET_PER_SERIES + 2
 
-    # A run that has only just started draws every recorded sample, so the
-    # trace is far shorter than the saturated one already on screen.
-    view._controller = _ReplayController(_recorded_run(12), start=12)  # type: ignore[assignment]
+    # A run barely over a second long covers a sliver of the axis, so it
+    # draws the few grid columns inside that sliver and its two ends - far
+    # shorter than the saturated trace already on screen. Resolution follows
+    # the axis, which is the whole of what the reader can resolve.
+    view._controller = _ReplayController(12, start=12)  # type: ignore[assignment]
     view._refresh_view()
     session.page.update()
 
-    assert len(view._circuit_series.points) == 12
+    assert len(view._circuit_series.points) < drawn_when_saturated
+    assert view._circuit_series.points[0].x == 0.0
     assert view._circuit_series.points[-1].x == pytest.approx(11 * SIMULATION_STEP_S)
 
     removals = [
@@ -403,13 +437,13 @@ def test_a_longer_trace_adds_the_points_it_has_gained() -> None:
     assert drawn_at_mount < CHART_COLUMN_BUDGET_PER_SERIES
 
     view._controller = _ReplayController(  # type: ignore[assignment]
-        _recorded_run(SATURATED_SAMPLE_COUNT), start=SATURATED_SAMPLE_COUNT // 2
+        SATURATED_SAMPLE_COUNT, start=SATURATED_SAMPLE_COUNT // 2
     )
     view._refresh_view()
     session.page.update()
 
     drawn_now = len(view._circuit_series.points)
-    assert CHART_COLUMN_BUDGET_PER_SERIES <= drawn_now <= 4 * CHART_COLUMN_BUDGET_PER_SERIES
+    assert drawn_at_mount < drawn_now <= CHART_COLUMN_BUDGET_PER_SERIES + 2
 
     additions = _point_additions(connection)
     # One addition per trace per point gained: six compartment traces, plus

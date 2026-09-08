@@ -15,11 +15,9 @@ def _change(
     previous_value: float,
     new_value: float,
     adjustment: int,
-    sample_index: int = 0,
 ) -> ControlChange:
     return ControlChange(
         elapsed_s=elapsed_s,
-        sample_index=sample_index,
         adjustment=adjustment,
         control=control,
         previous_value=previous_value,
@@ -53,9 +51,9 @@ def test_a_drag_reads_as_one_act_spanning_the_settings_the_model_saw() -> None:
     """
 
     timeline = (
-        _change(10.0, ControlInput.DELIVERED, 0.02, 0.025, adjustment=1, sample_index=100),
-        _change(10.1, ControlInput.DELIVERED, 0.025, 0.031, adjustment=1, sample_index=101),
-        _change(10.2, ControlInput.DELIVERED, 0.031, 0.04, adjustment=1, sample_index=102),
+        _change(10.0, ControlInput.DELIVERED, 0.02, 0.025, adjustment=1),
+        _change(10.1, ControlInput.DELIVERED, 0.025, 0.031, adjustment=1),
+        _change(10.2, ControlInput.DELIVERED, 0.031, 0.04, adjustment=1),
     )
 
     (adjustment,) = group_adjustments(timeline)
@@ -65,7 +63,6 @@ def test_a_drag_reads_as_one_act_spanning_the_settings_the_model_saw() -> None:
     assert adjustment.from_value == 0.02
     assert adjustment.to_value == 0.04
     assert adjustment.change_count == 3
-    assert adjustment.sample_index == 100
 
 
 def test_two_adjustments_of_one_control_stay_two() -> None:

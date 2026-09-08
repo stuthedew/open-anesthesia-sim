@@ -48,7 +48,7 @@ from anesthesia_sim.app.control_timeline import (
     group_adjustments,
 )
 from anesthesia_sim.app.controller import (
-    HistoryWindow,
+    DrawnWindow,
     RecordedQuantity,
     RecordedSeries,
     SimulationController,
@@ -2408,26 +2408,28 @@ class SimulationView:
         # Two reads of one controller, and they cannot disagree: this
         # method is synchronous, so no `await` can fall between them and the
         # simulation loop cannot advance a step in the gap. That is what
-        # keeps the right-hand end of every trace the same sample the
-        # readouts above were formatted from, which `chart_downsampling.py`
-        # states as a property of the display rather than an accident of
-        # ordering. The window asked for is the axis just set, so the samples
-        # that arrive are exactly the ones this frame draws (`PL-0VM7`).
+        # keeps the right-hand end of every trace the instant the readouts
+        # above were formatted from - `RunScore.evaluate_anchored` always
+        # draws the end of the range, so the two agree by construction
+        # rather than by ordering. The window asked for is the axis just
+        # set, clipped to the part of it the run covers (`PL-0VM7`).
         #
         # Read once and drawn twice: both plots span the same window, so one
-        # read is what makes them the same *samples* and not merely the same
-        # axis numbers.
+        # read is what makes them the same *instants* and not merely the
+        # same axis numbers.
         # Only the traces the reader has left shown. A hidden trace costs
         # nothing here and holds nothing on the client, because
         # `_chart_data_series` has taken it off the chart as well - the two
         # go together, and `chart_series.redraw_visible_window` says why
         # doing one without the other would leave a stale curve drawn.
-        window = self._controller.history_window(chart_min_x)
+        window = self._controller.drawn_window(
+            chart_min_x, chart_max_x, chart_series.CHART_COLUMN_BUDGET_PER_SERIES
+        )
         # Drawn under the agent this frame's readouts were formatted from,
         # so a run and the traces of it cannot come from different agents.
-        # A snapshot naming an agent the run does not record raises in
-        # `RunHistory.aggregates` rather than drawing whatever the run does
-        # hold - see `RecordedSeries`.
+        # A snapshot naming an agent the window does not describe raises in
+        # `DrawnWindow.compartment_fractions` rather than drawing whatever
+        # the run does hold - see `RecordedSeries`.
         chart_series.redraw_visible_window(self._visible_plotted_series(snapshot.agent_id), window)
 
         # After the traces are drawn and before anything else reads them:
@@ -2546,7 +2548,7 @@ class SimulationView:
     def _refresh_wash_in(
         self,
         snapshot: SimulationSnapshot,
-        window: HistoryWindow,
+        window: DrawnWindow,
         chart_min_x: float,
         chart_max_x: float,
     ) -> None:
@@ -2736,9 +2738,9 @@ class SimulationView:
         The reading half, which is why this is not merely an optimization
         dressed as a feature. A trace at 300x advances a simulated minute
         between frames, so a value read under a moving cursor is stale
-        before it is read; and every drawn point is an M4 representative of
-        a bucket rather than a sample, which is a thing to study rather than
-        to glance at. Pausing is what a reader does to inspect, and it is
+        before it is read; and a drawn point is the run's state at that
+        instant, which is a thing to study rather than to glance at.
+        Pausing is what a reader does to inspect, and it is
         the state in which the number under the cursor still means what it
         said.
 

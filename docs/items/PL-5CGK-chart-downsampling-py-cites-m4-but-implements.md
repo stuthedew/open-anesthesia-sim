@@ -100,3 +100,11 @@ on its value.
 citation; the deterministic tie-break is stated as a requirement of this
 application rather than left as an implementation accident; and the reference
 entry exists or the licence check is recorded as the reason it does not.
+
+**Closed against `PL-8LXM` on 2026-09-08.** The module that cited M4 while
+implementing AM4 is deleted, so the provenance gap this item described has no
+subject. The distinction it established is worth keeping findable, and it is:
+Kohn A, Moritz D, Neumann T, "DashQL - Complete Analysis Workflows with SQL",
+arXiv:2306.03714 § 3.6.1 names **AM4** for the one-pass form that carries the
+sample index alongside the extreme value, which is what the deleted
+`M4Aggregate` computed.
