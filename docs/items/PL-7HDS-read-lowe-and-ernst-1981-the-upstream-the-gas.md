@@ -4,11 +4,12 @@ title: Read Lowe and Ernst 1981, the upstream the Gas Man Workbook names for its
 priority: P1
 effort: M
 status: done
-closed: 2026-09-08
 classes: science, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-06
+closed: 2026-09-08
+pr: 465
 not-delegable: No command can prove that a person opened a 1981 Williams and Wilkins monograph, and no session can do the opening. Every route this container has was tried on 2026-09-06 and refused, and the book was reached on 2026-09-08 by interlibrary loan through the project owner's institution - which is exactly the step no command could have taken. A `verify:` command here could only check that some sentence had been written into the data file, which is exactly the thing that must not be gameable on a provenance item.
 ---
 
