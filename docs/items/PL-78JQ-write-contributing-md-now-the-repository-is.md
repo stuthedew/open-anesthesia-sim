@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: public-readiness
+milestone: v0.4.12
 touches: CONTRIBUTING.md, README.md
 added: 2026-09-08
 closed: 2026-09-08
+pr: 487
 verify: python3 tools/doc_check.py check && grep -qF 'nothing checks your pull request for one' CONTRIBUTING.md
 ---
 
