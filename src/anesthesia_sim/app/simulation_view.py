@@ -724,6 +724,13 @@ class SimulationView:
         # silently stops annotating asserts that nothing more happened.
         self._undrawn_control_marks = 0
         self._undrawn_wash_in_segments = 0
+        # Whether the charts are currently answering a hover. Held so that
+        # `_apply_trace_visibility` can put a trace back on the chart in the
+        # mode the last frame set, rather than reading the run again and
+        # possibly disagreeing with the frame it was called from. Starts
+        # false so that the first frame's write is the one that decides it,
+        # whatever state the run is in when the dashboard is mounted.
+        self._chart_tooltips_enabled = False
         # The agent a reader has asked for and not yet confirmed, and the
         # dialog asking them. Held here rather than passed through the
         # button callbacks because Flet hands a callback its own control and
@@ -2543,6 +2550,11 @@ class SimulationView:
         adjustments = group_adjustments(snapshot.control_timeline)
         self._redraw_control_marks(adjustments, chart_min_x, chart_max_x, snapshot)
         self._refresh_wash_in(snapshot, window, chart_min_x, chart_max_x)
+        # Last, after every call above that can have appended a point: a
+        # point built this frame carries no tooltip (`chart_series.build_point`),
+        # so a run paused with a trace still growing would otherwise show a
+        # hover that answered over part of a curve and not the rest.
+        self._apply_chart_tooltips(enabled=not snapshot.is_running)
         self._refresh_control_timeline(adjustments)
 
     def _refresh_off_scale_notice(self, snapshot: SimulationSnapshot) -> None:
@@ -2781,6 +2793,12 @@ class SimulationView:
         self._hidden_traces_text.visible = not any(
             trace.visible for trace in self._compartment_traces
         )
+        # A trace being shown again joins the chart *after* the redraw that
+        # `_handle_trace_visibility_change` runs first, so the frame's own
+        # tooltip pass never saw it. Re-applied here in the mode that frame
+        # set, which is what stops a trace restored while paused being the
+        # one curve on the chart that answers no hover.
+        self._apply_chart_tooltips(enabled=self._chart_tooltips_enabled)
 
     def _handle_trace_visibility_change(
         self, trace: _CompartmentTrace, event: ft.Event[ft.Checkbox]
@@ -2809,6 +2827,56 @@ class SimulationView:
         self._refresh_view()
         self._apply_trace_visibility()
         self._page.update()
+
+    def _apply_chart_tooltips(self, *, enabled: bool) -> None:
+        """The one writer of whether either chart answers a hover.
+
+        **The hover is offered while the run is paused and withdrawn while
+        it plays**, which is a performance decision and a reading decision
+        that happen to agree.
+
+        The performance half. A tooltip is an object per point, and Flet's
+        diff descends into it on every point on every frame - about half the
+        cost of a frame, measured at 42.8 ms against 22.5 ms on a saturated
+        chart at 300x (`PL-KP7H`, and `PL-YSZN` for where the rest of the
+        frame goes). That bill is only presented while frames are being
+        pushed: `_run_render_timer` takes no frame while the run is stopped,
+        so a paused chart carrying tooltips costs nothing per second. The
+        feature is therefore restored exactly where it is free.
+
+        The reading half, which is why this is not merely an optimization
+        dressed as a feature. A trace at 300x advances a simulated minute
+        between frames, so a value read under a moving cursor is stale
+        before it is read; and every drawn point is an M4 representative of
+        a bucket rather than a sample, which is a thing to study rather than
+        to glance at. Pausing is what a reader does to inspect, and it is
+        the state in which the number under the cursor still means what it
+        said.
+
+        What the tooltip *says* is `flet_charts`' default and was designed
+        by nobody - `PL-YLKR` is the item for that, and it matters more now
+        than it did, because this makes the tooltip a readout a reader
+        deliberately stops to consult rather than one they brush past.
+
+        `interactive` is the documented switch ("enables automatic tooltips
+        and points highlighting when hovering over the chart") and is what
+        makes the behaviour change in contract; the per-point write is what
+        makes it cheap. Both are done here so the two cannot come to
+        disagree - a chart left interactive over tooltipless points, or
+        tooltips carried by points no hover can reach, are each half of this
+        applied without the other.
+
+        Args:
+            enabled: Whether a hover should answer. Read from the frame's
+                snapshot by `_refresh_view`, which is the only place the run
+                state is consulted.
+        """
+
+        for chart in (self._concentration_chart, self._wash_in_chart):
+            chart.interactive = enabled
+            chart_series.apply_point_tooltips(chart.data_series, enabled=enabled)
+
+        self._chart_tooltips_enabled = enabled
 
     def _apply_agent_color_scheme(self, agent_id: str) -> None:
         """Apply the verified agent color to every control that carries identity.

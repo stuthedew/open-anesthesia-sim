@@ -39,3 +39,15 @@ unrelated reason (they are half the per-frame diff cost, `PL-YSZN`).
 **First step.** Run the app, hover a trace on both charts, and record what
 appears. Then set `interactive` explicitly to whatever is decided, rather than
 leaving it at a default nobody chose.
+
+**Half of this is answered.** `PL-KP7H` set `LineChart.interactive` explicitly
+rather than leaving it at a default nobody chose: it is now false while the run
+plays and true while it is stopped, written in one place with the per-point
+tooltips. So "undeclared" no longer describes the flag.
+
+What remains is the part that needed a client and still does: **what the
+default tooltip actually renders**, and therefore whether points 1 to 3 above
+describe a real defect or a feature that shows nothing at all. `PL-YLKR` is
+where the answer goes either way — it designs the content — so if the hover
+turns out to render nothing, close this as answered and let `PL-YLKR` carry the
+design from scratch.

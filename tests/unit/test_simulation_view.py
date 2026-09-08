@@ -933,6 +933,99 @@ def test_refresh_view_populates_chart_series_from_history() -> None:
             assert point.y == pytest.approx(_recorded(sample, quantity) * 100.0)
 
 
+def _drawn_points(view: SimulationView) -> list[fch.LineChartDataPoint]:
+    """Every point control on either chart, drawn or parked."""
+
+    return [
+        point
+        for chart in (view._concentration_chart, view._wash_in_chart)
+        for series in chart.data_series
+        for point in series.points
+    ]
+
+
+def test_a_playing_run_draws_points_that_carry_no_tooltip() -> None:
+    """`PL-KP7H`: the hover is what makes a frame cost about twice what it need.
+
+    Stated as a property of the tree rather than as a timing, which would
+    flake: what made `page.update()` expensive is that Flet's diff descends
+    into a tooltip and a `TextStyle` on every point on every frame, so a
+    drawn point carrying neither is the thing to assert.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+    _advance_to(controller, 60.0)
+    view._refresh_view()
+
+    points = _drawn_points(view)
+
+    assert points, "no points were drawn; the test proves nothing"
+    assert all(point.tooltip is None for point in points)
+    assert not view._concentration_chart.interactive
+    assert not view._wash_in_chart.interactive
+
+
+def test_pausing_gives_every_drawn_point_its_tooltip_back() -> None:
+    """The hover returns where it is free and where it can be read.
+
+    `_run_render_timer` takes no frame while the run is stopped, so the
+    per-frame cost the test above pins does not exist while paused - and a
+    value under the cursor only means what it says once the trace has
+    stopped moving.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    controller.start()
+    _advance_to(controller, 60.0)
+    view._refresh_view()
+    controller.pause()
+    view._refresh_view()
+
+    points = _drawn_points(view)
+
+    assert points, "no points were drawn; the test proves nothing"
+    assert all(point.tooltip is not None for point in points)
+    assert view._concentration_chart.interactive
+    assert view._wash_in_chart.interactive
+
+
+def test_a_trace_restored_while_paused_answers_a_hover_like_the_others() -> None:
+    """The one path the frame's own pass cannot cover.
+
+    `_handle_trace_visibility_change` redraws *before* putting the trace
+    back on the chart, deliberately, so that no stale curve can reach the
+    client. The frame's tooltip pass therefore runs while the trace is still
+    off the chart, and `_apply_trace_visibility` is what gives it the mode
+    the rest of the chart is in.
+    """
+
+    page = _FakePage()
+    controller = SimulationController()
+    view = SimulationView(page=page, controller=controller)
+    trace = view._compartment_traces[0]
+
+    controller.start()
+    _advance_to(controller, 60.0)
+    trace.checkbox.value = False
+    view._handle_trace_visibility_change(trace, ft.Event(name="change", control=trace.checkbox))
+    controller.pause()
+    view._refresh_view()
+
+    trace.checkbox.value = True
+    view._handle_trace_visibility_change(trace, ft.Event(name="change", control=trace.checkbox))
+
+    restored = [point for point in trace.plotted("sevoflurane")[0].points]
+
+    assert restored, "the restored trace drew nothing; the test proves nothing"
+    assert all(point.tooltip is not None for point in restored)
+    assert all(point.tooltip is not None for point in _drawn_points(view))
+
+
 def test_refresh_view_reports_valid_agent_accounting() -> None:
     view, _ = _build_view(passes_validation=True)
 
