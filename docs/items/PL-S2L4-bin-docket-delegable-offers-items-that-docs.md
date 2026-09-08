@@ -35,6 +35,29 @@ edit the checks themselves" bullet), and
 `subprojects/docket/src/docket/model.py` (`Item.delegability`,
 `_is_protected`).
 
+**Measured.** 2026-09-08, on `main` at the branch point, before any change:
+
+- `bin/docket delegable` offers 86 open items. Fifteen of them declare a
+  `touches` path inside `config.gate_paths` - `PL-483K`, `PL-6YYR`, `PL-7QKY`,
+  `PL-8MJ3`, `PL-8XPQ`, `PL-CQRL`, `PL-G8TR`, `PL-GVC0`, `PL-GVNS`, `PL-HKF4`,
+  `PL-K2C8`, `PL-S2L4`, `PL-TFWR`, `PL-VYK1`, `PL-YKXQ`. This item is one of
+  them, and seven of the fifteen declare `.claude/skills/docket/SKILL.md`.
+- There are **three** lists, not two. `gate_paths` already exists in
+  `subprojects/docket/src/docket/config.py` and already holds exactly the
+  paths `docs/worker.md` names, minus one: `Makefile`, `pyproject.toml`,
+  `.github`, `.claude`, `docket.toml`. `docs/worker.md` also forbids `any
+  ruff.toml`, which `gate_paths` does not cover, so a delegated diff relaxing
+  `tools/ruff.toml` or `subprojects/docket/ruff.toml` passes the audit today.
+- `verify.py` already fails such a diff outright - the check named "the checks
+  themselves are unedited" reads `gate_paths` and is absolute. So each of the
+  fifteen is work that `bin/docket verify` would REJECT after a worker had
+  finished it, which is what settles the block-or-warn question below: the
+  audit is already a block, and `delegable` disagreeing with it is the defect.
+- This item's own `verify:` command selects nothing. `uv run pytest
+  subprojects/docket/tests/test_model.py -k check_paths` exits 5 on
+  "38 deselected / 0 selected" - the bare-`-k` shape the `docket` skill names.
+  It is rewritten in the paired shape as part of the work.
+
 **Approach.** One list has to become the other's source. The cheap version is
 to add the check paths to `protected_paths`, which lets `delegability` decide
 the whole rule and lets `docs/worker.md` cite the config rather than restate
