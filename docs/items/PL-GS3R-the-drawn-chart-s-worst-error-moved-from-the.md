@@ -11,6 +11,14 @@ verify: uv run pytest tests/unit/test_chart_time_base.py && grep -qF 'chord widt
 added: 2026-09-08
 ---
 
+> **Do not build this on Flet.** The project owner decided 2026-09-10 that
+> this fix ships **after** the PySide6 port (`PL-QXSB`, decided the same day).
+> On Flet a wider budget costs frame time that `PL-2FM6` had just given back;
+> after the port it is nearly free. See "Sequenced after the port" at the foot
+> of this brief. The status is `ready` rather than `blocked` only because the
+> port has no version yet and the store cannot express a blocker that does not
+> exist - `PL-L09X`.
+
 **Problem.** The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 
 **Why it matters.** `PL-4RBD` was re-banded `P1` `safety` on 0.32 MAC of
@@ -167,3 +175,28 @@ both recorded in `docs/MODEL.md`.
 this ships on Flet now - where the wider budget costs frame time the owner has
 just got back - or after the port, where it is free. The design above is the same
 under either answer.
+
+
+## Sequenced after the port, 2026-09-10
+
+**"PL-GS3R after port"** - the project owner, answering whether this ships on
+Flet now or waits. It waits.
+
+**Why that is not a P1 being parked.** On Flet the fix costs what it is worth:
+3 204 drawn points is about 78 ms of diff alone against a 200 ms frame, before
+the Flutter client renders anything - and the lag that spending would reintroduce
+is the same lag the owner reports `PL-2FM6` removed and which `PL-QXSB` was
+opened on. After the port the same fix is 49.4 ms including paint, measured. So
+waiting buys the fix at a quarter of the cost, on a defect whose worst case needs
+a 12-hour time base to reach.
+
+**What is not waiting**: the design. It is settled above - hold the chord width
+rather than the column count - and it is the same under either toolkit, so the
+port does not change what gets built, only when.
+
+**The status is a compromise the store forced.** `blocked` is the accurate
+status and the store rejects it without a blocker; the blocker is a milestone
+the owner has decided on and not yet named, and `blocked-by` accepts only a
+version `ROADMAP.md` already places. So this sits at `ready` and carries the
+instruction at the top of the brief instead. `PL-L09X` is the gap; naming the
+port's version closes it here.
