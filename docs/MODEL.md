@@ -1433,13 +1433,57 @@ figure 4.1b, the table the volumes and flows are printed in, it says: "The
 figure models a 100-kg patient with normal physiologic organ volumes and blood
 flows (9, 19, 20, 26)." The book collects those figures and cites them onward
 to four references, of which chapter 4's own narrative names three — Mapleson,
-Smith et al. and Zwart et al. The reference list is outside the pages supplied,
-so `PL-8SDL` (identify those four references) carries the next link. Lowe and
+Smith et al. and Zwart et al. Lowe and
 Ernst is therefore **tier 2, a secondary synthesis**: the Workbook's upstream
 has an upstream, and the only provenance chain the reference patient has still
 ends in nobody's measurement. It could have gone the other way — the hierarchy
 above admits a lower tier on a recorded decision, and a book that had
 *measured* these volumes would have been adoptable without one.
+
+**Those four references are now identified, and three of them are models.**
+Chapter 4's reference list is on pages 64–65, supplied on 2026-09-10 as a
+second interlibrary-loan scan (`PL-8SDL`). Each was checked against its PubMed
+record, and none was read beyond that record — PubMed holds no abstract and no
+PubMed Central text for any of the three papers, and the fourth is a monograph
+it does not index.
+
+- **9.** Mapleson, W.W. An electrical analogue for the uptake and exchange of
+  inert gases and other agents. *J Appl Physiol* 18:197, 1963. — PMID 13932730,
+  [10.1152/jappl.1963.18.1.197](https://doi.org/10.1152/jappl.1963.18.1.197),
+  18:197–204. PubMed titles it "An **electric** analogue for uptake and exchange
+  of inert gases and other agents", without the book's *the*.
+- **19.** Smith, N.T., Zwart, A., and Beneken, J.W. Interaction between the
+  circulatory effects and the uptake and distribution of halothane: Use of a
+  multiple model. *Anesthesiology* 37:47, 1972. — PMID 5050101,
+  [10.1097/00000542-197207000-00008](https://doi.org/10.1097/00000542-197207000-00008),
+  37(1):47–58. PubMed indexes the third author as Beneken **J E**.
+- **20.** Zwart, A., Smith, N.T., and Beneken, J.W. Multiple model approach to
+  uptake and distribution of halothane: The use of an analog computer. *Comput
+  Biomed Res* 5:228, 1972. — PMID 5031801,
+  [10.1016/0010-4809(72)90084-5](https://doi.org/10.1016/0010-4809(72)90084-5),
+  5(3):228–38. Beneken **J E** again, so `JE` is the reading taken here, on the
+  same grounds as `HJ` for Lowe — two independent records against one.
+- **26.** *Recommendations of the International Commission on Radiological
+  Protection*, p. 151. Report of Committee II on Permissible Dose for Internal
+  Radiation. Pergamon Press, Oxford, 1960. — not indexed by PubMed, which does
+  not cover monographs, and unreachable from here: `www.icrp.org`,
+  `journals.sagepub.com` and `doi.org` each returned nothing through the egress
+  proxy on 2026-09-10.
+
+References 9, 19 and 20 are **uptake-and-distribution models**, which is what
+this chain needed to know: a model consumes organ volumes and blood flows, it
+does not measure them, so none of the three can be where figure 4.1b's figures
+came from. Reference 26 is the only one of the four that is not an anesthetic
+model, and it is cited to a single page. **What is on that page is unread and
+is not guessed at here** — inferring a table of organ masses from the title of
+a radiological-protection report is the same move as the Mapleson lineage this
+file used to carry, and `PL-LT51` carries reading it.
+
+That Mapleson 1963 turns out to be one of the four is not a rehabilitation of
+that lineage. The removed claim was that Mapleson's papers were the *Workbook's*
+primary source, on the strength of their titles; the Workbook attributes nothing
+to Mapleson, and this is a different document citing him for a table it
+collected, two links further up.
 
 **The model patient is 100 kg, which is why the material reaches this project
 as fractions.** Page 56 picks that weight so that "the organ weights can also
@@ -1452,8 +1496,35 @@ gives the cardiac output for its worked prime dose as $`2M^{3/4}`$ dl/min, "or
 0.2 times body mass to the three-quarter power in L/min, **4.84 L/min at
 70 kg** against the 5.0 stored here, which would need 73.1 kg. The book's own
 worked 63.25 dl is what fixes the exponent independently of reading a
-superscript off a scan. `PL-YKSM` (adopt weight-scaled cardiac output, or
-record why the fixed 5.0 stays) carries the discrepancy.
+superscript off a scan. `PL-YKSM` decided on 2026-09-08 that the fixed 5.0
+stays; "Known limitations" below carries the reasoning.
+
+**And the relation itself is derived, not measured — pages 17–19 say from
+what.** Page 59 states $`2M^{3/4}`$ without citing anything, and until
+2026-09-10 that was where the trail stopped. Chapter 2 builds it in three
+steps, and neither of the two constants is a cardiac-output measurement:
+
+- **Figure 2.2, page 17** plots oxygen consumption against body weight for
+  mammals from 0.03 kg to 8,000 kg, log–log linear, slope given as
+  "approximately 10 kg^(3/4)". It is reproduced by permission from *Brody, S.
+  Bioenergetics and Growth. Reinhold, New York, 1945* — an interspecies
+  metabolic allometry, not a human study.
+- **Page 17** takes the arteriovenous oxygen content difference as "about 5 ml
+  of O₂/dl of blood", attributed to Guyton et al. (the chapter's reference 13),
+  who are also credited with concluding that kg^(3/4) "is probably a better
+  index of cardiac output than any other parameter, including surface area".
+  Chapter 2's reference list is outside the pages supplied, so that citation is
+  unresolved; `PL-LT51` carries it.
+- **Figure 2.4, page 19** is the arithmetic. kg^(3/4) × 10 gives O₂ use in
+  ml/min; O₂ use ÷ 5, the divisor annotated "(a–v)DO₂ = 5 ml/dl", gives cardiac
+  output in dl/min. The figure also draws the composed edge directly —
+  kg^(3/4) × 2 → $`\dot{Q}`$ in dl/min — which is page 59's constant.
+
+So $`0.2M^{3/4}`$ is Brody's mammalian metabolic allometry divided by an
+arteriovenous difference assumed constant across mammals. **4.84 L/min at 70 kg
+is therefore a derived interspecies extrapolation and must not be read as a
+measured human cardiac output**, which matters wherever it appears beside
+Cattermole et al.'s measured median (`PL-DZQT`).
 
 **Checked against the book itself, the Workbook's attribution holds for three
 of the seven values and fails for four.** The vessel-rich pair reproduces
