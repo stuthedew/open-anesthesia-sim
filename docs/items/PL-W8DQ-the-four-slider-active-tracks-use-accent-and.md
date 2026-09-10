@@ -11,6 +11,11 @@ added: 2026-09-02
 verify: python3 tools/contrast_check.py && ! grep -q '("ACCENT", "PANEL"): ' tools/contrast_check.py
 ---
 
+> **This fix rides the Qt port (`v0.5.1`), not Flet.** `ROADMAP.md` § "v0.5.1 -
+> the interface moves to Qt" names this item under "Fixes this port carries":
+> the defect lives in code that milestone rewrites from scratch, so fixing it
+> on Flet means writing the same lines twice. Project owner, 2026-09-10.
+
 **Problem.** All four parameter sliders - fresh gas flow, delivered
 concentration, alveolar ventilation and cardiac output - draw their active
 track and thumb in `ACCENT` (`app/simulation_view.py:320`, `:336`, `:346`,

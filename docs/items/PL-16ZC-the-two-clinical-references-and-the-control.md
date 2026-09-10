@@ -10,6 +10,11 @@ touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-04
 ---
 
+> **Not carried by the Qt port** (project owner, 2026-09-10). `v0.5.1` admits
+> queued *fixes* in the surface it rewrites, and this is a control that does not
+> exist today - new capability by that rule, however small. It stays a queue
+> item on its own merits.
+
 **Problem.** `PL-CG7J` gave each of the six compartment traces a checkbox in
 the legend. The two clinical references — the MAC-awake band and the 1 MAC
 line — and the control marks got none, so the chart's furniture is the one

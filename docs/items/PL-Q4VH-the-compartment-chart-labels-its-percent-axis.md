@@ -11,6 +11,11 @@ added: 2026-09-04
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_percent_axis_labels_the_values_it_rules' tests/unit/test_simulation_view.py
 ---
 
+> **This fix rides the Qt port (`v0.5.1`), not Flet.** `ROADMAP.md` § "v0.5.1 -
+> the interface moves to Qt" names this item under "Fixes this port carries":
+> the defect lives in code that milestone rewrites from scratch, so fixing it
+> on Flet means writing the same lines twice. Project owner, 2026-09-10.
+
 **Problem.** The compartment chart labels its percent axis at a different
 interval from the gridlines it rules
 

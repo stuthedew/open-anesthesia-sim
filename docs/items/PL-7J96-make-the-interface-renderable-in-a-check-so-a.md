@@ -10,6 +10,11 @@ touches: tools/, Makefile, docs/ARCHITECTURE.md, README.md, src/anesthesia_sim/a
 added: 2026-09-02
 ---
 
+> **The Qt port (`v0.5.1`) moots or transforms this.** `ROADMAP.md` § "v0.5.1 -
+> the interface moves to Qt" names this item under "Items this port moots or
+> transforms". Read that entry before starting: the work may be thrown away by
+> the port, or may be a different question after it. Found 2026-09-10.
+
 **Problem.** Nothing in this repository draws the interface. `make check` runs
 1038 tests over the control *tree* — what strings exist, what colour each is,
 what pairs with what — and every one of them passed while the interface was

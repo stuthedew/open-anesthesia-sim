@@ -1357,3 +1357,144 @@ closed by the expensive one - `PL-GS3R`'s route 2, a curvature-adaptive grid,
 which its own brief calls "the right answer numerically, and the expensive
 one". Neither item currently sees the other; that is what this paragraph is
 for.
+
+## Measured on real hardware: the Qt spike's paint cost and input latency - PL-X9T3, PL-55DH, PL-QXSB, PL-CNCF (2026-09-10)
+
+`PL-X9T3` closed. The project owner ran `spikes/qt/qt_spike.py` on their own
+machine - macOS, build `0.4.12+g7e0ff5bb`, which is `main` at `7e0ff5b` - and
+read the instrument panel at both ends of the rate ladder. This is the half no
+session in the web container could produce, and `PL-QXSB` was right that the
+container's own figure was an artifact rather than a measurement.
+
+Medians and p90 of the last 120 frames, six traces, the shipped 150-column
+budget, antialiasing on, 200 ms render budget:
+
+| Stage | 1x median | 1x p90 | 300x median | 300x p90 |
+| --- | ---: | ---: | ---: | ---: |
+| `advance` | 0.19 ms | 0.30 ms | 11.06 ms | 16.43 ms |
+| `refresh` | 8.84 ms | 11.02 ms | 7.57 ms | 8.13 ms |
+| `handoff` | 1.23 ms | 1.74 ms | 0.67 ms | 0.76 ms |
+| `paint` | 9.21 ms | 10.35 ms | 8.04 ms | 8.91 ms |
+| **whole frame** | **19.5 ms** | | **27.3 ms** | |
+| `timer lateness` | 0.01 ms | 0.85 ms | 0.00 ms | 2.46 ms |
+
+At 1x the window was "Fit run" at the one-minute rung, 252 points over six
+traces; at 300x a two-hour window, 294 points.
+
+### The three things it answers
+
+**1. Paint is 8-9 ms, and the container overstated it fourfold.** `PL-QXSB`
+measured 18-28 ms offscreen *including for a frame where nothing changed*, and
+`PL-55DH` measured 24-34 ms the same way, both on a software rasteriser with no
+GPU. Saying those were artifacts rather than numbers was correct: on real
+hardware the widget's own `paintEvent` costs 8.04 ms at 300x and 9.21 ms at 1x,
+near-constant because it redraws the same scene complexity either way. It is a
+third of the frame at 300x and about half of it at 1x - the largest single term
+at 1x - but it is 4-5% of the 200 ms budget.
+
+**2. Input latency is 0.85-2.46 ms p90, against Flet's 20-30 ms.** This is the
+number that matters most, because it is what "laggy" named: `PL-QXSB` was raised
+on "It shouldn't be this laggy", and 20-30 ms p90 is where `PL-KP7H` and
+`PL-R2YM` left Flet after halving it. Qt is an order of magnitude better at both
+rates.
+
+**The comparison is cross-machine and survives being so.** Flet's figure was
+taken on the 4-vCPU container; Qt's is on the owner's Mac, and no session can
+take both on one machine (`PL-2QMK` - Flet's renderer will not load in the
+container). A machine difference of 10-30x is not available, and the *mechanism*
+is what the gap is made of rather than the hardware: Flet's event loop is
+blocked by the control-tree diff on every frame, and Qt has no diff to be
+blocked by. `PL-YSZN`'s finding that an *idle* `page.update()` costs what a full
+one does is the same fact from the other side.
+
+**3. The whole frame - including paint - costs less than Flet's diff alone.**
+19.5 ms at 1x and 27.3 ms at 300x, against `page.update()`'s 26.6-45.5 ms, which
+was Flet's Python side only: its rendering happened in a separate Flutter
+process that `PL-YSZN` never measured and that `PL-Q197` found pegged at 100%
+CPU. So Qt uses 10-14% of the render budget for everything Flet spent 13-23% of
+it failing to finish.
+
+### Two things worth noticing that were not the question
+
+**`advance` is now the largest stage at 300x** - 11.06 ms, above paint's 8.04 -
+and the owner's machine runs it about 27% slower than the container did (8.7
+ms). Nothing here explains that and nothing depends on it; within one machine
+the ratios are what carry, and `advance` is the same call on either toolkit.
+
+**At 1x the chart read costs 46 times the simulation** - `refresh` 8.84 ms
+against `advance` 0.19 ms - which is `PL-CNCF` confirmed on real hardware. The
+container put 99% of that stage in `controller.drawn_window`, and nothing about
+the toolkit changes it: it is the score evaluation, and it is the same cost on
+Flet. Inside Flet it was invisible under 26-45 ms of diff.
+
+### What this does to `PL-QXSB`, which is the decision it feeds
+
+The premise that item was opened on is gone - the owner reports the Flet build
+as no longer noticeably slow after `PL-2FM6` - so the lag argument is spent, and
+that is recorded in `PL-X9T3` rather than re-derived here. What these numbers
+add is that the *remaining* case is now measured rather than argued:
+
+- **Headroom**: 10-14% of the frame budget against Flet's 13-23% for less work.
+- **Latency**: an order of magnitude, on the axis a reader actually feels.
+- **Fidelity affordability**: `PL-GS3R`'s cheapest route out of 0.26 MAC of
+  chord error is more columns, and `handoff` moves 1.28 to 2.08 ms for sixteen
+  times the points (`PL-55DH`, container). The whole cost of that route is the
+  score evaluation, which both toolkits pay; the per-point charge that made it
+  unaffordable is Flet's alone.
+- **Headless verification**: `PL-2QMK`, exercised rather than argued -
+  `qt_spike.py --screenshot` writes a PNG of the running interface in the very
+  container where Flet's renderer cannot load.
+
+None of those four is speed. That is the shape the decision should be taken in.
+
+### The 600-column reading, and what it corrects (2026-09-10)
+
+Taken by the project owner on the same machine and build, to price `PL-GS3R`'s
+first route: the `Columns` selector at 600 rather than the shipped 150, at 300x,
+a two-hour window with the run at 6 399 s - so the drawn range fills 89% of the
+axis and 600 columns yield **3 204 points over six traces**, against 294 in the
+150-column reading, whose run filled only 32%.
+
+| Stage | 150 columns, 294 points | 600 columns, 3 204 points |
+| --- | ---: | ---: |
+| `refresh` | 7.57 ms | 18.24 ms |
+| `handoff` | 0.67 ms | 1.69 ms |
+| `paint` | 8.04 ms | 21.57 ms |
+| `advance` | 11.06 ms | 7.90 ms |
+| **whole frame** | **27.3 ms** | **49.4 ms** |
+| `timer lateness` p90 | 2.46 ms | 0.49 ms |
+
+**The pair is confounded and the useful number survives it.** Columns went up
+fourfold and the fill went up 2.8-fold, so the points went up 10.9-fold and
+neither factor can be isolated from these two readings. What does not need
+isolating is the operative figure: **3 204 drawn points cost 49.4 ms of a 200 ms
+budget**, which is the worst realistic case for a 600-column setting.
+
+**Two corrections to what this file said before.**
+
+**Paint scales strongly with points.** 8.04 to 21.57 ms - it is the largest
+single stage at 600 columns, above the score evaluation. The earlier claim that
+it is near-constant held across *rates* at a fixed column count and does not
+generalise; that sentence is now qualified where it appears above.
+
+**"Qt makes the point count stop mattering" is wrong, and it was never quite
+what was measured.** `PL-QXSB`'s 0.51 to 1.96 ms for 380 times the points was
+`setData` alone - the `handoff` term - and that holds: 0.67 to 1.69 ms here for
+eleven times the points. The *whole frame* does scale. Fitting the two readings
+gives about **8.7 us per drawn point** across `refresh`, `handoff` and `paint`
+together, of which `handoff` is 0.35 us.
+
+**The comparison that survives all of this is still decisive, and it is now
+sharper.** Qt spends about 8.7 us to evaluate a point, hand it over and paint
+it. Flet spends **24.5 us per point control just discovering whether it
+changed** (`PL-YSZN`), before its Flutter client draws anything - and that term
+is charged whether or not the point moved. So at 3 204 points Flet would spend
+about 78 ms on the diff alone, against 49 ms for Qt's entire frame including
+paint.
+
+**One gap, stated rather than papered over**: the panel was read while
+**paused**, so `refresh`, `handoff` and `paint` are current but `advance` is the
+last 120 frames recorded before the pause, and the lateness figure does not
+establish what latency does under a running 49 ms frame. Nothing in the decision
+turns on it - 49 ms of a 200 ms budget leaves the loop idle three quarters of
+the time - but it is not measured.
