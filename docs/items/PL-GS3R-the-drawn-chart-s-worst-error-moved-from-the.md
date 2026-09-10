@@ -3,7 +3,8 @@ id: PL-GS3R
 title: The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 priority: P1
 effort: M
-status: ready
+status: blocked
+blocked-by: v0.5.1
 classes: defect, safety
 feature: teachable-case
 touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
@@ -11,13 +12,11 @@ verify: uv run pytest tests/unit/test_chart_time_base.py && grep -qF 'chord widt
 added: 2026-09-08
 ---
 
-> **Do not build this on Flet.** The project owner decided 2026-09-10 that
-> this fix ships **after** the PySide6 port (`PL-QXSB`, decided the same day).
-> On Flet a wider budget costs frame time that `PL-2FM6` had just given back;
-> after the port it is nearly free. See "Sequenced after the port" at the foot
-> of this brief. The status is `ready` rather than `blocked` only because the
-> port has no version yet and the store cannot express a blocker that does not
-> exist - `PL-L09X`.
+> **This ships with the Qt port, not before it.** The project owner decided
+> 2026-09-10 that the fix waits for `v0.5.1` (`PL-QXSB`, decided the same day);
+> on Flet a wider budget costs frame time `PL-2FM6` had just given back, and
+> after the port it is nearly free. `blocked-by` now says so, so nothing has to
+> rely on a reader seeing this paragraph.
 
 **Problem.** The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 
@@ -194,9 +193,17 @@ a 12-hour time base to reach.
 rather than the column count - and it is the same under either toolkit, so the
 port does not change what gets built, only when.
 
-**The status is a compromise the store forced.** `blocked` is the accurate
-status and the store rejects it without a blocker; the blocker is a milestone
-the owner has decided on and not yet named, and `blocked-by` accepts only a
-version `ROADMAP.md` already places. So this sits at `ready` and carries the
-instruction at the top of the brief instead. `PL-L09X` is the gap; naming the
-port's version closes it here.
+**The status was a compromise for one day and is not any more.** `blocked` is
+the accurate status and the store rejects it without a blocker; on 2026-09-10
+the blocker was a milestone decided and not yet named, and `blocked-by` accepts
+only a version `ROADMAP.md` places. The port was scoped as `v0.5.1` the same
+day, so this now carries the closest edge the store has.
+
+**It is not an honest edge, and `PL-L09X` says why.** `blocked-by: <version>`
+means blocked until that milestone is *scoped* - `PL-W8XP` built it for exactly
+that - and `v0.5.1` is scoped, so `docket check` advises this item is "ready to
+promote". It is not: it is fully designed and waiting for the port to *land*.
+`blocked` is kept anyway because `bin/docket next` excludes blocked items, so
+the `P1` ranking hazard is gone and the only route to promotion runs through a
+groomer reading this brief. The standing false advisory is the price, and
+`PL-L09X` carries it.

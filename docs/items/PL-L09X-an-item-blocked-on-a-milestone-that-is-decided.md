@@ -42,3 +42,51 @@ deciding once rather than re-meeting; the alternatives worth costing are a
 `blocked-by` entry that names a milestone the roadmap has *reserved* but not
 scoped, and a `blocked-reason:` free-text field that blocks without an edge and
 is therefore invisible to ranking.
+
+
+## The diagnosis above is half right; the gap is larger (2026-09-10, same day)
+
+**What was found on scoping `v0.5.1`.** `PL-GS3R` now carries
+`blocked-by: v0.5.1`, and `docket check` immediately advises: *"v0.5.1 is
+scoped and every other blocker has closed; it is ready to promote."*
+
+**So `blocked-by: <version>` does not mean what this item assumed.** It means
+**blocked until that milestone is *scoped*** - which is exactly what `PL-W8XP`
+built it for, and its own title says so: "an item blocked on a milestone being
+scoped". The reasoning is sound: until a milestone is scoped you do not know
+what it requires, so the item cannot be designed. `PL-B9PY` is the worked
+example - it "could not be designed until v0.5.0 settled what a side-by-side
+comparison renders".
+
+**What has no expression at all is "ships *with* milestone X".** That is
+`PL-GS3R`'s case: it is fully designed - the chord-width rule is settled and
+recorded - and what it waits for is the port to *land*, because building it on
+Flet costs frame time the port makes free. Scoping `v0.5.1` did not unblock it
+and never could.
+
+**The original framing - "decided but not yet named" - was a symptom.** Naming
+the milestone closed nothing; it moved the item from one wrong state to a less
+wrong one. The real gap is that `blocked-by` carries one relation where the
+project needs two.
+
+**`blocked` is still the better of the two available states, and that is why it
+stays.** `bin/docket next` excludes blocked items, so the `P1` `safety` hazard
+this item was filed over is gone: the only route to promoting `PL-GS3R` now runs
+through a groomer reading its brief, which says on its first line that the fix
+ships with the port. At `ready` it ranked top of the queue as startable work.
+The cost is a standing false advisory on every `docket check`, which is
+precisely what `CLAUDE.md`'s "a check earns its place every run" is against -
+an advisory that fires without changing a decision trains a reader to skim past
+the ones that would.
+
+**Two shapes worth costing, neither proposed yet.** A second relation -
+`awaits: v0.5.1`, blocked until *shipped* rather than until scoped - which is
+honest and adds a field. Or reading the milestone's own Required scope: `v0.5.1`
+names `PL-GS3R` in it, so a checker could resolve "this item is claimed by a
+scoped, unshipped milestone" from what is already written, and add no field at
+all. The second is cheaper and is the one to price first.
+
+**Re-banded from the original.** This is no longer a one-day window that closed
+itself. It is a standing false advisory plus a relation the store cannot express,
+with one live instance, and the recommendation to close it as "not worth a
+mechanism" is withdrawn.
