@@ -3,11 +3,12 @@ id: PL-LT51
 title: Obtain and read Lowe and Ernst's four upstream references for the reference patient's volumes and flows, starting with ICRP Committee II page 151
 priority: P1
 effort: M
-status: ready
+status: done
 classes: science, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md, src/anesthesia_sim/data/patients/reference_adult.json
 added: 2026-09-10
+closed: 2026-09-10
 not-delegable: No command can prove that a person opened a 1963 volume of the Journal of Applied Physiology. Reference 26 was read on 2026-09-10 because the project owner sent the page; references 9, 19 and 20 need the same, and PubMed holds no abstract and no PubMed Central text for any of the three, so nothing this container can run distinguishes a session that read them from one that did not. A `verify:` command here could only check that some sentence had been written into a file, which is the thing that must not be gameable on a provenance item.
 ---
 
@@ -265,3 +266,107 @@ Man read either paper, its stated upstream being Lowe and Ernst; and this
 project has already recorded one 33.0 coincidence, against Janssen et al.'s
 measured skeletal muscle mass, in exactly these terms. A third 33 makes the
 number look more like a convention than like a lineage.
+
+## Reference 9 is read, 2026-09-10, and it closes this item
+
+**The project owner supplied Mapleson 1963 the same day.** Read at full text
+from its text layer, with Table 1 and Appendix 1 checked against the page
+images. All four references are now read.
+
+**Two of the four are the same document, one link apart.** Mapleson's Appendix
+1 opens: "*Tissue volumes and blood supplies.* **With the following exceptions
+the volumes in Table 1 are those for the 'standard man' of the International
+Commission on Radiological Protection (I.C.R.P.) (23)**, expressed in liters on
+the assumption that the specific gravity of all tissues is unity." His
+reference 23 is *Recommendations of the International Commission on
+Radiological Protection, Report of Committee II. London: Pergamon, 1959,*
+**p. 151** — the same page Lowe and Ernst cite as their reference 26. The four
+references collapse to two documents, and Lowe and Ernst very likely took the
+ICRP citation from Mapleson's own reference list.
+
+**Table 1 is titled "Volumes and blood supplies of different body regions for a
+standard man", and its footnote fixes the patient**: "Standard man = 70 kg body
+wt., 1.83 m² surface area, 30-39 years." Total volume 70.0 litres excluding the
+air in the lungs; total blood flow 6,480 ml/min; total blood in equilibrium
+with tissue 5,400 ml. Twenty rows, from adrenals to air in lungs.
+
+### The volumes: ICRP, with six exceptions Mapleson names one by one
+
+- **Grey and white matter** — Pittinger et al., assuming equal volumes of each.
+- **Red marrow, fatty marrow, bone cortex** — Ellis.
+- **Skin nutritive** — the one he derives himself, and he shows his working:
+  "I.C.R.P. give 2 kg, Shohl 4.8 kg, and Spector 4 kg. Skin forms 8.6% of the
+  forearm: assuming an average forearm radius of 3.7 cm and that the skin is of
+  equal thickness over 1.83 m², the skin volume = 3 liters."
+- **Arterial and venous blood** — "the ratio of arterial to venous blood volume
+  is taken to be as in dogs".
+- **Lung parenchymal tissue** — Cander and Forster.
+- **Air in the lungs** — "Average of all measurements in Dittmer and Grebe in
+  which the average age was over 20 gives a **functional residual capacity of
+  2.5 liters**." Table 1's row reads "2.5 + half tidal vol."
+
+### The flows: about twenty sources, some animal, some estimated, one invented
+
+Every row carries its own note. Kidneys are the mean of Goldring et al. and
+Davies and Shock omitting those over 70; heart is Rowe; liver plus portal is a
+mean of published values for which age and flow per m² are given; muscle rests
+on radioactive-krypton uptake, whole-body nitrogen clearance and forearm
+plethysmography with adrenaline iontophoresis; adrenals are **dogs**, fatty
+marrow is **goats**; "other small glands and organs" is, in the paper's own
+word, an **Estimate**.
+
+And one row is neither measured nor estimated. **Skin shunt: "Values chosen
+merely to complete cardiac output"**, with the note adding that the results
+still fall inside published ranges of spontaneous variation. It is 1,290 of the
+6,480 ml/min — **19.9% of the total**, the second-largest flow in the table.
+
+**One assumption in that appendix is the origin of how this project represents
+perfusion at all**: "it has been thought legitimate to assume that **the blood
+flow to any region is a fixed fraction of the total cardiac output** from 20 to
+70 years of age."
+
+### Smith and Zwart's "assumed" table is this table, lumped
+
+Their Table 2 gives no source and calls itself assumed. Under their own
+lumping footnotes it reproduces Mapleson's Table 1 exactly, in **nine of nine
+rows**: brain grey 0.75, brain white 0.75, heart 0.30, well-perfused organs
+0.34 (kidneys + adrenals + thyroid), poorly-perfused tissue 6.2 (red marrow +
+nonfat subcutaneous), fat and fatty marrow 12.2, splanchnic 3.9, skeletal
+muscle 33 (muscle 30 + skin nutritive 3), lung 0.6. Their nine sum to 58.04
+litres; Mapleson's total less bone cortex, other small glands and the two blood
+rows is 58.04.
+
+**Their header calls it "a 75 kg Man" and Mapleson's standard man is 70 kg.**
+The volumes are Mapleson's unchanged; only the label moved. Their cardiac
+output of 5,800 ml/min is separately cited to Milnor for a 75-kg man, so the
+table mixes a 70-kg volume set with a 75-kg flow — an inconsistency inside
+reference 19, recorded here because this chain has already been bent once by a
+misprint.
+
+### And Lowe's flow fractions match none of the four
+
+This is the finding that matters most, and it is negative. On Mapleson's own
+rows, kidney + heart + brain + liver is 3,820 of 6,480 ml/min = **59.0%**, and
+widening it to every well-perfused organ gives **63.0%** — against **Lowe's
+76%**, and Smith and Zwart's 64.0%. Muscle plus skin nutritive is 10.2% against
+Lowe's 13%; fat plus fatty marrow is 4.0% against Lowe's 5%.
+
+So figure 4.1b's flow column is not ICRP's (it has none), not Mapleson's, and
+not Smith and Zwart's. **The perfusion fractions this model runs on have no
+identified origin in any of the four references the book names for them**, and
+that is now established rather than outstanding, which is what closes this item.
+
+### Done when, answered
+
+Each of the four resolves to a document somebody has opened, and for each the
+record says what it did:
+
+| # | What it did with the reference patient's volumes and flows |
+| --- | --- |
+| 9 Mapleson 1963 | Took the volumes from reference 26 with six named exceptions; compiled the flows from about twenty sources including animal data and estimates, one row chosen to close cardiac output. Measured nothing itself. |
+| 19 Smith et al. 1972 | Reproduced Mapleson's Table 1, lumped to twelve compartments, calling it assumed and citing nobody. |
+| 20 Zwart et al. 1972 | Reproduced reference 19's tables and says so. |
+| 26 ICRP Committee II 1960 | Supplied the organ masses, as a committee reference specification. No blood flows at all. |
+
+**`PL-ZD67` closes with this item**, its own test having been the one that
+settled it.

@@ -1554,15 +1554,63 @@ different flows for different compartments; reference 9, Mapleson 1963, is the
 last of the four unread, and reference 20 names him only as the source of the
 model *concept*.
 
-**Three of this file's stored values also appear in those tables, and nothing
-is inferred from that here.** Alveolar ventilation 4 l/min and — in reference
-20's table only — functional residual capacity 2.5 l, which are the two
-parameters Lowe and Ernst demonstrably cannot supply; and a skeletal muscle
-tissue volume of 33 litres, at 75 kg where this file stores 70. All three are
-round numbers a model of the period would plausibly reach independently, this
-document already records one 33.0 coincidence against a measured skeletal
-muscle mass, and nothing connects Gas Man to either paper. `PL-ZD67` carries
-the question and no stored value moves on it.
+**Reference 9 closes the chain, and it makes two of the four references one
+document.** Mapleson 1963 was supplied and read on 2026-09-10 (`PL-LT51`). His
+Appendix 1 opens: "*Tissue volumes and blood supplies.* With the following
+exceptions the volumes in Table 1 are those for the 'standard man' of the
+International Commission on Radiological Protection (I.C.R.P.) (23)…" — and his
+reference 23 is that report at **page 151**, which is Lowe and Ernst's
+reference 26. So Lowe and Ernst very likely took the ICRP citation from
+Mapleson's own list, and references 19 and 20 are Mapleson's Table 1 lumped and
+relabelled: under Smith's own lumping footnotes it reproduces in **nine rows of
+nine**, the nine summing to 58.04 litres against Mapleson's own 58.04.
+
+**Mapleson's Table 1 is the most honestly sourced document in this chain, and
+it still measures nothing.** Its volumes are ICRP's with six exceptions he names
+one by one — grey and white matter from Pittinger et al., the marrows and bone
+cortex from Ellis, skin nutritive derived by him from forearm geometry, the
+arterial-to-venous blood ratio "taken to be as in dogs", lung parenchyma from
+Cander and Forster, and the air in the lungs from "the average of all
+measurements in Dittmer and Grebe in which the average age was over 20", which
+"gives a functional residual capacity of 2.5 liters". Its flows are compiled
+from about twenty sources with a note on every row; some rows are animal
+(adrenals from dogs, fatty marrow from goats), one is called an *Estimate*, and
+one is neither: **"Skin shunt: Values chosen merely to complete cardiac
+output"** — 1,290 of 6,480 ml/min, **19.9% of the total** and the second-largest
+flow in the table.
+
+One assumption in that appendix is where this model's whole representation of
+perfusion comes from: "it has been thought legitimate to assume that **the
+blood flow to any region is a fixed fraction of the total cardiac output** from
+20 to 70 years of age."
+
+**And the negative finding, which is the one that matters.** Figure 4.1b's flow
+column reproduces from none of the four. On Mapleson's own rows, kidney + heart
++ brain + liver is 3,820 of 6,480 ml/min — **59.0%** — and every well-perfused
+organ together is **63.0%**, against Lowe's **76%** and Smith and Zwart's 64.0%;
+muscle plus skin nutritive is 10.2% against Lowe's 13%, and fat plus fatty
+marrow 4.0% against Lowe's 5%. **The perfusion fractions this model runs on
+have no identified origin in any reference the book names for them.** Reference
+26 has no flows at all, and the other three do not match. That is established
+now rather than outstanding.
+
+**Two of the three coincidences above are lineage after all, and one is not**
+(`PL-ZD67`). The 2.5 L is Mapleson's functional residual capacity, a mean of
+published human measurements cited to Dittmer and Grebe's *Handbook of
+Respiration* — not a round number somebody chose. It is still not this file's
+source: Mapleson's row is FRC plus half the tidal volume where this file stores
+an alveolar gas volume, and the value reaches here through Gas Man, whose
+upstream is Lowe and Ernst, who lump the quantity away. The 33 is Mapleson's
+muscle 30 plus skin nutritive 3, which is exactly how Smith prints it — and it
+is *not* this file's 33.0, since Lowe's muscle row is 29.8 L at 70 kg and
+reproduces the stored value under no grouping. Alveolar ventilation 4 l/min
+stays a coincidence: Mapleson gives a formula, not a figure.
+
+**Three of this file's stored values also appear in those tables**, and where
+each came from is settled in the paragraph after next rather than left as a
+resemblance: alveolar ventilation 4 l/min, functional residual capacity 2.5 l
+in reference 20's table only, and a skeletal muscle tissue volume of 33 litres.
+**No stored value moves on any of it.**
 
 That Mapleson 1963 turns out to be one of the four is not a rehabilitation of
 that lineage. The removed claim was that Mapleson's papers were the *Workbook's*
