@@ -11,10 +11,14 @@ verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_tw
 added: 2026-09-02
 ---
 
-> **The Qt port (`v0.5.1`) moots or transforms this.** `ROADMAP.md` § "v0.5.1 -
-> the interface moves to Qt" names this item under "Items this port moots or
-> transforms". Read that entry before starting: the work may be thrown away by
-> the port, or may be a different question after it. Found 2026-09-10.
+> **This ships in v0.5.0, on Flet, and is rewritten by the Qt port after it.**
+> It was briefly listed as work `v0.5.1` would throw away; that was wrong and is
+> corrected in `ROADMAP.md` § "v0.5.1" - Gate 1 places this under "Cleared by
+> v0.5.0 itself", because decomposing this class so two runs render is what the
+> branched-run milestone *is*. Deferring it behind the port would defer the MVP.
+> The duplication is the accepted price of shipping the MVP first. What the port
+> owes this item is its **shape**: the Qt view is built decomposed from the
+> start, so this design is a required input to `PL-25KS`. 2026-09-10.
 
 **Problem.** `SimulationView` is one class holding one run's widgets and one
 `SimulationController` reference. Even after `PL-WB0X` (split

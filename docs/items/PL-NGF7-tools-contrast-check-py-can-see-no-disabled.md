@@ -10,10 +10,13 @@ touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, src/anesthesi
 added: 2026-09-06
 ---
 
-> **The Qt port (`v0.5.1`) moots or transforms this.** `ROADMAP.md` § "v0.5.1 -
-> the interface moves to Qt" names this item under "Items this port moots or
-> transforms". Read that entry before starting: the work may be thrown away by
-> the port, or may be a different question after it. Found 2026-09-10.
+> **Deferred to `v0.5.1`, which dissolves this rather than fixing it** (project
+> owner, 2026-09-10). The unreachable colours are Flet/Material's; Qt supplies
+> no such theme, so the port's `theme.py` declares them and the tool can measure
+> them. Clearing this first would build a mechanism to measure a half of the
+> interface that is about to stop existing. The deferral is recorded in Gate 1's
+> own section, as a frozen list requires. **Expected disposition: `dropped`, not
+> `done`.**
 
 **Problem.** `tools/contrast_check.py` extracts colour constants from
 `src/anesthesia_sim/app/theme.py` with `ast`, deliberately, so it runs in a

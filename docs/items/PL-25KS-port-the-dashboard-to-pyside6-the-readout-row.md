@@ -22,3 +22,10 @@ sliders are integer-valued, and the spike turns that into a property: the steps
 are the display resolution, so the value applied to the model is exactly the
 value printed beside it. The Flet slider is continuous and rounds only its drag
 label, which is what `PL-3TLK`'s comment had to reason about.
+
+**`PL-B9PY`'s decomposition is a required input, not a later pass.** That item
+ships in v0.5.0 on Flet - Gate 1 places it under "Cleared by v0.5.0 itself",
+because rendering two runs at once is what the branched-run milestone is - and
+this port rewrites the class it decomposed. Build the Qt view decomposed from
+the start: read `PL-B9PY` for the seam it establishes rather than reproducing
+one class holding one run's widgets and then splitting it again.

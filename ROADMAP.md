@@ -226,7 +226,7 @@ adds no capability and exists to clear the ground they are built on:
 | 4 | **Gate 1** | **Frozen 2026-09-06**, the day v0.5.0 was scoped, and recorded in that milestone's own section below rather than here. Contents were unknown by construction and are now the list: v0.4.0's findings, the queue's own defects, and the model-specification debt. Ships inside v0.5.0, not as its own release — except for the three items "The timeline" had already placed on the `v0.4.x` step, which that patch carries. | — |
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 151 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
-| — | **v0.5.1 — the interface moves to Qt** | **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It replaces the `v0.5.x — the interface pass` row that stood here** and absorbs planned-milestone item 33 with it - a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The placement is unchanged from that row's: after MVP, because the owner's standing principle is that UI ambition follows scientific-core maturity, and ahead of v0.6.0, because the schematic is a second large visual surface on a toolkit charged per control present per frame. **A patch number for a 3 619-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It takes a section, which no patch here ever has**, for one mechanical reason: `blocked-by: vX.Y.Z` resolves only against a version the roadmap places, a patch-track row is not a version, and `PL-GS3R` - `P1`, `safety`, sequenced behind this port - needs one or it ranks top of `bin/docket next` as startable work guarded only by prose (`PL-L09X`). **Gate 2's freeze is deferred** to when v0.5.0 ships: that gate holds v0.5.0's findings and v0.5.0 is not implemented, so freezing it today would freeze an empty list and then refuse the findings it exists for. Its structural half still lands ahead of v0.5.0 and is not this row - `PL-2CS8` (landed), `PL-NGF7`'s decision and `PL-B9PY` are debt and reach the gate on their own class. | 7 M |
+| — | **v0.5.1 — the interface moves to Qt** | **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It replaces the `v0.5.x — the interface pass` row that stood here** and absorbs planned-milestone item 33 with it - a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The placement is unchanged from that row's: after MVP, because the owner's standing principle is that UI ambition follows scientific-core maturity, and ahead of v0.6.0, because the schematic is a second large visual surface on a toolkit charged per control present per frame. **A patch number for a 3 619-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It takes a section, which no patch here ever has**, for one mechanical reason: `blocked-by: vX.Y.Z` resolves only against a version the roadmap places, a patch-track row is not a version, and `PL-GS3R` - `P1`, `safety`, sequenced behind this port - needs one or it ranks top of `bin/docket next` as startable work guarded only by prose (`PL-L09X`). **Gate 2's freeze is deferred** to when v0.5.0 ships: that gate holds v0.5.0's findings and v0.5.0 is not implemented, so freezing it today would freeze an empty list and then refuse the findings it exists for. **On the structural half, the `v0.5.x` row this replaces was wrong and the error is inherited no further.** It said `PL-2CS8`, `PL-NGF7` and `PL-B9PY` all "land ahead of v0.5.0". `PL-2CS8` did. `PL-B9PY` does not and must not: Gate 1 places it under "Cleared by v0.5.0 itself", because decomposing `SimulationView` so two runs render *is* what the branched-run milestone needs to exist - moving it behind this port would defer the MVP behind a toolkit change. It ships in v0.5.0 on Flet and is rewritten here, and that duplication is the price of shipping the MVP first, taken deliberately. What this port carries forward is its *shape*: the Qt view is built decomposed from the start. `PL-NGF7` is the one that moves - see the gate section. | 7 M |
 | 6 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
 | 7 | **v0.6.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
 | 8 | **Gate 3** | Frozen when v0.7.0 is scoped; ships inside it. | — |
@@ -1744,6 +1744,27 @@ much as the two that would start it.
 - PL-X9T3 (S) Run the Qt spike on the project owner's own machine and record frame cost, input latency and how it looks, which is the half no session here can measure
 - PL-JRS3 (S) Establish what a Qt port would cost the checks that read theme.py: contrast_check and agent_identity_check would pass silently on a tree they no longer describe
 
+### Deferred to v0.5.1, because the port dissolves the defect — 1 entry
+
+**Recorded here because this list is frozen** and "The gate is a snapshot, not
+a moving target" allows a deferral only if it says so and says why. `PL-NGF7`
+stays written in its "Added 2026-09-08 under the presence rule" block above;
+this is its disposition, not its deletion.
+
+**`PL-NGF7`** - `tools/contrast_check.py` can see no disabled-state colour,
+because Flet/Material supplies every colour a disabled control takes and none
+of them is a constant in `theme.py`. That is a defect *of Flet*: Qt supplies no
+such theme, so `v0.5.1`'s `theme.py` declares those colours itself and the tool
+can reach them. Clearing it before v0.5.0 means building a mechanism to measure
+a half of the interface that is about to stop existing. It is `infra`/`test`
+classed, so `check_gate_reentries`' unconditional `safety`/`science`/`P0`
+re-entry does not hold it here, and its problem does not predate the freeze in
+any sense that survives the toolkit changing underneath it.
+
+**Expected disposition when `v0.5.1` lands: `dropped`, not `done`** - the port
+resolves it rather than any work on it. That is recorded now so a later session
+does not read a dropped item as one that was skipped.
+
 ### Declined to Gate 2 on the refilling-queue ground — 30 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
@@ -2106,22 +2127,26 @@ than by default: `PL-YTX9` (whether a hidden trace keeps its legend entry),
 axis reads in hours), `PL-LL9Y` (the warning and alert colours against the
 medical alarm-colour convention).
 
-**Borderline, and left out unless the owner says otherwise**: `PL-16ZC` adds a
-show/hide control for the clinical references and control marks. It is small and
-it is in the rewritten surface, but it is a control that does not exist today,
-which is new capability by the rule above.
+**`PL-16ZC` is out (project owner, 2026-09-10)**, and it is the case that shows
+where the line is. A show/hide control for the clinical references and the
+control marks is small, and it is squarely in the rewritten surface - but it is
+a control that does not exist today, so it is new capability, and the rule
+admits fixes rather than features. It stays a queue item on its own merits.
 
 ### Items this port moots or transforms
 
 Recorded because the cost of missing them is not a defect - it is work done and
 thrown away.
 
-- **`PL-B9PY`** (decompose `SimulationView` so two runs can be rendered at
-  once) touches `app/simulation_view.py` and its test, both of which this
-  milestone rewrites. "The timeline" places it **ahead of v0.5.0**, which is
-  ahead of this port - so as the plan stands, the Flet view is decomposed and
-  then discarded. The decomposition is still wanted; it should be a property of
-  the Qt view rather than a pass over the Flet one.
+- **`PL-B9PY`** was listed here on 2026-09-10 as work the port would throw
+  away, and **that was wrong**. Gate 1 places it under "Cleared by v0.5.0
+  itself", not ahead of v0.5.0: decomposing `SimulationView` so two runs render
+  is what the branched-run milestone *is*, so it cannot wait for a port that
+  ships after it without deferring the MVP. It ships on Flet in v0.5.0 and is
+  rewritten here. The duplication is real and is the accepted price of shipping
+  the MVP first. **What this port owes it is the shape, not the code**: the Qt
+  view is built decomposed from the start, so `PL-B9PY`'s design is a required
+  input to `PL-25KS` rather than a pass to redo.
 - **`PL-NGF7`** is a defect *of Flet*: every colour a control takes when
   Material disables it comes from the Material theme rather than from
   `theme.py`, so `tools/contrast_check.py` cannot reach it. Qt supplies no such
@@ -2138,9 +2163,10 @@ thrown away.
   replaces.
 - **`PL-027`** confirms the per-frame slider write-back on a live Flet client.
 
-**Two of these are scheduled before the port and are the project owner's to
-re-order**: `PL-B9PY` and `PL-NGF7`. Nothing here moves them; the finding is
-recorded so the decision is taken rather than discovered.
+**`PL-NGF7` is deferred to this milestone (project owner, 2026-09-10)**, and
+the deferral is recorded in Gate 1's own section rather than only here, because
+that gate is frozen and "The gate is a snapshot" requires a deferral to say so
+and say why. `PL-B9PY` is not moved, for the reason in its entry above.
 
 ### Definition of done
 
