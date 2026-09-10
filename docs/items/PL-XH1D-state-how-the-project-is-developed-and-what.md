@@ -8,7 +8,7 @@ classes: docs
 feature: public-history
 touches: README.md, CONTRIBUTING.md
 added: 2026-08-30
-verify: test -f CONTRIBUTING.md && python3 tools/doc_check.py check
+verify: python3 tools/doc_check.py check && grep -qF 'Reviewed-by:' README.md CONTRIBUTING.md
 not-delegable: the wording states publicly what the project owner did and did not write, and he approves it before the item closes; doc_check proves only that the citations resolve
 ---
 
@@ -87,3 +87,21 @@ provenance loss in the one repository that should not take it.
 the attribution rule and the queue pointer, the project owner has approved the
 wording of any statement made about him, and `python3 tools/doc_check.py check`
 passes.
+
+## The `verify:` command was rewritten 2026-09-10, before the work
+
+The command read `test -f CONTRIBUTING.md && python3 tools/doc_check.py check`.
+`CONTRIBUTING.md` was then created by `PL-78JQ` (write the contributor route) —
+a different item, with different content — so from `4a4a483` onward the command
+passed on a tree carrying none of this item's work. `bin/docket check --verify`
+caught it correctly and failed `main`; run `#1699` on `7e0ff5bb` is the failure.
+
+The replacement is the shape `.claude/skills/docket/SKILL.md` prescribes for a
+documentation item: something that runs and passes today, paired with a `grep`
+for what the work adds. `Reviewed-by:` is the trailer this item exists to
+document and nothing in either file mentions it, so the grep is what fails
+until the work lands. Measured 2026-09-10 on `7e0ff5bb`: the old command exits
+0, the new one exits 1, and `doc_check.py check` alone exits 0.
+
+It constrains the trailer names, which are git conventions rather than prose,
+and not which of the two files carries the table — `grep` reads both.
