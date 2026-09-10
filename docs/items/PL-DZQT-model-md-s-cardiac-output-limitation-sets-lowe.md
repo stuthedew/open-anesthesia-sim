@@ -1,8 +1,15 @@
 ---
 id: PL-DZQT
 title: MODEL.md's cardiac-output limitation sets Lowe's 4.84 L/min beside Cattermole's measured 5.51 L/min without saying that Lowe's is derived from an interspecies oxygen-consumption allometry and an assumed constant a-v difference
-status: untriaged
+priority: P1
+effort: S
+status: done
+classes: science, docs
+feature: model-spec-accuracy
+touches: docs/MODEL.md, src/anesthesia_sim/data/patients/reference_adult.json
 added: 2026-09-10
+closed: 2026-09-10
+verify: python3 tools/doc_check.py check && grep -qF 'they are not evidence of the same kind' docs/MODEL.md
 ---
 
 **Problem.** MODEL.md's cardiac-output limitation sets Lowe's 4.84 L/min beside Cattermole's measured 5.51 L/min without saying that Lowe's is derived from an interspecies oxygen-consumption allometry and an assumed constant a-v difference
@@ -59,3 +66,45 @@ does not read as a correction of the other.
 
 **Done when.** A reader of "Known limitations" cannot come away thinking 4.84
 L/min is a measured human cardiac output.
+
+## Outcome, 2026-09-10: the asymmetry is stated in all three places
+
+**The project owner agreed with the recommendation.** One clause, no rewrite,
+and the paragraph's conclusion is unchanged: `PL-YKSM`'s decision of 2026-09-08
+to keep the fixed 5.0 L/min stands, for the structural reason it gave.
+
+**`docs/MODEL.md`, "Known limitations".** "Two published figures sit either side
+of the stored value" now continues "**and they are not evidence of the same
+kind**", and the sentence that follows says what each is: Lowe's 4.84 L/min is
+derived rather than measured — Brody's 1945 interspecies oxygen-consumption
+allometry divided by an arteriovenous difference assumed constant across
+mammals — against Cattermole et al.'s measured median in 686 human subjects in
+this file's weight band. It closes on the thing a reader could otherwise get
+wrong: the stored 5.0 is not bracketed by two comparable observations, and the
+number being declined is the weaker of the two.
+
+**Two cross-references followed, which is the half the brief asked for.**
+
+- `docs/MODEL.md`'s "Parameter provenance" ended its derivation paragraph by
+  pointing at this item as carrying the fix. It now points at "Known
+  limitations" as the place that states it, so the two sections agree in
+  emphasis and neither reads as a correction of the other.
+- `reference_adult.json`'s Lowe and Ernst entry said "`PL-DZQT` carries the one
+  place it currently does". It now names both places that say so.
+
+**And the Cattermole entry, which the brief did not name and should have.**
+That entry is where `PL-YKSM` recorded the decision, and it is the entry a
+reader of `default_cardiac_output_l_min` meets first — so it is the third place
+the two figures stand side by side. It said the reason was "structural rather
+than a choice between 4.84 and this entry's measured 5.51", which is true and
+still invites the comparison. It now says the two are not evidence of the same
+kind, and why "a choice between them" was the wrong frame to begin with.
+
+**One unrelated repair rode along**, in the same `note` field and visible only
+in the diff: restoring the withdrawn ICRP entry (`PL-TKRT`) left the phrase
+"which is where this chain actually stops" duplicated in the Lowe and Ernst
+note. Deduplicated.
+
+**The `verify:` command was run both ways** before being recorded: the grep
+string is absent from `docs/MODEL.md` on `origin/main`, and the paired command
+exits 0 here.

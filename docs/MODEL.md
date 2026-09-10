@@ -1569,8 +1569,9 @@ steps, and neither of the two constants is a cardiac-output measurement:
 So $`0.2M^{3/4}`$ is Brody's mammalian metabolic allometry divided by an
 arteriovenous difference assumed constant across mammals. **4.84 L/min at 70 kg
 is therefore a derived interspecies extrapolation and must not be read as a
-measured human cardiac output**, which matters wherever it appears beside
-Cattermole et al.'s measured median (`PL-DZQT`).
+measured human cardiac output.** "Known limitations" below is where that
+matters — it is the one place this document sets the figure beside Cattermole
+et al.'s measured median — and it says so there (`PL-DZQT`).
 
 **Checked against the book itself, the Workbook's attribution holds for three
 of the seven values and fails for four.** The vessel-rich pair reproduces
@@ -5156,12 +5157,21 @@ why nothing was changed and the gap is recorded instead.
 a label rather than an input.** `default_cardiac_output_l_min` is a stored
 5.0 L/min and `weight_kg` is read by no equation, so editing the weight changes
 nothing this model computes. Two published figures sit either side of the
-stored value: Lowe and Ernst's own cardiac-output relation — the upstream the
-Gas Man Workbook names, now read at the source — gives $`0.2M^{3/4}`$, which is
-4.84 L/min at 70 kg, and Cattermole et al.'s 686 subjects in the 50–75 kg band
-give a measured median of 5.51 L/min. **The fixed value is kept, on the project
-owner's decision of 2026-09-08** (`PL-YKSM`), and the reason is structural
-rather than a preference between those two numbers.
+stored value, **and they are not evidence of the same kind.** Lowe and Ernst's
+own cardiac-output relation — the upstream the Gas Man Workbook names, now read
+at the source — gives $`0.2M^{3/4}`$, which is 4.84 L/min at 70 kg; it is
+**derived rather than measured**, being Brody's 1945 interspecies
+oxygen-consumption allometry divided by an arteriovenous oxygen content
+difference assumed constant across mammals, and "Parameter provenance" above
+carries the derivation step by step. Cattermole et al.'s 686 subjects in the
+50–75 kg band give a **measured** median of 5.51 L/min in the weight band this
+file's patient sits in. So the stored 5.0 is not bracketed by two comparable
+observations: one side is a human measurement and the other is an interspecies
+extrapolation, and a reader weighing them equally would be weighing them wrongly.
+**The fixed value is kept, on the project owner's decision of 2026-09-08**
+(`PL-YKSM`), and the reason is structural rather than a preference between those
+two numbers — but the asymmetry is worth stating, because the number being
+declined is the weaker of the two.
 
 A time constant is $`V_i \lambda_{i:b} / Q_i`$ and this model stores
 compartment volumes as fixed litres, so scaling only the flow would make

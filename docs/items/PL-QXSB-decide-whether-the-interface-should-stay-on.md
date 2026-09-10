@@ -1,15 +1,16 @@
 ---
 id: PL-QXSB
 title: Decide whether the interface should stay on Flet: every route inside it has now been measured, and the remaining lever is fewer controls
-status: done
 priority: P2
 effort: M
+status: done
 classes: perf, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app, ROADMAP.md, docs/ARCHITECTURE.md
-verify: python3 tools/doc_check.py check && grep -qF 'Decided, 2026-09-10: leave Flet' docs/items/PL-QXSB-decide-whether-the-interface-should-stay-on.md
 added: 2026-09-08
 closed: 2026-09-10
+pr: 492
+verify: python3 tools/doc_check.py check && grep -qF 'Decided, 2026-09-10: leave Flet' docs/items/PL-QXSB-decide-whether-the-interface-should-stay-on.md
 ---
 
 **Problem.** Decide whether the interface should stay on Flet: every route inside it has now been measured, and the remaining lever is fewer controls
