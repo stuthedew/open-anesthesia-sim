@@ -1592,7 +1592,9 @@ muscle plus skin nutritive is 10.2% against Lowe's 13%, and fat plus fatty
 marrow 4.0% against Lowe's 5%. **The perfusion fractions this model runs on
 have no identified origin in any reference the book names for them.** Reference
 26 has no flows at all, and the other three do not match. That is established
-now rather than outstanding.
+now rather than outstanding — **and it is a statement about four documents that
+have been read, not about the world.** It does not follow that no origin
+exists: the book prints more than one table and Gas Man may lump differently.
 
 **Two of the three coincidences above are lineage after all, and one is not**
 (`PL-ZD67`). The 2.5 L is Mapleson's functional residual capacity, a mean of
