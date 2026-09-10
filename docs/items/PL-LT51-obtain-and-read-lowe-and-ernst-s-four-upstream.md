@@ -165,3 +165,103 @@ compartment, and no stored value is sourced to ICRP.
 
 References 9, 19 and 20, which are now the only route to the perfusion
 fractions, and ICRP Publication 2's bibliography if it carries one for Table 8.
+
+## References 19 and 20 are read, 2026-09-10, and neither measured anything
+
+**The project owner supplied both as PDFs.** Read at full text: reference 20 in
+full from its text layer, reference 19 from page images (it is a scan with no
+text layer) — pages 47–50, which carry the whole Methods section and Tables
+1–3, and pages 57–58, which carry the end of the Discussion and the reference
+list. Neither is held in this repository.
+
+**Reference 20 defers to reference 19 for its parameters, in one sentence.**
+Its Appendix, page 236: "Tables 1–3 give the data which were used for the
+model. These tables are the same as used by N. Ty Smith in his article,
+'Interaction Between the Circulatory Effects and the Uptake and Distribution of
+Halothane', submitted to *Anesthesiology* in 1971, **where he gives the
+rationals for our choice**." So there is one parameter set behind both papers,
+and reference 19 is where to look for its provenance.
+
+**Reference 19 calls its volumes assumed, and cites nothing for them.** Page
+48, in these words: "Table 1 gives some of the miscellaneous data used in the
+model. **Table 2 lists the assumed blood volumes, tissue volumes, and partition
+coefficients.**" Table 2 carries four footnotes, all of them definitions of what
+each compartment contains, and no source. Nothing in the Methods attributes
+them.
+
+**Its flows are compiled, and two of them were adjusted to make the sum
+work.** Page 50: "The values for the halothane-induced changes in AP, CO, and
+regional flows are listed in table 3. **Several sources, most of which can be
+found in a recent review, were used to compile these data.** Human data were
+used when possible." The recent review is the authors' own — reference 3, Smith
+NT and Smith PC, *Circulatory effects of modern inhalation anesthetic agents*,
+in Heffter's Handbook of Experimental Pharmacology, Springer, 1972. The awake
+cardiac output has its own citation, reference 4: **Milnor WR, "Normal
+circulatory function", in *Medical Physiology*, 12th edition, ed. Mountcastle,
+CV Mosby, 1968, page 124** — a physiology textbook chapter.
+
+And the compilation did not balance: "The calculated flows were then added and
+compared with the independently-determined total flow for 2 per cent. The match
+was surprisingly close: total cardiac output was 3,480 ml/min, while the sum of
+the regional flows was 3,290 ml/min. **The discrepancy was compensated for by
+adjusting the values for skin and skeletal muscle flows.**" That is a parameter
+set assembled to make a model cohere, stated plainly by its authors, and it is
+the clearest illustration this chain has produced of why
+`docs/MODEL.md`'s tier 3 exists.
+
+**So both are tier 2 at best, and the volumes half of reference 19 has no tier
+at all** — a stated assumption is not a source. Neither can be promoted, and
+neither is a candidate for adoption.
+
+### They are also not the origin of Lowe's figure 4.1b
+
+The compartment sets do not correspond. Reference 19 models **a 75 kg man in
+12 compartments**: arterial, brain grey, brain white, heart, well-perfused
+organs (kidneys, adrenals, thyroid), poorly-perfused tissue (red marrow,
+nonfatty subcutaneous), fat and fatty marrow, splanchnic (organs drained by
+portal and hepatic circulations), skeletal muscle (muscle and skin nutritive),
+skin shunt, vena cava, lung. Lowe's figure 4.1b is **ten rows for a 100 kg
+patient**: lung, kidney, heart, brain, liver, muscle, skin, bone, connective
+tissue, adipose.
+
+Nor do the numbers. Reference 19's awake cardiac output is 5.800 L/min, and its
+vessel-rich equivalent — brain 0.750 plus heart 0.250 plus well-perfused organs
+1.280 plus splanchnic 1.430 — is 3.710 L/min, **64.0% of cardiac output against
+Lowe's 76%**. Its fat tissue volume is 12.2 L at 75 kg, 16.3% of body mass,
+against Lowe's adipose 15.0%.
+
+**That leaves reference 9 as the only unread one of the four, and the flows
+still have no identified origin.** Reference 26 gives masses and no flows;
+references 19 and 20 give a different set of flows for a different set of
+compartments. Mapleson 1963 is the last candidate, and reference 20's own text
+names him as the source of the model *concept* ("The concept of the model is
+the same as Mapleson (5) describes"), which is not the same as a source for
+these figures.
+
+### Three numeric coincidences with stored values, recorded and not acted on
+
+They are recorded because a later session will otherwise find them again and
+have to re-derive whether they mean anything; they are **not** treated as
+sources, and `PL-ZD67` carries the question they pose.
+
+| Stored | Value | Where it also appears |
+| --- | --- | --- |
+| `default_alveolar_ventilation_l_min` | 4.0 | Reference 19's Table 1 and reference 20's Table 1, "Alveolar ventilation 4 l/min" |
+| `alveolar_gas_volume_l` | 2.5 | Reference 20's Table 1, "Functional residual capacity 2.5 l" — reference 19's Table 1 does not carry the row |
+| `tissue_groups.muscle.volume_l` | 33.0 | Reference 19's Table 2, "Skeletal muscle 33" tissue litres, for a **75 kg** man |
+
+**Why they are worth a second look and still not evidence.** The first two are
+the two parameters `PL-7HDS` established Lowe and Ernst cannot supply — page 58
+lumps the circuit and the patient's functional residual capacity into one
+ventilatory volume of "about 100 dl" and states no alveolar gas volume, and
+alveolar ventilation is an interface default the Workbook states no number for.
+Finding both in a document Lowe and Ernst cite is the strongest lead this
+project has had on either.
+
+**Against that**: 2.5 L and 4 L/min are textbook round numbers for an
+anaesthetised adult and would be unsurprising in any model of the period; the
+muscle figure is at 75 kg where this file stores 70; there is no evidence Gas
+Man read either paper, its stated upstream being Lowe and Ernst; and this
+project has already recorded one 33.0 coincidence, against Janssen et al.'s
+measured skeletal muscle mass, in exactly these terms. A third 33 makes the
+number look more like a convention than like a lineage.

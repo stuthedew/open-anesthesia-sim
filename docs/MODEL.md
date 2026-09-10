@@ -1525,6 +1525,45 @@ into the liver compartment is ordinary modelling, "Tissue compartments" above
 already treats the vessel-rich group as one lumped tissue, and nothing here is
 sourced to ICRP.
 
+**References 19 and 20 are read too, and they measured nothing either.** Both
+were supplied by the project owner on 2026-09-10 and read at full text
+(`PL-LT51`). They share one parameter set: reference 20's Appendix says its
+tables "are the same as used by N. Ty Smith in his article … where he gives the
+rationals for our choice", so reference 19 is where the provenance is. And
+reference 19 says, of the table this chain would need, that it "lists the
+**assumed** blood volumes, tissue volumes, and partition coefficients" — its
+own word, with no source given for any of them. Its *flows* are compiled from
+"several sources, most of which can be found in a recent review", the review
+being the authors' own handbook chapter, with the awake cardiac output of 5,800
+ml/min taken from Milnor's chapter in *Medical Physiology*, 12th edition. The
+compilation did not balance and was made to: total cardiac output 3,480 ml/min
+against regional flows summing to 3,290, and "the discrepancy was compensated
+for by adjusting the values for skin and skeletal muscle flows". **A stated
+assumption is not a source and an adjusted sum is not a measurement**, so
+neither paper is promotable and neither is a candidate for adoption.
+
+**They are not the origin of figure 4.1b either.** Reference 19 models a 75 kg
+man in twelve compartments — arterial, brain grey, brain white, heart,
+well-perfused organs, poorly-perfused tissue, fat and fatty marrow, splanchnic,
+skeletal muscle, skin shunt, vena cava, lung — against Lowe's ten rows for a
+100 kg patient, and the numbers do not correspond: its vessel-rich equivalent
+is 64.0% of cardiac output against Lowe's 76%, and its fat is 16.3% of body
+mass against Lowe's 15.0%. **So the perfusion fractions still have no
+identified origin.** Reference 26 gives masses and no flows; 19 and 20 give
+different flows for different compartments; reference 9, Mapleson 1963, is the
+last of the four unread, and reference 20 names him only as the source of the
+model *concept*.
+
+**Three of this file's stored values also appear in those tables, and nothing
+is inferred from that here.** Alveolar ventilation 4 l/min and — in reference
+20's table only — functional residual capacity 2.5 l, which are the two
+parameters Lowe and Ernst demonstrably cannot supply; and a skeletal muscle
+tissue volume of 33 litres, at 75 kg where this file stores 70. All three are
+round numbers a model of the period would plausibly reach independently, this
+document already records one 33.0 coincidence against a measured skeletal
+muscle mass, and nothing connects Gas Man to either paper. `PL-ZD67` carries
+the question and no stored value moves on it.
+
 That Mapleson 1963 turns out to be one of the four is not a rehabilitation of
 that lineage. The removed claim was that Mapleson's papers were the *Workbook's*
 primary source, on the strength of their titles; the Workbook attributes nothing
