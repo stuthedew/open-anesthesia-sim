@@ -89,3 +89,46 @@ curvature-adaptive grid, or to accept 0.26 MAC and state the bound in
 polyline's worst departure is measured again at every rung of
 `TIME_BASE_LADDER` and recorded in `docs/MODEL.md`; if 3, `docs/MODEL.md`
 states the bound and where it sits.
+
+
+## Route 1 priced on real hardware, 2026-09-10 (PL-X9T3, PL-55DH)
+
+The project owner ran the `PL-55DH` Qt spike at 600 columns and read its
+instrument panel. This does not decide the item - the choice is still the
+owner's - but the cost half of route 1 is no longer an estimate.
+
+**Route 1's cost model above is Flet's, and it is the one term Qt does not
+have.** "`CHART_COLUMN_BUDGET_PER_SERIES` times traces drawn times about 24.5 us
+is the chart's share of a frame" is `PL-YSZN`'s per-point-control diff charge,
+paid whether or not the point moved. Measured on Qt, 300x, a two-hour window at
+6 399 s so 600 columns yield 3 204 points over six traces:
+
+| Stage | 150 columns, 294 points | 600 columns, 3 204 points |
+| --- | ---: | ---: |
+| `refresh` (the score evaluation) | 7.57 ms | 18.24 ms |
+| `handoff` (Flet's `page.update`) | 0.67 ms | 1.69 ms |
+| `paint` | 8.04 ms | 21.57 ms |
+| **whole frame** | **27.3 ms** | **49.4 ms** |
+
+**So route 1 costs 49.4 ms of a 200 ms budget on Qt**, and about 8.7 us per
+drawn point across evaluation, handoff and paint together. On Flet the same
+3 204 points would cost about 78 ms in the diff alone, before the Flutter client
+renders anything - so route 1 is comfortable on one toolkit and marginal on the
+other, and becomes untenable on Flet once `v0.5.0`'s second chart doubles the
+control count.
+
+**Two things this does not say.** The two readings differ in fill as well as in
+columns (32% against 89% of the axis), so neither factor is isolated - what is
+established is the cost at 3 204 drawn points, not a clean columns-only slope.
+And the error half of route 1 is still this item's own arithmetic: quartering
+the chord width quarters the error to roughly 0.016 MAC, which nothing here
+measures.
+
+**The fidelity is visible as well as computed.** At 600 columns the drawn
+curves are recognisably smoother through the steep early wash-in, which is
+where this item records the worst departure.
+
+**Relevance to `PL-QXSB`.** This is the clearest case in which the toolkit
+decision and a safety decision are the same decision: route 1 is the cheap way
+out of 0.26 MAC, and whether it is affordable depends on which toolkit the
+interface is on.

@@ -1446,3 +1446,55 @@ add is that the *remaining* case is now measured rather than argued:
   container where Flet's renderer cannot load.
 
 None of those four is speed. That is the shape the decision should be taken in.
+
+### The 600-column reading, and what it corrects (2026-09-10)
+
+Taken by the project owner on the same machine and build, to price `PL-GS3R`'s
+first route: the `Columns` selector at 600 rather than the shipped 150, at 300x,
+a two-hour window with the run at 6 399 s - so the drawn range fills 89% of the
+axis and 600 columns yield **3 204 points over six traces**, against 294 in the
+150-column reading, whose run filled only 32%.
+
+| Stage | 150 columns, 294 points | 600 columns, 3 204 points |
+| --- | ---: | ---: |
+| `refresh` | 7.57 ms | 18.24 ms |
+| `handoff` | 0.67 ms | 1.69 ms |
+| `paint` | 8.04 ms | 21.57 ms |
+| `advance` | 11.06 ms | 7.90 ms |
+| **whole frame** | **27.3 ms** | **49.4 ms** |
+| `timer lateness` p90 | 2.46 ms | 0.49 ms |
+
+**The pair is confounded and the useful number survives it.** Columns went up
+fourfold and the fill went up 2.8-fold, so the points went up 10.9-fold and
+neither factor can be isolated from these two readings. What does not need
+isolating is the operative figure: **3 204 drawn points cost 49.4 ms of a 200 ms
+budget**, which is the worst realistic case for a 600-column setting.
+
+**Two corrections to what this file said before.**
+
+**Paint scales strongly with points.** 8.04 to 21.57 ms - it is the largest
+single stage at 600 columns, above the score evaluation. The earlier claim that
+it is near-constant held across *rates* at a fixed column count and does not
+generalise; that sentence is now qualified where it appears above.
+
+**"Qt makes the point count stop mattering" is wrong, and it was never quite
+what was measured.** `PL-QXSB`'s 0.51 to 1.96 ms for 380 times the points was
+`setData` alone - the `handoff` term - and that holds: 0.67 to 1.69 ms here for
+eleven times the points. The *whole frame* does scale. Fitting the two readings
+gives about **8.7 us per drawn point** across `refresh`, `handoff` and `paint`
+together, of which `handoff` is 0.35 us.
+
+**The comparison that survives all of this is still decisive, and it is now
+sharper.** Qt spends about 8.7 us to evaluate a point, hand it over and paint
+it. Flet spends **24.5 us per point control just discovering whether it
+changed** (`PL-YSZN`), before its Flutter client draws anything - and that term
+is charged whether or not the point moved. So at 3 204 points Flet would spend
+about 78 ms on the diff alone, against 49 ms for Qt's entire frame including
+paint.
+
+**One gap, stated rather than papered over**: the panel was read while
+**paused**, so `refresh`, `handoff` and `paint` are current but `advance` is the
+last 120 frames recorded before the pause, and the lateness figure does not
+establish what latency does under a running 49 ms frame. Nothing in the decision
+turns on it - 49 ms of a 200 ms budget leaves the loop idle three quarters of
+the time - but it is not measured.
