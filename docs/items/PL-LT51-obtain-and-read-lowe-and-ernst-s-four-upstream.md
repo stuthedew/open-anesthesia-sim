@@ -1,8 +1,14 @@
 ---
 id: PL-LT51
 title: Obtain and read Lowe and Ernst's four upstream references for the reference patient's volumes and flows, starting with ICRP Committee II page 151
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: science, docs
+feature: model-spec-accuracy
+touches: docs/MODEL.md, src/anesthesia_sim/data/patients/reference_adult.json
 added: 2026-09-10
+not-delegable: No command can prove that a person opened a 1963 volume of the Journal of Applied Physiology. Reference 26 was read on 2026-09-10 because the project owner sent the page; references 9, 19 and 20 need the same, and PubMed holds no abstract and no PubMed Central text for any of the three, so nothing this container can run distinguishes a session that read them from one that did not. A `verify:` command here could only check that some sentence had been written into a file, which is the thing that must not be gameable on a provenance item.
 ---
 
 **Problem.** Obtain and read Lowe and Ernst's four upstream references for the reference patient's volumes and flows, starting with ICRP Committee II page 151
@@ -19,6 +25,15 @@ them.
 | 19 | Smith NT, Zwart A, Beneken JE. Interaction between the circulatory effects and the uptake and distribution of halothane: use of a multiple model. *Anesthesiology* 1972;37(1):47-58. | PMID 5050101, `10.1097/00000542-197207000-00008`. Metadata only. |
 | 20 | Zwart A, Smith NT, Beneken JE. Multiple model approach to uptake and distribution of halothane: the use of an analog computer. *Comput Biomed Res* 1972;5(3):228-38. | PMID 5031801, `10.1016/0010-4809(72)90084-5`. Metadata only. |
 | 26 | *Recommendations of the International Commission on Radiological Protection*, p. 151. Report of Committee II on Permissible Dose for Internal Radiation. Pergamon Press, Oxford, 1960. | Not indexed by PubMed. `www.icrp.org`, `journals.sagepub.com` and `doi.org` all returned nothing through the egress proxy. |
+
+**Why it matters.** Every physiologic parameter in `reference_adult.json` is
+tier 3 today with no primary measurement adopted for any of them, and this is
+the last link in the only provenance chain the file has. If one of these four
+measured the organ volumes and blood flows, the reference patient gains a
+tier-1 source it has never had; if none did, `docs/MODEL.md`'s
+`provenance_gap` should say in those terms that the chain is a compilation of
+compilations. Reading reference 26 on 2026-09-10 answered half of that and
+made the other half sharper - see the outcome below.
 
 **Read reference 26 first, and it is the one worth an interlibrary loan.**
 References 9, 19 and 20 are uptake-and-distribution models: a model consumes
@@ -49,3 +64,104 @@ for each the file records whether it measured the reference patient's organ
 volumes and blood flows, collected them, or cites them onward again - or
 records that it could not be reached and by whom it was tried, which is the
 shape `PL-7HDS` used.
+
+## Reference 26 is read, 2026-09-10, and it is the end of the chain
+
+**The project owner sent pages 150 and 151 of the report the same day this item
+was filed.** Page 151 is what Lowe and Ernst cite, and it is exactly what the
+citation implied it was:
+
+> **Table 8. Organs of standard man.** Mass and effective radius of organs of
+> the adult human body.
+
+Three columns - **Mass, m (g)**; **Per cent of total body**; **Effective
+radius, X (cm)** - and a total body of **70,000 g**. The rows read, in the
+book's order: Muscle 30,000 g / 43%; Skin and subcutaneous tissue 6,100 / 8.7;
+Fat 10,000 / 14; Skeleton without bone marrow 7,000 / 10, red marrow 1,500 /
+2.1, yellow marrow 1,500 / 2.1; Blood 5,400 / 7.7; Gastrointestinal tract
+2,000 / 2.9 (with the four GI contents listed separately and excluded from the
+total); Liver 1,700 / 2.4; Brain 1,500 / 2.1; Lungs 1,000 / 1.4; Lymphoid
+tissue 700 / 1.0; Kidneys 300 / 0.43; Heart 300 / 0.43; Spleen 150 / 0.21;
+Urinary bladder 150 / 0.21; Pancreas 70 / 0.10; then salivary glands, testes,
+spinal cord, eyes, thyroid, teeth, prostate, adrenals, thymus, ovaries,
+hypophysis, pineal and parathyroids; and Miscellaneous (blood vessels,
+cartilage, nerves, etc.) 390 / 0.56. Two footnotes: the total excludes the
+contents of the gastrointestinal tract, and the mass of skin alone is taken to
+be 2,000 grams.
+
+**The single most consequential fact about the page: it has no blood flows.**
+Mass and effective radius, and nothing else. Lowe and Ernst cite references 9,
+19, 20 and 26 together for "normal physiologic organ volumes and blood flows",
+and reference 26 can supply only the first half of that. **The perfusion
+fractions - the half that sets every time constant in this model - are not in
+it**, so they descend from references 9, 19 or 20, all three of which are
+uptake-and-distribution models. That makes reading those three more valuable
+than this item assumed, not less.
+
+**The tier is 2, and it is decidable rather than a judgment.**
+`docs/MODEL.md`'s hierarchy puts at tier 2 "a review, textbook, monograph or
+**consensus document** that collects primary measurements without making one".
+A "standard man" is a reference specification agreed by a committee - the
+document's own title is *Report of Committee II* - and Table 8 carries no
+per-row citation, no sample count and no dispersion, unlike Table 7 on the
+facing page 150, whose tissue rows each carry a parenthesised count. So the
+chain that starts at `reference_adult.json` **terminates at tier 2 and reaches
+tier 1 nowhere**: Gas Man (tier 3) to Lowe and Ernst (tier 2) to ICRP
+Committee II (tier 2). Nothing on this project's longest provenance chain was
+ever measured by anybody it can name.
+
+**What still could change that.** Whether ICRP Publication 2 cites sources for
+Table 8 elsewhere in the report is unknown - page 151 shows none, and the
+report's bibliography was not supplied. If it does, the chain has one more
+link. That is a smaller ask than this item started as and it belongs here.
+
+### How Lowe and Ernst's figure 4.1b sits against it
+
+Lowe's table is for a 100 kg patient, so its kilogram column reads directly as
+per cent of body weight and is comparable with ICRP's per-cent column. Four
+rows correspond, and the correspondence is close enough to be an inheritance
+rather than a coincidence:
+
+| Lowe fig. 4.1b | % of body weight | ICRP Table 8 | % of total body |
+| --- | --- | --- | --- |
+| Brain | 2.1 | Brain | 2.1 |
+| Kidney | 0.4 | Kidneys | 0.43 |
+| Heart | 0.4 | Heart | 0.43 |
+| Muscle | 42.6 | Muscle | 43 |
+
+Five do not, and one of them matters:
+
+| Lowe fig. 4.1b | % | ICRP Table 8 | % | difference |
+| --- | --- | --- | --- | --- |
+| Liver | 5.7 | Liver | 2.4 | +3.3 pp |
+| Skin | 10.0 | Skin and subcutaneous | 8.7 | +1.3 pp |
+| Adipose | 15.0 | Fat | 14 | +1.0 pp |
+| Blood | 7.0 | Blood | 7.7 | -0.7 pp |
+| Lung | 0.8 | Lungs | 1.4 | -0.6 pp |
+| Bone | 12.0 | Skeleton, 10 without marrow and 14.2 with | 10 / 14.2 | -2.0 / +2.2 pp |
+
+**The liver gap has an obvious candidate and it is this project's arithmetic,
+not the book's.** Liver 1,700 g plus gastrointestinal tract 2,000 plus spleen
+150 plus pancreas 70 is 3,920 g, **5.60% of 70 kg against Lowe's 5.7%** - the
+hepatoportal compartment an uptake model lumps together because the splanchnic
+bed drains through the liver. It is 0.10 pp from Lowe's row and no other
+grouping of Table 8 comes as close. **The book does not say this**, page 151
+does not say it, and it convicts nobody: Lowe may have taken the row from
+somewhere else entirely.
+
+**Why it is worth recording anyway.** `tissue_groups.vessel_rich.volume_l` is
+stored as 6.0 L, and `PL-7HDS` established that Lowe's kidney + heart + brain +
+liver at 8.6% of body weight is the *only* grouping of his ten compartments
+reproducing both that volume and the stored 0.76 perfusion fraction. On ICRP's
+own rows the same four organs are **5.36%, which is 3.75 L at 70 kg** - 38%
+below what is stored. The stored value therefore rests on a lumping decision
+made one link up, and that decision is now visible where before it was not.
+**Nothing here is a defect finding and no stored value should move on it**:
+lumping the splanchnic bed into the liver compartment is ordinary and defensible
+modelling, `docs/MODEL.md` records the vessel-rich group as a lumped
+compartment, and no stored value is sourced to ICRP.
+
+### What remains
+
+References 9, 19 and 20, which are now the only route to the perfusion
+fractions, and ICRP Publication 2's bibliography if it carries one for Table 8.

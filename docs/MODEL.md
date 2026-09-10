@@ -1474,10 +1474,56 @@ References 9, 19 and 20 are **uptake-and-distribution models**, which is what
 this chain needed to know: a model consumes organ volumes and blood flows, it
 does not measure them, so none of the three can be where figure 4.1b's figures
 came from. Reference 26 is the only one of the four that is not an anesthetic
-model, and it is cited to a single page. **What is on that page is unread and
-is not guessed at here** — inferring a table of organ masses from the title of
-a radiological-protection report is the same move as the Mapleson lineage this
-file used to carry, and `PL-LT51` carries reading it.
+model, and it is cited to a single page — which is the page that ends the
+chain.
+
+**The chain terminates at tier 2, and reaches tier 1 nowhere.** Page 151 of the
+ICRP report was supplied by the project owner on 2026-09-10 and read here
+(`PL-LT51`). It carries **Table 8, "Organs of standard man — Mass and effective
+radius of organs of the adult human body"**, tabulated for a total body of
+70,000 g. A "standard man" is a reference specification agreed by a committee,
+the document's own title being *Report of Committee II*, and the table gives no
+per-row citation, sample count or dispersion — unlike Table 7 on the facing
+page 150, whose tissue rows each carry a parenthesised count. Under "Source
+hierarchy" above, a consensus document that collects primary measurements
+without making one is **tier 2**. So the reference patient's longest provenance
+chain runs Gas Man (tier 3) → Lowe and Ernst (tier 2) → ICRP Committee II
+(tier 2), and **nothing on it was measured by anybody this file can name.**
+
+**Table 8 has no blood flows**, and that is the more useful half of the
+finding. It gives mass and effective radius, nothing else, while Lowe and Ernst
+cite all four references together for "organ volumes *and blood flows*". So the
+perfusion fractions — the half that sets every time constant this model
+computes — cannot descend from reference 26 at all. They descend from 9, 19 or
+20, all three of which are models, and reading those three is now the more
+valuable ask rather than the less.
+
+**Four of Lowe's rows correspond to Table 8 closely enough to be an
+inheritance**, at 100 kg where his kilogram column reads as per cent of body
+weight: brain 2.1 against 2.1, kidney 0.4 against 0.43, heart 0.4 against 0.43,
+muscle 42.6 against 43. Five do not — skin 10.0 against 8.7, adipose 15.0
+against 14, blood 7.0 against 7.7, lung 0.8 against 1.4, bone 12.0 against a
+skeleton of 10 without marrow or 14.2 with — and **the liver is the outlier
+that matters: 5.7 against 2.4.**
+
+**That gap has a candidate, and it is this file's arithmetic rather than the
+book's.** Liver 1,700 g plus gastrointestinal tract 2,000 plus spleen 150 plus
+pancreas 70 is 3,920 g, **5.60% of 70 kg against Lowe's 5.7%** — the
+hepatoportal compartment an uptake model lumps because the splanchnic bed
+drains through the liver. No other grouping of Table 8 comes as close. Neither
+document says so, and it convicts nobody.
+
+**Why it is recorded rather than left out.**
+`tissue_groups.vessel_rich.volume_l` is stored as 6.0 L, and the only grouping
+of Lowe's ten compartments reproducing both that volume and the stored 0.76
+perfusion fraction is kidney + heart + brain + liver at 8.6% of body weight. On
+ICRP's own rows those four organs are **5.36%, which is 3.75 L at 70 kg** — 38%
+below what is stored. The stored value therefore rests on a lumping decision
+taken one link up the chain, and that decision is now visible where it was not.
+**No stored value moves on this and none should**: lumping the splanchnic bed
+into the liver compartment is ordinary modelling, "Tissue compartments" above
+already treats the vessel-rich group as one lumped tissue, and nothing here is
+sourced to ICRP.
 
 That Mapleson 1963 turns out to be one of the four is not a rehabilitation of
 that lineage. The removed claim was that Mapleson's papers were the *Workbook's*
