@@ -2062,6 +2062,85 @@ Four grounds survive:
 6. **Headless rendering tests**, which is what `PL-2QMK` has been waiting for
    and what makes the rest of `presentation-safety` workable.
 7. **Deletion.** `spikes/` goes, and so does every Flet import.
+8. **The queued fixes named below**, on the rule stated there.
+
+### Fixes this port carries, and why that is not scope creep
+
+**Asked by the project owner, 2026-09-10**: "if we already had things we needed
+to fix, wouldn't it make sense to fix those as part of the port, and not just
+reintroduce old bugs still needing fixed?" Yes, and the rule is narrow enough
+to keep this a patch.
+
+**The rule: a queued fix rides the port when the port rewrites the code the
+defect lives in, and it changes nothing a learner can do.** Everything else
+waits. That is not a taste judgment - it follows from what a port is. Porting a
+known defect means deliberately reproducing it in code being written from
+scratch, then rewriting the same lines again to fix it. The fix is cheaper
+inside the port than either side of it.
+
+**What it does not license.** New capability stays out, whatever its size,
+which is what keeps § "Versioning decision"'s patch argument true. A defect in
+`core/` or in the Flet-free modules stays out too - the port does not touch
+them, so fixing one there is unrelated work wearing this milestone's name.
+
+**The enumeration is the point.** "Parity with the Flet build" is this
+milestone's checkable definition of done, and a port that also changes behaviour
+cannot be diffed against the old build to prove nothing was lost. So every
+carried fix is named here in advance, and parity means *identical except for
+this list*. That is stricter than an unenumerated parity, not looser.
+
+**Defects in the rewritten surface** - reproduce none of these:
+
+- `PL-3355` - the readouts wrap their value onto a second line at some widths.
+- `PL-Q4VH` - the percent axis is labelled at a different interval from the
+  gridlines it rules.
+- `PL-THXF` - the legend swatch is a solid bar for a trace that is dashed, so
+  the legend misdescribes the chart it explains.
+- `PL-W8DQ` - the four slider active tracks miss the WCAG non-text minimum.
+- `PL-TG60` - six decimals printed on an exhaust integral good to three.
+- `PL-005` - the startup window is full-screen rather than sized and centred.
+
+**Decisions the port has to make anyway**, so they are made deliberately rather
+than by default: `PL-YTX9` (whether a hidden trace keeps its legend entry),
+`PL-CZFY` and `PL-Q4M4` (the elapsed-time readout reads in seconds while the
+axis reads in hours), `PL-LL9Y` (the warning and alert colours against the
+medical alarm-colour convention).
+
+**Borderline, and left out unless the owner says otherwise**: `PL-16ZC` adds a
+show/hide control for the clinical references and control marks. It is small and
+it is in the rewritten surface, but it is a control that does not exist today,
+which is new capability by the rule above.
+
+### Items this port moots or transforms
+
+Recorded because the cost of missing them is not a defect - it is work done and
+thrown away.
+
+- **`PL-B9PY`** (decompose `SimulationView` so two runs can be rendered at
+  once) touches `app/simulation_view.py` and its test, both of which this
+  milestone rewrites. "The timeline" places it **ahead of v0.5.0**, which is
+  ahead of this port - so as the plan stands, the Flet view is decomposed and
+  then discarded. The decomposition is still wanted; it should be a property of
+  the Qt view rather than a pass over the Flet one.
+- **`PL-NGF7`** is a defect *of Flet*: every colour a control takes when
+  Material disables it comes from the Material theme rather than from
+  `theme.py`, so `tools/contrast_check.py` cannot reach it. Qt supplies no such
+  theme, so the port dissolves the defect rather than fixing it. It is also
+  placed ahead of v0.5.0 today.
+- **`PL-F0L8`** asks what accessibility Flet's rendering backend can deliver.
+  After the port the question is `QAccessible`'s, which is a different
+  investigation against a different backend.
+- **`PL-7J96`** ("nothing in this repository draws the interface") is what
+  `PL-YCWZ` now does. One of them supersedes the other and it is worth deciding
+  which rather than working both.
+- **`PL-NC2P`** and **`PL-YMY7`** are coverage items over `app/main.py` and
+  `app/simulation_view.py`'s Flet-construction paths - files this milestone
+  replaces.
+- **`PL-027`** confirms the per-frame slider write-back on a live Flet client.
+
+**Two of these are scheduled before the port and are the project owner's to
+re-order**: `PL-B9PY` and `PL-NGF7`. Nothing here moves them; the finding is
+recorded so the decision is taken rather than discovered.
 
 ### Definition of done
 
@@ -2080,7 +2159,8 @@ Four grounds survive:
 ### Explicitly out of scope for v0.5.1
 
 - **Any new learner-facing capability.** This release adds none, which is what
-  makes it a patch.
+  makes it a patch - and it is the line the carried-fix rule below is drawn
+  against, not an exception to it.
 - **The branched run.** v0.5.0's bookmarks, forking and comparison are that
   milestone's, and this one does not touch them.
 - **Anything under `core/`.** The port's whole tractability rests on `core/`,

@@ -11,6 +11,11 @@ added: 2026-08-30
 verify: uv run pytest tests/unit/test_simulation_view.py -k agent_amounts_precision
 ---
 
+> **This fix rides the Qt port (`v0.5.1`), not Flet.** `ROADMAP.md` § "v0.5.1 -
+> the interface moves to Qt" names this item under "Fixes this port carries":
+> the defect lives in code that milestone rewrites from scratch, so fixing it
+> on Flet means writing the same lines twice. Project owner, 2026-09-10.
+
 **Problem.** The agent-accounting panel renders litres at `:.6f`
 (`app/simulation_view.py:719-728`), but the exhausted amount it prints is not
 accurate to six decimals. `core/circuit.py:148-152` integrates the

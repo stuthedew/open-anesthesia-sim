@@ -11,6 +11,11 @@ verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_tw
 added: 2026-09-02
 ---
 
+> **The Qt port (`v0.5.1`) moots or transforms this.** `ROADMAP.md` § "v0.5.1 -
+> the interface moves to Qt" names this item under "Items this port moots or
+> transforms". Read that entry before starting: the work may be thrown away by
+> the port, or may be a different question after it. Found 2026-09-10.
+
 **Problem.** `SimulationView` is one class holding one run's widgets and one
 `SimulationController` reference. Even after `PL-WB0X` (split
 `simulation_view.py`) extracts the formatters and the chart-series shaping,

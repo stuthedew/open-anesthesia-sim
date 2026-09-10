@@ -10,6 +10,11 @@ touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, src/anesthesi
 added: 2026-09-06
 ---
 
+> **The Qt port (`v0.5.1`) moots or transforms this.** `ROADMAP.md` § "v0.5.1 -
+> the interface moves to Qt" names this item under "Items this port moots or
+> transforms". Read that entry before starting: the work may be thrown away by
+> the port, or may be a different question after it. Found 2026-09-10.
+
 **Problem.** `tools/contrast_check.py` extracts colour constants from
 `src/anesthesia_sim/app/theme.py` with `ast`, deliberately, so it runs in a
 bare checkout. Every colour a control takes when Flet/Material disables it

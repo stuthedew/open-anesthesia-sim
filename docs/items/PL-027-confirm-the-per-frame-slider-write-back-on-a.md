@@ -10,6 +10,11 @@ touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-08-24
 ---
 
+> **The Qt port (`v0.5.1`) moots or transforms this.** `ROADMAP.md` § "v0.5.1 -
+> the interface moves to Qt" names this item under "Items this port moots or
+> transforms". Read that entry before starting: the work may be thrown away by
+> the port, or may be a different question after it. Found 2026-09-10.
+
 **Problem.** PL-018 made `_refresh_view` write every parameter slider's
 `value` from the snapshot, so a refused setting cannot leave a control
 showing a dial position the simulation is not running at. During a run that

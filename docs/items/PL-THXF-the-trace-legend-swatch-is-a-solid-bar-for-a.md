@@ -11,6 +11,11 @@ verify: uv run pytest -q tests/unit/test_simulation_view.py && grep -q 'def test
 added: 2026-09-07
 ---
 
+> **This fix rides the Qt port (`v0.5.1`), not Flet.** `ROADMAP.md` § "v0.5.1 -
+> the interface moves to Qt" names this item under "Fixes this port carries":
+> the defect lives in code that milestone rewrites from scratch, so fixing it
+> on Flet means writing the same lines twice. Project owner, 2026-09-10.
+
 **Problem.** `_build_trace_legend_item` draws each compartment's legend mark as
 an `ft.Container` filled with the trace's colour — a solid 24x4 bar, whatever
 the trace's dash pattern is. The pattern reaches the reader only as a word in
