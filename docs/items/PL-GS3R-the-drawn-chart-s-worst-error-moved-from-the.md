@@ -3,12 +3,20 @@ id: PL-GS3R
 title: The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 priority: P1
 effort: M
-status: needs-decision
+status: blocked
+blocked-by: v0.5.1
 classes: defect, safety
 feature: teachable-case
 touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
+verify: uv run pytest tests/unit/test_chart_time_base.py && grep -qF 'chord width' docs/MODEL.md
 added: 2026-09-08
 ---
+
+> **This ships with the Qt port, not before it.** The project owner decided
+> 2026-09-10 that the fix waits for `v0.5.1` (`PL-QXSB`, decided the same day);
+> on Flet a wider budget costs frame time `PL-2FM6` had just given back, and
+> after the port it is nearly free. `blocked-by` now says so, so nothing has to
+> rely on a reader seeing this paragraph.
 
 **Problem.** The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 
@@ -89,3 +97,113 @@ curvature-adaptive grid, or to accept 0.26 MAC and state the bound in
 polyline's worst departure is measured again at every rung of
 `TIME_BASE_LADDER` and recorded in `docs/MODEL.md`; if 3, `docs/MODEL.md`
 states the bound and where it sits.
+
+
+## Route 1 priced on real hardware, 2026-09-10 (PL-X9T3, PL-55DH)
+
+The project owner ran the `PL-55DH` Qt spike at 600 columns and read its
+instrument panel. This does not decide the item - the choice is still the
+owner's - but the cost half of route 1 is no longer an estimate.
+
+**Route 1's cost model above is Flet's, and it is the one term Qt does not
+have.** "`CHART_COLUMN_BUDGET_PER_SERIES` times traces drawn times about 24.5 us
+is the chart's share of a frame" is `PL-YSZN`'s per-point-control diff charge,
+paid whether or not the point moved. Measured on Qt, 300x, a two-hour window at
+6 399 s so 600 columns yield 3 204 points over six traces:
+
+| Stage | 150 columns, 294 points | 600 columns, 3 204 points |
+| --- | ---: | ---: |
+| `refresh` (the score evaluation) | 7.57 ms | 18.24 ms |
+| `handoff` (Flet's `page.update`) | 0.67 ms | 1.69 ms |
+| `paint` | 8.04 ms | 21.57 ms |
+| **whole frame** | **27.3 ms** | **49.4 ms** |
+
+**So route 1 costs 49.4 ms of a 200 ms budget on Qt**, and about 8.7 us per
+drawn point across evaluation, handoff and paint together. On Flet the same
+3 204 points would cost about 78 ms in the diff alone, before the Flutter client
+renders anything - so route 1 is comfortable on one toolkit and marginal on the
+other, and becomes untenable on Flet once `v0.5.0`'s second chart doubles the
+control count.
+
+**Two things this does not say.** The two readings differ in fill as well as in
+columns (32% against 89% of the axis), so neither factor is isolated - what is
+established is the cost at 3 204 drawn points, not a clean columns-only slope.
+And the error half of route 1 is still this item's own arithmetic: quartering
+the chord width quarters the error to roughly 0.016 MAC, which nothing here
+measures.
+
+**The fidelity is visible as well as computed.** At 600 columns the drawn
+curves are recognisably smoother through the steep early wash-in, which is
+where this item records the worst departure.
+
+**Relevance to `PL-QXSB`.** This is the clearest case in which the toolkit
+decision and a safety decision are the same decision: route 1 is the cheap way
+out of 0.26 MAC, and whether it is affordable depends on which toolkit the
+interface is on.
+
+
+## Decided, 2026-09-10: route 1, and it is the chord width that is held
+
+**The project owner chose route 1**, on the pricing above. `PL-QXSB` was decided
+in the same breath - the interface moves to PySide6 + pyqtgraph - which is what
+makes route 1 affordable rather than marginal.
+
+**Route 1 as a flat raise is not the right shape, and this item said why.** The
+criticism recorded above is that more columns "helps everywhere rather than
+where the curvature is". A *fixed column budget* is what produces that: the
+chord spans `span / columns`, so at 150 columns it is 6 s at the 15-minute base
+and 288 s at the 12-hour one, and the error follows it - 0.006 MAC against
+0.260 MAC. The budget is the wrong invariant.
+
+**So hold the chord width instead.** Columns become a function of the selected
+span rather than a constant, which spends them where the error is and leaves the
+narrow bases untouched. `CHART_COLUMN_BUDGET_PER_SERIES` stops being a budget
+and becomes a floor.
+
+That is still route 1 - buy resolution with columns - rather than route 2's
+curvature-adaptive grid, and it keeps `evaluate_anchored`'s uniform spacing
+within a segment, which is the property the chained-propagator optimisation
+depends on and which route 2 would have to give up.
+
+**What the work owes**, unchanged from this item's own "Done when": the target
+chord width chosen against the 0.01 pp the readout resolves, the drawn
+polyline's worst departure re-measured at every rung of `TIME_BASE_LADDER`, and
+both recorded in `docs/MODEL.md`.
+
+**Sequencing is the one open question** and it is in the reply, not here: whether
+this ships on Flet now - where the wider budget costs frame time the owner has
+just got back - or after the port, where it is free. The design above is the same
+under either answer.
+
+
+## Sequenced after the port, 2026-09-10
+
+**"PL-GS3R after port"** - the project owner, answering whether this ships on
+Flet now or waits. It waits.
+
+**Why that is not a P1 being parked.** On Flet the fix costs what it is worth:
+3 204 drawn points is about 78 ms of diff alone against a 200 ms frame, before
+the Flutter client renders anything - and the lag that spending would reintroduce
+is the same lag the owner reports `PL-2FM6` removed and which `PL-QXSB` was
+opened on. After the port the same fix is 49.4 ms including paint, measured. So
+waiting buys the fix at a quarter of the cost, on a defect whose worst case needs
+a 12-hour time base to reach.
+
+**What is not waiting**: the design. It is settled above - hold the chord width
+rather than the column count - and it is the same under either toolkit, so the
+port does not change what gets built, only when.
+
+**The status was a compromise for one day and is not any more.** `blocked` is
+the accurate status and the store rejects it without a blocker; on 2026-09-10
+the blocker was a milestone decided and not yet named, and `blocked-by` accepts
+only a version `ROADMAP.md` places. The port was scoped as `v0.5.1` the same
+day, so this now carries the closest edge the store has.
+
+**It is not an honest edge, and `PL-L09X` says why.** `blocked-by: <version>`
+means blocked until that milestone is *scoped* - `PL-W8XP` built it for exactly
+that - and `v0.5.1` is scoped, so `docket check` advises this item is "ready to
+promote". It is not: it is fully designed and waiting for the port to *land*.
+`blocked` is kept anyway because `bin/docket next` excludes blocked items, so
+the `P1` ranking hazard is gone and the only route to promotion runs through a
+groomer reading this brief. The standing false advisory is the price, and
+`PL-L09X` carries it.
