@@ -68,6 +68,30 @@ remains true is the half that matters here: no check a branch can run reaches
 it, because the whole-store sweep runs only on a push to the default branch -
 so the branch that will re-red `main` is green when it merges.
 
+**And a second correction, on the same reading.** The paragraph below infers
+from `PL-XH1D` being `not-delegable` that its `verify:` "is worth a moment of
+[the owner's] attention rather than a passing edit". That does not follow.
+`Item.delegability` in `subprojects/docket/src/docket/model.py` states what the
+field means in its first line - "Why this item may *not* be handed to a cheaper
+model" - and `not-delegable:` is the one writable control that withholds an
+item from `bin/docket delegable`. It says nothing about who else may work the
+item: a session at full strength takes a withheld item like any other, which is
+what happened here.
+
+What is true is narrower, and it belongs to `PL-XH1D` rather than to this
+field: that item's **Done when** requires the project owner to approve the
+wording of any statement made about him, because that wording is the item's
+deliverable. Its `verify:` line is not that wording, and repairing it was this
+item's job. The first half of the paragraph below stands unaltered - the
+fix-now door's second test genuinely did refuse `PL-55DH` the edit, since
+`PL-XH1D`'s file sat outside its `touches`. Only the inference drawn after it
+is withdrawn.
+
+Recorded because the misreading is repeatable: a `not-delegable` reason that
+names a close condition, as `PL-XH1D`'s does, reads as an instruction about who
+must act. It is a reason for withholding the item from a cheaper model, and
+nothing more.
+
 **The fix is one line**, and it is the shape the `docket` skill prescribes -
 something that runs and passes today, paired with a `grep` for what this item's
 own work adds:
