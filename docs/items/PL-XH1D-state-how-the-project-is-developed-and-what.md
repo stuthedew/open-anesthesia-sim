@@ -8,7 +8,7 @@ classes: docs
 feature: public-history
 touches: README.md, CONTRIBUTING.md
 added: 2026-08-30
-verify: test -f CONTRIBUTING.md && python3 tools/doc_check.py check
+verify: python3 tools/doc_check.py check && grep -qiF 'co-authored-by' CONTRIBUTING.md
 not-delegable: the wording states publicly what the project owner did and did not write, and he approves it before the item closes; doc_check proves only that the citations resolve
 ---
 
@@ -87,3 +87,14 @@ provenance loss in the one repository that should not take it.
 the attribution rule and the queue pointer, the project owner has approved the
 wording of any statement made about him, and `python3 tools/doc_check.py check`
 passes.
+
+**The anchor `verify:` greps for.** `CONTRIBUTING.md` names the
+`Co-authored-by` trailer literally, whatever capitalization the section
+settles on. That token is what the command tests for, case-insensitively, so
+it specifies the trailer scheme itself rather than betting on a phrase - and
+the case-insensitivity is not fastidiousness: this repository's own history
+carries both spellings, 266 `Co-authored-by` against 13 `Co-Authored-By`, so a
+case-sensitive match would be a coin-flip that failed a finished item. The
+previous command tested `test -f CONTRIBUTING.md`, which `PL-78JQ` satisfied
+without doing any of this item's work; `PL-X7VY` is where that was found and
+repaired.

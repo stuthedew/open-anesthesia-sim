@@ -1,8 +1,15 @@
 ---
 id: PL-X7VY
 title: main is red: PL-XH1D's verify: passes because PL-78JQ created the CONTRIBUTING.md it tests for, so docket check --verify errors on every run
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+feature: dev-tooling
+touches: docs/items/PL-XH1D-state-how-the-project-is-developed-and-what.md
+verify: bin/docket check && grep -qF "grep -qiF 'co-authored-by' CONTRIBUTING.md" docs/items/PL-XH1D-state-how-the-project-is-developed-and-what.md
 added: 2026-09-08
+closed: 2026-09-10
 ---
 
 **Problem.** main is red: PL-XH1D's verify: passes because PL-78JQ created the CONTRIBUTING.md it tests for, so docket check --verify errors on every run
@@ -30,7 +37,7 @@ disagree." The item still owes the attribution disclosure in `README.md`, the
 trailer scheme in `CONTRIBUTING.md`, and the owner's approval of any statement
 made about him.
 
-**Nothing but a push to `main` can see it, and that is the sharper half.**
+**Why it matters, and why nothing on a branch can see it: that is the sharper half.**
 `make check` runs `bin/docket check` without `--verify`, so no local gate
 reaches an open item's command. A *pull request* runs
 `bin/docket check --verify --verify-base origin/<base>`, scoped by `PL-P3B6`
@@ -48,6 +55,42 @@ That is two of `CLAUDE.md`'s three compounding-friction tests at once - it
 gives a wrong answer silently to every branch, and the advisory that would
 carry it is one nobody is positioned to read - which is why this is worth
 raising rather than filing and moving on.
+
+**Corrected on closing, 2026-09-10.** "Invisible everywhere a session could act
+on it" overstates it by one mechanism, and the overstatement is worth removing
+so that a later reader does not build reporting this project already has.
+`PL-0ZGK` shipped `tools/main_ci_status.py` in v0.4.9, and the session-start
+digest now names main's last run: this session opened on `main's quality run
+#1699 on 7e0ff5bb concluded failure - main is red and no pull request will show
+it`, which is how it learned the failure was real before running anything. So
+the failure *is* reported, once per session, to whoever starts one. What
+remains true is the half that matters here: no check a branch can run reaches
+it, because the whole-store sweep runs only on a push to the default branch -
+so the branch that will re-red `main` is green when it merges.
+
+**And a second correction, on the same reading.** The paragraph below infers
+from `PL-XH1D` being `not-delegable` that its `verify:` "is worth a moment of
+[the owner's] attention rather than a passing edit". That does not follow.
+`Item.delegability` in `subprojects/docket/src/docket/model.py` states what the
+field means in its first line - "Why this item may *not* be handed to a cheaper
+model" - and `not-delegable:` is the one writable control that withholds an
+item from `bin/docket delegable`. It says nothing about who else may work the
+item: a session at full strength takes a withheld item like any other, which is
+what happened here.
+
+What is true is narrower, and it belongs to `PL-XH1D` rather than to this
+field: that item's **Done when** requires the project owner to approve the
+wording of any statement made about him, because that wording is the item's
+deliverable. Its `verify:` line is not that wording, and repairing it was this
+item's job. The first half of the paragraph below stands unaltered - the
+fix-now door's second test genuinely did refuse `PL-55DH` the edit, since
+`PL-XH1D`'s file sat outside its `touches`. Only the inference drawn after it
+is withdrawn.
+
+Recorded because the misreading is repeatable: a `not-delegable` reason that
+names a close condition, as `PL-XH1D`'s does, reads as an instruction about who
+must act. It is a reason for withholding the item from a cheaper model, and
+nothing more.
 
 **The fix is one line**, and it is the shape the `docket` skill prescribes -
 something that runs and passes today, paired with a `grep` for what this item's
