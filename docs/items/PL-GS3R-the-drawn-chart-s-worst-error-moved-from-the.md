@@ -3,10 +3,11 @@ id: PL-GS3R
 title: The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: defect, safety
 feature: teachable-case
 touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
+verify: uv run pytest tests/unit/test_chart_time_base.py && grep -qF 'chord width' docs/MODEL.md
 added: 2026-09-08
 ---
 
@@ -132,3 +133,37 @@ where this item records the worst departure.
 decision and a safety decision are the same decision: route 1 is the cheap way
 out of 0.26 MAC, and whether it is affordable depends on which toolkit the
 interface is on.
+
+
+## Decided, 2026-09-10: route 1, and it is the chord width that is held
+
+**The project owner chose route 1**, on the pricing above. `PL-QXSB` was decided
+in the same breath - the interface moves to PySide6 + pyqtgraph - which is what
+makes route 1 affordable rather than marginal.
+
+**Route 1 as a flat raise is not the right shape, and this item said why.** The
+criticism recorded above is that more columns "helps everywhere rather than
+where the curvature is". A *fixed column budget* is what produces that: the
+chord spans `span / columns`, so at 150 columns it is 6 s at the 15-minute base
+and 288 s at the 12-hour one, and the error follows it - 0.006 MAC against
+0.260 MAC. The budget is the wrong invariant.
+
+**So hold the chord width instead.** Columns become a function of the selected
+span rather than a constant, which spends them where the error is and leaves the
+narrow bases untouched. `CHART_COLUMN_BUDGET_PER_SERIES` stops being a budget
+and becomes a floor.
+
+That is still route 1 - buy resolution with columns - rather than route 2's
+curvature-adaptive grid, and it keeps `evaluate_anchored`'s uniform spacing
+within a segment, which is the property the chained-propagator optimisation
+depends on and which route 2 would have to give up.
+
+**What the work owes**, unchanged from this item's own "Done when": the target
+chord width chosen against the 0.01 pp the readout resolves, the drawn
+polyline's worst departure re-measured at every rung of `TIME_BASE_LADDER`, and
+both recorded in `docs/MODEL.md`.
+
+**Sequencing is the one open question** and it is in the reply, not here: whether
+this ships on Flet now - where the wider budget costs frame time the owner has
+just got back - or after the port, where it is free. The design above is the same
+under either answer.

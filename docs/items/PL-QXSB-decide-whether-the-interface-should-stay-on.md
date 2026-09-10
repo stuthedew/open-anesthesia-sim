@@ -1,13 +1,15 @@
 ---
 id: PL-QXSB
 title: Decide whether the interface should stay on Flet: every route inside it has now been measured, and the remaining lever is fewer controls
-status: needs-decision
+status: done
 priority: P2
 effort: M
 classes: perf, ux
 feature: teachable-case
 touches: src/anesthesia_sim/app, ROADMAP.md, docs/ARCHITECTURE.md
+verify: python3 tools/doc_check.py check && grep -qF 'Decided, 2026-09-10: leave Flet' docs/items/PL-QXSB-decide-whether-the-interface-should-stay-on.md
 added: 2026-09-08
+closed: 2026-09-10
 ---
 
 **Problem.** Decide whether the interface should stay on Flet: every route inside it has now been measured, and the remaining lever is fewer controls
@@ -245,3 +247,56 @@ PySide6 + pyqtgraph, behind the existing controller, and run it on the owner's
 own machine. It is bounded, it throws away cleanly, and it answers the two
 things this container cannot — real paint cost on real hardware, and whether
 the interface can be made to look the way it is meant to.
+
+## Decided, 2026-09-10: leave Flet for PySide6 + pyqtgraph
+
+**The project owner's call, on the evidence below.** This item asked whether to
+spend a bake-off or close as "stay with a control budget". The bake-off was
+spent - `PL-QXSB`'s own measurement, then `PL-55DH`'s spike, then `PL-X9T3`'s
+run on the owner's machine - and the answer is to move.
+
+**The premise this item was opened on is not the reason.** It was raised on "It
+shouldn't be this laggy", and after `PL-2FM6` the owner reports the Flet build
+as no longer noticeably slow. A migration argued from that symptom would be
+arguing from something that is gone. All four surviving grounds are recorded in
+`docs/WORKING_NOTES.md` under "Measured on real hardware"; in short:
+
+1. **Input latency**, the axis "laggy" actually named: 0.85-2.46 ms p90 against
+   Flet's 20-30 ms. An order of magnitude, and the mechanism rather than the
+   hardware is what the gap is made of - Flet's event loop is blocked by the
+   control-tree diff every frame and Qt has no diff to be blocked by.
+2. **`PL-GS3R` is a safety decision that the toolkit decides.** Its cheapest
+   route out of 0.26 MAC of chord error is more columns, measured at 49.4 ms of
+   a 200 ms budget on Qt against about 78 ms for Flet's diff alone - untenable
+   on Flet once this milestone's second chart doubles the control count.
+3. **`PL-2QMK`**, exercised rather than argued: `spikes/qt/qt_spike.py
+   --screenshot` writes a PNG of the running interface in the very container
+   where Flet's renderer cannot load. Most of `presentation-safety` is waiting
+   on that.
+4. **Headroom**: 10-14% of the render budget at the shipped settings, for
+   everything Flet spent 13-23% of it failing to finish.
+
+**What is not claimed.** Qt does not make the point count stop mattering - the
+whole frame scales at about 8.7 us per drawn point, and `paint` is the largest
+single stage at 600 columns. What does not scale is the diff, because there is
+none. `PL-C92D` still owes a re-measurement of Flet's own frame on the
+post-`PL-2FM6` tree, and the `advance` and `refresh` rows of every comparison
+here are architecture rather than toolkit until it lands.
+
+**What survives the port untouched, which is why this is tractable at all**:
+`core/` entire, `app/controller.py`, `app/formatting.py`,
+`app/chart_time_base.py`, `app/playback.py`, `app/wash_in.py`,
+`app/control_timeline.py`. `tools/import_boundary_check.py` enforces that
+boundary and the spike proved it empirically - it drove the real
+`SimulationController` with no adaptation whatsoever. What is rewritten is
+`app/simulation_view.py` (3 619 lines), `app/chart_series.py` and `app/theme.py`.
+
+**Costs accepted with the decision**: numpy enters as a pyqtgraph dependency,
+reopening the scope of this file's "Decided: no numpy" note rather than
+contradicting its conclusion; installed size roughly 3.5x, trimmable in a
+packaged build; and Flet's web target is given up, which nothing ships today.
+
+**Not yet scoped.** The port is a milestone-scale scope change and `ROADMAP.md`
+is where that is decided, per `CLAUDE.md`'s rule against implementing beyond the
+current milestone. This item records the direction; it does not authorise the
+work, and the items that do it are written after the milestone is scoped.
