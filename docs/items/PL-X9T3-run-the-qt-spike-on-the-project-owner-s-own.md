@@ -7,10 +7,11 @@ status: done
 classes: perf, ux
 feature: teachable-case
 touches: docs/WORKING_NOTES.md
-not-delegable: the measurement has to run on the project owner's own hardware. `PL-2QMK` records why no session here can do it - the web container has no GPU and Flet's renderer cannot even load - and the whole point of this item is the number this container is structurally unable to produce.
-verify: python3 tools/doc_check.py check && grep -qF 'Measured on real hardware' docs/WORKING_NOTES.md
 added: 2026-09-08
 closed: 2026-09-10
+pr: 492
+verify: python3 tools/doc_check.py check && grep -qF 'Measured on real hardware' docs/WORKING_NOTES.md
+not-delegable: the measurement has to run on the project owner's own hardware. `PL-2QMK` records why no session here can do it - the web container has no GPU and Flet's renderer cannot even load - and the whole point of this item is the number this container is structurally unable to produce.
 ---
 
 **Problem.** Run the Qt spike on the project owner's own machine and record frame cost, input latency and how it looks, which is the half no session here can measure

@@ -1190,9 +1190,18 @@ ENTRY_COUNT_RE = re.compile(r"(?P<count>[\w-]+)\s+entries\b")
 # on the far side of the dash, where a heading puts it, which is what keeps a
 # paragraph *about* some entries - "Four entries added 2026-08-30 from an
 # outside review of the repository" - from being read as a heading over them.
+#
+# `entry` is accepted beside `entries` so that a group holding exactly one can
+# be written in English (`PL-L0K3`). Requiring the plural left a post-freeze
+# addition of a single item with two bad options and no good one: write "1
+# entries", or omit the count, in which case this stops recognizing the line as
+# a heading at all and silently attributes the entry to the group above it. The
+# narrower `ENTRY_COUNT_RE` below is deliberately left plural-only - it scans
+# ordinary prose, where "the one entry in it a user cannot set" is a sentence
+# and not a claim about a list's size.
 GATE_GROUP_RE = re.compile(
-    r"^\*{1,2}.*?(?:\u2014|\s-\s)\s*(?P<entries>[\w-]+)\s+entries\b"
-    r"(?:,\s*(?P<ids>[\w-]+)\s+item ids)?"
+    r"^\*{1,2}.*?(?:\u2014|\s-\s)\s*(?P<entries>[\w-]+)\s+entr(?:y|ies)\b"
+    r"(?:,\s*(?P<ids>[\w-]+)\s+item ids?)?"
 )
 
 

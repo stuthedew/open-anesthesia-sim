@@ -7,9 +7,10 @@ status: done
 classes: defect, infra
 feature: dev-tooling
 touches: docs/items/PL-XH1D-state-how-the-project-is-developed-and-what.md
-verify: bin/docket check && grep -qF "grep -qiF 'co-authored-by' CONTRIBUTING.md" docs/items/PL-XH1D-state-how-the-project-is-developed-and-what.md
 added: 2026-09-08
 closed: 2026-09-10
+pr: 493
+verify: bin/docket check && grep -qF "grep -qiF 'co-authored-by' CONTRIBUTING.md" docs/items/PL-XH1D-state-how-the-project-is-developed-and-what.md
 ---
 
 **Problem.** main is red: PL-XH1D's verify: passes because PL-78JQ created the CONTRIBUTING.md it tests for, so docket check --verify errors on every run

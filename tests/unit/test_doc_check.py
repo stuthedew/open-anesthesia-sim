@@ -2039,6 +2039,40 @@ def test_the_gate_count_check_is_quiet_when_every_number_agrees(tmp_path: Path) 
     assert _gate_errors(tmp_path) == []
 
 
+def test_a_gate_group_holding_exactly_one_entry_may_say_so_in_the_singular(tmp_path: Path) -> None:
+    """`1 entry` has to count, or a singleton group cannot be written at all.
+
+    Requiring the plural left a one-item post-freeze addition with no correct
+    form: `1 entries` is not English, and dropping the count stops the line
+    being read as a heading, which silently folds its entry into the group
+    above (`PL-L0K3`). Both halves are asserted here - the singular heading is
+    accepted, and it is still held to what follows it.
+    """
+    roadmap = GATE_ROADMAP.replace(
+        "- PL-HHHH (S) The fifth thing",
+        "- PL-HHHH (S) The fifth thing\n\n"
+        "*Added later — 1 entry:*\n\n"
+        "- PL-JJJJ (S) The sixth thing",
+    )
+
+    assert _gate_errors(tmp_path, roadmap) == []
+
+
+def test_a_singular_gate_group_heading_is_still_held_to_its_count(tmp_path: Path) -> None:
+    """Accepting `entry` must not make the count unenforced under it."""
+    roadmap = GATE_ROADMAP.replace(
+        "- PL-HHHH (S) The fifth thing",
+        "- PL-HHHH (S) The fifth thing\n\n"
+        "*Added later — 1 entry:*\n\n"
+        "- PL-JJJJ (S) The sixth thing\n"
+        "- PL-KKKK (S) The seventh thing",
+    )
+
+    errors = _gate_errors(tmp_path, roadmap)
+
+    assert any("says 1 entries, but 2 follow it" in error for error in errors)
+
+
 def test_a_gate_group_heading_that_miscounts_the_entries_under_it_is_reported(
     tmp_path: Path,
 ) -> None:

@@ -1433,13 +1433,192 @@ figure 4.1b, the table the volumes and flows are printed in, it says: "The
 figure models a 100-kg patient with normal physiologic organ volumes and blood
 flows (9, 19, 20, 26)." The book collects those figures and cites them onward
 to four references, of which chapter 4's own narrative names three — Mapleson,
-Smith et al. and Zwart et al. The reference list is outside the pages supplied,
-so `PL-8SDL` (identify those four references) carries the next link. Lowe and
+Smith et al. and Zwart et al. Lowe and
 Ernst is therefore **tier 2, a secondary synthesis**: the Workbook's upstream
 has an upstream, and the only provenance chain the reference patient has still
 ends in nobody's measurement. It could have gone the other way — the hierarchy
 above admits a lower tier on a recorded decision, and a book that had
 *measured* these volumes would have been adoptable without one.
+
+**Those four references are now identified, and three of them are models.**
+Chapter 4's reference list is on pages 64–65, supplied on 2026-09-10 as a
+second interlibrary-loan scan (`PL-8SDL`). Each was checked against its PubMed
+record, and none was read beyond that record — PubMed holds no abstract and no
+PubMed Central text for any of the three papers, and the fourth is a monograph
+it does not index.
+
+- **9.** Mapleson, W.W. An electrical analogue for the uptake and exchange of
+  inert gases and other agents. *J Appl Physiol* 18:197, 1963. — PMID 13932730,
+  [10.1152/jappl.1963.18.1.197](https://doi.org/10.1152/jappl.1963.18.1.197),
+  18:197–204. PubMed titles it "An **electric** analogue for uptake and exchange
+  of inert gases and other agents", without the book's *the*.
+- **19.** Smith, N.T., Zwart, A., and Beneken, J.W. Interaction between the
+  circulatory effects and the uptake and distribution of halothane: Use of a
+  multiple model. *Anesthesiology* 37:47, 1972. — PMID 5050101,
+  [10.1097/00000542-197207000-00008](https://doi.org/10.1097/00000542-197207000-00008),
+  37(1):47–58. PubMed indexes the third author as Beneken **J E**.
+- **20.** Zwart, A., Smith, N.T., and Beneken, J.W. Multiple model approach to
+  uptake and distribution of halothane: The use of an analog computer. *Comput
+  Biomed Res* 5:228, 1972. — PMID 5031801,
+  [10.1016/0010-4809(72)90084-5](https://doi.org/10.1016/0010-4809(72)90084-5),
+  5(3):228–38. Beneken **J E** again, so `JE` is the reading taken here, on the
+  same grounds as `HJ` for Lowe — two independent records against one.
+- **26.** *Recommendations of the International Commission on Radiological
+  Protection*, p. 151. Report of Committee II on Permissible Dose for Internal
+  Radiation. Pergamon Press, Oxford, 1960. — not indexed by PubMed, which does
+  not cover monographs, and unreachable from here: `www.icrp.org`,
+  `journals.sagepub.com` and `doi.org` each returned nothing through the egress
+  proxy on 2026-09-10.
+
+References 9, 19 and 20 are **uptake-and-distribution models**, which is what
+this chain needed to know: a model consumes organ volumes and blood flows, it
+does not measure them, so none of the three can be where figure 4.1b's figures
+came from. Reference 26 is the only one of the four that is not an anesthetic
+model, and it is cited to a single page — which is the page that ends the
+chain.
+
+**The chain terminates at tier 2, and reaches tier 1 nowhere.** Page 151 of the
+ICRP report was supplied by the project owner on 2026-09-10 and read here
+(`PL-LT51`). It carries **Table 8, "Organs of standard man — Mass and effective
+radius of organs of the adult human body"**, tabulated for a total body of
+70,000 g. A "standard man" is a reference specification agreed by a committee,
+the document's own title being *Report of Committee II*, and the table gives no
+per-row citation, sample count or dispersion — unlike Table 7 on the facing
+page 150, whose tissue rows each carry a parenthesised count. Under "Source
+hierarchy" above, a consensus document that collects primary measurements
+without making one is **tier 2**. So the reference patient's longest provenance
+chain runs Gas Man (tier 3) → Lowe and Ernst (tier 2) → ICRP Committee II
+(tier 2), and **nothing on it was measured by anybody this file can name.**
+
+**Table 8 has no blood flows**, and that is the more useful half of the
+finding. It gives mass and effective radius, nothing else, while Lowe and Ernst
+cite all four references together for "organ volumes *and blood flows*". So the
+perfusion fractions — the half that sets every time constant this model
+computes — cannot descend from reference 26 at all. They descend from 9, 19 or
+20, all three of which are models, and reading those three is now the more
+valuable ask rather than the less.
+
+**Four of Lowe's rows correspond to Table 8 closely enough to be an
+inheritance**, at 100 kg where his kilogram column reads as per cent of body
+weight: brain 2.1 against 2.1, kidney 0.4 against 0.43, heart 0.4 against 0.43,
+muscle 42.6 against 43. Five do not — skin 10.0 against 8.7, adipose 15.0
+against 14, blood 7.0 against 7.7, lung 0.8 against 1.4, bone 12.0 against a
+skeleton of 10 without marrow or 14.2 with — and **the liver is the outlier
+that matters: 5.7 against 2.4.**
+
+**That gap has a candidate, and it is this file's arithmetic rather than the
+book's.** Liver 1,700 g plus gastrointestinal tract 2,000 plus spleen 150 plus
+pancreas 70 is 3,920 g, **5.60% of 70 kg against Lowe's 5.7%** — the
+hepatoportal compartment an uptake model lumps because the splanchnic bed
+drains through the liver. No other grouping of Table 8 comes as close. Neither
+document says so, and it convicts nobody.
+
+**Why it is recorded rather than left out.**
+`tissue_groups.vessel_rich.volume_l` is stored as 6.0 L, and the only grouping
+of Lowe's ten compartments reproducing both that volume and the stored 0.76
+perfusion fraction is kidney + heart + brain + liver at 8.6% of body weight. On
+ICRP's own rows those four organs are **5.36%, which is 3.75 L at 70 kg** — 38%
+below what is stored. The stored value therefore rests on a lumping decision
+taken one link up the chain, and that decision is now visible where it was not.
+**No stored value moves on this and none should**: lumping the splanchnic bed
+into the liver compartment is ordinary modelling, "Tissue compartments" above
+already treats the vessel-rich group as one lumped tissue, and nothing here is
+sourced to ICRP.
+
+**References 19 and 20 are read too, and they measured nothing either.** Both
+were supplied by the project owner on 2026-09-10 and read at full text
+(`PL-LT51`). They share one parameter set: reference 20's Appendix says its
+tables "are the same as used by N. Ty Smith in his article … where he gives the
+rationals for our choice", so reference 19 is where the provenance is. And
+reference 19 says, of the table this chain would need, that it "lists the
+**assumed** blood volumes, tissue volumes, and partition coefficients" — its
+own word, with no source given for any of them. Its *flows* are compiled from
+"several sources, most of which can be found in a recent review", the review
+being the authors' own handbook chapter, with the awake cardiac output of 5,800
+ml/min taken from Milnor's chapter in *Medical Physiology*, 12th edition. The
+compilation did not balance and was made to: total cardiac output 3,480 ml/min
+against regional flows summing to 3,290, and "the discrepancy was compensated
+for by adjusting the values for skin and skeletal muscle flows". **A stated
+assumption is not a source and an adjusted sum is not a measurement**, so
+neither paper is promotable and neither is a candidate for adoption.
+
+**They are not the origin of figure 4.1b either.** Reference 19 models a 75 kg
+man in twelve compartments — arterial, brain grey, brain white, heart,
+well-perfused organs, poorly-perfused tissue, fat and fatty marrow, splanchnic,
+skeletal muscle, skin shunt, vena cava, lung — against Lowe's ten rows for a
+100 kg patient, and the numbers do not correspond: its vessel-rich equivalent
+is 64.0% of cardiac output against Lowe's 76%, and its fat is 16.3% of body
+mass against Lowe's 15.0%. **So the perfusion fractions still have no
+identified origin.** Reference 26 gives masses and no flows; 19 and 20 give
+different flows for different compartments; reference 9, Mapleson 1963, is the
+last of the four unread, and reference 20 names him only as the source of the
+model *concept*.
+
+**Reference 9 closes the chain, and it makes two of the four references one
+document.** Mapleson 1963 was supplied and read on 2026-09-10 (`PL-LT51`). His
+Appendix 1 opens: "*Tissue volumes and blood supplies.* With the following
+exceptions the volumes in Table 1 are those for the 'standard man' of the
+International Commission on Radiological Protection (I.C.R.P.) (23)…" — and his
+reference 23 is that report at **page 151**, which is Lowe and Ernst's
+reference 26. So Lowe and Ernst very likely took the ICRP citation from
+Mapleson's own list, and references 19 and 20 are Mapleson's Table 1 lumped and
+relabelled: under Smith's own lumping footnotes it reproduces in **nine rows of
+nine**, the nine summing to 58.04 litres against Mapleson's own 58.04.
+
+**Mapleson's Table 1 is the most honestly sourced document in this chain, and
+it still measures nothing.** Its volumes are ICRP's with six exceptions he names
+one by one — grey and white matter from Pittinger et al., the marrows and bone
+cortex from Ellis, skin nutritive derived by him from forearm geometry, the
+arterial-to-venous blood ratio "taken to be as in dogs", lung parenchyma from
+Cander and Forster, and the air in the lungs from "the average of all
+measurements in Dittmer and Grebe in which the average age was over 20", which
+"gives a functional residual capacity of 2.5 liters". Its flows are compiled
+from about twenty sources with a note on every row; some rows are animal
+(adrenals from dogs, fatty marrow from goats), one is called an *Estimate*, and
+one is neither: **"Skin shunt: Values chosen merely to complete cardiac
+output"** — 1,290 of 6,480 ml/min, **19.9% of the total** and the second-largest
+flow in the table.
+
+One assumption in that appendix is where this model's whole representation of
+perfusion comes from: "it has been thought legitimate to assume that **the
+blood flow to any region is a fixed fraction of the total cardiac output** from
+20 to 70 years of age."
+
+**And the negative finding, which is the one that matters.** Figure 4.1b's flow
+column reproduces from none of the four. On Mapleson's own rows, kidney + heart
++ brain + liver is 3,820 of 6,480 ml/min — **59.0%** — and every well-perfused
+organ together is **63.0%**, against Lowe's **76%** and Smith and Zwart's 64.0%;
+muscle plus skin nutritive is 10.2% against Lowe's 13%, and fat plus fatty
+marrow 4.0% against Lowe's 5%. **The perfusion fractions this model runs on
+have no identified origin in any reference the book names for them.** Reference
+26 has no flows at all, and the other three do not match. That is established
+now rather than outstanding — **and it is a statement about four documents that
+have been read, not about the world.** It does not follow that no origin
+exists: the book prints more than one table and Gas Man may lump differently.
+
+**Two of the three coincidences above are lineage after all, and one is not**
+(`PL-ZD67`). The 2.5 L is Mapleson's functional residual capacity, a mean of
+published human measurements cited to Dittmer and Grebe's *Handbook of
+Respiration* — not a round number somebody chose. It is still not this file's
+source: Mapleson's row is FRC plus half the tidal volume where this file stores
+an alveolar gas volume, and the value reaches here through Gas Man, whose
+upstream is Lowe and Ernst, who lump the quantity away. The 33 is Mapleson's
+muscle 30 plus skin nutritive 3, which is exactly how Smith prints it — and it
+is *not* this file's 33.0, since Lowe's muscle row is 29.8 L at 70 kg and
+reproduces the stored value under no grouping. Alveolar ventilation 4 l/min
+stays a coincidence: Mapleson gives a formula, not a figure.
+
+**Three of this file's stored values also appear in those tables**, and where
+each came from is settled in the paragraph after next rather than left as a
+resemblance: alveolar ventilation 4 l/min, functional residual capacity 2.5 l
+in reference 20's table only, and a skeletal muscle tissue volume of 33 litres.
+**No stored value moves on any of it.**
+
+That Mapleson 1963 turns out to be one of the four is not a rehabilitation of
+that lineage. The removed claim was that Mapleson's papers were the *Workbook's*
+primary source, on the strength of their titles; the Workbook attributes nothing
+to Mapleson, and this is a different document citing him for a table it
+collected, two links further up.
 
 **The model patient is 100 kg, which is why the material reaches this project
 as fractions.** Page 56 picks that weight so that "the organ weights can also
@@ -1452,8 +1631,36 @@ gives the cardiac output for its worked prime dose as $`2M^{3/4}`$ dl/min, "or
 0.2 times body mass to the three-quarter power in L/min, **4.84 L/min at
 70 kg** against the 5.0 stored here, which would need 73.1 kg. The book's own
 worked 63.25 dl is what fixes the exponent independently of reading a
-superscript off a scan. `PL-YKSM` (adopt weight-scaled cardiac output, or
-record why the fixed 5.0 stays) carries the discrepancy.
+superscript off a scan. `PL-YKSM` decided on 2026-09-08 that the fixed 5.0
+stays; "Known limitations" below carries the reasoning.
+
+**And the relation itself is derived, not measured — pages 17–19 say from
+what.** Page 59 states $`2M^{3/4}`$ without citing anything, and until
+2026-09-10 that was where the trail stopped. Chapter 2 builds it in three
+steps, and neither of the two constants is a cardiac-output measurement:
+
+- **Figure 2.2, page 17** plots oxygen consumption against body weight for
+  mammals from 0.03 kg to 8,000 kg, log–log linear, slope given as
+  "approximately 10 kg^(3/4)". It is reproduced by permission from *Brody, S.
+  Bioenergetics and Growth. Reinhold, New York, 1945* — an interspecies
+  metabolic allometry, not a human study.
+- **Page 17** takes the arteriovenous oxygen content difference as "about 5 ml
+  of O₂/dl of blood", attributed to Guyton et al. (the chapter's reference 13),
+  who are also credited with concluding that kg^(3/4) "is probably a better
+  index of cardiac output than any other parameter, including surface area".
+  Chapter 2's reference list is outside the pages supplied, so that citation is
+  unresolved; `PL-LT51` carries it.
+- **Figure 2.4, page 19** is the arithmetic. kg^(3/4) × 10 gives O₂ use in
+  ml/min; O₂ use ÷ 5, the divisor annotated "(a–v)DO₂ = 5 ml/dl", gives cardiac
+  output in dl/min. The figure also draws the composed edge directly —
+  kg^(3/4) × 2 → $`\dot{Q}`$ in dl/min — which is page 59's constant.
+
+So $`0.2M^{3/4}`$ is Brody's mammalian metabolic allometry divided by an
+arteriovenous difference assumed constant across mammals. **4.84 L/min at 70 kg
+is therefore a derived interspecies extrapolation and must not be read as a
+measured human cardiac output.** "Known limitations" below is where that
+matters — it is the one place this document sets the figure beside Cattermole
+et al.'s measured median — and it says so there (`PL-DZQT`).
 
 **Checked against the book itself, the Workbook's attribution holds for three
 of the seven values and fails for four.** The vessel-rich pair reproduces
@@ -5039,12 +5246,21 @@ why nothing was changed and the gap is recorded instead.
 a label rather than an input.** `default_cardiac_output_l_min` is a stored
 5.0 L/min and `weight_kg` is read by no equation, so editing the weight changes
 nothing this model computes. Two published figures sit either side of the
-stored value: Lowe and Ernst's own cardiac-output relation — the upstream the
-Gas Man Workbook names, now read at the source — gives $`0.2M^{3/4}`$, which is
-4.84 L/min at 70 kg, and Cattermole et al.'s 686 subjects in the 50–75 kg band
-give a measured median of 5.51 L/min. **The fixed value is kept, on the project
-owner's decision of 2026-09-08** (`PL-YKSM`), and the reason is structural
-rather than a preference between those two numbers.
+stored value, **and they are not evidence of the same kind.** Lowe and Ernst's
+own cardiac-output relation — the upstream the Gas Man Workbook names, now read
+at the source — gives $`0.2M^{3/4}`$, which is 4.84 L/min at 70 kg; it is
+**derived rather than measured**, being Brody's 1945 interspecies
+oxygen-consumption allometry divided by an arteriovenous oxygen content
+difference assumed constant across mammals, and "Parameter provenance" above
+carries the derivation step by step. Cattermole et al.'s 686 subjects in the
+50–75 kg band give a **measured** median of 5.51 L/min in the weight band this
+file's patient sits in. So the stored 5.0 is not bracketed by two comparable
+observations: one side is a human measurement and the other is an interspecies
+extrapolation, and a reader weighing them equally would be weighing them wrongly.
+**The fixed value is kept, on the project owner's decision of 2026-09-08**
+(`PL-YKSM`), and the reason is structural rather than a preference between those
+two numbers — but the asymmetry is worth stating, because the number being
+declined is the weaker of the two.
 
 A time constant is $`V_i \lambda_{i:b} / Q_i`$ and this model stores
 compartment volumes as fixed litres, so scaling only the flow would make
