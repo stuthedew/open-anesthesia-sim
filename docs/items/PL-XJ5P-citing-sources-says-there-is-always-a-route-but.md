@@ -90,3 +90,35 @@ caption, quoted - which the redistribution rule may permit where a full PDF
 does not; or re-aim the item at a reachable primary measurement of the same
 quantity, recorded alongside and explicitly not adopted. Stating the
 metadata-only case as terminal is wanted whichever is chosen.
+
+## More evidence, 2026-09-10 (`PL-8SDL`)
+
+Four more sources met the terminal case this item describes, which brings the
+measured instances to seven and makes the class harder to call exceptional.
+
+Lowe and Ernst's chapter 4 reference list was supplied by interlibrary loan and
+names four upstream sources for the reference patient's organ volumes and blood
+flows. Checked the same day:
+
+- **PMID 13932730** (Mapleson, *J Appl Physiol* 1963) - metadata only, no
+  abstract, no PubMed Central record.
+- **PMID 5050101** (Smith, Zwart and Beneken, *Anesthesiology* 1972) - the
+  same.
+- **PMID 5031801** (Zwart, Smith and Beneken, *Comput Biomed Res* 1972) - the
+  same.
+- **ICRP Committee II's 1960 permissible-dose report** - a monograph, so PubMed
+  does not index it at all. `www.icrp.org`, `journals.sagepub.com` and
+  `doi.org` each returned nothing through the egress proxy.
+
+So the pre-abstract, subscription-held case is not a tail this project meets
+occasionally on its oldest citations. It is what the *whole* remaining
+provenance chain is made of: every source that would decide whether the
+reference patient's eleven parameters rest on a measurement is in it.
+
+**One thing this adds to the shape of an answer.** The middle candidate this
+item lists - an owner-supplied extract rather than a full text - has now been
+exercised twice, on 2026-09-08 and 2026-09-10, both times as a narrowed page
+range placed as an interlibrary loan and read without the repository holding
+the scan. `PL-GN8C` carries recording that route in
+`docs/references/README.md`. Whatever this item decides, it is deciding about
+a procedure that already works rather than about a hypothetical one.
