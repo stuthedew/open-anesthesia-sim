@@ -3,11 +3,13 @@ id: PL-01CK
 title: The in-flight content test walks the default branch's history once per blob a candidate branch adds
 priority: P3
 effort: S
-status: needs-decision
+status: dropped
 classes: perf, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-08-31
+closed: 2026-09-12
+reason: fixed by PL-3D2M (#313): deciding a ref is unlanded now computes the whole landed/outstanding split, so _base_blobs answers every blob with one git rev-list --objects walk instead of a git log --find-object walk per blob
 ---
 **Problem.** `_work_already_on_base` (added by `PL-CPSY`) asks `git log -1
 --find-object=<blob> <base>` once per blob a candidate ref adds to the tree it
@@ -49,3 +51,13 @@ yet, so the honest answer today may be to drop it with that number.
 **Triaged 2026-09-01.** P3, `perf`/`infra`, `parallel-sessions`. Left out of
 v0.2.8's frozen list: the walk is slow in a shape nobody has observed, which is
 an improvement to named machinery rather than a defect in it.
+
+**Dropped 2026-09-12**, by the workflow-lane consolidation pass (`PL-6ZQY`).
+The premise was checked against the tree by an adversarial reviewer whose
+default was to refuse, and it did not survive:
+
+> Fixed by `PL-3D2M` (a commit pushed after its pull request merged lands nowhere), pull request 313: deciding a ref is unlanded now computes the whole landed/outstanding split, so `_base_blobs` answers the per-blob question for every blob at once with one `git rev-list --objects <base>` walk instead of a `git log --find-object` walk per blob. `subprojects/docket/src/docket/vcs.py:485` carries the measurement — 17 `--find-object` walks at 0.62 s against 0.033 s for the complete split, on this repository at 425 commits — and `test_a_squash_merged_branch_is_judged_against_the_history_not_the_tip` pins the single walk. Traced 2026-09-12: `bin/docket flight`, `next` and `digest` issue zero `--find-object` calls. The rejected narrowings recorded above (pathspec quoting, per-ref blob cap) are kept in this file because neither was taken. The remaining flight-read cost — the report computed twice 
+
+What the file keeps that exists nowhere else, which is why it is dropped rather
+than deleted: Nothing actionable, provided the file is kept. PL-01CK holds three observations that exist nowhere else in the tree: the per-walk figure (3-8 ms at 135 commits), the end-to-end baseline (`bin/docket flight` in 116 ms, measured 2026-09-01), and the analysis of the two narrowings that were considered and rejected (a `-- <path>` pathspec, blocked by git quoting paths with specials unless `-z` is used, which is why the code read only the blob; and a per-ref blob cap, whose safe reading of an unteste
+

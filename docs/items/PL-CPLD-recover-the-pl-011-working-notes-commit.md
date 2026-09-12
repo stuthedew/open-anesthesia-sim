@@ -3,10 +3,12 @@ id: PL-CPLD
 title: Recover the PL-011 WORKING_NOTES commit stranded on origin/claude/next-item-75htc6 after that branch's pull request merged
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: infra
 touches: docs/WORKING_NOTES.md
 added: 2026-09-05
+closed: 2026-09-12
+reason: both halves done elsewhere: the numpy note reached main via PL-VSJZ (#360), and origin/claude/next-item-75htc6 no longer exists on the remote, so there is no ref left to clear
 not-delegable: What is left is deleting a branch on GitHub, which is not a
   change to this repository, so nothing in the tree can prove it. Every
   in-checkout test of the ref passes vacuously wherever the ref was never
@@ -74,3 +76,13 @@ on GitHub, and no command in this tree can observe it; `PL-W9DW` reached the
 same answer the same day for a GitHub billing setting.
 
 **Done when.** The note is on `main` — it is — and the stale ref is gone.
+
+**Dropped 2026-09-12**, by the workflow-lane consolidation pass (`PL-6ZQY`).
+The premise was checked against the tree by an adversarial reviewer whose
+default was to refuse, and it did not survive:
+
+> Both halves of "Done when" are met, neither by this item. The note is on `main`: `docs/WORKING_NOTES.md` § "Decided: no numpy, and the reason is fit rather than dependency avoidance (2026-09-05)", landed by `PL-VSJZ` (#360, `15f07c6`) off the same branch. The stale ref is gone too — `git ls-remote --heads origin 'refs/heads/claude/next-item-75htc6'` returns empty (verified 2026-09-12, 6 heads on the remote, none of them this branch), this checkout holds no matching remote-tracking ref, and `bin/docket stranded` no longer names it. The GitHub-side deletion this item was waiting on (`PL-TFWR`, a session cannot delete a remote branch) has already happened, so there is no work left here and no handover owed to the project owner.
+
+What the file keeps that exists nowhere else, which is why it is dropped rather
+than deleted: Nothing, provided the drop is recorded the project's way (file kept, `status: dropped` plus a `reason`) rather than by deleting the file. PL-CPLD's only unique content is commit 75b248a37, the branch name origin/claude/next-item-75htc6, and the two-withdrawn-`verify:`-commands account — all of which survive in the retained file. What the reason AS WRITTEN loses is accuracy, and that has a cost of its own: it would leave a permanent record claiming an outstanding owner action (delete a branch on 
+

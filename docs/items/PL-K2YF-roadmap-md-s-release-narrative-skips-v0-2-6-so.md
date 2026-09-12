@@ -3,11 +3,13 @@ id: PL-K2YF
 title: ROADMAP.md's release narrative skips v0.2.6, so the convention that each release adds a paragraph has already been missed once
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, docs, infra
 feature: planning-cadence
 touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-01
+closed: 2026-09-12
+reason: the '### Release narrative' section it targets was removed in 888c1f46 (the v0.4.7 cut, 2026-09-07); per-release prose now lives in the version-table row and v0.2.6's has carried its reasoning since the day it was cut
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q '^v0.2.6 was' ROADMAP.md && grep -q 'def test_a_completed_release_needs_a_narrative_paragraph' tests/unit/test_doc_check.py
 ---
 
@@ -42,3 +44,13 @@ the current-baseline mark. That is decidable by reading the file, which is the
 
 **Done when.** The narrative carries a v0.2.6 paragraph, and `make check`
 fails if a completed release is added to the version table without one.
+
+**Dropped 2026-09-12**, by the workflow-lane consolidation pass (`PL-6ZQY`).
+The premise was checked against the tree by an adversarial reviewer whose
+default was to refuse, and it did not survive:
+
+> The `### Release narrative` section this item targets no longer exists: it was removed with 446 other ROADMAP.md lines in commit 888c1f46 (the v0.4.7 cut, 2026-09-07), six days after this item was filed, and no document still states the per-release-paragraph convention. Per-release prose now lives in the version-table row, and v0.2.6's row has carried its reasoning since the day it was cut (git log -L46,46:ROADMAP.md); docs/releases/v0.2.6.md holds the generated item list rather than the why. The item's verify: grep can therefore never pass (PL-LKGL's worked example). The check half is likewise moot — the two items it names as the same shape, PL-M5FK and PL-8HJ2, both shipped in v0.2.8, and PL-8HJ2's `outstanding_roadmap_edits` now stops `docket release` and names the stale roadmap statements a cut owes, with doc_check's baseline check failing hard on table/heading/version-file drift; wh
+
+What the file keeps that exists nowhere else, which is why it is dropped rather
+than deleted: The incident itself — v0.2.6's baseline prose was replaced rather than moved when v0.2.7 was cut, and no session or check noticed — plus the observation that this was the second document in the release path where the fix was a check rather than a habit. The cost is small and recoverable: the drop keeps the file with its reason, PL-LKGL restates the case as its worked example of a verify: command that tests for the fix rather than the fault, and the generalizable lesson already shipped as PL-M5FK
+
