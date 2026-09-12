@@ -84,6 +84,7 @@ def _runner(
     head: str = "",
     tips: dict[str, dict[str, tuple[str, str]]] | None = None,
     duplicated: tuple[str, ...] = (),
+    closed: tuple[str, ...] = (),
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
 
@@ -121,6 +122,10 @@ def _runner(
     rewritten history: the same commits twice over, which content comparison
     cannot tell from a merge.
 
+    `closed` names the items the default branch's own copy records as closed,
+    which is what tells an item that shipped from one a live session is closing
+    on its own branch.
+
     `adds` maps a ref to the blobs it introduces since its fork point and
     `on_base` names the blobs the default branch has held at some point, which
     is what separates a branch whose work has landed from one still carrying
@@ -157,6 +162,22 @@ def _runner(
             # The object walk the landing split reads, in the shape git writes
             # it: one oid per line, a path after it for anything but a commit.
             return "\n".join(f"{blob} some/path/{blob}" for blob in sorted(on_base or set()))
+        if args[0] == "ls-tree":
+            # The tree listing that maps an item id to its file name on the
+            # base. The store names each file for its item, which is what
+            # `filename_for` guarantees and what this relies on.
+            prefix = args[-1].rstrip("/")
+            return "\n".join(f"{prefix}/{identifier}-shipped.md" for identifier in closed)
+        if args[0] == "show":
+            # `git show <base>:<path>`, which is how the closure is read off the
+            # base rather than off this checkout.
+            wanted = args[-1].split(":", 1)[-1]
+            # The id is the first two dash-separated pieces of the basename
+            # (`PL-GVXP-shipped.md`), not the first one.
+            identifier = "-".join(wanted.rsplit("/", 1)[-1].split("-")[:2])
+            if identifier not in closed:
+                return ""
+            return f"---\nid: {identifier}\ntitle: shipped\nstatus: done\n---\n\nDone.\n"
         if args[0] == "diff" and "--numstat" in args:
             # The tip comparison: `diff --numstat --no-renames <base> <ref> --`
             # then the paths asked about. A path git does not name is one the
@@ -256,6 +277,8 @@ def _report(
     adds: dict[str, list[str] | list[tuple[str, str]]] | None = None,
     on_base: set[str] | None = None,
     ran_out: tuple[str, ...] = (),
+    tips: dict[str, dict[str, tuple[str, str]]] | None = None,
+    closed: tuple[str, ...] = (),
 ) -> FlightReport:
     """The whole report, for the tests reading the file edits beside the work.
 
@@ -265,7 +288,9 @@ def _report(
     *together* with the first - that an item is edited and not in flight, or in
     flight and not also listed as edited.
     """
-    runner = _runner(refs, merged, commits, unrelated, adds, on_base, ran_out=ran_out)
+    runner = _runner(
+        refs, merged, commits, unrelated, adds, on_base, ran_out=ran_out, tips=tips, closed=closed
+    )
     return branches_in_flight(ROOT, runner=runner)
 
 
@@ -567,6 +592,75 @@ def test_a_queue_only_commit_is_reported_as_a_file_edit_though_not_as_work() -> 
     assert report.branches == ()
     assert report.ids == frozenset()
     assert [(edit.item_id, edit.name) for edit in report.editing] == [("PL-K7QX", HARNESS)]
+
+
+def test_an_item_file_already_on_the_base_is_not_reported_as_edited_on_a_branch() -> None:
+    """The mark has to survive the merge that took the edit it names (`PL-8MJ3`).
+
+    A squash merge keeps none of the branch's commits, so the branch stays ahead
+    of the base indefinitely and goes on reporting every item file it ever
+    touched. Measured 2026-09-07: a triage pass over five open captures was told
+    to skip four of them, and every one of the four branch copies was
+    byte-identical to the copy on `origin/main`, both branches having
+    squash-merged as `#421` and `#422`.
+
+    `SKILL.md` tells a triage pass to obey this mark, so obeyed literally that
+    pass would have triaged one item of five - and would have gone on skipping
+    the other four on every future pass, because nothing prunes the ref. The
+    wrong answer was on the side that loses work rather than the side that
+    duplicates it.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", QUEUE_ONLY)]},
+        tips={HARNESS: {}},
+    )
+
+    assert report.editing == ()
+    assert report.branches == ()
+
+
+def test_a_closed_item_is_not_reported_in_flight() -> None:
+    """A ref outlives the merge that took its work, and the line outlived the release.
+
+    Measured 2026-09-07 after a full fetch: `PL-GVXP` (shipped in v0.4.7) and
+    `PL-S5LB` (v0.4.6) were both still named on the digest's `In flight on a
+    branch:` line, under "do not start these again". One reading of that line had
+    all three of its entries closed, and the next had a genuinely live session
+    arriving *fourth* behind them (`PL-6BDX`).
+
+    Nothing is misrouted by it - `docket next` does not offer closed items - and
+    that is the point: `CLAUDE.md` calls a check that fires every run without
+    changing a decision a defect in the check, because it trains a session to
+    skim the output where a real entry also appears. Here the real entries are
+    the ones that stop two sessions starting one item.
+    """
+    shipped = "origin/claude/pl-gvxp-shipped-two-releases-ago"
+    report = _report(
+        [shipped],
+        commits={shipped: [("2026-09-03", "PL-GVXP: the work that shipped", "c1", "src/done.py")]},
+        closed=("PL-GVXP",),
+    )
+
+    assert report.branches == ()
+
+
+def test_an_item_closed_only_on_a_branch_is_still_reported_in_flight() -> None:
+    """The closure has to be *on the base*, which is the care the rule turns on.
+
+    A session closing an item right now carries that closure on its own branch.
+    Reading the working tree, or any ref but the base, would suppress exactly the
+    live work the line exists to protect - so the base is asked, being the one
+    tree that cannot hold an unmerged session's answer.
+    """
+    live = "origin/claude/pl-k7qx-closing-it-now"
+    report = _report(
+        [live],
+        commits={live: [("2026-09-03", "PL-K7QX: close it", "c1", "src/work.py")]},
+        closed=(),
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
 
 
 def test_a_branch_working_an_item_is_not_also_reported_as_editing_its_file() -> None:

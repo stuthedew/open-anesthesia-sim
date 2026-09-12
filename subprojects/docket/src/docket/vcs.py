@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from .model import parse_item
+from .model import CLOSED_STATUSES, parse_item
 from .release import version_in
 from .store import ID_PATTERN
 
@@ -246,7 +246,11 @@ class _Walk:
 
     last: dict[str, date]
     ids: dict[str, str]
-    edited: dict[str, str]
+    #: Per item id, the ref whose commits changed its file and the path they
+    #: changed. The path rides along because the mark is only worth raising
+    #: where the edit is still unmerged, which `branches_in_flight` tests
+    #: against the base rather than taking on trust (`PL-8MJ3`).
+    edited: dict[str, tuple[str, str]]
     staked: dict[tuple[str, str], Stake]
     opened: dict[str, Stake]
     unbounded: set[str]
@@ -307,8 +311,14 @@ def _annotates_only(paths: list[str], prefix: str) -> bool:
     return bool(paths) and all(path.startswith(prefix) for path in paths)
 
 
-def _item_file_ids(paths: list[str], prefix: str) -> list[str]:
-    """The items whose own file a commit changed, read from the paths alone.
+def _item_files(paths: list[str], prefix: str) -> list[tuple[str, str]]:
+    """The items whose own file a commit changed, as `(id, path)`, read from the paths alone.
+
+    **The path is returned beside the id because the mark has to be checked
+    against the base before it is believed** (`PL-8MJ3`). Which file a commit
+    changed is a fact about that commit and says nothing about whether the
+    change is still only on the branch - so the id alone was enough to raise the
+    mark and never enough to keep it.
 
     **The weaker of the two readings this walk makes, and the one that infers
     nothing.** `_annotates_only` and `leading_ids` between them decide what a
@@ -330,13 +340,13 @@ def _item_file_ids(paths: list[str], prefix: str) -> list[str]:
     advisory a session would have picked around; what a false one costs is a
     session told to leave alone an item nobody is holding.
     """
-    found: list[str] = []
+    found: list[tuple[str, str]] = []
     for path in paths:
         if not path.startswith(prefix):
             continue
         match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
         if match is not None:
-            found.append(match.group(1))
+            found.append((match.group(1), path))
     return found
 
 
@@ -414,7 +424,7 @@ def _unmerged_commits(
     prefix = items_dir.strip("/") + "/"
     last: dict[str, date] = {}
     ids: dict[str, str] = {}
-    edited: dict[str, str] = {}
+    edited: dict[str, tuple[str, str]] = {}
     staked: dict[tuple[str, str], Stake] = {}
     opened: dict[str, Stake] = {}
     unbounded: set[str] = set()
@@ -434,8 +444,8 @@ def _unmerged_commits(
         # Credited before the annotation test and never withheld by it: an
         # annotating commit is not work, and it has still written to the file a
         # second session is about to write to.
-        for identifier in _item_file_ids(paths, prefix):
-            edited.setdefault(identifier, ref)
+        for identifier, path in _item_files(paths, prefix):
+            edited.setdefault(identifier, (ref, path))
         if _annotates_only(paths, prefix):
             return
         for identifier in leading_ids(subject):
@@ -736,6 +746,60 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
     )
 
 
+def _closed_on_base(
+    ids: set[str], items_dir: str, base: str, root: Path, run: Runner
+) -> frozenset[str]:
+    """Of `ids`, those whose item the default branch already records as closed.
+
+    **Why the line needs this at all.** The in-flight mark is read from branch
+    refs, and a ref outlives the merge that took its work: nothing prunes
+    `origin/<branch>`, deliberately, because a stale ref can be the only
+    surviving copy of an item captured on a branch nobody merged. So an item can
+    ship and go on being named under "do not start these again" for as long as
+    the ref survives - two of them for two releases, measured 2026-09-07, and
+    one reading of the line where all three entries were false (`PL-6BDX`).
+
+    It misroutes nothing: `docket next` does not offer closed items. What it
+    costs is the line's credibility, and `CLAUDE.md` is explicit that a check
+    firing every run without changing a decision is a defect in the check,
+    because it trains a session to skim the output where a real entry also
+    appears. The real entries here are the ones that stop two sessions
+    colliding.
+
+    **Closed on the base, never closed in this checkout**, and the difference is
+    the whole care of it. A session closing an item right now has that closure
+    on its own branch, and reading the working tree would suppress exactly the
+    live work the line exists to protect. The base is the one tree that cannot
+    be carrying an unmerged session's answer.
+
+    One tree listing maps ids to file names - the store names each file for its
+    item - and then one `git show` per id asked about, which is the few the
+    report is about to name rather than the whole store. An id whose file the
+    base does not hold is not closed there, which is the safe direction: it
+    keeps the entry.
+    """
+    if not ids:
+        return frozenset()
+    prefix = items_dir.strip("/") + "/"
+    names: dict[str, str] = {}
+    for line in run(["ls-tree", "--name-only", base, "--", prefix], root).splitlines():
+        path = line.strip()
+        if not path:
+            continue
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
+        if match is not None:
+            names.setdefault(match.group(1).upper(), path)
+    closed: set[str] = set()
+    for identifier in ids:
+        path = names.get(identifier.upper(), "")
+        if not path:
+            continue
+        text = run(["show", f"{base}:{path}"], root)
+        if text and parse_item(text, path.rsplit("/", 1)[-1]).status in CLOSED_STATUSES:
+            closed.add(identifier)
+    return frozenset(closed)
+
+
 def branches_in_flight(
     root: Path,
     *,
@@ -863,14 +927,39 @@ def branches_in_flight(
             identifier, Branch(name=name, item_id=identifier, last_commit=last_commit.get(name))
         )
 
+    # **An item the base already records as closed leaves the line**, whatever
+    # ref still carries its name. Asked here rather than earlier because the set
+    # to ask about is exactly what the report was about to name, which keeps the
+    # cost to the few entries that exist rather than the whole store
+    # (`PL-6BDX`).
+    for identifier in _closed_on_base(set(in_flight), items_dir, base, root, run):
+        del in_flight[identifier]
+
     # Refs whose commits went unread contribute no paths either, for the reason
     # they contribute no subject ids: the commits are what the checkout is
     # missing. A branch *name* still proves its id, which is why the loop above
     # reads unread refs and this does not - a name is not a diff.
+    # **An edit the base already holds is not an edit on a branch**, and until
+    # this was asked the mark could not be read as evidence of anything
+    # (`PL-8MJ3`). A squash merge keeps none of the branch's commits, so the
+    # branch stays ahead of the base indefinitely and goes on reporting every
+    # item file it ever touched. Measured 2026-09-07: a triage pass was told to
+    # skip four of its five items, and all four branch copies were
+    # byte-identical to the copy on `origin/main`. `SKILL.md` tells a pass to
+    # obey this mark, so the wrong answer was on the side that loses work.
+    #
+    # `_superseded` is the test, the same one `orphaned` narrows its outstanding
+    # side with: a path whose tips agree, or whose diff from the base only
+    # removes lines, is one the base is not missing. Its silences leave the mark
+    # standing, which is the direction this read has always failed in - an item
+    # wrongly left marked is one a session picks around, while an item wrongly
+    # unmarked is two sessions resolving one file.
     edited = {
         identifier: name
-        for identifier, name in walk.edited.items()
-        if name not in walk.unbounded and identifier not in in_flight
+        for identifier, (name, path) in walk.edited.items()
+        if name not in walk.unbounded
+        and identifier not in in_flight
+        and path not in _superseded(name, base, (path,), root, run)
     }
     return FlightReport(
         branches=tuple(sorted(in_flight.values(), key=lambda branch: branch.item_id)),
