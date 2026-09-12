@@ -163,6 +163,37 @@ The prescribed recovery for this section deletes the branch ref and restarts it
 on `main`, so believing it about a live branch throws away the work an open
 pull request was raised against.
 
+The third part has one more shape under it, and closing it is the same argument
+one step further. A commit whose *entire* diff is `docket record` output
+converges **whole**, so the unit test above convicts it: every path of it agrees
+with the base, and the branch reads as merged while its pull request is open. So
+a commit that wrote to the queue and nowhere else is not merge evidence either —
+the same reading `flight` already applies to the same commits, since a capture, a
+triage pass, a recovered item and a `record` write all lead with an id they are
+not implementing, and none of them is work a merge took.
+
+**What counts as the branch's outstanding side is decided at its tip, not
+across its history.** The content split asks whether the base ever held each
+blob the branch introduced, which is right for a squash and wrong for a path
+whose content was replaced after the branch introduced it. Two shapes reach it
+and neither lost anything: a file the branch itself revised before merging, so
+the squash carried only the final version; and a file the base took and then
+added to in the same commit, so the base's copy is a strict superset and the
+`recover:` line would overwrite the newer half with the older one. Both are
+settled by the two-dot diff between the tips — a path the tips agree on is
+missing from nowhere, and a path whose diff only *removes* lines is one the base
+holds in full. Every silence there leaves the path outstanding, so the report
+still errs toward naming a branch.
+
+**A rewritten history is excluded from the verdict and named separately.** This
+whole read is content, and a rewrite changes every commit hash while leaving
+every byte alone — so a branch left on pre-rewrite history has all the marks of
+one whose pull request merged. It is asked last, of a branch the report would
+otherwise name, and such a ref is listed apart from the branches: this report's
+own recovery copies a file, while the recipe a merged pull request leads a reader
+to deletes the ref, and on pre-rewrite history that ref holds the only copy of
+its commits.
+
 The report names the commits nothing took, the paths under each, and the
 `git checkout` line that recovers them.
 
@@ -179,14 +210,17 @@ That 204 is a sample rather than a proof, and the next merge after it produced
 a shape the sample did not contain. The population a measurement covered is
 part of what it measured.
 
-Both directions of error are still possible and the trade is deliberate. Two
-shapes go unreported, and both are silence, which is the expensive direction: a
-commit pushed after the merge that happens to leave one file in a state the base
-has held, and a post-merge push to a branch whose every pre-merge commit was
-re-merged against a base that had moved under it, since neither side then has a
-whole commit. Both are accepted only because the alternative — the content
-split on its own — fired in every session's digest, which `CLAUDE.md` calls a
-defect in the check rather than coverage.
+Both directions of error are still possible and the trade is deliberate. Three
+shapes go unreported, and all three are silence, which is the expensive
+direction: a commit pushed after the merge that happens to leave one file in a
+state the base has held; a post-merge push to a branch whose every pre-merge
+commit was re-merged against a base that had moved under it, since neither side
+then has a whole commit; and a post-merge push to a branch whose only wholly
+landed commit wrote to the queue alone. All three are accepted only because the
+alternative — the content split on its own — fired in every session's digest,
+which `CLAUDE.md` calls a defect in the check rather than coverage. Each of the
+three narrowings was bought with an observed false positive, and each false
+positive led a reader to a ref deletion rather than to a copy.
 
 ### The other loss: a merge that deletes an item nothing deleted
 

@@ -2734,6 +2734,37 @@ def test_a_branch_whose_file_the_base_then_added_to_carries_nothing() -> None:
     assert report.branches == ()
 
 
+def test_a_branch_whose_only_landed_commit_is_docket_record_output_is_not_merged() -> None:
+    """Convergence is not a merge, and a whole commit of it is still not a merge (`PL-JBRC`).
+
+    `PL-5TRV` narrowed the merge verdict to "the base took one of this branch's
+    commits whole", because two sessions running `bin/docket record` write
+    byte-identical lines and each then holds content the other landed. That
+    leaves one shape: a commit *entirely* made of `record` output, every path of
+    which agrees with the base by convergence rather than by merge.
+
+    A branch carrying one of those and one genuinely outstanding commit then
+    reads as a merged pull request with work left behind - and the recovery the
+    `docket` skill prescribes for that deletes the ref an open pull request was
+    raised against, which is `PL-5TRV`'s harm by a narrower route.
+    """
+    report = _orphaned(
+        adds={PARTLY: [("a1", "docs/items/PL-K7QX-recorded.md"), ("a2", "src/live.py")]},
+        on_base={"a1"},
+        touched={
+            PARTLY: [
+                ("PL-K7QX the work this session is still doing", ("src/live.py",)),
+                (
+                    "PL-K7QX record the merged pull request number",
+                    ("docs/items/PL-K7QX-recorded.md",),
+                ),
+            ]
+        },
+    )
+
+    assert report.branches == ()
+
+
 def test_a_branch_on_duplicated_history_is_not_reported_as_orphaned() -> None:
     """A rewrite changes every hash and no byte, so content cannot tell it from a merge.
 

@@ -2809,6 +2809,7 @@ def _commits_by_landing(
     outstanding: frozenset[str],
     root: Path,
     run: Runner,
+    items_prefix: str,
 ) -> tuple[tuple[OrphanedCommit, ...], bool]:
     """One walk of the ref's commits, read for both halves of the rule.
 
@@ -2862,9 +2863,31 @@ def _commits_by_landing(
     Its own recall cost is the mirror of the one above and just as narrow: a
     branch whose every pre-merge commit was re-merged against a base that moved
     under it has no wholly landed commit either, and a post-merge push to it
-    goes unreported. The remaining false positive is a branch one of whose
-    commits is *only* `docket record` output - which the `docket` skill tells a
-    session not to make, for a different reason.
+    goes unreported.
+
+    **A commit that only wrote to the queue is not merge evidence either, and
+    that is the last of the convergence shapes** (`PL-JBRC`). The unit test
+    above holds because a squash takes whole commits while convergence scatters
+    files inside them - but a commit whose *entire* diff is `bin/docket record`
+    output converges whole, every path of it agreeing with the base because the
+    tool dictated the value rather than a session choosing it. So a branch
+    carrying one of those and one genuinely outstanding commit read as a merged
+    pull request with work left behind, and the recipe that verdict leads to
+    deletes the ref an open pull request was raised against - `PL-5TRV`'s harm
+    reached by a narrower route.
+
+    `_annotates_only` is the test, which is the same reading
+    `branches_in_flight` already applies to the same commits for the same
+    reason: a capture, a triage pass, a recovered item and a `record` write all
+    lead with an id they are not implementing, and none of them is work a merge
+    took. Using it here rather than matching `pr:` lines keeps one rule for
+    "this commit wrote to the queue and nowhere else" instead of two spellings
+    that can disagree, and it covers the other three shapes at no extra cost.
+
+    Its recall cost is a branch whose only wholly landed commit is a queue
+    write and which was then pushed to - now unreported. That is the direction
+    to fail in: this half of the rule exists to convict a branch of having
+    merged, and the reader it convinces is handed a ref deletion.
 
     `\\x1e` opens each record so a subject containing a newline cannot be read
     as the start of another commit.
@@ -2886,13 +2909,19 @@ def _commits_by_landing(
             found.append(
                 OrphanedCommit(commit=commit.strip(), subject=subject.strip(), paths=touched)
             )
-        elif all(path in landed for path in touched):
+        elif all(path in landed for path in touched) and not _annotates_only(
+            list(touched), items_prefix
+        ):
             took_one_whole = True
     return tuple(found), took_one_whole
 
 
 def orphaned(
-    root: Path, *, include_remote: bool = True, runner: Runner | None = None
+    root: Path,
+    *,
+    include_remote: bool = True,
+    items_dir: str = "docs/items",
+    runner: Runner | None = None,
 ) -> OrphanedReport:
     """Branches carrying work the default branch took only part of.
 
@@ -2968,7 +2997,13 @@ def orphaned(
         if not outstanding:
             continue
         left, took_one_whole = _commits_by_landing(
-            name, base, frozenset(landed), frozenset(outstanding), root, run
+            name,
+            base,
+            frozenset(landed),
+            frozenset(outstanding),
+            root,
+            run,
+            items_dir.strip("/") + "/",
         )
         # A split alone is not enough in either direction, and the branch that
         # taught each half is named in `_commits_by_landing`. The split says
