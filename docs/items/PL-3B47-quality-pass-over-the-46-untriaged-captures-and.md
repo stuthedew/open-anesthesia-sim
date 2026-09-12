@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, defect
 feature: queue-hygiene
+milestone: v0.4.14
 touches: docs/items, subprojects/docket, tools, .claude, Makefile, docket.toml, tests/unit
 added: 2026-09-12
 closed: 2026-09-12
