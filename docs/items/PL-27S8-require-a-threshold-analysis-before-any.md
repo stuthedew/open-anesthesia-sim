@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: .claude/rules/expert-review.md
 added: 2026-09-12
 closed: 2026-09-12
+pr: 499
 verify: python3 tools/doc_check.py check && grep -qF 'Name the number that would change your mind' .claude/rules/expert-review.md
 ---
 
