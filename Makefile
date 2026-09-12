@@ -20,6 +20,18 @@
 # container where no stale cache can exist.
 export PYTHONDONTWRITEBYTECODE := 1
 
+# `PL-KY7M`: the Claude Code remote container exports `UV_NATIVE_TLS`, which uv
+# renamed to `UV_SYSTEM_CERTS` and now warns about once per invocation - ten
+# lines a `make check`, none of them actionable, paid by every real advisory in
+# the same output. Translated rather than dropped: the setting is the
+# container's, the warning says the old name will be removed, and on that
+# release an untranslated variable stops applying in silence. `ifdef` makes the
+# block inert where nothing set it, so a local checkout is unaffected.
+ifdef UV_NATIVE_TLS
+export UV_SYSTEM_CERTS := $(UV_NATIVE_TLS)
+unexport UV_NATIVE_TLS
+endif
+
 sync:
 	uv sync --locked --dev
 

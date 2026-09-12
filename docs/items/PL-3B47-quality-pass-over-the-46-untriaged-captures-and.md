@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items, subprojects/docket, tools, .claude, Makefile, docket.toml, tests/unit
 added: 2026-09-12
 closed: 2026-09-12
+pr: 496
 not-delegable: A queue-wide grooming pass has no command that can prove it: 'bin/docket check reports no untriaged items' passes on any tree where nobody has captured anything, and the apparatus repairs it carries are each proven by their own item's verify: command. The pass is judged by those, plus make check.
 ---
 

@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-07
 closed: 2026-09-12
+pr: 496
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_next_reports_the_same_open_count_as_status' subprojects/docket/tests/test_cli.py
 ---
 

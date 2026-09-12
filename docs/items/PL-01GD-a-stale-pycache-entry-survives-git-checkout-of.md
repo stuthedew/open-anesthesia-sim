@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: Makefile, tests/unit/test_tools_portability.py
 added: 2026-09-07
 closed: 2026-09-12
+pr: 496
 verify: uv run pytest tests/unit/test_tools_portability.py && grep -q 'PYTHONDONTWRITEBYTECODE' Makefile
 ---
 

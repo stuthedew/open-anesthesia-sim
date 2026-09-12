@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-08
 closed: 2026-09-12
+pr: 496
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_an_elaborated_decision_needed_heading_is_accepted' subprojects/docket/tests/test_checks.py
 ---
 

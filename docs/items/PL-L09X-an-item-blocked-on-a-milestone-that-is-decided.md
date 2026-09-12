@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-10
 closed: 2026-09-12
+pr: 496
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_an_item_the_scoped_milestone_places_is_not_ready_to_promote' subprojects/docket/tests/test_checks.py
 ---
 
