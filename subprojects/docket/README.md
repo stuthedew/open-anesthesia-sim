@@ -967,6 +967,11 @@ it does require is text under the heading: a required section with nothing
 below it is an error, because presence of a heading is not what makes an item
 startable by a stranger.
 
+`**Decision needed.**` is required at `needs-decision` and is matched the same
+way. It was a bare substring test until `PL-VJ1X`, so the one heading an author
+most wants to qualify — who decides, and by when — was the one heading that
+could not be, and the checker contradicted the rule stated above it.
+
 Two further fields govern whether the work may be handed to a cheaper model:
 `verify`, a single-line command that proves the item done, and `not-delegable`,
 holding the reason an otherwise-qualifying item is withheld. See *Delegation is
