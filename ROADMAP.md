@@ -3317,8 +3317,51 @@ once someone is ready to scope it.
     rendering path, separate from the Flet live chart, and is a capability
     rather than a restyle.
 
+34. Take Blender's window management as the model for the interface: the
+    application window divided into resizable, modular areas, each holding one
+    view, with task-oriented layout presets the learner can switch between,
+    customize and save.
 
-None of items 1-33 mix scientific-core and UI/tooling concerns within a
+    *Requested by the project owner, 2026-09-12*, naming four properties:
+    resizable windows, modular views, presets for tasks, and presets that are
+    the user's to customize and save rather than a fixed set shipped with the
+    application.
+
+    *Why Blender specifically, and what is worth copying.* Its window system is
+    **tiling**, not floating: the window is subdivided into non-overlapping
+    resizable areas, each area hosts one editor, and areas are split and joined
+    from their corners and borders. Areas are grouped into **Workspaces**,
+    presented as tabs and each geared to a task, which the user can reorder,
+    duplicate and delete; a layout persists by being saved into the startup
+    file. The tiling half is the part that earns its place here rather than
+    being taste: a tiled layout has no overlapping or hidden panels, and a
+    covered value on this application's dashboard is a misread value, which
+    `CLAUDE.md`'s standard treats as a safety failure rather than an
+    inconvenience. See the Blender Manual, "Interface → Window System →
+    Areas" and "→ Workspaces".
+
+    *The license constraint, which is not a formality.* Blender's source is
+    GPL-2.0-or-later and its binaries ship under GPL-3.0-or-later; this project
+    is Apache-2.0 (`LICENSE`, `pyproject.toml`). So the behaviour may be studied
+    from the manual and the running application and the source read for
+    understanding, but code may not be copied or closely ported into this tree —
+    doing so would make the result GPL-encumbered and the stated license wrong.
+    The owner's note that "Blender is open source so can see implementation" is
+    recorded here with that limit attached, because the limit is exactly what a
+    session reading the note alone would miss. Qt supplies the primitives
+    directly in any case: nested `QSplitter` for the tiling, its own
+    `saveState()`/`restoreState()` for a layout, `QSettings` or a project file
+    for a named preset.
+
+    *Unplaced, and the timing question is live.* v0.5.1 rewrites every layout
+    in the dashboard onto Qt, and the argument that release already makes for
+    absorbing item 33 — that applying a decision to Flet and then again to Qt is
+    the same work twice — applies to layout *architecture* at least as strongly
+    as to palette and spacing. Whether v0.5.1 builds the tiled shell, reserves
+    for it, or ignores it is the project owner's call and is not recorded here.
+
+
+None of items 1-34 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
