@@ -583,6 +583,79 @@ def _work_already_on_base(split: tuple[tuple[str, ...], tuple[str, ...]]) -> boo
     return bool(landed) and not outstanding
 
 
+def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Runner) -> set[str]:
+    """Of `paths`, those the base's tip already accounts for, so nothing is left behind.
+
+    **The blob walk asks whether the base ever held a *version*; this asks
+    whether the base still needs one.** They differ wherever a path's content
+    was replaced after the branch introduced it, and `_landing_split` calls
+    every such path outstanding because no commit on the base ever carried that
+    exact blob. Two shapes reach it and neither is work anybody lost
+    (`PL-XLQ5`):
+
+    - **Superseded on the branch.** An early commit wrote one version and a
+      later commit on the same branch rewrote it, so the squash carried only
+      the final version and the intermediate blob is genuinely one the base has
+      never held. The branch changed its mind once; nothing was left behind.
+      Observed 2026-09-05 on `origin/claude/next-workflow-item-c2b07p`, where
+      `git diff origin/main HEAD` was empty while four files were reported.
+    - **Superseded on the base.** The base took the branch's content and then
+      added to it in the same commit - a recovery note appended to an item that
+      was re-applied (`PL-1VFK`, `#437`) - so the blob the branch introduced is
+      again one the base never held, while the base's copy is a strict superset
+      of it. This is the expensive one: the `recover:` line a reader is handed
+      is a `git checkout` of the branch's older copy over the base's newer one,
+      which deletes the note.
+
+    The test is the two-dot diff that disproved both by hand, read per path:
+
+    - **Absent from the diff.** The base's tip and the ref's tip agree, so
+      there is nothing the base is missing. That is supersession on the branch.
+    - **Removals only.** Going from the base to the ref *deletes* lines and
+      adds none, so the base holds everything the ref holds and more. That is
+      supersession on the base.
+    - **Anything added or changed.** The ref's tip carries content the base's
+      tip does not, which is what work left behind looks like.
+
+    **The direction of the read is what makes it safe**, and it is the
+    direction the rest of the module takes. Every silence here - a git that
+    failed, a path git answered for in a shape this cannot parse, a binary file
+    git writes as `-` rather than a count - leaves the path outstanding and so
+    leaves the branch reported. A path wrongly called superseded would hide
+    work nothing merged, which is the loss `orphaned` exists to catch; a path
+    wrongly left outstanding costs a reader one two-dot diff, which is what
+    they were doing by hand before this.
+
+    `--no-renames` because the paths compared against come from
+    `_landing_split`, which also passes it: a rename read on one side and not
+    the other would compare two different path sets.
+    """
+    if not paths:
+        return set()
+    output = run(["diff", "--numstat", "--no-renames", base, ref, "--", *paths], root)
+    differing: dict[str, tuple[str, str]] = {}
+    for line in output.splitlines():
+        fields = line.split("\t", 2)
+        if len(fields) != 3:
+            continue
+        added, deleted, path = fields
+        differing[path.strip()] = (added.strip(), deleted.strip())
+    superseded: set[str] = set()
+    for path in paths:
+        counts = differing.get(path)
+        if counts is None:
+            # The two tips agree on this path, so the base is missing nothing.
+            # A path git did not report on at all reads the same way only
+            # because it was asked for by name: git names every path it was
+            # given that differs.
+            superseded.add(path)
+            continue
+        added, deleted = counts
+        if added == "0" and deleted.isdigit() and int(deleted) > 0:
+            superseded.add(path)
+    return superseded
+
+
 @dataclass(frozen=True)
 class _Refs:
     """Every ref this checkout holds, split by what can be believed about it.
@@ -1322,8 +1395,17 @@ def _landed_since(
     return tuple(found)
 
 
-def _duplicated_history(base: str, root: Path, run: Runner) -> RewriteReport | None:
+def _duplicated_history(
+    base: str, root: Path, run: Runner, *, ref: str = "HEAD"
+) -> RewriteReport | None:
     """Whether the divergence from `base` is one rewritten history, and what only this side holds.
+
+    `ref` is which side to read, and it defaults to the checkout's own `HEAD`
+    because `branch_state` - which this was built for - advises the session
+    about the branch it is standing on. `orphaned` passes a named ref instead:
+    a branch left on pre-rewrite history reads there as one whose pull request
+    merged, because that report's evidence is file content and a rewrite
+    changes every hash while leaving content untouched (`PL-Y31G`).
 
     **Stateless, and that is a requirement rather than a preference.** The
     obvious test - has the remote ref moved to something that is not a
@@ -1360,7 +1442,7 @@ def _duplicated_history(base: str, root: Path, run: Runner) -> RewriteReport | N
             "--reverse",
             "--left-right",
             "--format=%m%x00%h%x00%at%x00%p%x00%s",
-            f"{base}...HEAD",
+            f"{base}...{ref}",
             "--",
         ],
         root,
@@ -2707,6 +2789,12 @@ class OrphanedReport:
     branches: tuple[OrphanedBranch, ...] = ()
     refs_read: int = 0
     unreadable: tuple[str, ...] = ()
+    #: Refs that match this report's rule but whose divergence from the base is
+    #: duplicated history, so the content evidence cannot tell them from a
+    #: merge. Kept apart from `branches` because the recipe a merged branch
+    #: leads a reader to deletes the ref, and on pre-rewrite history that ref is
+    #: the only copy of the commits it carries (`PL-Y31G`).
+    rewritten: tuple[str, ...] = ()
     declined: str = ""
 
     @property
@@ -2864,9 +2952,20 @@ def orphaned(
         # which is the confident wrong answer this module refuses to give.
         return OrphanedReport(declined="no branch refs this checkout can read")
     branches: list[OrphanedBranch] = []
+    rewritten: list[str] = []
     for name in refs.unlanded:
         landed, outstanding = refs.landing.get(name, ((), ()))
         if not (landed and outstanding):
+            continue
+        # **The outstanding side is narrowed to what the base's tip is missing
+        # before anything is decided on it.** `_landing_split` answers per
+        # historical blob, so a path whose content was replaced after the branch
+        # introduced it - on the branch, or on the base - is outstanding there
+        # and missing from nowhere. `_superseded` carries both shapes and why
+        # the wrong answer was expensive rather than untidy.
+        superseded = _superseded(name, base, outstanding, root, run)
+        outstanding = tuple(path for path in outstanding if path not in superseded)
+        if not outstanding:
             continue
         left, took_one_whole = _commits_by_landing(
             name, base, frozenset(landed), frozenset(outstanding), root, run
@@ -2880,6 +2979,24 @@ def orphaned(
         # the base took a whole commit, because two branches running `docket
         # record` write identical lines and neither merged the other.
         if left and took_one_whole:
+            # **A rewritten history reads exactly like a merge here, and the
+            # difference cannot be seen in the content.** This report's evidence
+            # is which blobs the base holds, and a rewrite changes every hash
+            # while leaving every byte alone - so a branch left on pre-rewrite
+            # history has all the marks of one whose pull request merged
+            # (`PL-YGF3`, observed on `claude/fresh-gas-flow-range-4bom2g`).
+            # Asked last because it costs a walk of its own and only a branch
+            # this report would otherwise name needs it.
+            #
+            # It is named rather than reported, and the asymmetry is the point.
+            # The recovery this report hands a reader copies a file; the recipe
+            # the `docket` skill prescribes for a merged pull request deletes
+            # the ref, and on pre-rewrite history that ref holds the only copy
+            # of commits nothing else has. So the branch leaves the list that
+            # leads there and keeps a line of its own (`PL-Y31G`).
+            if _duplicated_history(base, root, run, ref=name) is not None:
+                rewritten.append(name)
+                continue
             # The branch's outstanding side is narrowed to the paths of the
             # commits actually reported. The wider set includes files a merged
             # commit touched that the base then merged differently, which are
@@ -2892,6 +3009,7 @@ def orphaned(
         branches=tuple(branches),
         refs_read=len(refs.candidates),
         unreadable=tuple(sorted(refs.unreadable)),
+        rewritten=tuple(sorted(rewritten)),
     )
 
 

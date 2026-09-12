@@ -82,6 +82,8 @@ def _runner(
     log: list[list[str]] | None = None,
     ran_out: tuple[str, ...] = (),
     head: str = "",
+    tips: dict[str, dict[str, tuple[str, str]]] | None = None,
+    duplicated: tuple[str, ...] = (),
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
 
@@ -107,6 +109,17 @@ def _runner(
     this checkout, which is what a walk that ran off the end of a truncated
     history looks like: every other commit reports a parent, so a walk the
     default branch stopped is told from one the history did.
+
+    `tips` maps a ref to the two-dot diff between the default branch's tip and
+    its own, per path, as `(added, deleted)` counts - which is what says whether
+    a path `adds` reports as never landed is one the base is still missing.
+    Left out, every such path differs by an addition, which is what a branch
+    genuinely carrying work looks like and what every test written before that
+    reading meant.
+
+    `duplicated` names the refs whose divergence from the default branch is one
+    rewritten history: the same commits twice over, which content comparison
+    cannot tell from a merge.
 
     `adds` maps a ref to the blobs it introduces since its fork point and
     `on_base` names the blobs the default branch has held at some point, which
@@ -144,12 +157,43 @@ def _runner(
             # The object walk the landing split reads, in the shape git writes
             # it: one oid per line, a path after it for anything but a commit.
             return "\n".join(f"{blob} some/path/{blob}" for blob in sorted(on_base or set()))
+        if args[0] == "diff" and "--numstat" in args:
+            # The tip comparison: `diff --numstat --no-renames <base> <ref> --`
+            # then the paths asked about. A path git does not name is one the
+            # two tips agree on, so the fake omits it rather than reporting zeros.
+            asked = args[args.index("--") + 1 :]
+            per_path = (tips or {}).get(args[4])
+            rows = []
+            for path in asked:
+                if per_path is None:
+                    rows.append(f"1\t0\t{path}")
+                    continue
+                counts = per_path.get(path)
+                if counts is not None:
+                    rows.append(f"{counts[0]}\t{counts[1]}\t{path}")
+            return "\n".join(rows)
         if args[0] == "diff":
             return "\n".join(
                 f":000000 100644 {'0' * 40} {_blob(entry)} A\t{_path(entry)}"
                 for entry in (adds or {}).get(args[-2], [])
             )
         if args[0] == "log":
+            if "--left-right" in args:
+                # The rewrite fingerprint: the same author date and subject on
+                # both sides of the divergence, which is what a rewrite leaves
+                # and what forking and committing cannot produce. `--reverse`
+                # puts the oldest first, and that is the commit the rule reads.
+                walked = args[-2].split("...")[-1]
+                if walked not in duplicated:
+                    return ""
+                # `%x00` between the fields, spelled explicitly: a `\0` written
+                # against a digit is read as an octal escape, which is how the
+                # author date `100` first reached this as a backspace.
+                kept = ("1750000000", "p1", "a commit the rewrite kept")
+                return "\n".join(
+                    "\x00".join((side, short, *kept))
+                    for side, short in (("<", "aaaaaaa"), (">", "bbbbbbb"))
+                )
             if "--name-only" in args and "--source" not in args:
                 # `orphaned` decides on this walk - a commit *none* of whose
                 # paths reached the base - so the fake has to answer it. The
@@ -2589,9 +2633,20 @@ def _orphaned(
     refs: list[str] | None = None,
     merged: list[str] | None = None,
     touched: dict[str, list[tuple[str, tuple[str, ...]]]] | None = None,
+    tips: dict[str, dict[str, tuple[str, str]]] | None = None,
+    duplicated: tuple[str, ...] = (),
 ) -> OrphanedReport:
     return orphaned(
-        ROOT, runner=_runner(refs or [PARTLY], merged, adds=adds, on_base=on_base, touched=touched)
+        ROOT,
+        runner=_runner(
+            refs or [PARTLY],
+            merged,
+            adds=adds,
+            on_base=on_base,
+            touched=touched,
+            tips=tips,
+            duplicated=duplicated,
+        ),
     )
 
 
@@ -2620,6 +2675,89 @@ def test_a_branch_pushed_to_after_its_pull_request_merged_is_reported() -> None:
     assert [commit.subject for commit in report.branches[0].commits] == [
         "PL-ZSV6 the rule pushed after the merge"
     ]
+
+
+def test_a_branch_that_revised_its_own_file_before_merging_carries_nothing() -> None:
+    """The branch changed its mind once, and nothing was left behind (`PL-XLQ5`).
+
+    An early commit wrote one version of a file and a later commit on the same
+    branch rewrote it. The squash carried only the final version, so the
+    intermediate blob is one the default branch has genuinely never held - and
+    `_landing_split`, which asks after historical blobs, calls it outstanding.
+
+    Observed 2026-09-05 on `origin/claude/next-workflow-item-c2b07p`,
+    immediately after `PL-X3WZ` merged as `#324`: four files reported while
+    `git diff origin/main HEAD` was empty. The tip comparison is that two-dot
+    diff, and it is empty here for the same reason.
+    """
+    report = _orphaned(
+        adds={PARTLY: [("a1", "landed.txt"), ("a2", "revised.py")]},
+        on_base={"a1"},
+        touched={
+            PARTLY: [
+                ("PL-X3WZ rename the helper", ("revised.py",)),
+                ("PL-X3WZ introduce the helper", ("landed.txt",)),
+            ]
+        },
+        tips={PARTLY: {}},
+    )
+
+    assert report.branches == ()
+    assert report.rewritten == ()
+
+
+def test_a_branch_whose_file_the_base_then_added_to_carries_nothing() -> None:
+    """Supersession on the *base*, which is the expensive direction (`PL-XLQ5`).
+
+    `PL-1VFK` (`#437`) recovered two stranded items by re-applying them and
+    appended a recovery note to one in the same commit, so the blob the branch
+    introduced for that file is one `main` has never held while `main`'s copy is
+    a strict superset of it. The `recover:` line this report would hand a reader
+    is a `git checkout` of the branch's older copy over the newer one, which
+    deletes the note.
+
+    Going from the base to the ref therefore only *removes* lines, and that is
+    what the counts say: nothing is missing from the base.
+    """
+    report = _orphaned(
+        adds={PARTLY: [("a1", "landed.txt"), ("a2", "docs/items/PL-6YYR-recovered.md")]},
+        on_base={"a1"},
+        touched={
+            PARTLY: [
+                ("PL-6YYR capture the release tag", ("docs/items/PL-6YYR-recovered.md",)),
+                ("PL-K7QX the work the pull request took", ("landed.txt",)),
+            ]
+        },
+        tips={PARTLY: {"docs/items/PL-6YYR-recovered.md": ("0", "4")}},
+    )
+
+    assert report.branches == ()
+
+
+def test_a_branch_on_duplicated_history_is_not_reported_as_orphaned() -> None:
+    """A rewrite changes every hash and no byte, so content cannot tell it from a merge.
+
+    `PL-YGF3` observed exactly this on `claude/fresh-gas-flow-range-4bom2g`.
+    The hazard is not the report itself - its recovery copies a file - but the
+    recipe the `docket` skill prescribes for a branch whose pull request merged,
+    which deletes the ref. On pre-rewrite history that ref holds the only copy
+    of the commits it carries, so it is named apart from the branches that lead
+    a reader there (`PL-Y31G`).
+    """
+    report = _orphaned(
+        adds={PARTLY: [("a1", "landed.txt"), ("a2", "pushed-after.md")]},
+        on_base={"a1"},
+        touched={
+            PARTLY: [
+                ("PL-ZSV6 the rule pushed after the merge", ("pushed-after.md",)),
+                ("PL-K7QX the work the pull request took", ("landed.txt",)),
+            ]
+        },
+        duplicated=(PARTLY,),
+    )
+
+    assert report.branches == ()
+    assert report.rewritten == (PARTLY,)
 
 
 def test_a_branch_that_has_landed_nothing_is_ordinary_work_in_flight() -> None:
