@@ -3,11 +3,12 @@ id: PL-ZYQC
 title: docket verify fails 'diff stayed inside touches' on any close-out that follows the skill's instruction to let docket record ride the commit it is already making
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: delegation
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-07
+closed: 2026-09-12
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_pr_only_addition_to_another_items_file_is_not_outside_touches' subprojects/docket/tests/test_verify.py
 ---
 

@@ -3,11 +3,12 @@ id: PL-66PR
 title: docket verify REJECTs any branch carrying a capture, because item_commits matches the leading id CLAUDE.md requires on every commit subject and only the item's own file is exempt from the touches audit; a new untriaged item file is mechanically distinguishable and could be exempted the same way
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: delegation
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-07
+closed: 2026-09-12
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_capture_committed_on_the_branch_is_not_outside_touches' subprojects/docket/tests/test_verify.py
 ---
 

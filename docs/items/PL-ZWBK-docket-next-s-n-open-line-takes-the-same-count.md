@@ -3,11 +3,12 @@ id: PL-ZWBK
 title: docket next's '{n} open' line takes the same count that PL-4WQS fixed in render.py, so cli.py:715 still understates the queue by the untriaged count
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-07
+closed: 2026-09-12
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_next_reports_the_same_open_count_as_status' subprojects/docket/tests/test_cli.py
 ---
 

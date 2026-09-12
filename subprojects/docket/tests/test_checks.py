@@ -438,6 +438,33 @@ def test_needs_decision_passes_when_it_states_one() -> None:
     )
 
 
+def test_an_elaborated_decision_needed_heading_is_accepted() -> None:
+    """The same prefix rule the other three required headings already follow.
+
+    `PL-VJ1X`: this one was a bare substring test for the literal
+    `**Decision needed.**`, while `_section_text` matches `**Problem.**`,
+    `**Why it matters.**` and `**Done when.**` by the words they open with -
+    which `subprojects/docket/README.md` states as the rule for all of them.
+    So the one heading a reader most wants to qualify was the one heading that
+    could not be, and the workaround is invisible afterwards: every item that
+    met it reads as though it never wanted to elaborate.
+    """
+    body = BRIEF + "**Decision needed, and by whom.** Which way, and the owner decides.\n"
+    assert _errors(_item(status="needs-decision", body=body)) == []
+
+
+def test_an_empty_decision_needed_heading_is_still_refused() -> None:
+    """A heading with nothing under it states no decision, which is the error's own words.
+
+    The other half of `PL-VJ1X`, and the reason the fix reuses `_section_text`
+    rather than loosening the substring: that helper distinguishes "no such
+    heading" from "the heading is there and the section is not", and both are
+    an item that does not say what has to be decided.
+    """
+    body = BRIEF + "**Decision needed.**\n\n**Something else.** text\n"
+    assert _has(_errors(_item(status="needs-decision", body=body)), "states no decision to make")
+
+
 def test_safety_work_may_not_sit_in_a_low_band() -> None:
     assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
 

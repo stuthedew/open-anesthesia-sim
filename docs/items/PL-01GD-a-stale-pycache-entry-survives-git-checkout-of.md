@@ -3,11 +3,12 @@ id: PL-01GD
 title: A stale __pycache__ entry survives git checkout of an equal-length source edit, so a reverted mutation keeps running and make check reports a failure the source cannot explain
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: Makefile, tests/unit/test_tools_portability.py
 added: 2026-09-07
+closed: 2026-09-12
 verify: uv run pytest tests/unit/test_tools_portability.py && grep -q 'PYTHONDONTWRITEBYTECODE' Makefile
 ---
 

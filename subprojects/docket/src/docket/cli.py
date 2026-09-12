@@ -737,7 +737,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         _say_lane_holdouts(items, flight, config, args, lane)
         _say_unread(flight)
         return 0
-    print(f"{len(report.open_items)} open. Suggested next{where}:\n")
+    print(f"{render.open_count(report)} open. Suggested next{where}:\n")
     for index, pick in enumerate(picks, start=1):
         print(f"  {index}. {pick.describe()}\n")
     if flight.ids:

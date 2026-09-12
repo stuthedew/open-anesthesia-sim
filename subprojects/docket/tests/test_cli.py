@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -2919,3 +2920,41 @@ def test_trend_takes_a_day_at_a_time_when_asked(
 def test_trend_rejects_a_window_it_does_not_have(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         main(["trend", "--items", str(_trend_store(tmp_path)), "--by", "fortnight"])
+
+
+UNTRIAGED_CAPTURE = """---
+id: PL-C2C2
+title: An untriaged capture
+status: untriaged
+added: 2026-08-02
+---
+
+**Problem.** something was noticed
+"""
+
+
+def test_next_reports_the_same_open_count_as_status(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """One store, one number labelled "open" - whichever command prints it.
+
+    `PL-ZWBK`: `cmd_next` computed its own count from `report.open_items`,
+    which is the set that is a candidate for *work* and so leaves untriaged
+    captures out. `status`, `list` and the digest all go through
+    `render.open_count`, which adds them back. So the two disagreed by exactly
+    the untriaged count, and disagreed most after a capture-heavy session,
+    which is when the backlog most needs stating at full size.
+
+    Asserting the two agree rather than asserting a literal, because the bug
+    was a divergence rather than a wrong constant.
+    """
+    items = _store(tmp_path, READY, UNTRIAGED_CAPTURE)
+    assert _run("next", "--items", str(items)) == 0
+    next_out = capsys.readouterr().out
+    assert _run("list", "--items", str(items)) == 0
+    list_out = capsys.readouterr().out
+
+    from_next = re.search(r"(\d+) open\. Suggested next", next_out)
+    from_list = re.search(r"Docket: (\d+) open", list_out)
+    assert from_next and from_list, (next_out, list_out)
+    assert from_next.group(1) == from_list.group(1) == "2", (next_out, list_out)

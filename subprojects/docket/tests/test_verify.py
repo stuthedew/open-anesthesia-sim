@@ -1197,3 +1197,91 @@ def test_a_declined_run_still_reports_what_it_would_have_covered(
 
     assert not report.known
     assert report.scope == "1 item(s) this branch changed against origin/main"
+
+
+TOUCHES = "diff stayed inside `touches`"
+
+
+def test_a_capture_committed_on_the_branch_is_not_outside_touches(tmp_path: Path) -> None:
+    """`CLAUDE.md` asks for both of these, and the audit used to refuse the pair.
+
+    `PL-66PR`: every commit subject must lead with the current item's id, and
+    a finding not fixed in the session must be captured before the session
+    ends. Doing both puts a new item file on a commit `item_commits`
+    attributes to the item being verified, so the `touches` audit reported it
+    as outside the commission and the branch came back `REJECT` for following
+    the instructions.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root, "PL-K7QX do the thing", "tests/test_thing.py", KEPT + "\ndef test_more():\n    pass\n"
+    )
+    _work(
+        root,
+        "PL-K7QX capture a finding found on the way past",
+        "docs/items/PL-N3W1-something-noticed.md",
+        _stored("PL-N3W1", "Something noticed", status="untriaged"),
+    )
+    report = verify(root, _item(), _config(), "HEAD~2")
+    check = _check(report, TOUCHES)
+    assert check.passed, check
+    assert any("capture" in line for line in check.lines), check.lines
+
+
+def test_a_pr_only_addition_to_another_items_file_is_not_outside_touches(tmp_path: Path) -> None:
+    """What `bin/docket record` writes, riding the commit the close-out already makes.
+
+    `PL-ZYQC`: the `docket` skill says to let the `pr:` write ride a commit
+    already being made rather than composing one for it, and `verify` then read
+    those writes as paths outside the commission. Two project mechanisms gave
+    opposite answers about one commit, so a session could satisfy either and
+    not both.
+    """
+    root = _repo(tmp_path)
+    neighbour = root / "docs" / "items" / "PL-B2B2-do-the-other.md"
+    neighbour.write_text(neighbour.read_text().replace("verify: true\n", "verify: true\npr: 495\n"))
+    (root / "tests" / "test_thing.py").write_text(KEPT + "\ndef test_more():\n    pass\n")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX close it out, and record the pr the base was owed")
+    report = verify(root, _item(), _config(), "HEAD~1")
+    check = _check(report, TOUCHES)
+    assert check.passed, check
+    assert any("pr" in line for line in check.lines), check.lines
+
+
+def test_an_ordinary_edit_to_another_items_file_is_still_outside_touches(tmp_path: Path) -> None:
+    """The half the exemption must not widen into.
+
+    Reading the diff rather than the path is what keeps these apart: a `pr:`
+    addition is dictated by the merge history and a capture has no prior
+    content to weaken, while re-scoping a neighbouring item's `touches` is
+    exactly what the audit exists to catch.
+    """
+    root = _repo(tmp_path)
+    neighbour = root / "docs" / "items" / "PL-B2B2-do-the-other.md"
+    neighbour.write_text(neighbour.read_text().replace("status: ready\n", "status: done\n"))
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX quietly close somebody else's item")
+    report = verify(root, _item(), _config(), "HEAD~1")
+    check = _check(report, TOUCHES)
+    assert not check.passed, check
+    assert any("PL-B2B2" in line for line in check.lines), check.lines
+
+
+def test_a_new_item_file_that_is_not_a_capture_is_still_outside_touches(tmp_path: Path) -> None:
+    """`status: untriaged` is the whole of what makes an added file a capture.
+
+    A branch that adds a fully triaged item - one it could have written to say
+    anything about scope or proof - is not doing what the capture rule asks
+    for, and is not exempt.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a ready item nobody triaged",
+        "docs/items/PL-N3W2-invented.md",
+        _stored("PL-N3W2", "Invented", status="ready"),
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+    check = _check(report, TOUCHES)
+    assert not check.passed, check

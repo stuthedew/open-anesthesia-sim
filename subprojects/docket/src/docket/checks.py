@@ -361,7 +361,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         )
     if item.status == "blocked" and not item.blocked_by:
         report.errors.append(f"{where}: marked blocked but names no blocking item or milestone")
-    if item.status == "needs-decision" and "**Decision needed.**" not in item.body:
+    if item.status == "needs-decision" and not _section_text(item.body, "**Decision needed.**"):
         report.errors.append(
             f"{where}: marked needs-decision but states no decision to make; add a "
             "**Decision needed.** line so a later session can answer it"

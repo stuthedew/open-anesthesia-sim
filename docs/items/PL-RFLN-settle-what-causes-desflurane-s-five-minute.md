@@ -54,7 +54,7 @@ adequate but what the specification is allowed to claim about why it misses.
 Leaving two candidates standing is honest; leaving them standing indefinitely
 without saying they cannot be separated is not.
 
-**Decision needed.** This one is the project owner's: whether to obtain the
+**Decision needed, and it is the project owner's.** Whether to obtain the
 methods sections of Yasuda et al. Anesthesiology 1991;74:489-98 (PMID 2001028)
 and Anesth Analg 1991;72:316-24 (PMID 1994760). Neither is in PubMed Central nor
 held in `docs/references/`, so this needs a copy the owner supplies - the

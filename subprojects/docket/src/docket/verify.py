@@ -369,6 +369,63 @@ def _store_at(root: Path, base: str, items_dir: str) -> tuple[str, ...] | None:
     return tuple(line.strip() for line in listing.splitlines() if line.strip())
 
 
+#: A `pr:` line as `cmd_record` writes it, and nothing else. Anchored at both
+#: ends so that `pr: 495 and also something` is not read as one.
+PR_LINE_RE = re.compile(r"^pr:\s*\d+\s*$")
+
+
+def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path: str) -> str:
+    """Whether an out-of-`touches` edit to the queue is one the workflow asked for.
+
+    Two of them are, and both are mechanically distinguishable from an item
+    being tampered with - which is what makes exempting them safe rather than
+    a hole. Returns the kind for the report to name, or `""` for an ordinary
+    edit that stays outside the commission.
+
+    **`"capture"`** - a file this branch *added*, whose front matter says
+    `status: untriaged`. `CLAUDE.md` requires a finding not fixed in the
+    session to be captured before the session ends, and requires every commit
+    subject to lead with the current item's id; doing both puts the new item
+    file on a commit `item_commits` attributes to the item being verified, and
+    the audit then reported a `REJECT` for following the instructions
+    (`PL-66PR`). A capture cannot weaken anything: the file did not exist on
+    the base, so there is no prior content for it to have changed.
+
+    **`"pr"`** - an existing item file whose whole diff is added `pr:` lines.
+    That is what `bin/docket record` writes, and the `docket` skill's close-out
+    says to let it ride the commit already being made rather than composing one
+    for it. `verify` read those writes as paths outside the commission and
+    rejected the close-out that followed the instruction (`PL-ZYQC`). The
+    number is dictated by the merge history rather than chosen, and `record`
+    refuses to overwrite a different one, so there is nothing here a worker
+    could use to change what a check measures.
+
+    Nothing else is exempt. An item file this branch edited in any other way -
+    a `status`, a `touches`, a `verify:` command - is still outside `touches`
+    and still fails, which is the case the audit exists for and the reason
+    this reads the diff rather than the path.
+    """
+    scope = ["git", "show", "--format=", *commits] if commits else ["git", "diff", f"{base}...HEAD"]
+    status, diff = _run([*scope, "--", path], root)
+    if status != 0 or not diff.strip():
+        return ""
+    added, removed, created = [], [], False
+    for line in diff.splitlines():
+        if line.startswith("new file mode"):
+            created = True
+        elif line.startswith("+++") or line.startswith("---"):
+            continue
+        elif line.startswith("+"):
+            added.append(line[1:])
+        elif line.startswith("-"):
+            removed.append(line[1:])
+    if removed:
+        return ""
+    if created:
+        return "capture" if any(line.strip() == "status: untriaged" for line in added) else ""
+    return "pr" if added and all(PR_LINE_RE.match(line) for line in added) else ""
+
+
 def front_matter_check(root: Path, base: str, items_dir: str, item: Item) -> Check:
     """Whether the branch edited the front matter of its own item.
 
@@ -478,15 +535,34 @@ def verify_item(
     # `**Worked.**` note to it, and `path` is a bare filename rather than a
     # repository path, so it is matched by basename.
     own_file = Path(item.path).name if item.path else ""
-    outside = [p for p in paths if not _within(p, item.touches) and Path(p).name != own_file]
+    candidates = [p for p in paths if not _within(p, item.touches) and Path(p).name != own_file]
+    # A queue edit the workflow itself asked for is separated from the rest
+    # rather than excused silently: the audit says which paths it declined to
+    # count and why, so a reader can disagree with the exemption (`PL-66PR`,
+    # `PL-ZYQC`). Only paths under the store are even considered.
+    sanctioned = {
+        path: kind
+        for path in candidates
+        if _within(path, (config.items_dir,))
+        and (kind := sanctioned_queue_edit(root, base, commits, path))
+    }
+    outside = [path for path in candidates if path not in sanctioned]
+    if outside:
+        detail = f"{len(outside)} path(s) outside"
+    else:
+        detail = f"{len(paths)} path(s) in {len(commits) or 1} commit(s), all declared"
+        if sanctioned:
+            kinds = Counter(sanctioned.values())
+            detail += " or a sanctioned queue edit ({})".format(
+                ", ".join(f"{count} {kind}" for kind, count in sorted(kinds.items()))
+            )
     report.checks.append(
         Check(
             "diff stayed inside `touches`",
             not outside,
-            f"{len(outside)} path(s) outside"
-            if outside
-            else f"{len(paths)} path(s) in {len(commits) or 1} commit(s), all declared",
-            tuple(outside),
+            detail,
+            tuple(outside)
+            + tuple(f"{path} - {kind}, not counted" for path, kind in sanctioned.items()),
         )
     )
 

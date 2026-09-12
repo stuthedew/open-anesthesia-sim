@@ -1,5 +1,25 @@
 .PHONY: sync check fix test run prebuild docket doc-check pr-title release
 
+# Exported to every recipe below rather than written into a pytest line, so that
+# `check_coverage_gate`'s string comparison between the `check` target and
+# `.github/workflows/quality.yml` still holds (`PL-D3M2`).
+#
+# `PL-01GD`: CPython invalidates a `.pyc` by comparing the source's size and
+# mtime against what the cache recorded, and a one-character edit reverted with
+# `git checkout` can leave both unchanged. Observed 2026-09-07 mutation-testing
+# `core/tissue.py`: after the revert, with `git status` clean and the correct
+# operator in the file, the interpreter kept running the mutated bytecode and
+# `make check` failed reporting `tau = 30.0` for a group whose parameters give
+# 480.0 - a number unreachable from the source in front of the reader. Two runs
+# were spent before `rm -rf __pycache__` resolved it.
+#
+# The cost is a little interpreter startup; the alternative is a red gate whose
+# failure the source cannot explain, and mutating-then-reverting is exactly what
+# `.claude/skills/docket/SKILL.md` asks of a session writing a `verify:`
+# command. CI is unaffected either way, running pytest directly in a fresh
+# container where no stale cache can exist.
+export PYTHONDONTWRITEBYTECODE := 1
+
 sync:
 	uv sync --locked --dev
 
