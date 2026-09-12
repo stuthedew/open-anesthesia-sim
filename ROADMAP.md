@@ -2220,6 +2220,27 @@ Four grounds survive:
 2. **The dashboard.** The readout row, the parameter controls, the agent
    selector, the transport, the new-case dialog and the notice banner -
    `app/simulation_view.py`, 3 619 lines.
+
+   *It reserves for planned-milestone item 34 and builds none of it (project
+   owner, 2026-09-12).* Each of those surfaces becomes an independent widget
+   inside nested `QSplitter`s rather than a fixed layout, and **the splitter
+   handles stay inert**: item 34 is what turns them live and adds the split/join
+   affordance, the workspace tabs and the savable presets.
+
+   The reservation is close to free, because the components it needs are
+   already owed. `PL-B9PY` decomposes `SimulationView` in v0.5.0 and records
+   that "the Qt view is built decomposed from the start", so what this decides
+   is only the container those components go into - nested splitters rather
+   than fixed layouts. The alternative is laying out every panel twice, which
+   is the argument this milestone already makes for absorbing item 33.
+
+   *The inert handles are the deliberate half, not an oversight.* A draggable
+   splitter is something a learner can do that they cannot do today, so live
+   handles would be new capability - which § "Fixes this port carries" excludes
+   "whatever its size", and which would put a fourth entry beside `PL-16ZC` on
+   the wrong side of that line. Parity below means "identical except for this
+   list", and it is checkable only while the enumeration stays closed. Flipping
+   the handles live is item 34's first step and costs a line.
 3. **The theme, and item 33 with it.** `app/theme.py` re-expressed for Qt, and
    the visual pass decided once: palette, type scale, spacing rhythm, density,
    layout.
