@@ -70,6 +70,42 @@ code:
   exactly why a model, equation, constant, UI convention, or design decision
   exists.
 
+## Name the number that would change your mind, then go and count it
+
+Before proposing to tighten anything — a bar, a filter, a threshold, a scope
+cut, a check retirement — state what the suppressed side would have to be worth
+for the proposal to be *wrong*, and then measure it. Not "this cuts inflow by
+30%", but "this is worth it only if fewer than N% of what it suppresses would
+have mattered", followed by the count.
+
+This is not a reasoning failure and more careful reasoning does not fix it.
+When one side of a trade carries a number and the other does not, the numbered
+side wins on *fluency* rather than on merit — 21 preregistered experiments,
+N ≈ 23,000, in Chang LW, Kirgios EL, Mullainathan S, Milkman KL, "Does counting
+change what counts? Quantification fixation biases decision-making", PNAS
+2024;121(46):e2400215121 (https://doi.org/10.1073/pnas.2400215121), who name it
+*quantification fixation* and identify comparison fluency as the mechanism. A
+session that has just finished computing a rate is at its most exposed, not its
+least.
+
+The form is OMB Circular A-4's threshold analysis (2003), which states the
+failure and its remedy in one paragraph: "the most efficient alternative will
+not necessarily be the one with the largest quantified and monetized net-benefit
+estimate … Threshold or 'break-even' analysis answers the question, 'How small
+could the value of the non-quantified benefits be (or how large would the value
+of the non-quantified costs need to be) before the rule would yield zero net
+benefits?'" What is scripted is the question, never the answer: A-4 leaves how
+important the non-quantified side may be to professional judgment, which is
+`CLAUDE.md`'s own refusal to script the judgment half arriving from regulatory
+practice rather than from software.
+
+**Worked example, 2026-09-12.** A session measured the workflow lane's
+self-generation rate at 0.69 new items per item worked and proposed raising the
+apparatus capture bar on the strength of it. The count it never ran — how many
+open items that bar would have suppressed — was 67% still-real findings, which
+killed the proposal. The project owner caught it by instinct first; the number
+only confirmed what the objection already said (`PL-LKGL`, `PL-27S8`).
+
 The principles governing what a **displayed clinical value** may imply —
 false precision, modeled versus measured, misleading plots, visible model
 limitations — are not here. They are in `CLAUDE.md`'s safety-critical
