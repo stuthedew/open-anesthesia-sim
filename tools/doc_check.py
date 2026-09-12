@@ -96,6 +96,7 @@ try:
     from docket.roadmap import (
         BASELINE_MARK,
         HEADING_RE,
+        TABLE_ROW_RE,
         TIMELINE_HEADING,
         VERSION_TABLE_HEADING,
         MilestoneSection,
@@ -712,6 +713,73 @@ def _lookup(document: object, key_path: str) -> float | None:
     return float(node)
 
 
+#: The provenance table's own header, which is what distinguishes it from any
+#: other table in its section. Compared on the first three cells only: the
+#: fourth names its separator character and that is a typographic choice.
+PROVENANCE_HEADER = ("Parameter", "Selected value", "Unit")
+
+
+def _provenance_rows(text: str) -> tuple[list[tuple[int, list[str]]], str]:
+    """The provenance table's rows, found by its header rather than by position.
+
+    `table_rows` yields the rows of the **first** table under a heading, and
+    `## Parameter provenance` is over 500 lines of prose in this document - so
+    any table written anywhere above the real one displaced it, and the check
+    then walked the wrong rows and reported one missing-row error per stored
+    constant. Every one of those errors is true of the table it read and false
+    of the document, and the remedy they suggest is to add rows, which would
+    put parameter rows into a citation list (`PL-ZBZZ`, `PL-K997`: eleven
+    errors on 2026-09-10 and twenty-nine on 2026-09-07, each costing a session
+    the same diagnosis and each resolved by not writing a table).
+
+    Returns the rows and an empty note, or no rows and a note saying what was
+    found instead. Fixed here at the call site rather than in `table_rows`,
+    which `parse_version_table`, `parse_timeline` and `parse_milestones` all
+    share.
+    """
+    lines = text.splitlines()
+    in_section = False
+    header: list[str] | None = None
+    rows: list[tuple[int, list[str]]] = []
+    seen: list[str] = []
+    for index, line in enumerate(lines, start=1):
+        heading = HEADING_RE.match(line)
+        if heading is not None and len(heading.group("hashes")) <= 2:
+            if in_section:
+                break
+            in_section = heading.group("title").strip() == "Parameter provenance"
+            continue
+        if not in_section:
+            continue
+        match = TABLE_ROW_RE.match(line)
+        if match is None:
+            if rows:
+                break
+            header = None
+            continue
+        cells = [cell.strip() for cell in match.group("cells").split("|")]
+        if all(set(cell) <= set("-: ") and cell for cell in cells):
+            continue  # the separator row, which follows the header
+        if header is None and not rows:
+            header = cells
+            if tuple(cells[:3]) != PROVENANCE_HEADER:
+                seen.append(" | ".join(cells))
+            continue
+        if header is not None and tuple(header[:3]) == PROVENANCE_HEADER:
+            rows.append((index, cells))
+    if rows:
+        return rows, ""
+    if seen:
+        return [], (
+            f"the {len(seen)} table(s) under 'Parameter provenance' carry no provenance "
+            f"header; the first reads `{seen[0]}`, where "
+            f"`{' | '.join(PROVENANCE_HEADER)} | ...` was expected. A table written above "
+            "the provenance table displaces it - move it below, or into a subsection of "
+            "its own"
+        )
+    return [], ""
+
+
 def check_provenance(root: Path, report: Report) -> None:
     """Hold `docs/MODEL.md`'s provenance table to the data files, both ways.
 
@@ -727,11 +795,15 @@ def check_provenance(root: Path, report: Report) -> None:
         return
 
     documented: dict[tuple[str, str], int] = {}
-    rows = list(table_rows(path.read_text(encoding="utf-8"), "Parameter provenance"))
+    rows, note = _provenance_rows(path.read_text(encoding="utf-8"))
     if not rows:
         report.errors.append(
-            f"{MODEL}: no provenance table found under 'Parameter provenance'; either the "
-            "table moved or its format changed and this check has gone blind"
+            f"{MODEL}: {note}"
+            if note
+            else (
+                f"{MODEL}: no provenance table found under 'Parameter provenance'; either "
+                "the table moved or its format changed and this check has gone blind"
+            )
         )
         return
 
@@ -1791,8 +1863,22 @@ def _resolves(root: Path, basenames: frozenset[str], token: str) -> bool:
         base = root / prefix if prefix else root
         for candidate in _expand_braces(token):
             if patterned:
-                if next(base.glob(candidate), None) is not None:
-                    return True
+                try:
+                    if next(base.glob(candidate), None) is not None:
+                        return True
+                except (ValueError, NotImplementedError):
+                    # `Path.glob` raises rather than returning nothing for some
+                    # token shapes prose legitimately contains - an absolute
+                    # pattern (`/docs/*.md`) gives `NotImplementedError:
+                    # Non-relative patterns are unsupported`, and older
+                    # interpreters raise `ValueError` on a bare `**` component.
+                    # Unguarded, one such token aborted the whole run on a
+                    # traceback, so `doc_check check` reported nothing at all
+                    # about the several hundred citations around it. A token
+                    # glob cannot parse is a citation that does not resolve,
+                    # which is a finding about that line and not a reason to
+                    # stop (`PL-0M7L`).
+                    continue
             elif (base / candidate).exists():
                 return True
     # A bare filename (`parameters.py`, `WORKING_NOTES.md`) is written without

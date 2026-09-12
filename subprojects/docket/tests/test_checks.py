@@ -438,6 +438,33 @@ def test_needs_decision_passes_when_it_states_one() -> None:
     )
 
 
+def test_an_elaborated_decision_needed_heading_is_accepted() -> None:
+    """The same prefix rule the other three required headings already follow.
+
+    `PL-VJ1X`: this one was a bare substring test for the literal
+    `**Decision needed.**`, while `_section_text` matches `**Problem.**`,
+    `**Why it matters.**` and `**Done when.**` by the words they open with -
+    which `subprojects/docket/README.md` states as the rule for all of them.
+    So the one heading a reader most wants to qualify was the one heading that
+    could not be, and the workaround is invisible afterwards: every item that
+    met it reads as though it never wanted to elaborate.
+    """
+    body = BRIEF + "**Decision needed, and by whom.** Which way, and the owner decides.\n"
+    assert _errors(_item(status="needs-decision", body=body)) == []
+
+
+def test_an_empty_decision_needed_heading_is_still_refused() -> None:
+    """A heading with nothing under it states no decision, which is the error's own words.
+
+    The other half of `PL-VJ1X`, and the reason the fix reuses `_section_text`
+    rather than loosening the substring: that helper distinguishes "no such
+    heading" from "the heading is there and the section is not", and both are
+    an item that does not say what has to be decided.
+    """
+    body = BRIEF + "**Decision needed.**\n\n**Something else.** text\n"
+    assert _has(_errors(_item(status="needs-decision", body=body)), "states no decision to make")
+
+
 def test_safety_work_may_not_sit_in_a_low_band() -> None:
     assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
 
@@ -680,6 +707,44 @@ def test_a_scoped_milestone_clears_its_blocker() -> None:
     report = analyze([_blocked_on("v0.5.0")], TODAY, milestones=_milestones())
 
     assert report.errors == []
+    assert _has(report.advisories, "v0.5.0 is scoped and every other blocker has closed")
+
+
+def test_an_item_the_scoped_milestone_places_is_not_ready_to_promote() -> None:
+    """Scoped is not shipped, and for this shape the difference is the answer.
+
+    `PL-L09X`: `blocked-by: vX.Y.Z` carries one relation - blocked until that
+    milestone is *scoped* - and the project also needs "ships **with** that
+    milestone", which has no field. `PL-GS3R` is the live instance: fully
+    designed, waiting for the PySide6 port to land, because building it on the
+    toolkit being replaced costs frame time the port makes free. Scoping
+    `v0.5.1` cleared its blocker and could never have unblocked it, so
+    `docket check` advised on every run that it was ready to promote - the
+    opposite of the truth, and a standing false advisory is what `CLAUDE.md`'s
+    "a check earns its place every run" refuses.
+
+    No field was added: the milestone's own `Required scope` already names the
+    item, so this reads what is written.
+    """
+    roadmap = ROADMAP.replace("Two branches on one axis.", "- PL-C2C2 (S) The thing", 1)
+
+    report = analyze([_blocked_on("v0.5.0")], TODAY, milestones=milestone_states(roadmap))
+
+    assert report.errors == []
+    assert not _has(report.advisories, "ready to promote")
+
+
+def test_an_item_the_scoped_milestone_does_not_place_is_still_ready_to_promote() -> None:
+    """The half the suppression must not swallow.
+
+    An item that was waiting on the scoping round, and whose milestone does
+    not claim it, really can be started now. Silencing that too would trade a
+    false advisory for a missing one, which is the worse of the two.
+    """
+    roadmap = ROADMAP.replace("Two branches on one axis.", "- PL-ZZZZ (S) Something else", 1)
+
+    report = analyze([_blocked_on("v0.5.0")], TODAY, milestones=milestone_states(roadmap))
+
     assert _has(report.advisories, "v0.5.0 is scoped and every other blocker has closed")
 
 

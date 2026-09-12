@@ -1,8 +1,14 @@
 ---
 id: PL-7KDC
 title: docs/MODEL.md's 'Where this project stands' paragraph still says all eleven reference-patient parameters are the Gas Man default patient and 26 of 29 rows are tier 3, though PL-8ZJQ moved venous_pool_volume_l to a tier-2 source
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: science, docs
+feature: model-spec-accuracy
+touches: docs/MODEL.md
 added: 2026-09-07
+verify: python3 tools/doc_check.py check && grep -q 'ten of the eleven' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md's 'Where this project stands' paragraph still says all eleven reference-patient parameters are the Gas Man default patient and 26 of 29 rows are tier 3, though PL-8ZJQ moved venous_pool_volume_l to a tier-2 source
@@ -37,3 +43,17 @@ class.
 the practice), 2026-09-07, while verifying the counts before restating them.
 Not fixed there: `docs/MODEL.md` is outside that item's `touches` and this is
 `science`-classed work in the authoritative specification.
+
+**Why it matters.** It is the paragraph a reader consults to find out what the
+shipped parameter set rests on, so it is the one place a wrong tier claim
+reaches somebody deciding whether to trust a displayed value. Nothing computed
+reads it - `check_provenance` decides that a documented key holds the stated
+value, never what tier its source carries - so the sentence can be false
+indefinitely while `make check` stays green. The file's own `provenance_gap`
+already states the correct position, which makes the contradiction internal to
+the shipped tree rather than a gap.
+
+**Done when.** The paragraph says that ten of the eleven reference-patient
+parameters are the Gas Man default patient and names `venous_pool_volume_l` as
+the exception, with its tier; the tier-3 row count is recomputed against the
+provenance table rather than adjusted by one; and `make check` is clean.

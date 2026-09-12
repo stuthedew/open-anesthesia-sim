@@ -1,8 +1,10 @@
 ---
 id: PL-YSZN
 title: page.update() diffs every chart point control every frame whether or not it moved: 24.5 us per point x ~2080 points = 20-52 ms of the 200 ms frame, and 98% of it is Flet's Python-side object_patch walk rather than the 3-5 KiB patch it produces
-status: untriaged
+status: dropped
 added: 2026-09-08
+closed: 2026-09-12
+reason: A measurement, not work. Its table is the Flet baseline of record and stays in this file for whoever later asks why the interface left Flet. Everything it was filed to drive has since been taken up elsewhere: PL-QXSB consumed it and decided to leave Flet, v0.5.1 scopes the port, and each consequence it names is a live item of its own - PL-SQJ1 (delivered playback rate), PL-CNCF (drawn_window's 6.2 ms, which survives the port), PL-KP7H (closed, the per-point tooltip) and PL-C92D (the one correction its table still owes). Nothing is left here that is not one of those.
 ---
 
 **Problem.** The project owner reported the interface feeling laggy, worse at

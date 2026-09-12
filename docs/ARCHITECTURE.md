@@ -311,7 +311,7 @@ tools/
 ├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; the session-start hook calls it, it gates nothing, and it is the one tool here that reads the network
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
 ├── rules_paths_check.py  # refuses a `.claude/rules/*.md` `paths:` entry that does not begin with `/`, or whose literal prefix resolves to nothing, because an unanchored glob also matches its name at any depth while `./` and a typo'd prefix match nothing at all — so a rule's real scope can differ silently from the one it declares, in either direction
-├── workflow_paths_check.py  # holds `docket.toml`'s `workflow_paths` to what each file under `tests/` imports — apparatus when it does not import `anesthesia_sim`, the simulator's when it does — because the apparatus tests living in the simulator's test tree were listed by hand and drifted, and an item declaring one alongside the script it tests is set aside from both lanes and offered to nobody
+├── workflow_paths_check.py  # holds `docket.toml`'s two hand-maintained lists to the tree: `workflow_paths` to what each file under `tests/` imports — apparatus when it does not import `anesthesia_sim`, the simulator's when it does — because the apparatus tests living in the simulator's test tree were listed by hand and drifted, and an item declaring one alongside the script it tests is set aside from both lanes and offered to nobody; and `gate_paths` to every `ruff.toml` in the tree, because an uncovered linter config is one `docket verify`'s "the checks themselves are unedited" audit will not defend
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
 ```
 
@@ -680,6 +680,17 @@ cache exists. The script matches one whole line and rewrites nothing if it is
 absent or doubled, so an upstream change is a clean miss that reports itself
 rather than a partial edit to a script every stop executes. `PL-WW08` carries
 the diagnosis and the measurements.
+
+It does a second thing for the same reason, and the two are one job: counting
+commits held by no remote ref only works if this checkout *has* such refs. The
+harness clones with `git clone --depth 1`, which implies `--single-branch`, so
+`remote.origin.fetch` names the default branch alone and `git push` never
+writes `refs/remotes/origin/<branch>` — every commit on a pushed branch then
+reads as unpushed however many times it has been pushed. The hook widens that
+refspec, which repairs the clone rather than the test and keeps the stop check
+offline instead of trading it for a network call at every `Stop`. It only ever
+widens, and it neither fetches nor prunes, so it cannot destroy a ref
+`bin/docket stranded` needs. `PL-3SGR` and `PL-483K` are the two reproductions.
 
 ## Tests (`tests/`)
 

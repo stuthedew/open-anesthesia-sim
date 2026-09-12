@@ -1,7 +1,12 @@
 ---
 id: PL-9LXK
 title: Nothing checks a prose claim about the tier or adoption of a stored value's source, though PL-1JDD made both machine-readable and three such claims went stale within a day
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect, infra, docs
+feature: provenance
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-07
 ---
 
@@ -38,3 +43,27 @@ of it without having to trust prose.
 
 **Found.** `PL-X19T` (align the tier-3 absolute in the instruction files with
 the practice), 2026-09-07, after two stale-count findings in one pass.
+
+**Decision needed.** Which of two mechanisms, and the choice turns on a
+prediction about authors rather than on code. Either a `<!-- provenance: ... -->`
+-style marker extended to assert a tier or an adoption count, which checks only
+the claims somebody remembers to mark; or a command that reads the counts out of
+the data files and prints them, so a session updating the paragraph has the true
+numbers in front of it and marks nothing. The item's own text names the test:
+if marking is what the author will not do, the second is the item.
+
+Re-checked 2026-09-12: `check_prose_provenance` can assert numbers only -
+`_lookup` returns `None` for anything that is not an `int` or `float`, and the
+marker's value is parsed with `float()`. So a tier string or an `adopted`
+boolean is not merely unchecked, it is inexpressible in the existing mechanism,
+and either route is a real extension rather than a marker away.
+
+**Why it matters.** Three claims of this shape went stale inside a single day -
+`PL-FJGY`'s seven data-file restatements, `PL-J302`, and `PL-7KDC` - and every
+one was found by a session reading the files rather than by anything that runs.
+The claims sit in `docs/MODEL.md`'s source hierarchy, which is where a reader
+goes to decide whether to trust a displayed value, so a stale tier claim reaches
+that decision directly.
+
+**Done when.** Either mechanism is built with tests, or the decision is recorded
+that neither earns its place and the class is handled by the close-out sweep.

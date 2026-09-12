@@ -1,7 +1,12 @@
 ---
 id: PL-3JP0
 title: Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: ux, docs
+feature: presentation-safety
+touches: src/anesthesia_sim/app/wash_in.py, docs/MODEL.md
 added: 2026-09-08
 ---
 
@@ -39,3 +44,12 @@ window is a claim neither axis makes.
 recorded, or removed with `docs/MODEL.md` § "F_A/F_I as a displayed ratio"
 confirmed to carry the full statement; the axis caption is reduced to whatever
 part of it no axis title states; and `make check` is clean.
+
+**Decision needed.** Whether each of the wash-in section's two italic paragraphs
+is kept or removed. The item's own analysis argues they are plausibly keepers -
+they correct three expectations the uptake literature gives a reader that are
+wrong *for this model*, which is a different act from defining a term the reader
+already knows - and that is a real outcome rather than a failure to decide. What
+is not in question is the axis caption, whose left half duplicates the axis
+title and the axis's own 0-to-1 labels; that half goes regardless of how the
+paragraphs are answered.

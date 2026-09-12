@@ -238,3 +238,62 @@ def test_the_prefix_comparison_agrees_with_the_lane_it_mirrors() -> None:
 
 def test_this_repository_passes_its_own_check() -> None:
     assert workflow_paths_check.problems(ROOT) == []
+
+
+# --- the second hand-maintained list in the same file (`PL-BBDD`) -----------
+
+
+def _gate_repo(tmp_path: Path, *, gate_paths: tuple[str, ...], configs: tuple[str, ...]) -> Path:
+    """A repository with a `gate_paths` list and `ruff.toml` files at `configs`."""
+    entries = "".join(f'  "{entry}",\n' for entry in gate_paths)
+    (tmp_path / "docket.toml").write_text(
+        f"[docket]\ngate_paths = [\n{entries}]\n", encoding="utf-8"
+    )
+    for relative in configs:
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("line-length = 100\n", encoding="utf-8")
+    return tmp_path
+
+
+def test_a_ruff_toml_no_gate_path_covers_is_reported(tmp_path: Path) -> None:
+    """The silent direction: an uncovered config is one `docket verify` will not defend.
+
+    `PL-BBDD`: `gate_paths` names `tools/ruff.toml` and
+    `subprojects/docket/ruff.toml` one by one, which is the same
+    hand-maintained shape that left `workflow_paths` nine entries short. A
+    config the list misses lets a delegated diff relax the linter that keeps
+    these scripts parseable by the bare `python3` that runs them, and the audit
+    still reports ACCEPT.
+    """
+    root = _gate_repo(
+        tmp_path, gate_paths=("tools/ruff.toml",), configs=("tools/ruff.toml", "extra/ruff.toml")
+    )
+    (problem,) = workflow_paths_check.gate_problems(root)
+    assert "extra/ruff.toml" in problem
+    assert 'Add "extra/ruff.toml" to gate_paths' in problem
+
+
+def test_a_ruff_toml_under_a_covered_directory_is_accepted(tmp_path: Path) -> None:
+    """A prefix entry covers what is under it, which is how `.claude` covers its hook config."""
+    root = _gate_repo(tmp_path, gate_paths=(".claude",), configs=(".claude/hooks/ruff.toml",))
+    assert workflow_paths_check.gate_problems(root) == []
+
+
+def test_a_vendored_ruff_toml_is_not_the_repository_s_to_declare(tmp_path: Path) -> None:
+    """A config inside a checkout's virtualenv is somebody else's file."""
+    root = _gate_repo(tmp_path, gate_paths=("tools",), configs=(".venv/lib/pkg/ruff.toml",))
+    assert workflow_paths_check.ruff_configs(root) == []
+    assert workflow_paths_check.gate_problems(root) == []
+
+
+def test_this_repository_covers_every_linter_config_it_carries() -> None:
+    """The real tree, which is the thing the item is about.
+
+    Three configs today - `tools/`, `subprojects/docket/` and
+    `.claude/hooks/`, the last covered by the `.claude` prefix rather than by
+    name. This fails the day a fourth arrives uncovered, which is the whole
+    point: the previous answer was that nobody found out.
+    """
+    assert workflow_paths_check.gate_problems(ROOT) == []
+    assert len(workflow_paths_check.ruff_configs(ROOT)) == 3

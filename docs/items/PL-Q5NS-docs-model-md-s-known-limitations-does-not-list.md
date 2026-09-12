@@ -1,8 +1,14 @@
 ---
 id: PL-Q5NS
 title: docs/MODEL.md's Known limitations does not list lung tissue and pulmonary blood as an omitted store, which is worth about 20 percent of every agent's fast pool
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: science, docs
+feature: model-spec-accuracy
+touches: docs/MODEL.md
 added: 2026-09-08
+verify: python3 tools/doc_check.py check && grep -q 'lung tissue and pulmonary blood' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md's Known limitations does not list lung tissue and pulmonary blood as an omitted store, which is worth about 20 percent of every agent's fast pool

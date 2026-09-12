@@ -1,8 +1,15 @@
 ---
 id: PL-3SGR
 title: The stop hook demands a push for fully pushed work when the clone is shallow, because --depth 1 implies --single-branch and git push never creates the remote-tracking ref the hook reads
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+feature: dev-tooling
+touches: .claude/hooks/stop_hook_patch.py, tests/unit/test_stop_hook_patch.py
 added: 2026-09-07
+closed: 2026-09-12
+verify: uv run pytest tests/unit/test_stop_hook_patch.py && grep -q 'def test_a_pushed_branch_with_no_remote_tracking_ref_is_not_asked_to_push_again' tests/unit/test_stop_hook_patch.py
 ---
 
 **Problem.** The stop hook demands a push for fully pushed work when the clone is shallow, because --depth 1 implies --single-branch and git push never creates the remote-tracking ref the hook reads
@@ -58,3 +65,20 @@ reproduction; it is filed separately because the cause and the repair differ
 and neither is reachable from that item's text.
 
 **Where.** `.claude/hooks/stop_hook_patch.py`; `PL-483K` is the sibling cause.
+
+**Done when.** The stop hook does not demand a push for a branch whose commits
+are already on the remote, in a `--depth 1` clone where no
+`refs/remotes/origin/<branch>` exists. The test is the shallow, single-branch
+case specifically, since that is the one the current correction does not reach.
+
+Re-checked 2026-09-12: `.claude/hooks/stop_hook_patch.py` rewrites the harness
+test to `git rev-list HEAD --not --remotes --count`, which reads local
+`refs/remotes/*` only. That is `PL-WW08`'s fix for a *stale* tracking ref and it
+does not address a *missing* one, so this item is untouched by it and the two
+are distinct after all.
+
+**Sequencing.** `PL-483K` is the sibling cause - the same false demand arising
+from `git checkout -B` leaving the upstream on `main` - and it is already
+`ready` against the same two files. Both are the hook trusting local tracking
+state, and a single fix that compares `HEAD` against `git ls-remote origin
+<branch>` answers both. Work them together rather than in sequence.

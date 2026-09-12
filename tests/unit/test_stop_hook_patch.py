@@ -235,3 +235,141 @@ def test_the_correction_is_what_git_actually_answers(tmp_path: Path) -> None:
 
     _commit(run, tmp_path, "genuinely unpushed")
     assert run("rev-list", "HEAD", "--not", "--remotes", "--count").strip() == "1"
+
+
+# --- the second cause: a clone that cannot record its own pushes ------------
+
+
+def _single_branch_clone(tmp_path: Path) -> tuple[Path, Callable[..., str]]:
+    """A `--depth 1` clone of a local origin, which is what the harness makes.
+
+    `--depth 1` implies `--single-branch`, so `remote.origin.fetch` names
+    `main` alone and no other branch can ever gain a tracking ref.
+    """
+    origin = tmp_path / "origin.git"
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    setup = _git(seed)
+    setup("init", "--initial-branch=main")
+    setup("config", "user.email", "test@example.com")
+    setup("config", "user.name", "Test")
+    setup("config", "commit.gpgsign", "false")
+    _commit(setup, seed, "first")
+    subprocess.run(
+        ["git", "clone", "--bare", str(seed), str(origin)], check=True, capture_output=True
+    )
+
+    work = tmp_path / "work"
+    subprocess.run(
+        ["git", "clone", "--depth", "1", f"file://{origin}", str(work)],
+        check=True,
+        capture_output=True,
+    )
+    run = _git(work)
+    run("config", "user.email", "test@example.com")
+    run("config", "user.name", "Test")
+    run("config", "commit.gpgsign", "false")
+    return work, run
+
+
+def test_a_pushed_branch_with_no_remote_tracking_ref_is_not_asked_to_push_again(
+    tmp_path: Path,
+) -> None:
+    """The claim under `PL-3SGR`, against real git rather than a stub.
+
+    First the defect: in a `--depth 1` clone the refspec names `main` alone, so
+    `git push` sends the branch and writes no `refs/remotes/origin/<branch>`,
+    and the corrected `--not --remotes` test still counts the commit as
+    unpushed. Then the repair: widening the refspec makes the same push record
+    itself, and the count falls to zero without any network test being added to
+    the hook.
+    """
+    work, run = _single_branch_clone(tmp_path)
+    run("checkout", "-b", "feature")
+    _commit(run, work, "work on the branch")
+    run("push", "origin", "feature")
+
+    assert run("rev-list", "HEAD", "--not", "--remotes", "--count").strip() == "1", (
+        "a pushed branch in a single-branch clone should still read as unpushed, "
+        "which is the defect this test pins"
+    )
+
+    def repair(args: list[str]) -> tuple[int, str]:
+        result = subprocess.run(
+            ["git", "-C", str(work), *args], capture_output=True, text=True, check=False
+        )
+        return result.returncode, result.stdout
+
+    assert stop_hook_patch.widen_fetch_refspec(repair) == ""
+    run("push", "origin", "feature")
+
+    assert run("rev-list", "HEAD", "--not", "--remotes", "--count").strip() == "0"
+
+
+def test_a_genuinely_unpushed_commit_still_counts_after_the_refspec_is_widened(
+    tmp_path: Path,
+) -> None:
+    """The half a repair that merely stopped counting would break."""
+    work, run = _single_branch_clone(tmp_path)
+
+    def repair(args: list[str]) -> tuple[int, str]:
+        result = subprocess.run(
+            ["git", "-C", str(work), *args], capture_output=True, text=True, check=False
+        )
+        return result.returncode, result.stdout
+
+    stop_hook_patch.widen_fetch_refspec(repair)
+    run("checkout", "-b", "feature")
+    _commit(run, work, "never pushed")
+
+    assert run("rev-list", "HEAD", "--not", "--remotes", "--count").strip() == "1"
+
+
+def test_a_refspec_that_is_already_wide_is_left_alone(tmp_path: Path) -> None:
+    """Only ever widens: a full clone's config is not rewritten every session."""
+    calls: list[list[str]] = []
+
+    def run(args: list[str]) -> tuple[int, str]:
+        calls.append(args)
+        return 0, "+refs/heads/*:refs/remotes/origin/*\n"
+
+    assert stop_hook_patch.widen_fetch_refspec(run) == ""
+    assert calls == [["config", "--get-all", "remote.origin.fetch"]]
+
+
+def test_a_checkout_with_no_origin_is_reported_rather_than_rewritten() -> None:
+    """Every path this hook takes exits 0; it says what it could not do instead."""
+
+    def run(args: list[str]) -> tuple[int, str]:
+        return 1, ""
+
+    assert "no origin remote" in stop_hook_patch.widen_fetch_refspec(run)
+
+
+def test_a_branch_restarted_from_the_default_branch_is_not_asked_to_push_again(
+    tmp_path: Path,
+) -> None:
+    """`PL-483K`'s scenario, which is the same root cause seen from the other end.
+
+    That item blamed `git checkout -B <branch> origin/main` leaving
+    `branch.<name>.merge` on `main`. The corrected test reads no upstream at
+    all, so in a full clone it was already answered by `PL-WW08`; what was left
+    is a single-branch clone, where the restart is irrelevant and the missing
+    tracking ref is the whole of it. Pinned here under the name that item's
+    `verify:` command asks for, so the two are demonstrably one fix.
+    """
+    work, run = _single_branch_clone(tmp_path)
+
+    def repair(args: list[str]) -> tuple[int, str]:
+        result = subprocess.run(
+            ["git", "-C", str(work), *args], capture_output=True, text=True, check=False
+        )
+        return result.returncode, result.stdout
+
+    assert stop_hook_patch.widen_fetch_refspec(repair) == ""
+    run("fetch", "origin", "main")
+    run("checkout", "-B", "feature", "origin/main")
+    _commit(run, work, "work after the restart")
+    run("push", "origin", "feature")
+
+    assert run("rev-list", "HEAD", "--not", "--remotes", "--count").strip() == "0"

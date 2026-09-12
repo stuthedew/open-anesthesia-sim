@@ -1,8 +1,14 @@
 ---
 id: PL-60CQ
 title: docs/WORKING_NOTES.md's PL-024 entry still says the venous pool is 1.0 L and cited twice in reference_adult.json; both stopped being true when PL-8ZJQ adopted Davis and Mapleson's 1.222 L
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: model-spec-accuracy
+touches: docs/WORKING_NOTES.md
 added: 2026-09-08
+verify: python3 tools/doc_check.py check && ! grep -qF '1.0 L is the Gas Man reference value' docs/WORKING_NOTES.md
 ---
 
 **Problem.** docs/WORKING_NOTES.md's PL-024 entry still says the venous pool is 1.0 L and cited twice in reference_adult.json; both stopped being true when PL-8ZJQ adopted Davis and Mapleson's 1.222 L (found while closing `PL-7HDS`, 2026-09-08).
@@ -42,3 +48,10 @@ nothing in the entry is unrecorded elsewhere - the v0.4.7 release row and
 `reference_adult.json`'s Davis and Mapleson entry between them appear to carry
 all of it - and delete the entry rather than amending it a second time.
 
+
+**Done when.** The `PL-024` entry is deleted from `docs/WORKING_NOTES.md` per
+`CLAUDE.md`'s rule for a resolved thread, after confirming that nothing in it is
+unrecorded elsewhere - the v0.4.7 release row and `reference_adult.json`'s Davis
+and Mapleson entry between them appear to carry all of it. Amending it a second
+time is the outcome to avoid: the thread is resolved, so the entry has no reason
+to exist whatever numbers it holds.

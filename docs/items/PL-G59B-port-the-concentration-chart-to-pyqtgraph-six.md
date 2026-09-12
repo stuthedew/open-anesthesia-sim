@@ -1,9 +1,14 @@
 ---
 id: PL-G59B
 title: Port the concentration chart to pyqtgraph: six traces, both clinical references, both axes, the control marks and the wash-in plot
-status: untriaged
+priority: P2
+effort: L
+status: ready
+classes: feature, ux
 feature: qt-port
+touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/simulation_view.py, tests/integration
 added: 2026-09-10
+verify: uv run python tools/import_boundary_check.py && grep -rq 'pyqtgraph' src/anesthesia_sim/app/
 ---
 
 **Problem.** Port the concentration chart to pyqtgraph: six traces, both clinical references, both axes, the control marks and the wash-in plot
@@ -26,3 +31,21 @@ Flet's diff alone.
 the MAC-awake band and the 1 MAC line are clinically meaningful marks and must
 stay traceable to the snapshot's own divisor, exactly as `_refresh_view` does
 today - the spike's `_apply_agent_scale` is the worked example.
+
+**Why it matters.** The chart is where this simulator does its teaching, and it
+is the part of the port with the most clinically meaningful marks on it: the MAC
+axis, the MAC-awake band and the 1 MAC line are all values a reader interprets
+against. Presentation correctness is not relaxed for being a port - each must
+stay traceable to the snapshot's own divisor exactly as `_refresh_view` does
+today, and the spike's `_apply_agent_scale` is the worked example.
+
+The six compartment colours carry a second constraint the port must not lose:
+the four simulated colour-vision models put pairs of them as close as 1.08, far
+under the 3:1 that would make colour sufficient, so the dash pattern is the
+separating channel rather than decoration.
+
+**Done when.** Six traces, both clinical references, both axes, the control
+marks (`PL-DR1Z`'s vertical input-timeline series) and the wash-in plot all
+render under pyqtgraph from `controller.drawn_window`; the MAC marks resolve
+against the snapshot's own divisor; the dash patterns survive; and
+`tools/contrast_check.py` passes against the new theme.

@@ -1,8 +1,14 @@
 ---
 id: PL-C92D
 title: PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs, perf
+feature: qt-port
+touches: docs/WORKING_NOTES.md
 added: 2026-09-08
+verify: python3 tools/doc_check.py check && grep -qF 'not comparable across PL-2FM6' docs/WORKING_NOTES.md
 ---
 
 **Problem.** PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row
@@ -43,3 +49,25 @@ with the same harness (`tests/integration/test_chart_patching.py`'s real Flet
 session), and the note in `docs/WORKING_NOTES.md` under "Built and measured:
 the Qt spike runs" carries the corrected comparison. The three-stage split
 stays; only the numbers change.
+
+## Re-scoped by the Qt decision (2026-09-12)
+
+**Do not re-measure.** This item was written to re-take `PL-YSZN`'s Flet frame
+table on the post-`PL-2FM6` tree so the Qt/Flet comparison would rest on three
+comparable rows. `PL-QXSB` has since decided to leave Flet and `v0.5.1` scopes
+the port, so the decision the comparison supported is taken, and the tree being
+re-measured is one this project is deleting. The headline the decision actually
+rested on - handing a frame to the toolkit costs about 1 ms on Qt against 26-45
+ms on Flet - is the row that was always comparable and needs nothing.
+
+What still has value is the *caveat*, because the table will be read later by
+somebody asking why the interface left Flet, and two of its three rows compare
+architectures rather than toolkits. That is one sentence, not a measurement
+campaign.
+
+**Done when.** The note in `docs/WORKING_NOTES.md` under "Built and measured:
+the Qt spike runs" says which two of the three stages are not comparable across
+`PL-2FM6` and why - `advance` fell threefold because the history recording went,
+`refresh` rose because the chart's read moved to evaluating the score - and that
+the `page.update` / `handoff` row is the toolkit comparison and is unaffected.
+Re-measurement is explicitly out of scope.

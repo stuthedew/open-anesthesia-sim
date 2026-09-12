@@ -1,8 +1,14 @@
 ---
 id: PL-GN8C
 title: docs/references/README.md records no reading of Lowe and Ernst 1981, and the interlibrary-loan route that reached it is the answer PL-XJ5P is looking for
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: provenance
+touches: docs/references/README.md
 added: 2026-09-08
+verify: python3 tools/doc_check.py check && grep -q 'Lowe and Ernst' docs/references/README.md
 ---
 
 **Problem.** docs/references/README.md records no reading of Lowe and Ernst 1981, and the interlibrary-loan route that reached it is the answer PL-XJ5P is looking for (`PL-7HDS`, 2026-09-08).
@@ -45,3 +51,15 @@ placeable.
 **Sequencing.** `PL-XJ5P` is `needs-decision` and touches the same file; if it
 is answered first, this becomes part of its answer rather than a separate edit.
 
+
+**Done when.** `docs/references/README.md` carries an entry for Lowe and Ernst
+1981 under "The documents", in the shape the two removed full texts use - the
+citation, "Not held here" with the reason, and what the document establishes -
+and the interlibrary-loan route is recorded as a route, with the detail that
+makes it repeatable: that narrowing the request to a page range identified in
+advance is what made it cheap enough to place.
+
+**Sequencing.** `PL-XJ5P` is `needs-decision` on where such routes belong and
+touches the same file. If it is answered first this becomes part of its answer
+rather than a separate edit; if this is done first, keep the route sentence
+where `PL-XJ5P` can move it.
