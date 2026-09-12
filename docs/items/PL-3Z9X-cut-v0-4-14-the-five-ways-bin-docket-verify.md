@@ -9,6 +9,7 @@ feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases
 added: 2026-09-12
 closed: 2026-09-12
+pr: 498
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.14"' pyproject.toml && test -f docs/releases/v0.4.14.md
 ---
 
