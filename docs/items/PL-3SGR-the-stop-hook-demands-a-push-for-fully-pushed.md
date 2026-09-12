@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.14
 touches: .claude/hooks/stop_hook_patch.py, tests/unit/test_stop_hook_patch.py
 added: 2026-09-07
 closed: 2026-09-12

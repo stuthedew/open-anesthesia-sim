@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.14
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-10
 closed: 2026-09-12
