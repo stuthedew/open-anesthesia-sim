@@ -5,7 +5,7 @@ status: ready
 feature: parallel-sessions
 priority: P2
 effort: M
-classes: infra, defect
+classes: infra
 touches: tools, tests/unit
 added: 2026-09-12
 verify: uv run pytest tests/unit/test_tools_portability.py -q && test -f tools/left_behind_check.py && grep -q 'refs/pull' tools/left_behind_check.py
@@ -65,3 +65,14 @@ and still answers in a bare checkout; the two known vectors behave - silent on
 on `#284` between `9fee36c` and `7f87bf5`; and a test under `tests/unit/`
 covers both vectors and the declines-when-unfetched path.
 
+
+**On the class, since it was corrected rather than chosen once.** This item was
+first triaged `infra, defect` and that was wrong. `PL-VV4D` decided that
+`vcs.orphaned` stays exactly as it is and the exact test is built *beside* it,
+so nothing here repairs a broken thing - it adds a second detector that the
+broken one's four false positives can then be worked against. The defects are
+`PL-XLQ5`, `PL-Y31G`, `PL-JBRC` and `PL-8MJ3`, all four already on v0.5.0's
+frozen gate list at `ROADMAP.md`, all four still classed `defect`, and all four
+now blocked on this item. The gate loses nothing by this item not carrying the
+class; it would have gained a second, duplicate entry for work the list already
+covers.
