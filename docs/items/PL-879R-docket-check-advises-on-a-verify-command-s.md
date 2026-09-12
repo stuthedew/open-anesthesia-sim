@@ -70,3 +70,29 @@ Re-checked 2026-09-12: `checks.py` carries shape checks for re-entrancy
 `touches` - so the shape half is an established pattern here rather than a new
 kind of check. What none of them inspects is whether the command is
 *tautological*, which is this item's subset.
+
+## A third instance, and it is a sharper rule than the two above (2026-09-12)
+
+`PL-MMWX`'s `verify:` was `grep -q 'coupled package' ROADMAP.md`, written having
+been run and seen to fail - the practice this project asks for, followed
+exactly. It began passing **inside the same branch that wrote it**, and
+`bin/docket check --verify` caught it in CI.
+
+The two earlier instances were another *item's* work satisfying the command.
+This one is different and worse, because one of its two causes is
+unavoidable: **a gate-listed item's entry in `ROADMAP.md` is its own title.**
+So a file-wide `grep` for any phrase in the title of an item that will be listed
+in a frozen list, a Required scope or a declined subsection stops discriminating
+the moment it is listed, no matter how carefully it was run first. Running the
+command beforehand cannot catch it, because the listing has not happened yet.
+
+That makes a genuinely decidable case for the shape check this item is weighing,
+and a narrow one: **a `verify:` whose discriminating half greps a file that
+`ROADMAP.md`-style listings quote item titles into, for words that appear in the
+item's own title.** Both halves are read from the store - the title is there,
+and whether the command's grep pattern is a substring of it is a string test. No
+judgment about whether the phrase is one only the work can produce is required.
+
+The repair was to scope the grep to the section the work touches (`sed -n
+'/^30\. Add patient factors/,/^31\./p' ROADMAP.md | grep -q ...`), which is
+probably the advice a warning should carry.

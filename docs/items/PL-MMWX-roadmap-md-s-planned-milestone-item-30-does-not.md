@@ -8,7 +8,7 @@ classes: safety, docs, planning
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-08
-verify: python3 tools/doc_check.py check && grep -q 'coupled package' ROADMAP.md
+verify: python3 tools/doc_check.py check && sed -n '/^30\. Add patient factors/,/^31\./p' ROADMAP.md | grep -q 'cardiac output'
 ---
 
 **Problem.** ROADMAP.md's planned-milestone item 30 does not say that cardiac-output scaling is one of its obligations, or that weight scaling is only safe as a coupled package (`PL-YKSM`, 2026-09-08).
@@ -81,3 +81,22 @@ learner sees the default rather than the law.
 
 **Not this item's job**: scoping the milestone, choosing the scaling law, or
 deciding between total body weight and fat-free mass.
+
+**The `verify:` command was rewritten on 2026-09-12, and why matters more than
+the edit.** It was first written as `grep -q 'coupled package' ROADMAP.md`, run
+against the tree and seen to fail. It then started passing inside the same
+branch, and `bin/docket check --verify` caught it in CI: "its `verify:` command
+already passes ... the command does not discriminate and proves nothing, in
+which case `docket verify` would ACCEPT a branch that did none of the work."
+
+Two things wrote that phrase into `ROADMAP.md` without doing this item's work.
+The gate disposition paragraph recorded *why* this item joins Gate 1 and quoted
+the constraint to do it. And, unavoidably, the frozen list's own entry for this
+item **is its title**, which contains the phrase - so any `ROADMAP.md`-wide grep
+for words in the title of a gate-listed item is self-defeating the moment the
+item is listed, however carefully it was run beforehand.
+
+The replacement scopes the grep to item 30's own entry with `sed -n
+'/^30\. Add patient factors/,/^31\./p'`, so prose anywhere else in the file
+cannot satisfy it. Confirmed both ways: exit 1 today, exit 0 with a `cardiac
+output` line inserted into item 30 and nowhere else.
