@@ -1,12 +1,14 @@
 ---
 id: PL-V4LS
 title: docket check recovers a merged pull request number and then asks a human to transcribe it, which is a decidable half left as prose
-status: needs-decision
+status: dropped
 priority: P3
 effort: S
 classes: infra, session-cost
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/SKILL.md
 added: 2026-09-03
+closed: 2026-09-12
+reason: done by PL-N5WZ (#265): bin/docket record writes every pr the base is owed, through the same closures_on_base call docket check reports from, and make fix runs it
 ---
 
 **Problem.** After a merge, `docket check` reports:
@@ -65,3 +67,13 @@ already holds the recovered number; `cli.py` would carry a new subcommand;
 item no longer requires a human to copy a number the tool already printed.
 
 **Found.** 2026-09-03, after paying it for the second time in one session.
+
+**Dropped 2026-09-12**, by the workflow-lane consolidation pass (`PL-6ZQY`).
+The premise was checked against the tree by an adversarial reviewer whose
+default was to refuse, and it did not survive:
+
+> Done by `PL-N5WZ` (the merge-time `pr:` write moved local, closed 2026-09-03, #265), which answered this item's open question the way it recommended: `bin/docket record` writes every `pr` the base is owed, reading it through the same `closures_on_base` call `docket check` reports from, and `make fix` runs it so the field rides a commit the session was already making. `check` stays read-only for CI, `checks.py`'s advisory now names the command instead of asking a person to transcribe, and `.claude/skills/docket/SKILL.md`'s close-out documents it and forbids editing the field by hand. Dropped rather than marked done because this item's id leads no commit, so `done` with no `pr:` would trip `docket check`'s own error. The 2026-09-03 measurement (paid twice in one session, after #246 and after #249) lives on in this file.
+
+What the file keeps that exists nowhere else, which is why it is dropped rather
+than deleted: Two things, both cheap. First, the item's only unique measurement — "Measured on 2026-09-03, this session paid it twice - once after #246 and once after #249 - and each time the payment was a commit and a pull request whose entire content was two frontmatter lines" — appears nowhere else in the tree; `PL-N5WZ` argues the same cost without those two pull request numbers. Second, the item's framing of the toll as structural ("the number cannot be known when the closure is written"). The second sur
+
