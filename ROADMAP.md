@@ -73,7 +73,8 @@ capability-boundary rule above governs.
 | v0.4.10 | Completed | **The release where the apparatus stopped being implicit.** No stored value moves: `src/anesthesia_sim/data/` changes only in what its entries say about their own numbers, and `core/` only in `circuit.py`'s docstrings. What moved is that the machine around the model - what a flow number counts, at what altitude, on which class of vaporizer, through which breathing circuit, and out of which book each parameter came - is now stated where a reader meets it. **Fresh gas flow was never the flowmeter setting.** The model reads it as flow at the common gas outlet, carrier gas plus the vapour the vaporizer added, and the two differ by `1/(1 - F_D)` - 22% at desflurane's 18% dial maximum. `docs/MODEL.md` and `BreathingCircuit` now say so (`PL-CXYT`), and so does the one place a user actually reads: the control carries "common gas outlet" as a smaller second line under its label, in the idiom the metric panels already use for "Alveolar / end-tidal-equivalent" (`PL-71CF`). The user-visible consequence is the circuit time constant `V_C/V_F`, which is what the wash-in curve is about. **The model is at sea level, and the delivered-concentration dial is a class of vaporizer rather than a universal control** (`PL-5K5C`) - both recorded rather than assumed. **The elimination comparison was measuring a breathing circuit, and now says how much.** `tests/reference/test_published_wash_in.py` gained a test-only open-circuit driver that discards the circuit after every step of the washout and records the agent as exhausted, which is the condition Yasuda's expirate collection ran at and one no setting of this simulator reaches; the apparatus is worth **3.5 to 4.2 published SD** per cohort, and with it removed sevoflurane and both isoflurane cohorts land inside the published spread that the shipped condition missed by +3.8 to +5.1 SD (`PL-W21J`). Desflurane crosses to 2.33 SD on the *other* side, and `PL-73G7` records that as a disagreement no parameter closes rather than one to tune away. **Agent identity had been reaching the screen in Material's disabled grey** - fixed on the running-agent control (`PL-61WW`), with the general rule for every identity-carrying control decided and left as one check to build (`PL-97VB`). **Lowe and Ernst 1981 was read at the source**, by interlibrary loan: page 56 says the figure's volumes and flows are collected and cited onward, so the book is tier 2, nothing is promoted or adopted, and of the seven values the Gas Man Workbook credits to it three reproduce and four do not (`PL-7HDS`). **And the resident provenance rule was contradicting the shipped parameter set.** "A reference implementation is never the authority for a constant" loads in every session, while twelve partition coefficients and ten of the reference patient's eleven parameters are adopted from one on a recorded decision; the letter now says what the spirit always did, which is never a *silent* authority (`PL-X19T`, `PL-J302`). `PL-KTKP` closes beside them: the v0.5.0 debt gate had under-reported by eleven safety- and science-classed entries for two days, and those eleven were the whole of its `P1` band. Twelve items, one of which is the v0.4.9 cut itself. |
 | v0.4.11 | Completed | **The release where the interface's cost was measured rather than guessed.** No equation, parameter, numerical method or solver step moves: `src/anesthesia_sim/core/` is byte-identical to v0.4.10, and `src/anesthesia_sim/data/` changes only in what two provenance entries say about their own numbers - one of them recording that the stored 5.0 L/min cardiac output is *kept* against Lowe and Ernst's allometric 4.84, because this file stores compartment volumes as fixed litres and scaling only the flow would make every time constant proportional to M^(-3/4), an artifact of scaling one half of a coupled pair (`PL-YKSM`). **The project owner reported the interface as laggy at speed, and the first finding was that it is not the simulation.** The model is 42 us a step, enough to sustain about 2 400x real time, and at 300x it occupies 12% of a tick; `page.update()` cost 20-52 ms of a 200 ms frame, 98% of it Flet's Python-side control-tree walk against 2% for the msgpack encode, on a patch of 3-5 KiB. **The cost is the walk rather than the changes it finds**: an update on a chart where nothing had changed since the last one costs what a full frame costs, both linear in the number of point controls at about 24.5 us each, with 64% of a frame in `object_patch._compare_dataclasses` (`PL-YSZN`). **Half of it was a tooltip nothing ever wrote text into.** Every `LineChartDataPoint` carries a default `LineChartDataPointTooltip` holding a full seventeen-field `TextStyle`, and Flet's diff descends into both on every point on every frame. The hover is now offered while the run is paused and withdrawn while it plays - which costs nothing, because `_run_render_timer` takes no frame while the run is stopped, and a value read under a cursor on a trace advancing a simulated minute per frame was never readable anyway (`PL-KP7H`). **And a dragged slider was drawing a whole frame per pointer move**, 59.1 ms each, so a drag emitting thirty a second asked for 1.8 s of event-loop time per second and the readouts arrived *later* than a tick rather than sooner; the frame is coalesced onto the render tick, leaving 3.4 ms, with a refusal and the frame that clears one still drawn immediately because those are the only states where a dial and the simulation disagree (`PL-R2YM`). Together: delivered playback rises from 73-91% of the rate the dropdown claims to 84-94%, and input-delay p90 roughly halves. **`PL-YDKJ` is decided rather than deferred**, both escape routes having been measured: a server-rendered chart is 44.4 ms a frame in the mode this chart is in, and a sweep display buys this path nothing because the walk is indifferent to what moved - O(1) in operations sent, which was `PL-Q197`'s bottleneck, and O(n) in the walk, which is today's. The accepted ceiling is written at `CHART_COLUMN_BUDGET_PER_SERIES`, where a session sizing the chart will be holding it. **What none of that reaches is a floor**: an idle page of about a hundred controls still costs 10.3 ms, five times a second, to discover that nothing moved - so `PL-QXSB` asks whether the interface should stay on Flet at all and is admitted to v0.5.0's gate, because that milestone's defining feature is a second chart. PySide6 with pyqtgraph measures 0.51 ms for the same frame and barely scales - 380 times the points costs four times the frame - while PyQt is ruled out by licensing rather than preference, this project being Apache-2.0 against PyQt6's GPLv3-or-commercial. **The interface also says less, and says who it is for.** The concentration chart's explanatory prose is cut to legend and labels (`PL-6580`), the reader it is written for is named in a rule every session editing `app/` loads (`PL-B89V`), and the running build is on screen so a fix verified by eye can be attributed to the build that drew it (`PL-YKF8`). **Beside them, the apparatus caught its own checks reporting more than they checked.** `bin/docket verify`'s item-front-matter guard compared `git show <base>:<bare filename>`, so the lookup always failed, the miss was swallowed as a new item file, and the check reported PASS on every branch including one that marked its own item done (`PL-20PT`); forty-two open items carried neither a gate placement nor a recorded deferral, which is the one disposition the presence rule forbids (`PL-36R4`), and the check that closes that hole immediately turned `main` red on the first item to arrive after it, because that item had merged on a base whose CI predated the check (`PL-33WM`). Twenty-one items, one of which is the v0.4.10 cut itself, completing the `delegation` feature. |
 | v0.4.12 | Completed | **The release where a run stopped being a record of itself.** The chart drew by summarising a store of recorded samples; it now evaluates the run's score at the instants it plots, and the store is gone with the summariser. `RunHistory`, `HistoryWindow`, `SimulationHistorySample` and the M4 decimation module are deleted - 671 lines of a careful implementation, removed because the architecture deleted the problem it solved rather than because it was wrong - along with the Jugel et al. 2014 paper it was founded on and every citation of both. Net 860 lines out. **The change was made for a safety reason rather than for tidiness.** `PL-4RBD` was banded a `P2` fidelity defect on a 0.04 percentage-point error measured at a chart window the interface had not had for four releases; re-measured against the shipped time bases, the alveolar trace departed from the run by 0.65 pp at a 12-hour base - 0.32 MAC of sevoflurane - drawn with nothing to say the shape between plotted points was inferred. It is `P1` `safety`, and the fix is structural: a control event now gets its own column, read from the keyframe the score already holds, so it is exact rather than placed. **What that did and did not buy is measured and recorded.** The kink at a dial change is gone. The curvature is not: columns sit at the spacing the time base implies and the chart rules a straight line between them, so the worst departure fell to 0.53 pp, 0.26 MAC, and moved to the steep early wash-in where a learner watching an induction is looking. `PL-GS3R` carries that measurement, the three routes out of it, and the decision the project owner owes. Beside the simulator work, the branch-id rule stops failing the owner's own web edits and any contributor's pull request, and `CONTRIBUTING.md` exists now the repository is public. No equation, parameter, numerical method or solver step moves. |
-| v0.4.13 | Completed / current baseline | **The release where the reference patient's provenance chain was followed to its end, and found to contain no measurement.** No displayed value moves and no stored value moves: no equation, parameter, unit, numerical method, solver step or interface element changed, and `src/anesthesia_sim/core/` is byte-identical to v0.4.12. `src/anesthesia_sim/data/` changes only in what its entries say about their own numbers. **What moved is how much of that provenance is known.** The Gas Man Workbook names Lowe and Ernst 1981 for seven of the reference patient's eleven values; that book cites four references on page 56 for its own figure 4.1b, and over one afternoon the project owner supplied all four by interlibrary loan and direct download. They are two documents one link apart: ICRP Committee II's 'standard man' table at page 151, which Mapleson 1963 also cites for his volumes, and which gives organ masses and **no blood flows at all**; and Mapleson himself, who compiles his flows from about twenty sources - some of them animal, one row an `Estimate`, and one 'chosen merely to complete cardiac output', which is 19.9% of his total. Lowe and Ernst's other two references are Mapleson's table lumped and relabelled, reproducing it in nine rows of nine. **The chain reaches tier 1 nowhere, and figure 4.1b's flow column reproduces from none of the four**: on Mapleson's own rows the vessel-rich share is 59.0-63.0% against Lowe's 76%. `reference_adult.json` gains five `sources` entries and its `provenance_gap` is rewritten to say that, stated as what was checked rather than as what exists - **it does not follow that no origin exists**, and the field says so. **Two other decisions are recorded rather than built.** The PySide6 spike was run on the project owner's own hardware and the interface will leave Flet, scoped as v0.5.1 and not started here. And `docs/MODEL.md`'s cardiac-output limitation stops setting Lowe's derived 4.84 L/min beside Cattermole's measured 5.51 L/min as though they were evidence of the same kind. `doc-consistency-checks` is complete, and `tools/doc_check.py` can now express a one-entry gate group without silently attributing it to the group above. | 11 items |
+| v0.4.13 | Completed | **The release where the reference patient's provenance chain was followed to its end, and found to contain no measurement.** No displayed value moves and no stored value moves: no equation, parameter, unit, numerical method, solver step or interface element changed, and `src/anesthesia_sim/core/` is byte-identical to v0.4.12. `src/anesthesia_sim/data/` changes only in what its entries say about their own numbers. **What moved is how much of that provenance is known.** The Gas Man Workbook names Lowe and Ernst 1981 for seven of the reference patient's eleven values; that book cites four references on page 56 for its own figure 4.1b, and over one afternoon the project owner supplied all four by interlibrary loan and direct download. They are two documents one link apart: ICRP Committee II's 'standard man' table at page 151, which Mapleson 1963 also cites for his volumes, and which gives organ masses and **no blood flows at all**; and Mapleson himself, who compiles his flows from about twenty sources - some of them animal, one row an `Estimate`, and one 'chosen merely to complete cardiac output', which is 19.9% of his total. Lowe and Ernst's other two references are Mapleson's table lumped and relabelled, reproducing it in nine rows of nine. **The chain reaches tier 1 nowhere, and figure 4.1b's flow column reproduces from none of the four**: on Mapleson's own rows the vessel-rich share is 59.0-63.0% against Lowe's 76%. `reference_adult.json` gains five `sources` entries and its `provenance_gap` is rewritten to say that, stated as what was checked rather than as what exists - **it does not follow that no origin exists**, and the field says so. **Two other decisions are recorded rather than built.** The PySide6 spike was run on the project owner's own hardware and the interface will leave Flet, scoped as v0.5.1 and not started here. And `docs/MODEL.md`'s cardiac-output limitation stops setting Lowe's derived 4.84 L/min beside Cattermole's measured 5.51 L/min as though they were evidence of the same kind. `doc-consistency-checks` is complete, and `tools/doc_check.py` can now express a one-entry gate group without silently attributing it to the group above. | 11 items |
+| v0.4.14 | Completed / current baseline | **The release where the project's own checks stopped refusing correct work.** Nothing computational moved, and this one can say so more strongly than the last: `git rev-parse v0.4.13:src HEAD:src` resolves to the same tree object at both ends, so the whole of `src/` is byte-identical - `core/`, `app/` and `data/` alike - where v0.4.13 could claim only `core/`. `docs/MODEL.md` is byte-identical and `.github/` untouched, so no equation, parameter, unit, numerical method, solver step, displayed value or CI gate moved; the three changed files under `tests/` exercise `tools/` and none imports `anesthesia_sim`. **Fifteen of the seventeen items are one defect wearing different clothes:** a piece of the apparatus produced a signal a session could act on, and the signal was false. **Five are `bin/docket verify` refusing exactly what the instructions mandate** - a branch carrying a capture (`PL-66PR`), a close-out letting `docket record` ride its commit (`PL-ZYQC`), an item whose declared work *is* editing `.claude` (`PL-69JZ`), the front matter that closing an item necessarily edits (`PL-B5YN`), and a batch branch audited as one item (`PL-4LT9`) - all five the same inability to tell a delegated worker from a session reviewing its own branch. **The repair is deliberately partial and the gap is recorded rather than implied:** two shapes are exempt unconditionally, the other three only under the new opt-in `verify --self`, and nothing on the documented close-out path names that mode yet - `PL-7XTS` was filed in this range to say so. `PL-4LT9` is *reported rather than repaired* by explicit decision; `item_commits` still matches every subject, so the new check never blocks. **Two are the stop hook demanding a push for work already pushed**, from unrelated causes: `--depth 1` implies `--single-branch`, so `git push` never creates the ref the hook reads (`PL-3SGR`), and the merged-PR recovery's `checkout -B` repoints the upstream (`PL-483K`) - whose dangerous variant is that the same missing ref makes `--force-with-lease` refuse with `stale info` and invites a bare `--force` mid-rebase. What shipped widens `remote.origin.fetch` at session start and deliberately never fetches and never prunes. **Three named a wrong cause with complete confidence**, which is worse than failing: eleven missing-row errors pointing a session at the safety-critical provenance table when the fault was a decoy table 300 lines above (`PL-ZBZZ`), a checker erroring on an elaborated `**Decision needed**` heading its own README permits (`PL-VJ1X`), and stale `.pyc` bytecode producing a `make check` failure unreachable from the source in front of the reader (`PL-01GD`). **Three reported nothing or the wrong number:** one unparseable glob token aborting the whole documentation gate on a traceback (`PL-0M7L`), `docket next` understating the queue by exactly the untriaged pile (`PL-ZWBK`), and `docket check` advising every run that a `P1` `safety` item was ready to promote when it must ship behind an unshipped port (`PL-L09X`). `PL-KY7M` removes ten deprecation lines per run; `PL-BBDD` is the same class at opposite polarity, an uncovered `ruff.toml` letting a delegated diff relax the linter and still report ACCEPT. **They were found by running the tools rather than reading them:** `PL-3B47`'s pass over the 46 untriaged captures closed 23 ids, eight of them dropped as duplicates, already fixed, or overtaken by the Qt port. **Seventeen items, one of which is the v0.4.13 cut itself.** Two debts leave with it rather than inside it: `PL-01GD` shipped with no test at all (`PL-H9GV`), and the same triage pass wrote into this document a sentence calling every drawn chart point an M4 representative of roughly 120 recorded samples - a path `PL-2FM6` deleted in v0.4.12 (`PL-DZFJ`). |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -110,86 +111,103 @@ it again for anyone who repeats the measurement.
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 
-## Current baseline: v0.4.13
+## Current baseline: v0.4.14
 
-v0.4.13 is the release in which the reference patient's provenance chain was
-followed to its end, and found to contain no measurement.
+v0.4.14 is the release in which the project's own checks stopped refusing
+correct work.
 
-**Nothing a user can observe changed.** No equation, parameter, unit, numerical
-method, solver step or interface element moved; `src/anesthesia_sim/core/` is
-byte-identical to v0.4.12, and `src/anesthesia_sim/data/` changes only in what
-its entries say about their own numbers. That is why this is a patch. What
-moved is how much of the provenance behind those numbers is known, and the
-answer is now complete rather than partial.
+**Nothing a user can observe changed, and this release can say so more strongly
+than the last one could.** `git rev-parse v0.4.13:src HEAD:src` resolves to the
+same tree object at both ends, so the whole of `src/` is byte-identical -
+`core/`, `app/` and `data/` alike - where v0.4.13 could claim only `core/`,
+`data/` having moved that release. `docs/MODEL.md` is byte-identical too and
+`.github/` is untouched, so no equation, parameter, unit, numerical method,
+solver step, displayed value or CI gate moved. The three changed files under
+`tests/` are `test_doc_check.py`, `test_stop_hook_patch.py` and
+`test_workflow_paths_check.py`; none of them imports `anesthesia_sim`, and no
+reference case was touched. That is why this is a patch.
 
-**The chain, end to end.** The Gas Man Workbook credits Lowe and Ernst 1981 for
-seven of the reference patient's eleven stored values. Page 56 of that book
-cites four references for its figure 4.1b, and over a single afternoon the
-project owner supplied all four - the rest of chapters 2 and 4 by interlibrary
-loan from Michigan State, ICRP Committee II's page 151 as a page image, and the
-three papers by direct download. They turn out to be **two documents one link
-apart**. Mapleson 1963 says his Table 1 volumes "are those for the 'standard
-man' of the International Commission on Radiological Protection", citing that
-report at **page 151** - the same page Lowe and Ernst cite separately - so the
-book very likely took the citation from Mapleson's own list. The other two
-references are Mapleson's Table 1 lumped into twelve compartments and
-relabelled for a 75 kg man: under their own lumping footnotes they reproduce it
-in **nine rows of nine**, the nine summing to 58.04 litres against Mapleson's
-own 58.04.
+**What moved is whether the apparatus tells its own sessions the truth.**
+Fifteen of the seventeen items are one defect wearing different clothes: a piece
+of the project's own tooling produced a signal a session could act on, and the
+signal was false. Each either fired on behaviour these instructions *require*,
+named a cause the source cannot support, reported a number that disagreed with
+the store, or demanded an action already completed.
 
-**Neither document measured anything, and the honest one says so.** ICRP's is a
-committee reference specification giving organ masses and **no blood flows at
-all** - so the perfusion fractions, which set every time constant this model
-computes, cannot descend from it. Mapleson's flows are compiled from about
-twenty sources with a note on every row, which is more provenance than anything
-else in the chain offers: some rows are animal (adrenals from dogs, fatty
-marrow from goats), one is called an `Estimate`, and one is neither - "Skin
-shunt: Values chosen merely to complete cardiac output", **19.9% of his total
-flow and the second-largest row in the table**. His appendix also carries the
-assumption this model's entire representation of perfusion descends from: "the
-blood flow to any region is a fixed fraction of the total cardiac output from
-20 to 70 years of age".
+**Five are `bin/docket verify` refusing exactly what the instructions mandate.**
+A branch carrying a capture, which `CLAUDE.md` requires of every session
+(`PL-66PR`); a close-out that let `bin/docket record` ride the commit it was
+already making, which the `docket` skill requires (`PL-ZYQC`); an item whose
+declared work *is* editing a `.claude` rules file, since `gate_paths` includes
+`.claude` and `touches` was never consulted (`PL-69JZ`); the item front matter
+that closing an item necessarily edits (`PL-B5YN`); and a batch branch audited
+as though it were a single item, because every commit subject must lead with
+every id it closes (`PL-4LT9`). All five are one inability: the audit could not
+tell a delegated worker from a session reviewing its own branch.
 
-**And the negative finding, which is the one worth the release.** Figure
-4.1b's flow column - the table Gas Man credits - reproduces from **none** of
-the four references the book names for it. On Mapleson's own rows, kidney plus
-heart plus brain plus liver is 59.0% of cardiac output, and every well-perfused
-organ together 63.0%, against Lowe's 76%. `reference_adult.json`'s
-`provenance_gap` now says that, and says it as **what was checked rather than
-as what exists**: the project has read every source the chain names and has not
-found where the flow fractions came from, and *it does not follow that no
-origin exists*. Distinguishing those two is the whole discipline, and the field
-had briefly failed it.
+**The repair is deliberately partial, and the remainder is recorded rather than
+implied.** Two of the five shapes are now exempt unconditionally - a capture,
+and a `pr:`-only line written by `bin/docket record`. The other three are
+reported as advisories only under the new opt-in `bin/docket verify --self`, and
+nothing on the documented close-out path names that mode yet: `PL-7XTS` was
+filed in this same range to say so, and is still untriaged. `PL-4LT9` is
+*reported rather than repaired* by explicit decision - `item_commits` still
+matches every subject, so `bin/docket verify <id>` still audits the whole batch
+branch and the new check never blocks.
 
-**What that cost in file terms.** Five new `sources` entries - ICRP Committee
-II, Mapleson 1963, Smith 1972, Zwart 1972 - each recording what it was read
-for, by which route and to what depth, and each saying plainly what it did not
-do. The `provenance_gap` went from 3 217 characters of dated research log back
-to 2 396 characters of the gap itself. One entry was **withheld** rather than
-filled from memory when no locator for a 1960 Pergamon monograph could be
-verified from a container; the project owner supplied the catalogue page and it
-went in.
+**Two are the stop hook demanding a push for work already pushed**, from two
+unrelated causes: a `--depth 1` clone implies `--single-branch`, so `git push`
+never creates the remote-tracking ref the hook reads (`PL-3SGR`), and the
+merged-PR recovery's `checkout -B` from `origin/main` leaves the upstream
+pointing at `main` (`PL-483K`). The second records the dangerous variant - the
+same missing ref makes `--force-with-lease` refuse with `stale info`, which
+invites a bare `--force` in the middle of a rebase. What shipped widens
+`remote.origin.fetch` at session start and deliberately never fetches and never
+prunes, so the test stays offline and no sibling ref arrives by side effect.
 
-**Two decisions are recorded rather than built.** The PySide6 and pyqtgraph
-spike was run on the project owner's own hardware, and the interface will leave
-Flet - scoped as v0.5.1, not started here, and deliberately behind v0.5.0 so
-the branched-run milestone ships before a toolkit change. And `docs/MODEL.md`'s
-cardiac-output limitation stops setting Lowe's 4.84 L/min beside Cattermole's
-5.51 L/min as "two published figures": the first is Brody's 1945 interspecies
-oxygen-consumption allometry divided by an arteriovenous difference assumed
-constant across mammals, the second is measured in 686 human subjects in this
-patient's weight band, and a reader weighing them equally would be weighing
-them wrongly. The decision to keep the fixed 5.0 L/min is unchanged and reads
-better for it.
+**Three named a wrong cause with complete confidence**, which is worse than
+failing. `tools/doc_check.py` read the first markdown table under "Parameter
+provenance" as the provenance table, so a table written anywhere in that
+500-line section produced eleven missing-row errors pointing a session at the
+safety-critical provenance table when the fault was a decoy 300 lines above
+(`PL-ZBZZ`). `bin/docket check` errored on a `**Decision needed, ...**` heading
+that elaborates past those words, which its own README permits (`PL-VJ1X`). And
+stale `.pyc` bytecode survived a `git checkout` of an equal-length source edit,
+so `make check` reported a failure unreachable from the source in front of the
+reader (`PL-01GD`).
 
-**The apparatus half.** `main` had been red on a `verify:` command that passed
-because a different item created the file it tested for - the exact failure
-mode the command shape exists to prevent - and that is repaired.
-`tools/doc_check.py` can now express a one-entry gate group: it required the
-literal word `entries`, so a single post-freeze addition could be written only
-as ungrammatical `1 entries` or as an uncounted heading whose entry the parser
-then **silently attributed to the group above it**. `doc-consistency-checks` is
-complete.
+**Three reported nothing, or the wrong number.** One unparseable glob token
+aborted the entire documentation gate on a traceback instead of reporting that
+one line (`PL-0M7L`). `bin/docket next` printed a smaller open count than every
+other view of the same store, understating it by exactly the untriaged pile
+(`PL-ZWBK`). And `bin/docket check` advised on every single run that a `P1`
+`safety` item was ready to promote when it must ship behind a port that has not
+shipped (`PL-L09X`) - an advisory firing every run without changing a decision,
+which `CLAUDE.md` calls a defect in the check rather than coverage.
+
+**One removes noise, and one runs the other way.** `PL-KY7M` stops ten
+`UV_NATIVE_TLS` deprecation lines per `make check` by translating the
+container's variable into the name `uv` now reads. `PL-BBDD` is the same class
+at opposite polarity: nothing kept `docket.toml`'s `gate_paths` in step with the
+`ruff.toml` files in the tree, so an uncovered linter config let a delegated
+diff relax the linter and still be reported ACCEPT.
+
+**They were found by running the tools, not by reading them.** `PL-3B47`'s pass
+over the 46 untriaged captures closed 23 ids in one commit, of which eight were
+dropped as duplicates, as already fixed, or as overtaken by the Qt port -
+leaving fifteen, plus `PL-KY7M` and the v0.4.13 cut itself.
+
+**Two debts leave with the release rather than inside it.** `PL-01GD` shipped as
+a single exported `Makefile` variable with no test at all: its declared
+`touches` names a test file the work never reached, and its `verify:` command
+passes against an untouched suite (`PL-H9GV`). And the same triage pass wrote
+into this document a sentence saying every drawn chart point is an M4
+representative of its bucket, standing for roughly 120 recorded samples - a path
+`PL-2FM6` deleted in v0.4.12, after which the chart evaluates the run's score at
+the plotted instants and keeps no samples for a point to represent (`PL-DZFJ`).
+A release about checks that state a wrong cause with confidence introduced one
+statement of exactly that kind about a displayed value, and it is recorded here
+rather than quietly corrected.
 
 ## The plan
 

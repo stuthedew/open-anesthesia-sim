@@ -1,17 +1,18 @@
 ---
 id: PL-3Z9X
-title: "Cut v0.4.14: the untriaged queue emptied, and the five ways bin/docket verify rejected correct work"
+title: "Cut v0.4.14: the five ways bin/docket verify rejected correct work, and the checks that named the wrong cause"
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases
 added: 2026-09-12
+closed: 2026-09-12
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.14"' pyproject.toml && test -f docs/releases/v0.4.14.md
 ---
 
-**Problem.** Cut v0.4.14: the untriaged queue emptied, and the five ways bin/docket verify rejected correct work
+**Problem.** Cut v0.4.14: the five ways bin/docket verify rejected correct work, and the checks that named the wrong cause
 
 **Why it matters.** Seventeen items had landed since v0.4.13 and `queue-hygiene`
 had completed, which is past the point where release notes can be written from
