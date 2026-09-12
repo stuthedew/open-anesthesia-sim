@@ -1,7 +1,12 @@
 ---
 id: PL-NF6N
 title: Triage has no write command: every pass edits item front matter by hand, which is the decidable half CLAUDE.md asks to be moved into code
-status: untriaged
+priority: P3
+effort: M
+status: needs-decision
+classes: infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/store.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-12
 ---
 
@@ -40,3 +45,27 @@ perfectly well and the command is a thin wrapper over that. The argument for is
 that the wrapper is where the validation lives, and that the errors it would
 prevent are currently found by a checker one step later. Decide that before
 building it.
+
+**Why it matters.** The validation is the part worth having, and it currently
+lives one step too late. A triage pass sets six or seven fields on each item by
+editing markdown, and every constraint on those values - the vocabulary in
+`known_classes`, that `ready` owes a `verify:`, that `dropped` owes a `reason`
+and a `closed`, the safety pin that refuses `safety` below `P1` - is enforced
+afterwards by `docket check` rather than at the moment of writing. On a
+46-item pass that is a round trip per mistake, and the mistakes are the boring
+kind: a field in the wrong place, a class that is not in the list, a status
+moved without the field it requires.
+
+**Decision needed.** Whether a write command earns its place, on `CLAUDE.md`'s
+own gate: the work recurs and the answer is deterministic, but a thin wrapper
+over editing a markdown file may cost more upkeep than the passes it saves.
+The argument for is that the wrapper is where the validation moves from "caught
+later" to "refused now"; the argument against is that a session can edit the
+file perfectly well and `docket check` already catches everything that matters.
+If the answer is yes, the shape is `bin/docket set <id> priority=P2 effort=S
+...`, refusing an unknown key and writing the front matter in canonical order,
+since `docket new` already owns the store-writing half.
+
+**Done when.** The question above is answered: either the command exists with
+tests, or this is `dropped` with the reasoning recorded - that hand-editing
+plus `docket check` is sufficient and the wrapper is upkeep without a payer.

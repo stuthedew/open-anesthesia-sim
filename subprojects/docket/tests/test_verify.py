@@ -1285,3 +1285,154 @@ def test_a_new_item_file_that_is_not_a_capture_is_still_outside_touches(tmp_path
     report = verify(root, _item(), _config(), "HEAD~1")
     check = _check(report, TOUCHES)
     assert not check.passed, check
+
+
+# --- the self-audit, which is a different question (PL-69JZ, PL-B5YN, PL-4LT9)
+
+
+GATES = "the checks themselves are unedited"
+ALONE = "the audited diff is this item's alone"
+
+
+def test_a_self_audit_reports_a_declared_gate_path_instead_of_refusing(tmp_path: Path) -> None:
+    """`PL-69JZ`: the audit refused every item whose declared work is a gate path.
+
+    `feature: worker-instructions` holds 33 items and most of them edit a
+    `.claude` file, which `gate_paths` covers - so for that whole feature a
+    `REJECT` was the expected result of running the close-out audit, which
+    trains a reader to skim the block where the protected-path line also sits.
+    The defect had already been absorbed into policy rather than fixed:
+    `bin/docket triage` tells a groomer such an item is non-delegable
+    "because `docket verify` fails any diff that edits the checks".
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX edit the gate", "Makefile", "check:\n\ttrue\n# changed\n")
+
+    report = verify(root, _item(touches=("Makefile",)), _config(), "HEAD~1", self_audit=True)
+
+    check = _check(report, GATES)
+    assert not check.passed, "it still looked, and still says what it found"
+    assert check.advisory and not check.blocks
+    assert "Makefile" in check.detail
+    assert report.passed, "a reported commission check does not refuse the work"
+
+
+def test_a_delegated_review_still_refuses_a_gate_path(tmp_path: Path) -> None:
+    """The half the fix must not widen: without `--self` nothing moved.
+
+    A delegated worker that edits the thing measuring it has made the
+    measurement meaningless, which is the case this guard was built for and
+    the reason it is absolute there.
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX edit the gate", "Makefile", "check:\n\ttrue\n# changed\n")
+
+    report = verify(root, _item(touches=("Makefile",)), _config(), "HEAD~1")
+
+    check = _check(report, GATES)
+    assert check.blocks and not check.advisory
+    assert not report.passed
+
+
+def test_a_self_audit_reports_a_close_outs_own_front_matter_edit(tmp_path: Path) -> None:
+    """`PL-B5YN`: closing an item edits exactly the fields the guard watches.
+
+    The `docket` skill's close-out asks for `status: done` and `closed:` in
+    the same commit as the work, so the guard fired by construction on the one
+    path a session is told to take. It is right for a delegated worker, who is
+    not the reviewer; the session running its own close-out is.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    _work(
+        root,
+        "PL-K7QX close it out",
+        "docs/items/PL-K7QX-do-the-thing.md",
+        _stored("PL-K7QX", "Do the thing", status="done"),
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~2", self_audit=True)
+
+    check = _check(report, FRONT_MATTER)
+    assert not check.passed and check.advisory
+    assert check.detail.startswith("status")
+    assert report.passed
+
+
+def test_a_self_audit_names_the_other_items_its_commits_carry(tmp_path: Path) -> None:
+    """`PL-4LT9`: on a batch branch the per-item scoping does not happen.
+
+    `item_commits` selects by id so a reviewer can take four items and reject
+    the fifth, and `CLAUDE.md` then requires a commit closing several items to
+    lead with all of them - so every subject names every id and the selection
+    is the whole branch whichever id is asked about. Reported rather than
+    repaired: which item commissioned which path is not recoverable from the
+    diff, and naming the other ids is what lets a reader see that the scope
+    being audited is wider than the item.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX, PL-B2B2 do both things",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~1", self_audit=True)
+
+    check = _check(report, ALONE)
+    assert check.advisory and not check.blocks
+    assert "PL-B2B2" in check.detail
+
+
+def test_a_single_item_branch_says_nothing_about_other_items(tmp_path: Path) -> None:
+    """Silent in the delegated case, which is the one the scoping was built for."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX do the one thing",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~1", self_audit=True)
+
+    assert not any(check.name == ALONE for check in report.checks)
+
+
+def test_a_self_audit_still_refuses_a_removed_assertion(tmp_path: Path) -> None:
+    """The line the whole design rests on.
+
+    A session may re-scope its own commission; it may not weaken the thing
+    that measures it. The integrity checks are untouched by `--self`.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root, "PL-K7QX delete the test's teeth", "tests/test_thing.py", "def test_a():\n    pass\n"
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~1", self_audit=True)
+
+    check = _check(report, "no existing assertion removed")
+    assert check.blocks and not check.advisory
+    assert not report.passed
+
+
+def test_a_self_audit_still_refuses_a_failing_command(tmp_path: Path) -> None:
+    """The other integrity half: `--self` never skips the test."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(verify="false"), _config(), "HEAD~1", self_audit=True)
+
+    assert not report.passed

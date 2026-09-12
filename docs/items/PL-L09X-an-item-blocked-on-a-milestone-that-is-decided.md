@@ -3,11 +3,13 @@ id: PL-L09X
 title: An item blocked on a milestone that is decided but not yet named has no honest status: bare blocked errors, and blocked-by only accepts a version the roadmap already places
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-10
+closed: 2026-09-12
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_an_item_the_scoped_milestone_places_is_not_ready_to_promote' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** An item blocked on a milestone that is decided but not yet named has no honest status: bare blocked errors, and blocked-by only accepts a version the roadmap already places
@@ -116,3 +118,27 @@ promote while the milestone it ships with is unshipped, without weakening
 `_check_references`' refusal of a blocker the roadmap places nowhere - or the
 decision is recorded that the false advisory is cheaper than the mechanism, in
 which case this item is `dropped` with that reasoning.
+
+## Answered 2026-09-12 (project owner): read it from the Required scope
+
+**The decision.** The cheaper of the two shapes costed above: no new field.
+`MilestoneStates` gains `claimed` (each milestone section's own `scope_ids`)
+and `released`, and `ships_with(version, identifier)` is true when the
+milestone has not shipped and its own scope names the item. `checks.py` skips
+the "ready to promote" advisory for those.
+
+**Narrow deliberately.** A scoped, unshipped milestone that does *not* name the
+item leaves the original advisory correct - that item was waiting on the
+scoping round, and the scoping round has happened - so suppressing it too would
+trade a false advisory for a missing one, which is worse. `_check_references`'
+refusal of a blocker the roadmap places nowhere is untouched.
+
+**What it cost and what it bought.** No field, no edit to any item, and one
+read of what `ROADMAP.md` already says. `bin/docket check` now reports zero
+advisories against this store; it had reported the same false one on every run
+since `v0.5.1` was scoped.
+
+**The `awaits:` field is not built, and this records why.** Once the relation
+can be read from the roadmap, a second field would be a second place to state
+it and a second thing to keep true - and the roadmap's `Required scope` is
+where a reader already looks to find out what a milestone carries.

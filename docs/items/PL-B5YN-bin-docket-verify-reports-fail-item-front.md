@@ -1,8 +1,15 @@
 ---
 id: PL-B5YN
 title: bin/docket verify reports FAIL item front matter unchanged on every self-audited close-out, because closing an item edits its own front matter
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+feature: delegation
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-12
+closed: 2026-09-12
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_self_audit_reports_a_close_outs_own_front_matter_edit' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** bin/docket verify reports FAIL item front matter unchanged on every self-audited close-out, because closing an item edits its own front matter
@@ -35,3 +42,17 @@ costing once rather than three times. The alternative worth pricing is
 narrower: allow exactly the close-out's own field set (`status`, `closed`,
 `milestone`, `pr`) to change while still refusing `touches` and `verify`, which
 are the two that make the measurement meaningless.
+
+## Closed with `PL-69JZ` (2026-09-12)
+
+Answered by the self-audit mode rather than by relaxing the guard. In `--self`
+the front-matter check still runs, still lists every field that moved, and
+reports instead of refusing; without it nothing changed, so a delegated worker
+that marks its own item done is refused exactly as before.
+
+The narrower alternative this item proposed - allow the close-out's own field
+set (`status`, `closed`, `milestone`, `pr`) while still refusing `touches` and
+`verify` - was not taken. It would have been wrong for a triage pass, which
+legitimately moves `priority`, `effort`, `classes`, `touches` and `verify` on
+its own items, and a rule with a list of permitted fields invites exactly the
+argument about which field belongs on it that the mode-level answer avoids.

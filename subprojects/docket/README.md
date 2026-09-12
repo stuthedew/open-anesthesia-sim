@@ -33,6 +33,7 @@ docket gate --feature x      # the open debt a milestone has to clear
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
+docket verify PL-K7QX --self # ...auditing your own branch, not reviewing a delegated one
 docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch
@@ -1682,6 +1683,28 @@ what a clean comparison returns, so the check reported `PASS` on every branch
 it had ever run against. A file the base does not hold *is* a clean answer: an
 item captured on the branch that works it has no earlier commission to differ
 from.
+
+`--self` says the caller is auditing its own branch rather than reviewing a
+delegated one, and it is a different question. Everything above assumes a
+worker who might exceed a commission; a session running its own close-out *is*
+the reviewer, and against it four guards fire by construction on the path the
+project's own instructions prescribe — the capture and leading-id rules put
+other items' files in the diff, an item whose declared work is a `.claude` file
+trips `gate_paths`, an item non-delegable *because* it touches protected code is
+one a session works itself, and closing an item edits the very front matter the
+guard watches. So in `--self` those four **commission** checks report instead of
+refusing: still run, still naming every path, with the reason they are not
+refusing. The four **integrity** checks are untouched — no suppression added, no
+assertion removed, the item's own command passes, the project's own checks pass.
+A session may re-scope its own commission; it may not weaken what measures it,
+and it may not skip the test (`PL-69JZ`, `PL-B5YN`, `PL-4LT9`).
+
+`--self` also adds one line when the audited commits name other items' ids.
+`item_commits` selects by id so a batch can be judged per item, and a commit
+closing several items leads with all of them, so on a batch branch the
+selection is the whole branch whichever id is asked about. That is reported
+rather than repaired: which item commissioned which path is not recoverable
+from the diff, and the failure before was that the widened scope was silent.
 
 Several ids may be given at once — `docket verify PL-K7QX PL-B2B2` — because
 that is the shape delegated work comes back in: one branch, one

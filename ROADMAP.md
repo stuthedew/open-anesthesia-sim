@@ -1848,7 +1848,7 @@ any sense that survives the toolkit changing underneath it.
 resolves it rather than any work on it. That is recorded now so a later session
 does not read a dropped item as one that was skipped.
 
-### Declined to Gate 2 on the refilling-queue ground — 41 entries
+### Declined to Gate 2 on the refilling-queue ground — 42 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -1916,6 +1916,13 @@ it - so unlike its neighbours it does not dissolve, and it is what sizes
 today and because the number wants re-taking on the ported tree anyway, not
 because it is small.
 
+**One more from the session that answered `PL-69JZ` and `PL-L09X`** (2026-09-12).
+`PL-NF6N` asks whether triage should have a write command instead of every pass
+editing item front matter by hand. It is wholly in the workflow lane and sits on
+the same refilling-queue ground as the first thirty; it is also a question about
+whether a mechanism is worth building at all, which is the shape most likely to
+be answered "no" and least likely to be worth holding a gate open for.
+
 They enter Gate 2 when v0.6.0 is scoped, unless closed before it.
 
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
@@ -1948,6 +1955,7 @@ They enter Gate 2 when v0.6.0 is scoped, unless closed before it.
 - PL-L09X (M) An item blocked on a milestone that is decided but not yet named has no honest status: bare blocked errors, and blocked-by only accepts a version the roadmap already places
 - PL-LPWK (S) A release note cites the pull request that closed an item, not the one that carried its code, whenever the two differ
 - PL-LT77 (S) git fetch --tags does not prune, so a tag deleted on origin keeps failing doc_check in every checkout that already fetched it, and nothing distinguishes stale local state from a real repository fault
+- PL-NF6N (M) Triage has no write command: every pass edits item front matter by hand, which is the decidable half CLAUDE.md asks to be moved into code
 - PL-P757 (S) bin/docket --items pointed at a nested store makes every annotating commit read as work, silently
 - PL-PNW6 (S) A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
 - PL-QV5Y (S) Makefile's CI-timing comments quote a 1230-test suite at 78 s serial and 27 s parallel, measured 2026-09-03; the suite is now 2096 tests at about 43 s parallel, so a reader sizing a CI-cost decision from them is reading stale figures

@@ -710,6 +710,44 @@ def test_a_scoped_milestone_clears_its_blocker() -> None:
     assert _has(report.advisories, "v0.5.0 is scoped and every other blocker has closed")
 
 
+def test_an_item_the_scoped_milestone_places_is_not_ready_to_promote() -> None:
+    """Scoped is not shipped, and for this shape the difference is the answer.
+
+    `PL-L09X`: `blocked-by: vX.Y.Z` carries one relation - blocked until that
+    milestone is *scoped* - and the project also needs "ships **with** that
+    milestone", which has no field. `PL-GS3R` is the live instance: fully
+    designed, waiting for the PySide6 port to land, because building it on the
+    toolkit being replaced costs frame time the port makes free. Scoping
+    `v0.5.1` cleared its blocker and could never have unblocked it, so
+    `docket check` advised on every run that it was ready to promote - the
+    opposite of the truth, and a standing false advisory is what `CLAUDE.md`'s
+    "a check earns its place every run" refuses.
+
+    No field was added: the milestone's own `Required scope` already names the
+    item, so this reads what is written.
+    """
+    roadmap = ROADMAP.replace("Two branches on one axis.", "- PL-C2C2 (S) The thing", 1)
+
+    report = analyze([_blocked_on("v0.5.0")], TODAY, milestones=milestone_states(roadmap))
+
+    assert report.errors == []
+    assert not _has(report.advisories, "ready to promote")
+
+
+def test_an_item_the_scoped_milestone_does_not_place_is_still_ready_to_promote() -> None:
+    """The half the suppression must not swallow.
+
+    An item that was waiting on the scoping round, and whose milestone does
+    not claim it, really can be started now. Silencing that too would trade a
+    false advisory for a missing one, which is the worse of the two.
+    """
+    roadmap = ROADMAP.replace("Two branches on one axis.", "- PL-ZZZZ (S) Something else", 1)
+
+    report = analyze([_blocked_on("v0.5.0")], TODAY, milestones=milestone_states(roadmap))
+
+    assert _has(report.advisories, "v0.5.0 is scoped and every other blocker has closed")
+
+
 def test_a_released_milestone_clears_its_blocker() -> None:
     """A shipped milestone was scoped, whatever its section still shows.
 

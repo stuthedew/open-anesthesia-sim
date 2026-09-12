@@ -40,6 +40,7 @@ from statistics import median
 from . import vcs
 from .config import Config
 from .model import Item, parse_front_matter
+from .store import ID_PATTERN
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
 # ruff configuration does not enable a rule carries `noqa` directives that
@@ -204,6 +205,13 @@ def reads_check_output(command: str) -> str:
     return ""
 
 
+#: Appended to a commission check's detail when it is reporting rather than
+#: refusing. Short, because it repeats on up to four lines of one report; the
+#: reasoning is in `verify_item`'s docstring, which is where a reader who wants
+#: it will look.
+COMMISSION_NOTE = " - reported, not refused: this is a self-audit, not a delegated review"
+
+
 @dataclass(frozen=True)
 class Check:
     """One thing that was looked at, and what was found."""
@@ -212,9 +220,25 @@ class Check:
     passed: bool
     detail: str = ""
     lines: tuple[str, ...] = ()
+    #: Whether a failure here refuses the work or merely reports it. Set only
+    #: in self-audit mode, and only on the four checks that are about the
+    #: *commission* rather than about the work's integrity - see
+    #: `verify_item`. An advisory check still prints what it found, with the
+    #: reason it is not refusing, because a guard that quietly stops applying
+    #: is worse than one that fires wrongly.
+    advisory: bool = False
+
+    @property
+    def blocks(self) -> bool:
+        """Whether this result refuses the work."""
+        return not self.passed and not self.advisory
 
     def describe(self) -> str:
-        head = f"  {'PASS' if self.passed else 'FAIL'}  {self.name}"
+        if self.passed:
+            mark = "PASS"
+        else:
+            mark = "FAIL" if not self.advisory else "NOTE"
+        head = f"  {mark}  {self.name}"
         if self.detail:
             head += f" - {self.detail}"
         return "\n".join([head, *(f"          {line}" for line in self.lines)])
@@ -240,7 +264,7 @@ class Verification:
 
     @property
     def passed(self) -> bool:
-        return all(check.passed for check in self.checks)
+        return not any(check.blocks for check in self.checks)
 
     def describe(self) -> str:
         lines = [f"{self.item.identifier} {self.item.title}", f"  against {self.base}"]
@@ -426,7 +450,9 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     return "pr" if added and all(PR_LINE_RE.match(line) for line in added) else ""
 
 
-def front_matter_check(root: Path, base: str, items_dir: str, item: Item) -> Check:
+def front_matter_check(
+    root: Path, base: str, items_dir: str, item: Item, advisory: bool = False
+) -> Check:
     """Whether the branch edited the front matter of its own item.
 
     A worker adds a `**Worked.**` or `**Blocked.**` note to an item's body and
@@ -458,24 +484,39 @@ def front_matter_check(root: Path, base: str, items_dir: str, item: Item) -> Che
     """
     name = "item front matter unchanged"
     if not item.path:
-        return Check(name, False, "the item names no file, so there was nothing to compare")
+        return Check(
+            name,
+            False,
+            "the item names no file, so there was nothing to compare",
+            advisory=advisory,
+        )
     try:
         after = (root / items_dir / item.path).read_text(encoding="utf-8")
     except OSError:
-        return Check(name, False, f"no item file to read at {items_dir}/{item.path}")
+        return Check(
+            name, False, f"no item file to read at {items_dir}/{item.path}", advisory=advisory
+        )
     held = _store_at(root, base, items_dir)
     if held is None:
-        return Check(name, False, f"no item store at {base}:{items_dir} to compare against")
+        return Check(
+            name,
+            False,
+            f"no item store at {base}:{items_dir} to compare against",
+            advisory=advisory,
+        )
     was = next((held_name for held_name in held if held_name.startswith(f"{item.identifier}-")), "")
     if not was:
         return Check(name, True, f"a new item file - {base} holds no copy to differ from")
     status, before = _run(["git", "show", f"{base}:{items_dir}/{was}"], root)
     if status != 0:
-        return Check(name, False, f"{base}:{items_dir}/{was} could not be read")
+        return Check(name, False, f"{base}:{items_dir}/{was} could not be read", advisory=advisory)
     old, _ = parse_front_matter(before)
     new, _ = parse_front_matter(after)
     changed = tuple(sorted(k for k in set(old) | set(new) if old.get(k) != new.get(k)))
-    return Check(name, not changed, ", ".join(changed) if changed else "unchanged")
+    detail = ", ".join(changed) if changed else "unchanged"
+    if changed and advisory:
+        detail += COMMISSION_NOTE
+    return Check(name, not changed, detail, advisory=advisory)
 
 
 def base_warning(root: Path, base: str) -> str:
@@ -493,8 +534,32 @@ def base_warning(root: Path, base: str) -> str:
     )
 
 
+def other_items_named(root: Path, commits: tuple[str, ...], identifier: str) -> tuple[str, ...]:
+    """The other items' ids the audited commits name in their subjects.
+
+    `item_commits` selects by id so that a batch branch is judged per item -
+    "a reviewer can take four items and reject the fifth", as its own
+    docstring puts it. `CLAUDE.md` then requires a commit closing several
+    items to lead with **all** of them, so on a batch branch every subject
+    names every id and the selection is the whole branch whichever id is
+    asked about. The per-item scoping does not happen, and every path check
+    below is really being run against the batch (`PL-4LT9`).
+
+    Reported rather than repaired, because the repair is a judgment this
+    cannot make: the paths are legitimately declared *somewhere*, and which
+    item commissioned which is not recoverable from the diff. Naming the other
+    ids is what lets a reader see that the scope being audited is wider than
+    the item, which is the whole of what went wrong silently before.
+    """
+    if not commits:
+        return ()
+    _, output = _run(["git", "show", "-s", "--format=%s", *commits], root)
+    found = {match.group(0) for match in re.finditer(ID_PATTERN, output)}
+    return tuple(sorted(found - {identifier}))
+
+
 def verify_item(
-    root: Path, item: Item, config: Config, base: str, base_note: str = ""
+    root: Path, item: Item, config: Config, base: str, base_note: str = "", self_audit: bool = False
 ) -> Verification:
     """Run the checks that are about this item, and no others.
 
@@ -505,6 +570,43 @@ def verify_item(
     are being looked at. Running it once per item made a six-item batch take
     over two minutes, five of those runs re-proving a proved thing, and a
     reviewer who waits that long stops running the command at all.
+
+    **`self_audit` is the session auditing its own branch, and it is a
+    different question from the one this command was built for.** Everything
+    here assumes a *delegated* worker: someone given a commission who might,
+    deliberately or not, exceed it. Against that reader every guard below is
+    right and absolute. A session running the close-out audit on its own work
+    is not that reader - it **is** the reviewer - and against it four of the
+    guards fire by construction on the path the project's own instructions
+    prescribe:
+
+    - `docs/worker.md` and `CLAUDE.md` require a capture and require every
+      commit subject to lead with the item's id, which puts other items'
+      files in the diff (`PL-66PR`, `PL-ZYQC` exempt the two sanctioned
+      shapes; a triage pass edits far more than those).
+    - `feature: worker-instructions` holds 33 items whose declared work *is*
+      editing a `.claude` file, and `gate_paths` covers `.claude` (`PL-69JZ`).
+    - An item non-delegable *because* it touches `core/` is one a session
+      works itself, so `protected_paths` is expected on its branch.
+    - The close-out sets `status: done` and `closed:` in the same commit as
+      the work, which is exactly the front matter the guard watches
+      (`PL-B5YN`).
+
+    So in self-audit the four **commission** checks report as advisories -
+    still printed, still naming every path, with the reason they are not
+    refusing - while the four **integrity** checks stay absolute: no
+    suppression added, no assertion removed, the item's own command passes,
+    and the project's own checks pass. That line is the whole design. A
+    session may legitimately re-scope its own commission; it may not weaken
+    the thing that measures it, and it may not skip the test.
+
+    The alternative was to relax the guards for everyone, which would have
+    made the delegated audit - the case the command exists for - quietly
+    weaker. `PL-69JZ` had already been routed around instead: `bin/docket
+    triage` tells a groomer that a `touches` naming a gate path makes the item
+    non-delegable, "because `docket verify` fails any diff that edits the
+    checks, so offering the work would mean refusing it once done". That is a
+    defect absorbed into policy, and this is the repair.
     """
     report = Verification(item=item, base=base, base_note=base_note)
     commits = item_commits(root, base, item.identifier)
@@ -560,18 +662,37 @@ def verify_item(
         Check(
             "diff stayed inside `touches`",
             not outside,
-            detail,
+            detail + (COMMISSION_NOTE if outside and self_audit else ""),
             tuple(outside)
             + tuple(f"{path} - {kind}, not counted" for path, kind in sanctioned.items()),
+            advisory=self_audit,
         )
     )
+
+    # Said once, beside the check whose reach it widens. Silent when the
+    # commits name this item alone, which is the delegated case and the one
+    # the scoping was built for.
+    others = other_items_named(root, commits, item.identifier)
+    if others:
+        report.checks.append(
+            Check(
+                "the audited diff is this item's alone",
+                False,
+                f"{len(commits)} commit(s) also name {', '.join(others)}, so the paths "
+                "above are the batch's rather than this item's",
+                advisory=True,
+            )
+        )
 
     protected = [p for p in paths if _within(p, config.protected_paths)]
     report.checks.append(
         Check(
             "no protected path modified",
             not protected,
-            ", ".join(protected) if protected else "none touched",
+            (", ".join(protected) + COMMISSION_NOTE)
+            if protected and self_audit
+            else (", ".join(protected) if protected else "none touched"),
+            advisory=self_audit,
         )
     )
 
@@ -580,7 +701,10 @@ def verify_item(
         Check(
             "the checks themselves are unedited",
             not gates,
-            ", ".join(gates) if gates else "none touched",
+            (", ".join(gates) + COMMISSION_NOTE)
+            if gates and self_audit
+            else (", ".join(gates) if gates else "none touched"),
+            advisory=self_audit,
         )
     )
 
@@ -605,7 +729,9 @@ def verify_item(
         )
     )
 
-    report.checks.append(front_matter_check(root, base, config.items_dir, item))
+    report.checks.append(
+        front_matter_check(root, base, config.items_dir, item, advisory=self_audit)
+    )
 
     if os.environ.get(VERIFY_GUARD):
         report.checks.append(
@@ -653,16 +779,18 @@ def project_check(root: Path, config: Config) -> Check:
     )
 
 
-def verify(root: Path, item: Item, config: Config, base: str) -> Verification:
+def verify(
+    root: Path, item: Item, config: Config, base: str, self_audit: bool = False
+) -> Verification:
     """Run every check against one item's branch, project-wide check included."""
-    report = verify_item(root, item, config, base, base_warning(root, base))
+    report = verify_item(root, item, config, base, base_warning(root, base), self_audit)
     if not report.stopped_early:
         report.checks.append(project_check(root, config))
     return report
 
 
 def verify_batch(
-    root: Path, items: Sequence[Item], config: Config, base: str
+    root: Path, items: Sequence[Item], config: Config, base: str, self_audit: bool = False
 ) -> list[Verification]:
     """Verify several items, running the project's own check exactly once.
 
@@ -672,7 +800,7 @@ def verify_batch(
     choice that one-commit-per-item exists to remove.
     """
     note = base_warning(root, base)
-    reports = [verify_item(root, item, config, base, note) for item in items]
+    reports = [verify_item(root, item, config, base, note, self_audit) for item in items]
     outstanding = [report for report in reports if not report.stopped_early]
     if outstanding:
         shared = project_check(root, config)

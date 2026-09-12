@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .release import SEMVER_RE
 from .store import ID_PATTERN
@@ -592,12 +592,46 @@ class MilestoneStates:
     #: blocker naming either would never clear and nothing would report it,
     #: which is the silent-wrong outcome this field exists to remove.
     cleared: frozenset[str]
+    #: The ids each milestone's own section places - its frozen list, then the
+    #: ids under `Required scope`. `MilestoneSection.scope_ids` is the same
+    #: reading `check_gate_dispositions` uses, so an id a section merely
+    #: mentions is not in it (`PL-NBCS`).
+    claimed: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    #: The versions the version table marks Completed. `cleared` deliberately
+    #: folds these in with the scoped ones, because a milestone blocker asks
+    #: whether the scoping round has happened and a shipped milestone's has.
+    #: This keeps them separable for the one question that needs the
+    #: difference: whether an item ships *with* a milestone (`PL-L09X`).
+    released: frozenset[str] = frozenset()
 
     def is_known(self, version: str) -> bool:
         return version in self.known
 
     def is_cleared(self, version: str) -> bool:
         return version in self.cleared
+
+    def ships_with(self, version: str, identifier: str) -> bool:
+        """Whether `identifier` is claimed by `version` and `version` has not shipped.
+
+        `blocked-by: vX.Y.Z` carries one relation - blocked until that
+        milestone is **scoped** - and `PL-W8XP` built it for exactly that: an
+        item that cannot be designed until the milestone settles what it
+        requires. The project also needs a second relation it has no field
+        for: *ships with* that milestone, which is `PL-GS3R`'s case. It is
+        fully designed and waits for the port to **land**, because building it
+        on the toolkit being replaced costs frame time the port makes free.
+
+        Scoping `v0.5.1` cleared its blocker and could never have unblocked
+        it, so `docket check` began advising on every run that it was "ready
+        to promote" - the opposite of the truth, and a standing false advisory
+        is what `CLAUDE.md`'s "a check earns its place every run" is against.
+
+        No field was added for it, because the roadmap already says it: the
+        milestone's own `Required scope` names the item. So this reads what is
+        written rather than asking anyone to write it twice, which is the
+        cheaper of the two shapes `PL-L09X` costed.
+        """
+        return version not in self.released and identifier in self.claimed.get(version, frozenset())
 
 
 def _rendered(version: tuple[int, int, int]) -> str:
@@ -625,7 +659,17 @@ def milestone_states(text: str) -> MilestoneStates:
     released = {f"v{row.version}" for row in parse_version_table(text) if COMPLETED in row.status}
     known.update(released)
     cleared.update(released)
-    return MilestoneStates(known=frozenset(known), cleared=frozenset(cleared))
+    claimed = {
+        _rendered(section.version): frozenset(section.scope_ids)
+        for section in sections
+        if section.scope_ids
+    }
+    return MilestoneStates(
+        known=frozenset(known),
+        cleared=frozenset(cleared),
+        claimed=claimed,
+        released=frozenset(released),
+    )
 
 
 # --- where the project is on the cadence ------------------------------------

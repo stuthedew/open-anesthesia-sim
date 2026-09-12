@@ -747,3 +747,49 @@ def test_a_patch_track_and_a_gate_are_not_milestones() -> None:
 
     assert not any(version.startswith("v0.4.") and version != "v0.4.0" for version in states.known)
     assert "Gate 1" not in states.known
+
+
+# --- ships with, rather than blocked until scoped (`PL-L09X`) ---------------
+
+SHIPS_WITH_ROADMAP = MILESTONE_STATES_ROADMAP.replace(
+    "### Required scope\n\nr\n", "### Required scope\n\n- PL-GS3R (S) The chord-width rule\n", 1
+)
+
+
+def test_an_item_a_scoped_unshipped_milestone_places_ships_with_it() -> None:
+    """The relation `blocked-by` has no field for, read from what is written.
+
+    `blocked-by: vX.Y.Z` means blocked until that milestone is *scoped*, which
+    is what `PL-W8XP` built it for. `PL-GS3R`'s case is the other one: fully
+    designed, and waiting for the milestone to *land*. Scoping cleared the
+    blocker and could never have unblocked the item.
+    """
+    states = milestone_states(SHIPS_WITH_ROADMAP)
+
+    assert states.is_cleared("v0.5.0"), "the milestone is scoped, which is the premise"
+    assert states.ships_with("v0.5.0", "PL-GS3R")
+
+
+def test_an_item_the_milestone_does_not_place_does_not_ship_with_it() -> None:
+    """Narrow deliberately: the original advisory is correct for these.
+
+    An item waiting on the scoping round, which has now happened, really is
+    ready to promote. Suppressing that too would trade a false advisory for a
+    silence, which is the worse of the two.
+    """
+    states = milestone_states(SHIPS_WITH_ROADMAP)
+
+    assert not states.ships_with("v0.5.0", "PL-XXXX")
+
+
+def test_a_shipped_milestone_no_longer_holds_what_it_placed() -> None:
+    """Once it lands there is nothing left to wait for, so the relation ends."""
+    shipped = SHIPS_WITH_ROADMAP.replace(
+        "| v0.5.0 | Planned | The case you can branch |",
+        "| v0.5.0 | Completed | The case you can branch |",
+        1,
+    )
+    states = milestone_states(shipped)
+
+    assert "v0.5.0" in states.released
+    assert not states.ships_with("v0.5.0", "PL-GS3R")

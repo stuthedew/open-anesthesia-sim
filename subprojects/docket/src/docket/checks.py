@@ -1321,6 +1321,22 @@ def _groom(
             continue
         if not all(milestones.is_cleared(version) for version in versions):
             continue
+        # Scoped is not the same as shipped, and for one shape of item the
+        # difference is the whole answer. An item the milestone's own
+        # `Required scope` names ships *with* it: scoping cleared the blocker
+        # and could never have unblocked the item, because what it waits for
+        # is the milestone landing. Advising that such an item is ready to
+        # promote is the opposite of the truth, and it is advice that repeats
+        # on every run until the milestone ships - which is exactly what
+        # `CLAUDE.md`'s "a check earns its place every run" refuses.
+        #
+        # Narrow deliberately. A scoped, unshipped milestone that does *not*
+        # name the item leaves the original advisory correct: that item was
+        # waiting on the scoping round, and the scoping round has happened.
+        # Read from the roadmap rather than from a new field, because the
+        # roadmap already says it (`PL-L09X`).
+        if any(milestones.ships_with(version, item.identifier) for version in versions):
+            continue
         # Said separately because the word is different, and the difference is
         # the point. An item blocker *closes*; a milestone blocker clears when
         # the milestone is scoped, which is the decision the item was waiting

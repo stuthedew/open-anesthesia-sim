@@ -1171,6 +1171,12 @@ def cmd_verify(args: argparse.Namespace) -> int:
     runs once for the batch - it proves a property of the tree, and proving it
     six times over is the difference between a command a reviewer runs and one
     they learn to skip.
+
+    `--self` says the caller is auditing its own branch rather than reviewing a
+    delegated one, which is a different question and was answered wrongly
+    before: four of the guards fire by construction on the path the project's
+    own close-out prescribes. `verify_item`'s docstring carries which four and
+    why. The integrity checks are unaffected either way.
     """
     _, items, config = _load(args)
     wanted = []
@@ -1182,10 +1188,15 @@ def cmd_verify(args: argparse.Namespace) -> int:
         wanted.append(item)
     root = args.items.parent if args.items else find_root()
     base = args.base or default_base(root)
-    reports = verify_batch(root, wanted, config, base)
+    reports = verify_batch(root, wanted, config, base, self_audit=args.self_audit)
     print("\n\n".join(report.describe() for report in reports))
     if len(reports) > 1:
         print(f"\n{config.check_command} ran once for the batch; it proves the tree, not an item.")
+    if args.self_audit:
+        print(
+            "\nSelf-audit: the four commission checks reported rather than refused. "
+            "A delegated review runs without `--self` and refuses on any of them."
+        )
     return 0 if all(report.passed for report in reports) else 1
 
 
@@ -1689,6 +1700,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--base",
         default=None,
         help="the ref the work branched from (default: origin/main where it resolves)",
+    )
+    verify_cmd.add_argument(
+        "--self",
+        dest="self_audit",
+        action="store_true",
+        help=(
+            "this session is auditing its own branch, not reviewing a delegated one: "
+            "report the four commission checks instead of refusing on them"
+        ),
     )
     verify_cmd.set_defaults(func=cmd_verify)
 

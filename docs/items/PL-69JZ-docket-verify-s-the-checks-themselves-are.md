@@ -3,11 +3,13 @@ id: PL-69JZ
 title: docket verify's 'the checks themselves are unedited' audit REJECTs every item whose declared work is editing a .claude rules file, since gate_paths includes .claude and touches is not consulted
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: delegation
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, docket.toml
 added: 2026-09-07
+closed: 2026-09-12
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_self_audit_reports_a_declared_gate_path_instead_of_refusing' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** docket verify's 'the checks themselves are unedited' audit REJECTs every item whose declared work is editing a .claude rules file, since gate_paths includes .claude and touches is not consulted
@@ -101,3 +103,36 @@ for one, or `verify` learns that it is auditing a non-delegated branch, or the
 **Done when.** The question above is answered and the answer is implemented or
 recorded - either the audit changes, with a test for what it still refuses, or
 this item is `dropped` with the reasoning written down.
+
+## Answered 2026-09-12 (project owner): an explicit self-audit mode
+
+**The decision.** `bin/docket verify` gains `--self`, saying the caller is
+auditing its own branch rather than reviewing a delegated one. In that mode the
+four **commission** checks - `diff stayed inside touches`, `no protected path
+modified`, `the checks themselves are unedited`, `item front matter unchanged` -
+report as advisories: still run, still naming every path they found, with the
+reason they are not refusing. The four **integrity** checks are untouched: no
+suppression added, no assertion removed, the item's own command passes, the
+project's own checks pass.
+
+**Why that line and not another.** A session may legitimately re-scope its own
+commission - it is the reviewer - but it may not weaken the thing that measures
+it, and it may not skip the test. Route (1) of the three above (exempt a gate
+path that appears in the item's own `touches`) was rejected for being both
+weaker and narrower: `touches` is written by whoever triaged the item, so on a
+delegated item it is the same hand that would want the exemption, and it does
+nothing for the front-matter or batch-scope cases. Route (2) was already shown
+not to reach a non-delegated session auditing its own branch. Route (3) is the
+one `CLAUDE.md` names as the failure mode a check must not have.
+
+**Three items, one fix.** `PL-B5YN` (front matter on every close-out) and
+`PL-4LT9` (a batch branch audited as one item) are the same defect seen from
+two other angles - `docket verify` unable to tell a delegated branch from a
+self-audit - and all three close together.
+
+**The policy this retires.** `bin/docket triage` prints, as a standing rule,
+that a `touches` naming a gate path makes an item non-delegable "because
+`docket verify` fails any diff that edits the checks, so offering the work
+would mean refusing it once done". That is this defect absorbed into policy.
+The delegation half of it stands on its own through `Item.delegability`
+(`PL-S2L4`); what it no longer has to carry is the audit refusing correct work.

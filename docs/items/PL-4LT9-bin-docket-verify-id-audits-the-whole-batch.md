@@ -1,8 +1,15 @@
 ---
 id: PL-4LT9
 title: bin/docket verify <id> audits the whole batch branch, because item_commits matches every commit subject and CLAUDE.md requires every subject to lead with every id it closes
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+feature: delegation
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-12
+closed: 2026-09-12
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_self_audit_names_the_other_items_its_commits_carry' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** bin/docket verify <id> audits the whole batch branch, because item_commits matches every commit subject and CLAUDE.md requires every subject to lead with every id it closes
@@ -36,3 +43,20 @@ commissions; or scope by the diff of the commit that closes the item rather
 than by every commit naming it; or state that `docket verify` answers only for
 a single-item delegated branch and have it say so when it finds a commit naming
 ids other than the one asked about. The last is cheapest and may be enough.
+
+## Closed with `PL-69JZ` (2026-09-12)
+
+Reported rather than repaired, which is what this item's own approach section
+put last and what turned out to be right. `other_items_named` reads the audited
+commits' subjects and, when they name ids other than the one asked about, adds
+one advisory line: how many commits, which other items, and that the paths
+listed above are the batch's rather than this item's.
+
+The two repairs it costed were both refused. Unioning the `touches` of every
+item the commits name would make a delegated worker able to widen its own
+allowance by adding an id to a commit subject. Scoping by the closing commit
+alone assumes one commit per item, which `CLAUDE.md`'s "lead with all of them"
+rule is precisely what breaks. Which item commissioned which path is not
+recoverable from the diff, so the honest answer is to say the scope is wider
+than the item and let the reader judge - the failure before was that it did so
+silently.
