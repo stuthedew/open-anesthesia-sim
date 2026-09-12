@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: perf, ux
 feature: teachable-case
+milestone: v0.4.13
 touches: docs/WORKING_NOTES.md
 added: 2026-09-08
 closed: 2026-09-10

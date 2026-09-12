@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: science, docs
 feature: model-spec-accuracy
+milestone: v0.4.13
 touches: docs/MODEL.md, src/anesthesia_sim/data/patients/reference_adult.json
 added: 2026-09-10
 closed: 2026-09-10
+pr: 494
 not-delegable: No command can prove that a person opened a 1963 volume of the Journal of Applied Physiology. Reference 26 was read on 2026-09-10 because the project owner sent the page; references 9, 19 and 20 need the same, and PubMed holds no abstract and no PubMed Central text for any of the three, so nothing this container can run distinguishes a session that read them from one that did not. A `verify:` command here could only check that some sentence had been written into a file, which is the thing that must not be gameable on a provenance item.
 ---
 

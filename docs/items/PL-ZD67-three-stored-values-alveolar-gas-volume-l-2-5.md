@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: science, docs
 feature: model-spec-accuracy
+milestone: v0.4.13
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-10
 closed: 2026-09-10
+pr: 494
 verify: uv run pytest tests/unit/test_parameters.py && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/patients/reference_adult.json')); assert any('Dittmer and Grebe' in s['note'] for s in d['sources'])"
 ---
 

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.13
 touches: docs/items/PL-XH1D-state-how-the-project-is-developed-and-what.md
 added: 2026-09-08
 closed: 2026-09-10

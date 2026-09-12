@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: doc-consistency-checks
+milestone: v0.4.13
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-10
 closed: 2026-09-10
+pr: 494
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_gate_group_holding_exactly_one_entry_may_say_so_in_the_singular' tests/unit/test_doc_check.py
 ---
 

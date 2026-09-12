@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: science, docs
 feature: model-spec-accuracy
+milestone: v0.4.13
 touches: docs/MODEL.md
 added: 2026-09-08
 closed: 2026-09-10
+pr: 494
 verify: python3 tools/doc_check.py check && grep -qF 'Report of Committee II on Permissible Dose' docs/MODEL.md
 ---
 

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: perf, ux
 feature: teachable-case
+milestone: v0.4.13
 touches: src/anesthesia_sim/app, ROADMAP.md, docs/ARCHITECTURE.md
 added: 2026-09-08
 closed: 2026-09-10
