@@ -1,8 +1,14 @@
 ---
 id: PL-ZYQC
 title: docket verify fails 'diff stayed inside touches' on any close-out that follows the skill's instruction to let docket record ride the commit it is already making
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: delegation
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-07
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_pr_only_addition_to_another_items_file_is_not_outside_touches' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** docket verify fails 'diff stayed inside touches' on any close-out that follows the skill's instruction to let docket record ride the commit it is already making.
@@ -70,3 +76,10 @@ The two rejected alternatives, and why:
 
 **Found.** Closing `PL-X204` and running `bin/docket verify` on the result, as
 that item's close-out calls for.
+
+**Done when.** A close-out commit that let `bin/docket record` write `pr:` onto
+other items passes `bin/docket verify <id>`'s `touches` audit, while a diff that
+changes anything else in another item's file still fails it. A test covers both
+halves - the sanctioned `pr:`-only addition and an ordinary edit to a
+neighbouring item - since an exemption with no test for what it still refuses is
+an exemption that quietly widens.

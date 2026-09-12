@@ -1,8 +1,14 @@
 ---
 id: PL-0M7L
 title: _resolves raises ValueError on a '**' token and NotImplementedError on an absolute-looking path, so doc_check aborts instead of reporting a citation
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-07
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_an_absolute_glob_citation_is_reported_rather_than_raised' tests/unit/test_doc_check.py
 ---
 
 **Problem.** _resolves raises ValueError on a '**' token and NotImplementedError on an absolute-looking path, so doc_check aborts instead of reporting a citation
@@ -25,3 +31,22 @@ widening of the citation input hits them first.
 
 A cited token that `glob` cannot parse is a citation that does not resolve,
 not a reason to stop: catch both and report the line.
+
+**Why it matters.** A citation that cannot be parsed should be *reported*; here
+it aborts the run. `python3 tools/doc_check.py check` exits on a traceback, so
+the documentation gate reports nothing at all about the other several hundred
+citations in the tree - one malformed token takes the whole check offline, and
+the failure looks like a broken tool rather than a finding about a line.
+
+Re-measured 2026-09-12 against this project's own interpreter (3.14), which
+narrows the item without removing it: `docs/**.md` no longer raises, and a bare
+`/docs/worker.md` never reaches `glob` because it is not treated as a pattern.
+What still raises is an absolute token that *is* a pattern - `/docs/*.md` -
+which gives `NotImplementedError: Non-relative patterns are unsupported`. The
+narrowing is worth recording because it changes the test the fix owes: the
+regression case is an absolute pattern, not the two originally written down.
+
+**Done when.** `_resolves` returns "does not resolve" for a token `glob` refuses
+to parse instead of propagating the exception, `doc_check check` reports that
+citation as unresolved and completes the rest of the run, and a test covers an
+absolute glob token.

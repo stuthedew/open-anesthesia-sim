@@ -1,8 +1,10 @@
 ---
 id: PL-1KXX
 title: bin/docket verify fails its touches audit on a branch that rode bin/docket record, because the record writes another item's file and the audit cannot know the skill sanctioned it
-status: untriaged
+status: dropped
 added: 2026-09-07
+closed: 2026-09-12
+reason: Duplicate of PL-ZYQC (docket verify fails its touches audit on a close-out that let docket record ride the commit). Same defect, same mechanism, captured the same day; PL-ZYQC carries the fuller brief - the observed REJECT on PL-X204 naming all three item files, a recommendation, and the two alternatives it refuses - so it is the one kept.
 ---
 
 **Problem.** bin/docket verify fails its touches audit on a branch that rode bin/docket record, because the record writes another item's file and the audit cannot know the skill sanctioned it

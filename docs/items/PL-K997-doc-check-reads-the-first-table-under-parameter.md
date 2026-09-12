@@ -1,8 +1,10 @@
 ---
 id: PL-K997
 title: doc_check reads the first table under '## Parameter provenance' as the provenance table, so any table added above it is silently read in its place
-status: untriaged
+status: dropped
 added: 2026-09-07
+closed: 2026-09-12
+reason: Duplicate of PL-ZBZZ (doc_check reads the first table under 'Parameter provenance' as the provenance table). Same defect three days apart; PL-ZBZZ carries three ranked candidate fixes and the blast-radius note that table_rows is shared with the roadmap parsers. This item's own instance - PL-1JDD, 29 errors, 2026-09-07 - has been appended to PL-ZBZZ so nothing is lost.
 ---
 
 **Problem.** doc_check reads the first table under '## Parameter provenance' as the provenance table, so any table added above it is silently read in its place

@@ -1,8 +1,14 @@
 ---
 id: PL-01GD
 title: A stale __pycache__ entry survives git checkout of an equal-length source edit, so a reverted mutation keeps running and make check reports a failure the source cannot explain
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: Makefile, tests/unit/test_tools_portability.py
 added: 2026-09-07
+verify: uv run pytest tests/unit/test_tools_portability.py && grep -q 'PYTHONDONTWRITEBYTECODE' Makefile
 ---
 
 **Problem.** A stale __pycache__ entry survives git checkout of an equal-length source edit, so a reverted mutation keeps running and make check reports a failure the source cannot explain
@@ -47,3 +53,15 @@ changes which fix is warranted.
 
 **Where.** `Makefile` test targets; `.claude/skills/docket/SKILL.md`'s
 "Run it and watch it fail" guidance, which is what leads a session here.
+
+**Done when.** A source edit reverted with `git checkout` cannot leave stale
+bytecode executing under the project's own test targets - the cheapest form
+being `PYTHONDONTWRITEBYTECODE=1` on the `Makefile` targets that run `pytest`,
+which is what this session's second, clean mutation pass used. Confirmed by
+running the original reproduction: mutate `time_constant_s`, run the test,
+revert, re-run, and see the correct value without clearing `__pycache__` by
+hand.
+
+Re-checked 2026-09-12: neither `PYTHONDONTWRITEBYTECODE` nor `python -B` is set
+anywhere in the `Makefile` or `pyproject.toml`, so nothing has changed since the
+observation and the reproduction still stands as written.

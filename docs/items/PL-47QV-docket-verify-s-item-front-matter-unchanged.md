@@ -1,8 +1,10 @@
 ---
 id: PL-47QV
 title: docket verify's 'item front matter unchanged' check can never fail: Item.path is a bare filename, so its git show and its on-disk read both miss and it returns 'unchanged' unconditionally
-status: untriaged
+status: dropped
 added: 2026-09-07
+closed: 2026-09-12
+reason: Already fixed. PL-20PT (v0.4.11) rebuilt this as front_matter_check: it joins items_dir to Item.path, finds the base copy by id rather than by name so a title change cannot move the file out from under the guard, and returns a refusal - not a pass - where the comparison cannot be made at all. Verified 2026-09-12 against subprojects/docket/src/docket/verify.py:370-420. The regression test this item asked for is tests covering that third outcome.
 ---
 
 **Problem.** docket verify's 'item front matter unchanged' check can never fail: Item.path is a bare filename, so its git show and its on-disk read both miss and it returns 'unchanged' unconditionally
