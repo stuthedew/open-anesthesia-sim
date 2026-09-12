@@ -3,8 +3,7 @@ id: PL-Y31G
 title: bin/docket stranded classes a branch left on pre-rewrite history as one whose pull request merged, because it compares file content and a rewrite leaves content unchanged
 priority: P2
 effort: M
-status: blocked
-blocked-by: PL-R808
+status: ready
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
@@ -39,17 +38,3 @@ qualifier exists and is not wired to this read (`PL-YGF3` built it for
 either excluded from the orphaned report or named as such in it, so that no
 reader reaches the branch-deletion recipe on a ref holding the only copy of a
 commit.
-
-**Blocked on `PL-R808` 2026-09-12**, by the workflow-lane consolidation the
-project owner approved. This item is a false positive of the *content*
-comparison in `vcs.orphaned` / `_base_blobs`, and `PL-VV4D` has since decided
-that the comparison is replaced by an exact `refs/pull/<n>/head` test built in
-`tools/`. Working this one now means patching the heuristic that is about to be
-replaced - and the cluster it belongs to runs at r = 1.05, generating more work
-than it closes, precisely because each such patch lets the next shape through.
-
-It is blocked rather than merged. Its brief carries an observation the others
-do not, and the `PL-6ZQY` sweep refuted 56 of 62 proposed merges on exactly
-that ground - the surviving brief did not cover what it was said to absorb. So
-nothing here is folded into anything; this item simply stops being startable
-until the exact check exists.

@@ -1,12 +1,12 @@
 ---
 id: PL-CSHL
-title: No decisive test of the new-item rate is available at this data volume, and the reasons are worth recording so it is not re-derived
+title: Pre-registered test: close the 15 open vcs.py items as one root-cause round and count what they spawn against the cluster's own baseline of 1.05
 status: untriaged
 feature: parallel-sessions
 added: 2026-09-12
 ---
 
-**Problem.** No decisive test of the new-item rate is available at this data volume, and the reasons are worth recording so it is not re-derived
+**Problem.** Pre-registered test: close the 15 open vcs.py items as one root-cause round and count what they spawn against the cluster's own baseline of 1.05
 
 **Asked for by the project owner, 2026-09-12:** clean up a batch of
 high-impact items and see whether the new-item rate falls. This item fixes the
@@ -59,42 +59,3 @@ another id do not count, in either direction.
 **Not delegable:** the round itself is `PL-BHVM`'s design question. This item
 is only the measurement wrapped around it, and it closes when the count is in
 and recorded here.
-
----
-
-## Withdrawn 2026-09-12, before any work was done against it
-
-The project owner asked to consolidate the cluster *before* running the batch,
-which is right on the merits and is what broke this design. Recording both the
-break and the failed rescue, so the next session does not rebuild either.
-
-**Why consolidating first invalidates the test above.** Its H0 is denominated
-per *item closed*. Consolidation removes exactly the closures it counts:
-
-| 15 open items collapse to | reject on | power vs a halving |
-| --- | --- | --- |
-| 15 (no consolidation) | <= 9 | 0.96 |
-| 10 | <= 4 | 0.73 |
-| 5 | <= 1 | 0.48 |
-
-**Why re-denominating by time does not rescue it.** Arrivals per week are
-immune to consolidation, which is the right instinct, but the baseline is not
-there. vcs-cluster arrivals for the three weeks on record are 3, 10 and 40 - a
-13x spread dominated by one capture burst. Variance/mean is 21.9 against the 1
-a Poisson model assumes, so every interval computed that way is too narrow by
-about 4.7x. Corrected, a two-week window has a 95% interval of roughly
-[-15, 115] around an expected 50: a halving sits inside it and cannot be
-called.
-
-**What follows.** Do the consolidation and the root-cause round because they
-are worth doing on their own merits - the cluster runs at r = 1.05, generating
-more work than it closes, which is an argument from the baseline rather than
-from a predicted result. Record the spawn counts as observation. Do not report
-a rate change as evidence either way from a single round: with this dispersion
-it would be noise dressed as a finding, which is the failure `PL-27S8` exists
-to prevent, applied to the measurement rather than to a tightening.
-
-**When a test does become available:** several more weeks of arrivals, or a
-comparison between the treated cluster and the untreated ones over the same
-window, which controls for the burst behaviour that ruins the time series. Not
-now.
