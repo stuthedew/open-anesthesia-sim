@@ -2220,6 +2220,27 @@ Four grounds survive:
 2. **The dashboard.** The readout row, the parameter controls, the agent
    selector, the transport, the new-case dialog and the notice banner -
    `app/simulation_view.py`, 3 619 lines.
+
+   *It reserves for planned-milestone item 34 and builds none of it (project
+   owner, 2026-09-12).* Each of those surfaces becomes an independent widget
+   inside nested `QSplitter`s rather than a fixed layout, and **the splitter
+   handles stay inert**: item 34 is what turns them live and adds the split/join
+   affordance, the workspace tabs and the savable presets.
+
+   The reservation is close to free, because the components it needs are
+   already owed. `PL-B9PY` decomposes `SimulationView` in v0.5.0 and records
+   that "the Qt view is built decomposed from the start", so what this decides
+   is only the container those components go into - nested splitters rather
+   than fixed layouts. The alternative is laying out every panel twice, which
+   is the argument this milestone already makes for absorbing item 33.
+
+   *The inert handles are the deliberate half, not an oversight.* A draggable
+   splitter is something a learner can do that they cannot do today, so live
+   handles would be new capability - which § "Fixes this port carries" excludes
+   "whatever its size", and which would put a fourth entry beside `PL-16ZC` on
+   the wrong side of that line. Parity below means "identical except for this
+   list", and it is checkable only while the enumeration stays closed. Flipping
+   the handles live is item 34's first step and costs a line.
 3. **The theme, and item 33 with it.** `app/theme.py` re-expressed for Qt, and
    the visual pass decided once: palette, type scale, spacing rhythm, density,
    layout.
@@ -3317,8 +3338,51 @@ once someone is ready to scope it.
     rendering path, separate from the Flet live chart, and is a capability
     rather than a restyle.
 
+34. Take Blender's window management as the model for the interface: the
+    application window divided into resizable, modular areas, each holding one
+    view, with task-oriented layout presets the learner can switch between,
+    customize and save.
 
-None of items 1-33 mix scientific-core and UI/tooling concerns within a
+    *Requested by the project owner, 2026-09-12*, naming four properties:
+    resizable windows, modular views, presets for tasks, and presets that are
+    the user's to customize and save rather than a fixed set shipped with the
+    application.
+
+    *Why Blender specifically, and what is worth copying.* Its window system is
+    **tiling**, not floating: the window is subdivided into non-overlapping
+    resizable areas, each area hosts one editor, and areas are split and joined
+    from their corners and borders. Areas are grouped into **Workspaces**,
+    presented as tabs and each geared to a task, which the user can reorder,
+    duplicate and delete; a layout persists by being saved into the startup
+    file. The tiling half is the part that earns its place here rather than
+    being taste: a tiled layout has no overlapping or hidden panels, and a
+    covered value on this application's dashboard is a misread value, which
+    `CLAUDE.md`'s standard treats as a safety failure rather than an
+    inconvenience. See the Blender Manual, "Interface → Window System →
+    Areas" and "→ Workspaces".
+
+    *The license constraint, which is not a formality.* Blender's source is
+    GPL-2.0-or-later and its binaries ship under GPL-3.0-or-later; this project
+    is Apache-2.0 (`LICENSE`, `pyproject.toml`). So the behaviour may be studied
+    from the manual and the running application and the source read for
+    understanding, but code may not be copied or closely ported into this tree —
+    doing so would make the result GPL-encumbered and the stated license wrong.
+    The owner's note that "Blender is open source so can see implementation" is
+    recorded here with that limit attached, because the limit is exactly what a
+    session reading the note alone would miss. Qt supplies the primitives
+    directly in any case: nested `QSplitter` for the tiling, its own
+    `saveState()`/`restoreState()` for a layout, `QSettings` or a project file
+    for a named preset.
+
+    *Unplaced, and the timing question is live.* v0.5.1 rewrites every layout
+    in the dashboard onto Qt, and the argument that release already makes for
+    absorbing item 33 — that applying a decision to Flet and then again to Qt is
+    the same work twice — applies to layout *architecture* at least as strongly
+    as to palette and spacing. Whether v0.5.1 builds the tiled shell, reserves
+    for it, or ignores it is the project owner's call and is not recorded here.
+
+
+None of items 1-34 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
