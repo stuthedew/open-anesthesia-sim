@@ -3,11 +3,12 @@ id: PL-483K
 title: The stop hook demands a push for work already pushed after a branch is restarted per the merged-PR recovery, because checkout -B from origin/main leaves the upstream pointing at main
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: .claude/hooks/stop_hook_patch.py, tests/unit/test_stop_hook_patch.py
 added: 2026-09-06
+closed: 2026-09-12
 verify: uv run pytest tests/unit/test_stop_hook_patch.py && grep -q 'def test_a_branch_restarted_from_the_default_branch_is_not_asked_to_push_again' tests/unit/test_stop_hook_patch.py
 ---
 

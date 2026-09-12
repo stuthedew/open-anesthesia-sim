@@ -3,11 +3,12 @@ id: PL-BBDD
 title: Nothing keeps docket.toml's gate_paths in step with the ruff.toml files in the tree, the job tools/workflow_paths_check.py already does for workflow_paths
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, docket.toml
 added: 2026-09-08
+closed: 2026-09-12
 verify: uv run pytest tests/unit/test_workflow_paths_check.py && grep -q 'def test_a_ruff_toml_no_gate_path_covers_is_reported' tests/unit/test_workflow_paths_check.py
 ---
 

@@ -42,13 +42,25 @@ sets separate cleanly, and it is why the rule keeps working on files nobody has
 written yet - the next `tools/` check's test will import `tools/`, not
 `anesthesia_sim`, without anybody having decided to make it so.
 
-**Deliberately not decided here: anything about the rest of the list.**
+**A second list in the same file drifts the same way, so it is checked here
+too (`PL-BBDD`).** `docket.toml`'s `gate_paths` names the files a delegated diff
+may not touch, and `docs/worker.md`'s "any `ruff.toml`" is folded into it by
+naming `tools/ruff.toml` and `subprojects/docket/ruff.toml` one by one - a
+hand-maintained list of files that appear as `tools/` and the subprojects grow,
+which is exactly the shape that drifted above. A missed one is silent in the
+direction that hurts: `docket verify`'s "the checks themselves are unedited"
+audit reads `gate_paths`, so an uncovered `ruff.toml` lets a delegated diff relax
+the linter config that keeps these scripts parseable by the bare `python3` that
+runs them, and the audit still reports ACCEPT. The rule is the same shape as the
+one above and equally decidable: every `ruff.toml` in the tree must be covered by
+some `gate_paths` entry.
+
+**Deliberately not decided here: anything about the rest of either list.**
 Directory entries, what `workflow_paths` says about `ROADMAP.md` or
-`docs/ARCHITECTURE.md`, and whether the boundary is drawn in the right place at
-all are judgments, argued in `docket.toml`'s own comments. This check reads only
-the files under `tests/`, and only asks whether each one's side matches what its
-imports say. A tool guessing at the rest would be the "worse than no tool" case
-`CLAUDE.md` names.
+`docs/ARCHITECTURE.md`, whether `gate_paths` should hold some file that is not a
+`ruff.toml`, and whether either boundary is drawn in the right place at all are
+judgments, argued in `docket.toml`'s own comments. A tool guessing at the rest
+would be the "worse than no tool" case `CLAUDE.md` names.
 
 **Invoked through `uv run python`, not bare `python3`.** It parses repository
 source with `ast`, and `tests/` is free to use the language `.python-version`
@@ -138,6 +150,52 @@ def declared_workflow_paths(root: Path) -> tuple[str, ...]:
     return tuple(section.get("workflow_paths", ()))
 
 
+def declared_gate_paths(root: Path) -> tuple[str, ...]:
+    """`[docket] gate_paths` from the store's settings file."""
+    with (root / CONFIG).open("rb") as handle:
+        data = tomllib.load(handle)
+    section = data.get("docket", {})
+    return tuple(section.get("gate_paths", ()))
+
+
+def ruff_configs(root: Path) -> list[str]:
+    """Every `ruff.toml` in the tree, as repository-relative paths.
+
+    Skipping the directories a checkout carries but does not author. A
+    `ruff.toml` vendored inside `.venv` is somebody else's file and naming it
+    in `gate_paths` would be meaningless.
+    """
+    skip = {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".ruff_cache"}
+    found = []
+    for path in sorted(root.rglob("ruff.toml")):
+        relative = path.relative_to(root)
+        if any(part in skip for part in relative.parts):
+            continue
+        found.append(relative.as_posix())
+    return found
+
+
+def gate_problems(root: Path) -> list[str]:
+    """Every `ruff.toml` in the tree that no `gate_paths` entry covers."""
+    roots = declared_gate_paths(root)
+    if not roots:
+        # Declined rather than failed. `docket.config` supplies package defaults
+        # for an absent `gate_paths`, and this file may import the standard
+        # library only, so a settings file that does not state the list is one
+        # whose effective list this tool cannot read. Reporting "no gate_paths"
+        # there would be a check answering a question it did not ask. This
+        # repository states the list - the whole reason `docket.toml` writes out
+        # values that are also defaults - so the rule fires where it matters.
+        return []
+    return [
+        f"{relative} is a linter config no {CONFIG.as_posix()} gate_paths entry covers, so "
+        f"`docket verify` would accept a delegated diff that relaxed it. Add "
+        f'"{relative}" to gate_paths, or an entry covering it'
+        for relative in ruff_configs(root)
+        if not is_covered(relative, roots)
+    ]
+
+
 def problems(root: Path) -> list[str]:
     """Every test file whose declared side disagrees with what it imports."""
     roots = declared_workflow_paths(root)
@@ -183,7 +241,8 @@ def main() -> int:
     args = parser.parse_args()
 
     found = problems(args.root)
-    if not found:
+    gate = gate_problems(args.root)
+    if not found and not gate:
         total = sum(1 for _ in (args.root / TESTS_DIR).rglob("*.py"))
         roots = declared_workflow_paths(args.root)
         apparatus = sum(
@@ -193,19 +252,30 @@ def main() -> int:
         )
         print(
             f"workflow-paths: {total} test file(s) under {TESTS_DIR.as_posix()}, "
-            f"{apparatus} of them apparatus, each on the side its imports put it"
+            f"{apparatus} of them apparatus, each on the side its imports put it; "
+            f"{len(ruff_configs(args.root))} linter config(s), each covered by gate_paths"
         )
         return 0
 
-    print(
-        f"workflow-paths: {len(found)} test file(s) on the wrong side of the lane "
-        f"boundary.\n" + "".join(f"  {problem}\n" for problem in found) + "  A test "
-        "file under tests/ is apparatus when it does not import "
-        f"`{PRODUCT_PACKAGE}`, and the simulator's when it does. workflow_paths has "
-        "to agree, or an item declaring one of these alongside the thing it tests is "
-        "set aside from both lanes and offered to nobody (`PL-JBZK`).",
-        file=sys.stderr,
-    )
+    if found:
+        print(
+            f"workflow-paths: {len(found)} test file(s) on the wrong side of the lane "
+            f"boundary.\n" + "".join(f"  {problem}\n" for problem in found) + "  A test "
+            "file under tests/ is apparatus when it does not import "
+            f"`{PRODUCT_PACKAGE}`, and the simulator's when it does. workflow_paths has "
+            "to agree, or an item declaring one of these alongside the thing it tests is "
+            "set aside from both lanes and offered to nobody (`PL-JBZK`).",
+            file=sys.stderr,
+        )
+    if gate:
+        print(
+            f"workflow-paths: {len(gate)} linter config(s) no gate_paths entry covers.\n"
+            + "".join(f"  {problem}\n" for problem in gate)
+            + "  `docs/worker.md` forbids a delegated diff from editing any `ruff.toml`, "
+            "and `docket verify` enforces that by reading gate_paths - so a config the "
+            "list does not cover is one the audit will not defend (`PL-BBDD`).",
+            file=sys.stderr,
+        )
     return 1
 
 

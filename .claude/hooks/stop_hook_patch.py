@@ -36,6 +36,23 @@ no `Stop` has yet fired. Nor can a second `Stop` hook undo the first: one that
 exits 2 blocks the stop whatever else runs.
 (https://code.claude.com/docs/en/cloud-environments, read 2026-09-04.)
 
+**The corrected line still needs a remote-tracking ref to exist, which is the
+second half of this hook's job (`PL-3SGR`, `PL-483K`).** `--not --remotes`
+reads `refs/remotes/*` in this checkout and nothing else. The harness clones
+with `git clone --depth 1`, which implies `--single-branch` and leaves
+`remote.origin.fetch` as `+refs/heads/main:refs/remotes/origin/main` alone - so
+`git push` sends the session branch and never writes
+`refs/remotes/origin/<branch>`, and every commit on it counts as unpushed
+however many times it has been pushed. Observed 2026-09-07 after three
+successful pushes: the hook reported "has 3 unpushed commit(s) and no remote
+branch" while `git ls-remote` returned exactly the local `HEAD`.
+
+The repair is to the clone rather than to the test. Widening the refspec to
+`+refs/heads/*:refs/remotes/origin/*` is what makes `git push` write the
+tracking ref, so the offline test the paragraph above argues for keeps working
+instead of being traded for a network call at every `Stop`. It fetches nothing
+and prunes nothing, so it cannot destroy a ref `bin/docket stranded` needs.
+
 **Silent on the path it takes every session.** Standard output from a
 SessionStart hook enters the session's context and is resent on every turn, so
 a line announcing the ordinary success would cost tokens in every session
@@ -51,8 +68,10 @@ from __future__ import annotations
 
 import os
 import stat
+import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 #: The line as the harness ships it, and the line that replaces it. Matched
@@ -73,6 +92,21 @@ branch still exists; `git rev-list HEAD --not --remotes --count` says whether
 anything is genuinely unpushed. Do not clear a stale ref with `git fetch
 --prune`: it can be the only copy of an item captured on a branch nobody
 merged, which `bin/docket stranded` recovers.
+"""
+
+
+NARROW_REFSPEC = """\
+This clone fetches one branch only and the refspec could not be widened
+({reason}), so `git push` will not write `refs/remotes/origin/<branch>` and the
+stop hook may demand a push for work already pushed. `git ls-remote --heads
+origin <branch>` is what settles it. To repair by hand:
+
+    git config --unset-all remote.origin.fetch
+    git config --add remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+    git fetch origin <branch>
+
+Do not use `git fetch --prune`, which can destroy the only copy of an item
+captured on an unmerged branch.
 """
 
 
@@ -114,6 +148,58 @@ def _write_atomically(target: Path, text: str) -> None:
         raise
 
 
+#: What a full clone carries, and what a `--depth 1` clone does not.
+WIDE_REFSPEC = "+refs/heads/*:refs/remotes/origin/*"
+
+
+def widen_fetch_refspec(run: Callable[[list[str]], tuple[int, str]]) -> str:
+    """Give a single-branch clone the refspec a `git push` needs to record itself.
+
+    Returns a reason when it could not, and `""` when the refspec is already
+    wide or has been widened. `run` is injected so the tests drive real git in
+    a temporary repository rather than a stub of it.
+
+    Only ever widens. A refspec that already covers every branch is left
+    alone, and nothing here fetches or prunes - `PL-HKF4` came within one
+    `git fetch --prune` of destroying the only copy of an item captured on an
+    unmerged branch, and `.claude/hooks/no-prune-guard.sh` refuses that call.
+    """
+    status, output = run(["config", "--get-all", "remote.origin.fetch"])
+    if status != 0:
+        return "this checkout has no origin remote"
+    if any(line.strip() == WIDE_REFSPEC for line in output.splitlines()):
+        return ""
+    status, _ = run(["config", "--unset-all", "remote.origin.fetch"])
+    if status not in (0, 5):  # 5 is "nothing to unset", which is not a failure
+        return "its fetch refspec could not be cleared"
+    status, _ = run(["config", "--add", "remote.origin.fetch", WIDE_REFSPEC])
+    return "" if status == 0 else "its fetch refspec could not be widened"
+
+
+def project_root() -> Path:
+    """The checkout to repair.
+
+    `CLAUDE_PROJECT_DIR` is what the harness sets and what `settings.json`
+    already uses to find this file; the fallback is this file's own position,
+    two directories inside the repository, so the hook still acts on the right
+    clone when it is run by hand from somewhere else.
+    """
+    declared = os.environ.get("CLAUDE_PROJECT_DIR")
+    return Path(declared) if declared else Path(__file__).resolve().parent.parent.parent
+
+
+def _git(args: list[str]) -> tuple[int, str]:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=str(project_root()),
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=15,
+    )
+    return result.returncode, result.stdout
+
+
 def main(argv: list[str]) -> int:
     target = Path(argv[1]) if len(argv) > 1 else default_hook()
     try:
@@ -135,5 +221,17 @@ def main(argv: list[str]) -> int:
     return 0
 
 
+def repair(argv: list[str]) -> int:
+    """Both halves: correct the harness script, then widen this clone's refspec."""
+    status = main(argv)
+    try:
+        reason = widen_fetch_refspec(_git)
+    except (OSError, subprocess.SubprocessError) as error:
+        reason = f"git could not be run ({error})"
+    if reason:
+        print(NARROW_REFSPEC.format(reason=reason))
+    return status
+
+
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+    raise SystemExit(repair(sys.argv))

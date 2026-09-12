@@ -3,12 +3,13 @@ id: PL-PDP6
 title: PL-KTKP's check_gate_reentries has no test at all and its verify: only greps that the def exists, so the check built to stop a silent wrong answer is itself unverified
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, test, infra
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-08
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_an_item_re_entering_a_frozen_gate_list_is_reported' tests/unit/test_doc_check.py
+closed: 2026-09-12
+reason: Already covered. check_gate_reentries has six tests in tests/unit/test_doc_check.py - a safety item the list does not place, a science item it does, one in Required scope, a closed one, one of another class, and the grouping of several into one advisory. They reach the function through doc_check.analyze rather than calling it by name, which is why a grep for 'check_gate_reentries' under tests/ finds only a comment and reads as no coverage; that comment is corrected in the same change. Verified 2026-09-12 by neutering the function, on which two of the six fail. PL-KTKP's own verify: command is still a weak one, but it is a closed item's record and the skill forbids re-pointing it.
 ---
 
 **Problem.** PL-KTKP's check_gate_reentries has no test at all and its verify: only greps that the def exists, so the check built to stop a silent wrong answer is itself unverified

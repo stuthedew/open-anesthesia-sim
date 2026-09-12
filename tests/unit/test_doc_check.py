@@ -2292,11 +2292,13 @@ def test_the_advisory_names_every_unplaced_item_in_one_line(tmp_path: Path) -> N
 
 # --- gate dispositions ------------------------------------------------------
 #
-# `check_gate_reentries`, the sibling this sits beside, has no test of its own:
-# `PL-KTKP`'s `verify:` command greps that its `def` exists, which proves the
-# function is present and nothing about what it decides (`PL-PDP6`). These
-# cover the half of the rule that needs a judgment, so they exercise both
-# dispositions the rule allows and the silence it forbids.
+# `check_gate_reentries`, the sibling this sits beside, is covered by the six
+# tests directly above - they reach it through `analyze` rather than by name,
+# which is why an audit grepping for the function found only this comment and
+# concluded it was untested (`PL-PDP6`, dropped 2026-09-12 after mutating the
+# function and watching two of those six fail). These cover the half of the
+# rule that needs a judgment, so they exercise both dispositions the rule
+# allows and the silence it forbids.
 
 
 def _disposition_repo(
@@ -2405,3 +2407,63 @@ def test_this_repository_records_a_disposition_for_every_open_debt_item() -> Non
     root = Path(doc_check.__file__).resolve().parent.parent
 
     assert [a for a in doc_check.analyze(root).advisories if "records no disposition" in a] == []
+
+
+# --- reading the right table, and surviving a token glob cannot parse --------
+
+
+def test_a_decoy_table_above_the_provenance_table_is_named_as_the_cause(tmp_path: Path) -> None:
+    """One accurate error instead of one misleading error per stored constant.
+
+    `PL-ZBZZ` and `PL-K997`: `table_rows` yields the rows of the *first* table
+    under a heading, and `## Parameter provenance` is hundreds of lines of
+    prose, so any table written above the real one displaced it. The check then
+    walked the wrong rows and reported a missing-row error for every constant -
+    each true of the table it read, each false of the document, and the remedy
+    they suggested was to add rows to a citation list. Two sessions met it
+    three days apart and both resolved it by not writing a table.
+    """
+    decoy = "\n".join(
+        [
+            "| Source | What it establishes |",
+            "| --- | --- |",
+            "| Yasuda et al. 1991 | Wash-in on volunteers |",
+            "",
+        ]
+    )
+    model = MODEL.replace(
+        "| Parameter | Selected value | Unit | Source (data file · key path) |",
+        decoy + "| Parameter | Selected value | Unit | Source (data file · key path) |",
+        1,
+    )
+    errors = _errors(_repo(tmp_path, model=model))
+
+    assert any("carry no provenance header" in error for error in errors), errors
+    assert any("Source | What it establishes" in error for error in errors), errors
+    # The misleading half is gone: no per-constant row errors are raised.
+    assert not any("no provenance row for" in error for error in errors), errors
+
+
+def test_a_table_below_the_provenance_table_does_not_displace_it(tmp_path: Path) -> None:
+    """The fix must not trade one positional rule for another."""
+    trailer = "\n| Note | Value |\n| --- | --- |\n| A | B |\n"
+    model = MODEL.replace("\n## Known limitations", trailer + "\n## Known limitations", 1)
+
+    assert not any("provenance header" in error for error in _errors(_repo(tmp_path, model=model)))
+
+
+def test_an_absolute_glob_citation_is_reported_rather_than_raised(tmp_path: Path) -> None:
+    """A citation `glob` refuses to parse is a finding about that line, not a crash.
+
+    `PL-0M7L`: `Path.glob` raises `NotImplementedError` for a non-relative
+    pattern, and the call was unguarded - so one such token aborted the whole
+    run on a traceback and the checker reported nothing at all about the
+    several hundred citations around it. The failure also looked like a broken
+    tool rather than a broken line.
+    """
+    model = MODEL + "\nEverything under `/docs/*.md` is checked.\n"
+    root = _repo(tmp_path, model=model)
+
+    report = doc_check.analyze(root)  # must not raise
+
+    assert any("/docs/*.md" in error for error in report.errors), report.errors
