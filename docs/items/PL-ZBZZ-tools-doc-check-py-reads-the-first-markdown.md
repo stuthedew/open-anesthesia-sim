@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-10
 closed: 2026-09-12
+pr: 496
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_decoy_table_above_the_provenance_table_is_named_as_the_cause' tests/unit/test_doc_check.py
 ---
 

@@ -9,6 +9,7 @@ feature: delegation
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-07
 closed: 2026-09-12
+pr: 496
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_pr_only_addition_to_another_items_file_is_not_outside_touches' subprojects/docket/tests/test_verify.py
 ---
 

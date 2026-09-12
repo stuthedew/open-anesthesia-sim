@@ -9,6 +9,7 @@ feature: delegation
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-12
 closed: 2026-09-12
+pr: 496
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_self_audit_names_the_other_items_its_commits_carry' subprojects/docket/tests/test_verify.py
 ---
 

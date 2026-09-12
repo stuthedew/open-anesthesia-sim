@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: .claude/hooks/stop_hook_patch.py, tests/unit/test_stop_hook_patch.py
 added: 2026-09-07
 closed: 2026-09-12
+pr: 496
 verify: uv run pytest tests/unit/test_stop_hook_patch.py && grep -q 'def test_a_pushed_branch_with_no_remote_tracking_ref_is_not_asked_to_push_again' tests/unit/test_stop_hook_patch.py
 ---
 
