@@ -575,6 +575,37 @@ def test_the_queue_directory_is_read_from_the_project_setting() -> None:
     assert branches_in_flight(ROOT, items_dir="docs/items", runner=runner).ids == {"PL-K7QX"}
 
 
+def test_flight_names_the_local_branch_where_the_checkout_holds_both() -> None:
+    """`--source` names *a* ref that reached a commit, and promises nothing about which.
+
+    Measured 2026-09-04: with `claude/next-workflow-item-knjkkt` and its tracking
+    ref holding identical history, one walk credited the branch's newest
+    `PL-YHD3` commit to the local ref and its oldest to `origin/...`. Attribution
+    varies per commit inside a single walk, so it cannot be read off git at all
+    (`PL-R6D8`).
+
+    `branches_in_flight` survives that, needing only some ref per id, which is
+    why it never showed as a bug. What it cost is that `flight` and `triage`
+    printed whichever ref the walk happened to credit - so a session could be
+    shown `origin/claude/...` for work its own local branch was carrying, which
+    is the exact confusion those lines exist to remove. Candidate order decides
+    it here instead, and it puts the local branch first.
+    """
+    # A harness-named branch, so the id comes only from the commit subject and
+    # the branch-name reading cannot supply the answer on its own.
+    local = "claude/next-workflow-item-knjkkt"
+    tracking = f"origin/{local}"
+    # git credited the shared commit to the tracking ref, which it is entitled
+    # to do and did on 2026-09-04. Both refs are candidates; the report names
+    # the local one regardless of which git picked.
+    report = _report(
+        [local, tracking],
+        commits={tracking: [("2026-09-04", "PL-YHD3: the work both refs hold", "c1")]},
+    )
+
+    assert [(branch.item_id, branch.name) for branch in report.branches] == [("PL-YHD3", local)]
+
+
 def test_a_queue_only_commit_is_reported_as_a_file_edit_though_not_as_work() -> None:
     """The failure `PL-N1JK` records: a triage pass no guard could see.
 
@@ -1787,6 +1818,12 @@ def _closure_runner(
             return ""
         if args[0] == "for-each-ref":
             return f"{BASE}\n"
+        if args[0] == "diff" and "--name-only" in args:
+            # The paths a commit changed, which is what tells a closure that
+            # landed with its work from one that landed without it. These
+            # histories are the healthy shape - the commit that wrote the
+            # closure also carried the code - so every commit names work.
+            return "src/changed.py\n"
         if args[0] == "show":
             revision, _, path = args[-1].partition(":")
             name = path.split("/")[-1]
@@ -1812,7 +1849,12 @@ def _closure_runner(
     return run
 
 
-def _recovery_runner(history: tuple[tuple[str, str], ...], done_at: set[str], name: str):
+def _recovery_runner(
+    history: tuple[tuple[str, str], ...],
+    done_at: set[str],
+    name: str,
+    carried: tuple[str, ...] | None = None,
+):
     """A git whose base subjects name no id, so only the file's history answers.
 
     `history` is the file's own log, newest first, as (revision, subject).
@@ -1826,6 +1868,12 @@ def _recovery_runner(history: tuple[tuple[str, str], ...], done_at: set[str], na
             return "" if args[-1] == "--is-shallow-repository" else f"{BASE}\n"
         if args[0] == "for-each-ref":
             return f"{BASE}\n"
+        if args[0] == "diff" and "--name-only" in args:
+            # The paths a commit changed: these histories are all the healthy
+            # shape, where the commit that wrote the closure carried the work.
+            # A test about a closure that landed alone says so by naming only
+            # the item file here.
+            return "\n".join(carried) if carried is not None else "src/changed.py\n"
         if args[0] == "show":
             revision, _, _path = args[-1].partition(":")
             if revision == BASE:
@@ -1862,6 +1910,39 @@ def test_a_squash_subject_naming_no_id_is_recovered_from_the_item_s_file() -> No
 
     assert report.landed == frozenset({"PL-K7QX"})
     assert report.numbers == {"PL-K7QX": 220}
+
+
+def test_a_closure_split_from_its_work_records_no_pull_request() -> None:
+    """A closure that landed without its work names the wrong pull request, so it names none.
+
+    Where the work and the closure landed in *different* pull requests, the
+    commit that wrote `status: done` carries the closure and none of the code -
+    so `pr:` would record a change whose diff does not contain the work the item
+    describes. `commit:` was retired (`PL-T63T`), so `pr` is the only surviving
+    link to the work and a wrong one is worse than an absent one (`PL-YDL6`).
+
+    Audited over real history while fixing `PL-S5LB`: 249 of the 252 closures
+    this can answer agree with what the store recorded, and all three that
+    disagree are this shape, each off by one - `#128` did `PL-3CBS`'s work and
+    left the item at `status: ready`, and the triage pass that merged as `#129`
+    wrote the closure. The store already holds the better answer in all three,
+    so declining loses nothing that was ever right.
+
+    Declining rather than guessing which pull request held the work: nothing here
+    knows which files an item's work was, and `PL-99Y4` settled that a provenance
+    question the checkout cannot answer is reported rather than invented.
+    """
+    run = _recovery_runner(
+        history=(("ccc333", "Triage the open captures (#129)"),),
+        done_at={"ccc333"},
+        name="PL-K7QX-a.md",
+        carried=("docs/items/PL-K7QX-a.md",),
+    )
+
+    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
+
+    assert report.landed == frozenset({"PL-K7QX"})
+    assert report.numbers == {}
 
 
 def test_a_later_edit_to_a_closed_item_does_not_steal_the_attribution() -> None:
@@ -3495,6 +3576,12 @@ def _rename_runner(commits: tuple[tuple[str, str, str, str], ...], items_dir: st
             )
             at += len(revision) - len(named)
             return commits[at][3] if at < len(commits) and paths[at] == path else ""
+        if args[0] == "diff" and "--name-only" in args:
+            # The paths a commit changed, which is how a closure that landed
+            # with its work is told from one that landed without it. Every
+            # commit in these histories carries work, which is what a closure
+            # written in the same commit as the work looks like.
+            return "src/changed.py\n"
         if args[0] != "log":
             return ""
         if "--" not in args:

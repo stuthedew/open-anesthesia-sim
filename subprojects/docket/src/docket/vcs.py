@@ -357,9 +357,26 @@ def _unmerged_commits(
 
     One `git log` covers every ref at once: `--source` reports which ref on the
     command line reached each commit, so the walk that finds the ids also dates
-    the branches. Refs are passed in the order they will be reported in, so a
-    commit two refs share - a local branch and its own tracking ref - is
-    attributed to the one that will be named.
+    the branches.
+
+    **Which ref a shared commit is credited to is decided here, not by git.**
+    `--source` names *a* ref that reached each commit and promises nothing about
+    which, and measured on this repository it varies per commit inside a single
+    walk: on 2026-09-04, with `claude/next-workflow-item-knjkkt` and its tracking
+    ref holding identical history, one walk credited the branch's newest
+    `PL-YHD3` commit to the local ref and its oldest to `origin/...`
+    (`PL-R6D8`). So a commit two refs share - a local branch and its own
+    tracking ref - is attributed by *candidate order* instead, which prefers the
+    local branch: the id is kept against the earliest ref that accounts for it,
+    and the order the caller passed is the order it will report in.
+
+    `branches_in_flight` survives git's own answer, because it needs only some
+    ref per id, which is why this was never visible as a bug. What it cost is
+    smaller and real: `flight` and `triage` printed whichever ref the walk
+    happened to credit, so a session could be shown `origin/claude/...` for work
+    its own local branch was carrying - the exact confusion those lines exist to
+    remove. A docstring claiming git guaranteed it was the worse half, because
+    the next reader builds on it, and `PL-YHD3`'s `precedence` did.
 
     **A walk must stop because the default branch accounted for what came next,
     never because the checkout ran out of history.** `^base` excludes only the
@@ -436,6 +453,15 @@ def _unmerged_commits(
     pending: tuple[str, Stake | None, str] | None = None
     paths: list[str] = []
 
+    # Candidate order is what settles a commit two refs share, since `--source`
+    # will not: the caller lists local branches before their tracking refs, so
+    # the lower rank is the one a reader wants to be shown.
+    rank = {name: position for position, name in enumerate(refs)}
+
+    def nearer(ref: str, held: str | None) -> bool:
+        """Whether `ref` outranks the ref already credited, or there is none."""
+        return held is None or rank.get(ref, len(refs)) < rank.get(held, len(refs))
+
     def credit_claims() -> None:
         """Credit the held commit's leading ids, unless its diff only annotates."""
         if pending is None:
@@ -445,11 +471,14 @@ def _unmerged_commits(
         # annotating commit is not work, and it has still written to the file a
         # second session is about to write to.
         for identifier, path in _item_files(paths, prefix):
-            edited.setdefault(identifier, (ref, path))
+            held_edit = edited.get(identifier)
+            if nearer(ref, None if held_edit is None else held_edit[0]):
+                edited[identifier] = (ref, path)
         if _annotates_only(paths, prefix):
             return
         for identifier in leading_ids(subject):
-            ids.setdefault(identifier, ref)
+            if nearer(ref, ids.get(identifier)):
+                ids[identifier] = ref
             if stake is not None:
                 held = staked.get((ref, identifier))
                 if held is None or stake < held:
@@ -746,6 +775,30 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
     )
 
 
+def _preferred(name: str, candidates: list[str]) -> str:
+    """The local branch where the checkout holds it and its tracking ref both.
+
+    **A name-level rule, because the walk cannot supply one.** `--source` names
+    *a* ref that reached each commit and promises nothing about which, and
+    measured on this repository it varies per commit inside one walk
+    (`PL-R6D8`). So which of two refs holding one piece of work gets reported
+    cannot be read off the walk at all - and it is worth deciding, because
+    `flight` and `triage` showing `origin/claude/...` for work the reader's own
+    local branch is carrying is the confusion those lines exist to remove.
+
+    A tracking ref ends with its local branch's whole name after a separator, so
+    a candidate that is a proper suffix of this one is that branch. Matched that
+    way rather than against a list of remotes, which would cost a git call to
+    learn what `origin` is called here and answer nothing extra: a local branch
+    genuinely named `bar/x` alongside another named `foo/bar/x` is the only
+    shape that collides, and reporting either for the other names the same work.
+    """
+    for candidate in candidates:
+        if candidate != name and name.endswith(f"/{candidate}"):
+            return candidate
+    return name
+
+
 def _closed_on_base(
     ids: set[str], items_dir: str, base: str, root: Path, run: Runner
 ) -> frozenset[str]:
@@ -923,8 +976,17 @@ def branches_in_flight(
             identifier, Branch(name=name, item_id=identifier, last_commit=last_commit.get(name))
         )
     for identifier, name in subject_ids.items():
+        # `_preferred` is what keeps a reader from being shown the tracking ref
+        # for work their own local branch is carrying, which git's own
+        # attribution cannot be relied on to avoid (`PL-R6D8`).
+        reported = _preferred(name, candidates)
         in_flight.setdefault(
-            identifier, Branch(name=name, item_id=identifier, last_commit=last_commit.get(name))
+            identifier,
+            Branch(
+                name=reported,
+                item_id=identifier,
+                last_commit=last_commit.get(reported) or last_commit.get(name),
+            ),
         )
 
     # **An item the base already records as closed leaves the line**, whatever
@@ -961,6 +1023,7 @@ def branches_in_flight(
         and identifier not in in_flight
         and path not in _superseded(name, base, (path,), root, run)
     }
+    edited = {identifier: _preferred(name, candidates) for identifier, name in edited.items()}
     return FlightReport(
         branches=tuple(sorted(in_flight.values(), key=lambda branch: branch.item_id)),
         unreadable=tuple(name for name in candidates if name in unreadable),
@@ -2196,6 +2259,7 @@ def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runne
     stopping loses nothing that a deeper fetch would not restore.
     """
     path = f"{items_dir}/{name}"
+    prefix = items_dir.strip("/") + "/"
     for revision, subject, here, there in _walk_following_renames(path, base, root, run):
         match = PR_SUBJECT_RE.search(subject.strip())
         if match is None:
@@ -2204,8 +2268,52 @@ def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runne
         if closed is None:  # its parent is outside this checkout, and so is everything older
             return None
         if closed:
+            # **A closure that landed without its work names the wrong pull
+            # request, so it names none** (`PL-YDL6`). This walk finds the commit
+            # that wrote `status: done`; where the work and the closure landed in
+            # different pull requests, that commit carries the closure and none
+            # of the code, and `pr:` would record a change whose diff does not
+            # contain the work the item describes. `commit:` was retired
+            # (`PL-T63T`), so `pr` is the only surviving link to the work and a
+            # wrong one is worse than an absent one.
+            #
+            # A closure commit that carries its work touches something outside
+            # the queue, so `_annotates_only` separates the two - the same rule
+            # that tells recording an item from working on it everywhere else in
+            # this module. Declining is the answer rather than a guess at which
+            # pull request held the work: nothing here knows which files an
+            # item's work was, and `PL-99Y4` already settled that a provenance
+            # question the checkout cannot answer is reported rather than
+            # invented.
+            #
+            # Audited over real history while fixing `PL-S5LB`: 249 of the 252
+            # closures this can answer agree with what the store recorded, and
+            # all three that disagree are this shape, each off by one. The store
+            # already holds the better answer in every case, so declining loses
+            # nothing that was ever right. All three predate the same-commit
+            # closure rule (`PL-D2GW`, then `PL-P5S0`), which is what keeps the
+            # shape rare rather than impossible.
+            if not _carried_work(revision, prefix, root, run):
+                return None
             return int(match.group(1) or match.group(2))
     return None
+
+
+def _carried_work(revision: str, items_prefix: str, root: Path, run: Runner) -> bool:
+    """Whether `revision` changed anything outside the queue directory.
+
+    `git diff` against the first parent rather than a bare `diff-tree`, for the
+    reason `closed_by` gives beside the same call: a true merge commit shows an
+    empty `diff-tree` by default and would read as touching nothing.
+
+    Silence reads as "no work", so a commit this checkout cannot diff declines
+    the number rather than supplying it. That is the direction the caller wants:
+    an absent `pr` is a transcription still owed and a wrong one is a false
+    provenance that nothing else will catch.
+    """
+    listing = run(["diff", "--name-only", f"{revision}^", revision], root)
+    paths = [line.strip() for line in listing.splitlines() if line.strip()]
+    return bool(paths) and not _annotates_only(paths, items_prefix)
 
 
 def _basename(path: str) -> str:
