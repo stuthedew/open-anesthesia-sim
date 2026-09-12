@@ -8,6 +8,7 @@ classes: defect
 touches: docs/items
 added: 2026-09-12
 closed: 2026-09-12
+pr: 500
 verify: python3 tools/doc_check.py check && grep -qE '^classes: .*science' docs/items/PL-4YY1-record-provenance-for-the-circuit-volume-and.md
 ---
 
