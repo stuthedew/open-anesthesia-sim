@@ -1,14 +1,15 @@
 ---
 id: PL-3ZZT
 title: PL-8M8H would move a reading PL-XLQ5 and PL-Y31G document as wrong onto docket branch's restart path, inverting a noisy error into one that destroys a branch with an open pull request
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, docs
 feature: parallel-sessions
 touches: docs/items
 added: 2026-09-12
 closed: 2026-09-12
+pr: 500
 verify: python3 tools/doc_check.py check && grep -qF 'Decision needed, part two' docs/items/PL-8M8H-docket-branch-tells-a-session-whose-pull.md
 ---
 

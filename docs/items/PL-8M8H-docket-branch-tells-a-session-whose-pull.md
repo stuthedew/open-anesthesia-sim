@@ -44,8 +44,7 @@ from the content split, or whether `format_branch` keeps the four and adds a
 line beside them. The first makes every caller of `disposition` see it; the
 second leaves the counts meaning what they have always meant.
 
-**Decision needed, part two - added 2026-09-12 by `PL-3ZZT`, and it gates part
-one.** *Which* reading of `_landing_split` this item adopts: the unqualified one
+**Decision needed, part two — ANSWERED 2026-09-12, see below.** *Which* reading of `_landing_split` this item adopts: the unqualified one
 its own **Why it matters.** asserts - "a branch whose landed side is non-empty
 has had work taken by a pull request" - or one carrying
 `_commits_by_landing`'s narrowing at
@@ -67,3 +66,35 @@ the qualifier is a correctness question rather than a refinement.
 to restart on the merged `main` and carry the commit forward - `CLAUDE.md`'s
 merged-branch rule - rather than to merge the base in, and the reading it uses
 is the content split rather than the commit counts.
+
+## Part two, decided 2026-09-12 by the project owner: the qualifier is required
+
+`disposition` may **not** adopt the unqualified `_landing_split` reading. Any
+restart verdict this item produces must carry `_commits_by_landing`'s
+`took_one_whole` narrowing - `subprojects/docket/src/docket/vcs.py:2801`, `elif
+all(path in landed for path in touched): took_one_whole = True` - or an
+equivalent that excludes the same shapes.
+
+**The reasoning, so a later session does not reopen it as a performance or
+simplicity question.** The unqualified reading admits two documented
+false-positive shapes: `PL-Y31G` (a branch forked before a history rewrite,
+whose pre-rewrite blobs are duplicated on the base, with nothing merged) and
+`PL-XLQ5` (the base holds a superset of the branch's blobs). Where those shapes
+today produce a spurious line in `bin/docket stranded`, on this item's path they
+would drive the **restart** arm, telling a session whose pull request is still
+open to run the three commands `.claude/skills/docket/SKILL.md:216` describes as
+destroying a branch. The qualifier is therefore not a refinement of the answer;
+it is what keeps a wrong answer non-destructive. `PL-JHJ3` and `PL-5TRV` added
+that guard to `orphaned` after it fired falsely on its first live run, and the
+lesson transfers unchanged.
+
+**What this does not settle.** Part one is still open - whether `disposition`
+gains a fifth state or `format_branch_state` keeps four and adds a line beside
+them - so this item stays `needs-decision`. The qualifier constrains whichever
+shape part one picks rather than choosing between them.
+
+**A consequence worth carrying into the build.** A qualified reading is
+strictly more conservative: it will decline to call some genuinely-merged
+branches merged. For a verdict whose wrong answer destroys work, declining is
+the right failure direction, and the four-state output already has somewhere to
+put "cannot tell" without inventing one.
