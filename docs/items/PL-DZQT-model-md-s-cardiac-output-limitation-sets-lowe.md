@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: science, docs
 feature: model-spec-accuracy
+milestone: v0.4.13
 touches: docs/MODEL.md, src/anesthesia_sim/data/patients/reference_adult.json
 added: 2026-09-10
 closed: 2026-09-10
+pr: 494
 verify: python3 tools/doc_check.py check && grep -qF 'they are not evidence of the same kind' docs/MODEL.md
 ---
 

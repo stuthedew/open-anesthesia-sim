@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: perf, ux
 feature: teachable-case
+milestone: v0.4.13
 touches: spikes/qt, docs/WORKING_NOTES.md
 blocked-by: PL-QXSB
 added: 2026-09-08
