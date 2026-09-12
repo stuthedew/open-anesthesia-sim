@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.14
 touches: Makefile, tests/unit/test_tools_portability.py
 added: 2026-09-07
 closed: 2026-09-12

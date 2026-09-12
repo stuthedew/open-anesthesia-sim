@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: delegation
+milestone: v0.4.14
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-12
 closed: 2026-09-12

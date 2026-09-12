@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.14
 touches: tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, docket.toml
 added: 2026-09-08
 closed: 2026-09-12

@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.4.14
 touches: Makefile
 added: 2026-09-12
 closed: 2026-09-12
+pr: 497
 verify: UV_NATIVE_TLS=true make sync 2>&1 | grep -c UV_NATIVE_TLS | grep -qx 0
 ---
 
