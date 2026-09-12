@@ -39,10 +39,29 @@ commit forward - not `MERGE`.
 the loss in the next session. This would stop it happening: the session about to
 push is the one holding the commit, and it is the last moment recovery is free.
 
-**Decision needed.** Whether `disposition` gains a fifth state read from the
-content split, or whether `format_branch` keeps the four and adds a line beside
-them. The first makes every caller of `disposition` see it; the second leaves
-the counts meaning what they have always meant.
+**Decision needed, part one.** Whether `disposition` gains a fifth state read
+from the content split, or whether `format_branch` keeps the four and adds a
+line beside them. The first makes every caller of `disposition` see it; the
+second leaves the counts meaning what they have always meant.
+
+**Decision needed, part two - added 2026-09-12 by `PL-3ZZT`, and it gates part
+one.** *Which* reading of `_landing_split` this item adopts: the unqualified one
+its own **Why it matters.** asserts - "a branch whose landed side is non-empty
+has had work taken by a pull request" - or one carrying
+`_commits_by_landing`'s narrowing at
+`subprojects/docket/src/docket/vcs.py:2801`, `elif all(path in landed for path
+in touched): took_one_whole = True`, the guard `PL-JHJ3` and `PL-5TRV` added
+after `orphaned` fired falsely on its first live run.
+
+This is not a detail. Two documented false-positive shapes satisfy "landed side
+non-empty" - `PL-Y31G` (a branch forked before a history rewrite, its
+pre-rewrite blobs duplicated on the base, nothing merged) and `PL-XLQ5` (the
+base holds a superset of the branch's blobs). Where those shapes cost a spurious
+line in `bin/docket stranded` today, the unqualified reading on *this* item's
+path would tell a session whose pull request is still **open** to run the
+restart recipe, which `.claude/skills/docket/SKILL.md:216` calls "These three
+commands destroy a branch." The error direction inverts from noisy to lossy, so
+the qualifier is a correctness question rather than a refinement.
 
 **Done when.** `docket branch` tells a branch whose work the base already holds
 to restart on the merged `main` and carry the commit forward - `CLAUDE.md`'s
