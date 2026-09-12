@@ -3,11 +3,13 @@ id: PL-VV4D
 title: Decide whether the left-behind check should compare against refs/pull/<n>/head, which is exact but makes the check GitHub-specific
 priority: P3
 effort: M
-status: needs-decision
+status: done
 classes: infra
 feature: parallel-sessions
 touches: tools, subprojects/docket/src/docket/vcs.py
 added: 2026-09-04
+closed: 2026-09-12
+verify: python3 tools/doc_check.py check && grep -qF 'Decided 2026-09-12: build it, in tools/, beside vcs.orphaned' docs/items/PL-VV4D-decide-whether-the-left-behind-check-should.md
 ---
 
 **Problem.** `vcs.orphaned` detects a commit left behind by comparing *content*:
@@ -60,3 +62,41 @@ as the precise half while `orphaned` stays the portable one.
 comparison is built, and where it lives if it is - beside `vcs.orphaned` as the
 precise half while `orphaned` stays the portable one, or in place of it - or has
 recorded here why the portable heuristic is worth keeping alone.
+
+## Decision
+
+**Decided 2026-09-12: build it, in tools/, beside vcs.orphaned** (project
+owner). Both halves of the question above are answered: the exact comparison is
+built, and it sits beside the portable heuristic rather than replacing it.
+
+**Why build it.** The content comparison is a heuristic and has produced two
+recorded false positives - `PL-JHJ3` on its first live run and `PL-XLQ5` - in a
+report whose other half is what stands between a post-merge commit and being
+lost. `CLAUDE.md` calls a detector that fires on branches carrying nothing the
+worst shape a check can have, because it trains a reader to skim the output
+where a real finding also appears. The ref comparison has no content question in
+it, so the squash, rename and blob-identity confounds do not apply.
+
+**Why `tools/` rather than `vcs.py`.** `refs/pull/*` is a GitHub ref namespace,
+and `PL-SK88` decided that `docket` must not learn about the harness. That
+decision is not reopened here: it is why this is a `tools/` script wired into CI
+or the digest, and not a `docket` command or a branch of `vcs.orphaned`.
+
+**Why beside rather than in place of.** `bin/docket` runs from a bare checkout
+with no virtualenv, and such a checkout has not fetched `refs/pull/*`. Retiring
+`orphaned` would make the detection answer nothing in exactly the case the queue
+is designed to survive, so the portable half stays and the exact half is the one
+that declines when the refs are absent.
+
+**Costs accepted, so a later reader does not re-litigate them.** Two detectors
+now answer one question, which is a real maintenance cost and was weighed
+against two false positives already paid. The exact check needs `refs/pull/*`
+fetched (all 311 of this repository's fetch in 1.9 s, so the objection is
+correctness rather than cost) and must decline rather than guess where they are
+not. And the exact half is GitHub-specific, which is a portability loss this
+project can afford because it is hosted there and the portable half remains.
+
+**What this does not do.** It does not itself fix `PL-XLQ5`, `PL-Y31G`,
+`PL-JBRC` or `PL-8MJ3`. Those four are false positives of the content
+comparison, and the exact check is what makes them answerable rather than
+answered; each still needs its own work.
