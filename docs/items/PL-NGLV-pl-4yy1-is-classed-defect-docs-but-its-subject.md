@@ -1,8 +1,14 @@
 ---
 id: PL-NGLV
 title: PL-4YY1 is classed defect+docs but its subject is two unsourced clinical constants in core/circuit.py, so docket check's safety pin never seats it at P1 where every other safety item sits
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
+touches: docs/items
 added: 2026-09-12
+closed: 2026-09-12
+verify: python3 tools/doc_check.py check && grep -qE '^classes: .*science' docs/items/PL-4YY1-record-provenance-for-the-circuit-volume-and.md
 ---
 
 **Problem.** PL-4YY1 is classed defect+docs but its subject is two unsourced clinical constants in core/circuit.py, so docket check's safety pin never seats it at P1 where every other safety item sits
@@ -45,3 +51,10 @@ existing P1 items keep their order. The objection worth taking seriously is
 `CLAUDE.md`'s own warning that the P1 band stops meaning "a clinician could be
 misled" if it also means "the release script is annoying" - but this is the
 first case rather than the second, which is the whole point.
+
+**Decided by the project owner 2026-09-12: yes.** `PL-4YY1` is now
+`classes: defect, science, docs` at P1, and the item records why the class was
+the defect underneath the defect. The provenance work itself - moving both
+constants into a versioned, cited data file and adding their `docs/MODEL.md`
+rows - remains `PL-4YY1`'s own, unstarted and now correctly banded.
+

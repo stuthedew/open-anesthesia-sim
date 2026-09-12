@@ -1,10 +1,10 @@
 ---
 id: PL-4YY1
 title: Record provenance for the circuit volume and default fresh gas flow
-priority: P2
+priority: P1
 effort: S
 status: ready
-classes: defect, docs
+classes: defect, science, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/data, docs/MODEL.md, docs/ARCHITECTURE.md, tools/doc_check.py, tests/reference/test_coupled_dynamics.py
 added: 2026-08-30
@@ -89,3 +89,13 @@ versioned, cited data file with provenance rows in `docs/MODEL.md`, the Gas Man
 `docs/ARCHITECTURE.md`'s claim matches what `core/` now holds, the third
 restatement in the reference test reads from the same source, and no modelled
 value has changed.
+
+**Re-classed 2026-09-12** from `defect, docs` at P2 to `defect, science, docs`
+at P1, on the project owner's decision. The class was the defect underneath the
+defect: `subprojects/docket/src/docket/checks.py` pins `safety`- and
+`science`-classed items to P1, so while this item read as `docs` the band that
+exists for "a clinician could be misled" was never consulted about it. Both
+constants are scientific parameters by `CLAUDE.md`'s own list - it requires
+provenance for "constants, parameter sets" - and tau = V/FGF puts them between
+the vaporizer dial and every displayed concentration. Found by the `PL-6ZQY`
+consolidation sweep and recorded in `PL-NGLV`.

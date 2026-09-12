@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: tools, subprojects/docket/src/docket/vcs.py
 added: 2026-09-04
 closed: 2026-09-12
+pr: 499
 verify: python3 tools/doc_check.py check && grep -qF 'Decided 2026-09-12: build it, in tools/, beside vcs.orphaned' docs/items/PL-VV4D-decide-whether-the-left-behind-check-should.md
 ---
 
