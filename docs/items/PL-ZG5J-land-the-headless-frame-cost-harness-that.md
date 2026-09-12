@@ -1,7 +1,12 @@
 ---
 id: PL-ZG5J
 title: Land the headless frame-cost harness that measured all of the above, so the simulation-versus-UI split can be re-measured rather than re-derived
-status: untriaged
+priority: P3
+effort: M
+status: needs-decision
+classes: infra, perf
+feature: dev-tooling
+touches: tests/benchmarks, docs/WORKING_NOTES.md
 added: 2026-09-08
 ---
 
@@ -40,3 +45,18 @@ stdlib-only rule is a property of `tools/` or of anything runnable.
 
 **First step.** Answer that, or close this as declined and record in
 `docs/WORKING_NOTES.md` that measuring ad hoc is deliberate.
+
+**Done when.** The question in "Decision needed" is answered and acted on:
+either the harness lands somewhere named, with the serializing connection and
+the three-stage split intact and a note saying what it measures and what it does
+not, or this is `dropped` and `docs/WORKING_NOTES.md` records that measuring ad
+hoc and keeping the numbers in the item is deliberate.
+
+**Weigh the Qt decision into the answer before building anything.** `PL-QXSB`
+decided to leave Flet and `v0.5.1` scopes the port, so a harness built on
+`flet.messaging.session.Session` measures a toolkit this project is removing.
+The *method* may survive the port - a real controller, a real view, a real
+serializing transport, timed in three stages - but the harness as written does
+not, and landing it now buys one milestone's use. That argues for answering the
+"where does a measurement script live" question first and building the Qt
+version of it once, under `PL-YCWZ`, rather than landing a Flet one now.

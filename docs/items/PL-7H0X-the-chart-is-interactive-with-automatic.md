@@ -1,8 +1,10 @@
 ---
 id: PL-7H0X
 title: The chart is interactive with automatic tooltips left on, so hovering a trace shows an unlabelled number read off an M4-decimated point rather than a sample
-status: untriaged
+status: dropped
 added: 2026-09-08
+closed: 2026-09-12
+reason: Overtaken by the Qt port. What remained was to read fl_chart's default tooltip and write down what it prints, as the known starting point for PL-YLKR. v0.5.1 replaces fl_chart with pyqtgraph (PL-G59B), so that reading describes a component being deleted and is no longer the input PL-YLKR needs. The substance transfers intact and is already stated in PL-YLKR: that a drawn point is an M4 representative rather than a sample, that a bare number carries no unit, compartment or agent, and that nothing derives the tooltip's resolution the way docs/MODEL.md derives the readouts'. PL-KP7H already settled the half that was about the flag being undeclared.
 ---
 
 **Problem.** `flet_charts.LineChart.interactive` defaults to `True` —

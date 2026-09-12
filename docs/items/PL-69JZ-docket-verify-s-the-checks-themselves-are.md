@@ -1,7 +1,12 @@
 ---
 id: PL-69JZ
 title: docket verify's 'the checks themselves are unedited' audit REJECTs every item whose declared work is editing a .claude rules file, since gate_paths includes .claude and touches is not consulted
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: delegation
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, docket.toml
 added: 2026-09-07
 ---
 
@@ -68,3 +73,31 @@ audits its own branch against an item whose declared work is a gate path.
 
 **Found.** `PL-X19T` (align the tier-3 absolute in the instruction files with
 the practice), 2026-09-07, running the close-out audit on its own branch.
+
+**Why it matters.** The audit fires on correct work and cannot tell it from the
+thing it exists to catch. `feature: worker-instructions` holds 33 items and most
+of them edit a `.claude` file, so for that whole feature a `REJECT` is the
+expected result of a close-out audit - which trains a reader to skim the block
+where the *protected-path* failure, the one that matters, is printed. That is
+precisely the failure mode `CLAUDE.md` says a check must not have.
+
+It has already been routed around rather than fixed. `bin/docket triage` now
+prints, as a standing rule, that `touches` naming a gate path "makes the item
+non-delegable for a second reason: `docket verify` fails any diff that edits the
+checks, so offering the work would mean refusing it once done." The project has
+absorbed the defect into its triage policy, which keeps delegated work out of
+the trap and leaves a session auditing its own branch still in it.
+
+**Decision needed.** What `bin/docket verify <id>` should report when a
+*non-delegated* session audits its own branch against an item whose declared
+work is a gate path. The three routes are in the section above; route (2) was
+recommended and then shown not to reach this case, and `PL-S2L4` has since taken
+the delegation half of it by making `Item.delegability` read `gate_paths`. So
+what is open is narrower than when this was filed: either the audit learns to
+distinguish a declared gate-path edit and says out loud that it voided itself
+for one, or `verify` learns that it is auditing a non-delegated branch, or the
+`REJECT` stands and is documented as expected for this class of item.
+
+**Done when.** The question above is answered and the answer is implemented or
+recorded - either the audit changes, with a test for what it still refuses, or
+this item is `dropped` with the reasoning written down.

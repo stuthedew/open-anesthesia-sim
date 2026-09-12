@@ -1,7 +1,12 @@
 ---
 id: PL-L09X
 title: An item blocked on a milestone that is decided but not yet named has no honest status: bare blocked errors, and blocked-by only accepts a version the roadmap already places
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect, infra
+feature: planning-cadence
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-10
 ---
 
@@ -90,3 +95,24 @@ all. The second is cheaper and is the one to price first.
 itself. It is a standing false advisory plus a relation the store cannot express,
 with one live instance, and the recommendation to close it as "not worth a
 mechanism" is withdrawn.
+
+**Decision needed.** Whether to add a second relation, and which shape. The two
+costed above: an `awaits: <version>` field meaning blocked until that milestone
+*ships* rather than until it is scoped; or resolving the same fact from what is
+already written, by reading the milestone's own `Required scope` - `v0.5.1`
+names `PL-GS3R` in it - and adding no field at all. The second is cheaper and is
+the one to price first.
+
+**Why it matters.** There is a live instance and it is costing a false advisory
+on every run. `bin/docket check` says of `PL-GS3R` that "v0.5.1 is scoped and
+every other blocker has closed; it is ready to promote", which is the opposite
+of the truth: the item ships *with* the port and cannot be promoted ahead of it.
+An advisory that fires without changing a decision is what `CLAUDE.md`'s "a
+check earns its place every run" is against, and this one has been standing
+since v0.5.1 was scoped. Confirmed still firing 2026-09-12.
+
+**Done when.** `bin/docket check` stops advising that `PL-GS3R` is ready to
+promote while the milestone it ships with is unshipped, without weakening
+`_check_references`' refusal of a blocker the roadmap places nowhere - or the
+decision is recorded that the false advisory is cheaper than the mechanism, in
+which case this item is `dropped` with that reasoning.

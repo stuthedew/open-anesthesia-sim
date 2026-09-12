@@ -1,7 +1,12 @@
 ---
 id: PL-879R
 title: docket check advises on a verify: command's outcome but never its shape, so a grep for an id, or for a file another item is known to create, is only reported once it has already started passing
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-10
 ---
 
@@ -49,3 +54,19 @@ moving an existing finding earlier, not about a gap in coverage.
 **Done when.** Either the decidable subset is implemented in `checks.py` with
 tests, or this item is `dropped` with the reason recorded - that the subset is
 too small, or too noisy, to earn a check that fires on every run.
+
+**Decision needed.** Whether the decidable subset - a discriminating half that
+is a bare `grep` for an item id, a `grep` for a path the item's own `touches`
+does not name, or a `test -f` on a file another open item's `touches` declares -
+is large enough to be worth an advisory that fires on every run. `_check_landed`
+already catches both known instances as an error, reliably but late; this would
+move the finding to the moment the command is written, at the cost of a check
+that must clear `CLAUDE.md`'s "a check earns its place every run, or it is
+retired".
+
+Re-checked 2026-09-12: `checks.py` carries shape checks for re-entrancy
+(`reenters_verify`), for reading the project check's own output
+(`reads_check_output`), for multi-line commands and for a `verify:` with no
+`touches` - so the shape half is an established pattern here rather than a new
+kind of check. What none of them inspects is whether the command is
+*tautological*, which is this item's subset.

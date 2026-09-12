@@ -1,8 +1,14 @@
 ---
 id: PL-LM8P
 title: .claude/rules/citing-sources.md says thirteen of twenty-six sources entries name a route or a depth, and there are now thirty-five
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+feature: worker-instructions
+touches: .claude/rules/citing-sources.md
 added: 2026-09-07
+verify: python3 tools/doc_check.py check && ! grep -qF 'Thirteen of the twenty-six' .claude/rules/citing-sources.md
 ---
 
 **Problem.** .claude/rules/citing-sources.md says thirteen of twenty-six sources entries name a route or a depth, and there are now thirty-five
@@ -33,3 +39,17 @@ guess at.
 
 **Found.** `PL-1JDD`, 2026-09-07, in its close-out documentation sweep.
 
+
+**Why it matters.** The count is the rule's argument for itself - "So this is
+the existing convention made compulsory, not an addition" - so a reader who
+checks it and finds it does not describe the tree has been given a reason to
+doubt the rule rather than follow it. The denominator was 26 when written and is
+35 now, after `PL-6Q8N`, `PL-8ZJQ` and `PL-3YZW`, and nothing noticed across at
+least three items that changed it.
+
+**Done when.** The sentence no longer depends on a census that rots: the figures
+are dropped in favour of the rule stated without them ("every note names which
+route and how deeply you read; most already do"), or - only if the argument
+genuinely needs the numbers - they are re-counted and the numerator established
+by reading the notes. The first is recommended in the brief above and is the
+cheaper answer to maintain.

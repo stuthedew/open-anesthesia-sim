@@ -1,8 +1,14 @@
 ---
 id: PL-S3Q0
 title: Two paraphrases of the tier-2 absolute survived PL-FJGY's sweep, in docs/MODEL.md's Kharasch note and reference_adult.json's Frayn and Karpe note
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: science, docs
+feature: model-spec-accuracy
+touches: docs/MODEL.md, src/anesthesia_sim/data/patients/reference_adult.json
 added: 2026-09-07
+verify: python3 tools/doc_check.py check && ! grep -qF 'A review measures nothing and cannot be the authority for a stored value' src/anesthesia_sim/data/patients/reference_adult.json
 ---
 
 **Problem.** Two paraphrases of the tier-2 absolute survived PL-FJGY's sweep, in docs/MODEL.md's Kharasch note and reference_adult.json's Frayn and Karpe note
@@ -35,3 +41,23 @@ new note would propagate it.
 the practice), 2026-09-07, sweeping for restatements of both absolutes rather
 than only the tier-3 one. Not fixed there: both files are outside that item's
 `touches`, and the data file is `science`-classed.
+
+**Why it matters.** Both sentences assert a rule that is now false. This project
+has adopted a tier-2 source - Davis and Mapleson 1981, for
+`venous_pool_volume_l`, on the owner's decision of 2026-09-07 - so "a review
+measures nothing and cannot be the authority for a stored value" contradicts the
+shipped store. Neither is load-bearing for a provenance claim, since both
+continue into a correct statement that the source is not adopted; what is wrong
+is the rule they assert on the way past, and a session copying either phrasing
+into a new note propagates it.
+
+The general shape is the reason to fix it rather than shrug: `PL-FJGY` repaired
+this rule everywhere by searching for the two exact phrasings it was last
+written in, and every paraphrase was invisible to that search. That is how a
+rule restated in N places decays, and it is the argument `PL-9LXK` is making for
+mechanizing the class.
+
+**Done when.** Neither paraphrase remains in `docs/MODEL.md`'s Kharasch note or
+`reference_adult.json`'s Frayn and Karpe entry, each replaced by the statement
+the source hierarchy actually makes - that the source is not adopted here and
+nothing is stored from it - and `make check` is clean.

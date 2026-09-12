@@ -32,3 +32,23 @@ read is not what runs.
 needed` and continues past it passes `bin/docket check`, matched the same way
 the other three required headings are, with a test holding an elaborated
 heading.
+
+**Observed again while this item was being triaged, 2026-09-12.** `PL-RFLN`'s
+brief was written with the heading `**Decision needed, and it is the project
+owner's.**` - the elaboration carrying the one fact a later session most needs,
+that the item waits on the owner supplying a paper rather than on anybody's
+analysis. `bin/docket check` rejected it:
+
+```text
+PL-RFLN-...: marked needs-decision but states no decision to make; add a
+**Decision needed.** line so a later session can answer it
+```
+
+The error is also wrong about what it found: the item states its decision in the
+sentence directly under that heading. The message sends a reader looking for a
+missing section when what is missing is four characters of punctuation, which is
+the cost on top of the refusal.
+
+Resolved there by demoting the qualification into the sentence, which is the
+workaround this item predicts and the reason the defect is invisible in the
+store - every item that met it now reads as though it never wanted to elaborate.
