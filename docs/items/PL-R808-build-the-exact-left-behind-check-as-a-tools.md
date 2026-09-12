@@ -49,11 +49,30 @@ confound, no rename confound, no blob identity.
   the "all 311 ... in 1.9 s" figure `PL-VV4D` costed the bulk approach at.
 - `vcs.orphaned` stays as the portable half and is not touched.
 
-**Known test vectors**, from `PL-VV4D`: `#312`'s release branch, where the tip
-equals `refs/pull/312/head` and the exact check must stay silent where the
-content comparison fired falsely; and `#284`, where the branch stood at
-`9fee36c` against a frozen `refs/pull/284/head` of `7f87bf5`, so the one commit
-between them is the loss.
+**Known test vectors.** `#284` is the positive case, from `PL-VV4D`: the branch
+stood at `9fee36c` against a frozen `refs/pull/284/head` of `7f87bf5`, so the
+one commit between them is the loss. Confirmed still resolving 2026-09-12.
+
+For the silent case, **use `#499`, not `PL-VV4D`'s `#312`** - see the third
+decline condition below for why `#312` is going away. `#499` is the better
+vector anyway, and this project has first-hand knowledge of it:
+`refs/pull/499/head` is `a8c9ead1c5bbf590ea77cb13e95da81352238fe6`, which is
+exactly where `claude/optimistic-fermat-a7wnfe` stood when `#499`
+**squash**-merged as `355b604c`. Tip equals frozen head, so nothing was left
+behind and the check must stay silent - and because it was a squash, the
+content comparison has every opportunity to misfire on it, which is the whole
+reason the exact test is preferred.
+
+**Third decline condition: the frozen head no longer resolves.** Added
+2026-09-12 by `PL-LF2C`, which carries the evidence. `refs/pull/<n>/head` is
+not permanent - GitHub deletes it on request, and this repository has requested
+exactly that for pull requests `297` through `386` under support ticket
+4733783 (`PL-0SCG`). So the check meets pull requests that certainly existed
+and certainly merged whose head ref is simply gone, and it must say so rather
+than treat an absent ref as "nothing left behind" - which would be a silent
+false negative on the one report that stands between a commit and being lost.
+Three decline conditions in total, and they are distinct: no network, no
+permission, and no such ref.
 
 **Still to decide as part of the build:** where it is wired - CI, the digest, or
 `make check` - and what it prints when it and `vcs.orphaned` disagree, which is

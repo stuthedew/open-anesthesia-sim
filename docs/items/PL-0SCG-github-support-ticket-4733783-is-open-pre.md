@@ -56,3 +56,49 @@ a permanent partial exposure is recorded there instead.
 **Found.** Triage, 2026-09-06, while closing `PL-SHG5` — its three "Done when"
 clauses were all satisfied on `origin/main`, and this was the one live thread
 its closure would have dropped.
+
+**GitHub Support replied, 2026-09-12** on ticket 4733783, shown to the session
+by the project owner. This is the disposition the item was waiting for, and it
+is an intention rather than a completed action - Support says confirmation will
+follow.
+
+**What they found.** Their tooling located references to the sensitive commit
+SHA in 90 pull requests: `297` through `386` inclusive.
+
+**What they will do.** *"Based on your request, we will just delete their
+internal references, which will make the diffs and the sensitive data
+inaccessible, but preserve the comment history."*
+
+**What that leaves.** The exposure this item records - pre-rewrite blobs
+reachable through `refs/pull/*/head` after the copyright purge - is confirmed
+real rather than suspected, and is being closed by GitHub rather than by
+anything this repository can do. Measured the same day, before the purge ran:
+all 90 of `297..386` still had a `refs/pull/<n>/head` on the remote, out of 500
+pull heads in total.
+
+**Still owed before this can close:** a re-check that the 90 head refs no longer
+resolve, and Support's confirmation.
+
+**`status: ready` is now correct, and earlier sessions arguing otherwise were
+right about the old state rather than this one.** While the ticket was an
+open-ended wait, this item was unstartable and `bin/docket next` could hand a
+legal-exposure item to a session with no move available - which is what
+`PL-JTXX` records. Support's reply ends that: the remaining work is a bounded
+check any session can run in one command, against a named range.
+
+```text
+git ls-remote origin 'refs/pull/*/head' | sed -E 's#.*refs/pull/([0-9]+)/head#\1#' \
+  | awk '$1>=297 && $1<=386' | wc -l
+```
+
+Measured 2026-09-12, after Support's reply and before the purge ran: **90**, so
+not yet. When that reads 0 the exposure is closed and this item is done. Until
+then a session picking it up learns the answer and puts it down again, which is
+cheap and correct rather than a dead end. `PL-JTXX` (this item is status ready
+but waits on a third party) should be dropped on those grounds rather than
+worked.
+
+**One consequence outside this item**, recorded because nobody would look for
+it here: the purge takes `refs/pull/312/head`, which `PL-VV4D` had recorded as
+a test vector for the exact left-behind check. `PL-LF2C` carries that, and
+`PL-R808` has been amended.
