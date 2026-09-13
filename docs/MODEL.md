@@ -2777,12 +2777,16 @@ side.
 | 1.39, its own measured mean + 2 SD | 0.0998 | −2.01 SD |
 | 1.70, sevoflurane's, the highest of the three | 0.1167 | −1.17 SD |
 
-**Five other candidates were tested, and each fails the same way**: it moves
+**Seven other candidates were tested, and each fails the same way**: it moves
 sevoflurane and isoflurane as much as desflurane or more, and the published
-rows have no room for that, or it moves desflurane the wrong way. Measured
-2026-09-08; the last three on an independent forward-Euler integration of
-these equations, which reproduces the shipped driver to within 0.8% and whose
-own zero-shunt baseline for desflurane is −2.29 SD rather than −2.33.
+rows have no room for that, or it moves desflurane the wrong way. Rows one to
+six were measured 2026-09-08, rows four to six on an independent forward-Euler
+integration of these equations, which reproduces the shipped driver to within
+0.8% and whose own zero-shunt baseline for desflurane is −2.29 SD rather than
+−2.33. The seventh was measured 2026-09-13 on the shipped driver, after the
+methods sections supplied the apparatus's real volume (`PL-RFLN`); the
+paragraphs below it are why it is a row of its own rather than a correction to
+the sixth.
 
 | Candidate | What reaching 0.140 takes | What it costs the other rows |
 | --- | --- | --- |
@@ -2791,19 +2795,69 @@ own zero-shunt baseline for desflurane is −2.29 SD rather than −2.33.
 | Cardiac output | out of reach | 3 to 7 L/min moves desflurane only from −2.6 to −2.1 SD |
 | Fast capacity this model omits — lung tissue, pulmonary and arterial blood | about 3 L of blood-equivalent | worth 20.1% of desflurane's fast pool against 19.7% of sevoflurane's and 23.4% of isoflurane's: flat, where desflurane needs +2.41 gas-equivalent litres and isoflurane −1.32 |
 | A non-ideal lung — shunt or ventilation-perfusion dispersion, both excluded by $`F_a \equiv F_A`$ | moves the wrong way | a 20% shunt takes desflurane from −2.29 to −2.66 SD; a log-normal V/Q distribution at log SD 1.0 takes it to −2.91 |
-| Residual rebreathing in the published apparatus | $`F_I/F_A`$ = 0.30 | sevoflurane +2.72 SD, isoflurane +3.29 and +4.10 |
+| Circuit-style rebreathing in the published apparatus, at an assumed ratio | $`F_I/F_A`$ = 0.30 | sevoflurane +2.72 SD, isoflurane +3.29 and +4.10 |
+| The published apparatus's own dead space, sourced — 50 ml re-inspired each breath, which in this model is a ventilation decrement rather than an $`F_I`$ | more than the wash-in rows will bear | at the largest admissible decrement desflurane is still −1.48 SD while both isoflurane cohorts leave their spread, at +1.69 and +2.17 |
 
-**The sixth row's $`F_I/F_A`$ = 0.30 was an assumed magnitude, and the methods
-now give a sourced one.** Yasuda 1991 *Anesthesiology* § "Materials and
-Methods" puts about 50 ml of corrugated Teflon between the tracheal sampling
-port and the nonrebreathing valve, and that volume is re-inspired each breath,
-so the published apparatus does rebreathe — but against a normocapnic tidal
-volume in a paralysed 76 kg adult it is of the order of a tenth of the ratio
-the row was rejected at, not the whole of it. The row therefore rules out
-rebreathing at 0.30 and says nothing yet about rebreathing at the apparatus's
-own volume. Re-running it at the sourced figure is the cheapest of the open
-diagnostics and is the first thing `PL-RFLN` asks for; until it is run, this
-row must not be cited as having excluded rebreathing generally.
+**The sixth row measured circuit-style rebreathing at an assumed ratio, and
+the apparatus turns out not to be that shape at all.** Yasuda 1991
+*Anesthesiology* § "Materials and Methods" puts about 50 ml of corrugated
+Teflon between the tracheal sampling port and the nonrebreathing valve, stated
+there to protect the end-tidal sample from contamination with inspired gas.
+That volume holds alveolar gas at end-expiration and fresh gas at
+end-inspiration, which makes it a **series dead space** rather than a mixing
+volume returning a fraction of every breath — and in a model with one
+perfectly mixed alveolar compartment the two are not the same mechanism.
+
+Take one breath of the elimination, with the fresh gas agent-free, and let
+$`V_D`$ be the total series dead space, anatomic plus apparatus. Inspiration
+pushes that $`V_D`$ of alveolar gas back into the alveoli and follows it with
+$`V_T - V_D`$ of agent-free gas, so the alveoli receive $`V_T`$ of gas
+carrying $`V_D F_A`$ of agent and expel $`V_T`$ carrying $`V_T F_A`$. The net
+is $`-(V_T - V_D) F_A`$, which is exactly this model's
+$`\dot V_A (F_I - F_A)`$ at $`F_I = 0`$ provided $`\dot V_A`$ is the true
+alveolar ventilation $`(V_T - V_D) f`$. **So the published apparatus's dead
+space is an alveolar-ventilation decrement of $`V_D f`$ and nothing else.**
+Applying it as a non-zero $`F_I`$, which is what the sixth row tested, would
+describe this model's circuit rather than Yasuda's apparatus.
+
+**Run correctly, it fails the way the second row fails, which is not a
+coincidence — it *is* the second row, at a sourced magnitude.** The model
+carries no respiratory rate, so the decrement is run across the conventional
+range for a paralysed, normocapnic adult. Measured 2026-09-13, against the
+−2.33 SD desflurane sits at with no dead space at all:
+
+| $`f`$ (/min) | $`\dot V_A`$ (L/min) | Desflurane | Isoflurane n=8 | Worst wash-in row |
+| --- | --- | --- | --- | --- |
+| 6 | 3.70 | −1.89 SD | +1.59 SD | −0.42 SD |
+| 8 | 3.60 | −1.73 SD | +1.82 SD | −0.63 SD |
+| 10 | 3.50 | −1.56 SD | +2.05 SD | −0.85 SD |
+| 12 | 3.40 | −1.38 SD | +2.30 SD | −1.08 SD |
+
+It moves desflurane the right way and carries between 0.44 and 0.95 SD of the
+2.33 — a quarter to two fifths, never the whole — and it buys that by pushing
+the isoflurane cohort that was inside its spread at +0.94 SD out to between
++1.59 and +2.30. The wash-in comparison sets its own ceiling: at 11 breaths
+per minute sevoflurane's wash-in row reaches −0.96 SD and one breath more
+takes it outside, so the largest decrement the comparison admits at all leaves
+desflurane 1.48 SD short with both isoflurane cohorts outside their spreads.
+The mechanism is **common-mode**, and desflurane's residual is differential.
+`test_no_apparatus_dead_space_reaches_desflurane_s_published_elimination` and
+`test_the_apparatus_dead_space_moves_every_cohort_together` assert both halves,
+so this cannot go stale in silence.
+
+**Whether any decrement is owed at all is undetermined, and that is the live
+question rather than this one.** Yasuda derived the alveolar fraction of
+ventilation from $`F_M = f_A F_A + f_D F_I`$, and the 1-l mixing chamber
+supplying $`F_M`$ sits beyond the nonrebreathing valve — so the 50 ml that is
+re-inspired never reaches it, and their derived $`f_A`$ is
+$`(V_T - V_{D,\text{anat}} - V_{D,\text{app}})/V_T`$, already netting the
+apparatus out. A comparison run at *their* alveolar ventilation must therefore
+not subtract it again. This model runs at 4.0 L/min, which
+`data/patients/reference_adult.json` records as a program default with no
+primary source behind it, and which is neither quantity. Reading the
+study's own figure out of the methods text is `PL-ZDWL`, and it is the
+strongest move left: it would convert the second row from a free-parameter
+sweep into a sourced operating point.
 
 The fourth row's volumes are round physiologic figures — 1 kg of lung tissue
 at a tissue:blood ratio of 1.2, and 1.8 L of pulmonary and arterial blood —
@@ -2852,7 +2906,7 @@ holding its alveolar fraction up. Two candidates, neither demonstrated:
    This removes the obstacle rather than demonstrating the mechanism. What the
    hypothesis still needs is the end-tidal-weighted bias computed instead of
    the flow-weighted one, and a bound on how much of 2.33 SD it could carry;
-   that is bounded work this project can do, and `PL-RFLN` carries it. The
+   that is bounded work this project can do, and `PL-03ZG` carries it. The
    *Anesth Analg* paper states only that ports permitted sampling of end-tidal,
    mixed expired and inspired gas, without siting them or naming a dead space,
    so it neither confirms nor contradicts this. The two studies describe the
@@ -2873,10 +2927,25 @@ conventionally about 2.4, a textbook figure and not a parameter this project
 stores — the published five-minute ratios span only 0.14 to 0.25, which is a
 narrower spread than a perfusion-limited model produces.
 
-**What would settle it** is the methods sections of the two papers: the
-breathing system, how end-tidal gas was sampled, and the alveolar ventilation
-measured through the elimination. Neither is in PubMed Central, and neither is
-held in `docs/references/`.
+**What is still missing, now that the methods sections have been read.** The
+three things this section used to name as what would settle it — the breathing
+system, how end-tidal gas was sampled, and the alveolar ventilation measured
+through the elimination — are two answered and one outstanding. The breathing
+system and the end-tidal sampling are recorded above, and they closed the
+apparatus question: the published circuit is non-rebreathing with the potent
+agents' inspired fraction zero by construction, and its 50 ml of series dead
+space cannot carry the residual. The third was never read out. Yasuda measured
+minute ventilation and derived the alveolar fraction from
+$`F_M = f_A F_A + f_D F_I`$; the **value** is in the methods text and is not
+held here, and `PL-ZDWL` is reading it.
+
+So what is left is one reachable candidate and one that is not. The reachable
+one is candidate 1's end-tidal-weighted bias, which `PL-03ZG` bounds: the
+methods removed its obstacle and nothing has demonstrated it. The unreachable
+one is candidate 2, the published value itself, which no measurement this
+project can run will settle. **Neither is a claim this specification makes** —
+the residual's cause is not identified, and what is recorded here is its sign,
+its size, and the six mechanisms that have been excluded.
 
 **Which question a band of one standard deviation answers**, since this
 section now makes the claim in two places. A deterministic model compared
@@ -5368,10 +5437,30 @@ early washout as a physiologic prediction would expect a faster fall than
 Yasuda's volunteers showed. "Desflurane's residual, and why the parameter file
 was not changed" carries what was ruled out — the tissue and blood
 solubilities, the operating point, the fast capacity this model omits, a
-non-ideal lung, and residual rebreathing in the published apparatus — and
-which of this section's omissions the two surviving hypotheses rest on. It is
+non-ideal lung, and both readings of the published apparatus, circuit-style
+rebreathing and the 50 ml of series dead space its methods section actually
+describes — and which of this section's omissions the two surviving hypotheses
+rest on. It is
 recorded rather than corrected because every value that would close it is
 outside what the human measurements support.
+
+**Dead space is an omission with a known exchange rate, which is unusual on
+this list.** The model ventilates the alveolar compartment continuously and
+has no tidal structure, so neither anatomic nor apparatus dead space is
+represented. But a *series* dead space is exactly equivalent to a reduction in
+alveolar ventilation: over one breath the dead-space volume re-enters the
+alveoli at $`F_A`$ and leaves at $`F_A`$, netting to nothing, so a dead space
+$`V_D`$ at rate $`f`$ is worth $`\dot V_A - V_D f`$ and nothing else.
+"Desflurane's residual, and why the parameter file was not changed" carries the
+derivation and the measurement that used it. Two consequences for a reader.
+First, the alveolar ventilation control already *is* the dead-space control,
+provided the value entered is a true alveolar ventilation rather than a minute
+ventilation; the interface names it "Alveolar ventilation" for that reason, and
+a user who enters a minute ventilation there has overstated gas exchange by the
+whole of the dead space. Second, what this model
+cannot represent is not dead space but **parallel** inhomogeneity: unequal
+ventilation-perfusion ratios across alveolar units, which the next three
+bullets name and which no single ventilation figure reproduces.
 
 **Cardiac output and the three perfusion fractions are held fixed under
 anesthesia, and a real anesthetic moves them.** $`Q`$ and each
