@@ -394,11 +394,51 @@ the same breath — "PL-K7QX is the workflow lane's pick; three items span both
 halves and are waiting for a session that can take the lot." An item invisible
 in both lanes and mentioned in neither is how work goes missing for months.
 
-**Work the roadmap places nowhere ranks on its band alone.** `docket next`
-sorts in-scope work above unplaced work above out-of-scope work, so an item no
-milestone section names is neither preferred nor excluded — it sits between the
-two. Say so when you offer one, rather than presenting it as what the step
-calls for.
+**Every item you offer carries its relation to the gate, and this rule is not
+confined to this mode** (project owner, 2026-09-13). It applies wherever a next
+item is named: a `next` answer, the closing line of a design round, the last
+paragraph of a session that just finished something else. That last one is
+where it was missed — `PL-FZ6T` was offered as "the natural continuation" of
+the item that had just unblocked it, with nothing said about the gate, which
+reads as *what the project should do next* while sitting outside what the
+project said it was doing (`PL-J790`).
+
+There are three relations, and `docket next` prints the first two in its reason
+line under each item:
+
+- **On the gate** — "On the debt gate recorded under v0.5.0; v0.4.x — the code
+  is the model clears it."
+- **Outside what the anchor names** — the id sits in a later milestone's
+  section, which the current step has not reached.
+- **Placed nowhere** — neither preferred nor excluded. It ranks on its band
+  alone, and nothing prints it.
+
+The third is the one that goes wrong, and in two ways. Nothing states it, so
+silence is indistinguishable from not having looked; and it means *no milestone
+section places it*, which is narrower than it sounds. `Scope` reads exactly two
+structures — a section's frozen list and its `Required scope` — so a milestone
+recording scope in prose alone records it invisibly, and a **timeline row**
+places nothing at all. `PL-FZ6T` is the worked example: `docket next` gives it
+no gate sentence, while `ROADMAP.md`'s `v0.4.x` row names it outright. So
+"placed nowhere" is a fact about the two structures and never a claim that the
+roadmap is silent — read the row for the step before saying either.
+
+`bin/docket wave` prints the gate's open entries by id and settles membership;
+`bin/docket show` prints no placement at all, so an item reached by name — the
+way the owner usually starts one — carries no relation until you go and look.
+
+**Recommending off-gate work is allowed, and is never silent about being
+off-gate.** Say what the gate says, then say why this goes first anyway. The
+grounds are the ones this project already states, not a new list: a `P0`, which
+precedes feature work by its own rule below; `ROADMAP.md`'s own exception for a
+finding that is `safety` or `science`, or whose problem predates the freeze;
+and `CLAUDE.md`'s three compounding-friction tests — a check passing while the
+guarantee it stands for is void, an advisory being routed around, something
+sitting upstream of every other command. Being the obvious next step of the
+conversation is **not** one of them, and neither is wanting to do it. Where
+none of the grounds hold, the item is still worth naming — say plainly that it
+is off-gate and let the owner weigh it, rather than dressing it as what the
+step calls for.
 
 Do not promote process work into P1 to move it up that order. `docket check`
 pins `safety`- and `science`-classed items to P1, so the band means "a
