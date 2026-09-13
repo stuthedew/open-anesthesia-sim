@@ -1,8 +1,14 @@
 ---
 id: PL-WZBX
 title: bin/docket wave counts the four entries ROADMAP.md's gate places under 'Cleared by v0.5.0 itself' as clearable before the milestone begins, where the gate rule says the milestone clears them
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+feature: planning-cadence
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py -q && grep -rq 'def test_a_gate_is_open_when_its_only_open_entries_are_the_milestone_s_own_scope' subprojects/docket/tests/
 ---
 
 **Problem.** bin/docket wave counts the four entries ROADMAP.md's gate places under 'Cleared by v0.5.0 itself' as clearable before the milestone begins, where the gate rule says the milestone clears them

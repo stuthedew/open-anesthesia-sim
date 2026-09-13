@@ -1,7 +1,11 @@
 ---
 id: PL-VJFQ
 title: Nothing enforces that KNOWN_SHORTFALLS only shrinks, so the contrast ledger could become the suppression list ui-color.md forbids in prose
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+touches: tools/contrast_check.py, .claude/rules/ui-color.md, tests/unit/test_contrast_check.py
 added: 2026-09-13
 ---
 
@@ -36,3 +40,10 @@ reason is written down where a reviewer of a colour change will read it.
 
 Worth deciding *before* the list next grows rather than after: the first
 wrongly-added entry is the one nobody notices.
+
+**Done when.** Either a check enforces the direction against a baseline that
+cannot be edited in the same commit as the entry, or the decision to leave it
+to review is written into `.claude/rules/ui-color.md` beside the prohibition it
+backs, where a reviewer of a colour change will actually read it. Deferring
+without recording one of the two is the outcome this item exists to prevent,
+so it is not an available ending.

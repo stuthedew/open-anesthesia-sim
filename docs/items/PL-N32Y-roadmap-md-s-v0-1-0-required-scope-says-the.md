@@ -1,7 +1,12 @@
 ---
 id: PL-N32Y
 title: ROADMAP.md's v0.1.0 Required scope says the release added tissue:blood partition data, where the agent data files store tissue:gas
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: docs
+feature: release-roadmap-seam
+touches: ROADMAP.md
 added: 2026-09-13
 ---
 
@@ -31,3 +36,19 @@ history is read as history. That is the project owner's call about how
 **Where.** `ROADMAP.md`, v0.1.0 § "Required scope".
 
 **Found.** Doc sweep for `PL-H46J` and `PL-212V`, 2026-09-13.
+
+**Decision needed.** Whether a `Required scope` line is corrected once it is
+found to be wrong about what shipped, or left standing as the record of what
+the release was *scoped* to do and annotated instead. Both are defensible, and
+the choice is about what `ROADMAP.md`'s release history is for rather than
+about this sentence: it sets the precedent for every later correction, so it is
+worth answering once instead of per line. The one reading to rule out is
+leaving it unmarked, because the confusion it carries is the exact one
+`PL-212V` was filed on and the literature offers no convention that would catch
+it.
+
+**Done when.** The v0.1.0 `Required scope` line no longer lets a reader take
+the stored coefficients for tissue:blood values - by correction or by
+annotation, on the answer above - and whichever route is chosen is stated in
+`ROADMAP.md`'s own development rules, so the next such line is not reargued
+from scratch.

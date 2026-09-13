@@ -1,7 +1,12 @@
 ---
 id: PL-Z5FG
 title: The PL-B32L and PL-TCW5 edits to core/parameters.py shifted line numbers cited by PL-0NQ1 and PL-HXKC, which is PL-J7C5's hazard arriving again from an unrelated branch
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: docs
+feature: dev-tooling
+touches: docs/items
 added: 2026-09-13
 ---
 
@@ -49,3 +54,8 @@ and make the whole class checkable rather than fixing one instance of it.
 Folding in is the stronger answer if `PL-J7C5` is being worked soon; repairing
 now is right if it is not, because both cited items are open and a session
 picking either one up reads the wrong numbers in the meantime.
+
+**Done when.** The six citations in `PL-0NQ1` and `PL-HXKC` resolve to what
+they claim - repaired in place, or replaced with symbol names as part of
+`PL-J7C5` - and whichever route was taken is recorded on `PL-J7C5`, so the
+next drift of this kind is not measured a fourth time.

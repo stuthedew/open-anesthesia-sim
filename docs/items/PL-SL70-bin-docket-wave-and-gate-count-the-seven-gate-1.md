@@ -5,10 +5,11 @@ priority: P2
 effort: M
 status: done
 classes: defect, infra
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md
 feature: planning-cadence
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md
 added: 2026-09-13
 closed: 2026-09-13
+pr: 521
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_an_entry_sequenced_past_the_milestone_is_not_clearable' subprojects/docket/tests/test_roadmap.py
 ---
 

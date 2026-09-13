@@ -1,7 +1,11 @@
 ---
 id: PL-V6M0
 title: _apply_setting reports a SimulationExecutionError as a refused setting and lets the run continue, which is the opposite of what that type means
-status: untriaged
+priority: P1
+effort: S
+status: needs-decision
+classes: safety, anticipated
+touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-13
 ---
 
@@ -33,3 +37,18 @@ routing the other two branches to `_halt_run()` alongside everything else.
 That is the reading which makes the arm mean what the exception hierarchy
 says it means. The alternative is to leave the base-class catch and accept
 that the distinction only matters once a route exists.
+
+**Done when.** `_apply_setting`'s narrow arm catches only what a refused
+setting can be, with the execution branches routed to `_halt_run()` alongside
+everything else - or the base-class catch is kept deliberately and the reason
+is recorded at the `except` itself, where the next reader of
+`core/exceptions.py` will meet it. Either way a test drives a setting handler
+raising each of `SimulationConfigurationError`, `SimulationExecutionError` and
+`SimulationDomainLimitError`, and asserts which channel the run ends up in.
+
+**On the band.** Seated at P1 because `classes` carries `safety` and the pin
+in `checks.py` holds safety-critical work at P0 or P1. `anticipated` is carried
+for what it says to a reader - no route raises either type today - and not for
+the exemption, which `checks.py` grants only at `status: blocked` and which
+this item cannot claim: nothing blocks it, and the trigger is a future route
+rather than a named item or milestone.
